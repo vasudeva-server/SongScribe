@@ -604,7 +604,7 @@ public final class GraceModeManager {
         // The grace note is the most recently inserted element at the current x index
         var insertedIndex = PreviewElementManager.getCurrentXIndex();
 
-        if (insertedIndex < 0 || insertedIndex >= line.elementCount()) {
+        if (!line.hasIndex(insertedIndex)) {
             // Insertion failed (e.g. triplet boundary)
             abort();
             return;

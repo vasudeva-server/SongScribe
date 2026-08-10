@@ -24,7 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
+import java.util.function.Function;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -93,6 +93,7 @@ import songscribe.dom.Lyric;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.ui.EditResult;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -100,6 +101,7 @@ import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.SlideOperations;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.clipboard.Fragment;
@@ -246,24 +248,36 @@ public final class ScoreViewController {
 
     /**
      * Shared shell for a command that acts on the last insertion: beam, tie, glissando and fall
-     * all gate on the same two preconditions and beep under the same rule, differing only in
-     * which operation they run and what that operation's outcome means.
+     * all gate on the same two preconditions and answer for the outcome under the same rule,
+     * differing only in which operation they run.
      *
-     * <p>{@code shouldBeep} runs the operation and reports whether the caller still owes the user
-     * a beep — {@code false} when the operation already gave its own feedback (a modification, or
-     * an error dialog for want of room).
+     * <p>{@code operation} performs the edit and reports what it did. Each outcome has exactly
+     * one response: {@code MODIFIED} re-points the key at the element it just acted on, so a
+     * second press toggles the same pair back off; {@code REFUSED} beeps, because a silent
+     * failure leaves the user unable to tell the press registered at all; {@code REPORTED} says
+     * nothing, because an error dialog is already on screen and a beep as it is dismissed reads
+     * as a second, separate failure.
      *
-     * <p>{@code undoOpName} carries the Tier-A undo label, set around the operation exactly as
-     * {@code UIAction.actionPerformed} does and restored afterwards (including on exception).
+     * <p>Re-pointing is safe here, and only here, because message posting is synchronous: the
+     * operation has returned, so its bracket has closed and the notification that cleared the
+     * slot has already been delivered. That is what lets the outcome be observed rather than
+     * predicted — an operation cannot arm ahead of its own gate without leaving the slot armed
+     * on the refusing paths, where no commit ever arrives to consume it.
+     *
+     * <p>{@code targetAction} is the menu action the key falls through to when the binding is
+     * disabled, and supplies the Tier-A undo label through the same
+     * {@code UndoController.withPendingOpName} bracket {@code UIAction.actionPerformed} uses.
      * These commands arrive from key bindings that bypass {@code UIAction} entirely, so without
      * it the step falls through to {@code UndoController.opNameKey}'s mutation-kind fallback and
      * the key labels the very same edit differently from the menu action that also performs it —
-     * "Undo Beaming" against the menu's "Undo Toggle Beam". Pass {@code null} for a Tier-B
-     * operation that labels its own bracket ({@code SlideOperations} does, via {@code OpNames}).
+     * "Undo Beaming" against the menu's "Undo Toggle Beam". Reading the label off the action is
+     * what makes those two agree by construction, and it already answers {@code null} for the
+     * Tier-B operations that label their own bracket ({@code SlideOperations} does, via
+     * {@code OpNames}).
      */
     private void handleLastInsertionCommand(
-        @Nullable String undoOpName,
-        Predicate<EditModeManager.Insertion> shouldBeep
+        UIAction targetAction,
+        Function<EditModeManager.Insertion, EditResult> operation
     ) {
         // Stands in for the DISABLE_WHEN_PLAYING flag the toggle-beam action carries;
         // this command arrives from a key binding that no action's enabled state gates.
@@ -279,35 +293,30 @@ public final class ScoreViewController {
             return;
         }
 
-        var priorOpName = UndoController.getPendingOpName();
-        UndoController.setPendingOpName(undoOpName);
+        var result = UndoController.withPendingOpNameResult(
+            targetAction.getUndoOpName(), () -> operation.apply(insertion));
 
-        try {
-            // Re-arming the target is left to the operation, which does it only on the branches
-            // that actually modify the line. Arming here instead would leave the slot armed on
-            // every refusing path, with no commit coming to consume it.
-            if (shouldBeep.test(insertion)) {
-                UIUtils.beep();
-            }
-        } finally {
-            UndoController.setPendingOpName(priorOpName);
+        switch (result) {
+            case MODIFIED -> EditModeManager.setLastInsertion(insertion.line(), insertion.elementIndex());
+            case REFUSED -> UIUtils.beep();
+            case REPORTED -> { }
         }
     }
 
     @Handler
     public void handleToggleBeamWithPrevious(ToggleBeamWithPreviousCommand message) {
         handleLastInsertionCommand(
-            Strings.get(Strings.ACTION_EDIT_OP_TOGGLE_BEAM),
-            insertion ->
-                !MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex()));
+            Actions.TOGGLE_BEAM_ACTION,
+            insertion -> EditResult.of(
+                MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex())));
     }
 
     @Handler
     public void handleToggleTieWithPrevious(ToggleTieWithPreviousCommand message) {
         handleLastInsertionCommand(
-            Strings.get(Strings.ACTION_EDIT_OP_TOGGLE_TIE),
-            insertion ->
-                !MusicEditOperations.toggleTieWithPredecessor(insertion.line(), insertion.elementIndex()));
+            Actions.TOGGLE_TIE_ACTION,
+            insertion -> EditResult.of(
+                MusicEditOperations.toggleTieWithPredecessor(insertion.line(), insertion.elementIndex())));
     }
 
     @Handler
@@ -330,22 +339,18 @@ public final class ScoreViewController {
 
     @Handler
     public void handleToggleGlissandoWithPrevious(ToggleGlissandoWithPreviousCommand message) {
-        // Only a silent refusal beeps: a refusal for want of room has already put an error
-        // dialog on screen, and beeping as it is dismissed reads as a second, separate failure.
-        // Tier B: SlideOperations labels its own bracket, so no static label is imposed here.
-        handleLastInsertionCommand(null, insertion -> SlideOperations.toggleGlissandoWithPredecessor(
-            insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics())
-            == SlideOperations.Result.REFUSED);
+        handleLastInsertionCommand(
+            Actions.GLISSANDO_ACTION,
+            insertion -> SlideOperations.toggleGlissandoWithPredecessor(
+                insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics()));
     }
 
     @Handler
     public void handleToggleFallOnLastInsertion(ToggleFallOnLastInsertionCommand message) {
-        // Only a silent refusal beeps: a refusal for want of room has already put an error
-        // dialog on screen, and beeping as it is dismissed reads as a second, separate failure.
-        // Tier B: SlideOperations labels its own bracket, so no static label is imposed here.
-        handleLastInsertionCommand(null, insertion -> SlideOperations.toggleFallOnLastInsertion(
-            insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics())
-            == SlideOperations.Result.REFUSED);
+        handleLastInsertionCommand(
+            Actions.FALL_ACTION,
+            insertion -> SlideOperations.toggleFallOnLastInsertion(
+                insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics()));
     }
 
     @Handler

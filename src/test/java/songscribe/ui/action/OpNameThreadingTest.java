@@ -55,9 +55,10 @@ import songscribe.undo.UndoController;
  *   <li>{@link Song#beginModification(String)} captures the batch op-name only at the
  *       outermost bracket, resolving {@code explicit != null ? explicit : pending}, and
  *       ships it via {@link SongDidChangeNotification#getOpName()} (the capture matrix).</li>
- *   <li>{@link UIAction#actionPerformed(ActionEvent)} restores the prior
- *       {@code pendingOpName} in {@code finally} even when {@code performAction} throws,
- *       so a thrown action never leaks a stale name onto the next bracket (FM3).</li>
+ *   <li>{@link UndoController#withPendingOpName} restores the prior {@code pendingOpName}
+ *       whether the body returns or throws, so no dispatch leaks a stale name onto the next
+ *       bracket (FM3). {@link UIAction#actionPerformed(ActionEvent)} is one of its three
+ *       callers, and is exercised end to end here.</li>
  * </ul>
  */
 class OpNameThreadingTest extends UnitTest {
@@ -154,6 +155,58 @@ class OpNameThreadingTest extends UnitTest {
                         () -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)))));
 
             assertThat(notification.getOpName()).isEqualTo(Strings.get(EXPLICIT_KEY));
+        }
+    }
+
+    // ── FM3: the shared bracket restores pendingOpName, however the body ends ──
+
+    /**
+     * The bracket every op-name-setting dispatch runs through — the {@code UIAction}
+     * template, paste placement and the last-insertion keys. Tested here rather than
+     * through one of them, so all three are covered by the same two cases.
+     *
+     * <p>The prior name is non-null in both, which is the case a {@code finally} that
+     * <em>cleared</em> the slot instead of restoring it would still pass: nesting is the
+     * whole reason the bracket saves a value rather than setting {@code null} on the way out.
+     */
+    @Nested
+    class WithPendingOpName {
+
+        @BeforeEach
+        void setPriorName() {
+            UndoController.setPendingOpName(Strings.get(PENDING_KEY));
+        }
+
+        @AfterEach
+        void clearPendingName() {
+            UndoController.setPendingOpName(null);
+        }
+
+        @Test
+        void testTheNameIsSetForTheBodyAndTheOuterNameRestoredAfterIt() {
+            var observed = UndoController.withPendingOpNameResult(
+                Strings.get(EXPLICIT_KEY), UndoController::getPendingOpName);
+
+            assertThat(observed)
+                .as("a bracket opening inside the body captures the name the body was given")
+                .isEqualTo(Strings.get(EXPLICIT_KEY));
+            assertThat(UndoController.getPendingOpName())
+                .as("the enclosing dispatch's name is handed back, not cleared")
+                .isEqualTo(Strings.get(PENDING_KEY));
+        }
+
+        @Test
+        void testAThrowingBodyStillRestoresTheOuterName() {
+            assertThatThrownBy(() -> UndoController.withPendingOpName(
+                Strings.get(EXPLICIT_KEY),
+                () -> {
+                    throw new IllegalStateException("boom");
+                }))
+                .isInstanceOf(IllegalStateException.class);
+
+            assertThat(UndoController.getPendingOpName())
+                .as("a thrown body must not leave its name for the next edit to adopt")
+                .isEqualTo(Strings.get(PENDING_KEY));
         }
     }
 

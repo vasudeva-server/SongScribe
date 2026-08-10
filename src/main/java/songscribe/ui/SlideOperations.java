@@ -31,7 +31,6 @@ import songscribe.error.RuntimeError;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.mutation.ElementField;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.Selection;
 import songscribe.undo.OpNames;
@@ -67,34 +66,7 @@ import songscribe.undo.OpNames;
  */
 public final class SlideOperations {
 
-    /** Passed as the arm index by the select-mode entry points, which never arm an insertion. */
-    private static final int NO_ARM = -1;
-
     private SlideOperations() {
-    }
-
-    /**
-     * What a toggle did, which is what tells its caller whether the user still owes an
-     * explanation. The distinction matters because a refusal for want of horizontal room already
-     * puts an error dialog on screen — a caller that beeps on every falsy outcome would sound the
-     * beep the moment the user dismisses that dialog.
-     */
-    public enum Result {
-
-        /** The line was modified, in exactly one undo step. */
-        MODIFIED,
-
-        /**
-         * Nothing was modified and nothing was said: the selection or the last insertion is not
-         * eligible. Silent, so the caller owes the user feedback — a beep, on the key paths.
-         */
-        REFUSED,
-
-        /**
-         * Nothing was modified and the user has already been told why with an error dialog. The
-         * caller must add no further feedback.
-         */
-        REPORTED
     }
 
     /**
@@ -102,17 +74,16 @@ public final class SlideOperations {
      *
      * @see RangeQueries#glissandoSourceIndex
      */
-    public static Result toggleGlissando(
+    public static EditResult toggleGlissando(
         Selection.Range range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var sourceIndex = RangeQueries.glissandoSourceIndex(range);
 
         if (sourceIndex < 0) {
-            return Result.REFUSED;
+            return EditResult.REFUSED;
         }
 
-        return applySlides(
-            range.line(), new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics, NO_ARM);
+        return applySlides(range.line(), new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics);
     }
 
     /**
@@ -122,27 +93,25 @@ public final class SlideOperations {
      * selection coordinator — the caller looks up the state, exactly as
      * {@link MusicEditOperations#toggleBeamWithPredecessor} does.
      *
-     * <p>The armed slot is {@code elementIndex}, the note just inserted, not the glissando's
-     * source — which for a single-element range is the note before it. Arming the inserted note
-     * is what lets a second press toggle the same pair back off. Arming happens only on the
-     * branch that actually opens a modification bracket; see
-     * {@link EditModeManager#armInsertion} for why an arm on a refusing path is a bug.
+     * <p>{@code elementIndex} is the note just inserted, not the glissando's source — which for
+     * a single-element range is the note before it. The slide lands on the source; the caller
+     * keeps pointing the key at the inserted note, which is what lets a second press toggle the
+     * same pair back off.
      */
-    public static Result toggleGlissandoWithPredecessor(
+    public static EditResult toggleGlissandoWithPredecessor(
         Line line, int elementIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        if (elementIndex < 0 || elementIndex >= line.elementCount()) {
-            return Result.REFUSED;
+        if (!line.hasIndex(elementIndex)) {
+            return EditResult.REFUSED;
         }
 
         var sourceIndex = RangeQueries.glissandoSourceIndex(Selection.Range.single(line, elementIndex));
 
         if (sourceIndex < 0) {
-            return Result.REFUSED;
+            return EditResult.REFUSED;
         }
 
-        return applySlides(
-            line, new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics, elementIndex);
+        return applySlides(line, new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics);
     }
 
     /**
@@ -150,30 +119,24 @@ public final class SlideOperations {
      *
      * @see RangeQueries#fallIndices
      */
-    public static Result toggleFall(Selection.Range range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
-        return applySlides(
-            range.line(), RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics, NO_ARM);
+    public static EditResult toggleFall(Selection.Range range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        return applySlides(range.line(), RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
     }
 
     /**
-     * Toggles a fall on the element at {@code elementIndex}.
-     *
-     * <p>The edit-mode counterpart of {@link #toggleFall}, arming {@code elementIndex} on the
-     * modifying branch so a second press takes the fall back off. As with
-     * {@link #toggleGlissandoWithPredecessor}, the refusing branches — an ineligible element and
-     * a line with no room for the falls — arm nothing.
+     * Toggles a fall on the element at {@code elementIndex}, the edit-mode counterpart of
+     * {@link #toggleFall}.
      */
-    public static Result toggleFallOnLastInsertion(
+    public static EditResult toggleFallOnLastInsertion(
         Line line, int elementIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        if (elementIndex < 0 || elementIndex >= line.elementCount()) {
-            return Result.REFUSED;
+        if (!line.hasIndex(elementIndex)) {
+            return EditResult.REFUSED;
         }
 
         var range = Selection.Range.single(line, elementIndex);
 
-        return applySlides(
-            line, RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics, elementIndex);
+        return applySlides(line, RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
     }
 
     /**
@@ -189,20 +152,12 @@ public final class SlideOperations {
      * so both are asked. The check is one batched call rather than one per index, because those
      * claims accumulate: asking about each candidate alone against the unchanged line would accept
      * a batch that jointly overruns the line.
-     *
-     * @param armElementIndex The index to arm as the pending insertion, or {@link #NO_ARM} for
-     *                        the select-mode callers. Arming lives here so it can never happen
-     *                        on a path that opens no bracket.
      */
-    private static Result applySlides(
-        Line line,
-        int[] indices,
-        SlideZone zone,
-        @Nullable LyricRenderMetrics lyricRenderMetrics,
-        int armElementIndex) {
+    private static EditResult applySlides(
+        Line line, int[] indices, SlideZone zone, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (indices.length == 0) {
-            return Result.REFUSED;
+            return EditResult.REFUSED;
         }
 
         // No index left to add to means every index already carries the slide, so this is the
@@ -226,14 +181,10 @@ public final class SlideOperations {
             if (!InsertionSpacingCalculator.hasRoomForSlides(line, addedIndices, zone, lyricRenderMetrics)) {
                 OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_INSERT_ERROR, lineFullMessage(zone));
 
-                return Result.REPORTED;
+                return EditResult.REPORTED;
             }
 
             label = OpNames.addSlideLabel(zone == SlideZone.FALL);
-        }
-
-        if (armElementIndex >= 0) {
-            EditModeManager.armInsertion(line, armElementIndex);
         }
 
         line.withModification(label, () -> {
@@ -261,7 +212,7 @@ public final class SlideOperations {
             }
         });
 
-        return Result.MODIFIED;
+        return EditResult.MODIFIED;
     }
 
     /** Names the "no room on this line" message for the kind of slide that would not fit. */

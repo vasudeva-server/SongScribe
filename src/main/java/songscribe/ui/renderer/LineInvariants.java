@@ -424,8 +424,7 @@ public final class LineInvariants {
     boolean isElementRangeSelected(int elementIndex) {
         if (selectionProvider == null
                 || currentLine == null
-                || elementIndex < 0
-                || elementIndex >= currentLine.elementCount()) {
+                || !currentLine.hasIndex(elementIndex)) {
             return false;
         }
 

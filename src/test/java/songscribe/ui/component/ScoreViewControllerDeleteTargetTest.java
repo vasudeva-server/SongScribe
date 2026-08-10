@@ -34,10 +34,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import javax.swing.ActionMap;
-import javax.swing.InputMap;
 import javax.swing.JOptionPane;
-import javax.swing.JRootPane;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -86,6 +83,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.ActionsTestSupport;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -124,23 +122,11 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
 
     /**
      * The accidental arm resolves its action from {@code Actions.ACCIDENTAL_ACTION_GROUP}, a
-     * deferred-init field populated at application start. Initialize it here with a minimal mock
-     * frame rather than depending on some earlier test class having done so in the shared JVM —
-     * that hidden ordering coupling breaks the moment this class runs in a fresh JVM.
-     * {@code UnitTest}'s teardown unsubscribes the actions again.
+     * deferred-init field populated at application start.
      */
     @BeforeEach
     void initializeActions() {
-        var mockFrame = mock(MainFrame.class);
-        var mockScore = mock(ScoreView.class);
-        var mockRootPane = mock(JRootPane.class);
-        when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
-        when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(mockFrame.getRootPane()).thenReturn(mockRootPane);
-        when(mockFrame.requireScoreView()).thenReturn(mockScore);
-        when(mockFrame.getScoreView()).thenReturn(mockScore);
-        when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
-        Actions.initialize(mockFrame);
+        ActionsTestSupport.initializeActions();
     }
 
     private static StaffElement crotchet() {

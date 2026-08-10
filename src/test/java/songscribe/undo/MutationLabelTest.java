@@ -23,10 +23,12 @@ package songscribe.undo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 import java.util.function.Consumer;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
@@ -53,6 +55,7 @@ import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.action.ActionsTestSupport;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -80,6 +83,13 @@ class MutationLabelTest extends UnitTest {
     /** Selection that reaches past the pre-existing crescendo on [0, 1]. */
     private static final int EXTEND_SELECTION_BEGIN = 2;
     private static final int EXTEND_SELECTION_END = 3;
+
+    // The last-insertion key handlers read their undo label off the menu action the key
+    // falls through to, which is the whole point of the two tests below.
+    @BeforeEach
+    void initializeActions() {
+        ActionsTestSupport.initializeActions();
+    }
 
     /** Resets the singleton, drives one real edit, and returns the resulting undo label. */
     private static String undoLabelAfter(Song song, Runnable edit) {
@@ -229,8 +239,8 @@ class MutationLabelTest extends UnitTest {
         // Quavers, not crotchets: the same pair has to be both tieable and beamable, and a
         // crotchet has no flag to beam.
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
+            line.addElement(quaver());
+            line.addElement(quaver());
         });
 
         var controller = new ScoreViewController(
@@ -263,6 +273,10 @@ class MutationLabelTest extends UnitTest {
      * {@code ScoreViewController.handleLastInsertionCommand} setting it, the step falls through
      * to {@link UndoController#opNameKey} and the key labels the very same edit differently from
      * the menu action that also performs it — "Undo Tie" against the menu's "Undo Toggle Tie".
+     *
+     * <p>The handler reads the label off {@code Actions.TOGGLE_TIE_ACTION}, so this drives the
+     * real handler against the real action: the literal below is the one place the expected
+     * label is written down, and the menu entry resolves from the same declaration.
      */
     @Test
     void testTieKeyLabelsTheUndoStepTheSameWayTheMenuActionDoes() {

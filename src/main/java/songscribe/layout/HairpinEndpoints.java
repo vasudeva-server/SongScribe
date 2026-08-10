@@ -179,7 +179,7 @@ public final class HairpinEndpoints {
         Side side
     ) {
         // Range-guarded here so callers may pass anchorIndex - 1 and endIndex + 1 unchecked.
-        if (index < 0 || index >= line.elementCount()) {
+        if (!line.hasIndex(index)) {
             return null;
         }
 

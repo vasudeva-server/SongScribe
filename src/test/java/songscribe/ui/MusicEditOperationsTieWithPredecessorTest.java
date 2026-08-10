@@ -40,7 +40,6 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.message.MessageCenter;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.undo.UndoTestSupport;
 
 /**
@@ -49,10 +48,14 @@ import songscribe.undo.UndoTestSupport;
  *
  * <p>{@link songscribe.ui.selection.RangeQueriesTieCandidateTest} already covers which pair
  * the operation refuses; this class covers what actually changes when it accepts one: the
- * toggle itself, re-arming, and the undo round-trip. Modeled on {@link
+ * toggle itself and the undo round-trip. Modeled on {@link
  * MusicEditOperationsBeamWithPredecessorTest}, adjusted for the ways ties differ from beams —
  * no widen-or-break branch, a legal separator between the pair, and a candidate that can cross
  * a line break.
+ *
+ * <p>The operation takes a bare {@link Song}/{@link Line} and touches no singleton, so nothing
+ * here has to be stubbed out. Where the key points after the toggle is decided by the handler,
+ * from the returned outcome — see {@code ScoreViewControllerCommandHandlerTest}.
  */
 class MusicEditOperationsTieWithPredecessorTest extends UnitTest {
 
@@ -75,29 +78,17 @@ class MusicEditOperationsTieWithPredecessorTest extends UnitTest {
 
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
 
-    @Nullable private MockedStatic<EditModeManager> editModeManagerMock;
-
     @BeforeEach
     void setUp() {
         // Construct before mocking so constructor-internal bus interactions go to the
         // real (unobserved) bus, not the mock.
         song = new Song();
-
-        // The operation re-arms the insertion target on the branches that modify the line,
-        // which needs a live EditModeManager singleton. Stubbing the class out is enough
-        // here: these tests are about the resulting tie spans, and the arm could not be
-        // observed anyway since the mocked bus swallows the commit that would promote it.
-        editModeManagerMock = mockStatic(EditModeManager.class);
     }
 
     @AfterEach
     void tearDown() {
         if (messageCenterMock != null) {
             messageCenterMock.close();
-        }
-
-        if (editModeManagerMock != null) {
-            editModeManagerMock.close();
         }
     }
 

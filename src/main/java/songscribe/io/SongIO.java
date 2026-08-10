@@ -498,7 +498,7 @@ public final class SongIO {
                             ) {
                                 var idx = tempoReader.getPos10() - firstElementInLine;
 
-                                if (idx < 0 || idx >= line.elementCount()) {
+                                if (!line.hasIndex(idx)) {
                                     throw DocumentValidation.corrupt(LOG, "Corrupt document: legacy tempo position index out of range: {}, element count: {}", idx, line.elementCount());
                                 }
 

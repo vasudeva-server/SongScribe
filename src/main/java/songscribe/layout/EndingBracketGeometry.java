@@ -87,8 +87,7 @@ public final class EndingBracketGeometry {
         var start = ending.getAnchorElementIndex();
         var end = ending.getEndElementIndex();
 
-        if (start < 0 || end < 0 || start >= line.elementCount()
-            || end >= line.elementCount()) {
+        if (!line.hasIndex(start) || !line.hasIndex(end)) {
             List<Ending.BracketRange> noRanges = List.of();
             ending.setBracketRanges(noRanges);
             return noRanges;

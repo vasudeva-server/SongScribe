@@ -49,7 +49,6 @@ import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.undo.MutationReplayer;
 
 /**
@@ -78,30 +77,17 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
 
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
 
-    @Nullable private MockedStatic<EditModeManager> editModeManagerMock;
-
     @BeforeEach
     void setUp() {
         // Construct before mocking so constructor-internal bus interactions go to the
         // real (unobserved) bus, not the mock.
         song = new Song();
-
-        // The operation re-arms the insertion target on the branches that modify the line,
-        // which needs a live EditModeManager singleton. Stubbing the class out is enough
-        // here: these tests are about the resulting beam spans, and the arm could not be
-        // observed anyway since the mocked bus swallows the commit that would promote it.
-        // EditModeManagerTest covers what the arming does.
-        editModeManagerMock = mockStatic(EditModeManager.class);
     }
 
     @AfterEach
     void tearDown() {
         if (messageCenterMock != null) {
             messageCenterMock.close();
-        }
-
-        if (editModeManagerMock != null) {
-            editModeManagerMock.close();
         }
     }
 

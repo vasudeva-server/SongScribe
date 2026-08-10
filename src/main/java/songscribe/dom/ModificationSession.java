@@ -536,7 +536,7 @@ public final class ModificationSession {
 
         // An edit position outside the line — the song tempo's nominal position in a song
         // with no notes yet — has no beat to resolve and no span to reach.
-        if (elementIndex < 0 || elementIndex >= editLine.elementCount()) {
+        if (!editLine.hasIndex(elementIndex)) {
             return false;
         }
 

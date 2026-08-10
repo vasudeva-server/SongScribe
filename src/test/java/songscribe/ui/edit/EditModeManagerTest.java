@@ -26,10 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import javax.swing.ActionMap;
-import javax.swing.InputMap;
-import javax.swing.JRootPane;
-
 import java.util.List;
 
 import songscribe.UnitTest;
@@ -42,11 +38,10 @@ import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
-import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.ActionsTestSupport;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.ActionReflector;
@@ -56,32 +51,21 @@ import songscribe.ui.selection.SelectionCoordinator;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 class EditModeManagerTest extends UnitTest {
 
     // These tests read and mutate the Actions.* constants (accent, articulation, dot,
-    // accidental, rest, ...) but do not otherwise own Actions. Initialize them here with a
-    // minimal mock frame rather than depending on some earlier test class having called
-    // Actions.initialize() in the shared JVM — that hidden ordering coupling breaks the
-    // moment the class runs in a fresh JVM. UnitTest's teardown unsubscribes the actions.
+    // accidental, rest, ...) but do not otherwise own Actions.
     @BeforeEach
     void initializeActions() {
-        var mockFrame = mock(MainFrame.class);
-        var mockScore = mock(ScoreView.class);
-        var mockRootPane = mock(JRootPane.class);
-        when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
-        when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-        when(mockFrame.getRootPane()).thenReturn(mockRootPane);
-        when(mockFrame.requireScoreView()).thenReturn(mockScore);
-        when(mockFrame.getScoreView()).thenReturn(mockScore);
-        when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
-        Actions.initialize(mockFrame);
+        ActionsTestSupport.initializeActions();
     }
 
     // Resets the EditModeManager, GraceModeManager, and PasteModeManager singletons
@@ -867,115 +851,45 @@ class EditModeManagerTest extends UnitTest {
         }
 
         /**
-         * A beam toggle that goes through re-arms its target, so the key stays live and the
-         * same pair can be unbeamed by pressing it again. Without the re-arm, the toggle's
-         * own commit would find an empty pending slot and clear the target on the very press
-         * that used it.
+         * The last-insertion keys act after their own edit has already committed — message
+         * posting is synchronous — so by the time they can respond, the commit has consumed
+         * the empty pending slot and cleared the target. They write the visible slot directly
+         * instead, which is what makes the keys repeat: press {@code t} twice and the pair
+         * ties, then unties.
          */
         @Test
-        void testSuccessfulBeamToggleKeepsTheTargetArmed() {
-            var first = ElementType.QUAVER.newInstance();
-            var second = ElementType.QUAVER.newInstance();
+        void testSetLastInsertionPointsTheKeysAtAnElementAfterACommitClearedTheTarget() {
+            var note = quaver();
 
-            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(note));
 
-            song.withModification(() -> {
-                line.addElement(second);
-                EditModeManager.previewElementDidChange(line, indexOf(second));
-            });
-
-            var target = requireLastInsertion();
-
-            assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, target.elementIndex()))
-                .as("pre-condition: two adjacent quavers can be beamed")
-                .isTrue();
-
-            assertArmedElementIs(second);
-        }
-
-        /**
-         * A beam toggle that refuses changes nothing, so it posts nothing, so it must arm
-         * nothing. An arm made ahead of a refusal would linger in the pending slot and be
-         * promoted by whatever edit came next, however unrelated — leaving the key pointed
-         * at an index the intervening edit may well have shifted out from under it.
-         */
-        @Test
-        void testRefusedBeamToggleLeavesNoStaleTargetForTheNextEdit() {
-            var rest = ElementType.CROTCHET_REST.newInstance();
-            var note = ElementType.QUAVER.newInstance();
-
-            song.withoutMutationTracking(() -> line.addElement(rest));
-
-            song.withModification(() -> {
-                line.addElement(note);
-                EditModeManager.previewElementDidChange(line, indexOf(note));
-            });
-
-            var target = requireLastInsertion();
-
-            assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, target.elementIndex()))
-                .as("pre-condition: a rest cannot be beamed, so the toggle refuses")
-                .isFalse();
-
-            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            // Every edit but a placement arms nothing, so its commit clears the target.
+            song.withModification(() -> line.addElement(crotchet()));
 
             assertThat(EditModeManager.getLastInsertion())
-                .as("the refused toggle left nothing for the unrelated edit to adopt")
+                .as("pre-condition: the commit left no target")
                 .isNull();
+
+            EditModeManager.setLastInsertion(line, indexOf(note));
+
+            assertArmedElementIs(note);
         }
 
         /**
-         * A tie toggle that goes through re-arms its target, so the key stays live and the
-         * same pair can be untied by pressing it again.
+         * Writing the visible slot is not arming: it holds until the next song change, which
+         * consumes the empty pending slot and clears it, exactly as a promoted arm would be.
          */
         @Test
-        void testSuccessfulTieToggleKeepsTheTargetArmed() {
-            var first = ElementType.CROTCHET.newInstance();
-            var second = ElementType.CROTCHET.newInstance();
+        void testASetTargetIsClearedByTheNextUnrelatedEdit() {
+            var note = quaver();
 
-            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(note));
+            EditModeManager.setLastInsertion(line, indexOf(note));
 
-            song.withModification(() -> {
-                line.addElement(second);
-                EditModeManager.previewElementDidChange(line, indexOf(second));
-            });
-
-            var target = requireLastInsertion();
-
-            assertThat(MusicEditOperations.toggleTieWithPredecessor(line, target.elementIndex()))
-                .as("pre-condition: two same-pitch crotchets can be tied")
-                .isTrue();
-
-            assertArmedElementIs(second);
-        }
-
-        /**
-         * A tie toggle that refuses changes nothing, so it posts nothing, so it must arm
-         * nothing. An arm made ahead of a refusal would linger in the pending slot and be
-         * promoted by whatever edit came next, however unrelated.
-         */
-        @Test
-        void testRefusedTieToggleLeavesNoStaleTargetForTheNextEdit() {
-            var rest = ElementType.CROTCHET_REST.newInstance();
-            var note = ElementType.CROTCHET.newInstance();
-
-            song.withoutMutationTracking(() -> line.addElement(rest));
-
-            song.withModification(() -> {
-                line.addElement(note);
-                EditModeManager.previewElementDidChange(line, indexOf(note));
-            });
-
-            var target = requireLastInsertion();
-
-            assertThat(MusicEditOperations.toggleTieWithPredecessor(line, target.elementIndex()))
-                .as("pre-condition: a rest cannot be tied, so the toggle refuses")
-                .isFalse();
-
-            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withModification(() -> line.addElement(crotchet()));
 
             assertThat(EditModeManager.getLastInsertion())
-                .as("the refused toggle left nothing for the unrelated edit to adopt")
+                .as("an unrelated edit takes the keys off the element they were pointed at")
                 .isNull();
         }
 

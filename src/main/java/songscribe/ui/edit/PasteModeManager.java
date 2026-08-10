@@ -413,15 +413,9 @@ public final class PasteModeManager {
         // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
         // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
         // that PasteAction relies on must be set here around the bracket instead.
-        var priorOpName = UndoController.getPendingOpName();
-        UndoController.setPendingOpName(Strings.get(Strings.ACTION_EDIT_OP_PASTE));
-        ScoreViewController.FragmentInsertOutcome outcome;
-
-        try {
-            outcome = line.withModificationResult(() -> controller.tryInsertFragment(line, index, null));
-        } finally {
-            UndoController.setPendingOpName(priorOpName);
-        }
+        var outcome = UndoController.withPendingOpNameResult(
+            Strings.get(Strings.ACTION_EDIT_OP_PASTE),
+            () -> line.withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
 
         if (outcome == ScoreViewController.FragmentInsertOutcome.INSERTED
                 || outcome == ScoreViewController.FragmentInsertOutcome.CANCELLED) {

@@ -152,7 +152,7 @@ public final class RangeQueries {
      * the piece.
      */
     private static int tieAttachmentIndex(Line line, int edgeIndex, int step) {
-        for (var i = edgeIndex; i >= 0 && i < line.elementCount(); i += step) {
+        for (var i = edgeIndex; line.hasIndex(i); i += step) {
             if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
                 return i;
             }
@@ -302,30 +302,20 @@ public final class RangeQueries {
      * the note to one on the next line that the user has not reached yet.
      */
     public static Selection.@Nullable Range tieCandidateWithPredecessor(Line line, int index) {
-        if (index < 0 || index >= line.elementCount()) {
+        if (!line.hasIndex(index)) {
             return null;
         }
 
-        var adjacentBegin = index - (TIE_SELECTION_SIZE_WITHOUT_SEPARATOR - 1);
+        var adjacent = tieCandidateEndingAt(line, index, TIE_SELECTION_SIZE_WITHOUT_SEPARATOR);
 
-        // Ranges with a negative begin index cannot be constructed at all, so the shapes that
-        // run off the front of the line are skipped rather than built and rejected.
-        if (adjacentBegin >= 0) {
-            var adjacent = new Selection.Range(line, adjacentBegin, index, index);
-
-            if (canToggleTie(adjacent)) {
-                return adjacent;
-            }
+        if (adjacent != null) {
+            return adjacent;
         }
 
-        var separatedBegin = index - (TIE_SELECTION_SIZE_WITH_SEPARATOR - 1);
+        var separated = tieCandidateEndingAt(line, index, TIE_SELECTION_SIZE_WITH_SEPARATOR);
 
-        if (separatedBegin >= 0) {
-            var separated = new Selection.Range(line, separatedBegin, index, index);
-
-            if (canToggleTie(separated)) {
-                return separated;
-            }
+        if (separated != null) {
+            return separated;
         }
 
         var boundaryTie = boundaryTieAt(line, index);
@@ -336,6 +326,25 @@ public final class RangeQueries {
         }
 
         return null;
+    }
+
+    /**
+     * The {@code size}-element range ending at {@code index}, or {@code null} when it runs off
+     * the front of the line or {@link #canToggleTie} refuses it.
+     *
+     * <p>Ranges with a negative begin index cannot be constructed at all, so a shape that runs
+     * off the front is skipped rather than built and rejected.
+     */
+    private static Selection.@Nullable Range tieCandidateEndingAt(Line line, int index, int size) {
+        var begin = index - (size - 1);
+
+        if (begin < 0) {
+            return null;
+        }
+
+        var candidate = new Selection.Range(line, begin, index, index);
+
+        return canToggleTie(candidate) ? candidate : null;
     }
 
     /**

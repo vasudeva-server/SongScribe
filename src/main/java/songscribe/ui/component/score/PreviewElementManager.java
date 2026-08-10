@@ -602,8 +602,7 @@ public final class PreviewElementManager {
      */
     static boolean isGraceNoteAt(@Nullable Line line, int elementIndex) {
         return line != null
-            && elementIndex >= 0
-            && elementIndex < line.elementCount()
+            && line.hasIndex(elementIndex)
             && line.getElement(elementIndex).getType().isGraceNote();
     }
 

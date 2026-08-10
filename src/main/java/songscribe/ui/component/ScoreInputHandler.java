@@ -31,6 +31,8 @@ import songscribe.dom.Line;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PitchShifter;
 import songscribe.ui.edit.EditModeManager;
@@ -204,22 +206,25 @@ public final class ScoreInputHandler extends KeyAdapter
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK);
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK);
 
+        // The keystroke comes off the action the binding falls through to, not from a literal
+        // repeated here: the fall-through only reaches the right command while the two agree,
+        // and nothing else would notice if they stopped agreeing.
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), ToggleBeamWithPreviousCommand::new);
+            Actions.TOGGLE_BEAM_ACTION, ToggleBeamWithPreviousCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), ToggleGlissandoWithPreviousCommand::new);
+            Actions.GLISSANDO_ACTION, ToggleGlissandoWithPreviousCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), ToggleFallOnLastInsertionCommand::new);
+            Actions.FALL_ACTION, ToggleFallOnLastInsertionCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
-            KeyStroke.getKeyStroke(KeyEvent.VK_T, 0), ToggleTieWithPreviousCommand::new);
+            Actions.TOGGLE_TIE_ACTION, ToggleTieWithPreviousCommand::new);
 
         return bindings;
     }
 
     /**
-     * Binds {@code keyStroke} to posting the command {@code commandFactory} produces, acting
-     * on the last insertion — e.g. plain {@code b} to beam it with the one before it, Shift+G
-     * to toggle its glissando, plain {@code f} to toggle its fall.
+     * Binds {@code targetAction}'s accelerator to posting the command {@code commandFactory}
+     * produces, acting on the last insertion — e.g. plain {@code b} to beam it with the one
+     * before it, Shift+G to toggle its glissando, plain {@code f} to toggle its fall.
      * <p>
      * The binding lives here, on the focused score, rather than on the target action: that
      * action stays disabled in edit mode, and a disabled action bound to the window's input
@@ -231,16 +236,17 @@ public final class ScoreInputHandler extends KeyAdapter
      * stops searching, so a guard that ran and did nothing would still swallow the key —
      * leaving select mode, where the score view holds focus, with no working shortcut at all.
      * Reporting the binding as disabled instead lets the search continue to the root pane,
-     * where the target action's own accelerator lives.
+     * where {@code targetAction}'s own accelerator lives — which is why the keystroke is read
+     * off that action rather than written down again here.
      */
     private void registerLastInsertionBinding(
         Map<? super KeyStroke, Object> bindings,
         InputMap inputMap,
         ActionMap actionMap,
-        KeyStroke keyStroke,
+        UIAction targetAction,
         Supplier<? extends Message> commandFactory
     ) {
-        registerKeyStroke(bindings, inputMap, actionMap, keyStroke,
+        registerKeyStroke(bindings, inputMap, actionMap, targetAction.getAccelerator(),
             new AbstractAction() {
                 @Override
                 public boolean isEnabled() {

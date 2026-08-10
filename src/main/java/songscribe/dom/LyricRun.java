@@ -96,6 +96,14 @@ public interface LyricRun {
     int effectiveElementCount();
 
     /**
+     * Whether {@code index} addresses an element of this run, and so may be passed to
+     * {@link #getElement}.
+     */
+    default boolean hasIndex(int index) {
+        return index >= 0 && index < elementCount();
+    }
+
+    /**
      * Applies {@code mutator} to the element at {@code index} and does whatever the run
      * requires to make that change recoverable — for a {@link Line}, recording an
      * {@code ElementModification} in the open modification bracket.
@@ -117,7 +125,7 @@ public interface LyricRun {
      * {@link songscribe.ui.clipboard.Fragment#capture} recognize the orphan it has to trim.
      */
     default boolean isPairedGraceNote(int index) {
-        return index >= 0 && index < elementCount() && getElement(index).isPairedGraceNote();
+        return hasIndex(index) && getElement(index).isPairedGraceNote();
     }
 
     /**
@@ -134,7 +142,7 @@ public interface LyricRun {
      * <p>Must be called inside a modification bracket.
      */
     default void adjustSyllablesForNeighborChange(int prevIndex, @Nullable StaffElement deletedElement) {
-        if (prevIndex < 0 || prevIndex >= elementCount()) {
+        if (!hasIndex(prevIndex)) {
             return;
         }
 

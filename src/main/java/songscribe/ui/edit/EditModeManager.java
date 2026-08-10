@@ -214,18 +214,36 @@ public final class EditModeManager {
     }
 
     /**
+     * Points the insertion-relative keys at {@code elementIndex} in {@code line}, after the
+     * fact. For a caller that has already watched an edit commit: message posting is
+     * synchronous, so by the time an operation returns, its bracket has closed and the
+     * notification that cleared the slot has already been delivered.
+     *
+     * <p>This is how the last-insertion keys stay live across their own edit — tying a pair
+     * re-points the key at the same note, so a second press unties it. Placement goes through
+     * {@link #armInsertion} instead, because it has to name its target from inside the bracket.
+     *
+     * @param line The line the element sits in
+     * @param elementIndex The index of the element within that line
+     */
+    public static void setLastInsertion(Line line, int elementIndex) {
+        instance().lastInsertion = new Insertion(line, elementIndex);
+    }
+
+    /**
      * Records a placement whose modification bracket has not yet closed. The pending
      * insertion becomes the last insertion when the resulting song change arrives.
      *
      * <p>Only call this on a path that is certain to commit. A pending insertion left
      * unclaimed is not discarded — the next song change of any kind promotes it, so an
      * arm made ahead of a path that turns out to change nothing resurfaces later as a
-     * stale target.
+     * stale target. That is why this is private: the only caller is the placement path
+     * below, which arms from inside the bracket it is already committing.
      *
      * @param line The line the element was placed in
      * @param elementIndex The index of the placed element within that line
      */
-    public static void armInsertion(Line line, int elementIndex) {
+    private static void armInsertion(Line line, int elementIndex) {
         instance().pendingInsertion = new Insertion(line, elementIndex);
     }
 
@@ -408,7 +426,7 @@ public final class EditModeManager {
         // until some later, unrelated edit adopted it, long after the grace note it names
         // may have been cancelled away.
         if (!line.getSong().isMutationTrackingSuspended()) {
-            inst.pendingInsertion = new Insertion(line, elementIndex);
+            armInsertion(line, elementIndex);
         }
 
         // Capture the inserted element before previewElement is updated for the next insertion.

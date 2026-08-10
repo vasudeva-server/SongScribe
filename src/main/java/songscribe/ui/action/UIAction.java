@@ -449,14 +449,7 @@ public class UIAction extends AbstractAction {
             return;
         }
 
-        var priorOpName = UndoController.getPendingOpName();
-        UndoController.setPendingOpName(getUndoOpName());
-
-        try {
-            performAction(e);
-        } finally {
-            UndoController.setPendingOpName(priorOpName);
-        }
+        UndoController.withPendingOpName(getUndoOpName(), () -> performAction(e));
     }
 
     /**

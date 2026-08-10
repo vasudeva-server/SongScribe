@@ -48,7 +48,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -131,13 +130,6 @@ public final class MusicEditOperations {
      * <p>Grace notes are transparent at both ends: the walk backward skips over them, and a
      * grace note is never itself a beam member, so a grace-note target is refused (refs #592).
      *
-     * <p>Each branch that modifies the line re-arms {@code elementIndex} as the insertion
-     * target first, so the commit notification promotes the same target straight back rather
-     * than clearing it and disarming the key the instant the toggle succeeded. Arming has to
-     * stay inside those branches: the refusing paths open no modification bracket, so nothing
-     * would ever arrive to consume an arm made ahead of them, and the next unrelated edit
-     * would adopt it.
-     *
      * <p>When one beam already covers both elements, it is broken <em>between</em> them rather
      * than removed wholesale. A single-element remainder is dropped, because a beam needs two
      * members:
@@ -159,7 +151,7 @@ public final class MusicEditOperations {
      * same call, and the two must not disagree.
      */
     public static boolean toggleBeamWithPredecessor(Line line, int elementIndex) {
-        if (elementIndex < 0 || elementIndex >= line.elementCount()) {
+        if (!line.hasIndex(elementIndex)) {
             return false;
         }
 
@@ -183,8 +175,6 @@ public final class MusicEditOperations {
         if (predecessorBeam != null && predecessorBeam == line.findBeamAt(elementIndex)) {
             var anchorIndex = predecessorBeam.getAnchorElementIndex();
             var endIndex = predecessorBeam.getEndElementIndex();
-
-            EditModeManager.armInsertion(line, elementIndex);
 
             line.withModification(() -> {
                 line.removeBeaming(predecessorBeam);
@@ -218,7 +208,6 @@ public final class MusicEditOperations {
         var anchorElement = line.getElement(predecessorIndex);
         var endElement = line.getElement(elementIndex);
 
-        EditModeManager.armInsertion(line, elementIndex);
         line.withModification(() -> line.addBeaming(new Beam(anchorElement, endElement)));
 
         return true;
@@ -241,7 +230,16 @@ public final class MusicEditOperations {
         toggleTieInRange(range);
     }
 
-    public static void toggleTieInRange(Selection.Range range) {
+    /**
+     * Adds or removes the tie the range describes, and returns whether the line was modified.
+     *
+     * <p>Applies no eligibility rule of its own — {@link RangeQueries#canToggleTie} is the gate,
+     * and both entry points consult it before calling here.
+     *
+     * <p>The single-element case is a cross-line tie, which can find no partner to toggle; every
+     * other case changes the line, because the range names the two endpoints outright.
+     */
+    private static boolean toggleTieInRange(Selection.Range range) {
         var line = range.line();
 
         // A tie spans the selection itself: its endpoints are the two notes, and any
@@ -249,10 +247,9 @@ public final class MusicEditOperations {
         var beginIndex = range.begin();
         var endIndex = range.end();
 
-        line.withModification(() -> {
+        return line.withModificationResult(() -> {
             if (range.size() == 1) {
-                toggleBoundaryTie(line, beginIndex);
-                return;
+                return toggleBoundaryTie(line, beginIndex);
             }
 
             var exactTie = line.findExactTie(beginIndex, endIndex);
@@ -264,6 +261,8 @@ public final class MusicEditOperations {
             } else {
                 line.removeTie(exactTie);
             }
+
+            return true;
         });
     }
 
@@ -277,24 +276,11 @@ public final class MusicEditOperations {
      * <p>Which pair that is — adjacent, separated by a barline, or across a line break — is
      * {@link RangeQueries#tieCandidateWithPredecessor}'s question, along with every rule that
      * decides whether the pair may be tied at all.
-     *
-     * <p>{@code armInsertion} re-arms {@code elementIndex} as the insertion target so the
-     * commit notification promotes the same target straight back rather than disarming the key
-     * the instant the toggle succeeded. It stays on the committing path, after the gate: the
-     * refusing path opens no modification bracket, so nothing would arrive to consume an arm
-     * made ahead of it and the next unrelated edit would adopt it.
      */
     public static boolean toggleTieWithPredecessor(Line line, int elementIndex) {
         var range = RangeQueries.tieCandidateWithPredecessor(line, elementIndex);
 
-        if (range == null) {
-            return false;
-        }
-
-        EditModeManager.armInsertion(line, elementIndex);
-        toggleTieInRange(range);
-
-        return true;
+        return (range != null) && toggleTieInRange(range);
     }
 
     /**
@@ -307,12 +293,14 @@ public final class MusicEditOperations {
      * instead. That also keeps this from ever mistaking a same-line tie that merely ends on
      * the boundary note (a chained tie) for the boundary tie itself: such a tie's elements
      * never equal {@code boundaryTie}'s.
+     *
+     * @return Whether a partner was found and the tie toggled
      */
-    private static void toggleBoundaryTie(Line line, int index) {
+    private static boolean toggleBoundaryTie(Line line, int index) {
         var boundaryTie = RangeQueries.boundaryTieAt(line, index);
 
         if (boundaryTie == null) {
-            return;
+            return false;
         }
 
         var existingTie = line.findTieBetween(boundaryTie.anchor(), boundaryTie.end());
@@ -322,6 +310,8 @@ public final class MusicEditOperations {
         } else {
             line.removeTie(existingTie);
         }
+
+        return true;
     }
 
     // ========== Slide Operations ==========

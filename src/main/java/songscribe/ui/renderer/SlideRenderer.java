@@ -223,7 +223,7 @@ public final class SlideRenderer {
         Line line,
         LineInvariants invariants
     ) {
-        if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
+        if (!line.hasIndex(sourceIndex)) {
             return;
         }
 
@@ -258,7 +258,7 @@ public final class SlideRenderer {
         double previewElementXSs,
         LineInvariants invariants
     ) {
-        if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
+        if (!line.hasIndex(sourceIndex)) {
             return;
         }
 

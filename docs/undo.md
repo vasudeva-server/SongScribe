@@ -65,13 +65,19 @@ but which explains the shape of the engine after the fact.
 
 Two tiers declare the name that ends up on an `UndoStep`.
 
-**Tier A — `UIAction`.** `actionPerformed` is a `final` template. It sets
-`UndoController.setPendingOpName(getUndoOpName())`, calls the subclass's
-`performAction` hook, and restores the prior pending name in a `finally`. Any
-modification bracket that opens *synchronously* inside that dispatch window captures
-the pending name as it goes from depth 0 to depth 1. Modal dialogs block, so they
-qualify. A bracket opened off-stack — `invokeLater`, a `Timer`, a `SwingWorker`, or a
-non-modal dialog — opens after the `finally` has already cleared `pendingOpName`.
+**Tier A — `UIAction`.** `actionPerformed` is a `final` template. It runs the
+subclass's `performAction` hook inside `UndoController.withPendingOpName(getUndoOpName(),
+…)`, which sets the name and restores the prior one in a `finally`. Any modification
+bracket that opens *synchronously* inside that dispatch window captures the pending name
+as it goes from depth 0 to depth 1. Modal dialogs block, so they qualify. A bracket
+opened off-stack — `invokeLater`, a `Timer`, a `SwingWorker`, or a non-modal dialog —
+opens after the `finally` has already restored `pendingOpName`.
+
+Two paths reach a bracket without going through the template — paste placement, driven
+by a click or Return rather than a Cmd+V dispatch, and the last-insertion keys, posted
+straight from `ScoreInputHandler` (see `last-insertion-keys.md`). Both call
+`withPendingOpName` themselves, which is why the save/restore lives on `UndoController`
+rather than inside the template.
 
 **Tier B — the labeled overload.** Those off-stack sites call
 `withModification(String label, Runnable)` and declare their name directly.

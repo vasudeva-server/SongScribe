@@ -21,7 +21,6 @@ package songscribe.ui;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -64,15 +63,15 @@ import songscribe.undo.MutationReplayer;
  * last insertion.
  *
  * <p>The operations are static and take the line explicitly, so these tests run against a real
- * {@link Song}/{@link Line} with no selection coordinator. {@link MessageCenter} is mocked so
- * the emitted mutation batch can be captured — which is how the undo label and the
- * one-step-per-toggle shape are observed — and {@link EditModeManager} so the arming the
- * edit-mode paths perform can be verified without a live singleton.
+ * {@link Song}/{@link Line} with no selection coordinator or {@link EditModeManager}.
+ * {@link MessageCenter} is mocked so the emitted mutation batch can be captured — which is how
+ * the undo label and the one-step-per-toggle shape are observed.
  *
- * <p>Every assertion on an outcome is against {@link SlideOperations.Result} rather than a
- * boolean: {@code REFUSED} and {@code REPORTED} both modify nothing, and the difference between
- * them is whether the caller still owes the user a beep or the operation has already put an
- * error dialog on screen.
+ * <p>Every assertion on an outcome is against {@link EditResult} rather than a boolean:
+ * {@code REFUSED} and {@code REPORTED} both modify nothing, and the difference between them is
+ * whether the caller still owes the user a beep or the operation has already put an error dialog
+ * on screen. Which element the key then points at is the caller's business, decided from that
+ * outcome — see {@code ScoreViewControllerCommandHandlerTest}.
  */
 class SlideOperationsTest extends UnitTest {
 
@@ -101,29 +100,17 @@ class SlideOperationsTest extends UnitTest {
 
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
 
-    @Nullable private MockedStatic<EditModeManager> editModeManagerMock;
-
     @BeforeEach
     void setUp() {
         // Construct before mocking so constructor-internal bus interactions go to the
         // real (unobserved) bus, not the mock.
         song = new Song();
-
-        // The edit-mode entry points arm the insertion target on the branches that modify the
-        // line, which needs a live EditModeManager singleton. Stubbing the class out both
-        // supplies one and makes the arm — and its absence on the refusing branches —
-        // observable. EditModeManagerTest covers what the arming then does.
-        editModeManagerMock = mockStatic(EditModeManager.class);
     }
 
     @AfterEach
     void tearDown() {
         if (messageCenterMock != null) {
             messageCenterMock.close();
-        }
-
-        if (editModeManagerMock != null) {
-            editModeManagerMock.close();
         }
     }
 
@@ -256,28 +243,6 @@ class SlideOperationsTest extends UnitTest {
         }));
     }
 
-    /** Asserts that no edit-mode insertion was armed. */
-    private void assertNothingArmed() {
-        var mock = editModeManagerMock;
-
-        if (mock == null) {
-            throw new IllegalStateException("editModeManagerMock not set");
-        }
-
-        mock.verify(() -> EditModeManager.armInsertion(any(Line.class), anyInt()), never());
-    }
-
-    /** Asserts that {@code elementIndex} — and nothing else — was armed as the pending insertion. */
-    private void assertArmed(Line line, int elementIndex) {
-        var mock = editModeManagerMock;
-
-        if (mock == null) {
-            throw new IllegalStateException("editModeManagerMock not set");
-        }
-
-        mock.verify(() -> EditModeManager.armInsertion(line, elementIndex));
-    }
-
     // -----------------------------------------------------------------------
     // Select mode: glissando
     // -----------------------------------------------------------------------
@@ -291,12 +256,12 @@ class SlideOperationsTest extends UnitTest {
             var range = rangeOver(line, 0, 1);
 
             assertThat(SlideOperations.toggleGlissando(range, null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando()).isTrue();
 
             assertThat(SlideOperations.toggleGlissando(range, null))
                 .as("the same selection takes it back off")
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando()).isFalse();
         }
 
@@ -305,7 +270,7 @@ class SlideOperationsTest extends UnitTest {
             var line = lineOf(lowerNote(), higherNote());
 
             assertThat(SlideOperations.toggleGlissando(Selection.Range.single(line, 1), null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando())
                 .as("the glissando lives on the source, which precedes the selected target")
                 .isTrue();
@@ -338,7 +303,7 @@ class SlideOperationsTest extends UnitTest {
 
             assertThat(SlideOperations.toggleGlissando(rangeOver(line, 0, 1), null))
                 .as("two notes at one pitch have no distance for a glissando to traverse")
-                .isEqualTo(SlideOperations.Result.REFUSED);
+                .isEqualTo(EditResult.REFUSED);
             assertThat(line.getElement(0).hasGlissando()).isFalse();
             assertThat(songDidChanges()).as("nothing was modified").isEmpty();
         }
@@ -353,7 +318,7 @@ class SlideOperationsTest extends UnitTest {
 
             assertThat(SlideOperations.toggleGlissando(rangeOver(line, 0, 1), null))
                 .as("the error dialog has been shown, so the caller must stay quiet")
-                .isEqualTo(SlideOperations.Result.REPORTED);
+                .isEqualTo(EditResult.REPORTED);
             assertThat(line.getElement(0).hasGlissando()).isFalse();
             assertThat(songDidChanges()).isEmpty();
         }
@@ -365,7 +330,7 @@ class SlideOperationsTest extends UnitTest {
 
             assertThat(SlideOperations.toggleGlissando(rangeOver(line, 0, 1), null))
                 .as("taking a slide off claims no space, so the room gate must not run")
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando()).isFalse();
         }
 
@@ -387,7 +352,7 @@ class SlideOperationsTest extends UnitTest {
                 .as("pre-condition: the host carries the melisma's STOP carrier").isNotNull();
 
             assertThat(SlideOperations.toggleGlissando(rangeOver(line, GRACE_INDEX, HOST_INDEX), null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
 
             var graceElement = line.getElement(GRACE_INDEX);
             assertThat(graceElement.hasGlissando())
@@ -416,7 +381,7 @@ class SlideOperationsTest extends UnitTest {
             var line = lineOf(lowerNote(), crotchetRest(), higherNote());
 
             assertThat(SlideOperations.toggleFall(rangeOver(line, 0, THIRD_INDEX), null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(falls(line)).containsExactly(true, false, true);
         }
 
@@ -428,7 +393,7 @@ class SlideOperationsTest extends UnitTest {
             SlideOperations.toggleFall(range, null);
 
             assertThat(SlideOperations.toggleFall(range, null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(falls(line)).containsExactly(false, false, false);
         }
 
@@ -438,7 +403,7 @@ class SlideOperationsTest extends UnitTest {
             song.withoutMutationTracking(() -> line.getElement(1).setFall());
 
             assertThat(SlideOperations.toggleFall(rangeOver(line, 0, THIRD_INDEX), null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(falls(line))
                 .as("a toggle never clears a selection it has not filled first")
                 .containsExactly(true, true, true);
@@ -449,7 +414,7 @@ class SlideOperationsTest extends UnitTest {
             var line = lineOf(crotchetRest(), crotchetRest());
 
             assertThat(SlideOperations.toggleFall(rangeOver(line, 0, 1), null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
+                .isEqualTo(EditResult.REFUSED);
             assertThat(songDidChanges()).isEmpty();
         }
 
@@ -477,7 +442,7 @@ class SlideOperationsTest extends UnitTest {
             var line = crampedLineOf(lowerNote(), higherNote(), lowerNote());
 
             assertThat(SlideOperations.toggleFall(rangeOver(line, 0, THIRD_INDEX), null))
-                .isEqualTo(SlideOperations.Result.REPORTED);
+                .isEqualTo(EditResult.REPORTED);
             assertThat(falls(line)).containsExactly(false, false, false);
             assertThat(songDidChanges()).isEmpty();
         }
@@ -495,7 +460,7 @@ class SlideOperationsTest extends UnitTest {
 
             assertThat(SlideOperations.toggleFall(Selection.Range.single(line, 0), null))
                 .as("the source carries no fall yet, so this is the add branch")
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasFall()).isTrue();
             assertThat(line.getElement(0).hasGlissando())
                 .as("the glissando is gone once the fall replaces it").isFalse();
@@ -503,24 +468,28 @@ class SlideOperationsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Edit mode: the last insertion, and what gets armed
+    // Edit mode: the last insertion
     // -----------------------------------------------------------------------
 
     @Nested
     class TogglingFromEditMode {
 
         @Test
-        void testGlissandoArmsTheInsertedIndexNotTheSource() {
+        void testGlissandoLandsOnTheSourceNotTheInsertedIndex() {
             var line = lineOf(lowerNote(), higherNote());
 
             assertThat(SlideOperations.toggleGlissandoWithPredecessor(line, 1, null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando())
                 .as("the glissando lands on the source, one before the note just placed")
                 .isTrue();
-            assertArmed(line, 1);
         }
 
+        /**
+         * The index the caller passes is the inserted note, not the glissando's source, so
+         * pressing the key twice reaches the same pair rather than walking backwards along
+         * the line.
+         */
         @Test
         void testASecondPressTakesTheGlissandoBackOff() {
             var line = lineOf(lowerNote(), higherNote());
@@ -528,45 +497,41 @@ class SlideOperationsTest extends UnitTest {
             SlideOperations.toggleGlissandoWithPredecessor(line, 1, null);
 
             assertThat(SlideOperations.toggleGlissandoWithPredecessor(line, 1, null))
-                .as("arming the placed note is what keeps the same pair reachable")
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando()).isFalse();
         }
 
         @Test
-        void testAnIndexOutsideTheLineIsRefusedAndArmsNothing() {
+        void testAnIndexOutsideTheLineIsRefused() {
             var line = lineOf(lowerNote(), higherNote());
 
             assertThat(SlideOperations.toggleGlissandoWithPredecessor(line, -1, null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
+                .isEqualTo(EditResult.REFUSED);
             assertThat(SlideOperations.toggleGlissandoWithPredecessor(line, line.elementCount(), null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
+                .isEqualTo(EditResult.REFUSED);
             assertThat(SlideOperations.toggleFallOnLastInsertion(line, line.elementCount(), null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
-            assertNothingArmed();
+                .isEqualTo(EditResult.REFUSED);
         }
 
         /**
-         * An arm on a path that changes nothing is a bug in its own right: a pending insertion is
-         * not discarded, so the next song change of any kind promotes it into a stale target.
+         * {@code REFUSED} rather than {@code MODIFIED} is what keeps the caller from pointing
+         * the key at an element this changed nothing about — and what makes the press audible.
          */
         @Test
-        void testAnIneligibleGlissandoArmsNothing() {
+        void testAnIneligibleGlissandoIsRefused() {
             var line = lineOf(lowerNote(), lowerNote());
 
             assertThat(SlideOperations.toggleGlissandoWithPredecessor(line, 1, null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
-            assertNothingArmed();
+                .isEqualTo(EditResult.REFUSED);
         }
 
         @Test
-        void testFallOnTheLastInsertionAddsAndArmsThatIndex() {
+        void testFallOnTheLastInsertionAddsToThatIndex() {
             var line = lineOf(lowerNote(), higherNote());
 
             assertThat(SlideOperations.toggleFallOnLastInsertion(line, 1, null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(falls(line)).containsExactly(false, true);
-            assertArmed(line, 1);
         }
 
         @Test
@@ -576,28 +541,26 @@ class SlideOperationsTest extends UnitTest {
             SlideOperations.toggleFallOnLastInsertion(line, 1, null);
 
             assertThat(SlideOperations.toggleFallOnLastInsertion(line, 1, null))
-                .isEqualTo(SlideOperations.Result.MODIFIED);
+                .isEqualTo(EditResult.MODIFIED);
             assertThat(falls(line)).containsExactly(false, false);
         }
 
         @Test
-        void testAFallOnARestIsRefusedAndArmsNothing() {
+        void testAFallOnARestIsRefused() {
             var line = lineOf(lowerNote(), crotchetRest());
 
             assertThat(SlideOperations.toggleFallOnLastInsertion(line, 1, null))
-                .isEqualTo(SlideOperations.Result.REFUSED);
+                .isEqualTo(EditResult.REFUSED);
             assertThat(falls(line)).containsExactly(false, false);
-            assertNothingArmed();
         }
 
         @Test
-        void testAFallWithNoRoomIsReportedAndArmsNothing() {
+        void testAFallWithNoRoomIsReported() {
             var line = crampedLineOf(lowerNote(), higherNote());
 
             assertThat(SlideOperations.toggleFallOnLastInsertion(line, 1, null))
-                .isEqualTo(SlideOperations.Result.REPORTED);
+                .isEqualTo(EditResult.REPORTED);
             assertThat(falls(line)).containsExactly(false, false);
-            assertNothingArmed();
         }
     }
 

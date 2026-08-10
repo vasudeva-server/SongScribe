@@ -877,7 +877,7 @@ public class Line implements LyricRun, SpanLookup {
      * @return The nearest non-grace index, or -1 if there is none
      */
     public int nearestNonGraceIndex(int fromIndex, int step) {
-        for (var i = fromIndex + step; i >= 0 && i < elementCount(); i += step) {
+        for (var i = fromIndex + step; hasIndex(i); i += step) {
             if (!getElement(i).getType().isGraceNote()) {
                 return i;
             }

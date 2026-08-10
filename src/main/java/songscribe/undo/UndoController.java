@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
+import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -348,7 +349,7 @@ public final class UndoController {
 
     /**
      * Sets the Tier-A op-name that the next outermost modification bracket will capture.
-     * Called by the {@code UIAction} template around action dispatch. EDT-only.
+     * Prefer {@link #withPendingOpName}, which pairs the set with its restore. EDT-only.
      */
     public static void setPendingOpName(@Nullable String opName) {
         INSTANCE.pendingOpName = opName;
@@ -356,11 +357,48 @@ public final class UndoController {
 
     /**
      * Returns the currently pending Tier-A op-name (or {@code null}). Read by
-     * {@code Song.beginModification} at the outermost-bracket transition, and by the
-     * {@code UIAction} template to save and restore it around nested dispatch. EDT-only.
+     * {@code Song.beginModification} at the outermost-bracket transition. EDT-only.
      */
     public static @Nullable String getPendingOpName() {
         return INSTANCE.pendingOpName;
+    }
+
+    /**
+     * Runs {@code body} with {@code opName} pending, so the outermost modification bracket
+     * that opens synchronously inside it captures that name, and restores the previously
+     * pending name afterwards — including when {@code body} throws.
+     *
+     * <p>Restoring rather than clearing is what makes the bracket nest: a dispatch that runs
+     * inside another one hands the outer name back when it returns, instead of leaving the
+     * next unrelated edit to adopt whatever this one set.
+     *
+     * <p>Every path that opens a bracket outside the {@code UIAction} dispatch template has to
+     * do this for itself — the last-insertion keys and paste placement both bypass it — so the
+     * save/set/restore lives here, next to the state it guards, rather than being written out
+     * again at each of those call sites.
+     */
+    public static void withPendingOpName(@Nullable String opName, Runnable body) {
+        withPendingOpNameResult(opName, () -> {
+            body.run();
+            return null;
+        });
+    }
+
+    /**
+     * The value-returning form of {@link #withPendingOpName(String, Runnable)}, for a body
+     * whose outcome the caller must inspect after the name is restored.
+     *
+     * @return Whatever {@code body} returns
+     */
+    public static <T> T withPendingOpNameResult(@Nullable String opName, Supplier<T> body) {
+        var priorOpName = getPendingOpName();
+        setPendingOpName(opName);
+
+        try {
+            return body.get();
+        } finally {
+            setPendingOpName(priorOpName);
+        }
     }
 
     public static boolean canUndo() {
