@@ -34,16 +34,29 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
 /**
- * Single home for assembling context-dependent Tier-B undo op-names (delete
- * category/plural/mixed, add-by-pen, slide subtype, lyric add/edit/delete) from
- * {@code Strings.*} constants. Every method here is a pure function of its
- * arguments — it reads no shared state and only resolves and returns a
- * {@link Strings} label — so the same {@code ElementType -> category} taxonomy is
- * decoded in exactly one place and is directly unit-testable.
+ * Names an edit for the Edit menu, in the words the user would use for what they just
+ * did. Each method takes what the edit acted on and returns the finished, localized
+ * operation name — {@code "Delete Notes"}, {@code "Add Grace Note"} — which the call site
+ * declares as its modification bracket's label and which the Edit menu shows after
+ * {@code "Undo"} or {@code "Redo"}.
+ *
+ * <p>Every method here is a pure function of its arguments: it reads no shared state,
+ * touches no model, and its result depends on nothing but what it was passed. A caller
+ * may therefore compute a label before the edit, after it, or not use it at all.
+ *
+ * <p>The wording distinguishes deleting a thing from taking a decoration off the thing
+ * that carries it: elements are {@code Delete}d, while slides, ties, beams, tuplets,
+ * trills, accidentals, articulations and attachments are {@code Remove}d.
+ *
+ * <p>This is the only place the {@code ElementType} → category taxonomy behind those
+ * names is decoded, so the categories the insertion and deletion labels use cannot drift
+ * apart. These are the Tier-B names of {@code docs/undo.md}; a step with no declared name
+ * falls back to {@code UndoController}'s own mutation-type label instead.
  */
 public final class OpNames {
 
@@ -51,14 +64,19 @@ public final class OpNames {
     }
 
     /**
-     * Deletable element categories, sharing the same {@code ElementType}
-     * classification used by insertion. Grace notes fold into {@link #NOTE} via
-     * {@link ElementType#isNote()}.
+     * The element categories the labels distinguish. Grace notes fold into {@link #NOTE}
+     * via {@link ElementType#isNote()}; {@link #addLabel} names them separately by asking
+     * before it classifies, because inserting a grace note is a distinct operation to the
+     * user while deleting one is not.
      */
     private enum Category {
         NOTE, REST, BARLINE, REPEAT, BREATH_MARK
     }
 
+    /**
+     * The single classifier both labels are built on: the category {@code type} belongs to,
+     * or {@code null} for a type in none of them.
+     */
     private static @Nullable Category categoryOf(ElementType type) {
         if (type.isNote()) {
             return Category.NOTE;
@@ -84,11 +102,16 @@ public final class OpNames {
     }
 
     /**
-     * Names a deletion by the categories of the deleted elements: a single element
-     * yields {@code Delete <Category>}; several elements of one category yield the
-     * plural {@code Delete <Category>s}; a mix of categories (or any uncategorized
-     * element) yields the generic {@code Delete Elements}. A note and its grace note
-     * fold to the {@code Note} category.
+     * Names a deletion by the categories of the deleted elements: a single element yields
+     * the singular {@code Delete <Category>}; several elements that all share one category
+     * yield the plural {@code Delete <Category>s}; a mix of categories, or any element in
+     * no category, yields the generic {@code Delete Elements}. A note and its grace note
+     * share the {@code Note} category, so deleting them together is {@code Delete Notes}
+     * rather than the generic label.
+     *
+     * @param types the types of the elements being deleted, in any order; must not be
+     *              empty — a deletion of nothing has no name, and nothing is promised for
+     *              an empty list
      */
     public static String deleteLabel(List<ElementType> types) {
         Category common = null;
@@ -136,40 +159,46 @@ public final class OpNames {
     }
 
     /**
-     * Names an insertion by the pen (preview) element's type. Insertion is always a
-     * single element, so the label is always singular. Grace notes get their own
-     * {@code Add Grace Note} label rather than folding into {@code Note}.
+     * Names an insertion by the type of the element being inserted. Insertion is always of
+     * a single element, so the label is always singular. A grace note is named
+     * {@code Add Grace Note} rather than folding into {@code Add Note}.
+     *
+     * @param type the type being inserted; must belong to one of the categories the pen
+     *             can insert — a note, a rest, a barline, a repeat or a breath mark
+     * @throws IllegalArgumentException if {@code type} is in none of those categories,
+     *                                  which no insertion the user can perform produces.
+     *                                  A new {@link ElementType} category fails here
+     *                                  rather than being labelled as something it is not.
      */
     public static String addLabel(ElementType type) {
         if (type.isGraceNote()) {
             return Strings.get(Strings.ACTION_EDIT_OP_ADD_GRACE_NOTE);
         }
 
-        if (type.isNote()) {
-            return Strings.get(Strings.ACTION_EDIT_OP_ADD_NOTE);
+        var category = categoryOf(type);
+
+        if (category == null) {
+            throw new IllegalArgumentException("No add label for element type " + type);
         }
 
-        if (type.isRest()) {
-            return Strings.get(Strings.ACTION_EDIT_OP_ADD_REST);
-        }
-
-        if (type.isBarLine()) {
-            return Strings.get(Strings.ACTION_EDIT_OP_ADD_BARLINE);
-        }
-
-        if (type.isRepeat()) {
-            return Strings.get(Strings.ACTION_EDIT_OP_ADD_REPEAT);
-        }
-
-        return Strings.get(Strings.ACTION_EDIT_OP_ADD_BREATH_MARK);
+        return Strings.get(
+            switch (category) {
+                case NOTE -> Strings.ACTION_EDIT_OP_ADD_NOTE;
+                case REST -> Strings.ACTION_EDIT_OP_ADD_REST;
+                case BARLINE -> Strings.ACTION_EDIT_OP_ADD_BARLINE;
+                case REPEAT -> Strings.ACTION_EDIT_OP_ADD_REPEAT;
+                case BREATH_MARK -> Strings.ACTION_EDIT_OP_ADD_BREATH_MARK;
+            });
     }
 
     /**
-     * Names a slide insertion by subtype: {@code Add Fall} when {@code fall} is
-     * true, otherwise {@code Add Glissando}.
+     * Names a slide insertion by the kind of slide being attached: {@code Add Fall} for
+     * {@link SlideZone#FALL}, {@code Add Glissando} for {@link SlideZone#GLISSANDO}.
      */
-    public static String addSlideLabel(boolean fall) {
-        return Strings.get(fall ? Strings.ACTION_EDIT_OP_ADD_FALL : Strings.ACTION_EDIT_OP_ADD_GLISSANDO);
+    public static String addSlideLabel(SlideZone zone) {
+        return Strings.get(zone == SlideZone.FALL
+            ? Strings.ACTION_EDIT_OP_ADD_FALL
+            : Strings.ACTION_EDIT_OP_ADD_GLISSANDO);
     }
 
     /**
@@ -273,9 +302,13 @@ public final class OpNames {
     }
 
     /**
-     * Names a single-element lyric edit by before/after text emptiness: empty →
-     * non-empty is {@code Add Lyric}; non-empty → empty is {@code Delete Lyric};
-     * any other transition is {@code Edit Lyric}.
+     * Names a single-element lyric edit by what the syllable had and what it now has:
+     * empty → non-empty is {@code Add Lyric}, non-empty → empty is {@code Delete Lyric},
+     * and every other transition — including a no-op edit that leaves the text unchanged —
+     * is {@code Edit Lyric}.
+     *
+     * @param beforeText the syllable's text before the edit, {@code ""} if it had none
+     * @param afterText  the syllable's text after the edit, {@code ""} if it now has none
      */
     public static String lyricLabel(String beforeText, String afterText) {
         if (beforeText.isEmpty() && !afterText.isEmpty()) {

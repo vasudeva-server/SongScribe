@@ -78,6 +78,23 @@ import songscribe.ui.component.ScoreView;
  * {@link songscribe.dom.StaffElement#copyStateFrom} (identity-preserving — never
  * {@code setElement}), so anchor references held inside other stacked records stay
  * valid across arbitrary undo/redo interleavings.
+ *
+ * <h2>Replaying a batch</h2>
+ * A single mutation is only meaningful in the context of the batch it was recorded in.
+ * Undo applies a batch <em>in reverse order</em> and redo <em>in forward order</em>;
+ * either direction requires the whole batch, against the same document, with no edit
+ * interleaved. Both rules follow from how the batch was recorded — a companion span
+ * removal emitted before its primary element deletion can only be reversed after that
+ * element is back — and are the caller's obligation, not something these methods check.
+ * See {@code docs/undo.md} and {@code docs/mutations.md}.
+ *
+ * <p>Every change made here is itself recorded into the open bracket, so the closing
+ * {@code endModification} posts a {@link songscribe.message.notification.SongDidChangeNotification}
+ * describing the replay and the view repaints from it like any other edit.
+ *
+ * <p>{@link FontChange} is the one mutation whose state does not live on the
+ * {@link Song}: fonts belong to the {@link ScoreView}, which is why these methods take
+ * the view rather than the document.
  */
 public final class MutationReplayer {
 
@@ -85,7 +102,22 @@ public final class MutationReplayer {
     }
 
     /**
-     * Restores the before-state of {@code mutation}, undoing its forward effect.
+     * Restores the before-state of {@code mutation}, undoing its forward effect: whatever
+     * the mutation added is removed, whatever it removed is put back at the same index,
+     * and whatever it changed is returned to the old value it recorded.
+     *
+     * <p>Exactly inverts {@link #applyRedo}: applying one and then the other, in either
+     * order, leaves the document as it was.
+     *
+     * @param scoreView the view holding the document the mutation was recorded against,
+     *                  with a modification bracket open and replay mode entered
+     * @param mutation  a mutation recorded against that document, whose forward effect is
+     *                  the document's most recent unreplayed change
+     * @throws RuntimeException if the mutation cannot be applied — an index it names no
+     *                          longer exists, or an element it names is gone. This means
+     *                          the batch was replayed out of order, incompletely, or
+     *                          against the wrong document, and the caller is expected to
+     *                          treat it as an engine bug rather than a recoverable error.
      */
     public static void applyUndo(ScoreView scoreView, Mutation mutation) {
         var song = scoreView.getSong();
@@ -132,7 +164,18 @@ public final class MutationReplayer {
     }
 
     /**
-     * Re-applies the forward effect of {@code mutation}, redoing it.
+     * Re-applies the forward effect of {@code mutation}, reproducing the change the
+     * original edit made: what it added is added again at the same index, what it removed
+     * is removed, and what it changed takes the new value it recorded.
+     *
+     * <p>Exactly inverts {@link #applyUndo}, and takes the same preconditions — an open
+     * bracket in replay mode, the same document, the batch replayed whole — except that
+     * the document must be in the state that immediately <em>precedes</em> the mutation.
+     *
+     * @param scoreView the view holding the document the mutation was recorded against
+     * @param mutation  a mutation recorded against that document, whose forward effect is
+     *                  the document's next unreplayed change
+     * @throws RuntimeException under the conditions given for {@link #applyUndo}
      */
     public static void applyRedo(ScoreView scoreView, Mutation mutation) {
         var song = scoreView.getSong();

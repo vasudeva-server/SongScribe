@@ -184,7 +184,7 @@ public final class SlideOperations {
                 return EditResult.REPORTED;
             }
 
-            label = OpNames.addSlideLabel(zone == SlideZone.FALL);
+            label = OpNames.addSlideLabel(zone);
         }
 
         line.withModification(label, () -> {

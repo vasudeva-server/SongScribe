@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.undo.OpNames;
 
@@ -148,13 +149,13 @@ class OpNamesTest extends UnitTest {
 
         @Test
         void testAddGlissando() {
-            assertThat(OpNames.addSlideLabel(false))
+            assertThat(OpNames.addSlideLabel(SlideZone.GLISSANDO))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_GLISSANDO));
         }
 
         @Test
         void testAddFall() {
-            assertThat(OpNames.addSlideLabel(true))
+            assertThat(OpNames.addSlideLabel(SlideZone.FALL))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_FALL));
         }
 
