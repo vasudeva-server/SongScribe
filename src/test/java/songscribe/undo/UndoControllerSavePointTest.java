@@ -116,7 +116,7 @@ class UndoControllerSavePointTest extends UnitTest {
         save();
         assertThat(song.isModified()).isFalse();
 
-        for (var i = 0; i < UndoController.DEFAULT_UNDO_STACK_MAX_DEPTH; i++) {
+        for (var i = 0; i < UndoController.UNDO_STACK_MAX_DEPTH; i++) {
             addNoteStep();
         }
 

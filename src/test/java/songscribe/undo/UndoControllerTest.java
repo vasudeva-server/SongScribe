@@ -137,7 +137,7 @@ class UndoControllerTest extends UnitTest {
 
     @Test
     void testFifoEvictionDropsOldestBeyondDepthLimit() {
-        var pushed = UndoController.DEFAULT_UNDO_STACK_MAX_DEPTH + 1;
+        var pushed = UndoController.UNDO_STACK_MAX_DEPTH + 1;
 
         for (var i = 0; i < pushed; i++) {
             addNoteStep();
@@ -153,7 +153,7 @@ class UndoControllerTest extends UnitTest {
             undoable++;
         }
 
-        assertThat(undoable).isEqualTo(UndoController.DEFAULT_UNDO_STACK_MAX_DEPTH);
+        assertThat(undoable).isEqualTo(UndoController.UNDO_STACK_MAX_DEPTH);
         // The one note added by the evicted step remains — undo could not reach it.
         assertThat(line.effectiveElementCount()).isEqualTo(1);
     }

@@ -34,6 +34,11 @@ import songscribe.dom.Line;
  * Posted when one or more mutations have been applied to the song.
  * Carries the accumulated list of mutations from the current modification bracket.
  *
+ * <p>The mutation list is never empty: a bracket that accumulated nothing posts no
+ * notification at all, so a subscriber may read the first mutation without guarding. It
+ * describes the whole edit — every state change the bracket made is in it, which is what
+ * lets {@code UndoController} replay it as a unit; see {@code docs/mutations.md}.
+ *
  * <p><strong>EDT only.</strong> The cached {@link #getLine()} result is read and written
  * without synchronization; subscribers must call it from the event-dispatch thread.
  * This matches MBassador's synchronous dispatch and the rest of the SongScribe UI.

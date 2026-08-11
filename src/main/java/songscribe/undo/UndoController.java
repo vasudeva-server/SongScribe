@@ -76,24 +76,30 @@ import songscribe.ui.component.MainFrame;
  * that recorded batch through {@link MutationReplayer} inside an open bracket and the
  * model's replay mode. SongScribe is single-document, so one stack pair is correct.
  *
- * <p>On a forward edit, {@code Song.endModification} posts a {@link SongDidChangeNotification} with
- * {@code applyingReplay == false}; the handler pushes an {@code UndoStep} of the batch's mutations
- * and op-name onto the undo stack, clears the redo stack, evicts the oldest step once the stack
- * exceeds {@value #DEFAULT_UNDO_STACK_MAX_DEPTH} entries, and posts an
- * {@code UndoStateDidChangeNotification}.
+ * <p>See {@code docs/undo.md} for the step-by-step flow, the round-trip and identity
+ * guarantees the engine owes the rest of the application, and the design rationale.
  *
- * <p>Undo and redo peek their respective stack, set {@code applyingReplay}, and replay the step's
- * mutations — reversed for undo, forward for redo — through {@link MutationReplayer} inside a normal
- * modification bracket in replay mode. That bracket posts its own {@code SongDidChangeNotification},
- * which the recording handler ignores because {@code applyingReplay} is set, but which
- * {@code ScoreViewController} still repaints from. On success the step moves to the other stack, the
- * modified-vs-clean flag is recomputed, and an {@code UndoStateDidChangeNotification} is posted.
+ * <h2>Invariants</h2>
+ * <ul>
+ *   <li><b>One bracket, one step.</b> However many mutations an edit accumulates, and
+ *       however deeply its brackets nest, the user undoes it with one Undo. What counts as
+ *       one edit is therefore decided by whoever opens the outermost bracket, not here.
+ *   <li><b>The two stacks partition the history.</b> Every recorded step is on exactly one
+ *       of them, and their concatenation is the document's edit sequence from the current
+ *       position. A forward edit discards the redo side, so redo is a line, not a tree.
+ *   <li><b>Clean is a position, not a content comparison.</b> The document is clean exactly
+ *       while the undo stack's top is the step that was on top at the last save (or both are
+ *       empty). Reaching an identical document by another route does not make it clean.
+ *   <li><b>Replay is invisible to recording.</b> The bracket the engine opens to replay a
+ *       step posts a {@link SongDidChangeNotification} like any other, and subscribers
+ *       repaint from it, but it is never itself recorded as a step.
+ *   <li><b>Steps are non-empty.</b> Guaranteed by
+ *       {@link SongDidChangeNotification}: an empty bracket posts nothing. A step with no
+ *       mutations would have no label and nothing to replay.
+ * </ul>
  *
- * <p>The Edit-menu label comes from {@code composeLabel}: a bare "Undo"/"Redo" for an empty stack,
- * the step's declared op-name verbatim when it has one, and otherwise a type-based fallback derived
- * from the batch's dominant mutation.
- *
- * <p>See {@code docs/undo.md} for the step-by-step flow and the design rationale.
+ * <p>EDT only, by contract; no synchronization is performed on the stacks, the replay guard
+ * or the pending op-name.
  *
  * <h2>Lifecycle</h2>
  * {@link #initialize()} attaches the singleton to the message bus and is
@@ -110,9 +116,12 @@ public final class UndoController {
 
     private static final Logger LOG = LoggerFactory.getLogger(UndoController.class);
 
-    // Package-private so UndoControllerTest can drive the eviction boundary without
-    // duplicating the literal.
-    static final int DEFAULT_UNDO_STACK_MAX_DEPTH = 50;
+    /**
+     * The most undo steps the stack retains. Pushing past it evicts the oldest step,
+     * which is what makes an edit permanently un-undoable, and — when the evicted step
+     * is the one the last save marked clean — the document permanently modified.
+     */
+    public static final int UNDO_STACK_MAX_DEPTH = 50;
 
     /**
      * One undo step: the recorded mutation batch from a single outermost modification
@@ -140,10 +149,6 @@ public final class UndoController {
     // Reentrancy guard: true while replaying a step, so the SongDidChangeNotification
     // the replay bracket posts is not itself pushed as a new step.
     private boolean applyingReplay;
-
-    // A field (not a constant) so a future preference can adjust it at runtime.
-    @SuppressWarnings({ "FieldCanBeLocal", "FieldMayBeFinal" })
-    private static final int undoStackMaxDepth = DEFAULT_UNDO_STACK_MAX_DEPTH;
 
     // Reference to the undo step on top of undoStack at last save (or BASELINE when
     // the stack was empty then). Compared with == everywhere. cleanValid goes false
@@ -188,8 +193,25 @@ public final class UndoController {
     }
 
     /**
-     * Records a completed forward edit as a new undo step. Ignored while replaying:
-     * the notification the replay bracket posts must not become a new step.
+     * Records a completed forward edit as one new undo step, so that a subsequent
+     * {@link #undo()} reverses exactly the edit this notification describes.
+     *
+     * <p>Afterwards {@link #canUndo()} is true, {@link #canRedo()} is false — a forward
+     * edit discards the redo branch, so redo is linear rather than a tree — and the
+     * document is modified unless the pushed step happens to be the clean marker again.
+     * The step's label follows from the notification's op-name; see {@link #undoLabel()}.
+     *
+     * <p>The stack retains at most {@value #UNDO_STACK_MAX_DEPTH} steps; a push past
+     * that evicts the oldest, and if the evicted step was the clean marker the document
+     * can no longer return to clean. Posts {@link UndoStateDidChangeNotification} so the
+     * Edit menu follows.
+     *
+     * <p>A notification posted by the engine's own replay bracket is ignored: replaying a
+     * step must not push a step, or undo could never empty the stack.
+     *
+     * <p>Runs at {@link Message#HIGH_PRIORITY} so that lower-priority subscribers reading
+     * {@link #canUndo()} or {@link #undoLabel()} while handling the same notification see
+     * the step already pushed.
      */
     @Handler(priority = Message.HIGH_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
@@ -200,7 +222,7 @@ public final class UndoController {
         undoStack.push(new UndoStep(message.getMutations(), message.getOpName()));
         redoStack.clear();
 
-        if (undoStack.size() > undoStackMaxDepth) {
+        if (undoStack.size() > UNDO_STACK_MAX_DEPTH) {
             var evicted = undoStack.removeLast();
 
             if (evicted == cleanStep) {
@@ -212,6 +234,27 @@ public final class UndoController {
         MessageCenter.post(new UndoStateDidChangeNotification());
     }
 
+    /**
+     * Reverses the most recent recorded step, restoring the document to the state it held
+     * immediately before that step's edit — the round-trip guarantee stated in
+     * {@code docs/undo.md}. The step moves to the redo stack, so {@link #canRedo()} is then
+     * true and {@link #redo()} re-applies it.
+     *
+     * <p>Elements are restored in place rather than replaced, so anchors held by spans and
+     * by the current selection stay valid across any interleaving of undo and redo.
+     *
+     * <p>A no-op, posting nothing, when {@link #canUndo()} is false or no document is open.
+     * Otherwise the document's modified flag is recomputed against the save point (see
+     * {@link #documentWasSaved}) and {@link UndoStateDidChangeNotification} is posted. The
+     * replay itself posts a {@link SongDidChangeNotification} describing the inverse
+     * mutations — which is how the score repaints — without recording a new step.
+     *
+     * <p>Never throws. A replay that fails is an engine bug, not a caller error: the model
+     * is then mid-step and matches neither stack, so both stacks are cleared and the
+     * document is forced modified, leaving the user able to save but not to undo further.
+     *
+     * <p>EDT only.
+     */
     public static void undo() {
         INSTANCE.performUndo();
     }
@@ -248,6 +291,19 @@ public final class UndoController {
         MessageCenter.post(new UndoStateDidChangeNotification());
     }
 
+    /**
+     * Re-applies the most recently undone step, restoring the document to the state it held
+     * immediately after that step's original edit. The step moves back to the undo stack.
+     *
+     * <p>The redo stack holds only steps put there by {@link #undo()} and is discarded by the
+     * next forward edit, so redo is reachable only along the path just undone.
+     *
+     * <p>A no-op, posting nothing, when {@link #canRedo()} is false or no document is open.
+     * In every other respect — in-place restoration, the recomputed modified flag, the posted
+     * notifications, and the never-throws fail-safe — it matches {@link #undo()}.
+     *
+     * <p>EDT only.
+     */
     public static void redo() {
         INSTANCE.performRedo();
     }
@@ -297,6 +353,21 @@ public final class UndoController {
         cleanValid = false;
     }
 
+    /**
+     * Marks the current position in the undo history as the saved state. The document is
+     * clean exactly while the undo stack's top is the step that was on top here, so undoing
+     * past the save point marks it modified and redoing back to it marks it clean again.
+     *
+     * <p>The position is held by reference, not by content: two edits that happen to produce
+     * identical documents are still distinct positions, and only the recorded one is clean.
+     *
+     * <p>The history survives a save — both stacks are left as they are. What does not
+     * survive is eviction: once the marked step is dropped at
+     * {@value #UNDO_STACK_MAX_DEPTH}, the saved state is unreachable and the document stays
+     * modified however far back the user undoes.
+     *
+     * <p>A no-op when no document is open.
+     */
     @Handler
     public void documentWasSaved(DocumentWasSavedNotification message) {
         var scoreView = MainFrame.getInstance().getScoreView();
@@ -310,6 +381,11 @@ public final class UndoController {
         recomputeModified(scoreView.getSong());
     }
 
+    /**
+     * Discards the outgoing document's history: a document that has just been opened or
+     * created has nothing to undo, and replaying a step recorded against the previous
+     * document would corrupt this one. Equivalent to {@link #reset()}.
+     */
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
         reset();
@@ -410,24 +486,38 @@ public final class UndoController {
         }
     }
 
+    /**
+     * @return {@code true} when a step is available to reverse — equivalently, when
+     *         {@link #undo()} would change the document rather than do nothing
+     */
     public static boolean canUndo() {
         return !INSTANCE.undoStack.isEmpty();
     }
 
+    /**
+     * @return {@code true} when a previously undone step is available to re-apply —
+     *         equivalently, when {@link #redo()} would change the document
+     */
     public static boolean canRedo() {
         return !INSTANCE.redoStack.isEmpty();
     }
 
     /**
-     * Fully composed Edit-menu label for Undo: {@code "Undo"} when the stack is empty,
-     * else {@code "Undo <op>"} derived from the top step's dominant mutation.
+     * The Edit-menu label for Undo, naming the operation the next {@link #undo()} would
+     * reverse: the plain {@code "Undo"} when {@link #canUndo()} is false, the top step's
+     * declared op-name verbatim when its initiator declared one, and otherwise a label
+     * derived from the kind of edit the step's dominant mutation records — never a bare
+     * {@code "Undo"} over a non-empty stack.
+     *
+     * <p>Localized through {@link Strings}; the caller presents the result as-is.
      */
     public static String undoLabel() {
         return INSTANCE.composeLabel(INSTANCE.undoStack, Strings.ACTION_EDIT_UNDO, Strings.ACTION_EDIT_UNDO_LABELED);
     }
 
     /**
-     * Fully composed Edit-menu label for Redo (see {@link #undoLabel()}).
+     * The Edit-menu label for Redo, naming the operation the next {@link #redo()} would
+     * re-apply. Composed exactly as {@link #undoLabel()} is, from the redo stack.
      */
     public static String redoLabel() {
         return INSTANCE.composeLabel(INSTANCE.redoStack, Strings.ACTION_EDIT_REDO, Strings.ACTION_EDIT_REDO_LABELED);
