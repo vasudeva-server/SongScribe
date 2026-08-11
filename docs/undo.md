@@ -1,9 +1,69 @@
 # Undo / Redo — Architectural Reference
 
-Background and rationale for the undo/redo engine (issue #14). The implementation
-plan lives in `plans/14-undo-redo.md`; this document captures the design
-decisions behind it — the "why" an implementer does not need in front of them,
-but which explains the shape of the engine after the fact.
+What the undo/redo engine promises the rest of the application, and the design
+decisions behind its shape (issue #14). The promises below span subsystems — the
+model records, the engine replays, the selection follows — so no single class can
+state them; `UndoController` and `MutationReplayer` cite this document rather than
+paraphrasing it.
+
+------------------------------------------------------------------------
+
+## What the engine guarantees
+
+**Round trip.** Undoing a step leaves the document in exactly the state it held
+before that step's edit; redoing leaves it in exactly the state it held after.
+This holds for any sequence of undos and redos, not just one.
+
+The engine can only restore what was recorded, so this promise is one half of a
+bargain with the model: the other half is the **complete-emission invariant** in
+[`mutations.md`](./mutations.md) — every state change made inside a modification
+bracket is recorded as a `Mutation` in that bracket's batch. A helper that drops
+dependent state without routing it through a tracked removal breaks undo, and
+breaks it silently, because the batch still replays cleanly with the unrecorded
+change simply missing.
+
+**Element identity.** Undo and redo never swap one `StaffElement` instance for
+another where the recorded change was a modification: state is copied back in
+place. Everything holding a reference to an element — spans on the line, the
+current selection, mutations still sitting on either stack — therefore stays
+valid across arbitrary undo/redo interleaving. This is why `ElementModification`
+carries before and after clones rather than a replacement element, and why
+replay uses `copyStateFrom` rather than `setElement`.
+
+**A live selection.** Replaying a step mutates the line under whatever the user
+has selected, and the selection names elements by index. `SelectionCoordinator`
+splices the selected range through each mutation of the batch as it replays, so
+the range goes on naming the same surviving elements — sliding or shrinking as
+needed, and clearing only when nothing of it survives. What makes that safe for
+*other* subscribers is ordering: the splice runs from
+`ScoreViewController.songDidChange` at `TUPLET_INFO_CACHE_PRIORITY`, ahead of
+every other reader of the range, so no handler ever sees indices that no longer
+exist. A subscriber that outranks that priority and reads the selection is
+outside the guarantee.
+
+**One edit, one Undo.** A step is one outermost modification bracket, however
+many mutations it accumulated and however deeply it nested. What counts as one
+edit is decided by whoever opens the outermost bracket — a dialog that commits
+five fields in one bracket is one Undo, and that is a design choice made at the
+call site, not by the engine.
+
+**A named edit.** The Edit menu names the operation rather than showing a bare
+"Undo": the op-name its initiator declared (see *Where an undo step's op-name
+comes from* below), or a name derived from the kind of edit the step's dominant
+mutation records.
+
+**A truthful modified flag.** The document is modified exactly when its position
+in the history differs from the position at the last save. Clean is a *position*,
+not a comparison of content: editing and undoing back returns to clean, while
+reaching an identical document by another route does not.
+
+Two things end that promise, both deliberately. Beyond
+`UndoController.UNDO_STACK_MAX_DEPTH` steps the oldest is evicted, and if the
+evicted step was the saved position, the document can no longer reach clean and
+stays modified. A replay that throws is an engine bug that leaves the model
+mid-step and matching neither stack; the history is cleared and the document
+forced modified, so the user can still save their work but cannot undo further
+into a state the engine can no longer account for.
 
 ------------------------------------------------------------------------
 
