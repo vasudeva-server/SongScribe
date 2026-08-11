@@ -187,7 +187,7 @@ principles, loaded on demand rather than always in context.
 
 ## Phase 3 — `testing-common.md` rewrite
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
 
 Rewrite `.claude/guides/testing-common.md` around contract-derived cases.
 

@@ -1,96 +1,138 @@
 # Testing Common Conventions
 
-> **Read this section first and treat it as the point of everything below.** The
-> Test Quality Principles are the source of truth for what makes a test worth
-> writing. The conventions that follow (frameworks, base classes, naming) are
-> mechanics in service of these principles — never the other way around.
+> **Read the first two sections and treat them as the point of everything below.**
+> The contract decides *what* is tested and when testing it is finished. The
+> conventions that follow — level rubric, frameworks, base classes, naming,
+> fixtures — are mechanics in service of that, never the other way around.
 
-## Test Quality Principles
+## Tests come from the contract
 
-A test's value is its ability to fail when the production code is wrong. Coverage
-that executes a line without asserting on its behavior proves nothing. For every
-test, the governing question is: *what bug would this catch, and could it actually
-catch it?* The `check` skill audits tests against the principles below whenever
-tests are in scope, and `check --tests-only` audits them alone.
+The completeness criterion is the contract, not the implementation and not a
+percentage. For every nontrivial API, test each materially distinct class of
+behavior the contract promises, plus its boundaries and its invariants. **That set
+is also the stopping rule** — the contract's classes are what *done testing this*
+means. Whether the method holds 5 branches or 25 is not an input.
 
-### Correctness — is the test itself trustworthy?
+So the first question about any test is not *what bug would this catch?* but
+**which clause of the contract does this assert?** A test that answers neither is
+discarded, not kept on the theory that it might catch something.
 
-- **It must be able to fail.** A test with no assertions, assertions only against
-  mocks, a tautology (`assertThat(x).isEqualTo(x)`), or `isNotNull()` on a value
-  that cannot be null passes regardless of the code under test.
-- **The name must match what it asserts.** A test named for a condition it does
-  not actually verify is worse than no test — it lies in the report. See
-  [Naming Conventions](#naming-conventions).
-- **Test behavior, not implementation.** Over-mocking couples the test to *how*
-  the code works, so it breaks on refactors and stays green on real regressions.
-  Mock only what the [Unit Test Guide](./testing-unit.md) sanctions; prefer real
-  collaborators.
-- **No flakiness.** No dependence on timing, execution order (see
-  [Test Independence](#test-independence)), shared mutable state, or the real
-  clock/filesystem.
-- **Preconditions must exercise the path.** A misconfigured fixture can leave a
-  test green while testing nothing.
+If the API has no contract yet, write the contract first. See
+[Contracts](./contracts.md) for what a method contract states in Java and how the
+test cases fall out of it, and the **Contracts** and **Contract-Driven Testing**
+sections of `~/.claude/rules/development.md` for the principles.
 
-### Usefulness — is the test worth its maintenance cost?
+Four consequences worth stating in test-guide terms:
 
-- **Right level for the risk.** Do not E2E-test what a unit test covers cheaply;
-  do not unit-test, with everything mocked, something whose entire risk is the
-  integration.
-- **Guards a realistic failure mode.** Edge cases, boundaries, error paths, and
-  null handling carry the value — and since the project bans `Optional` and leans
-  on `@Nullable`, null contracts are where bugs hide. Testing trivial getters or
-  framework behavior is noise.
-- **Non-redundant.** Several tests asserting the same thing add maintenance cost,
-  not safety.
-- **Diagnostic on failure.** A good failing test localizes the cause. Use specific
-  AssertJ matchers over bare booleans so the failure message says what was expected.
+- **Enumerate a finite domain; sample only when you cannot.** An enum, a small set
+  of states, a pair of flags — all of them, via `@ParameterizedTest` over a
+  `@MethodSource` or `EnumSource`, which costs what picking two costs. Picking two
+  is what leaves the third one broken. See [Unit Test Guide](./testing-unit.md).
+- **A representative of each distinct input class, plus the extremes, is
+  sufficient.** Volume past that is cost without safety.
+- **Where the contract is an invariant, test the invariant** across many
+  representative inputs, rather than pinning one expected output per input. A
+  promise that the outputs sum to the requested total is one test, not a table.
+- **Not every clause yields a test.** A guard the contract deliberately makes
+  unreachable through the public API has no test and is not a gap.
 
-### Coverage — where are the gaps?
+Two rules from the global regime that decide test *structure* here, restated only
+as pointers because they are stated in full there:
 
-- **Coverage is necessary, not sufficient.** Treat the percentage as a gap-finder,
-  not a grade. High coverage with weak assertions is *false confidence* — the most
-  dangerous state of all. Generate a report with `./scripts/coverage.sh`.
-- **Branches over lines.** Uncovered branches, error handlers, and exception paths
-  matter more than the headline number.
-- **"Executed" is not "verified."** A line can be covered yet have no assertion
-  observing its effect.
-- **Weight by criticality.** Coverage of the document model and core logic (`dom`,
-  `io`, `layout`, `smufl`) matters more than UI glue.
+- **No production surface exists solely for tests** — no method, no accessor, no
+  widened field, no relaxed visibility, and no reflection into private state. When
+  a test cannot arrange the state it needs, the answer is a constructor or factory
+  that takes that state, used by production too.
+- **Private helpers are tested through the contract they serve.** A helper is
+  promoted to an internal API when it has become a distinct concept with its own
+  contract — never because it is long or awkward to reach.
 
-### Proving correctness with mutation testing
+## Is the test trustworthy?
 
-Reading and coverage can show that a test *looks* weak; only mutation testing
-proves it. PIT (`./scripts/mutation-test.sh [target]`) mutates the production
-bytecode — flips a `<`, swaps a `+`, returns `null` — and reruns the covering
-tests. A surviving mutant is a change to production code that no test detected:
-a concrete hole. Mutation testing is the slow path, so it stays scoped to
-pure-logic classes and unit tests only (it excludes `songscribe.e2e` and Swing/UI
-by default). `check --mutation` folds surviving mutants into its correctness
-findings.
+A short list, applied to every test once its contract case is settled.
+
+- **It can fail.** No assertions, assertions only against mocks, a tautology
+  (`assertThat(x).isEqualTo(x)`), or `isNotNull()` on a value that cannot be null
+  passes regardless of the production code. A misconfigured fixture does the same
+  thing more quietly — check that the arrangement actually reaches the case.
+- **Its name names the contract case it asserts.** Not the method it calls and not
+  the setup it performs: the promise being checked. A test whose name does not
+  identify its promise cannot be triaged later against a contract that has changed,
+  and it lies in the report. See [Naming Conventions](#naming-conventions).
+- **No flakiness.** No dependence on timing, shared mutable state, the real clock,
+  or the real filesystem.
+- **No order dependence.** See [Test Independence](#test-independence).
+
+Over-mocking fails the first check in a form that looks like passing: a test that
+asserts against mocks breaks on refactors and stays green on real regressions.
+Mock only what the [Unit Test Guide](./testing-unit.md) sanctions, and read a test
+that needs extensive mocking to construct its subject as a constructor-injection
+finding rather than a mocking problem.
+
+## The testing-approach Javadoc
+
+**Every test class carries a Javadoc comment stating the contract it tests and how
+it tests it** — which equivalence classes it covers, which boundaries, which
+invariants. It goes on the **test class**, never on the production method; the
+production Javadoc states the promise, the test class states how the promise is
+exercised.
+
+It is written *before* the tests, from the contract, and it is what a later reader
+triages the class against. A class Javadoc that lists inputs rather than promises
+is the coverage habit in prose form:
+
+```java
+// Inputs, not promises — says what runs, not what is guaranteed
+/**
+ * Verifies {@link NoteTypeMapping#ticks(ElementType, int)} over all six
+ * note-value types × three dot counts (0, 1, 2), asserting exact integer
+ * results and correct tick values, and checks that GRACE_QUAVER throws.
+ */
+
+// The contract's clauses, one line each, and where each is exercised
+/**
+ * Exercises the contract of {@link NoteTypeMapping#ticks(ElementType, int)}.
+ *
+ * <p><b>Valid domain</b> — enumerated, not sampled: every {@link ElementType}
+ * with a tick mapping × every dot count in
+ * {@code 0..}{@value NoteTypeMapping#MAX_DOT_COUNT}.
+ *
+ * <p><b>Invariants</b> — the dot formula ({@code ×3/2} for one dot,
+ * {@code ×7/4} for two) holds for every type, and every result in the valid
+ * domain is an exact integer, which is the promise
+ * {@link NoteTypeMapping#DIVISIONS} exists to keep.
+ *
+ * <p><b>Boundaries</b> — {@code dotCount} at 0 and at
+ * {@link NoteTypeMapping#MAX_DOT_COUNT} succeed; one below and one above
+ * both throw.
+ *
+ * <p><b>Errors</b> — a type with no tick mapping throws
+ * {@code IllegalArgumentException}. The {@code ArithmeticException} clause has
+ * no test: no input in the valid domain can reach it.
+ */
+```
+
+Where a contract case is deliberately **not** tested, the class Javadoc is where
+that is recorded, with the reason — as the last paragraph above does. An untested
+case with a stated reason is a decision; an untested case with no note is a gap.
 
 ## Choosing the level: unit vs. e2e vs. none
 
-Every testable behavior is tested at exactly one level. This rubric decides
-*where*; the Test Quality Principles above decide whether a test is worth having
-at all and **override this rubric** — a test that cannot fail, asserts against a
-mock, has a name/behavior mismatch, or gives false confidence is a defect
-regardless of being at the correct level. Apply the Quality Principles
-(Correctness → Usefulness → Coverage) first; this level rubric second.
+Every testable behavior is tested at exactly one level. The contract decides
+*whether* a behavior is tested and what the cases are; this rubric decides only
+*where* the test lives.
 
 ### Default: unit
 
 Prefer a unit test. Unit tests are faster, run without approval, and localize
-failures. A behavior is unit-testable if its risk is **logic, computation,
-state, data transformation, or model mutation** — even when it requires:
-
-- mocking the `MainFrame.getInstance()` singleton chain (see `testing-unit.md`),
-- widening a member to package-private to test it directly (see *Testability
-  Over Encapsulation* below), or
-- constructing collaborators via `ReflectionTestHelper`.
+failures. A behavior is unit-testable if its risk is **logic, computation, state,
+data transformation, or model mutation** — even when it requires mocking the
+`MainFrame.getInstance()` singleton chain or constructing collaborators through a
+test helper (see `testing-unit.md`).
 
 Examples that are **unit**: format migration, serialization round-trips, layout
-geometry/stacking math, MIDI generation, action enablement logic, selection
-state machines, mutation records, derived model state, `@Nullable` contracts.
+geometry/stacking math, MIDI generation, action enablement logic, selection state
+machines, mutation records, derived model state, `@Nullable` contracts.
 
 ### Escalate to e2e ONLY when the risk *is* the integration
 
@@ -104,7 +146,9 @@ pipeline** and cannot be meaningfully verified with collaborators mocked:
 - application lifecycle (boot, shutdown, file open/save through the UI).
 
 If everything that matters can be asserted with the singleton mocked, it is
-**not** an e2e case — putting it in e2e is the wrong level.
+**not** an e2e case — putting it in e2e is the wrong level. E2E proves the wiring,
+one test per path; the contract's cases are exercised at unit level. See
+[E2E Test Guide](./testing-e2e.md).
 
 ### Classify as none (no test warranted)
 
@@ -116,26 +160,72 @@ If everything that matters can be asserted with the singleton mocked, it is
 - pure rendering to a `Graphics2D` with no computed geometry to assert
   (the geometry, if any, is unit-tested upstream).
 
-### Assessing an existing test
+### Triaging an existing test
 
-When judging whether a test already covers a behavior adequately:
+Every existing test resolves to one of three outcomes, decided against the
+contract:
 
-- **adequate** — a test exists at the right level and can actually fail.
-- **wrong-level** — covered, but as e2e what should be unit (or vice versa).
-- **inadequate** — exists but can't fail / name-mismatch / asserts a mock /
-  weak assertion (see *Correctness* + *Usefulness* above).
-- **missing** — behavior warrants a test (unit or e2e) and none exists.
-- **redundant** — duplicate coverage of a behavior already adequately tested.
+- **keep** — it asserts a contract case, at the right level, and can fail.
+- **rewrite** — the case is real but the test is wrong about it: wrong level,
+  a name that does not name the case, assertions against mocks, an arrangement
+  that does not reach the case, or several tests pinning one case that a
+  parameterized test states once.
+- **discard** — it maps to no contract case. That includes a test of a private
+  helper's decomposition, a test that pins an implementation detail the contract
+  promises nothing about, and a duplicate of a case already asserted.
+
+A case the contract promises and no test asserts is the fourth finding —
+**missing** — and it is a finding against the suite, not against the contract.
+
+## Diagnostics: coverage and mutation
+
+Both are debugging aids, invoked deliberately and scoped to what you are
+investigating. Neither runs as a routine phase, and neither produces a number that
+is reported as a grade.
+
+**Coverage** (`./scripts/coverage.sh`) answers *did this code run?* Run it once
+after a package's tests are derived, and ask of each unexecuted region exactly one
+question:
+
+> Does this correspond to a contract case that is missing, or to implementation
+> the contract promises nothing about?
+
+The first answer amends the contract and its tests. The second leaves it alone.
+If nothing can reach the region at all, that is a dead-code finding against
+production, not a test finding. **You never write a test to turn a region green.**
+
+**Mutation** (`./scripts/mutation-test.sh [target]`) answers *does anything observe
+what this code produces?* It mutates production bytecode — flips a `<`, swaps a
+`+`, returns `null` — and reruns the covering tests. It is useful for finding a
+case you wrote a test for but pinned nothing useful about. Under contract testing a
+**high surviving-mutant count is the expected, healthy state**, because contract
+tests deliberately leave the implementation free to change; the score therefore
+measures precisely what we have decided not to optimize. Read individual survivors
+in code the contract makes a promise about; never report the percentage.
+
+## Constants in test code
+
+**Never redeclare or duplicate a production constant's literal in test code.** If a
+test needs the value, the question is whether the contract should name the
+constant — not whether the field should be widened:
+
+> A constant is part of the contract **if a contract's Javadoc names it**, via
+> `{@value #X}` or `{@link Class#X}`. Then its visibility follows the visibility of
+> the contract citing it. If no contract names it, it is implementation, and a test
+> that needs it is testing implementation.
+
+See [Contracts](./contracts.md#constants-and-the-contract) for the worked cases.
 
 ## Frameworks
 
 - **JUnit 5** (Jupiter) — test lifecycle and structure. Global config in
   `src/test/resources/junit-platform.properties` runs test classes and methods
-  in name order.
+  in name order. `@ParameterizedTest` with `@MethodSource` / `@EnumSource` is the
+  normal shape for an enumerated domain or an invariant over many inputs.
 - **AssertJ** for assertions (`assertThat(...).isEqualTo(...)`). Prefer AssertJ
-  over JUnit's `assertEquals` / `assertTrue` for its readable failure messages.
-  JUnit's `assertAll` is fine for grouping independent assertions that should
-  all be reported together.
+  over JUnit's `assertEquals` / `assertTrue` for its readable failure messages — a
+  failing test should localize the cause without a debugger. JUnit's `assertAll` is
+  fine for grouping independent assertions that should all be reported together.
 - **Mockito** for mocking (`mock()`, `mockStatic()`, `when()`, `verify()`)
 - **AssertJ Swing** for E2E GUI testing (Robot, FrameFixture)
 
@@ -175,8 +265,9 @@ must not re-declare it. See [E2E Test Guide](./testing-e2e.md).
 ## Naming Conventions
 
 - Test classes: `*Test.java`, mirror the source package structure
-- Test methods: `test*` prefix describing condition and expected outcome (e.g.,
-  `testApplyToNoteAppliesAccidental`)
+- Test methods: `test*` prefix naming the **contract case** — the condition and the
+  promised outcome, not the method called (e.g.
+  `testApplyToNoteAppliesAccidental`, `testTicksThrowsForTypeWithNoTickMapping`)
 - `@Nested` classes: name for the condition they group, without a `test*`
   prefix (e.g., `WhenSelectionEmpty`). Use a `@Nested` class only when there are
   multiple related tests to group — never wrap a single test method.
@@ -204,26 +295,3 @@ execution order explicitly with `@TestClassOrder` / `@Order` (plus
 `@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class).
 `ElementInsertionTest.java` is the canonical example; its class header documents
 why each block runs where it does.
-
-## Testability Over Encapsulation
-
-Prefer widening visibility to package-private over testing through awkward
-public APIs:
-
-- A private method that is a self-contained unit worth testing directly → make
-  it package-private and test it directly, rather than driving it through a
-  public method that needs heavy setup.
-- A constant a test needs, in the same package → widen it to package-private
-  and access it directly.
-- A constant a test needs, in a different package → widen the constant AND its
-  enclosing class to public. If making the type public is wrong — it's internal
-  vocabulary that must stay sealed — stop and propose the alternative (moving
-  the test into that package, or extracting the constants to a public home)
-  rather than choosing one yourself.
-- Never redeclare or duplicate the literal in test code.
-- A private field a test needs to read or write → add a package-private (or
-  public) getter and/or setter in the production class and call it from the test.
-  Never widen the field itself to package-private.
-
-This works because test classes mirror the source package, so package-private
-members are visible to their tests.
