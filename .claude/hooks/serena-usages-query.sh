@@ -14,7 +14,10 @@
 
 set -euo pipefail
 
-readonly ESCAPE_HATCH_PREFIX='PROSE=1'
+# Matched as a standalone word anywhere in the command, not only at the front:
+# requiring it to lead means it cannot be written inside a loop or a pipeline, and
+# `PROSE=1 bash -c '...'` is a wrapper nobody should have to think of.
+readonly ESCAPE_HATCH='(^|[[:space:]])PROSE=1([[:space:]]|$)'
 
 cmd=$(jq -r '.tool_input.command // ""')
 
@@ -29,7 +32,7 @@ if ! matches '\b(rg|grep)\b'; then
 fi
 
 # Deliberate opt-out: the caller is asserting this searches prose, not symbols.
-if [[ "$cmd" == "$ESCAPE_HATCH_PREFIX"* ]]; then
+if matches "$ESCAPE_HATCH"; then
   exit 0
 fi
 
@@ -66,8 +69,17 @@ Use serena:
   get_symbols_overview(file)                     -> what a class contains
   type_hierarchy("Class", file)                  -> extends/implements
 
-If you are searching prose rather than symbols — comments, Javadoc, string
-literals — prefix the command with PROSE=1 to say so explicitly.
+PROSE=1 is not a way around this rule — it is for the questions serena cannot
+answer, because they are about text rather than about symbols:
+  - does this literal / comment / Javadoc phrase appear anywhere
+  - what does this file's raw text look like at these lines
+Put PROSE=1 anywhere in the command as its own word; it need not come first, so
+it works inside a loop or a pipeline.
+
+You do not need it for a command that names only non-Java paths (docs/, scripts/,
+.agents/, .claude/, or a .md/.json/.xml/.sh/.gradle/... file) — those already pass
+untouched. A search naming no path at all defaults to this Java repo, so it counts
+as searching Java.
 EOF
 
 jq -n --arg reason "$reason" \

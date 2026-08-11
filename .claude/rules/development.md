@@ -9,6 +9,17 @@ Feature branches are based on `develop`, not `main`. Before any operation that r
 - Tests: always `./scripts/compile.sh` first if any file under `src/main/` changed; always `./scripts/test.sh` (never `./gradlew test`). Bare `./scripts/test.sh` runs the **unit suite only** — there is no form that runs both suites, so reaching e2e always takes typing `e2e`, and any e2e run requires user approval. Run unit before e2e. See the usage header in `scripts/test.sh` for targets and flags; it validates them and prints the corrected command when a target is wrong.
   - Failures: read output for error info/location. Do NOT rerun with flags. Never assume pre-existing — do NOT stash to check. Fix before new changes.
 
+## Unused Imports
+
+Don't hunt for imports left stale by code you deleted, and never grep for them. Nothing
+in the build reports one — errorprone runs with `disableAllChecks` and only NullAway
+enabled, javac has no unused-import warning, and Checkstyle cannot parse this codebase's
+`import module` declarations — but they are harmless, and the IDE clears them all in one
+pass. Leave them.
+
+Removing an import you can see is dead while editing the surrounding lines is fine. Going
+looking is not.
+
 ## Writing Tests
 
 Before reading, creating, or modifying tests, read the relevant guide (not auto-loaded): [testing-common.md](../guides/testing-common.md), [testing-unit.md](../guides/testing-unit.md), [testing-e2e.md](../guides/testing-e2e.md).
