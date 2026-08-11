@@ -162,7 +162,7 @@ project first.
 
 ## Phase 2 — `contracts.md`
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
 
 Create `.claude/guides/contracts.md`: the worked Java form of the Phase 1
 principles, loaded on demand rather than always in context.
