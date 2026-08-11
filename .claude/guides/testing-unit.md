@@ -21,6 +21,49 @@ class FooTest extends UnitTest {
 }
 ```
 
+## Parameterized Tests for Equivalence Classes and Invariants
+
+`@ParameterizedTest` with `@MethodSource` (or `@EnumSource` for a plain enum) is
+the normal shape for a contract's enumerated domain or an invariant that must
+hold across many inputs — not a special case reached for only when a table gets
+long. Enumerating a finite domain this way costs what picking two representative
+values costs; picking two is what leaves the third one broken.
+
+Enumerated domain, one case per contract clause:
+
+```java
+@ParameterizedTest
+@MethodSource("typesWithTickMapping")
+void testTicksReturnsExactIntegerForEveryValidDotCount(ElementType type) {
+    for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
+        assertThat(NoteTypeMapping.ticks(type, dotCount)).isPositive();
+    }
+}
+
+static Stream<ElementType> typesWithTickMapping() {
+    return Stream.of(ElementType.values())
+        .filter(NoteTypeMapping::hasDuration);
+}
+```
+
+Invariant over many representative inputs, asserting the property rather than
+pinning one expected output per input:
+
+```java
+@ParameterizedTest
+@MethodSource("typeAndTupletRatioCombinations")
+void testTicksScaleExactlyForEveryTupletRatioAndDotCount(ElementType type, int ratio) {
+    for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
+        var scaled = NoteTypeMapping.ticks(type, dotCount) * 2 / ratio;
+
+        assertThat(scaled * ratio).isEqualTo(NoteTypeMapping.ticks(type, dotCount) * 2);
+    }
+}
+```
+
+See [Contract-Driven Testing](../guides/contracts.md) for how these cases fall
+out of the contract itself.
+
 ## Creating Staff Elements
 
 Never call `ElementType.X.newInstance()` in a test, and never write a local
@@ -44,9 +87,15 @@ If the type you need is missing, add a method to `StaffElementFactory` rather
 than reaching for `newInstance()` at the call site — a per-class `note()` helper
 is the duplication this factory exists to prevent.
 
-## MainFrame Singleton Mocking
+## MainFrame Singleton Mocking (fallback)
 
-Most UI-dependent tests need to mock the `MainFrame.getInstance()` singleton chain.
+This is a fallback, not a first resort. Reach for it only when the class under
+test cannot be constructed without the `MainFrame.getInstance()` chain and
+cannot be changed to take its collaborators directly. A dependency that needs
+this much mocking to exercise is usually a constructor-injection finding — the
+collaborator belongs as a constructor or factory parameter, real API used by
+production too, not something reached for through a static singleton at test
+time. Prefer that fix over adding another mock setup here.
 
 ### Inline (try-with-resources) — for simple tests
 

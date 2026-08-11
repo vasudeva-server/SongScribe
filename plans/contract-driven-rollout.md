@@ -210,7 +210,7 @@ Rewrite `.claude/guides/testing-common.md` around contract-derived cases.
 
 ## Phase 4 — Mechanical guide edits
 
-**Model:** Sonnet · **Effort:** medium · **Status:** ⏳
+**Model:** Sonnet · **Effort:** medium · **Status:** ✅
 
 Every change here is already decided; apply it.
 

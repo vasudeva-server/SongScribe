@@ -4,10 +4,18 @@ Read `./testing-common.md` first for shared conventions.
 
 ## Core Principle
 
-Prefer unit tests — they are faster and run without approval. Use an E2E test
-only when the behavior genuinely requires simulating mouse actions through the
-real Swing pipeline. Running E2E tests requires user approval (see
-`.agents/rules/development.md`).
+E2E proves **wiring** — that a real click or keystroke travels the full path
+from event dispatch through action, model mutation, layout invalidation,
+repaint, and selection reflection without a break. It is not where a contract's
+cases are exercised; those are unit-tested. Write **one E2E test per path**, never
+one per case: once a path is proven connected, every case along it is a unit-test
+concern.
+
+Prefer unit tests otherwise — they are faster and run without approval. Use an
+E2E test only when the behavior genuinely requires simulating mouse actions
+through the real Swing pipeline. Running E2E tests requires user approval (see
+`.agents/rules/development.md`). See [Choosing the level](./testing-common.md#choosing-the-level-unit-vs-e2e-vs-none)
+for the full escalation rubric.
 
 ## Running E2E Tests
 

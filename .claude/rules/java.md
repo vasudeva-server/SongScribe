@@ -153,6 +153,43 @@ Use `{@link ClassName#CONSTANT_NAME}` when the prose refers to the constant *as 
 
 Exception: illustrating an example calculation/formula, where literals are needed to show the math — reference the constant elsewhere in the same doc if possible.
 
+## Writing a Contract in Javadoc
+
+See [Contracts](../guides/contracts.md) for what belongs in a method contract and
+a full worked example. This section is the Javadoc syntax for it.
+
+- **Preconditions** — valid argument ranges, nullability, required receiver
+  state — go in `@param`, in prose where the tag alone can't carry the
+  condition (`@param dotCount number of augmentation dots (0, 1, or 2)`).
+- **Postconditions** — what holds of the return value and of the receiver
+  afterward — go in `@return`, in prose.
+- **`@throws`** names every exception type and the exact condition that
+  produces it, one tag per type. A vague `@throws` ("if invalid") is not a
+  contract clause a test can be derived from.
+- **Boundary semantics and result invariants** — inclusive/exclusive ranges,
+  empty input, zero, ties, "every result satisfies X" — have no dedicated tag;
+  state them in prose in the method's doc body.
+- **Side effects and relationships** — mutation, messages posted, threading
+  requirements, guard methods or inverses — state in prose, and link a related
+  method with `{@link}` rather than restating its contract.
+- **Class and package invariants** go on the class or `package-info.java`
+  Javadoc, in prose, not repeated on every method that relies on them.
+
+## Signature Rules for Contracts
+
+From the global rules (`~/.claude/rules/development.md`), in Java terms:
+
+- **More than four parameters: a `record` parameter object is required.** Not
+  a style preference — past four params a call site cannot be read against its
+  signature without checking the declaration.
+- **Two or more adjacent parameters of the same type: a `record` parameter
+  object**, regardless of the total count, when a call site could transpose them
+  without the compiler catching it (`forTypeToken(token, false, false)` is the
+  case in [Contracts](../guides/contracts.md)).
+- **A boolean parameter that selects a mode or type: an enum, not a
+  `boolean`.** See [Boolean "type" parameters](#boolean-type-parameters) above;
+  this is the same rule restated for contract signatures.
+
 ## Spelling
 
 Use the American spelling "center" (and its variants: "centered", "centering") in comments and identifiers, not the British spelling "centre" and its variants.

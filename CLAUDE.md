@@ -20,7 +20,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Design Docs
 
-`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others). Guides in `.agents/guides/` tell you the conventions to follow; `docs/` explains why a subsystem is built the way it is. Check for a matching doc before a non-trivial change to one of these areas.
+`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others). Guides in `.agents/guides/` tell you the conventions to follow; `docs/` is the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them. Check for a matching doc before a non-trivial change to one of these areas.
 
 ### Spawning Fresh Subagents
 
@@ -30,6 +30,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 **MANDATORY:** If a task touches any area below — even tangentially — read the linked guide first; these subsystems have project-specific conventions that override language and framework defaults.
 
+- **Writing or changing a method, class, or package contract** — any new or changed nontrivial API: [Contracts](.agents/guides/contracts.md).
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](.agents/guides/lyrics.md).
 - **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](.agents/guides/unit-conversion.md).
