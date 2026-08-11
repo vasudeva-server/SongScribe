@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.gson.JsonNull;
 import com.google.gson.JsonParser;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -453,66 +452,6 @@ class PrefsTest extends UnitTest {
 
         // The non-obsolete live key must be intact — removeObsoleteKeys is surgical.
         assertThat(Prefs.getRawStored(PrefsKey.APPEARANCE)).isEqualTo(STORED_APPEARANCE);
-    }
-
-    // --- parseJsonValue ---
-
-    @Nested
-    class ParseJsonValue {
-
-        @Test
-        void testBooleanElementReturnsBooleanType() {
-            // boolean JSON primitive → Java Boolean; the type matters because getBoolean
-            // casts directly to Boolean — a non-Boolean stored value causes ClassCastException.
-            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("true"));
-            assertThat(result).isInstanceOf(Boolean.class).isEqualTo(Boolean.TRUE);
-        }
-
-        @Test
-        void testNumberElementStoredAsLong() {
-            // Numbers must be stored as Long, not Integer or Double.
-            // getInt calls Number.intValue() and getLong calls Number.longValue() — both
-            // require a numeric type; storing as Double would lose precision for large values.
-            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("42"));
-            assertThat(result).isInstanceOf(Long.class).isEqualTo(42L);
-        }
-
-        @Test
-        void testStringElementReturnsString() {
-            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("\"hello\""));
-            assertThat(result).isInstanceOf(String.class).isEqualTo("hello");
-        }
-
-        @Test
-        void testObjectElementReturnsMap() {
-            // JSON objects are deserialized as Map<String,Object> so getMap() can
-            // return them without additional conversion.
-            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("{\"x\":1,\"y\":2}"));
-            assertThat(result).isInstanceOf(Map.class);
-
-            @SuppressWarnings("unchecked")
-            var map = (Map<String, Object>) result;
-            assertThat(map).containsKey("x").containsKey("y");
-        }
-
-        @Test
-        void testArrayElementReturnsStringList() {
-            // JSON arrays are deserialized as List<String> so getStringList() can return them.
-            var result = Prefs.parseJsonValueForTest(JsonParser.parseString("[\"a\",\"b\"]"));
-            assertThat(result).isInstanceOf(List.class);
-
-            @SuppressWarnings("unchecked")
-            var list = (List<String>) result;
-            assertThat(list).containsExactly("a", "b");
-        }
-
-        @Test
-        void testNullJsonElementReturnsNull() {
-            // JsonNull is returned for JSON null literals; parseJsonValue returns null
-            // so that the caller (loadStore/loadDefaults) can skip null entries.
-            var result = Prefs.parseJsonValueForTest(JsonNull.INSTANCE);
-            assertThat(result).isNull();
-        }
     }
 
     // --- writeTyped ---

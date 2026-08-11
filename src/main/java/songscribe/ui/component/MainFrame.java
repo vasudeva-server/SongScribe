@@ -276,7 +276,9 @@ public class MainFrame extends JFrame implements Printable {
      * <p>
      * The splash is always hidden before any dialog is shown. If a fatal error is present,
      * {@link RuntimeError#exit(String, String)} is called and the main window
-     * is not revealed. Otherwise each non-fatal error is shown as a warning dialog in queue order.
+     * is not revealed. Otherwise each non-fatal error is shown as a warning dialog in queue
+     * order and the queue is cleared — a second call with no newly enqueued errors shows
+     * nothing.
      */
     static void drainStartupErrors() {
         var fatal = firstFatal();
@@ -292,6 +294,8 @@ public class MainFrame extends JFrame implements Printable {
             for (var error : STARTUP_ERRORS) {
                 OptionDialogs.showWarningMessage(null, error.title(), error.message());
             }
+
+            STARTUP_ERRORS.clear();
         }
     }
 

@@ -37,7 +37,6 @@ import java.util.Set;
 import com.formdev.flatlaf.util.SystemInfo;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -185,14 +184,6 @@ public final class Prefs {
      */
     static void removeSystemDefaultKeysFromStoreForTest() {
         INSTANCE.removeSystemDefaultKeysFromStore();
-    }
-
-    /**
-     * Exposes {@link #parseJsonValue(JsonElement)} for direct invocation in tests.
-     * Package-private for test use only — do not call from production code.
-     */
-    static @Nullable Object parseJsonValueForTest(JsonElement element) {
-        return parseJsonValue(element);
     }
 
     /**
@@ -377,7 +368,7 @@ public final class Prefs {
         var result = new HashMap<String, Object>();
 
         for (var entry : json.entrySet()) {
-            var value = parseJsonValue(entry.getValue());
+            var value = JsonValues.toJavaValue(entry.getValue());
 
             if (value != null) {
                 result.put(entry.getKey(), value);
@@ -407,39 +398,6 @@ public final class Prefs {
         } catch (IOException e) {
             LOG.warn("Failed to save preferences to {}", prefsFile, e);
         }
-    }
-
-    private static @Nullable Object parseJsonValue(JsonElement element) {
-        if (element.isJsonPrimitive()) {
-            var primitive = element.getAsJsonPrimitive();
-
-            if (primitive.isBoolean()) {
-                return primitive.getAsBoolean();
-            }
-
-            if (primitive.isNumber()) {
-                // Store all integers as Long so both getInt and getLong work
-                return primitive.getAsLong();
-            }
-
-            return primitive.getAsString();
-        }
-
-        if (element.isJsonObject()) {
-            return GSON.fromJson(element, Map.class);
-        }
-
-        if (element.isJsonArray()) {
-            var list = new ArrayList<String>();
-
-            for (var item : element.getAsJsonArray()) {
-                list.add(item.getAsString());
-            }
-
-            return list;
-        }
-
-        return null;
     }
 
     private Object getDefault(PrefsKey key) {
