@@ -438,7 +438,22 @@ Compile with `./scripts/compile.sh` and run the unit suite with `./scripts/test.
 
 ## Phase 10 — Full test-only-surface sweep
 
-**Model:** Sonnet · **Effort:** medium · **Status:** ⏳
+**Model:** Sonnet · **Effort:** medium · **Status:** ✅
+
+**Resolution.** Recorded in
+[`plans/test-only-surface.md`](./test-only-surface.md). 13 parallel sweeps (one
+per package group) worked from the tests, per the procedure below, and found
+~55 new members across 15 clusters with no `*ForTest*`/`*ForTesting*` name —
+the invisible violations `FontDialog.java:37` predicted. Also found: 11
+misnamed-internal-API candidates, 9 new lifecycle gaps not covered by Phases
+8-9 (`AppearanceManager`, `ActivationGate`, the `EditModeManager`/
+`GraceModeManager`/`PasteModeManager` trio, `MidiController`'s device fields,
+`MyFontUtils`, `MessageLogger`, `Shutdown`, and two `BaseDialog` reset hooks),
+2 new reflection-into-production-internals instances beyond the already-known
+`ReflectionTestHelper`, 3 incidental dead-code findings, and 8 borderline
+cases recorded for awareness though they fail the sweep's strict criterion.
+`ui/renderer` came back completely clean. Nothing was fixed — each package's
+own phase fixes what's recorded here, per the per-area procedure's step 5.
 
 The 31-member inventory in discussion doc §6 is name-based only — it found
 members *called* `*ForTest*`. Members widened without a telltale name are
