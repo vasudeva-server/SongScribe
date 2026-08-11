@@ -113,7 +113,7 @@ decisions they depend on.
 
 ## Phase 1 — Global, language-neutral rules
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
 
 Authoring the rules that will govern all future work in every project. The
 content is decided; the phrasing is load-bearing.
