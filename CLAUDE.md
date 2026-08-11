@@ -20,7 +20,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Design Docs
 
-`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others). Guides in `.agents/guides/` tell you the conventions to follow; `docs/` is the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them. Check for a matching doc before a non-trivial change to one of these areas.
+`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others) and, since Phase 7 of the contract-driven rollout, the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them (`unit-conversion.md`, `zoom.md`, `lyrics.md`, `messages.md`, `mutations.md`, and others). Guides in `.agents/guides/` tell you the conventions to follow within that hierarchy — how to write code here, not what the system promises. The two directories are siblings, not nested: `docs/` states promises, `.agents/guides/` states conventions. Check for a matching doc before a non-trivial change to one of these areas.
 
 ### Spawning Fresh Subagents
 
@@ -32,11 +32,11 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 - **Writing or changing a method, class, or package contract** — any new or changed nontrivial API: [Contracts](.agents/guides/contracts.md).
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
-- **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](.agents/guides/lyrics.md).
-- **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](.agents/guides/unit-conversion.md).
-- **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](.agents/guides/zoom.md).
-- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](.agents/guides/messages.md).
-- **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation System](.agents/guides/mutations.md).
+- **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](docs/lyrics.md).
+- **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](docs/unit-conversion.md).
+- **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](docs/zoom.md).
+- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](docs/messages.md).
+- **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation System](docs/mutations.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.agents/guides/option-dialogs.md).
 - **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle): [Dialogs](.agents/guides/dialogs.md).
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.agents/guides/prefs.md).

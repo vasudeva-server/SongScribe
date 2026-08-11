@@ -1165,7 +1165,7 @@ public final class Song {
     //
     // Every entry point below delegates to this song's ModificationSession, which owns
     // the depth counters and the accumulated mutation batch. See that class, and
-    // .agents/guides/mutations.md, for the rules callers must honor.
+    // docs/mutations.md, for the rules callers must honor.
 
     /** Returns {@code true} while a modification bracket is open. */
     public boolean isModifying() {

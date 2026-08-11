@@ -4,7 +4,7 @@ This document captures layout rules for elements above and below staff lines, bu
 
 ## Units
 
-All distances below are in **staff-spaces** (`ss` — the `Ss` suffix in code), where `1.0 ss` is the distance between two adjacent staff lines. This is the project's standard spatial unit; see [Unit Conversion](../../.agents/guides/unit-conversion.md). (An earlier draft of this document used "MU" for this unit — the codebase has no such term, so all values have been re-expressed in `ss` and, where a named constant exists, cross-referenced to it.)
+All distances below are in **staff-spaces** (`ss` — the `Ss` suffix in code), where `1.0 ss` is the distance between two adjacent staff lines. This is the project's standard spatial unit; see [Unit Conversion](unit-conversion.md). (An earlier draft of this document used "MU" for this unit — the codebase has no such term, so all values have been re-expressed in `ss` and, where a named constant exists, cross-referenced to it.)
 
 ## Terminology
 

@@ -4,7 +4,7 @@ Spatial reference diagrams for `songscribe.layout` and `songscribe.shape`. The c
 themselves carry prose summaries and point here.
 
 See also [Line Layout Rules](line-layout.md) for the placement rules these geometries
-serve, and [Unit Conversion](../.agents/guides/unit-conversion.md) for the pixel/staff-space
+serve, and [Unit Conversion](unit-conversion.md) for the pixel/staff-space
 conventions.
 
 ---

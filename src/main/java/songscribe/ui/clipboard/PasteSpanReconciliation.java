@@ -301,7 +301,7 @@ public record PasteSpanReconciliation(
      * where they will finally sit. Dropping a bracket that was never added is also what
      * keeps this rule free of any mutation of its own: there is nothing for the paste's
      * bracket to record, so the paste's single undo step covers the drop by construction,
-     * and the companion-ordering rule in {@code .agents/guides/mutations.md} is satisfied
+     * and the companion-ordering rule in {@code docs/mutations.md} is satisfied
      * without ordering anything.
      *
      * <p>The straddle rule's accounting is left alone: the fragment tuplets it dropped

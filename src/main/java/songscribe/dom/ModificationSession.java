@@ -52,7 +52,7 @@ import songscribe.undo.UndoController;
  * </ul>
  *
  * <p>One is owned by each {@code Song}, which delegates its whole bracket API here.
- * {@code Line} routes through {@code Song} in turn. See {@code .agents/guides/mutations.md}
+ * {@code Line} routes through {@code Song} in turn. See {@code docs/mutations.md}
  * for the emission rules callers must honor.
  */
 public final class ModificationSession {
@@ -412,7 +412,7 @@ public final class ModificationSession {
      * mutation. Callers that do record one invoke this from inside their
      * {@link #applyChange} mutator: the removals are then recorded while the mutator runs
      * and land ahead of the primary mutation, which is the companion ordering reverse-order
-     * undo needs (see {@code .agents/guides/mutations.md}).
+     * undo needs (see {@code docs/mutations.md}).
      *
      * <p>Nothing is validated during replay — the recorded batch already carries the
      * removals — or while mutation tracking is suspended, since a file load judges its

@@ -315,7 +315,20 @@ All five files are global, under `~/.claude/skills/`.
 
 ## Phase 7 — Issue #773: re-sort guides and docs
 
-**Model:** Sonnet · **Effort:** medium · **Status:** ⏳
+**Model:** Sonnet · **Effort:** medium · **Status:** ✅
+
+**Resolution.** `unit-conversion.md`, `zoom.md`, `lyrics.md`, `messages.md` and
+`mutations.md` moved from `.claude/guides/` to `docs/` — each states a system
+invariant or domain rule spanning subsystems, not a local coding convention.
+`guides/` and `docs/` stay **sibling directories**, not nested: nesting would
+have required moving `.claude/guides/` under the repo-root `docs/`, which
+blurs the tier boundary the move exists to sharpen (`docs/` states promises,
+`.claude/guides/` states conventions) and relocates project tooling config
+into a content directory for no benefit. Every reference — `CLAUDE.md`'s
+required-reading table and Design Docs paragraph, the cross-references inside
+the moved files themselves, three `docs/*.md` files that pointed at them, and
+three Javadoc comments in `src/main/java/songscribe/{dom,ui/clipboard}/` —
+was updated to the new path. Issue #773 closed with this criterion recorded.
 
 Issue #773 asks whether there is a real distinction between `.agents/guides/` and
 `docs/`. There is, and the contract hierarchy names it: **`docs/` holds tier-3

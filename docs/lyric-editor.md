@@ -5,7 +5,7 @@
 baseline matching the rendered lyric box. This document is the reference for its
 lifecycle and key handling; the class itself carries only a prose summary.
 
-See also [Lyrics and Verses](../.agents/guides/lyrics.md) for the conventions that govern
+See also [Lyrics and Verses](lyrics.md) for the conventions that govern
 syllables, hyphen chains, and melismas.
 
 ---
