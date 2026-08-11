@@ -22,6 +22,8 @@ package songscribe.io;
 import java.io.File;
 import java.io.IOException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.FileExtensions;
@@ -41,6 +43,8 @@ import songscribe.util.FileUtils;
  */
 public final class SongFileLoader {
 
+    private static final Logger LOG = LoggerFactory.getLogger(SongFileLoader.class);
+
     private SongFileLoader() {}
 
     /*
@@ -51,10 +55,17 @@ public final class SongFileLoader {
      *
      * .musicxml and .xml go to MusicXmlReader.read. That reader rejects a root element other than
      * <score-partwise>, and a version that is missing, unparseable or below 4.0, with an
-     * UnsupportedFormatException; at endDocument it rejects a <software> value that is null, blank,
-     * or does not start with the package name with a ForeignSoftwareException. Otherwise it returns
+     * UnsupportedFormatException; and before mapping anything it rejects a <software> value that
+     * is null, blank, or does not start with the package name with a ForeignSoftwareException.
+     * Otherwise it returns
      * Success, carrying the tuplet load report if there is one. The catch clauses below map those
      * exceptions plus SAXException and IOException onto the corresponding SongLoadResult cases.
+     *
+     * The final clause is a backstop, not a mapping: a RuntimeException out of the reader is a bug
+     * in the mappers — most plausibly a null read off the generated ProxyMusic graph, which NullAway
+     * cannot check (see the ProxyMusicAccess class comment). It is logged at error with its stack
+     * trace so the bug stays findable, then reported as a damaged file, because taking the whole
+     * application down is the wrong answer to a file the user merely tried to open.
      *
      * Anything else (.pdf, .txt, no extension, …) is an UnsupportedFileFormat naming the extension.
      */
@@ -74,6 +85,9 @@ public final class SongFileLoader {
                 return new SongLoadResult.ParseError(file, e);
             } catch (IOException e) {
                 return new SongLoadResult.IoError(file, e);
+            } catch (RuntimeException e) {
+                LOG.error("Unexpected failure reading MusicXML file '{}'", file.getName(), e);
+                return new SongLoadResult.ParseError(file, new SAXException("Unexpected reader failure", e));
             }
         }
 

@@ -23,15 +23,15 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.FIXED_CLOCK;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.countOccurrences;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parseResult;
 
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.function.ToDoubleFunction;
 import java.util.stream.Stream;
@@ -39,13 +39,13 @@ import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
+import songscribe.layout.LineLayoutProvider;
 
 /**
  * Phase 8 losslessness gate: every {@code .mssw} in the test corpus is loaded by
@@ -86,11 +86,42 @@ import songscribe.io.SongLoader;
  * than across the fixpoint, so neither sees the write-forward-only fields:
  * {@link #CONTENT_MARKERS} for dropped elements and {@link #CANONICAL_SCALARS} for
  * altered values.
+ *
+ * <h2>The backward-compatibility half</h2>
+ * {@link #testFixtureDocumentValidatesAndLoads} sweeps the {@code .musicxml} documents in
+ * {@code src/test/resources/fixtures/}. Those were written by the streaming writer that the
+ * object model replaced, so they are the standing proof that files saved by an earlier
+ * SongScribe still validate and still load.
+ *
+ * <h2>What the object-model writer changed, on purpose</h2>
+ * The cutover was measured document by document against the streaming writer it replaced:
+ * across every corpus song the two agree on element structure, element order and every
+ * attribute value. They differ only in the text that carries them, and every one of those
+ * differences is a property of marshalling through the generated model rather than a
+ * decision this program makes:
+ * <ul>
+ *   <li>Attributes appear in the generated {@code propOrder}, not the order the streaming
+ *       writer emitted them — visible on {@code <supports>}, {@code <credit-words>} and
+ *       {@code <words>}. A test that anchors on two attributes being adjacent is pinning
+ *       the marshaller, not the writer.</li>
+ *   <li>A childless element is written {@code <foo/>}; the streaming writer wrote
+ *       {@code <foo></foo>} or {@code <foo />}.</li>
+ *   <li>Elements the streaming writer kept on one line — {@code <key>}, {@code <time>},
+ *       {@code <clef>}, {@code <score-part>} — now put each child on its own line.</li>
+ * </ul>
+ * Two structural differences exist but no corpus song reaches them: a {@code <barline>}
+ * carries at most one {@code <ending>} (the schema permits no more, though the streaming
+ * writer could emit several), and a note-terminated volta close reuses an immediately
+ * following invisible right barline instead of adding a second one.
  */
 class MusicXmlCorpusLosslessnessTest extends UnitTest {
 
     private static final Path CORPUS_ROOT = Path.of("src/test/resources/corpus");
     private static final String MSSW_SUFFIX = ".mssw";
+
+    /** Where the {@code .musicxml} documents written by the pre-object-model writer live. */
+    private static final Path FIXTURE_ROOT = Path.of("src/test/resources/fixtures");
+    private static final String MUSICXML_SUFFIX = ".musicxml";
 
     /**
      * Musically meaningful element markers whose count must survive the first read.
@@ -131,7 +162,7 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
     /**
      * Staff-space tolerance for {@link #CANONICAL_SCALARS}, sized to the coarsest
      * representation any of them passes through: {@code <page-width>} is emitted as tenths
-     * with two decimal places (see {@link MusicXmlUnits#formatTenths}), i.e. thousandths of
+     * with two decimal places (see {@link MusicXmlUnits#formatSsAsTenths}), i.e. thousandths of
      * a staff space. That admits the formatter's own truncation and nothing more — a
      * quantizing read shifts a value by orders of magnitude more (whole-staff-space rounding
      * moves the width by up to half a staff space).
@@ -139,29 +170,39 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
     private static final double SCALAR_TOLERANCE_SS = 0.001;
 
     /**
-     * A fixed clock so the write-forward {@code <encoding-date>} and {@code <rights>}
-     * year are identical across generations; otherwise the fixpoint would flake on
-     * the wall-clock date.
+     * Every file under {@code root} whose name ends in {@code suffix}, as parameterized cases
+     * labelled with the {@code root}-relative path.
+     *
+     * @param description what the directory is expected to hold, for the empty-directory failure
      */
-    private static final Clock FIXED_CLOCK =
-        Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
-
-    static Stream<Arguments> corpusFiles() throws Exception {
-        try (var paths = Files.walk(CORPUS_ROOT)) {
+    private static Stream<Arguments> filesUnder(Path root, String suffix, String description)
+        throws IOException {
+        try (var paths = Files.walk(root)) {
             var files = paths
                 .filter(Files::isRegularFile)
-                .filter(path -> path.getFileName().toString().endsWith(MSSW_SUFFIX))
+                .filter(path -> path.getFileName().toString().endsWith(suffix))
                 .sorted()
                 .toList();
 
-            assertThat(files).as("the corpus must contain at least the real example songs").isNotEmpty();
+            assertThat(files).as(description).isNotEmpty();
 
-            // Materialize before the stream closes; label each case with the corpus-relative path.
+            // Materialize before the stream closes.
             return files.stream()
-                .map(path -> Arguments.of(CORPUS_ROOT.relativize(path).toString(), path))
+                .map(path -> Arguments.of(root.relativize(path).toString(), path))
                 .toList()
                 .stream();
         }
+    }
+
+    static Stream<Arguments> corpusFiles() throws IOException {
+        return filesUnder(CORPUS_ROOT, MSSW_SUFFIX, "the corpus must contain at least the real example songs");
+    }
+
+    static Stream<Arguments> fixtureDocuments() throws IOException {
+        return filesUnder(
+            FIXTURE_ROOT,
+            MUSICXML_SUFFIX,
+            "the fixture directory must hold the documents written before the object-model cutover");
     }
 
     @ParameterizedTest(name = "{0}")
@@ -174,15 +215,14 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
             .isInstanceOf(SongLoadResult.Success.class);
         var legacy = (SongLoadResult.Success) loaded;
 
+        var validator = new MusicXmlSchemaValidator();
+
         // 2. First MusicXML projection of the legacy model — must be schema-valid.
         var firstGeneration = writeMusicXml(legacy.song(), legacy.fonts());
-        var validator = new MusicXmlSchemaValidator();
-        assertThatCode(() -> validator.validate(firstGeneration))
-            .as("%s: MusicXML output must validate against the 4.0 schema", label)
-            .doesNotThrowAnyException();
+        assertValidates(validator, label, "the first projection", firstGeneration);
 
         // 3. Normalize once (strips write-forward-only data).
-        var normalized = read(firstGeneration);
+        var normalized = parseResult(firstGeneration);
 
         // 3a. First-read value fidelity: a canonical scalar must come back from the first
         // read with its magnitude intact. Guards against a reader that quantizes a value
@@ -193,8 +233,10 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
                 .isCloseTo(scalar.value().applyAsDouble(legacy.song()), within(SCALAR_TOLERANCE_SS));
         }
 
-        // 3b. Re-serialize the recovered model.
+        // 3b. Re-serialize the recovered model, which must be schema-valid in its own right:
+        // the recovered model is what every save after the first one writes from.
         var secondGeneration = writeMusicXml(normalized.song(), normalized.fonts());
+        assertValidates(validator, label, "the reserialized model", secondGeneration);
 
         // 3c. First-read content fidelity: every musically meaningful element present in
         // the first projection must survive the first read into the second projection.
@@ -206,7 +248,7 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
         }
 
         // 4. The next round-trip must reproduce the document exactly (the fixpoint).
-        var reloaded = read(secondGeneration);
+        var reloaded = parseResult(secondGeneration);
         var thirdGeneration = writeMusicXml(reloaded.song(), reloaded.fonts());
 
         assertThat(thirdGeneration)
@@ -214,31 +256,50 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
             .isEqualTo(secondGeneration);
     }
 
+    /**
+     * Backward compatibility for the files already on users' disks: every {@code .musicxml}
+     * fixture was written by the streaming writer the object model replaced, so each one is a
+     * saved document from before the cutover. It must still validate, and the object-model
+     * reader must still load it.
+     *
+     * <p>What those songs are then <em>used for</em> is asserted by the tests that own each
+     * fixture — accidental context, tie validation, selection, line overflow. This sweep is the
+     * one place that names the whole set, so a fixture no test loads yet is still covered.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("fixtureDocuments")
+    void testFixtureDocumentValidatesAndLoads(String label, Path file) throws Exception {
+        var validator = new MusicXmlSchemaValidator();
+
+        assertThatCode(() -> validator.validate(file))
+            .as("%s: a document written before the cutover must still validate", label)
+            .doesNotThrowAnyException();
+
+        assertThat(MusicXmlReader.read(file.toFile()).song().lineCount())
+            .as("%s: the object-model reader must recover the document's lines", label)
+            .isPositive();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
+    private static void assertValidates(
+        MusicXmlSchemaValidator validator, String label, String generation, String xml) {
+        assertThatCode(() -> validator.validate(xml))
+            .as("%s: %s must validate against the MusicXML 4.0 schema", label, generation)
+            .doesNotThrowAnyException();
+    }
+
     private static String writeMusicXml(Song song, DocumentFontsHolder fonts) {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        MusicXmlWriter.writeSong(song, fonts, pw, FIXED_CLOCK);
+        // Not MusicXmlRoundTripSupport.writeToString: the fixed clock is MusicXmlWriter's
+        // own seam, and SongFileWriter — which writeToString goes through — has no
+        // parameter for it, so this fixpoint has to drive the writer directly.
+        MusicXmlWriter.writeSong(song, fonts, LineLayoutProvider.headless(song, fonts), pw, FIXED_CLOCK);
         pw.flush();
         return sw.toString();
     }
 
-    private static SongLoadResult.Success read(String xml) throws Exception {
-        return MusicXmlReader.read(new InputSource(new StringReader(xml)));
-    }
-
-    private static int countOccurrences(String haystack, String needle) {
-        var count = 0;
-        var index = haystack.indexOf(needle);
-
-        while (index >= 0) {
-            count++;
-            index = haystack.indexOf(needle, index + needle.length());
-        }
-
-        return count;
-    }
 }

@@ -25,6 +25,10 @@ import static songscribe.dom.StaffElementFactory.demiSemiquaver;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.semiquaver;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.io.StringReader;
 
@@ -35,9 +39,10 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.Beam;
 
-class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlBeamRoundTripTest extends UnitTest {
 
     /** Beam number for the primary (8th-note) beam level. */
     private static final int PRIMARY_BEAM_NUMBER = 1;

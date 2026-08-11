@@ -48,6 +48,7 @@ dependencies {
     compileOnly("com.uber.nullaway:nullaway-annotations:0.12.11")
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("net.engio:mbassador:1.3.2")
+    implementation("org.audiveris:proxymusic:4.0.3")
 
     testImplementation("org.mockito:mockito-core:5.21.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")

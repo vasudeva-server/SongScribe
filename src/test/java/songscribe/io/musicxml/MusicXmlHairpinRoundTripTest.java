@@ -23,6 +23,11 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.SOFTWARE_IDENTIFICATION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -35,6 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
@@ -42,7 +48,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
-class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlHairpinRoundTripTest extends UnitTest {
 
     /**
      * A non-zero x1 shift (staff spaces) that survives the round-trip.

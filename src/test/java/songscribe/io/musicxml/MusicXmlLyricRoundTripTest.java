@@ -23,10 +23,15 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -42,7 +47,7 @@ import java.util.Collections;
  * extender-carrier cases exercise the reader's marker-stripping and text-less
  * carrier handling; the cross-note case guards {@code NoteAccumulator.reset()}.
  */
-class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlLyricRoundTripTest extends UnitTest {
 
     // The single line every built song uses; the reader appends a terminal
     // barline after it, but the notes keep their original 0-based indices.

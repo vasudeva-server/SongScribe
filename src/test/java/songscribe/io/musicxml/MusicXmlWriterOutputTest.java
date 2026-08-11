@@ -30,32 +30,46 @@ import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.C4_STAFF_POSITION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.FIXED_CLOCK_YEAR;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.build;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
-import java.io.PrintWriter;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.xml.parsers.DocumentBuilderFactory;
-
 import org.assertj.core.data.Offset;
+import org.audiveris.proxymusic.FontStyle;
+import org.audiveris.proxymusic.FontWeight;
+import org.audiveris.proxymusic.FormattedText;
+import org.audiveris.proxymusic.LeftCenterRight;
+import org.audiveris.proxymusic.Note;
+import org.audiveris.proxymusic.OverUnder;
+import org.audiveris.proxymusic.ScorePartwise;
+import org.audiveris.proxymusic.Slide;
+import org.audiveris.proxymusic.StartStop;
+import org.audiveris.proxymusic.StartStopContinue;
+import org.audiveris.proxymusic.Syllabic;
+import org.audiveris.proxymusic.TextElementData;
+import org.audiveris.proxymusic.Tied;
+import org.audiveris.proxymusic.TiedType;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.w3c.dom.Element;
-import org.xml.sax.InputSource;
 
+import songscribe.Constants;
+import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -65,26 +79,32 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineLayoutProvider;
 import songscribe.layout.SlideGeometry;
-import songscribe.font.FontKey;
-import songscribe.dom.Ending;
 import songscribe.util.DateUtils;
-import songscribe.Constants;
 
 /**
- * Writer-output fidelity cases: assertions on the emitted MusicXML that the
- * {@code Song → MusicXML → Song} round-trip cannot catch (the reader ignores the
- * attribute or element under test), plus the {@code *WriterOutputIsSchemaValid}
- * schema checks for populated notes.
+ * Writer-output fidelity cases: assertions that the {@code Song → MusicXML → Song} round-trip
+ * cannot catch (the reader ignores the property under test, or the schema is silent about it),
+ * plus the {@code *WriterOutputIsSchemaValid} schema checks for populated notes.
+ *
+ * <p>Where a case only needs the shape {@link ScorePartwiseBuilder} produces, it asserts
+ * directly against the {@link ScorePartwise} graph {@code ScorePartwiseBuilder.build} returns —
+ * clearer, and not coupled to how {@code MusicXmlSerializer} happens to format the marshalled
+ * text. Schema validity inherently needs the marshalled document, so those gates still go
+ * through {@link MusicXmlWriter#writeSong} and {@link MusicXmlSchemaValidator}.
  */
-class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
+class MusicXmlWriterOutputTest extends UnitTest {
 
     // MusicXML coordinate unit: 1 staff space = 10 tenths.
 
     /** The lattice origin: B4 lives at staffPosition 0. */
     private static final int B4_STAFF_POSITION = 0;
+
+    /** The octave both pitch-spelling fixture notes (B4 and C4) belong to. */
+    private static final int STAFF_POSITION_OCTAVE = 4;
 
     // Staff positions for the slide-endpoint output tests. Equal positions give a horizontal
     // glissando (a zero Y term); unequal ones give a diagonal, so both the X and the Y term of
@@ -125,27 +145,43 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     private static final String CREDIT_TEST_TRANSLATION   = "Translated lyrics text";
     private static final String CREDIT_TEST_FOOTNOTES     = "Footnote text";
 
-    // A fixed clock so the rights-credit year is deterministic under test.
-    private static final String FIXED_CLOCK_INSTANT = "2026-01-01T00:00:00Z";
-    private static final int FIXED_CLOCK_YEAR       = 2026;
+    /** Every {@code <note>} in {@code score}, in document order, across every part and measure. */
+    private static List<Note> allNotes(ScorePartwise score) {
+        var notes = new ArrayList<Note>();
 
-    /**
-     * Parses {@code xml} via DOM and returns the named attribute value from the first
-     * {@code <slide>} element whose {@code type} attribute matches {@code slideType},
-     * or {@code null} when no matching slide or no such attribute is found.
-     */
-    private static @Nullable String slideAttribute(String xml, String slideType, String attrName) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var slides = doc.getElementsByTagName("slide");
+        for (var part : score.getPart()) {
+            for (var measure : part.getMeasure()) {
+                for (var item : measure.getNoteOrBackupOrForward()) {
+                    if (item instanceof Note note) {
+                        notes.add(note);
+                    }
+                }
+            }
+        }
 
-        for (var i = 0; i < slides.getLength(); i++) {
-            var slide = (Element) slides.item(i);
+        return notes;
+    }
 
-            if (slideType.equals(slide.getAttribute("type"))) {
-                var value = slide.getAttribute(attrName);
-                return value.isEmpty() ? null : value;
+    /** The {@code <slide>} of the given {@code type} in {@code note}'s notations, or {@code null}. */
+    private static @Nullable Slide findSlide(Note note, StartStop type) {
+        for (var notations : note.getNotations()) {
+            for (var member : notations.getTiedOrSlurOrTuplet()) {
+                if (member instanceof Slide slide && slide.getType() == type) {
+                    return slide;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /** The orientation of the {@code <tied>} of the given {@code type} in {@code note}, or {@code null}. */
+    private static @Nullable OverUnder tiedOrientation(Note note, TiedType type) {
+        for (var notations : note.getNotations()) {
+            for (var member : notations.getTiedOrSlurOrTuplet()) {
+                if (member instanceof Tied tied && tied.getType() == type) {
+                    return tied.getOrientation();
+                }
             }
         }
 
@@ -153,97 +189,41 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Returns the {@code orientation} attribute value of the first {@code <tied>} element
-     * whose {@code type} attribute matches {@code tiedType} ("start"/"stop"), or {@code null}
-     * when no matching element or no such attribute is found.
+     * The orientation of every {@code <tied>} of the given {@code type} across {@code notes}, in
+     * document order. Unlike {@link #tiedOrientation}, this does not stop at the first match, so
+     * it can distinguish an interior chain note's two independent tie references from its
+     * neighbors'.
      */
-    private static @Nullable String tiedOrientation(String xml, String tiedType) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var tiedElements = doc.getElementsByTagName("tied");
+    private static List<OverUnder> tiedOrientations(List<Note> notes, TiedType type) {
+        var orientations = new ArrayList<OverUnder>();
 
-        for (var i = 0; i < tiedElements.getLength(); i++) {
-            var tied = (Element) tiedElements.item(i);
+        for (var note : notes) {
+            var orientation = tiedOrientation(note, type);
 
-            if (tiedType.equals(tied.getAttribute("type"))) {
-                var value = tied.getAttribute("orientation");
-                return value.isEmpty() ? null : value;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns the {@code orientation} attribute of every {@code <tied>} element matching
-     * {@code tiedType} ("start"/"stop"), in document order. Unlike {@link #tiedOrientation}, this
-     * does not stop at the first match, so it can distinguish an interior chain note's two
-     * independent {@code tiedStart}/{@code tiedStop} orientations from its neighbors'.
-     */
-    private static List<@Nullable String> tiedOrientations(String xml, String tiedType) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var tiedElements = doc.getElementsByTagName("tied");
-        var orientations = new ArrayList<@Nullable String>();
-
-        for (var i = 0; i < tiedElements.getLength(); i++) {
-            var tied = (Element) tiedElements.item(i);
-
-            if (tiedType.equals(tied.getAttribute("type"))) {
-                var value = tied.getAttribute("orientation");
-                orientations.add(value.isEmpty() ? null : value);
+            if (orientation != null) {
+                orientations.add(orientation);
             }
         }
 
         return orientations;
     }
 
-    /**
-     * Returns the text content of the first {@code <childTag>} element in document
-     * order, or {@code null} if none is present.
-     */
-    private static @Nullable String firstElementText(String xml, String childTag) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var nodes = doc.getElementsByTagName(childTag);
+    /** The {@link Syllabic} choice-list member of {@code lyric}, or {@code null} if absent. */
+    private static @Nullable Syllabic syllabicOf(org.audiveris.proxymusic.Lyric lyric) {
+        for (var item : lyric.getElisionAndSyllabicAndText()) {
+            if (item instanceof Syllabic syllabic) {
+                return syllabic;
+            }
+        }
 
-        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
+        return null;
     }
 
-    /**
-     * Returns the untrimmed text content of the first {@code <childTag>} descendant
-     * of {@code lyric}, or {@code null} if none is present. Unlike
-     * {@link #firstElementText}, this does not trim: the compound-word marker
-     * (U+2011) appended to {@code <text>} is not whitespace, but trimming is
-     * avoided here on principle since a lyric's exact text content is the point
-     * under test.
-     */
-    private static @Nullable String lyricChildText(Element lyric, String childTag) {
-        var nodes = lyric.getElementsByTagName(childTag);
-        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent();
-    }
-
-    /**
-     * Returns the {@code <credit-words>} element belonging to the {@code <credit>}
-     * whose {@code <credit-type>} text equals {@code creditType}, or {@code null}
-     * when no such credit is present.
-     */
-    private static @Nullable Element creditWordsForType(String xml, String creditType) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var credits = doc.getElementsByTagName("credit");
-
-        for (var i = 0; i < credits.getLength(); i++) {
-            var credit = (Element) credits.item(i);
-            var creditTypeElements = credit.getElementsByTagName("credit-type");
-
-            if (creditTypeElements.getLength() > 0 && creditType.equals(creditTypeElements.item(0).getTextContent())) {
-                var creditWords = credit.getElementsByTagName("credit-words");
-                return creditWords.getLength() == 0 ? null : (Element) creditWords.item(0);
+    /** The text of the {@link TextElementData} choice-list member of {@code lyric}, or {@code null}. */
+    private static @Nullable String textOf(org.audiveris.proxymusic.Lyric lyric) {
+        for (var item : lyric.getElisionAndSyllabicAndText()) {
+            if (item instanceof TextElementData text) {
+                return text.getValue();
             }
         }
 
@@ -251,66 +231,74 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Returns the {@code <credit-words>} element belonging to the {@code <credit>}
-     * whose {@code <credit-type>} text equals {@code creditType}. Fails the test
-     * with a descriptive message when no such credit is present, so call sites
-     * can dereference the result without a separate null check.
+     * The {@code <credit-words>} of the {@code <credit>} whose {@code <credit-type>} equals
+     * {@code creditType}, or {@code null} when no such credit is present.
+     *
+     * <p>{@code Credit.getCreditTypeOrLinkOrBookmark()} is a heterogeneous
+     * {@code List<JAXBElement<?>>} — see {@link HeaderBuilder#addCredit} — so this unwraps by
+     * the value's own type rather than by the {@code JAXBElement}'s element name.
      */
-    private static Element requireCreditWordsForType(String xml, String creditType) throws Exception {
-        var words = creditWordsForType(xml, creditType);
+    private static @Nullable FormattedText creditWordsForType(ScorePartwise score, String creditType) {
+        for (var credit : score.getCredit()) {
+            String type = null;
+            FormattedText words = null;
+
+            for (var item : credit.getCreditTypeOrLinkOrBookmark()) {
+                if (item.getValue() instanceof String typeValue) {
+                    type = typeValue;
+                } else if (item.getValue() instanceof FormattedText wordsValue) {
+                    words = wordsValue;
+                }
+            }
+
+            if (creditType.equals(type)) {
+                return words;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The {@code <credit-words>} of the {@code <credit>} whose {@code <credit-type>} equals
+     * {@code creditType}. Fails the test with a descriptive message when no such credit is
+     * present, so call sites can dereference the result without a separate null check.
+     */
+    private static FormattedText requireCreditWordsForType(ScorePartwise score, String creditType) {
+        var words = creditWordsForType(score, creditType);
 
         assertThat(words).as("%s credit must be present".formatted(creditType)).isNotNull();
 
         return words;
     }
 
-    /** Returns the set of {@code <credit-type>} text values present in {@code xml}. */
-    private static Set<String> creditTypesPresent(String xml) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var creditTypeElements = doc.getElementsByTagName("credit-type");
-        var result = new HashSet<String>();
+    /** The set of {@code <credit-type>} text values present in {@code score}. */
+    private static Set<String> creditTypesPresent(ScorePartwise score) {
+        var types = new HashSet<String>();
 
-        for (var i = 0; i < creditTypeElements.getLength(); i++) {
-            result.add(creditTypeElements.item(i).getTextContent());
+        for (var credit : score.getCredit()) {
+            for (var item : credit.getCreditTypeOrLinkOrBookmark()) {
+                if (item.getValue() instanceof String type) {
+                    types.add(type);
+                }
+            }
         }
 
-        return result;
+        return types;
     }
 
     /**
-     * Returns the text of the {@code <miscellaneous-field>} whose {@code name}
-     * attribute equals {@code name}, or {@code null} when no such field is present.
+     * The text of the {@code <miscellaneous-field>} whose {@code name} attribute equals
+     * {@code name}, or {@code null} when no such field is present.
      */
-    private static @Nullable String miscFieldValue(String xml, String name) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var fields = doc.getElementsByTagName("miscellaneous-field");
-
-        for (var i = 0; i < fields.getLength(); i++) {
-            var field = (Element) fields.item(i);
-
-            if (name.equals(field.getAttribute("name"))) {
-                return field.getTextContent();
+    private static @Nullable String miscFieldValue(ScorePartwise score, String name) {
+        for (var field : score.getIdentification().getMiscellaneous().getMiscellaneousField()) {
+            if (name.equals(field.getName())) {
+                return field.getValue();
             }
         }
 
         return null;
-    }
-
-    /**
-     * Writes {@code song} using a fixed {@code clock} (rather than the
-     * system-default clock {@link #writeToString(Song)} uses) so the
-     * write-forward {@code <rights>}-credit year is deterministic under test.
-     */
-    private static String writeToString(Song song, Clock clock) {
-        var stringWriter = new StringWriter();
-        var printWriter = new PrintWriter(stringWriter);
-        MusicXmlWriter.writeSong(song, DocumentFonts.defaultFonts(), printWriter, clock);
-        printWriter.flush();
-        return stringWriter.toString();
     }
 
     /**
@@ -348,41 +336,30 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Task 1a — Grace-note writer output: {@code <grace>} is present in the emitted
-     * {@code <note>} with no {@code steal-time-following} attribute and no
-     * {@code <duration>} child. Round-trip cannot catch this: the reader derives grace
-     * from {@code <grace>}/{@code <type>} and never compares a steal value.
+     * Task 1a — Grace-note writer output: {@code <grace>} is present on the built note with no
+     * {@code steal-time-following} and no {@code <duration>} child. Round-trip cannot catch this:
+     * the reader derives grace from {@code <grace>}/{@code <type>} and never compares a steal
+     * value.
      */
     @Test
-    void testGraceNoteOutputHasNoStealTimeFollowingAndNoDuration() throws Exception {
+    void testGraceNoteOutputHasNoStealTimeFollowingAndNoDuration() {
         var song = buildSong(line -> {
             line.addElement(graceQuaver());
             line.addElement(crotchet());
         });
 
-        var xml = writeToString(song);
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
+        // The first note in document order is the grace note.
+        var graceNote = allNotes(build(song)).get(0);
 
-        // The first <note> in document order is the grace note.
-        var notes = doc.getElementsByTagName("note");
-        assertThat(notes.getLength()).as("must have at least one note element").isGreaterThan(0);
-
-        var graceNote = (Element) notes.item(0);
-        var graceElements = graceNote.getElementsByTagName("grace");
-        assertThat(graceElements.getLength())
-            .as("<grace> element must be present in the grace note")
-            .isEqualTo(1);
-
-        var graceElement = (Element) graceElements.item(0);
-        assertThat(graceElement.hasAttribute("steal-time-following"))
+        assertThat(graceNote.getGrace())
+            .as("<grace> must be present on the grace note")
+            .isNotNull();
+        assertThat(graceNote.getGrace().getStealTimeFollowing())
             .as("<grace> must not carry steal-time-following")
-            .isFalse();
-
-        assertThat(graceNote.getElementsByTagName("duration").getLength())
+            .isNull();
+        assertThat(graceNote.getDuration())
             .as("<duration> must be absent in a grace note")
-            .isEqualTo(0);
+            .isNull();
     }
 
     /**
@@ -392,29 +369,26 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * Round-trip cannot catch this: the reader ignores {@code default-x}.
      */
     @Test
-    void testNoteXOffsetIsWrittenAsRelativeXAndDefaultXIsBase() throws Exception {
+    void testNoteXOffsetIsWrittenAsRelativeXAndDefaultXIsBase() {
         var song = buildSong(line -> {
             var note = crotchet();
             note.setXOffsetPx(X_OFFSET_PX);
             line.addElement(note);
         });
 
-        var xml = writeToString(song);
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-
-        var notes = doc.getElementsByTagName("note");
-        var noteElement = (Element) notes.item(0);
+        var note = allNotes(build(song)).get(0);
+        var expectedOffsetTenths = ScaleContext.pxToSs(X_OFFSET_PX) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
 
         // The user offset must land in relative-x; default-x carries the base layout X.
-        assertThat(noteElement.hasAttribute("relative-x"))
+        assertThat(note.getRelativeX())
             .as("<note> must carry relative-x when xOffsetPx is non-zero")
-            .isTrue();
+            .isNotNull();
+        assertThat(note.getDefaultX())
+            .as("<note> must always carry default-x")
+            .isNotNull();
 
-        var defaultX = Double.parseDouble(noteElement.getAttribute("default-x"));
-        var relativeX = Double.parseDouble(noteElement.getAttribute("relative-x"));
-        var expectedOffsetTenths = ScaleContext.pxToSs(X_OFFSET_PX) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var defaultX = note.getDefaultX().doubleValue();
+        var relativeX = note.getRelativeX().doubleValue();
 
         // relative-x encodes the user-set offset in tenths.
         assertThat(relativeX)
@@ -433,39 +407,39 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Slide-endpoint writer output: the emitted {@code <slide>} elements carry
+     * Slide-endpoint writer output: the {@code <slide>}s the builder attaches carry
      * {@code default-x} / {@code default-y} taken from the glissando's laid-out endpoints —
      * the start of the drawn line on the start slide, its end on the stop slide. Round-trip
      * cannot catch this: the reader ignores slide coordinate attributes.
      * <p>
-     * Nothing renders the song here, so this also pins the writer's own layout fallback: before
+     * Nothing renders the song here, so this also pins the builder's own layout fallback: before
      * this path existed the coordinates were dropped whenever the line had not been painted.
      */
     @Test
-    void testGlissandoSlideEndpointsInOutput() throws Exception {
+    void testGlissandoSlideEndpointsInOutput() {
         var song = buildGlissandoSong(
             LEVEL_GLISSANDO_STAFF_POSITION,
             LEVEL_GLISSANDO_STAFF_POSITION,
             StaffElement.Accidental.SHARP);
-        var xml = writeToString(song);
+        var notes = allNotes(build(song));
         var endpoints = laidOutGlissandoEndpoints(song);
 
         assertThat(endpoints.endYSs())
             .as("the fixture must be level, so the zero Y term is genuinely under test")
             .isEqualTo(endpoints.startYSs());
 
-        assertSlideEndpoint(xml, "start", endpoints.startXSs(), endpoints.startYSs());
-        assertSlideEndpoint(xml, "stop", endpoints.endXSs(), endpoints.endYSs());
+        assertSlideEndpoint(notes.get(0), StartStop.START, endpoints.startXSs(), endpoints.startYSs());
+        assertSlideEndpoint(notes.get(1), StartStop.STOP, endpoints.endXSs(), endpoints.endYSs());
     }
 
     /**
      * A glissando from a grace note into its host note must emit both slide
      * ends: {@code <slide type="start">} on the grace note and
-     * {@code <slide type="stop">} on the host. The writer previously nulled
+     * {@code <slide type="stop">} on the host. The builder previously nulled
      * out the start side for any grace note, so only the stop was written.
      */
     @Test
-    void testGraceNoteGlissandoWritesBothSlideStartAndStop() throws Exception {
+    void testGraceNoteGlissandoWritesBothSlideStartAndStop() {
         var song = buildSong(line -> {
             var graceNote = graceQuaver();
             graceNote.setGlissando();
@@ -473,12 +447,12 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             line.addElement(crotchet());
         });
 
-        var xml = writeToString(song);
+        var notes = allNotes(build(song));
 
-        assertThat(slideAttribute(xml, "start", "type"))
+        assertThat(findSlide(notes.get(0), StartStop.START))
             .as("grace note must emit <slide type=\"start\">")
             .isNotNull();
-        assertThat(slideAttribute(xml, "stop", "type"))
+        assertThat(findSlide(notes.get(1), StartStop.STOP))
             .as("host note must emit <slide type=\"stop\">")
             .isNotNull();
     }
@@ -486,7 +460,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     /**
      * A glissando too short to draw ({@link SlideGeometry#computeEndpoints} rejected it) must
      * still be emitted, just without {@code default-x}/{@code default-y} — the fallback branch
-     * {@code MusicXmlNotationsWriter.writeSlide} kept for exactly this case.
+     * {@link ScorePartwiseBuilder#addSlide} kept for exactly this case.
      * <p>
      * The real spacing engine reserves at least {@code NoteGeometry.MIN_GLISSANDO_RESERVATION_SS}
      * between any two glissando-connected notes (refs #443), so a too-short glissando cannot be
@@ -496,29 +470,19 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * (see the {@code SlideLayout} javadoc), so a bare mock reproduces that state directly.
      */
     @Test
-    void testTooShortGlissandoEmitsNoCoordinatesFallback() throws Exception {
+    void testTooShortGlissandoEmitsNoCoordinatesFallback() {
         var song = buildGlissandoSong(
             LEVEL_GLISSANDO_STAFF_POSITION,
             LEVEL_GLISSANDO_STAFF_POSITION,
             StaffElement.Accidental.SHARP);
         var noGlissandoGeometry = mock(LayoutResult.class);
-        var stringWriter = new StringWriter();
-        var printWriter = new PrintWriter(stringWriter);
+        var notes = allNotes(build(song, (line, lineIndex) -> noGlissandoGeometry));
 
-        MusicXmlWriter.writeSong(
-            song, DocumentFonts.defaultFonts(), (line, lineIndex) -> noGlissandoGeometry, printWriter);
-        printWriter.flush();
-        var xml = stringWriter.toString();
+        var startSlide = findSlide(notes.get(0), StartStop.START);
 
-        assertThat(slideAttribute(xml, "start", "type"))
-            .as("a too-short glissando is still emitted")
-            .isNotNull();
-        assertThat(slideAttribute(xml, "start", "default-x"))
-            .as("no default-x for a glissando too short to draw")
-            .isNull();
-        assertThat(slideAttribute(xml, "start", "default-y"))
-            .as("no default-y for a glissando too short to draw")
-            .isNull();
+        assertThat(startSlide).as("a too-short glissando is still emitted").isNotNull();
+        assertThat(startSlide.getDefaultX()).as("no default-x for a glissando too short to draw").isNull();
+        assertThat(startSlide.getDefaultY()).as("no default-y for a glissando too short to draw").isNull();
     }
 
     // Phase 4 spot-check: a crotchet (quarter note) on B4 produces schema-valid output.
@@ -596,52 +560,54 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             .doesNotThrowAnyException();
     }
 
-    // -- Direct DOM pitch-spelling anchors (round-trip alone can't catch a uniform
-    //    lattice shift, since both directions would shift together) --
+    // -- Direct pitch-spelling anchors (round-trip alone can't catch a uniform lattice shift,
+    //    since both directions would shift together) --
 
     @Test
-    void testWriterEmitsB4ForOriginStaffPosition() throws Exception {
+    void testWriterEmitsB4ForOriginStaffPosition() {
         var song = buildSong(line -> {
             var note = crotchet();
             note.setStaffPosition(B4_STAFF_POSITION);
             line.addElement(note);
         });
 
-        var xml = writeToString(song);
-        assertThat(firstElementText(xml, "step")).as("<step> for the B4 origin").isEqualTo("B");
-        assertThat(firstElementText(xml, "octave")).as("<octave> for the B4 origin").isEqualTo("4");
+        var pitch = allNotes(build(song)).get(0).getPitch();
+
+        assertThat(pitch.getStep().value()).as("<step> for the B4 origin").isEqualTo("B");
+        assertThat(pitch.getOctave()).as("<octave> for the B4 origin").isEqualTo(STAFF_POSITION_OCTAVE);
     }
 
     @Test
-    void testWriterEmitsC4ForC4StaffPosition() throws Exception {
+    void testWriterEmitsC4ForC4StaffPosition() {
         var song = buildSong(line -> {
             var note = crotchet();
             note.setStaffPosition(C4_STAFF_POSITION);
             line.addElement(note);
         });
 
-        var xml = writeToString(song);
-        assertThat(firstElementText(xml, "step")).as("<step> for C4").isEqualTo("C");
-        assertThat(firstElementText(xml, "octave")).as("<octave> for C4").isEqualTo("4");
+        var pitch = allNotes(build(song)).get(0).getPitch();
+
+        assertThat(pitch.getStep().value()).as("<step> for C4").isEqualTo("C");
+        assertThat(pitch.getOctave()).as("<octave> for C4").isEqualTo(STAFF_POSITION_OCTAVE);
     }
 
     // -- Diagonal glissando: exercises BOTH the X and Y endpoint terms --
 
     @Test
-    void testDiagonalGlissandoSlideEndpointsInOutput() throws Exception {
+    void testDiagonalGlissandoSlideEndpointsInOutput() {
         var song = buildGlissandoSong(
             DIAGONAL_GLISSANDO_SOURCE_STAFF_POSITION,
             DIAGONAL_GLISSANDO_TARGET_STAFF_POSITION,
             null);
-        var xml = writeToString(song);
+        var notes = allNotes(build(song));
         var endpoints = laidOutGlissandoEndpoints(song);
 
         assertThat(endpoints.endYSs())
             .as("the fixture must be diagonal, so the Y term is genuinely under test")
             .isNotEqualTo(endpoints.startYSs());
 
-        assertSlideEndpoint(xml, "start", endpoints.startXSs(), endpoints.startYSs());
-        assertSlideEndpoint(xml, "stop", endpoints.endXSs(), endpoints.endYSs());
+        assertSlideEndpoint(notes.get(0), StartStop.START, endpoints.startXSs(), endpoints.startYSs());
+        assertSlideEndpoint(notes.get(1), StartStop.STOP, endpoints.endXSs(), endpoints.endYSs());
     }
 
     /**
@@ -671,9 +637,9 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Lays {@code song}'s only line out the same way the writer does and returns the glissando
-     * endpoints the writer therefore had to emit. Deriving them independently of the writer keeps
-     * the assertions about the emitted coordinates honest — only the writer's own mapping
+     * Lays {@code song}'s only line out the same way {@link #build(Song)} does and returns the
+     * glissando endpoints the builder therefore had to emit. Deriving them independently keeps
+     * the assertions about the emitted coordinates honest — only the builder's own mapping
      * (which endpoint goes on which slide, staff spaces to tenths) is under test here.
      */
     private static SlideGeometry.Endpoints laidOutGlissandoEndpoints(Song song) {
@@ -681,7 +647,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var layoutResult = LineLayoutProvider
             .headless(song, DocumentFonts.defaultFonts())
             .layoutFor(line, 0);
-        assertThat(layoutResult).as("the writer's layout fallback must produce a layout").isNotNull();
+        assertThat(layoutResult).as("the builder's layout fallback must produce a layout").isNotNull();
 
         var slideLayout = layoutResult.getSlideLayout(line.getElement(0));
         assertThat(slideLayout).as("the laid-out line must carry the glissando's geometry").isNotNull();
@@ -693,20 +659,21 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Asserts that the {@code <slide>} of the given type carries {@code default-x}/{@code default-y}
-     * equal to the expected staff-space point, converted to tenths.
+     * Asserts that {@code note}'s {@code <slide>} of the given type carries
+     * {@code default-x}/{@code default-y} equal to the expected staff-space point, converted to
+     * tenths.
      */
     private static void assertSlideEndpoint(
-        String xml, String slideType, double expectedXSs, double expectedYSs) throws Exception {
-        var defaultX = slideAttribute(xml, slideType, "default-x");
-        var defaultY = slideAttribute(xml, slideType, "default-y");
+        Note note, StartStop slideType, double expectedXSs, double expectedYSs) {
+        var slide = findSlide(note, slideType);
 
-        assertThat(defaultX).as("slide[%s] must carry default-x", slideType).isNotNull();
-        assertThat(defaultY).as("slide[%s] must carry default-y", slideType).isNotNull();
-        assertThat(Double.parseDouble(defaultX))
+        assertThat(slide).as("slide[%s] must be present", slideType).isNotNull();
+        assertThat(slide.getDefaultX()).as("slide[%s] must carry default-x", slideType).isNotNull();
+        assertThat(slide.getDefaultY()).as("slide[%s] must carry default-y", slideType).isNotNull();
+        assertThat(slide.getDefaultX().doubleValue())
             .as("slide[%s] default-x must match the laid-out X", slideType)
             .isCloseTo(expectedXSs * MusicXmlTags.TENTHS_PER_STAFF_SPACE, Offset.offset(0.01));
-        assertThat(Double.parseDouble(defaultY))
+        assertThat(slide.getDefaultY().doubleValue())
             .as("slide[%s] default-y must match the laid-out Y", slideType)
             .isCloseTo(expectedYSs * MusicXmlTags.TENTHS_PER_STAFF_SPACE, Offset.offset(0.01));
     }
@@ -782,7 +749,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
 
     /**
      * Builds a two-crotchet tied song with the given explicit stem directions on each note.
-     * The writer never runs auto-stem layout, so the notes' write-forward {@code direction}
+     * The builder never runs auto-stem layout, so the notes' write-forward {@code direction}
      * fields are read as set here.
      */
     private static Song buildTiedSong(StaffElement.Direction startDirection, StaffElement.Direction endDirection) {
@@ -799,39 +766,39 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testTiedOrientationIsUnderWhenBothStemsUp() throws Exception {
-        var xml = writeToString(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.UP));
+    void testTiedOrientationIsUnderWhenBothStemsUp() {
+        var notes = allNotes(build(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.UP)));
 
-        assertThat(tiedOrientation(xml, "start"))
+        assertThat(tiedOrientation(notes.get(0), TiedType.START))
             .as("both-up tie: <tied type=\"start\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_UNDER);
-        assertThat(tiedOrientation(xml, "stop"))
+            .isEqualTo(OverUnder.UNDER);
+        assertThat(tiedOrientation(notes.get(1), TiedType.STOP))
             .as("both-up tie: <tied type=\"stop\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_UNDER);
+            .isEqualTo(OverUnder.UNDER);
     }
 
     @Test
-    void testTiedOrientationIsOverWhenBothStemsDown() throws Exception {
-        var xml = writeToString(buildTiedSong(StaffElement.Direction.DOWN, StaffElement.Direction.DOWN));
+    void testTiedOrientationIsOverWhenBothStemsDown() {
+        var notes = allNotes(build(buildTiedSong(StaffElement.Direction.DOWN, StaffElement.Direction.DOWN)));
 
-        assertThat(tiedOrientation(xml, "start"))
+        assertThat(tiedOrientation(notes.get(0), TiedType.START))
             .as("both-down tie: <tied type=\"start\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
-        assertThat(tiedOrientation(xml, "stop"))
+            .isEqualTo(OverUnder.OVER);
+        assertThat(tiedOrientation(notes.get(1), TiedType.STOP))
             .as("both-down tie: <tied type=\"stop\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+            .isEqualTo(OverUnder.OVER);
     }
 
     @Test
-    void testTiedOrientationIsOverWhenStemsConflict() throws Exception {
-        var xml = writeToString(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.DOWN));
+    void testTiedOrientationIsOverWhenStemsConflict() {
+        var notes = allNotes(build(buildTiedSong(StaffElement.Direction.UP, StaffElement.Direction.DOWN)));
 
-        assertThat(tiedOrientation(xml, "start"))
+        assertThat(tiedOrientation(notes.get(0), TiedType.START))
             .as("conflicting-stem tie: <tied type=\"start\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
-        assertThat(tiedOrientation(xml, "stop"))
+            .isEqualTo(OverUnder.OVER);
+        assertThat(tiedOrientation(notes.get(1), TiedType.STOP))
             .as("conflicting-stem tie: <tied type=\"stop\"> orientation")
-            .isEqualTo(MusicXmlTags.ORIENTATION_OVER);
+            .isEqualTo(OverUnder.OVER);
     }
 
     /**
@@ -863,24 +830,24 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testTiedOrientationsDifferOnSharedInteriorChainNote() throws Exception {
+    void testTiedOrientationsDifferOnSharedInteriorChainNote() {
         // Chain: note0 --(tieA)-- note1 --(tieB)-- note2. note1 carries both a tieStop (from tieA)
         // and a tieStart (from tieB) as independent @Nullable Tie references, so a both-up left tie
         // and a stems-conflict right tie must resolve to different orientations on the same note.
-        var xml = writeToString(buildTiedChainSong(
-            StaffElement.Direction.UP, StaffElement.Direction.UP, StaffElement.Direction.DOWN));
+        var notes = allNotes(build(buildTiedChainSong(
+            StaffElement.Direction.UP, StaffElement.Direction.UP, StaffElement.Direction.DOWN)));
 
-        var startOrientations = tiedOrientations(xml, "start");
-        var stopOrientations = tiedOrientations(xml, "stop");
+        var startOrientations = tiedOrientations(notes, TiedType.START);
+        var stopOrientations = tiedOrientations(notes, TiedType.STOP);
 
         assertThat(startOrientations)
             .as("tieA <tied type=\"start\"> (note0, both-up) then tieB <tied type=\"start\"> "
                 + "(note1, stems conflict)")
-            .containsExactly(MusicXmlTags.ORIENTATION_UNDER, MusicXmlTags.ORIENTATION_OVER);
+            .containsExactly(OverUnder.UNDER, OverUnder.OVER);
         assertThat(stopOrientations)
             .as("tieA <tied type=\"stop\"> (note1, both-up) then tieB <tied type=\"stop\"> "
                 + "(note2, stems conflict)")
-            .containsExactly(MusicXmlTags.ORIENTATION_UNDER, MusicXmlTags.ORIENTATION_OVER);
+            .containsExactly(OverUnder.UNDER, OverUnder.OVER);
     }
 
     // -- Phase 6, Task 2b: lyric writer output --
@@ -922,97 +889,82 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Task 2b — Raw lyric output shapes: asserts the emitted {@code <lyric>}
-     * element structure for the six representative forms in
-     * {@link #buildLyricMatrixSong()}. The round-trip tests confirm the
-     * reconstructed {@link Lyric} values; this test instead pins the exact emitted
-     * element shape — the carrier's absent {@code <syllabic>}/{@code <text>}, or the
-     * raw U+2011 marker character inside {@code <text>} — which a value-level
-     * round-trip cannot observe.
+     * Task 2b — Raw lyric output shapes: asserts the built {@code Lyric} graph shape for the six
+     * representative forms in {@link #buildLyricMatrixSong()}. The round-trip tests confirm the
+     * reconstructed {@link Lyric} values; this test instead pins the exact emitted shape — the
+     * carrier's absent syllabic/text choice members, or the raw U+2011 marker character inside
+     * the text — which a value-level round-trip cannot observe.
      */
     @Test
-    void testLyricWriterOutputShapes() throws Exception {
-        var xml = writeToString(buildLyricMatrixSong());
-        var factory = DocumentBuilderFactory.newInstance();
-        var builder = factory.newDocumentBuilder();
-        var doc = builder.parse(new InputSource(new StringReader(xml)));
-        var notes = doc.getElementsByTagName("note");
+    void testLyricWriterOutputShapes() {
+        var notes = allNotes(build(buildLyricMatrixSong()));
 
-        // Note 0: plain syllable — <syllabic>begin</syllabic><text>Ky</text>, no <extend>.
-        var plainLyrics = ((Element) notes.item(0)).getElementsByTagName("lyric");
-        assertThat(plainLyrics.getLength()).as("plain-syllable note must carry exactly one <lyric>").isEqualTo(1);
+        // Note 0: plain syllable — Syllabic.BEGIN then text "Ky", no <extend>.
+        var plainLyrics = notes.get(0).getLyric();
+        assertThat(plainLyrics).as("plain-syllable note must carry exactly one <lyric>").hasSize(1);
 
-        var plainLyric = (Element) plainLyrics.item(0);
-        assertThat(plainLyric.getAttribute("number")).as("plain syllable: verse number").isEqualTo("1");
-        assertThat(lyricChildText(plainLyric, "syllabic")).as("plain syllable: <syllabic>").isEqualTo("begin");
-        assertThat(lyricChildText(plainLyric, "text")).as("plain syllable: <text>").isEqualTo("Ky");
-        assertThat(plainLyric.getElementsByTagName("extend").getLength())
-            .as("plain syllable: no <extend>")
-            .isEqualTo(0);
+        var plainLyric = plainLyrics.getFirst();
+        assertThat(plainLyric.getNumber()).as("plain syllable: verse number").isEqualTo("1");
+        assertThat(syllabicOf(plainLyric)).as("plain syllable: <syllabic>").isEqualTo(Syllabic.BEGIN);
+        assertThat(textOf(plainLyric)).as("plain syllable: <text>").isEqualTo("Ky");
+        assertThat(plainLyric.getExtend()).as("plain syllable: no <extend>").isNull();
 
-        // Note 1: compound-word boundary — <text> carries the U+2011 marker.
-        var compoundLyric = (Element) ((Element) notes.item(1)).getElementsByTagName("lyric").item(0);
-        assertThat(lyricChildText(compoundLyric, "syllabic")).as("compound syllable: <syllabic>").isEqualTo("begin");
-        assertThat(lyricChildText(compoundLyric, "text"))
+        // Note 1: compound-word boundary — text carries the U+2011 marker.
+        var compoundLyric = notes.get(1).getLyric().getFirst();
+        assertThat(syllabicOf(compoundLyric)).as("compound syllable: <syllabic>").isEqualTo(Syllabic.BEGIN);
+        assertThat(textOf(compoundLyric))
             .as("compound syllable: <text> carries the compound-word marker")
             .isEqualTo("self" + Constants.NON_BREAKING_HYPHEN);
 
-        // Note 2: extender start — <extend type="start"/> after <syllabic>/<text>.
-        var extenderLyric = (Element) ((Element) notes.item(2)).getElementsByTagName("lyric").item(0);
-        assertThat(lyricChildText(extenderLyric, "syllabic")).as("extender start: <syllabic>").isEqualTo("single");
-        assertThat(lyricChildText(extenderLyric, "text")).as("extender start: <text>").isEqualTo("oh");
-        var extenderStartTag = (Element) extenderLyric.getElementsByTagName("extend").item(0);
-        assertThat(extenderStartTag.getAttribute("type")).as("extender start: <extend type>").isEqualTo("start");
+        // Note 2: extender start — <extend type="start"/> alongside syllabic/text.
+        var extenderLyric = notes.get(2).getLyric().getFirst();
+        assertThat(syllabicOf(extenderLyric)).as("extender start: <syllabic>").isEqualTo(Syllabic.SINGLE);
+        assertThat(textOf(extenderLyric)).as("extender start: <text>").isEqualTo("oh");
+        assertThat(extenderLyric.getExtend()).as("extender start: <extend> must be present").isNotNull();
+        assertThat(extenderLyric.getExtend().getType())
+            .as("extender start: <extend type>")
+            .isEqualTo(StartStopContinue.START);
 
-        // Note 3: text-less STOP carrier — no <syllabic>/<text>, only <extend type="stop"/>.
-        var stopLyric = (Element) ((Element) notes.item(3)).getElementsByTagName("lyric").item(0);
-        assertThat(stopLyric.getElementsByTagName("syllabic").getLength())
-            .as("STOP carrier: no <syllabic>")
-            .isEqualTo(0);
-        assertThat(stopLyric.getElementsByTagName("text").getLength())
-            .as("STOP carrier: no <text>")
-            .isEqualTo(0);
-        var stopExtend = (Element) stopLyric.getElementsByTagName("extend").item(0);
-        assertThat(stopExtend.getAttribute("type")).as("STOP carrier: <extend type>").isEqualTo("stop");
+        // Note 3: text-less STOP carrier — no syllabic/text choice members, only <extend type="stop"/>.
+        var stopLyric = notes.get(3).getLyric().getFirst();
+        assertThat(syllabicOf(stopLyric)).as("STOP carrier: no <syllabic>").isNull();
+        assertThat(textOf(stopLyric)).as("STOP carrier: no <text>").isNull();
+        assertThat(stopLyric.getExtend()).as("STOP carrier: <extend> must be present").isNotNull();
+        assertThat(stopLyric.getExtend().getType()).as("STOP carrier: <extend type>").isEqualTo(StartStopContinue.STOP);
 
         // Note 4: text-less CONTINUE carrier — same shape, type="continue".
-        var continueLyric = (Element) ((Element) notes.item(4)).getElementsByTagName("lyric").item(0);
-        assertThat(continueLyric.getElementsByTagName("syllabic").getLength())
-            .as("CONTINUE carrier: no <syllabic>")
-            .isEqualTo(0);
-        assertThat(continueLyric.getElementsByTagName("text").getLength())
-            .as("CONTINUE carrier: no <text>")
-            .isEqualTo(0);
-        var continueExtend = (Element) continueLyric.getElementsByTagName("extend").item(0);
-        assertThat(continueExtend.getAttribute("type")).as("CONTINUE carrier: <extend type>").isEqualTo("continue");
+        var continueLyric = notes.get(4).getLyric().getFirst();
+        assertThat(syllabicOf(continueLyric)).as("CONTINUE carrier: no <syllabic>").isNull();
+        assertThat(textOf(continueLyric)).as("CONTINUE carrier: no <text>").isNull();
+        assertThat(continueLyric.getExtend()).as("CONTINUE carrier: <extend> must be present").isNotNull();
+        assertThat(continueLyric.getExtend().getType())
+            .as("CONTINUE carrier: <extend type>")
+            .isEqualTo(StartStopContinue.CONTINUE);
 
         // Note 5: multi-verse — two <lyric> children, number="1" then number="2".
-        var multiVerseLyrics = ((Element) notes.item(5)).getElementsByTagName("lyric");
-        assertThat(multiVerseLyrics.getLength()).as("multi-verse note: two <lyric> children").isEqualTo(2);
-        assertThat(((Element) multiVerseLyrics.item(0)).getAttribute("number"))
+        var multiVerseLyrics = notes.get(5).getLyric();
+        assertThat(multiVerseLyrics).as("multi-verse note: two <lyric> children").hasSize(2);
+        assertThat(multiVerseLyrics.get(0).getNumber())
             .as("multi-verse note: first <lyric number>")
             .isEqualTo("1");
-        assertThat(((Element) multiVerseLyrics.item(1)).getAttribute("number"))
+        assertThat(multiVerseLyrics.get(1).getNumber())
             .as("multi-verse note: second <lyric number>")
             .isEqualTo("2");
     }
 
     /**
      * A note with no lyrics must emit no {@code <lyric>} child at all. This guards
-     * the writer's empty-list early return; a value-level round-trip cannot observe
+     * the builder's empty-list early return; a value-level round-trip cannot observe
      * it, since an absent {@code <lyric>} and an empty lyric list reload identically.
      */
     @Test
-    void testNoteWithoutLyricsEmitsNoLyricElement() throws Exception {
+    void testNoteWithoutLyricsEmitsNoLyricElement() {
         var song = buildSong(line -> line.addElement(crotchet()));
-        var xml = writeToString(song);
-        var doc = DocumentBuilderFactory.newInstance()
-            .newDocumentBuilder()
-            .parse(new InputSource(new StringReader(xml)));
+        var note = allNotes(build(song)).get(0);
 
-        assertThat(doc.getElementsByTagName("lyric").getLength())
+        assertThat(note.getLyric())
             .as("a lyric-free note must emit no <lyric> element")
-            .isZero();
+            .isEmpty();
     }
 
     /**
@@ -1040,42 +992,42 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * font, and no {@code justify}.
      */
     @Test
-    void testCreditTitleAndSubtitleWriterOutputShapes() throws Exception {
+    void testCreditTitleAndSubtitleWriterOutputShapes() {
         var song = buildCreditMatrixSong();
-        var xml = writeToString(song);
+        var score = build(song);
 
-        var titleWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_TITLE);
-        assertThat(titleWords.getTextContent())
+        var titleWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_TITLE);
+        assertThat(titleWords.getValue())
             .as("title credit text must be the numbered title")
             .isEqualTo(song.getNumberedTitle());
-        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_JUSTIFY))
+        assertThat(titleWords.getJustify())
             .as("title credit justify")
-            .isEqualTo(MusicXmlTags.JUSTIFY_CENTER);
+            .isEqualTo(LeftCenterRight.CENTER);
 
         var titleFont = DocumentFonts.defaultFonts().getFont(FontKey.TITLE);
-        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+        assertThat(titleWords.getFontFamily())
             .as("title credit font-family carries the PostScript name")
             .isEqualTo(titleFont.getPSName());
-        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_SIZE))
+        assertThat(titleWords.getFontSize())
             .as("title credit font-size")
             .isEqualTo(String.valueOf(titleFont.getSize()));
-        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_WEIGHT))
+        assertThat(titleWords.getFontWeight())
             .as("title credit font-weight")
-            .isEqualTo(titleFont.isBold() ? MusicXmlTags.WEIGHT_BOLD : MusicXmlTags.WEIGHT_NORMAL);
-        assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_STYLE))
+            .isEqualTo(titleFont.isBold() ? FontWeight.BOLD : FontWeight.NORMAL);
+        assertThat(titleWords.getFontStyle())
             .as("title credit font-style")
-            .isEqualTo(titleFont.isItalic() ? MusicXmlTags.STYLE_ITALIC : MusicXmlTags.STYLE_NORMAL);
+            .isEqualTo(titleFont.isItalic() ? FontStyle.ITALIC : FontStyle.NORMAL);
 
-        var subtitleWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_SUBTITLE);
-        assertThat(subtitleWords.getTextContent())
+        var subtitleWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_SUBTITLE);
+        assertThat(subtitleWords.getValue())
             .as("subtitle credit text")
             .isEqualTo(CREDIT_TEST_SUBTITLE);
-        assertThat(subtitleWords.hasAttribute(MusicXmlTags.ATTR_JUSTIFY))
+        assertThat(subtitleWords.getJustify())
             .as("subtitle credit must not carry justify")
-            .isFalse();
+            .isNull();
 
         var subtitleFont = DocumentFonts.defaultFonts().getFont(FontKey.SUBTITLE);
-        assertThat(subtitleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+        assertThat(subtitleWords.getFontFamily())
             .as("subtitle credit font-family carries the PostScript name")
             .isEqualTo(subtitleFont.getPSName());
     }
@@ -1088,10 +1040,9 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * tenths).
      */
     @Test
-    void testCreditAttributionWriterOutputShapes() throws Exception {
+    void testCreditAttributionWriterOutputShapes() {
         var song = buildCreditMatrixSong();
-        var clock = Clock.fixed(Instant.parse(FIXED_CLOCK_INSTANT), ZoneOffset.UTC);
-        var xml = writeToString(song, clock);
+        var score = build(song);
 
         var expectedRelativeYTenths = ATTRIBUTION_Y_OFFSET_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
         var attributionCreditTypes = List.of(
@@ -1103,34 +1054,35 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var attributionFont = DocumentFonts.defaultFonts().getFont(FontKey.ATTRIBUTION);
 
         for (var creditType : attributionCreditTypes) {
-            var words = requireCreditWordsForType(xml, creditType);
-            assertThat(Double.parseDouble(words.getAttribute(MusicXmlTags.ATTR_RELATIVE_Y)))
+            var words = requireCreditWordsForType(score, creditType);
+            assertThat(words.getRelativeY()).as("%s credit must carry relative-y", creditType).isNotNull();
+            assertThat(words.getRelativeY().doubleValue())
                 .as("%s credit relative-y", creditType)
                 .isCloseTo(expectedRelativeYTenths, Offset.offset(0.01));
-            assertThat(words.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+            assertThat(words.getFontFamily())
                 .as("%s credit font-family carries the PostScript name", creditType)
                 .isEqualTo(attributionFont.getPSName());
         }
 
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_COMPOSER).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_COMPOSER).getValue())
             .as("composer credit text")
             .isEqualTo(CREDIT_TEST_COMPOSER);
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_LYRICIST).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_LYRICIST).getValue())
             .as("lyricist credit text")
             .isEqualTo(CREDIT_TEST_LYRICIST);
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_ARRANGER).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_ARRANGER).getValue())
             .as("arranger credit text")
             .isEqualTo(Song.SRI_CHINMOY);
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_COMPOSITION_DATE).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_COMPOSITION_DATE).getValue())
             .as("composition date credit text")
             .isEqualTo(DateUtils.toIsoDate(COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY));
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_LYRICS_DATE).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_LYRICS_DATE).getValue())
             .as("lyrics date credit text")
             .isEqualTo(DateUtils.toIsoDate(LYRICS_YEAR, LYRICS_MONTH, LYRICS_DAY));
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_RIGHTS).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_RIGHTS).getValue())
             .as("rights credit text")
             .isEqualTo(String.format(MusicXmlTags.COPYRIGHT, FIXED_CLOCK_YEAR));
-        assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_PLACE).getTextContent())
+        assertThat(requireCreditWordsForType(score, MusicXmlTags.CREDIT_PLACE).getValue())
             .as("place credit text")
             .isEqualTo(CREDIT_TEST_PLACE);
     }
@@ -1141,39 +1093,39 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * {@code xml:lang="bn"}, and footnotes carries the {@code FOOTNOTE} font.
      */
     @Test
-    void testCreditScoreBelowWriterOutputShapes() throws Exception {
+    void testCreditScoreBelowWriterOutputShapes() {
         var song = buildCreditMatrixSong();
-        var xml = writeToString(song);
+        var score = build(song);
 
-        var underLyricsWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_UNDERLYRICS);
-        assertThat(underLyricsWords.getTextContent())
+        var underLyricsWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_UNDERLYRICS);
+        assertThat(underLyricsWords.getValue())
             .as("underlyrics credit text")
             .isEqualTo(CREDIT_TEST_UNDERLYRICS);
-        assertThat(underLyricsWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+        assertThat(underLyricsWords.getFontFamily())
             .as("underlyrics credit font-family carries the PostScript name")
             .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.LYRICS).getPSName());
 
-        var banglaWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_BANGLA_LYRICS);
-        assertThat(banglaWords.getTextContent())
+        var banglaWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_BANGLA_LYRICS);
+        assertThat(banglaWords.getValue())
             .as("bangla-lyrics credit text")
             .isEqualTo(CREDIT_TEST_BANGLA_LYRICS);
-        assertThat(banglaWords.getAttribute(MusicXmlTags.ATTR_XML_LANG))
+        assertThat(banglaWords.getLang())
             .as("bangla-lyrics credit xml:lang")
             .isEqualTo(MusicXmlTags.CREDIT_LANGUAGE_BANGLA);
-        assertThat(banglaWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+        assertThat(banglaWords.getFontFamily())
             .as("bangla-lyrics credit font-family carries the PostScript name")
             .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.BANGLA).getPSName());
 
-        var translationWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_TRANSLATION);
-        assertThat(translationWords.getTextContent())
+        var translationWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_TRANSLATION);
+        assertThat(translationWords.getValue())
             .as("translation credit text")
             .isEqualTo(CREDIT_TEST_TRANSLATION);
 
-        var footnotesWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_FOOTNOTES);
-        assertThat(footnotesWords.getTextContent())
+        var footnotesWords = requireCreditWordsForType(score, MusicXmlTags.CREDIT_FOOTNOTES);
+        assertThat(footnotesWords.getValue())
             .as("footnotes credit text")
             .isEqualTo(CREDIT_TEST_FOOTNOTES);
-        assertThat(footnotesWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
+        assertThat(footnotesWords.getFontFamily())
             .as("footnotes credit font-family carries the PostScript name")
             .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.FOOTNOTE).getPSName());
     }
@@ -1185,11 +1137,11 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * blank), and rights (a fixed format string).
      */
     @Test
-    void testBlankCreditFieldsEmitNoCredit() throws Exception {
+    void testBlankCreditFieldsEmitNoCredit() {
         var song = buildSong(line -> line.addElement(crotchet()));
-        var xml = writeToString(song);
+        var score = build(song);
 
-        assertThat(creditTypesPresent(xml))
+        assertThat(creditTypesPresent(score))
             .as("credit-types present for a song with blank subtitle/place/dates/arrangement/score-below fields")
             .containsExactlyInAnyOrder(
                 MusicXmlTags.CREDIT_TITLE,
@@ -1200,14 +1152,14 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * A lyrics date equal to the composition date is redundant, so the writer
+     * A lyrics date equal to the composition date is redundant, so the builder
      * emits neither the {@code lyrics-date} miscellaneous-field nor the
      * {@code lyrics date} credit — only the composition date is written. Guards
-     * the dedup branches in {@code HeaderText} / {@code writeMiscellaneousFields}
-     * / {@code writeCredits}, which no distinct-date test exercises.
+     * the dedup branches in {@code HeaderBuilder.HeaderText} / {@code buildMiscellaneous}
+     * / {@code buildCredits}, which no distinct-date test exercises.
      */
     @Test
-    void testLyricsDateEqualToCompositionDateIsOmitted() throws Exception {
+    void testLyricsDateEqualToCompositionDateIsOmitted() {
         var song = buildSong(line -> line.addElement(crotchet()));
 
         song.setMetadata(new SongMetadata(
@@ -1225,22 +1177,22 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY
         ));
 
-        var xml = writeToString(song);
+        var score = build(song);
         var expectedCompositionDate = DateUtils.toIsoDate(COMPOSITION_YEAR, COMPOSITION_MONTH, COMPOSITION_DAY);
 
         // The composition date is present as both a misc-field and a credit.
-        assertThat(miscFieldValue(xml, MusicXmlTags.MISC_COMPOSITION_DATE))
+        assertThat(miscFieldValue(score, MusicXmlTags.MISC_COMPOSITION_DATE))
             .as("composition-date misc-field must be present")
             .isEqualTo(expectedCompositionDate);
-        assertThat(creditTypesPresent(xml))
+        assertThat(creditTypesPresent(score))
             .as("composition date credit must be present")
             .contains(MusicXmlTags.CREDIT_COMPOSITION_DATE);
 
         // The redundant lyrics date is omitted from both.
-        assertThat(miscFieldValue(xml, MusicXmlTags.MISC_LYRICS_DATE))
+        assertThat(miscFieldValue(score, MusicXmlTags.MISC_LYRICS_DATE))
             .as("a lyrics-date equal to the composition date must not be emitted as a misc-field")
             .isNull();
-        assertThat(creditTypesPresent(xml))
+        assertThat(creditTypesPresent(score))
             .as("a lyrics date equal to the composition date must not be emitted as a credit")
             .doesNotContain(MusicXmlTags.CREDIT_LYRICS_DATE);
     }
@@ -1260,7 +1212,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     // A width read from a file or replayed from an undo record is never range-checked,
-    // so the writer's guard has to cover a negative as well as zero.
+    // so the builder's guard has to cover a negative as well as zero.
     private static final double NEGATIVE_LINE_WIDTH_SS = -1.0;
 
     /**
@@ -1268,19 +1220,20 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * a file or an undo replay, must not persist an unusable staff: nothing on the read
      * side rejects one, so the document would reopen with a staff no content can fit and
      * every line clipped and drawn in red instead of showing the song. The
-     * writer substitutes {@link Song#FALLBACK_LINE_WIDTH_SS} for any width that is not
+     * builder substitutes {@link Song#FALLBACK_LINE_WIDTH_SS} for any width that is not
      * positive — a guard that only caught zero would let a negative through.
      */
     @ParameterizedTest
     @ValueSource(doubles = { 0, NEGATIVE_LINE_WIDTH_SS })
-    void testNonPositiveLineWidthIsWrittenAsTheFallbackWidth(double lineWidthSs) throws Exception {
+    void testNonPositiveLineWidthIsWrittenAsTheFallbackWidth(double lineWidthSs) {
         var song = buildSong(line -> line.addElement(crotchet()));
         song.setLineWidthSs(lineWidthSs);
 
-        var xml = writeToString(song);
+        var pageWidth = build(song).getDefaults().getPageLayout().getPageWidth();
+        var expectedPageWidth = MusicXmlUnits.ssAsTenths(Song.FALLBACK_LINE_WIDTH_SS);
 
-        assertThat(firstElementText(xml, MusicXmlTags.PAGE_WIDTH))
+        assertThat(pageWidth)
             .as("a line width of %s must be written as the fallback width", lineWidthSs)
-            .isEqualTo(MusicXmlUnits.formatSsAsTenths(Song.FALLBACK_LINE_WIDTH_SS));
+            .isEqualByComparingTo(expectedPageWidth);
     }
 }

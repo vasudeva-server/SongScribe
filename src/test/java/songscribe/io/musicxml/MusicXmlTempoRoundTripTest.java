@@ -24,10 +24,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Duration;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -46,7 +52,7 @@ import songscribe.dom.TempoChangeAttachment;
  * parsed XML is always a genuine per-note tempo change, never a mirror of the
  * song tempo.
  */
-class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlTempoRoundTripTest extends UnitTest {
 
     // Visible tempo (BPM) values — each distinct so a mix-up is caught.
     private static final int BASE_TEMPO_BPM = 120;

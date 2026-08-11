@@ -52,9 +52,9 @@ import org.slf4j.LoggerFactory;
  *
  * <p>It lives in {@code songscribe.dom} because {@link Tuplet#resolveRatio} is
  * package-private: a half-built tuplet may only be completed here. It cannot run inside
- * {@code RangeSpanResolver.resolveTuplet} or {@code LineIO.createTupletsFromPending}
- * either, since both run mid-parse, before the song holds the tempo changes that determine
- * the beat.
+ * {@code MeasureMapper.resolveTuplets} or {@code LineIO.createTupletsFromPending} either,
+ * since both build their tuplets while the song is still being assembled, before it holds
+ * the tempo changes that determine the beat.
  */
 public final class TupletLoadPass {
 

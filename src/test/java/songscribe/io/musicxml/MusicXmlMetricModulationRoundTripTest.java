@@ -23,12 +23,16 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Line;
@@ -41,7 +45,7 @@ import songscribe.dom.Song;
  * {@link BeatChange#fromLegacyName} must survive the write/read cycle with its
  * {@code duration()} and {@code beat()} intact, bound to the note it marks.
  */
-class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlMetricModulationRoundTripTest extends UnitTest {
 
     // Every canonical metric-modulation variant SongScribe recognises, keyed by
     // its legacy enum name. Covers dotted and undotted note values on both the

@@ -7,7 +7,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 `hit/package-info.java` describes that package's role and is worth reading before working in it. Every other `package-info.java` carries only the `@NullMarked` annotation — do not go looking there for a package's purpose. The list below and the design notes in `docs/` are the documentation.
 
 - smufl/ — SMuFL glyph registry: codepoints, names, and font-metric lookups
-- io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
+- io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; MusicXML I/O goes through a schema-bound `org.audiveris:proxymusic` object graph (`ScorePartwise`) rather than streaming SAX/XMLStreamWriter events — see `docs/musicxml-object-model.md`. `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
 - dom/ — the document model (`Song`, `Line`, elements), not a DOM/XML tree
 - layout/ vs engraving/ — `layout/` computes positions and spacing; `engraving/` holds staff geometry and engraving constants
 - converter/ vs uiconverter/ — `converter/` is the headless batch converter; `uiconverter/` is its Swing front end

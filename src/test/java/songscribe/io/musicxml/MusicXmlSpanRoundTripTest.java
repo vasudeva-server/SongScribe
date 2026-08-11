@@ -24,10 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
-import static songscribe.dom.StaffElementFactory.semiquaver;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -36,8 +44,11 @@ import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -47,7 +58,7 @@ import songscribe.dom.Tuplet;
  * {@code Trill}, plus the mid-line and measure-boundary-crossing cases. (Beams
  * live in their own class because the hook/level logic is the densest part.)
  */
-class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlSpanRoundTripTest extends UnitTest {
 
     /**
      * Returns the text content of the first {@code tagName} element in the
@@ -115,6 +126,39 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         assertThat(tuplet.getNoteValueDots()).as("tuplet: noteValueDots").isEqualTo(expectedNoteValueDots);
     }
 
+    /**
+     * A one-line song of {@code noteCount} notes from {@code noteFactory}, under the single
+     * tuplet {@code tupletFactory} builds from the first and the last of them.
+     *
+     * <p>Every tuplet fixture below has that shape; what differs between them is the note kind,
+     * the count, the ratio — and, for the unresolved case, whether the tuplet states a ratio at
+     * all, which is why the tuplet is supplied rather than described by parameters.
+     */
+    private static Song songWithTuplet(
+            int noteCount,
+            Supplier<StaffElement> noteFactory,
+            BiFunction<StaffElement, StaffElement, Tuplet> tupletFactory) {
+        return buildSong(line -> {
+            var notes = new ArrayList<StaffElement>(noteCount);
+
+            for (var i = 0; i < noteCount; i++) {
+                var note = noteFactory.get();
+                notes.add(note);
+                line.addElement(note);
+            }
+
+            line.addTuplet(tupletFactory.apply(notes.getFirst(), notes.getLast()));
+        });
+    }
+
+    /** The written value of the {@code <normal-dot/>} fixtures. */
+    private static StaffElement dottedQuaver() {
+        var note = quaver();
+        note.setDotCount(ONE_DOT);
+
+        return note;
+    }
+
     /** Grade 3 (triplet): 3 actual notes in the time of 2 normal notes. */
     private static final int TRIPLET_GRADE = 3;
 
@@ -141,6 +185,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     /** Element count of the septuplet fixture — one note per actual note. */
     private static final int SEPTUPLET_LAST_INDEX = SEPTUPLET_GRADE - 1;
+
+    /**
+     * Grade of the ratio-less tuplet fixture. Six, because no other value separates the
+     * power-of-two stand-in from {@code grade - 1} and {@code grade / 2} at once.
+     */
+    private static final int UNRESOLVED_TUPLET_GRADE = 6;
+
+    /** The largest power of two below {@link #UNRESOLVED_TUPLET_GRADE}. */
+    private static final int UNRESOLVED_TUPLET_STAND_IN_NORMAL_NOTES = 4;
 
     /**
      * A {@code <normal-notes>} value no derivation would ever produce for the fixture
@@ -236,15 +289,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testTripletRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
-        });
+        var song = songWithTuplet(TRIPLET_GRADE, StaffElementFactory::crotchet,
+            (anchor, end) -> new Tuplet(
+                anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
@@ -259,18 +306,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     // corpus tuplets have one — without the element they cannot round-trip.
     @Test
     void testDottedNoteValueRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = quaver();
-            var note1 = quaver();
-            var note2 = quaver();
-            note0.setDotCount(ONE_DOT);
-            note1.setDotCount(ONE_DOT);
-            note2.setDotCount(ONE_DOT);
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
-        });
+        var song = songWithTuplet(TRIPLET_GRADE, MusicXmlSpanRoundTripTest::dottedQuaver,
+            (anchor, end) -> new Tuplet(
+                anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
 
         var xml = writeToString(song);
 
@@ -291,17 +329,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     // <time-modification> round-trip and the performed-duration division exactly.
     @Test
     void testSeptupletRoundTripsExactly() throws Exception {
-        var song = buildSong(line -> {
-            var notes = new StaffElement[SEPTUPLET_GRADE];
-
-            for (var i = 0; i < SEPTUPLET_GRADE; i++) {
-                notes[i] = semiquaver();
-                line.addElement(notes[i]);
-            }
-
-            line.addTuplet(new Tuplet(notes[0], notes[SEPTUPLET_LAST_INDEX], SEPTUPLET_GRADE,
-                SEPTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, NO_DOTS));
-        });
+        var song = songWithTuplet(SEPTUPLET_GRADE, StaffElementFactory::semiquaver,
+            (anchor, end) -> new Tuplet(anchor, end, SEPTUPLET_GRADE, SEPTUPLET_NORMAL_NOTES,
+                ElementType.SEMIQUAVER, NO_DOTS));
 
         var xml = writeToString(song);
 
@@ -351,18 +381,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testDottedTupletMemberDurationIsPerformed() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = quaver();
-            var note1 = quaver();
-            var note2 = quaver();
-            note0.setDotCount(ONE_DOT);
-            note1.setDotCount(ONE_DOT);
-            note2.setDotCount(ONE_DOT);
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
-        });
+        var song = songWithTuplet(TRIPLET_GRADE, MusicXmlSpanRoundTripTest::dottedQuaver,
+            (anchor, end) -> new Tuplet(
+                anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
 
         assertThat(firstElementText(writeToString(song), MusicXmlTags.DURATION))
             .as("a tripleted dotted quaver's performed <duration>")
@@ -451,16 +472,12 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testTripletWithVerticalPositionRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            var tuplet = new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+        var song = songWithTuplet(TRIPLET_GRADE, StaffElementFactory::crotchet, (anchor, end) -> {
+            var tuplet = new Tuplet(
+                anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             tuplet.setVerticalPositionSs(TUPLET_VERTICAL_POSITION_SS);
-            line.addTuplet(tuplet);
+
+            return tuplet;
         });
 
         var song2 = roundTrip(song);
@@ -506,19 +523,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testQuintupletRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            var note3 = crotchet();
-            var note4 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addElement(note3);
-            line.addElement(note4);
-            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
-        });
+        var song = songWithTuplet(QUINTUPLET_GRADE, StaffElementFactory::crotchet,
+            (anchor, end) -> new Tuplet(anchor, end, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES,
+                ElementType.CROTCHET, NO_DOTS));
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
@@ -532,20 +539,12 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testQuintupletWithVerticalPositionRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            var note3 = crotchet();
-            var note4 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addElement(note3);
-            line.addElement(note4);
-            var tuplet = new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+        var song = songWithTuplet(QUINTUPLET_GRADE, StaffElementFactory::crotchet, (anchor, end) -> {
+            var tuplet = new Tuplet(
+                anchor, end, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             tuplet.setVerticalPositionSs(TUPLET_VERTICAL_POSITION_SS);
-            line.addTuplet(tuplet);
+
+            return tuplet;
         });
 
         var song2 = roundTrip(song);
@@ -558,15 +557,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testTripletTimeModificationInOutput() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
-        });
+        var song = songWithTuplet(TRIPLET_GRADE, StaffElementFactory::crotchet,
+            (anchor, end) -> new Tuplet(
+                anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
 
         var xml = writeToString(song);
 
@@ -586,19 +579,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testQuintupletTimeModificationInOutput() throws Exception {
-        var song = buildSong(line -> {
-            var note0 = crotchet();
-            var note1 = crotchet();
-            var note2 = crotchet();
-            var note3 = crotchet();
-            var note4 = crotchet();
-            line.addElement(note0);
-            line.addElement(note1);
-            line.addElement(note2);
-            line.addElement(note3);
-            line.addElement(note4);
-            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
-        });
+        var song = songWithTuplet(QUINTUPLET_GRADE, StaffElementFactory::crotchet,
+            (anchor, end) -> new Tuplet(anchor, end, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES,
+                ElementType.CROTCHET, NO_DOTS));
 
         var xml = writeToString(song);
 
@@ -611,6 +594,44 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         assertThat(firstNormalType(xml))
             .as("<normal-type> must name the stored written value")
             .isEqualTo(NoteTypeMapping.TYPE_QUARTER);
+    }
+
+    /**
+     * A tuplet that reached the writer without a ratio — the state
+     * {@link Tuplet#withUnresolvedRatio} leaves one in until {@code TupletLoadPass} settles it.
+     *
+     * <p>Its own {@code normalNotes} is {@link Tuplet#UNRESOLVED_NORMAL_NOTES}, and writing that
+     * through would emit a {@code <time-modification>} reading "6 notes in the time of 0" — which
+     * the schema tolerates, {@code <normal-notes>} being a {@code nonNegativeInteger}, and which
+     * our own reader would survive, since it derives the ratio it is not told. Nothing but this
+     * test stands between that document and every other program that opens it. The writer
+     * substitutes the conventional power-of-two stand-in instead, and omits
+     * {@code <normal-type>}, which is the flag meaning "derive this ratio, do not trust the
+     * stated one" — {@link #testTupletWithoutNormalTypeIsDerivedNotTrusted} is that reader half.
+     *
+     * <p>The grade is 6 so the stand-in cannot be confused with the two other values a wrong
+     * fallback would plausibly produce: {@code grade - 1} is 5 and {@code grade / 2} is 3.
+     */
+    @Test
+    void testUnresolvedTupletEmitsTheStandInRatioAndNoNormalType() throws Exception {
+        var song = songWithTuplet(UNRESOLVED_TUPLET_GRADE, StaffElementFactory::crotchet,
+            (anchor, end) -> Tuplet.withUnresolvedRatio(anchor, end, UNRESOLVED_TUPLET_GRADE));
+
+        assertThat(song.getLine(0).findSpans(Tuplet.class).getFirst().getNormalNotes())
+            .as("the fixture's tuplet must reach the writer with no ratio")
+            .isEqualTo(Tuplet.UNRESOLVED_NORMAL_NOTES);
+
+        var xml = writeToString(song);
+
+        assertThat(firstActualNotes(xml))
+            .as("<actual-notes> is the grade whether or not the ratio is known")
+            .isEqualTo(Integer.toString(UNRESOLVED_TUPLET_GRADE));
+        assertThat(firstNormalNotes(xml))
+            .as("<normal-notes> falls back to the largest power of two below the grade")
+            .isEqualTo(Integer.toString(UNRESOLVED_TUPLET_STAND_IN_NORMAL_NOTES));
+        assertThat(elementCount(xml, MusicXmlTags.NORMAL_TYPE))
+            .as("an unresolved tuplet states no written value, so it emits no <normal-type>")
+            .isZero();
     }
 
     // -------------------------------------------------------------------------

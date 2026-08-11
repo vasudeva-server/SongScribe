@@ -23,9 +23,16 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parseResult;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
+
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.font.DocumentFonts;
@@ -40,7 +47,7 @@ import songscribe.font.FontKey;
  * head metadata the reader reads back — a hand-edited display-only credit never
  * wins over the canonical value.
  */
-class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlCreditRoundTripTest extends UnitTest {
 
     // Distinct texts so a credit-routing mix-up (title → subtitle, composer →
     // subtitle, translation → footnotes, etc.) is caught. All are already-
@@ -77,6 +84,15 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
 
     // A month/day sentinel for the "date absent" metadata slots.
     private static final int NO_DATE_PART = 0;
+
+    /** The title role's {@code <credit-words>} start tag, identified by its unique size. */
+    private static final Pattern TITLE_CREDIT_WORDS = Pattern.compile(
+        "<" + MusicXmlTags.CREDIT_WORDS + "[^>]*" + MusicXmlTags.ATTR_FONT_SIZE
+            + "=\"" + TITLE_FONT_SIZE + "\"[^>]*>");
+
+    /** A {@code font-family} attribute with any value, and the space that separates it. */
+    private static final Pattern ANY_FONT_FAMILY =
+        Pattern.compile(MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\" ");
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -227,15 +243,14 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
             .as("precondition: the title font's PS name differs from its display family")
             .isNotEqualTo(titleFont.getFamily());
 
-        var xml = writeToString(song, fonts);
+        var titleCredit = titleCreditWordsTag(writeToString(song, fonts));
 
-        var titleSizeAttr = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + '"';
-        assertThat(xml)
+        assertThat(titleCredit)
             .as("the title credit's font-family carries the PostScript name")
-            .contains(MusicXmlTags.ATTR_FONT_FAMILY + "=\"" + titleFont.getPSName() + "\" " + titleSizeAttr);
-        assertThat(xml)
+            .contains(fontFamilyAttribute(titleFont.getPSName()));
+        assertThat(titleCredit)
             .as("the title credit's font-family is not the display family name")
-            .doesNotContain(MusicXmlTags.ATTR_FONT_FAMILY + "=\"" + titleFont.getFamily() + "\" " + titleSizeAttr);
+            .doesNotContain(fontFamilyAttribute(titleFont.getFamily()));
     }
 
     @Test
@@ -264,19 +279,17 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
         var fonts = customFonts();
         var xml = writeToString(song, fonts);
 
-        // The resolved family name is shared across credits, but the title size is
-        // unique — target the font-family that immediately precedes the title's
-        // font-size so only that credit loses its family.
-        var titleFontSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + '"';
-        var familyBeforeTitleSize = MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\" " + titleFontSize;
-        var tampered = xml.replaceAll(familyBeforeTitleSize, titleFontSize);
+        // The resolved family name is shared across credits, so the tamper is confined to
+        // the title's own <credit-words> tag, which the unique title size identifies.
+        var titleCredit = titleCreditWordsTag(xml);
+        var tampered = xml.replace(titleCredit, ANY_FONT_FAMILY.matcher(titleCredit).replaceFirst(""));
 
-        assertThat(xml)
-            .as("precondition: the title credit carried a font-family before its font-size")
-            .containsPattern(familyBeforeTitleSize);
-        assertThat(tampered)
+        assertThat(titleCredit)
+            .as("precondition: the title credit carried a font-family")
+            .containsPattern(ANY_FONT_FAMILY);
+        assertThat(titleCreditWordsTag(tampered))
             .as("tamper removed the title credit's font-family")
-            .doesNotContainPattern(familyBeforeTitleSize);
+            .doesNotContainPattern(ANY_FONT_FAMILY);
 
         var result = parseResult(tampered);
 
@@ -357,22 +370,22 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
         var fonts = customFonts();
         var xml = writeToString(song, fonts);
 
-        // Anchor on the title size (unique to the title role) so only the title
-        // credit's weight/style are rewritten to bold/italic.
-        var titleNormalRun = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\" "
-            + MusicXmlTags.ATTR_FONT_WEIGHT + "=\"" + MusicXmlTags.WEIGHT_NORMAL + "\" "
-            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_NORMAL + '"';
-        var titleBoldItalicRun = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\" "
-            + MusicXmlTags.ATTR_FONT_WEIGHT + "=\"" + MusicXmlTags.WEIGHT_BOLD + "\" "
-            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_ITALIC + '"';
-        var tampered = xml.replace(titleNormalRun, titleBoldItalicRun);
+        // Anchor on the title's own <credit-words> tag (the title size is unique to that
+        // role) so only its weight/style are rewritten to bold/italic.
+        var titleCredit = titleCreditWordsTag(xml);
+        var normalWeight = attribute(MusicXmlTags.ATTR_FONT_WEIGHT, MusicXmlTags.WEIGHT_NORMAL);
+        var normalStyle = attribute(MusicXmlTags.ATTR_FONT_STYLE, MusicXmlTags.STYLE_NORMAL);
+        var boldWeight = attribute(MusicXmlTags.ATTR_FONT_WEIGHT, MusicXmlTags.WEIGHT_BOLD);
+        var italicStyle = attribute(MusicXmlTags.ATTR_FONT_STYLE, MusicXmlTags.STYLE_ITALIC);
+        var tamperedCredit = titleCredit.replace(normalWeight, boldWeight).replace(normalStyle, italicStyle);
+        var tampered = xml.replace(titleCredit, tamperedCredit);
 
-        assertThat(xml)
+        assertThat(titleCredit)
             .as("precondition: the title credit carried normal weight/style")
-            .contains(titleNormalRun);
-        assertThat(tampered)
+            .contains(normalWeight, normalStyle);
+        assertThat(titleCreditWordsTag(tampered))
             .as("tamper set the title credit to bold/italic")
-            .contains(titleBoldItalicRun);
+            .contains(boldWeight, italicStyle);
 
         var recovered = parseResult(tampered).fonts().getFont(FontKey.TITLE);
         var untampered = roundTrip(song, fonts).fonts().getFont(FontKey.TITLE);
@@ -433,5 +446,34 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
         assertThatCode(() -> validator.validate(xml))
             .as("credit output validates against the MusicXML 4.0 schema")
             .doesNotThrowAnyException();
+    }
+
+    // -------------------------------------------------------------------------
+    // Locating one credit in the document text
+    // -------------------------------------------------------------------------
+
+    /**
+     * The {@code <credit-words …>} start tag of the title credit, found by the title font
+     * size, which is unique across this document's credits.
+     *
+     * <p>The attribute order inside the tag is the marshaller's, not the writer's, so an
+     * assertion or a tamper anchored on two attributes being adjacent would pin the order
+     * rather than the behavior under test. Taking the whole tag pins neither.
+     */
+    private static String titleCreditWordsTag(String xml) {
+        var matcher = TITLE_CREDIT_WORDS.matcher(xml);
+
+        assertThat(matcher.find()).as("the document must carry a title credit").isTrue();
+
+        return matcher.group();
+    }
+
+    /** An attribute as it appears inside a start tag, quotes included. */
+    private static String attribute(String name, String value) {
+        return name + "=\"" + value + '"';
+    }
+
+    private static String fontFamilyAttribute(String family) {
+        return attribute(MusicXmlTags.ATTR_FONT_FAMILY, family);
     }
 }

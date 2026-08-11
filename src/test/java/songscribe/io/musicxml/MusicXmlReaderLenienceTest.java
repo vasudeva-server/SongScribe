@@ -23,30 +23,60 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.SOFTWARE_ENCODING;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.SOFTWARE_IDENTIFICATION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
 import songscribe.Constants;
+import songscribe.UnitTest;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
+import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 
 /**
  * Reader robustness cases: lenient handling of dangling/stray markers, unknown
- * tokens, malformed documents, and {@code characters()} buffer isolation. These
- * exercise the read side with hand-crafted MusicXML the round-trip cannot produce.
+ * tokens, and malformed documents. These exercise the read side with hand-crafted
+ * MusicXML the round-trip cannot produce.
  */
-class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
+class MusicXmlReaderLenienceTest extends UnitTest {
 
     // Element indices in the supersede-begin fixture: a stale beam begin (note 0)
     // followed by a valid two-note beam (notes 1-2). The surviving beam must
     // anchor at the second begin, not the orphaned first one.
     private static final int SECOND_BEGIN_INDEX = 1;
     private static final int BEAM_END_INDEX = 2;
+
+    /** A {@code <type>} token no note value maps to, quoted back in the failure detail. */
+    private static final String UNRECOGNISED_NOTE_TYPE = "bogus";
+
+    /** A provenance value that is neither ours nor blank — the "foreign" disjunct. */
+    private static final String FOREIGN_SOFTWARE = "SomeOtherApp";
+
+    /** A measure body no mapper objects to, so only the provenance tag can fail a fixture. */
+    private static final String ONE_VALID_NOTE_BODY =
+        """
+                  <note>
+                    <pitch><step>B</step><octave>4</octave></pitch>
+                    <duration>480</duration>
+                    <type>quarter</type>
+                  </note>
+                  <barline location="right"><bar-style>none</bar-style></barline>
+            """;
+
+    /** The same, with a {@code <type>} token {@code NoteMapper} rejects. */
+    private static final String ONE_UNMAPPABLE_NOTE_BODY =
+        ONE_VALID_NOTE_BODY.replace("<type>quarter</type>", "<type>" + UNRECOGNISED_NOTE_TYPE + "</type>");
 
     // Distinct annotation texts so a "which one survived" mix-up is caught.
     private static final String FIRST_ANNOTATION_TEXT = "dolce";
@@ -62,8 +92,12 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<score-partwise version=\"4.0\">\n" +
-            SOFTWARE_IDENTIFICATION +
+            // One <identification>, carrying both the provenance <encoding> and the
+            // <miscellaneous> block. Two of them would be schema-invalid, and the reader
+            // would keep only the later one — losing <software> and failing the
+            // provenance gate rather than exercising the field this fixture is about.
             "  <identification>\n" +
+            SOFTWARE_ENCODING +
             "    <miscellaneous>\n" +
             "      <miscellaneous-field name=\"" + name + "\">" + value + "</miscellaneous-field>\n" +
             "    </miscellaneous>\n" +
@@ -134,64 +168,6 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         assertThat(song.getLine(0).getElement(0).hasGlissando())
             .as("dangling slide start must leave the note without a glissando")
             .isFalse();
-    }
-
-    /**
-     * Task 3 — {@code characters()} isolation: the reader accumulates text
-     * unconditionally and clears the buffer at every {@code startElement}, so text
-     * from one leaf element does not bleed into the next.
-     * <p>
-     * Scenario: {@code <step>C</step><alter>99</alter><octave>4</octave>} in a
-     * compact, whitespace-free encoding. Without the clear-on-{@code startElement}
-     * reset, the "99" from {@code <alter>} would remain in the buffer when
-     * {@code <octave>} fires {@code characters("4")}, accumulating "994"; then
-     * {@code parseInt("994")} would yield 994 instead of 4, and the staff position
-     * would be wrong (or the parse would throw). With the reset, {@code <octave>}
-     * starts with an empty buffer, so octave == 4 and staffPosition == C4.
-     */
-    @Test
-    void testCharactersAccumulationDoesNotBleedAcrossLeafElements() throws Exception {
-        // Compact encoding: no whitespace between adjacent pitch child elements,
-        // so any buffer-bleed would concatenate directly (no trim salvation).
-        var xml =
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<score-partwise version=\"4.0\">\n" +
-            SOFTWARE_IDENTIFICATION +
-            "  <part-list>\n" +
-            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
-            "  </part-list>\n" +
-            "  <part id=\"P1\">\n" +
-            "    <measure number=\"1\">\n" +
-            "      <print new-system=\"yes\"/>\n" +
-            "      <attributes>\n" +
-            "        <divisions>480</divisions>\n" +
-            "        <key><fifths>0</fifths></key>\n" +
-            "        <time print-object=\"no\"><senza-misura/></time>\n" +
-            "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      </attributes>\n" +
-            "      <note>" +
-                "<pitch><step>C</step><alter>99</alter><octave>4</octave></pitch>" +
-                "<duration>480</duration>" +
-                "<type>quarter</type>" +
-            "</note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n" +
-            "    </measure>\n" +
-            "  </part>\n" +
-            "</score-partwise>\n";
-
-        var song = parse(xml);
-
-        assertThat(song.lineCount()).as("must have one line").isEqualTo(1);
-        // The note plus the closing terminal barline (valid-music last line).
-        assertThat(song.getLine(0).getElements()).as("note plus closing terminal").hasSize(2);
-
-        var note = song.getLine(0).getElement(0);
-        assertThat(note.getType())
-            .as("note type must be CROTCHET")
-            .isEqualTo(ElementType.CROTCHET);
-        assertThat(note.getStaffPosition())
-            .as("staff position must be C4 (%d) — not contaminated by <alter>99</alter> text", C4_STAFF_POSITION)
-            .isEqualTo(C4_STAFF_POSITION);
     }
 
     // -- Reader tolerance: stray/unknown tokens are ignored, not fatal --
@@ -307,9 +283,10 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
                 """
         );
 
-        assertThatThrownBy(() -> parse(xml))
-            .isInstanceOf(SAXException.class)
-            .hasMessageContaining("type");
+        // The exact detail, not a substring: a missing <type> and an unrecognised one
+        // both fail here, and "type" appears in either message.
+        var exception = assertThrows(MusicXmlReader.UnsupportedFormatException.class, () -> parse(xml));
+        assertThat(exception.detail()).isEqualTo("<note> is missing its <type> element");
     }
 
     @Test
@@ -319,15 +296,17 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
                       <note>
                         <pitch><step>B</step><octave>4</octave></pitch>
                         <duration>480</duration>
-                        <type>bogus</type>
+                        <type>%s</type>
                       </note>
                       <barline location="right"><bar-style>none</bar-style></barline>
-                """
+                """.formatted(UNRECOGNISED_NOTE_TYPE)
         );
 
-        assertThatThrownBy(() -> parse(xml))
-            .isInstanceOf(SAXException.class)
-            .hasMessageContaining("Unrecognised");
+        // detail() quotes the offending token, which is what separates this branch
+        // from the missing-<type> one above.
+        var exception = assertThrows(MusicXmlReader.UnsupportedFormatException.class, () -> parse(xml));
+        assertThat(exception.detail())
+            .isEqualTo("Unrecognised <type> token: '" + UNRECOGNISED_NOTE_TYPE + '\'');
     }
 
     @Test
@@ -744,6 +723,225 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     // -------------------------------------------------------------------------
+    // <metronome> shapes a SongScribe-written file never contains: the writer
+    // only emits recognised beat-unit/metronome-note tokens, and a tempo or
+    // metric-modulation direction always resolves to either the song's own
+    // tempo or a bound note. A file from another program can violate either
+    // rule, and none of it may corrupt the read or bind a malformed/unbound
+    // mark to the wrong note.
+    // -------------------------------------------------------------------------
+
+    private static final int TEMPO_BPM = 120;
+    private static final String UNKNOWN_NOTE_TYPE_TOKEN = "bogus";
+
+    /** A beat-unit tempo {@code <direction>}: {@code <beat-unit>} plus {@code <per-minute>}. */
+    private static String tempoDirection(String beatUnitToken, int bpm) {
+        return
+            "      <" + MusicXmlTags.DIRECTION + ">\n" +
+            "        <" + MusicXmlTags.DIRECTION_TYPE + "><" + MusicXmlTags.METRONOME + ">" +
+            "<" + MusicXmlTags.BEAT_UNIT + ">" + beatUnitToken + "</" + MusicXmlTags.BEAT_UNIT + ">" +
+            "<" + MusicXmlTags.PER_MINUTE + ">" + bpm + "</" + MusicXmlTags.PER_MINUTE + ">" +
+            "</" + MusicXmlTags.METRONOME + "></" + MusicXmlTags.DIRECTION_TYPE + ">\n" +
+            "      </" + MusicXmlTags.DIRECTION + ">\n";
+    }
+
+    /** An incomplete beat-unit tempo {@code <direction>}: no {@code <per-minute>}. */
+    private static String beatUnitOnlyDirection(String beatUnitToken) {
+        return
+            "      <" + MusicXmlTags.DIRECTION + ">\n" +
+            "        <" + MusicXmlTags.DIRECTION_TYPE + "><" + MusicXmlTags.METRONOME + ">" +
+            "<" + MusicXmlTags.BEAT_UNIT + ">" + beatUnitToken + "</" + MusicXmlTags.BEAT_UNIT + ">" +
+            "</" + MusicXmlTags.METRONOME + "></" + MusicXmlTags.DIRECTION_TYPE + ">\n" +
+            "      </" + MusicXmlTags.DIRECTION + ">\n";
+    }
+
+    /**
+     * A metric-modulation {@code <direction>} with one {@code <metronome-note>} per given
+     * note-type token; a {@code null} token omits that note's {@code <metronome-type>}.
+     */
+    private static String metricModulationDirection(@Nullable String... noteTypeTokens) {
+        var notes = new StringBuilder();
+
+        for (var token : noteTypeTokens) {
+            notes.append('<').append(MusicXmlTags.METRONOME_NOTE).append('>');
+
+            if (token != null) {
+                notes.append('<').append(MusicXmlTags.METRONOME_TYPE).append('>').append(token)
+                    .append("</").append(MusicXmlTags.METRONOME_TYPE).append('>');
+            }
+
+            notes.append("</").append(MusicXmlTags.METRONOME_NOTE).append('>');
+        }
+
+        return
+            "      <" + MusicXmlTags.DIRECTION + ">\n" +
+            "        <" + MusicXmlTags.DIRECTION_TYPE + "><" + MusicXmlTags.METRONOME + ">" +
+            notes +
+            "</" + MusicXmlTags.METRONOME + "></" + MusicXmlTags.DIRECTION_TYPE + ">\n" +
+            "      </" + MusicXmlTags.DIRECTION + ">\n";
+    }
+
+    @Test
+    void testUnrecognisedBeatUnitTokenIsDropped() throws Exception {
+        var xml = scoreWithMeasureBody(
+            tempoDirection(UNKNOWN_NOTE_TYPE_TOKEN, TEMPO_BPM)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(TempoChangeAttachment.class))
+            .as("an unrecognised beat-unit token must build no tempo")
+            .isNull();
+    }
+
+    @Test
+    void testBeatUnitWithoutPerMinuteIsDropped() throws Exception {
+        var xml = scoreWithMeasureBody(
+            beatUnitOnlyDirection(NoteTypeMapping.TYPE_QUARTER)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(TempoChangeAttachment.class))
+            .as("a beat-unit with no per-minute must build no tempo")
+            .isNull();
+    }
+
+    @Test
+    void testMetricModulationWithWrongNoteCountIsDropped() throws Exception {
+        // The metric-modulation form requires exactly two <metronome-note>s.
+        var xml = scoreWithMeasureBody(
+            metricModulationDirection(NoteTypeMapping.TYPE_QUARTER)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class))
+            .as("a one-note metric modulation must build no beat change")
+            .isNull();
+    }
+
+    @Test
+    void testMetricModulationWithUnrecognisedNoteIsDropped() throws Exception {
+        var xml = scoreWithMeasureBody(
+            metricModulationDirection(NoteTypeMapping.TYPE_QUARTER, UNKNOWN_NOTE_TYPE_TOKEN)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class))
+            .as("an unrecognised metronome-note must build no beat change")
+            .isNull();
+    }
+
+    @Test
+    void testMetronomeNoteMissingTypeIsDropped() throws Exception {
+        // The second <metronome-note> carries no <metronome-type>, leaving a
+        // one-note (wrong-count) modulation once the typeless note is dropped.
+        var xml = scoreWithMeasureBody(
+            metricModulationDirection(NoteTypeMapping.TYPE_QUARTER, null)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class))
+            .as("a metronome-note missing its type must build no beat change")
+            .isNull();
+    }
+
+    @Test
+    void testIncompleteDirectionDoesNotLeakIntoNext() throws Exception {
+        // An incomplete tempo direction (beat-unit, no per-minute) is dropped; a
+        // second, complete tempo direction immediately after must still build
+        // cleanly and bind to the following note — no state survives the drop.
+        // Both directions sit in the second measure, past the song-tempo window,
+        // so the surviving one is required to bind to the note rather than being
+        // taken as the song's own tempo.
+        var xml =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
+            "<score-partwise version=\"4.0\">\n" +
+            SOFTWARE_IDENTIFICATION +
+            "  <part-list>\n" +
+            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
+            "  </part-list>\n" +
+            "  <part id=\"P1\">\n" +
+            "    <measure number=\"1\">\n" +
+            "      <print new-system=\"yes\"/>\n" +
+            "      <attributes>\n" +
+            "        <divisions>480</divisions>\n" +
+            "        <key><fifths>0</fifths></key>\n" +
+            "        <time print-object=\"no\"><senza-misura/></time>\n" +
+            "        <clef><sign>G</sign><line>2</line></clef>\n" +
+            "      </attributes>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n" +
+            "    </measure>\n" +
+            "    <measure number=\"2\">\n" +
+            beatUnitOnlyDirection(NoteTypeMapping.TYPE_QUARTER) +
+            tempoDirection(NoteTypeMapping.TYPE_QUARTER, TEMPO_BPM) +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n" +
+            "    </measure>\n" +
+            "  </part>\n" +
+            "</score-partwise>\n";
+
+        var song = parse(xml);
+        var attachment = song.getLine(0).getElement(1).findAttachment(TempoChangeAttachment.class);
+
+        assertThat(attachment).as("the second direction must build after the first was dropped").isNotNull();
+        assertThat(attachment.getTempo().getVisibleTempo())
+            .as("no state must leak from the dropped direction")
+            .isEqualTo(TEMPO_BPM);
+    }
+
+    // -------------------------------------------------------------------------
     // Annotation <direction> shapes a SongScribe-written file never contains: the
     // writer always gives an annotation direction a <words> child and always
     // follows it with the element it binds to. A file from another program can
@@ -906,28 +1104,44 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     // -------------------------------------------------------------------------
-    // Provenance/version characterization: these gate the Phase 1-6 static-utility
-    // relocation plan (plans/548-refactor-musicxmlreader.md) — the exact exception
-    // types below must survive every phase of that refactor unchanged.
+    // Provenance/version characterization. Each case pins the exception type AND the
+    // value it carries, because SongFileLoader turns those into different results for
+    // the user — a foreign file, an unsupported format, a damaged file — and a
+    // wrong-disjunct bug shows up only in the captured value.
     // -------------------------------------------------------------------------
 
     @Test
     void testForeignSoftwareThrows() {
-        var xml = scoreWithSoftware("<software>SomeOtherApp</software>");
+        var xml = scoreWithSoftware("<software>" + FOREIGN_SOFTWARE + "</software>");
 
         var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
         // Assert the captured value, not just the type: foreign and missing both
         // throw ForeignSoftwareException, so a wrong-disjunct bug would pass a
         // type-only check.
-        assertThat(exception.software()).isEqualTo("SomeOtherApp");
+        assertThat(exception.software()).isEqualTo(FOREIGN_SOFTWARE);
+    }
+
+    /**
+     * Foreign provenance <em>and</em> content a mapper rejects, in one document. Both
+     * failures are available; the provenance gate runs first, so the user is told what
+     * the file is rather than what is wrong inside it — "not a SongScribe file", not
+     * "damaged file". Reversing the two gates fails here with
+     * {@link MusicXmlReader.UnsupportedFormatException}.
+     */
+    @Test
+    void testForeignSoftwareIsRejectedBeforeContentIsMapped() {
+        var xml = scoreWithSoftwareAndBody(
+            "<software>" + FOREIGN_SOFTWARE + "</software>", ONE_UNMAPPABLE_NOTE_BODY);
+
+        var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
+        assertThat(exception.software()).isEqualTo(FOREIGN_SOFTWARE);
     }
 
     @Test
     void testBlankSoftwareThrows() {
-        // A present-but-blank <software> passes handleEndSoftware's mid-parse
-        // foreign check (which ignores blank text) and is rejected only by
-        // checkProvenance's isBlank() branch at endDocument — a distinct branch
-        // from the missing-tag (null) case below.
+        // A present-but-blank <software> is caught by checkProvenance's isBlank()
+        // disjunct and carries "" — a distinct disjunct, and a distinct captured
+        // value, from the missing-tag (null) case below.
         var xml = scoreWithSoftware("<software></software>");
 
         var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
@@ -936,8 +1150,9 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testMissingSoftwareThrows() {
-        // No <identification>/<software> block at all: the provenance gate fires
-        // at endDocument, not mid-parse, so the document must otherwise be valid.
+        // No <identification>/<software> block at all → software() is null, the third
+        // disjunct. The body below is a valid one-note part only so that nothing but the
+        // missing tag can account for the failure.
         var xml =
             """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -999,16 +1214,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     }
 
     private static String scoreWithSoftware(String softwareElement) {
-        return scoreWithMeasureBody(
-            """
-                      <note>
-                        <pitch><step>B</step><octave>4</octave></pitch>
-                        <duration>480</duration>
-                        <type>quarter</type>
-                      </note>
-                      <barline location="right"><bar-style>none</bar-style></barline>
-                """
-        ).replace(
+        return scoreWithSoftwareAndBody(softwareElement, ONE_VALID_NOTE_BODY);
+    }
+
+    /**
+     * As {@link #scoreWithSoftware}, with the measure body given too — for the case that
+     * has to make the provenance gate and a mapper fail on the same document.
+     */
+    private static String scoreWithSoftwareAndBody(String softwareElement, String measureBody) {
+        return scoreWithMeasureBody(measureBody).replace(
             "<software>" + Constants.PACKAGE_NAME + "</software>",
             softwareElement
         );

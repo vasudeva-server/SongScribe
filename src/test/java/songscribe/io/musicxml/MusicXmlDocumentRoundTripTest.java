@@ -23,12 +23,17 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.awt.Component;
 import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Duration;
@@ -51,7 +56,7 @@ import songscribe.font.FontKey;
  * (title, attribution roles) re-derive from head metadata rather than being
  * read from the credit text — a hand-edited credit must not corrupt the model.
  */
-class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlDocumentRoundTripTest extends UnitTest {
 
     // -- Head metadata --
     private static final String TITLE    = "Full Round-Trip Song";

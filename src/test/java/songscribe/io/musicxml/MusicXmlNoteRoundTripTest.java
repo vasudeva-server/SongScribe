@@ -25,6 +25,10 @@ import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.io.StringReader;
 import java.util.List;
@@ -34,6 +38,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.DynamicAttachment;
@@ -42,7 +47,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.KeyType;
 import songscribe.dom.StaffElement;
 
-class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlNoteRoundTripTest extends UnitTest {
 
     /**
      * Staffposition for F4 (the first sharp in the key-of-one-sharp / G-major key).
@@ -385,19 +390,29 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         );
     }
 
+    /**
+     * Every dynamic mark, not a representative one: the writer picks the {@code <dynamics>}
+     * child element by name and the reader picks the model constant back by that same name, so
+     * a wrong pair — {@code MEZZO_PIANO} written as {@code <p/>}, say — is a swap that only a
+     * per-constant round-trip sees. The corpus fixpoint cannot: it compares a document against
+     * the document the reader's own output produced, and a symmetric swap reproduces itself.
+     */
     @Test
-    void testDynamicsRoundTrips() throws Exception {
-        var song = buildSong(line -> {
-            var note = crotchet();
-            line.addElement(note);
-            note.addAttachment(new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE));
-        });
+    void testAllDynamicTypesRoundTrip() throws Exception {
+        for (var dynamicType : DynamicAttachment.DynamicType.values()) {
+            var song = buildSong(line -> {
+                var note = crotchet();
+                line.addElement(note);
+                note.addAttachment(new DynamicAttachment(note, dynamicType));
+            });
 
-        var song2 = roundTrip(song);
-        assertNoteEquals(
-            song.getLine(0).getElement(0),
-            song2.getLine(0).getElement(0)
-        );
+            var song2 = roundTrip(song);
+            assertNoteEquals(
+                song.getLine(0).getElement(0),
+                song2.getLine(0).getElement(0),
+                "dynamic " + dynamicType
+            );
+        }
     }
 
     @Test

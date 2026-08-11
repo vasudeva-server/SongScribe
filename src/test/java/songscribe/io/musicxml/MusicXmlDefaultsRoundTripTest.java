@@ -23,9 +23,15 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parseResult;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
@@ -41,7 +47,7 @@ import java.util.regex.Pattern;
  * write-forward layout ({@code <scaling>}, {@code <page-height>},
  * {@code <music-font>}) is emitted schema-valid but ignored on read.
  */
-class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlDefaultsRoundTripTest extends UnitTest {
 
     // Line width in staff spaces. Integer-valued so the ss → tenths → ss
     // conversion (via the reader's integer tenthsToSs) is exact.

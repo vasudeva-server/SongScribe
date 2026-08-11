@@ -76,8 +76,8 @@ import songscribe.hit.HitTarget;
 import songscribe.io.LoadWarning;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
+import songscribe.io.SongFileWriter;
 import songscribe.io.SongLoader;
-import songscribe.io.musicxml.MusicXmlWriter;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.engraving.Staff;
@@ -928,8 +928,7 @@ class ScoreViewTest extends UnitTest {
             var fixture = loadFixtureResult("full-line");
             var stringWriter = new StringWriter();
             var printWriter = new PrintWriter(stringWriter);
-            MusicXmlWriter.writeSong(fixture.song(), fixture.fonts(), printWriter);
-            printWriter.flush();
+            SongFileWriter.write(fixture.song(), fixture.fonts(), printWriter);
 
             var file = tempDir.resolve("song.musicxml").toFile();
             Files.writeString(file.toPath(), stringWriter.toString());

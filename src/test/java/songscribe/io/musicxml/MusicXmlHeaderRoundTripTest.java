@@ -23,9 +23,13 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 
@@ -37,7 +41,7 @@ import songscribe.dom.SongMetadata;
  * field equal. An empty number omits {@code <movement-number>} and reloads blank,
  * and the emitted head validates against the MusicXML 4.0 schema.
  */
-class MusicXmlHeaderRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlHeaderRoundTripTest extends UnitTest {
 
     // Distinct, already-normalized ASCII values so the model-side normalization is
     // idempotent and the round-trip is verbatim; distinct composer/lyricist catch a

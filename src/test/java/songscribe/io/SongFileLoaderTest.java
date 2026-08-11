@@ -20,6 +20,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import songscribe.UnitTest;
+import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.io.musicxml.MusicXmlTags;
 import songscribe.io.musicxml.MusicXmlWriter;
 
@@ -55,6 +57,7 @@ class SongFileLoaderTest extends UnitTest {
     private static final String PDF_EXTENSION = "pdf";
     private static final String EXTENSIONLESS_FILE_NAME = "song-with-no-extension";
     private static final String NONEXISTENT_FILE_NAME = "does-not-exist.musicxml";
+    private static final String STUB_FILE_NAME = "stub.musicxml";
 
     // Every element/attribute name the fixtures edit comes from MusicXmlTags, the
     // vocabulary the writer emits, so renaming a tag there cannot leave these
@@ -103,11 +106,20 @@ class SongFileLoaderTest extends UnitTest {
     // instantly and staying a few hundred bytes on disk.
     private static final int ENTITY_BOMB_LEVELS = 6;
     private static final int ENTITY_BOMB_FANOUT = 10;
-    private static final String ENTITY_BOMB_LEAF = "aaaaaaaaaa";
     private static final String ENTITY_BOMB_PREFIX = "bomb";
-    // The runtime names the limit it enforced; matching only this word keeps the test
-    // off the exact wording, which is the runtime's to change.
-    private static final String ENTITY_EXPANSION_ERROR_TOKEN = "entity expansions";
+
+    // Two limits stand between a bomb and heap exhaustion, and the leaf decides which one
+    // the document reaches. A leaf carrying text accumulates expanded characters and hits
+    // the size cap; an empty leaf expands just as many times while producing nothing, so
+    // it can only be stopped by the count cap — the one MusicXmlSerializer asks for by
+    // name. One test per leaf, so neither cap can lapse unnoticed behind the other.
+    private static final String ENTITY_BOMB_TEXT_LEAF = "aaaaaaaaaa";
+    private static final String ENTITY_BOMB_EMPTY_LEAF = "";
+
+    // The runtime names the limit it enforced; matching only that name keeps the tests off
+    // the surrounding wording, which is the runtime's to change.
+    private static final String ENTITY_COUNT_LIMIT_NAME = "jdk.xml.entityExpansionLimit";
+    private static final String ENTITY_SIZE_LIMIT_NAME = "jdk.xml.totalEntitySizeLimit";
 
     private static final Pattern SOFTWARE_TAG_PATTERN = Pattern.compile(SOFTWARE_TAG_REGEX);
 
@@ -127,14 +139,25 @@ class SongFileLoaderTest extends UnitTest {
         return '&' + ENTITY_BOMB_PREFIX + level + ';';
     }
 
-    private static String entityBombDoctype() {
-        var subset = new StringBuilder(entityDeclaration(0, ENTITY_BOMB_LEAF));
+    private static String entityBombDoctype(String leaf) {
+        var subset = new StringBuilder(entityDeclaration(0, leaf));
 
         for (var level = 1; level < ENTITY_BOMB_LEVELS; level++) {
             subset.append(entityDeclaration(level, entityReference(level - 1).repeat(ENTITY_BOMB_FANOUT)));
         }
 
         return doctypeWithInternalSubset(subset.toString());
+    }
+
+    /**
+     * The valid document with its {@code <software>} content replaced by a reference to
+     * the top of a bomb built on {@code leaf}, and the bomb's declarations prepended.
+     * Tolerating the declaration is what makes nested entity definitions reachable at all.
+     */
+    private static String entityBombXml(String leaf) {
+        return SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, entityReference(ENTITY_BOMB_LEVELS - 1)))
+            .replace(NATIVE_ROOT_OPEN_TAG, entityBombDoctype(leaf) + NATIVE_ROOT_OPEN_TAG);
     }
 
     private static String entityDeclaration(int level, String value) {
@@ -176,8 +199,7 @@ class SongFileLoaderTest extends UnitTest {
     private static String writeMusicXml(SongLoadResult.Success fixture) {
         var stringWriter = new StringWriter();
         var printWriter = new PrintWriter(stringWriter);
-        MusicXmlWriter.writeSong(fixture.song(), fixture.fonts(), printWriter);
-        printWriter.flush();
+        SongFileWriter.write(fixture.song(), fixture.fonts(), printWriter);
         return stringWriter.toString();
     }
 
@@ -401,24 +423,49 @@ class SongFileLoaderTest extends UnitTest {
         assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.Success.class);
     }
 
+    /**
+     * A bomb whose leaf carries text: a few hundred bytes on disk that would expand to
+     * gigabytes if nothing capped it, freezing the window it was opened from. Either cap
+     * satisfies this — which one a given runtime reaches first is a property of the
+     * parser, not of the protection, and pinning one would fail on a JDK that reordered
+     * them while the protection still worked.
+     */
     @Test
     void testEntityExpansionBombReturnsParseError(@TempDir Path tempDir) throws IOException {
-        // Tolerating the declaration is what makes nested entity definitions reachable at
-        // all. This file is a few hundred bytes and would expand to gigabytes if the
-        // runtime did not cap expansion, freezing the window it was opened from.
-        var bombXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
-            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, entityReference(ENTITY_BOMB_LEVELS - 1)))
-            .replace(NATIVE_ROOT_OPEN_TAG, entityBombDoctype() + NATIVE_ROOT_OPEN_TAG);
-        var file = writeFile(tempDir, "entity-bomb." + MUSICXML_EXTENSION, bombXml);
+        assertThat(bombFailureMessage(tempDir, "entity-bomb", ENTITY_BOMB_TEXT_LEAF))
+            .containsAnyOf(ENTITY_COUNT_LIMIT_NAME, ENTITY_SIZE_LIMIT_NAME);
+    }
+
+    /**
+     * The same bomb with an empty leaf: it demands as many expansions but produces no
+     * characters, so the accumulated-size cap cannot fire and the count cap — the one
+     * {@code MusicXmlSerializer} asks for by name — is the only thing left to stop it.
+     */
+    @Test
+    void testEntityCountBombReturnsParseError(@TempDir Path tempDir) throws IOException {
+        assertThat(bombFailureMessage(tempDir, "entity-count-bomb", ENTITY_BOMB_EMPTY_LEAF))
+            .contains(ENTITY_COUNT_LIMIT_NAME);
+    }
+
+    /**
+     * Loads a bomb built on {@code leaf} and returns the failure message of the
+     * {@code ParseError} it must produce. The caller asserts on which limit that message
+     * names: doing so is what keeps these tests from passing on a malformed-fixture parse
+     * error, which looks identical from the outside.
+     */
+    private static String bombFailureMessage(Path tempDir, String fileName, String leaf) throws IOException {
+        var file = writeFile(tempDir, fileName + '.' + MUSICXML_EXTENSION, entityBombXml(leaf));
         var result = SongFileLoader.load(file);
 
         if (!(result instanceof SongLoadResult.ParseError parseError)) {
             throw new AssertionError("expected ParseError but got " + result);
         }
 
-        // Naming the cause keeps the test from passing on a malformed-fixture parse
-        // error, which would look identical from the outside.
-        assertThat(parseError.cause()).hasMessageContaining(ENTITY_EXPANSION_ERROR_TOKEN);
+        var message = parseError.cause().getMessage();
+
+        assertThat(message).as("the parse failure must carry a message naming the limit").isNotNull();
+
+        return message;
     }
 
     // -- (l) malformed (not well-formed) XML --------------------------------------------------
@@ -440,5 +487,32 @@ class SongFileLoaderTest extends UnitTest {
         var file = tempDir.resolve(NONEXISTENT_FILE_NAME).toFile();
 
         assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.IoError.class);
+    }
+
+    // -- (n) an unexpected runtime failure inside the reader ------------------------------------
+
+    @Test
+    void testRuntimeExceptionFromReaderReturnsParseError() {
+        // A missed null check in the mappers arrives here as an NPE: NullAway cannot see
+        // into the generated ProxyMusic classes, so nothing in the build catches one for
+        // us. The reader is stubbed because a file that provokes the bug would be a file
+        // the current mappers handle correctly. What is asserted is the backstop clause —
+        // the bug costs a failed open, not the application.
+        var file = new File(STUB_FILE_NAME);
+        var cause = new NullPointerException("missed null check");
+
+        try (var readerMock = mockStatic(MusicXmlReader.class)) {
+            readerMock.when(() -> MusicXmlReader.read(file)).thenThrow(cause);
+
+            var result = SongFileLoader.load(file);
+
+            if (!(result instanceof SongLoadResult.ParseError parseError)) {
+                throw new AssertionError("expected ParseError but got " + result);
+            }
+
+            // The original throwable has to survive the wrapping, or the log entry the
+            // backstop writes is the only record of what actually went wrong.
+            assertThat(parseError.cause()).hasCause(cause);
+        }
     }
 }

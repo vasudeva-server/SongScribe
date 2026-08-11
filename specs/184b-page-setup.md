@@ -20,7 +20,7 @@ Move horizontal layout authority from line width to margins. Add a per-document 
 
 - `PageModel` is all-static, reads `PrefsKey.PAGE_SIZE` in `getSize()`, has fixed `VERTICAL_MARGIN_INCHES = 0.5`, and derives horizontal margins by centering the line width in `getHorizontalMarginPx(lineWidthPx)`.
 
-- `<defaults><page-layout><page-width>` is **overloaded** to carry `lineWidthSs` (`MusicXmlHeaderWriter.writeDefaults`, lines 252-257; read by `MusicXmlHeaderReader.handleEndDefaultsPageWidth`, line 312, which calls `song.setLineWidthSs`). `<page-height>` and `<scaling>` are fixed write-forward; `<page-margins>` is never written. SongScribe-specific scalars ride in `<miscellaneous-field>` entries.
+- `<defaults><page-layout><page-width>` is **overloaded** to carry `lineWidthSs` (`HeaderBuilder.buildDefaults`, which sets `pageLayout.setPageWidth(...)` from the model line width; read by `HeaderMapper.mapDefaults`, which calls `song.setLineWidthSs`). `<page-height>` and `<scaling>` are fixed write-forward; `<page-margins>` is never written. SongScribe-specific scalars ride in `<miscellaneous-field>` entries.
 
 - `PageLayoutData` (export-only, raw px) has `mirrored` / `songsPerPage` fields written by `PaperSizeStep` (inside `ExportPDFDialog`, mirrored checkbox hidden) but never read — dead scaffolding.
 
@@ -72,7 +72,7 @@ lineWidthSs     = pxToSs(inchesToPx(lineWidthInches))
 | `undo/MutationReplayer.java:201` — `case LINE_WIDTH_SS -> song.setLineWidthSs(...)` in `applyLayoutField` | remove the case; add cases for the seven new fields (§6) |
 | `message/notification/LayoutDidChangeNotification` — carries `lineWidthSs` | drop that payload field |
 | `dom/Song.java:1557-1568` — `@Handler layoutDidChange` calls `setLineWidthSs(update.getLineWidthSs())` at line 1565 | remove that branch |
-| `io/musicxml/MusicXmlHeaderReader.java:320` | replaced by the new read path (§5) |
+| `io/musicxml/HeaderMapper.java` (`mapDefaults`) | replaced by the new read path (§5) |
 
 ### 3. PageModel rework
 
@@ -105,7 +105,7 @@ Follow `StandardDialog`'s lifecycle contract: OK runs `verifyFocusedField()` →
 
 ### 5. MusicXML persistence
 
-**New format** (written by `MusicXmlHeaderWriter.writeDefaults`, read by `MusicXmlHeaderReader`):
+**New format** (written by `HeaderBuilder.buildDefaults`, read by `HeaderMapper.mapDefaults`):
 
 ```xml
 <defaults>
@@ -123,7 +123,7 @@ Follow `StandardDialog`'s lifecycle contract: OK runs `verifyFocusedField()` →
 ```
 
 - Mirrored margins write two `<page-margins>` elements with `type="odd"` and `type="even"` instead of one `type="both"`.
-- All values in tenths via `MusicXmlUnits.ssToTenths` / `formatTenths`. `paperSize` is recovered on read by matching width/height against the `PaperSize` table (nearest match).
+- All values in tenths via `MusicXmlUnits.ssAsTenths` (attribute) / `formatSsAsTenths` (element text). `paperSize` is recovered on read by matching width/height against the `PaperSize` table (nearest match).
 - `versoFirst` has no native MusicXML slot → `<miscellaneous-field name="verso-first">` (written only when true), following the `MISC_SUB_ATTRIBUTION_FONT` pattern in `writeMiscellaneousFields` (lines 158-222) and `applyMiscField` (lines 548-597).
 - Line width is **no longer stored** — it is derived on load from page width minus margins.
 - The fixed copyright constant is written into `<identification><rights>` (currently write-forward anyway); the reader continues to ignore it.
@@ -195,7 +195,7 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 | `message/mutation/LayoutField.java` | **Modified** — seven new fields, `LINE_WIDTH_SS` removed |
 | `message/notification/LayoutDidChangeNotification.java` | **Modified** — `lineWidthSs` payload removed |
 | `undo/MutationReplayer.java` | **Modified** — `applyLayoutField` cases updated |
-| `io/musicxml/MusicXmlHeaderWriter.java` / `MusicXmlHeaderReader.java` / `MusicXmlTags.java` | **Modified** — real page-layout write/read, legacy fallback, verso-first misc-field |
+| `io/musicxml/HeaderBuilder.java` / `HeaderMapper.java` / `MusicXmlTags.java` | **Modified** — real page-layout write/read, legacy fallback, verso-first misc-field |
 | `io/SongLoader.java` (`.mssw` path) | **Modified** — center-derive margins on legacy import |
 | `export/PageLayoutData.java` | **Modified** — dead fields removed |
 | `resources/songscribe/strings.properties` | **Modified** — dialog keys added; dead line-width keys removed |
@@ -203,7 +203,7 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 * * *
 ## Testing
 
-Unit tests only. Extend `MusicXmlRoundTripSupport` / `MusicXmlDefaultsRoundTripTest`, which already cover the `<page-width>` line-width round trip and the write-forward-values-ignored-on-read case.
+Unit tests only. Extend `MusicXmlDefaultsRoundTripTest`, which already covers the `<page-width>` line-width round trip and the write-forward-values-ignored-on-read case; its write/read plumbing comes from the static helpers in `MusicXmlRoundTripSupport`.
 
 ### Derivation math
 - line width from paper size + margins, per `PaperSize` entry

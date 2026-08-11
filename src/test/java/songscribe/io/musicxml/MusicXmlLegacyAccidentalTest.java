@@ -21,9 +21,12 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parseResult;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.io.LegacyAccidentals;
 
@@ -32,7 +35,7 @@ import songscribe.io.LegacyAccidentals;
  * were retired: each converts to the accidental that sounds the same, and the
  * load result says so, which is what makes the song open marked modified.
  */
-class MusicXmlLegacyAccidentalTest extends MusicXmlRoundTripSupport {
+class MusicXmlLegacyAccidentalTest extends UnitTest {
 
     private static String scoreWithAccidental(String token) {
         return scoreWithMeasureBody(

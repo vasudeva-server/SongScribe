@@ -29,11 +29,14 @@ import static songscribe.io.XmlFixtures.openTag;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
+import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.InputSource;
 
 import songscribe.Constants;
-import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.ScaleContext;
@@ -42,40 +45,74 @@ import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.io.SongFileWriter;
 import songscribe.io.SongLoadResult;
+import songscribe.layout.LineLayoutProvider;
 
 /**
- * Shared plumbing for the MusicXML round-trip test classes: the write/read
- * cycle, song construction, and the cross-cutting span-assertion helpers used by
- * more than one concern-specific test file.
+ * Shared plumbing for the MusicXML test classes: the write/read cycle, song
+ * construction, the fixed clock every date-bearing case writes under, and the
+ * cross-cutting assertion helpers used by more than one concern-specific test file.
+ *
+ * <p>Static helpers rather than a base class. These are needed by tests that already
+ * extend {@link songscribe.UnitTest} directly and by
+ * {@link MusicXmlCorpusGenerator}, which is not a test at all; making them inherited
+ * would leave every such caller re-declaring its own copy, which is exactly what
+ * happened while this was an abstract superclass.
  */
-abstract class MusicXmlRoundTripSupport extends UnitTest {
+final class MusicXmlRoundTripSupport {
+
+    private MusicXmlRoundTripSupport() {
+    }
 
     /**
      * A non-zero X offset (in pixels) that survives the px → ss → tenths → ss → px
      * round-trip without rounding loss.  Any integer number of pixels is exact at the
      * default scale (8 px per staff space), so 2 staff spaces = 16 px is a clean choice.
      */
-    protected static final int X_OFFSET_PX = ScaleContext.ssToRoundedPx(2.0);
+    static final int X_OFFSET_PX = ScaleContext.ssToRoundedPx(2.0);
 
     /**
      * Staff position of C4 — six steps below the B4 origin (staffPosition 0) in the
      * descending-pitch lattice.
      */
-    protected static final int C4_STAFF_POSITION = 6;
+    static final int C4_STAFF_POSITION = 6;
+
+    private static final String FIXED_CLOCK_INSTANT = "2026-01-01T00:00:00Z";
+
+    /**
+     * A fixed clock, so every date-derived value the writer produces — the
+     * {@code <encoding-date>}, the rights-credit year — is identical across runs and
+     * across generations of the same song. Without it the corpus fixpoint would flake
+     * whenever a run straddled midnight.
+     */
+    static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse(FIXED_CLOCK_INSTANT), ZoneOffset.UTC);
+
+    /** The year {@link #FIXED_CLOCK} reports, for cases asserting on the rights credit. */
+    static final int FIXED_CLOCK_YEAR = FIXED_CLOCK.instant().atZone(ZoneOffset.UTC).getYear();
+
+    /**
+     * The {@code <encoding>} half of the provenance block, on its own so a fixture that
+     * needs other {@code <identification>} children can put them in the <em>same</em>
+     * element. A document may carry only one {@code <identification>}: a second is
+     * schema-invalid, and a reader working from an object graph keeps just one of them,
+     * so a fixture that emits two loses whichever it did not keep.
+     */
+    static final String SOFTWARE_ENCODING =
+        "    " + openTag(MusicXmlTags.ENCODING) + '\n' +
+        "      " + element(MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME) + '\n' +
+        "    " + closeTag(MusicXmlTags.ENCODING) + '\n';
 
     /**
      * Minimal SongScribe provenance block. Every hand-built {@code <score-partwise>}
      * fixture read through {@link MusicXmlReader} must carry a {@code <software>} tag
      * that starts with {@link Constants#PACKAGE_NAME}, or the reader's provenance gate
-     * refuses it at {@code endDocument}. Fixtures insert this immediately after the
+     * refuses the document before mapping any of it. Fixtures insert this immediately after the
      * root element so future fixtures inherit the tag instead of silently breaking.
      */
-    protected static final String SOFTWARE_IDENTIFICATION =
+    static final String SOFTWARE_IDENTIFICATION =
         "  " + openTag(MusicXmlTags.IDENTIFICATION) + '\n' +
-        "    " + openTag(MusicXmlTags.ENCODING) + '\n' +
-        "      " + element(MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME) + '\n' +
-        "    " + closeTag(MusicXmlTags.ENCODING) + '\n' +
+        SOFTWARE_ENCODING +
         "  " + closeTag(MusicXmlTags.IDENTIFICATION) + '\n';
 
     /** The single part these fixtures declare and then fill. */
@@ -95,7 +132,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * below ({@code divisions}, {@code time}, {@code clef}, {@code part-name}) are
      * literals in the writer too, so there is no constant for them to drift from.
      */
-    protected static String scoreWithMeasureBody(String measureBody) {
+    static String scoreWithMeasureBody(String measureBody) {
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             openTag(MusicXmlTags.SCORE_PARTWISE, MusicXmlTags.ATTR_VERSION, MusicXmlTags.VERSION_VALUE) + '\n' +
@@ -124,32 +161,82 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
     // font-aware overloads carry the DocumentFonts through the write/read seam and
     // surface it back via SongLoadResult.Success.
 
-    protected static String writeToString(Song song) throws Exception {
+    static String writeToString(Song song) throws Exception {
         return writeToString(song, DocumentFonts.defaultFonts());
     }
 
-    protected static String writeToString(Song song, DocumentFontsHolder fonts) throws Exception {
+    // Goes through SongFileWriter rather than MusicXmlWriter directly: it is the save
+    // path's entry point and the one place that decides to lay the song out headlessly
+    // when the caller has no layout, which is exactly what a test wants.
+    static String writeToString(Song song, DocumentFontsHolder fonts) throws Exception {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
-        MusicXmlWriter.writeSong(song, fonts, pw);
-        pw.flush();
+        SongFileWriter.write(song, fonts, pw);
         return sw.toString();
     }
 
-    protected static Song parse(String xml) throws Exception {
+    static Song parse(String xml) throws Exception {
         return parseResult(xml).song();
     }
 
-    protected static SongLoadResult.Success parseResult(String xml) throws Exception {
+    static SongLoadResult.Success parseResult(String xml) throws Exception {
         return MusicXmlReader.read(new InputSource(new StringReader(xml)));
     }
 
-    public static Song roundTrip(Song song) throws Exception {
+    static Song roundTrip(Song song) throws Exception {
         return roundTrip(song, DocumentFonts.defaultFonts()).song();
     }
 
-    public static SongLoadResult.Success roundTrip(Song song, DocumentFontsHolder fonts) throws Exception {
+    static SongLoadResult.Success roundTrip(Song song, DocumentFontsHolder fonts) throws Exception {
         return parseResult(writeToString(song, fonts));
+    }
+
+    /**
+     * Builds the complete {@link ScorePartwise} graph for {@code song}, headless-laid-out
+     * and dated from {@link #FIXED_CLOCK}. This is the construction
+     * {@code MusicXmlWriter.writeSong} drives internally, minus the marshal step — a case
+     * that only needs the shape the builder produced has no reason to also exercise the
+     * serializer.
+     */
+    static ScorePartwise build(Song song) {
+        var fonts = DocumentFonts.defaultFonts();
+
+        return build(song, fonts, LineLayoutProvider.headless(song, fonts));
+    }
+
+    /**
+     * The same, with an explicit {@code layoutProvider} — for a case that needs to control
+     * what layout the adjustment passes see (e.g. one reporting no geometry at all).
+     */
+    static ScorePartwise build(Song song, LineLayoutProvider layoutProvider) {
+        return build(song, DocumentFonts.defaultFonts(), layoutProvider);
+    }
+
+    private static ScorePartwise build(Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider) {
+        return ScorePartwiseBuilder.build(song, fonts, layoutProvider, FIXED_CLOCK);
+    }
+
+    /** Serializes a built graph, for the cases whose subject is the emitted text. */
+    static String marshal(ScorePartwise score) {
+        var sw = new StringWriter();
+        var pw = new PrintWriter(sw);
+        MusicXmlSerializer.marshal(score, pw);
+        pw.flush();
+
+        return sw.toString();
+    }
+
+    /** How many non-overlapping times {@code needle} occurs in {@code haystack}. */
+    static int countOccurrences(String haystack, String needle) {
+        var count = 0;
+        var index = haystack.indexOf(needle);
+
+        while (index >= 0) {
+            count++;
+            index = haystack.indexOf(needle, index + needle.length());
+        }
+
+        return count;
     }
 
     /**
@@ -161,11 +248,11 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * therefore does not reorder elements during construction.
      */
     @FunctionalInterface
-    protected interface LineBuilder {
+    interface LineBuilder {
         void build(Line line);
     }
 
-    protected static Song buildSong(LineBuilder... builders) {
+    static Song buildSong(LineBuilder... builders) {
         var song = new Song();
 
         song.withoutMutationTracking(() -> {
@@ -193,7 +280,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
     // Trill.yPositionSs).  The context string names the case in failure output.
     // -------------------------------------------------------------------------
 
-    protected static void assertSpanEquals(
+    static void assertSpanEquals(
             Span actual, int expectedAnchor, int expectedEnd, String context) {
         assertThat(actual.getAnchorElementIndex())
             .as("%s: anchor index", context)
@@ -203,7 +290,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
             .isEqualTo(expectedEnd);
     }
 
-    protected static void assertSpanEquals(
+    static void assertSpanEquals(
             Span actual, int expectedAnchor, int expectedEnd) {
         assertSpanEquals(actual, expectedAnchor, expectedEnd, "span");
     }
@@ -212,7 +299,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * Asserts anchor/end indices plus the {@link Tuplet}-specific fields
      * {@code grade} and {@code verticalPositionSs}. Used by Range-Spans 6b.
      */
-    protected static void assertSpanEquals(
+    static void assertSpanEquals(
             Tuplet actual, int expectedAnchor, int expectedEnd,
             int expectedGrade, int expectedVerticalPositionSs) {
         assertSpanEquals(actual, expectedAnchor, expectedEnd, "tuplet");
@@ -228,7 +315,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * Asserts anchor/end indices plus the {@link Trill}-specific field
      * {@code yPositionSs}. Used by Range-Spans 6b.
      */
-    protected static void assertSpanEquals(
+    static void assertSpanEquals(
             Trill actual, int expectedAnchor, int expectedEnd, int expectedYPositionSs) {
         assertSpanEquals(actual, expectedAnchor, expectedEnd, "trill");
         assertThat(actual.getYPositionSs())

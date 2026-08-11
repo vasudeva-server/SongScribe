@@ -28,9 +28,16 @@ import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Ending;
 
 // -------------------------------------------------------------------------
@@ -60,7 +67,7 @@ import songscribe.dom.Ending;
 // repeat between them), so a split-less span is not a valid ending: writing one
 // throws, and importing one drops it. Both are asserted below.
 // -------------------------------------------------------------------------
-class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlEndingRoundTripTest extends UnitTest {
 
     @Test
     void testTwoBracketEndingWithRepeatLeftAnchorRoundTrips() throws Exception {

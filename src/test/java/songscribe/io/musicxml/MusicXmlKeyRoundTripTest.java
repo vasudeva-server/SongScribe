@@ -23,9 +23,13 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
 
@@ -36,7 +40,7 @@ import songscribe.dom.Song;
  * from measure 1 and carries the running key forward across lines, applying a
  * later {@code <key>} to the line it opens.
  */
-class MusicXmlKeyRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlKeyRoundTripTest extends UnitTest {
 
     /** Sharps on the first mid-song key change. */
     private static final int MID_SONG_SHARP_COUNT = 3;

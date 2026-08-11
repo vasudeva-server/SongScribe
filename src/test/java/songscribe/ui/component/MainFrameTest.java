@@ -63,9 +63,8 @@ import javax.swing.JRootPane;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
-import songscribe.font.DocumentFontsHolder;
 import songscribe.io.SongFileWriter;
-import songscribe.io.musicxml.MusicXmlWriter;
+import songscribe.layout.LineLayoutProvider;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
@@ -334,13 +333,16 @@ class MainFrameTest extends UnitTest {
 
             doCallRealMethod().when(frame).saveCurrentFile();
 
-            try (var musicXmlWriterMock = mockStatic(MusicXmlWriter.class);
+            try (var songFileWriterMock = mockStatic(SongFileWriter.class);
                  var messageCenterMock = mockStatic(MessageCenter.class)) {
 
-                // MusicXmlWriter.writeSong is a no-op stub — we only care about side-effects.
-                musicXmlWriterMock.when(
-                    () -> MusicXmlWriter.writeSong(any(Song.class), any(), any())
-                ).then(answerVoid((Song song, DocumentFontsHolder fonts, PrintWriter pw) -> { }));
+                // saveCurrentFile writes through SongFileWriter's layout-provider/File form —
+                // stubbing any other overload would leave this returning the boolean default
+                // and the test would assert nothing about a successful write.
+                songFileWriterMock.when(
+                    () -> SongFileWriter.write(
+                        any(Song.class), any(), any(LineLayoutProvider.class), any(File.class))
+                ).thenReturn(true);
 
                 var result = frame.saveCurrentFile();
 
@@ -414,7 +416,8 @@ class MainFrameTest extends UnitTest {
                  var optionDialogsMock = mockStatic(OptionDialogs.class)) {
 
                 songFileWriterMock.when(
-                    () -> SongFileWriter.write(any(Song.class), any(), any(File.class))
+                    () -> SongFileWriter.write(
+                        any(Song.class), any(), any(LineLayoutProvider.class), any(File.class))
                 ).thenReturn(false);
 
                 var result = frame.saveCurrentFile();

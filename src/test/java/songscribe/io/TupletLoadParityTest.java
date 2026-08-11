@@ -42,7 +42,6 @@ import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.io.musicxml.MusicXmlReader;
-import songscribe.io.musicxml.MusicXmlWriter;
 
 /**
  * Reader parity for the post-load tuplet pass: one document, expressed once as legacy
@@ -125,8 +124,7 @@ class TupletLoadParityTest extends UnitTest {
     private static Song loadThroughMusicXml(Song song) throws Exception {
         var writer = new StringWriter();
         var printWriter = new PrintWriter(writer);
-        MusicXmlWriter.writeSong(song, DocumentFonts.defaultFonts(), printWriter);
-        printWriter.flush();
+        SongFileWriter.write(song, DocumentFonts.defaultFonts(), printWriter);
 
         return MusicXmlReader.read(new InputSource(new StringReader(writer.toString()))).song();
     }

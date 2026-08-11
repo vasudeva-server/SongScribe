@@ -22,32 +22,37 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.countOccurrences;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
 /**
  * Round-trip tests for a tie whose anchor and end sit in different lines
- * (issue #493, phase 12). {@link MusicXmlNotationsWriter} writes ties as
- * per-note {@code <tied>} markers rather than an index pair, so it emits
- * whatever the per-note marker table hands it; the cross-line handling on
- * the write side is one step earlier, where {@code MusicXmlSpanIndex} buckets
- * each endpoint into that table only if it resolves to a position in the line
- * being written. Both lines hold a cross-line tie, so without that a single
- * tie would emit a start and a stop in each of them. The read side collapses
- * a pending {@code <tied type="start">} with the next matching
- * {@code type="stop"} via {@link RangeSpanResolver#resolveTie}, then hands
- * the built {@link Tie} to {@code Line.addTie}, which reaches
- * {@code Line.appendChild} — the phase-1 chokepoint that adds a span to both
- * lines of a pair when its endpoints straddle a line boundary. These tests
- * exercise that path end to end rather than assume it.
+ * (issue #493, phase 12). The writer emits ties as per-note {@code <tied>}
+ * markers rather than an index pair, so each line's note only carries a marker
+ * for the endpoint that resolves to a position in that line being written.
+ * Both lines hold a cross-line tie, so without that a single tie would emit a
+ * start and a stop in each of them. The read side collapses a pending
+ * {@code <tied type="start">} with the next matching {@code type="stop"} via
+ * {@code MeasureMapper.resolveTie}, then hands the built {@link Tie} to
+ * {@code Line.addTie}, which reaches {@code Line.appendChild} — the phase-1
+ * chokepoint that adds a span to both lines of a pair when its endpoints
+ * straddle a line boundary. These tests exercise that path end to end rather
+ * than assume it.
  */
-class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
+class CrossLineTieRoundTripTest extends UnitTest {
 
     /**
      * Enough notes per line that the anchor sits at a high index and the far line has an
@@ -70,18 +75,6 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
         }
 
         return notes;
-    }
-
-    private static int countOccurrences(String text, String marker) {
-        var count = 0;
-        var index = text.indexOf(marker);
-
-        while (index >= 0) {
-            count++;
-            index = text.indexOf(marker, index + marker.length());
-        }
-
-        return count;
     }
 
     @Test

@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.error.RuntimeError;
+import songscribe.io.musicxml.MusicXmlSerializer;
 import songscribe.converter.ImageConverter;
 import songscribe.converter.MidiConverter;
 import songscribe.converter.PDFConverter;
@@ -146,6 +147,34 @@ public final class SongScribe {
         log.info("Log level: {}", System.getProperty("songscribe.log.level", "INFO"));
     }
 
+    /**
+     * Builds the MusicXML JAXB binding model on a background thread so the first
+     * save of a session does not build it on the event dispatch thread.
+     *
+     * <p>{@code MainFrame.saveCurrentFile} writes synchronously from a Swing action,
+     * and the model spans several hundred generated classes, so paying for it there
+     * stalls the UI. A failure here is not fatal — the save path reports its own
+     * failure — so it is logged and left alone.
+     *
+     * <p>The catch is {@link Throwable}, not {@link RuntimeException}: the failure this
+     * thread can actually produce is {@code MusicXmlSerializer}'s one-time setup blowing
+     * up, which arrives as an {@link ExceptionInInitializerError} — an {@code Error}. A
+     * narrower catch would let it kill the thread silently and log nothing, which is the
+     * one outcome this method exists to prevent.
+     */
+    private static void warmMusicXmlSerializer() {
+        var warmUp = new Thread(() -> {
+            try {
+                MusicXmlSerializer.warmUp();
+            } catch (Throwable e) {
+                LoggerFactory.getLogger(SongScribe.class).warn("MusicXML serializer warm-up failed", e);
+            }
+        }, "musicxml-warmup");
+
+        warmUp.setDaemon(true);
+        warmUp.start();
+    }
+
     static void main(String[] args) {
         configureLogging();
 
@@ -209,6 +238,7 @@ public final class SongScribe {
 
         truncateLogIfRequested();
         logBanner(app.contains("converter") ? "SongScribe Converter" : "SongScribe");
+        warmMusicXmlSerializer();
 
         switch (app) {
             case "image_converter" -> ImageConverter.main(args);

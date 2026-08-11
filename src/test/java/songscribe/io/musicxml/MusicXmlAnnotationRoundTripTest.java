@@ -28,12 +28,19 @@ import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.assertSpanEquals;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.awt.Component;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Duration;
@@ -50,7 +57,7 @@ import songscribe.dom.TempoChangeAttachment;
  * {@code placement} + {@code halign} + {@code relative-y} signal, binding to the
  * next note as an {@link AnnotationAttachment}.
  */
-class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlAnnotationRoundTripTest extends UnitTest {
 
     // Distinct annotation texts so a note / alignment / placement mix-up is caught.
     private static final String TEXT_ABOVE_LEFT = "dolce";

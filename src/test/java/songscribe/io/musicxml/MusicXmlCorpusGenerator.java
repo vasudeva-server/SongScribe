@@ -30,6 +30,9 @@ import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.C4_STAFF_POSITION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
 
 import java.awt.Component;
 import java.io.PrintWriter;
@@ -85,7 +88,7 @@ import songscribe.dom.Ending;
  * The losslessness gate that consumes the corpus is
  * {@link MusicXmlCorpusLosslessnessTest}.
  */
-public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
+public class MusicXmlCorpusGenerator {
 
     private static final Path SYNTHETIC_DIR = Path.of("src/test/resources/corpus/synthetic");
 

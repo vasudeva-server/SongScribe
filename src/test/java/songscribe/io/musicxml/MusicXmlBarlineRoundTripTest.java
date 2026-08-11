@@ -28,18 +28,25 @@ import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.SOFTWARE_IDENTIFICATION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 
-class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
+class MusicXmlBarlineRoundTripTest extends UnitTest {
 
     /**
      * Extracts barline and repeat {@link ElementType}s from the given line, in order.
