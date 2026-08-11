@@ -889,7 +889,7 @@ public final class ScoreView
         // keeps handling broadcast commands — spawning spurious undo steps against
         // the dead document — until GC clears it. Detach it deterministically here.
         if (this.song != null && this.song != song) {
-            this.song.unsubscribeFromBus();
+            this.song.dispose();
         }
 
         this.song = song;

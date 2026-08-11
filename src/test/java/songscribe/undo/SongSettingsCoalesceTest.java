@@ -65,7 +65,7 @@ class SongSettingsCoalesceTest extends UnitTest {
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
 
         UndoController.initialize();
-        UndoController.resetForTest();
+        UndoController.reset();
     }
 
     @AfterEach

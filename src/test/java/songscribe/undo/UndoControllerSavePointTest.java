@@ -52,7 +52,8 @@ class UndoControllerSavePointTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
 
         song = new Song();
         line = song.getLine(0);
@@ -69,7 +70,6 @@ class UndoControllerSavePointTest extends UnitTest {
     @AfterEach
     void tearDown() {
         mainFrameMock.close();
-        UndoController.resetForTest();
     }
 
     private void addNoteStep() {

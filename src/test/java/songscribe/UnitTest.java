@@ -92,13 +92,13 @@ public abstract class UnitTest {
     // MBassador holds subscribers weakly, so the action singletons a test creates via
     // Actions.initialize() linger as zombie bus listeners until GC — still handling later
     // tests' notifications and throwing in the torn-down/mocked environment, which routes to
-    // RuntimeError and pollutes unrelated tests. Unsubscribe them after every test.
-    // Actions.unsubscribeForTest() is null-safe (it skips uninitialized fields) and
-    // idempotent, so this is a harmless no-op for tests that never touch Actions.
+    // RuntimeError and pollutes unrelated tests. Retire them after every test.
+    // Actions.deinitialize() is null-safe (it skips uninitialized fields) and idempotent,
+    // so this is a harmless no-op for tests that never touch Actions.
     @AfterEach
     void unsubscribeActionSubscribers() {
-        Actions.unsubscribeForTest();
-        UndoController.unsubscribeForTest();
+        Actions.deinitialize();
+        UndoController.deinitialize();
 
         // Every listener subscribed during this test (usually via production
         // constructors) is removed so it cannot linger as a zombie that fires against

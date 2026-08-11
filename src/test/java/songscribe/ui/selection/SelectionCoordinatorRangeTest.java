@@ -876,7 +876,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         // this test drives revalidateElementSelection directly afterward, and the production
         // wiring this coordinator would otherwise trigger (ActionReflector's toolbar reflection)
         // has no toolbar to reflect onto here.
-        coordinator.unsubscribeForTest();
+        coordinator.dispose();
 
         var batch = new ArrayList<Mutation>();
 

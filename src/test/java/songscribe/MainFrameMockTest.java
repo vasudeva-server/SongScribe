@@ -67,12 +67,11 @@ public abstract class MainFrameMockTest extends UnitTest {
 
     @AfterEach
     void tearDownMainFrameMock() {
-        // Unsubscribe this test's action objects so they don't linger as zombie bus
-        // subscribers once the next test's initialize() reassigns the constants.
-        Actions.unsubscribeForTest();
-        PlaybackController.unsubscribeForTest();
+        // Retire this test's action generation so it doesn't linger as a zombie bus
+        // subscriber once the next test's initialize() reassigns the constants.
+        Actions.deinitialize();
+        PlaybackController.deinitialize();
         mainFrameMock.close();
-        Actions.resetForTest();
     }
 
     /** The injected mock MainFrame; identical to {@code MainFrame.getInstance()} under the mock. */

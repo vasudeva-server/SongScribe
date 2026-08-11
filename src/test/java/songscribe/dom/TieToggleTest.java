@@ -58,7 +58,7 @@ class TieToggleTest extends UnitTest {
         // These tests drive the coordinator directly; on the bus its songDidChange
         // would NPE on the uninitialized Actions constants every time the real
         // fixture song posts, aborting delivery to lower-priority subscribers.
-        coordinator.unsubscribeForTest();
+        coordinator.dispose();
 
         operations = new MusicEditOperations(song, coordinator);
     }

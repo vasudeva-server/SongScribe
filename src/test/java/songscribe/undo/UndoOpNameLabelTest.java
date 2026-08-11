@@ -73,7 +73,7 @@ class UndoOpNameLabelTest extends UnitTest {
         // Force the singleton to load and subscribe, then reset its stacks to a known
         // empty baseline so a prior test's steps do not leak in.
         UndoController.initialize();
-        UndoController.resetForTest();
+        UndoController.reset();
     }
 
     @AfterEach

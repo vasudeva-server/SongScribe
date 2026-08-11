@@ -1445,15 +1445,15 @@ class MainFrameTest extends UnitTest {
         @BeforeEach
         void resetActionsBeforeTest() {
             // Other test classes may have left Actions initialized via initialize().
-            // resetForTest() only clears mainFrame/appMenuActions, not the action constants
-            // themselves. Null out MODE_ACTION_GROUP directly so the pre-initialize
+            // deinitialize() disposes the constants but does not null them out (they are
+            // @NonNull). Null out MODE_ACTION_GROUP directly so the pre-initialize
             // assertion below is valid regardless of prior test-class ordering.
             Actions.MODE_ACTION_GROUP = null;
         }
 
         @AfterEach
         void resetActionsAfterTest() {
-            Actions.resetForTest();
+            Actions.deinitialize();
         }
 
         /**

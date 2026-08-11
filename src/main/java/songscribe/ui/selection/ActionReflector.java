@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.dom.StaffElement;
+import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -57,7 +58,7 @@ import songscribe.ui.action.UIAction;
  * <p>
  * The action lists are discovered once, by scanning {@link Actions} reflectively, and cached.
  */
-public final class ActionReflector {
+public final class ActionReflector implements Disposable {
 
     /** The selection this reflects. Read-only: nothing here changes what is selected. */
     private final SelectionCoordinator coordinator;
@@ -82,6 +83,16 @@ public final class ActionReflector {
     ActionReflector(SelectionCoordinator coordinator) {
         this.coordinator = coordinator;
         MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Removes this reflector from the message bus. Idempotent.
+     *
+     * <p>Called by {@link SelectionCoordinator#dispose()}, which owns this instance.
+     */
+    @Override
+    public void dispose() {
+        MessageCenter.unsubscribe(this);
     }
 
     // -------------------------------------------------------------------------

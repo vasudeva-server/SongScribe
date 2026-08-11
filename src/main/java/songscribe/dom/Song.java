@@ -31,6 +31,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
 import songscribe.io.SongIO;
+import songscribe.lifecycle.Disposable;
 import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -55,8 +56,17 @@ import songscribe.util.StringUtils;
 /**
  * This class serves as the model for data that is read from and written to
  * SongScribe files.
+ *
+ * <h2>Lifecycle</h2>
+ * A {@code Song} subscribes itself to the message bus in every constructor, so it can
+ * handle broadcast command notifications (metadata/tempo/key, etc.) for as long as it is
+ * the active document. {@link #dispose()} detaches it. MBassador holds listeners by weak
+ * reference, so a discarded {@code Song} keeps responding to broadcasts — and posting
+ * spurious undo steps against the dead document — until it is garbage-collected;
+ * {@code dispose()} makes the detach deterministic rather than GC-timing-dependent.
+ * {@code ScoreView.setSong} calls it when replacing the active {@code Song}.
  */
-public final class Song {
+public final class Song implements Disposable {
 
     public enum LANGUAGE {
         // Not used, the ordinals of the actual languages start at 1
@@ -306,14 +316,11 @@ public final class Song {
     }
 
     /**
-     * Detaches this Song from the message bus so it stops handling broadcast
-     * command notifications (metadata/tempo/key, etc.). MBassador holds listeners
-     * by weak reference, so a discarded Song keeps responding to broadcasts — and
-     * posting spurious undo steps against the dead document — until it is
-     * garbage-collected. Call this when replacing the active Song to make the
-     * detach deterministic rather than GC-timing-dependent.
+     * Detaches this {@code Song} from the message bus. Idempotent. See the class's
+     * {@code Lifecycle} section.
      */
-    public void unsubscribeFromBus() {
+    @Override
+    public void dispose() {
         MessageCenter.unsubscribe(this);
     }
 

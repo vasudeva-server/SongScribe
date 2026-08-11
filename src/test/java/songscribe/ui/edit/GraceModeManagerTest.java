@@ -443,7 +443,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @AfterEach
         void tearDown() {
-            Actions.resetForTest();
+            Actions.deinitialize();
             editModeManagerMock.close();
             messageCenterMock.close();
         }
@@ -997,7 +997,7 @@ class GraceModeManagerTest extends UnitTest {
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             calcMock.close();
             editModeManagerMock.close();
             messageCenterMock.close();
@@ -1082,7 +1082,7 @@ class GraceModeManagerTest extends UnitTest {
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             messageCenterMock.close();
         }
 
@@ -1168,7 +1168,7 @@ class GraceModeManagerTest extends UnitTest {
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             messageCenterMock.close();
         }
 
@@ -1478,7 +1478,7 @@ class GraceModeManagerTest extends UnitTest {
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             editModeManagerMock.close();
             previewMock.close();
             messageCenterMock.close();
@@ -1578,7 +1578,7 @@ class GraceModeManagerTest extends UnitTest {
             // live action object rather than null. resetForTest() also prevents action-group
             // selection state from bleeding into subsequent tests.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             editModeManagerMock.close();
             previewMock.close();
             messageCenterMock.close();
@@ -1751,7 +1751,7 @@ class GraceModeManagerTest extends UnitTest {
             // Drain pending invokeLater tasks (commit() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions.
             SwingUtilities.invokeAndWait(() -> {});
-            Actions.resetForTest();
+            Actions.deinitialize();
             messageCenterMock.close();
         }
 
@@ -1943,7 +1943,7 @@ class GraceModeManagerTest extends UnitTest {
             try {
                 // Drain pending invokeLater tasks before resetting Actions (see the sibling fixtures).
                 SwingUtilities.invokeAndWait(() -> {});
-                Actions.resetForTest();
+                Actions.deinitialize();
             } finally {
                 editModeManagerMock.close();
                 previewMock.close();

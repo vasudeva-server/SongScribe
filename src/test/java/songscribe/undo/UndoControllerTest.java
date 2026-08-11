@@ -59,7 +59,8 @@ class UndoControllerTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
 
         song = new Song();
         line = song.getLine(0);
@@ -76,7 +77,6 @@ class UndoControllerTest extends UnitTest {
     @AfterEach
     void tearDown() {
         mainFrameMock.close();
-        UndoController.resetForTest();
     }
 
     /** Appends one crotchet in its own modification bracket, producing one undo step. */

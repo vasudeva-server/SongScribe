@@ -42,6 +42,18 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.ElementSelection;
 
+/**
+ * <h2>Lifecycle</h2>
+ * {@link #initialize(MainFrame)} establishes the four playback action constants
+ * against one owner frame; each subscribes itself to the message bus.
+ * {@link #deinitialize()} removes them. Re-initialization is permitted and retires the
+ * previous four first.
+ *
+ * <p>Playback state — the registered score, the transport state, the sequencer —
+ * is established by {@link #register} and {@link #play}, not by
+ * {@code initialize}, and is therefore not {@code deinitialize}'s to undo. Stopping
+ * playback is {@link #stop()}.
+ */
 // The playback action constants are @NonNull but populated lazily by initialize() (which
 // needs the MainFrame, unavailable at class-load), mirroring the Actions holder. NullAway.Init
 // suppresses the "uninitialized field" check; keeping them non-null avoids poisoning call sites.
@@ -105,6 +117,12 @@ public final class PlaybackController {
     public static PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION;
     public static LoopPlaybackAction LOOP_PLAYBACK_ACTION;
 
+    // Tracks whether the four action constants above are live, so initialize() knows
+    // whether a generation exists to retire and deinitialize() knows whether it has
+    // anything to do. Null until initialize() is called; null again after deinitialize().
+    @Nullable
+    private static MainFrame mainFrame;
+
     private PlaybackController() {
     }
 
@@ -114,10 +132,13 @@ public final class PlaybackController {
      *
      * <p>Must be called once at the top of {@link MainFrame#initFrame()} — adjacent to
      * {@code Actions.initialize(this)} — before any constant in this class is first
-     * referenced. Calling it again (e.g. in tests) replaces the constants with freshly
-     * constructed instances.
+     * referenced. Calling it again (e.g. in tests) retires the previous four via
+     * {@link #deinitialize()} first, then replaces them with freshly constructed instances.
      */
     public static void initialize(MainFrame mainFrame) {
+        deinitialize();
+
+        PlaybackController.mainFrame = mainFrame;
         PLAY_STOP_ACTION = PlayStopAction.createAction(mainFrame);
         REWIND_ACTION = RewindAction.createAction(mainFrame);
         PLAY_WITH_REPEATS_ACTION = PlayWithRepeatsAction.createAction(mainFrame);
@@ -125,16 +146,19 @@ public final class PlaybackController {
     }
 
     /**
-     * Unsubscribes the playback action constants from the message bus. Test-support only,
-     * mirroring {@code Actions.unsubscribeForTest()}: {@link #initialize} reassigns these
-     * each test, so the previous test's actions must be unsubscribed to avoid lingering as
-     * zombie subscribers. Call from {@code @AfterEach} in test base classes.
+     * Retires the current four playback action constants and clears the owner. Idempotent:
+     * calling it without a preceding {@link #initialize} is a no-op.
      */
-    public static void unsubscribeForTest() {
-        MessageCenter.unsubscribe(PLAY_STOP_ACTION);
-        MessageCenter.unsubscribe(REWIND_ACTION);
-        MessageCenter.unsubscribe(PLAY_WITH_REPEATS_ACTION);
-        MessageCenter.unsubscribe(LOOP_PLAYBACK_ACTION);
+    public static void deinitialize() {
+        if (mainFrame == null) {
+            return;
+        }
+
+        PLAY_STOP_ACTION.dispose();
+        REWIND_ACTION.dispose();
+        PLAY_WITH_REPEATS_ACTION.dispose();
+        LOOP_PLAYBACK_ACTION.dispose();
+        mainFrame = null;
     }
 
     public static void register(ScoreView score) {

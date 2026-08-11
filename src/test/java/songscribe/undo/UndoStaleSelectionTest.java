@@ -101,7 +101,8 @@ class UndoStaleSelectionTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
 
         song = new Song();
         line = song.getLine(0);
@@ -126,7 +127,6 @@ class UndoStaleSelectionTest extends UnitTest {
         }
 
         mainFrameMock.close();
-        UndoController.resetForTest();
     }
 
     /**

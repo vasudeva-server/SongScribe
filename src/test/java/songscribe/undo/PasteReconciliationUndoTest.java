@@ -91,7 +91,8 @@ class PasteReconciliationUndoTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
 
         song = new Song();
         song.withoutMutationTracking(() -> song.setLineWidthSs(WIDE_LINE_WIDTH_SS));
@@ -109,7 +110,6 @@ class PasteReconciliationUndoTest extends UnitTest {
     @AfterEach
     void tearDown() {
         mainFrameMock.close();
-        UndoController.resetForTest();
     }
 
     /** Fills the line with three quavers, untracked, and returns them. */

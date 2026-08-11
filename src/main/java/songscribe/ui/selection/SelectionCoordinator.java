@@ -40,6 +40,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
+import songscribe.lifecycle.Disposable;
 import songscribe.ui.Mode;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
@@ -80,8 +81,19 @@ import songscribe.ui.component.score.LineComponent;
  * This is a coordinator-level invariant, not a type-level one: {@link Selection.Range} will
  * happily construct a range covering the terminal, so any new code that assigns
  * {@link #selected} without going through {@link #setRange} re-opens the hole.
+ *
+ * <h2>Lifecycle</h2>
+ * Constructing a coordinator puts <em>two</em> listeners on the message bus: the
+ * coordinator itself and the {@link ActionReflector} it owns. {@link #dispose()}
+ * removes both, and a coordinator must not be used after it.
+ *
+ * <p>The owner calls it when the coordinator's {@link ScoreView} is retired.
+ * Nothing retires a view today — the interactive main window outlives the process,
+ * and the converters are pending a rewrite — so the only callers are tests. The
+ * obligation is the constructor's, not the caller's: an object that puts two
+ * listeners on a process-global bus owes a way to take them off.
  */
-public final class SelectionCoordinator {
+public final class SelectionCoordinator implements Disposable {
 
     /** The score this coordinator selects within. Its mode is the source of truth for
      *  {@link #isInSelectMode()}. */
@@ -123,17 +135,13 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Detaches this coordinator and everything it subscribed on its own behalf from the bus.
-     * <p>
-     * Constructing a coordinator puts two listeners on the bus, not one — the
-     * {@link ActionReflector} it owns subscribes itself — so unsubscribing the coordinator
-     * object alone would leave the reflector handling notifications for a coordinator the
-     * test has finished with. A test that drives a coordinator directly and wants it off the
-     * bus calls this rather than {@code MessageCenter.unsubscribe(coordinator)}.
+     * Detaches this coordinator and the {@link ActionReflector} it owns from the bus.
+     * Idempotent. The coordinator must not be used afterwards.
      */
-    public void unsubscribeForTest() {
+    @Override
+    public void dispose() {
         MessageCenter.unsubscribe(this);
-        MessageCenter.unsubscribe(actionReflector);
+        actionReflector.dispose();
     }
 
     // -------------------------------------------------------------------------

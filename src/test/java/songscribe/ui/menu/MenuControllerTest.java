@@ -208,7 +208,7 @@ class MenuControllerTest extends UnitTest {
         @AfterEach
         void tearDown() {
             recentManagerMock.close();
-            Actions.resetForTest();
+            Actions.deinitialize();
         }
 
         // -------------------------------------------------------------------------

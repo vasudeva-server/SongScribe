@@ -92,14 +92,16 @@ class MutationLabelTest extends UnitTest {
 
     /** Resets the singleton, drives one real edit, and returns the resulting undo label. */
     private static String undoLabelAfter(Song song, Runnable edit) {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
         song.withModification(edit);
         return UndoController.undoLabel();
     }
 
     /** Resets the singleton, posts a crafted batch, and returns the resulting undo label. */
     private static String undoLabelForBatch(List<Mutation> mutations) {
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
         MessageCenter.post(new SongDidChangeNotification(mutations, new Song()));
         return UndoController.undoLabel();
     }
@@ -120,13 +122,13 @@ class MutationLabelTest extends UnitTest {
 
     @Test
     void testEmptyUndoStackShowsPlainUndoLabel() {
-        UndoController.resetForTest();
+        UndoController.reset();
         assertThat(UndoController.undoLabel()).isEqualTo(Strings.get(Strings.ACTION_EDIT_UNDO));
     }
 
     @Test
     void testEmptyRedoStackShowsPlainRedoLabel() {
-        UndoController.resetForTest();
+        UndoController.reset();
         assertThat(UndoController.redoLabel()).isEqualTo(Strings.get(Strings.ACTION_EDIT_REDO));
     }
 
@@ -259,7 +261,8 @@ class MutationLabelTest extends UnitTest {
             editModeManager.when(EditModeManager::getLastInsertion)
                 .thenReturn(new EditModeManager.Insertion(line, 1));
 
-            UndoController.resetForTest();
+            UndoController.initialize();
+            UndoController.reset();
             handler.accept(controller);
 
             return UndoController.undoLabel();
@@ -403,7 +406,8 @@ class MutationLabelTest extends UnitTest {
         var operations = new MusicEditOperations(song, coordinator);
         ReflectionTestHelper.selectRange(coordinator, selectionBegin, selectionEnd);
 
-        UndoController.resetForTest();
+        UndoController.initialize();
+        UndoController.reset();
         operations.addHairpinToSelection(Hairpin.Kind.CRESCENDO);
         return UndoController.undoLabel();
     }

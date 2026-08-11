@@ -94,6 +94,17 @@ import songscribe.ui.component.MainFrame;
  * from the batch's dominant mutation.
  *
  * <p>See {@code docs/undo.md} for the step-by-step flow and the design rationale.
+ *
+ * <h2>Lifecycle</h2>
+ * {@link #initialize()} attaches the singleton to the message bus and is
+ * idempotent — subscription is deliberately not a constructor side effect, since
+ * the singleton is also constructed lazily the first time
+ * {@link Song#beginModification} reads the pending op-name.
+ *
+ * <p>{@link #reset()} returns the stacks and clean markers to the empty baseline
+ * while leaving the controller attached and recording; a document load does
+ * exactly this. {@link #deinitialize()} detaches it, after which it records nothing
+ * until {@link #initialize()} is called again.
  */
 public final class UndoController {
 
@@ -140,8 +151,8 @@ public final class UndoController {
     private UndoStep cleanStep = BASELINE;
     private boolean cleanValid = true;
 
-    // Guards against double-subscription so resetForTest() can safely re-subscribe the
-    // singleton after a test's teardown removed it (see unsubscribeForTest).
+    // Guards against double-subscription so initialize() can safely re-subscribe the
+    // singleton after deinitialize() removed it.
     private boolean subscribed;
 
     // Tier-A op-name declared by the current UI action, set around dispatch by the
@@ -162,13 +173,15 @@ public final class UndoController {
     }
 
     /**
-     * Subscribes the singleton to the bus at startup, before the user can edit.
-     * Subscription is deliberately not a constructor side effect: the singleton is
+     * Subscribes the singleton to the bus, attaching it. Idempotent — a call while
+     * already attached is a no-op.
+     *
+     * <p>Subscription is deliberately not a constructor side effect: the singleton is
      * also constructed lazily the first time {@link Song#beginModification} reads the
      * pending op-name, which in tests can occur while the message bus is mocked —
      * subscribing then would register the listener against a mock and corrupt its
-     * later real subscription. Keeping subscription explicit means only startup (and
-     * {@link #resetForTest}) ever register it, always against the live bus.
+     * later real subscription. Keeping subscription explicit means only an explicit call
+     * to this method ever registers it, always against the live bus.
      */
     public static void initialize() {
         INSTANCE.subscribeToBus();
@@ -299,37 +312,33 @@ public final class UndoController {
 
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
-        undoStack.clear();
-        redoStack.clear();
-        cleanStep = BASELINE;
-        cleanValid = true;
-        MessageCenter.post(new UndoStateDidChangeNotification());
+        reset();
     }
 
     /**
-     * Resets the shared singleton's stacks and clean markers to the empty baseline and
-     * ensures it is subscribed to the bus. The singleton persists across a JVM's test
-     * classes, so a label/coalescing test calls this before each case to isolate itself
-     * from steps left by earlier tests; the re-subscribe restores the subscription that
-     * {@link #unsubscribeForTest} removes between tests.
+     * Returns undo state to the empty baseline: both stacks cleared, the document
+     * marked clean, no pending op-name. Posts {@link UndoStateDidChangeNotification}
+     * so the Edit menu follows.
+     *
+     * <p>Does not attach or detach the controller — see {@link #initialize()} and
+     * {@link #deinitialize()}. Loading a document performs exactly this reset.
      */
-    static void resetForTest() {
-        INSTANCE.subscribeToBus();
+    public static void reset() {
         INSTANCE.undoStack.clear();
         INSTANCE.redoStack.clear();
         INSTANCE.cleanStep = BASELINE;
         INSTANCE.cleanValid = true;
         INSTANCE.pendingOpName = null;
+        MessageCenter.post(new UndoStateDidChangeNotification());
     }
 
     /**
-     * Test-only: removes the singleton from the message bus and releases the songs its
-     * steps pin. Without this, any test that loads the singleton leaves it recording — and
-     * retaining — every later test's edits for the JVM's life, both polluting unrelated
-     * tests and steadily growing heap. {@code UnitTest}'s teardown calls this after every
-     * test; undo tests re-subscribe via {@link #resetForTest} in their setup.
+     * Detaches the singleton from the message bus and releases the songs its steps pin.
+     * The stacks and pending op-name are cleared; nothing is recorded until
+     * {@link #initialize()} is called again. Posts nothing — the bus is being left, and a
+     * notification about state nobody is listening for is noise.
      */
-    public static void unsubscribeForTest() {
+    public static void deinitialize() {
         MessageCenter.unsubscribe(INSTANCE);
         INSTANCE.subscribed = false;
         INSTANCE.undoStack.clear();

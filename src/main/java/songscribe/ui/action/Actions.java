@@ -29,6 +29,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -37,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
@@ -55,6 +57,24 @@ import songscribe.util.UIUtils;
  * before any constant is first read. {@code MainFrame.getInstance()} calls
  * {@code MainFrame.initFrame()}, which calls {@code Actions.initialize(this)}; only after that
  * does the first constant use (for example {@code MODE_ACTION_GROUP.select(...)}) occur.
+ *
+ * <h2>Lifecycle</h2>
+ * {@link #initialize(MainFrame)} establishes a <em>generation</em>: every action
+ * constant is constructed against one owner frame, each subscribing itself to the
+ * message bus, together with this class's document-load reset handler. The
+ * app-menu cache is invalidated so {@link #getAppMenuActions()} rebuilds from the
+ * new generation.
+ *
+ * <p>Re-initialization is permitted. Each call retires the previous generation
+ * first — the constants of a retired generation are off the bus and must not be
+ * used. Without that step a replaced generation would keep receiving
+ * notifications: the bus holds subscribers weakly, so dropping the static
+ * reference does not detach them (see {@code docs/messages.md}).
+ *
+ * <p>{@link #deinitialize()} retires the current generation and clears the owner.
+ * Nothing survives it. The constants are {@code @NonNull} static fields, so they
+ * are not nulled; after {@code deinitialize()} they still reference retired actions
+ * and must not be read until {@link #initialize} is called again.
  */
 // The action constants are @NonNull but populated lazily by initialize() (which needs
 // the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses
@@ -69,7 +89,7 @@ import songscribe.util.UIUtils;
 public final class Actions {
 
     // Injected by initialize() before any constant is referenced.
-    // Null until initialize() is called; null again after resetForTest().
+    // Null until initialize() is called; null again after deinitialize().
     @Nullable
     private static MainFrame mainFrame;
 
@@ -192,15 +212,19 @@ public final class Actions {
      *
      * <p>Must be called once at the top of {@link MainFrame#initFrame()} before any
      * constant in this class is first referenced. Calling this method again (e.g. in
-     * tests) replaces all constants with freshly constructed instances.
+     * tests) retires the previous generation via {@link #deinitialize()} first, then
+     * replaces all constants with freshly constructed instances.
      */
     public static void initialize(MainFrame mainFrame) {
+        if (Actions.mainFrame != null) {
+            deinitialize();
+        }
+
         Actions.mainFrame = mainFrame;
 
         // Subscribed here rather than in a static initializer so that merely loading
-        // this class (e.g. a test teardown calling unsubscribeForTest) cannot register
-        // the handler before the constants it dereferences exist. Subscribing is
-        // idempotent, so repeated initialize() calls in tests are safe.
+        // this class cannot register the handler before the constants it dereferences
+        // exist.
         MessageCenter.subscribe(RESET_HANDLER);
 
         UndoController.initialize();
@@ -374,20 +398,6 @@ public final class Actions {
         appMenuActions = null;
     }
 
-    /**
-     * Resets the injected {@link MainFrame} (and the derived app-menu cache) to {@code null}
-     * so a test that reads a constant without first calling {@link #initialize} observes a
-     * cleared owner rather than a prior test's mock. The action constants themselves are
-     * {@code @NonNull} (NullAway), so they are not nulled here; every test re-populates them
-     * via {@link #initialize} in setup.
-     *
-     * <p>Call from {@code @AfterEach} in test base classes that own the mock lifecycle.
-     */
-    public static void resetForTest() {
-        mainFrame = null;
-        appMenuActions = null;
-    }
-
     private static void resetToDefaults() {
         // Non-silent resets — these need perform() to update downstream state
         // (ScoreView.mode via ModeDidChangeNotification, preview element via
@@ -444,43 +454,40 @@ public final class Actions {
         }
 
         var result = new ArrayList<AppMenuAction>();
-        var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
 
-        for (var field : Actions.class.getDeclaredFields()) {
-            if ((field.getModifiers() & requiredModifiers) != requiredModifiers) {
-                continue;
+        forEachActionConstant(value -> {
+            if (value instanceof AppMenuAction action) {
+                result.add(action);
             }
-
-            try {
-                if (field.get(null) instanceof AppMenuAction action) {
-                    result.add(action);
-                }
-            } catch (IllegalAccessException e) {
-                LOG.warn("Cannot access field '{}'", field.getName(), e);
-            }
-        }
+        });
 
         appMenuActions = Collections.unmodifiableList(result);
         return appMenuActions;
     }
 
     /**
-     * Unsubscribes every action constant from the message bus.
+     * Retires the current generation of action constants and clears the owner.
      *
-     * <p>Test-support only. Because {@link #initialize} reassigns the constants on every
-     * call (once per test), the previous test's action objects would otherwise linger as
-     * weakly-held zombie subscribers and fire their {@code @Handler} logic against a stale
-     * mock the next time a message is posted — surfacing as a spurious
-     * {@code RuntimeError} during an unrelated test. Call from {@code @AfterEach} in test
-     * base classes that own the mock lifecycle, before the next test re-initializes.
+     * <p>Every action constant and the document-load reset handler are removed from
+     * the message bus, and the app-menu cache is dropped. Idempotent: calling it
+     * without a preceding {@link #initialize} is a no-op.
+     *
+     * <p>After this returns, no constant in this class may be read until
+     * {@link #initialize} is called again — the fields are non-null but reference
+     * retired actions.
      */
-    public static void unsubscribeForTest() {
+    public static void deinitialize() {
         // The reflection loop below only covers the public action constants, so the
         // private reset handler must be removed explicitly — otherwise it lingers as a
-        // zombie whose resetToDefaults() throws once the constants reference torn-down
-        // mocks, aborting delivery to every lower-priority subscriber of that post.
+        // zombie whose resetToDefaults() throws once the constants reference disposed
+        // actions, aborting delivery to every lower-priority subscriber of that post.
         MessageCenter.unsubscribe(RESET_HANDLER);
+        forEachActionConstant(Actions::disposeValue);
+        mainFrame = null;
+        appMenuActions = null;
+    }
 
+    private static void forEachActionConstant(Consumer<@Nullable Object> action) {
         var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
 
         for (var field : Actions.class.getDeclaredFields()) {
@@ -489,23 +496,23 @@ public final class Actions {
             }
 
             try {
-                unsubscribeValue(field.get(null));
+                action.accept(field.get(null));
             } catch (IllegalAccessException e) {
                 LOG.warn("Cannot access field '{}'", field.getName(), e);
             }
         }
     }
 
-    private static void unsubscribeValue(@Nullable Object value) {
-        if (value instanceof UIAction action) {
-            MessageCenter.unsubscribe(action);
+    private static void disposeValue(@Nullable Object value) {
+        if (value instanceof Disposable disposable) {
+            disposable.dispose();
         } else if (value instanceof Iterable<?> items) {
             for (var item : items) {
-                unsubscribeValue(item);
+                disposeValue(item);
             }
         } else if (value instanceof Object[] array) {
             for (var item : array) {
-                unsubscribeValue(item);
+                disposeValue(item);
             }
         }
     }

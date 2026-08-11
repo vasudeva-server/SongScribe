@@ -49,6 +49,7 @@ import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.lifecycle.Disposable;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -81,7 +82,7 @@ import songscribe.util.UIUtils;
  * {@code finally} has cleared {@code pendingOpName}; such sites declare their name via
  * the labeled {@code withModification(String, Runnable)} overload (Tier B) instead.
  */
-public class UIAction extends AbstractAction {
+public class UIAction extends AbstractAction implements Disposable {
 
     public enum Flag {
         NONE(0),
@@ -296,6 +297,18 @@ public class UIAction extends AbstractAction {
 
         MessageCenter.subscribe(this);
         setFlags(flags);
+    }
+
+    /**
+     * Removes this action from the message bus. Idempotent — {@link MessageCenter#unsubscribe}
+     * is a no-op for a listener that is not currently subscribed.
+     *
+     * <p>Called by {@link Actions#deinitialize()} or {@link PlaybackController#deinitialize()}
+     * when the generation of action constants that owns this instance is retired.
+     */
+    @Override
+    public void dispose() {
+        MessageCenter.unsubscribe(this);
     }
 
     protected static Flag[] withFlags(Flag[] base, Flag... extra) {
