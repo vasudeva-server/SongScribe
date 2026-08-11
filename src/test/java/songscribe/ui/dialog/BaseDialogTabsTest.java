@@ -21,6 +21,7 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Collections;
 
 import org.junit.jupiter.api.AfterEach;
@@ -48,6 +49,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -219,6 +223,290 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         }
     }
 
+    // -- showTab tab-selection requests --
+
+    @Test
+    void testSetVisibleWithNoTabRequestSelectsFirstTab() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            dialog.setVisible(true);
+
+            assertThat(tab0.willShowCount)
+                .as("tab0 (the first tab) is shown when no tab was requested")
+                .isEqualTo(1);
+            assertThat(tab0.willHideCount)
+                .as("tab0 is not hidden on its own initial show")
+                .isZero();
+            assertThat(tab1.willShowCount)
+                .as("tab1 is not shown when no tab was requested")
+                .isZero();
+            assertThat(tab1.willHideCount)
+                .as("tab1 is hidden as the non-selected tab on initial show")
+                .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void testShowTabWithNonFirstTabOpensOnThatTab() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            dialog.showTab(tab1, null);
+
+            assertThat(tab1.willShowCount)
+                .as("the requested non-first tab is shown")
+                .isEqualTo(1);
+            assertThat(tab0.willShowCount)
+                .as("the first tab is not shown when a later tab was requested")
+                .isZero();
+            assertThat(tab0.willHideCount)
+                .as("the first tab is hidden as the non-selected tab")
+                .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void testShowTabRequestIsConsumedAfterASuccessfulShow() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            dialog.showTab(tab1, null);
+            dialog.setVisible(false);
+
+            // The earlier request must not survive into this unrelated later open.
+            dialog.setVisible(true);
+
+            assertThat(tab0.willShowCount)
+                .as("a later plain setVisible(true) opens on tab 0 again, not the earlier request")
+                .isEqualTo(1);
+        }
+    }
+
+    @Test
+    void testShowTabRequestIsConsumedWhenTheShowAborts() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new CancellingTabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            // getData() returns false, so this show aborts before any tab is selected.
+            dialog.showTab(tab1, null);
+
+            // The aborted show's request must not survive into this unrelated later open.
+            dialog.setVisible(true);
+
+            assertThat(tab0.willShowCount)
+                .as("a later show must not inherit the aborted show's requested tab")
+                .isEqualTo(1);
+            assertThat(tab1.willShowCount)
+                .as("the tab requested by the aborted show must never have been shown")
+                .isZero();
+        }
+    }
+
+    /**
+     * The control a caller names for one particular open is the one actually asked to take
+     * the caret.
+     * <p>
+     * Asserted against the control itself rather than against any bookkeeping the dialog
+     * keeps: "the request was honored" and "the request was read and dropped" are the same
+     * to a test that only watches internal state, so only the delivered effect can fail
+     * when the feature breaks.
+     */
+    @Test
+    void testShowTabFocusesTheControlTheCallerNamed() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            dialog.addTab(tab0);
+            dialog.setContentTab(tabbedContent);
+
+            var field = spy(new JTextField());
+            dialog.showTab(tab0, field);
+            flushEventQueue();
+
+            verify(field).requestFocusInWindow();
+        }
+    }
+
+    /**
+     * A show that aborts in {@code getData()} focuses nothing, and leaves nothing behind
+     * for a later unrelated open to pick up.
+     */
+    @Test
+    void testAbortedShowFocusesNothingAndLeavesNoRequestBehind() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new CancellingTabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            dialog.addTab(tab0);
+            dialog.setContentTab(tabbedContent);
+
+            var field = spy(new JTextField());
+
+            // getData() returns false, so this show aborts before anything is focused.
+            dialog.showTab(tab0, field);
+            flushEventQueue();
+
+            verify(field, never()).requestFocusInWindow();
+
+            // The next (successful) show must not inherit the aborted show's target.
+            dialog.setVisible(true);
+            flushEventQueue();
+
+            verify(field, never()).requestFocusInWindow();
+        }
+    }
+
+    /**
+     * A tab that always leads with the same control says so by overriding
+     * {@code getInitialFocus}, and the show that puts it on screen honors it without the
+     * caller naming anything.
+     */
+    @Test
+    void testShowFocusesTheShownTabsOwnLeadingControl() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            tab0.initialFocus = spy(new JTextField());
+            dialog.addTab(tab0);
+            dialog.setContentTab(tabbedContent);
+
+            dialog.setVisible(true);
+            flushEventQueue();
+
+            verify(tab0.initialFocus).requestFocusInWindow();
+        }
+    }
+
+    /**
+     * The other way a tab appears: the user switches to it in a dialog that is already open,
+     * where the show path has long since run. {@code selectTab} honors it instead.
+     */
+    @Test
+    void testSwitchingToATabWhileShowingFocusesItsLeadingControl() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> {
+            configureMockDialog(d);
+            when(d.isShowing()).thenReturn(true);
+        })) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            tab1.initialFocus = spy(new JTextField());
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            dialog.setVisible(true);
+
+            // The window is up; switching to tab 1 runs the already-showing path.
+            dialog.getTabList().setSelectedIndex(1);
+            flushEventQueue();
+
+            verify(tab1.initialFocus).requestFocusInWindow();
+        }
+    }
+
+    /**
+     * A caller's target is only ever meant for the tab it arrived with, so a tab that is not
+     * on screen must not have its leading control focused instead.
+     */
+    @Test
+    void testShowDoesNotFocusAHiddenTabsLeadingControl() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            tab1.initialFocus = spy(new JTextField());
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            // Opens on tab 0, so tab 1's control is off screen.
+            dialog.setVisible(true);
+            flushEventQueue();
+
+            verify(tab1.initialFocus, never()).requestFocusInWindow();
+        }
+    }
+
+    /**
+     * Runs everything already queued on the event thread, so a focus request the dialog
+     * posted with {@code invokeLater} has actually happened by the time we assert.
+     */
+    private static void flushEventQueue() {
+        try {
+            SwingUtilities.invokeAndWait(() -> { });
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while draining the event queue", e);
+        } catch (InvocationTargetException e) {
+            throw new AssertionError("draining the event queue failed", e);
+        }
+    }
+
+    @Test
+    void testShowTabWithUnregisteredTabFallsBackToFirstTab() {
+        try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
+            var dialog = new TabbedTestDialog(mainFrame());
+            var tabbedContent = dialog.createTabbedContent();
+
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
+
+            // Never passed to addTab, so it is not in the tabs list consumeShowRequest searches.
+            var strayTab = dialog.new TrackingTab("Never Registered");
+
+            dialog.showTab(strayTab, null);
+
+            assertThat(tab0.willShowCount)
+                .as("an unregistered tab falls back to the first tab rather than leaving no card shown")
+                .isEqualTo(1);
+            assertThat(strayTab.willShowCount)
+                .as("a tab never passed to addTab cannot itself be shown")
+                .isZero();
+        }
+    }
+
     // -- getContentPaddingKey --
 
     @Test
@@ -331,8 +619,19 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             int willShowCount = 0;
             int willHideCount = 0;
 
+            /**
+             * Returned from {@link #getInitialFocus()} when set, mirroring how a real tab
+             * (e.g. the Playback tab's instrument list) names its own leading control.
+             */
+            @Nullable JComponent initialFocus = null;
+
             TrackingTab(String title) {
                 super(title, FlatLafKey.DIALOG_STD_PADDING);
+            }
+
+            @Override
+            protected @Nullable JComponent getInitialFocus() {
+                return initialFocus;
             }
 
             @Override
@@ -347,6 +646,31 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             protected void tabWillHide() {
                 willHideCount++;
             }
+        }
+    }
+
+    /**
+     * A tabbed dialog whose {@code getData()} returns false for exactly the first show and true
+     * thereafter, for testing that an aborted show still consumes a pending
+     * {@link BaseDialog#showTab} request — leaving the next (successful) show to select the
+     * default tab rather than the aborted one's request.
+     */
+    private static class CancellingTabbedTestDialog extends TabbedTestDialog {
+
+        private boolean cancelNextShow = true;
+
+        CancellingTabbedTestDialog(MainFrame mainFrame) {
+            super(mainFrame);
+        }
+
+        @Override
+        protected boolean getData() {
+            if (cancelNextShow) {
+                cancelNextShow = false;
+                return false;
+            }
+
+            return true;
         }
     }
 

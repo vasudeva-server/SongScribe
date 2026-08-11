@@ -22,6 +22,7 @@ package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -29,12 +30,15 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.GraphicsEnvironment;
 import java.awt.Shape;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -45,6 +49,19 @@ import songscribe.UnitTest;
 import songscribe.util.GraphicUtils.Unit;
 
 class GraphicUtilsTest extends UnitTest {
+
+    // A script family (issue #573) whose ink, at a large enough size, overshoots the
+    // font's nominal ascent. Not installed on every platform, so the test using it skips
+    // via assumeTrue when unavailable.
+    private static final String OVERSHOOT_FONT_FAMILY = "SignPainter";
+    private static final int OVERSHOOT_FONT_SIZE = 48;
+    private static final String OVERSHOOT_TEXT = "Satya";
+
+    private static boolean isFontFamilyAvailable(String family) {
+        return Arrays.asList(
+            GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()
+        ).contains(family);
+    }
 
     @Nested
     class UnitCreate {
@@ -488,5 +505,40 @@ class GraphicUtilsTest extends UnitTest {
 
             return drawCount[0];
         }
+    }
+
+    /**
+     * The real-font counterpart to the hand-built-bounds arithmetic in
+     * {@code TitleFootnotesLyricsComponentTest.InkPadding}: an installed face whose glyphs
+     * genuinely rise above their own nominal ascent must be padded for. Without a real
+     * overshooting font somewhere in the suite, nothing distinguishes a correct
+     * {@link GraphicUtils#extraInkAbove} from one that concludes no font ever overshoots.
+     * <p>
+     * The descent side of the same property is covered end to end by
+     * {@code TitleFootnotesLyricsComponentTest.testPreferredSizeHeightCoversDescenderOvershoot}.
+     */
+    @Test
+    void testExtraInkAbovePadsARealFontThatOvershootsItsAscent() {
+        assumeTrue(
+            isFontFamilyAvailable(OVERSHOOT_FONT_FAMILY),
+            OVERSHOOT_FONT_FAMILY + " is not installed on this system"
+        );
+
+        var font = new Font(OVERSHOOT_FONT_FAMILY, Font.PLAIN, OVERSHOOT_FONT_SIZE);
+        var ascent = GraphicUtils.fontMetrics(font).getAscent();
+        var bounds = GraphicUtils.visualBounds(OVERSHOOT_TEXT, font);
+
+        assertThat(bounds).as("ink bounds for '" + OVERSHOOT_TEXT + "' must not be null").isNotNull();
+
+        // Precondition: confirm this font/size actually overshoots the nominal ascent
+        // here, otherwise the assertion below would hold trivially.
+        assumeTrue(
+            GraphicUtils.inkHeight(bounds) > ascent,
+            OVERSHOOT_TEXT + " in " + OVERSHOOT_FONT_FAMILY + " does not overshoot the ascent here"
+        );
+
+        assertThat(GraphicUtils.extraInkAbove(bounds, ascent))
+            .as("ink rising above the nominal ascent must be padded for")
+            .isPositive();
     }
 }

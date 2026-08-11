@@ -81,6 +81,8 @@ Override `initContents()` to add components. `add(c)` auto-applies constraints. 
 
 Lifecycle: `getData()` (populate, return false to cancel show), `setData()` (commit, StandardDialog only), `isValidData()`, `tabWillShow()`, `tabWillHide()`.
 
+`getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
+
 Registration: `addTab(tab)` (adds + registers) or `registerTab(tab)` (no pane). The `Tab` owns its own title now — pass it to `super(title)` (or `super(title, paddingKey)`) in the subclass constructor rather than supplying it at `addTab()` call sites.
 
 ### Tabbed dialogs
@@ -88,6 +90,18 @@ Registration: `addTab(tab)` (adds + registers) or `registerTab(tab)` (no pane). 
 Build the container with `createTabbedContent()` — NOT `new JTabbedPane()`. It returns a sidebar-style `JComponent`: a `JList` of tab titles down the side driving a `CardLayout` of tab panels via a `ListSelectionListener`, which is what fires `tabWillShow()`/`tabWillHide()` on selection change. Only the first call registers the dialog's top-level container and attaches that listener; nested sub-panes call it again but don't overwrite that registration. A reviewer should flag any tabbed dialog that constructs `JTabbedPane` directly — its tab lifecycle callbacks won't fire.
 
 Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
+
+### Opening on a chosen tab
+
+`showTab(Tab tab, @Nullable JComponent focus)` (protected on `BaseDialog`) shows the dialog with `tab` selected instead of the first, and `focus` holding the caret — pass null to leave the platform's default first focusable control in charge. Every tabbed dialog inherits it.
+
+- **The tab is named by object, never by index.** `addTab` is the sole definition of tab order, so resolving through it is exact and no caller can pass an index that quietly means a different tab once one is inserted.
+- **The caret target travels with the tab request**, so one read consumes the whole thing and no per-tab state leaks into a later open. `showTab`'s `focus` **outranks** the shown tab's `getInitialFocus()`: the caller asked for this control on this particular open.
+- **The request is consumed once, at the very start of the show**, before anything that can abort it. A show cancelled by `getData()` still consumes it, so it cannot survive into an unrelated later open.
+- **An unregistered tab falls back to the first tab** and drops the caret target with it — that control belongs to a tab this dialog is not going to show.
+- The focus request is queued with `invokeLater`, so it lands once the window is actually up.
+
+`showTab` is protected, so a dialog gives callers its own typed entry point rather than exposing tab objects. `SongSettingsDialog.show(Section)` is the canonical example: one exhaustive switch maps each `Section` to both a tab and a field, so a section cannot open one tab while focusing a control on another, and a new `Section` fails to compile rather than silently opening the wrong tab.
 
 ### TitledSection (BaseDialog inner class)
 

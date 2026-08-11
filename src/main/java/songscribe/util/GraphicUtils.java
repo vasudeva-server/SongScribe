@@ -34,7 +34,6 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.net.URL;
 import java.util.Arrays;
-import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -118,28 +117,32 @@ public final class GraphicUtils {
 
     private static final int dpi;
 
+    /**
+     * A 1×1 scratch graphics carrying {@link #setRenderingHints}, and so the origin of
+     * both {@link #SCREEN_FRC} and every {@link #fontMetrics} answer.
+     * <p>
+     * Deliberately never disposed: it is the application's measuring instrument, and
+     * rebuilding an image and a graphics context for each measurement would put that
+     * cost on every layout pass.
+     */
+    private static final Graphics2D MEASURING_GRAPHICS;
+
     private static MediaTracker mediaTracker = new MediaTracker(new JLabel());
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
             dpi = HEADLESS_DPI;
-            var graphics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
-            setRenderingHints(graphics);
-            SCREEN_FRC = graphics.getFontRenderContext();
-            graphics.dispose();
+            MEASURING_GRAPHICS = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
         } else {
             var graphicsEnvironment = GraphicsEnvironment.getLocalGraphicsEnvironment();
             var graphicsDevice = graphicsEnvironment.getDefaultScreenDevice();
             var config = graphicsDevice.getDefaultConfiguration();
             dpi = computePhysicalDpi(graphicsDevice);
-
-            var image = config.createCompatibleImage(1, 1);
-            var graphics = image.createGraphics();
-            setRenderingHints(graphics);
-            SCREEN_FRC = graphics.getFontRenderContext();
-            graphics.dispose();
-            image.flush();
+            MEASURING_GRAPHICS = config.createCompatibleImage(1, 1).createGraphics();
         }
+
+        setRenderingHints(MEASURING_GRAPHICS);
+        SCREEN_FRC = MEASURING_GRAPHICS.getFontRenderContext();
     }
 
     /**
@@ -533,6 +536,20 @@ public final class GraphicUtils {
     }
 
     /**
+     * The {@link FontMetrics} for {@code font} under {@link #SCREEN_FRC}.
+     * <p>
+     * Measure through this rather than through a component's own
+     * {@link JComponent#getFontMetrics(Font)}: the component's metrics are built without
+     * the fractional-metrics hint that {@link #setRenderingHints} turns on, so their
+     * advances can wrap a paragraph at a different word than the paint pass would. Where
+     * a component is sized to the text it measures, that disagreement is text clipped at
+     * paint time. One ruler for measuring and drawing makes it impossible.
+     */
+    public static FontMetrics fontMetrics(Font font) {
+        return MEASURING_GRAPHICS.getFontMetrics(font);
+    }
+
+    /**
      * Returns the tight height of a text block with {@code lineCount} lines in the
      * given {@code metrics}: each line is ascent + descent tall, with the font's
      * leading inserted only between lines, never below the last descender.
@@ -554,38 +571,20 @@ public final class GraphicUtils {
     }
 
     /**
-     * Returns the ink pixel bounds of {@code text} rendered in {@code font} under
+     * Returns the visual (ink) bounds of {@code text} rendered in {@code font} under
      * {@link #SCREEN_FRC}, or {@code null} if the text is empty.
      * <p>
-     * Uses {@link GlyphVector#getPixelBounds} rather than
-     * {@link FontMetrics#stringWidth}, because advance width alone does not account
-     * for glyphs whose ink extends past their advance (e.g. italic descenders) or
-     * before the drawing origin (the negative left bearing of a "W"). The returned
-     * rectangle's {@code width} is the full ink span, and {@code x} is the ink's
-     * offset from the origin.
-     */
-    @Nullable
-    public static Rectangle inkBounds(String text, Font font) {
-        if (text.isEmpty()) {
-            return null;
-        }
-
-        return font.createGlyphVector(SCREEN_FRC, text).getPixelBounds(SCREEN_FRC, 0, 0);
-    }
-
-    /**
-     * Fractional sibling of {@link #inkBounds}: returns the visual (ink) bounds of
-     * {@code text} rendered in {@code font} under {@link #SCREEN_FRC}, or
-     * {@code null} if the text is empty.
+     * Uses {@link GlyphVector#getVisualBounds} rather than
+     * {@link FontMetrics#stringWidth}, because advance width alone does not account for
+     * glyphs whose ink extends past their advance (e.g. italic descenders) or before the
+     * drawing origin (the negative left bearing of a "W"). The returned rectangle's
+     * {@code width} is the full ink span, and {@code x} the ink's offset from the drawing
+     * origin.
      * <p>
-     * Uses {@link GlyphVector#getVisualBounds} — a resolution-independent outline
-     * extent — rather than {@link GlyphVector#getPixelBounds}, which snaps to whole
-     * device pixels. Prefer this variant wherever the measurement must scale
-     * linearly with the font size (e.g. zoomed text), because pixel snapping makes
-     * the result jump as the font sweeps across pixel boundaries. Like
-     * {@link #inkBounds}, the returned rectangle's width is the full ink span and
-     * its {@code x} the ink's offset from the drawing origin (negative for the left
-     * bearing of a "W").
+     * The bounds are a resolution-independent outline extent, not
+     * {@link GlyphVector#getPixelBounds}, which snaps to whole device pixels: pixel
+     * snapping makes a measurement jump as the font sweeps across pixel boundaries, which
+     * is visible as stepping in anything sized or centered from it while the zoom changes.
      */
     @Nullable
     public static Rectangle2D visualBounds(String text, Font font) {
@@ -597,74 +596,34 @@ public final class GraphicUtils {
     }
 
     /**
-     * Extra padding beyond the font's nominal ascent/descent, needed so glyph ink
-     * that overshoots those metrics is not clipped by a text component's bounds.
+     * Extra room a text block needs above its first baseline because that line's ink
+     * overshoots the font's nominal {@code ascent} — 0 when {@code lineBounds} is null
+     * (a blank line) or the ink stays within the ascent.
+     * <p>
+     * Some fonts (e.g. script fonts like Sign Painter) render glyph ink beyond the font's
+     * nominal ascent and descent. Only the first and last lines of a block sit at its top
+     * and bottom edges, so only their ink can be clipped; excess ink on interior lines
+     * bleeds into the inter-line gap instead. The overshoot is rounded up, because it is
+     * a size: a fraction of a pixel left unpadded is a fraction of a pixel clipped.
      */
-    public record InkPadding(int top, int bottom) {
-        public static final InkPadding NONE = new InkPadding(0, 0);
-    }
-
-    /**
-     * Extra ink above the baseline that overshoots the font's nominal {@code ascent},
-     * or 0 when {@code lineBounds} is null (empty line) or the ink stays within it.
-     */
-    public static int extraInkAbove(@Nullable Rectangle lineBounds, int ascent) {
+    public static int extraInkAbove(@Nullable Rectangle2D lineBounds, int ascent) {
         if (lineBounds == null) {
             return 0;
         }
 
-        return Math.max(0, (int) inkHeight(lineBounds) - ascent);
+        return Math.max(0, (int) Math.ceil(inkHeight(lineBounds)) - ascent);
     }
 
     /**
-     * Extra ink below the baseline that overshoots the font's nominal {@code descent},
-     * or 0 when {@code lineBounds} is null (empty line) or the ink stays within it.
+     * The below-the-baseline counterpart of {@link #extraInkAbove}: extra room the block
+     * needs below its last baseline because that line's ink overshoots the font's nominal
+     * {@code descent}. Rounded up for the same reason.
      */
-    public static int extraInkBelow(@Nullable Rectangle lineBounds, int descent) {
+    public static int extraInkBelow(@Nullable Rectangle2D lineBounds, int descent) {
         if (lineBounds == null) {
             return 0;
         }
 
-        return Math.max(0, (lineBounds.y + lineBounds.height) - descent);
-    }
-
-    /**
-     * Some fonts (e.g. script fonts like Sign Painter) render glyph ink beyond the
-     * font's nominal ascent/descent — a "y" descender extending past
-     * {@link FontMetrics#getDescent()}, for instance. Since only the first and last
-     * lines of a text block sit at its top and bottom edges, only their ink can be
-     * clipped; excess ink on interior lines bleeds into the inter-line gap instead.
-     */
-    public static InkPadding inkPadding(List<String> textLines, FontMetrics metrics) {
-        if (textLines.isEmpty()) {
-            return InkPadding.NONE;
-        }
-
-        var font = metrics.getFont();
-        var firstLineBounds = inkBounds(textLines.getFirst(), font);
-
-        // A single line is both first and last; reuse its bounds rather than
-        // building the same glyph vector twice.
-        var lastLineBounds = textLines.size() == 1
-            ? firstLineBounds
-            : inkBounds(textLines.getLast(), font);
-
-        return new InkPadding(
-            extraInkAbove(firstLineBounds, metrics.getAscent()),
-            extraInkBelow(lastLineBounds, metrics.getDescent())
-        );
-    }
-
-    /**
-     * The top half of {@link #inkPadding} for callers that only position the text
-     * baseline, so the last line's glyph vector is not built unnecessarily.
-     */
-    public static int topInkPadding(List<String> textLines, FontMetrics metrics) {
-        if (textLines.isEmpty()) {
-            return 0;
-        }
-
-        var firstLineBounds = inkBounds(textLines.getFirst(), metrics.getFont());
-        return extraInkAbove(firstLineBounds, metrics.getAscent());
+        return Math.max(0, (int) Math.ceil(lineBounds.getMaxY()) - descent);
     }
 }

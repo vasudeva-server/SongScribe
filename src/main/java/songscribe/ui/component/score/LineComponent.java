@@ -48,6 +48,7 @@ import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
+import songscribe.util.UIUtils;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.error.RuntimeError;
 
@@ -175,13 +176,6 @@ public class LineComponent extends ScoreComponent
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
-
-    // ==========================================================================
-    // Constants
-    // ==========================================================================
-
-    /** Click count that identifies a double-click in a {@link MouseEvent}. */
-    private static final int DOUBLE_CLICK_COUNT = 2;
 
     /**
      * Creates a new LineComponent.
@@ -759,6 +753,12 @@ public class LineComponent extends ScoreComponent
         // the sequencer object is currently running — a different question during the window
         // between a playback transition and the sequencer following it, and one that now gates
         // a modal dialog rather than just a selection change.
+        //
+        // This guard is the one that protects the lyric branch, handleClick, isWithinHeaderX
+        // and PreviewElementManager.handleClick — none of which go near the double-click
+        // gesture. isSelectionActive's own playback test, in isStaffEditGesture below, asks the
+        // sequencer a different question, as that method's Javadoc explains; the two reads look
+        // like duplicates, but this is the load-bearing one.
         if (PlaybackController.isPlaying()) {
             return;
         }
@@ -771,7 +771,7 @@ public class LineComponent extends ScoreComponent
         if (lyricHit != null) {
             // Consumed either way: the press already selected the lyric, and nothing below this
             // should insert an element or re-resolve the click to a note.
-            if (e.getClickCount() == DOUBLE_CLICK_COUNT
+            if (UIUtils.isLeftDoubleClick(e)
                 && line != null
                 && getScoreView().getActiveLyricEditor() == null) {
                 var element = lyricHit.element();
@@ -792,7 +792,7 @@ public class LineComponent extends ScoreComponent
         // local here is what lets both gestures take it as a plain non-null argument.
         var clickedLine = line;
 
-        if (isPlainDoubleClickGesture(e) && clickedLine != null) {
+        if (isStaffEditGesture(e) && clickedLine != null) {
             var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
             if (editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
@@ -820,20 +820,21 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Answers whether {@code e} is a plain double-click gesture: the click count, shift, mode
-     * and playback conditions shared by every double-click-to-edit gesture on this line.
+     * Answers whether {@code e} is a staff double-click-to-edit gesture.
      * <p>
-     * The gesture is a plain double-click in SELECT mode; in EDIT mode it needs
-     * {@link #mousePressed} to have already switched permanently to SELECT mode by the time
-     * the click arrives, which Alt does anywhere and a plain click does on the staff lines in
-     * the clef/key signature column. {@code isSelectionActive} is the gate for exactly those
-     * cases, and additionally rules out playback. Shift is excluded separately: shift+click
-     * extends the selection, and callers run this before the selection handler sees the click,
-     * so without the guard a shift+double-click would discard the selection the user was
-     * building.
+     * The button-and-count test comes from {@link songscribe.util.UIUtils#isLeftDoubleClick};
+     * this method adds the staff conditions on top: shift exclusion and
+     * {@code isSelectionActive}. The gesture is a plain double-click in SELECT mode; in EDIT
+     * mode it needs {@link #mousePressed} to have already switched permanently to SELECT mode
+     * by the time the click arrives, which Alt does anywhere and a plain click does on the
+     * staff lines in the clef/key signature column. {@code isSelectionActive} is the gate for
+     * exactly those cases, and additionally rules out playback. Shift is excluded separately:
+     * shift+click extends the selection, and callers run this before the selection handler sees
+     * the click, so without the guard a shift+double-click would discard the selection the user
+     * was building.
      */
-    private boolean isPlainDoubleClickGesture(MouseEvent e) {
-        return e.getClickCount() == DOUBLE_CLICK_COUNT
+    private boolean isStaffEditGesture(MouseEvent e) {
+        return UIUtils.isLeftDoubleClick(e)
             && !e.isShiftDown()
             && selectionHandler.isSelectionActive(e);
     }
@@ -861,7 +862,7 @@ public class LineComponent extends ScoreComponent
      * Opens the lyric editor on the double-clicked element {@code clickHit} resolved to,
      * returning true when it did.
      * <p>
-     * The staff-line route into {@link #isPlainDoubleClickGesture} never reaches the editor,
+     * The staff-line route into {@link #isStaffEditGesture} never reaches the editor,
      * since no element sits in the clef/key signature column for {@code clickHit} to resolve to.
      */
     private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit, Line line) {
@@ -901,7 +902,7 @@ public class LineComponent extends ScoreComponent
      * <p>
      * Answering false is safe even when the click really did land on an attachment.
      * {@link #mouseClicked} hands the click to {@code handleClick} next, which consumes every
-     * click while selection is active — and {@link #isPlainDoubleClickGesture}, already true
+     * click while selection is active — and {@link #isStaffEditGesture}, already true
      * to have got here, says it is. So nothing is inserted at the click point either way.
      */
     private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit, Line line) {

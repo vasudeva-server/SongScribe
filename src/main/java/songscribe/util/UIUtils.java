@@ -22,6 +22,10 @@ package songscribe.util;
 
 import module java.desktop;
 
+// java.desktop exports both java.awt.event.MouseEvent and org.w3c.dom.events.MouseEvent,
+// so the module import above leaves the simple name ambiguous. A single-type import wins
+// over it and resolves the name for the whole file.
+import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -68,6 +72,9 @@ public final class UIUtils {
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
     static final int SCREEN_MARGIN_PX = 20;
+
+    /** Click count that identifies a double-click in a {@link MouseEvent}. */
+    public static final int DOUBLE_CLICK_COUNT = 2;
 
     private UIUtils() {
     }
@@ -125,6 +132,23 @@ public final class UIUtils {
 
     public static void beep() {
         Toolkit.getDefaultToolkit().beep();
+    }
+
+    //
+    // Mouse events
+    //
+
+    /**
+     * Answers whether {@code e} is a left-button click with a click count of
+     * {@value #DOUBLE_CLICK_COUNT}.
+     * <p>
+     * Modifiers are deliberately not consulted. Callers disagree about them: Alt
+     * switches the staff to SELECT mode and must not disqualify a gesture, shift is
+     * excluded only where it would discard a selection being built, and the window-zoom
+     * gesture excludes nothing. Each caller adds the modifier policy it wants.
+     */
+    public static boolean isLeftDoubleClick(MouseEvent e) {
+        return SwingUtilities.isLeftMouseButton(e) && e.getClickCount() == DOUBLE_CLICK_COUNT;
     }
 
     //

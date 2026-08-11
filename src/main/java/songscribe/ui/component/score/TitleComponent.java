@@ -20,6 +20,8 @@
 
 package songscribe.ui.component.score;
 
+import songscribe.ui.dialog.SongSettingsDialog;
+
 /**
  * Component that renders the song title.
  * <p>
@@ -31,5 +33,10 @@ public class TitleComponent extends BaseTitleComponent {
     @Override
     protected String songText() {
         return getSong().getNumberedTitle();
+    }
+
+    @Override
+    protected SongSettingsDialog.Section editorSection() {
+        return SongSettingsDialog.Section.TITLE;
     }
 }

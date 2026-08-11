@@ -288,4 +288,21 @@ public abstract class ScoreComponent extends JComponent {
         return getPreferredSize();
     }
 
+    /**
+     * Opens the editor for what this component displays, answering whether one opened.
+     * <p>
+     * Called by {@code ScoreInputHandler} when a left double-click outside playback
+     * lands on this component. The default answers false, so a component that displays
+     * nothing editable needs no override and the click falls through to the score
+     * view's normal handling.
+     * <p>
+     * Takes no click point: a component's bounds are its hit area. Should a component
+     * ever need to distinguish where on itself it was clicked, the conversion from the
+     * dispatching {@code ScoreView}'s coordinates into component coordinates belongs at
+     * the dispatch site, so that no override can get the coordinate space wrong.
+     */
+    public boolean openEditor() {
+        return false;
+    }
+
 }

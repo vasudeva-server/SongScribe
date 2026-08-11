@@ -95,14 +95,10 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
         ));
 
-        var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
-        titlePreview.setOpaque(true);
-        titlePreview.setBackground(pageBackground);
-        subtitlePreview.setOpaque(true);
-        subtitlePreview.setBackground(pageBackground);
-
         // Previews show the chosen font at its natural size: they are never given a
-        // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom).
+        // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom). Each
+        // preview sizes itself to its text; the page colour that used to be painted on
+        // the preview itself now comes from the row panel createPreviewRow wraps it in.
 
         // Keep the title preview in sync as the user edits the number/title,
         // which together form the numbered title the score actually renders.
@@ -177,38 +173,36 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // The background must match the page color so createPreviewSection's matte
         // border bleeds correctly into the section border.
         //
-        // Each preview is a ScoreComponent whose maximum size equals its
-        // preferred size (lineWidthPx). A BoxLayout would honor that maximum
-        // and clamp the component below the section width, clipping the
-        // centered text. Wrapping each preview in a BorderLayout row stretches
-        // it to the full section width (BorderLayout ignores maximum size), so
-        // the text — centered internally within lineWidthPx — is never clipped.
+        // Each preview now sizes itself to its text rather than to the song's line
+        // width, so the row that carries the page colour must center the preview
+        // within the section rather than stretching it to fill the row.
         var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
         var stackedPreview = new JPanel();
         stackedPreview.setLayout(new BoxLayout(stackedPreview, BoxLayout.Y_AXIS));
         stackedPreview.setOpaque(true);
         stackedPreview.setBackground(pageBackground);
-        stackedPreview.add(createFullWidthPreviewRow(titlePreview, pageBackground));
-        stackedPreview.add(createFullWidthPreviewRow(subtitlePreview, pageBackground));
+        stackedPreview.add(createPreviewRow(titlePreview, pageBackground));
+        stackedPreview.add(createPreviewRow(subtitlePreview, pageBackground));
 
         add(SongSettingsLayout.createPreviewSection(stackedPreview));
     }
 
     /**
-     * Wraps a score preview component in a full-width {@link BorderLayout} row.
+     * Wraps a score preview component in a page-colored row that centers it
+     * horizontally.
      * <p>
-     * Score components cap their maximum size at their preferred size
-     * ({@code lineWidthPx}); a vertical {@link BoxLayout} would honor that and
-     * clamp the component below the section width, clipping the centered text.
-     * BorderLayout's {@code CENTER} ignores the maximum and stretches the preview
-     * to the row's full width, matching the score's full-line-width centering.
+     * The row itself stretches to the full section width (its default maximum
+     * size lets the enclosing {@link BoxLayout} do so), but a zero-gap
+     * {@link FlowLayout} keeps the preview at its own preferred size rather than
+     * stretching it, so an empty preview (zero preferred height) collapses the
+     * row to zero height instead of leaving a colored band.
      */
-    private static JPanel createFullWidthPreviewRow(JComponent preview, Color background) {
-        var row = new JPanel(new BorderLayout());
+    private static JPanel createPreviewRow(JComponent preview, Color pageBackground) {
+        var row = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         row.setOpaque(true);
-        row.setBackground(background);
+        row.setBackground(pageBackground);
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
-        row.add(preview, BorderLayout.CENTER);
+        row.add(preview);
         return row;
     }
 
@@ -313,6 +307,21 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
     String getSubtitleText() {
         return subtitleField.getText();
+    }
+
+    /**
+     * The two controls a caller can be sent to on this tab.
+     * <p>
+     * {@link SongSettingsDialog#show} hands one of these straight to
+     * {@code showTab} as the caret target, so the section-to-field mapping is an identity
+     * a test can assert rather than a chain of enums to follow.
+     */
+    JTextField getTitleField() {
+        return titleField;
+    }
+
+    JTextField getSubtitleField() {
+        return subtitleField;
     }
 
     private void updateTitlePreview() {

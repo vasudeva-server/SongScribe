@@ -30,6 +30,11 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
+// java.desktop exports both java.awt.event.MouseEvent and org.w3c.dom.events.MouseEvent,
+// so the module import above leaves the simple name ambiguous. A single-type import wins
+// over it and resolves the name for the whole file.
+import java.awt.event.MouseEvent;
+
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,6 +116,54 @@ class UIUtilsTest extends UnitTest {
 
                 verify(mockDialog).setLocation(UIUtils.SCREEN_MARGIN_PX, UIUtils.SCREEN_MARGIN_PX);
             }
+        }
+    }
+
+    @Nested
+    class IsLeftDoubleClick {
+
+        private static final int SINGLE_CLICK = 1;
+        private static final int TRIPLE_CLICK = 3;
+
+        @Test
+        void testIsLeftDoubleClickTrueForLeftButtonDoubleClick() {
+            assertThat(UIUtils.isLeftDoubleClick(clickEvent(MouseEvent.BUTTON1, UIUtils.DOUBLE_CLICK_COUNT)))
+                .isTrue();
+        }
+
+        @Test
+        void testIsLeftDoubleClickFalseForLeftButtonSingleClick() {
+            assertThat(UIUtils.isLeftDoubleClick(clickEvent(MouseEvent.BUTTON1, SINGLE_CLICK))).isFalse();
+        }
+
+        @Test
+        void testIsLeftDoubleClickFalseForNonLeftButtonDoubleClick() {
+            assertThat(UIUtils.isLeftDoubleClick(clickEvent(MouseEvent.BUTTON3, UIUtils.DOUBLE_CLICK_COUNT)))
+                .isFalse();
+        }
+
+        /**
+         * Pins the exact-equality choice in {@link UIUtils#isLeftDoubleClick} rather than a
+         * {@code >=} reading — a triple click is not a double-click.
+         */
+        @Test
+        void testIsLeftDoubleClickFalseForLeftButtonTripleClick() {
+            assertThat(UIUtils.isLeftDoubleClick(clickEvent(MouseEvent.BUTTON1, TRIPLE_CLICK))).isFalse();
+        }
+
+        private MouseEvent clickEvent(int button, int clickCount) {
+            var source = new JPanel();
+            return new MouseEvent(
+                source,
+                MouseEvent.MOUSE_CLICKED,
+                0L,         // when (not examined by production code)
+                0,          // modifiers
+                10, 10,     // x, y
+                10, 10,     // xAbs, yAbs
+                clickCount,
+                false,      // popupTrigger
+                button
+            );
         }
     }
 

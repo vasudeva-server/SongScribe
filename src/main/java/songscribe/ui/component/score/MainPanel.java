@@ -92,25 +92,29 @@ public class MainPanel extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setOpaque(false);
 
+        // The title and subtitle size to their text and must be centered on the page.
+        // BoxLayout aligns children relative to each other, so a single centered child
+        // among left-aligned siblings would be misaligned rather than centered — every
+        // child in this stack shares the same alignment.
         titleComponent = new TitleComponent();
-        titleComponent.setAlignmentX(LEFT_ALIGNMENT);
+        titleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
         subtitleComponent = new SubtitleComponent();
-        subtitleComponent.setAlignmentX(LEFT_ALIGNMENT);
+        subtitleComponent.setAlignmentX(CENTER_ALIGNMENT);
 
         staffPanel = new StaffPanel();
-        staffPanel.setAlignmentX(LEFT_ALIGNMENT);
+        staffPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         textPanel = new TextPanel();
-        textPanel.setAlignmentX(LEFT_ALIGNMENT);
+        textPanel.setAlignmentX(CENTER_ALIGNMENT);
 
         footnotesComponent = new FootnotesComponent();
-        footnotesComponent.setAlignmentX(LEFT_ALIGNMENT);
+        footnotesComponent.setAlignmentX(CENTER_ALIGNMENT);
 
         add(titleComponent);
         add(subtitleComponent);
         var scoreMarginTop = new ScoreMarginStrut();
-        scoreMarginTop.setAlignmentX(LEFT_ALIGNMENT);
+        scoreMarginTop.setAlignmentX(CENTER_ALIGNMENT);
 
         add(scoreMarginTop);
         add(staffPanel);

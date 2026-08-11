@@ -56,6 +56,21 @@ public class SongSettingsDialog extends StandardDialog {
      */
     public record KeySelection(KeyType keyType, int count) {}
 
+    /**
+     * What a caller wants to edit, for those that need the dialog opened somewhere
+     * specific. Names a part of the song rather than a tab: {@link #TITLE} and
+     * {@link #SUBTITLE} share one tab but land on different fields, and callers should not
+     * have to know that. {@link #show(Section)} owns the mapping, and the constant order
+     * here carries no meaning.
+     */
+    public enum Section {
+        TITLE,
+        SUBTITLE,
+        ATTRIBUTION,
+        MUSIC,
+        FONT,
+    }
+
     private final SongSettingsFontTab fontTab = new SongSettingsFontTab(this);
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
     private final SongSettingsAttributionTab attributionTab =
@@ -80,6 +95,27 @@ public class SongSettingsDialog extends StandardDialog {
         // Let Cancel bypass the range-validating fields' InputVerifiers so the
         // user can always dismiss the dialog without first fixing the value.
         cancelButton.setVerifyInputWhenFocusTarget(false);
+    }
+
+    /**
+     * Shows the dialog with {@code section}'s tab selected and, where the section names a
+     * particular field, that field focused.
+     * <p>
+     * One switch maps each section to both, so a section cannot end up opening one tab
+     * while focusing a control on another. It is exhaustive by enum, so a new
+     * {@link Section} fails to compile here rather than silently opening the wrong tab.
+     */
+    public void show(Section section) {
+        switch (section) {
+            case TITLE -> showTab(textTab, textTab.getTitleField());
+            case SUBTITLE -> showTab(textTab, textTab.getSubtitleField());
+
+            // These tabs have no single obvious field to land on, so the platform's
+            // default first-focusable control is left in charge.
+            case ATTRIBUTION -> showTab(attributionTab, null);
+            case MUSIC -> showTab(musicTab, null);
+            case FONT -> showTab(fontTab, null);
+        }
     }
 
     /**

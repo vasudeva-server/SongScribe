@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import songscribe.dom.Ss;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
  * Component that renders the song subtitle.
@@ -37,6 +38,11 @@ public class SubtitleComponent extends BaseTitleComponent {
     @Override
     protected String songText() {
         return getSong().getSubtitle();
+    }
+
+    @Override
+    protected SongSettingsDialog.Section editorSection() {
+        return SongSettingsDialog.Section.SUBTITLE;
     }
 
     /**

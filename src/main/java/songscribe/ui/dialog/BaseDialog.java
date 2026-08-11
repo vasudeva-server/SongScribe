@@ -76,6 +76,12 @@ public abstract class BaseDialog {
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
 
+    /** The tab {@link #showTab} asked for, consumed by the next show. */
+    private @Nullable Tab requestedTab = null;
+
+    /** The control {@link #showTab} asked to focus, consumed with {@link #requestedTab}. */
+    private @Nullable JComponent requestedFocus = null;
+
     // Declaration order matters: buildTabbedContent() reads tabListModel, tabList,
     // tabCards, and tabContentArea, so they must be initialized before tabbedContent.
     private final DefaultListModel<String> tabListModel = new DefaultListModel<>();
@@ -92,6 +98,18 @@ public abstract class BaseDialog {
 
     @SuppressWarnings("NullAway.Init")
     private JDialog dialog;
+
+    /**
+     * Whether the dialog window exists and is on screen.
+     * <p>
+     * {@link #dialog} is deferred-init — null until the first {@code setVisible(true)} —
+     * and code that populates tab content can run before that, so "is it showing" has to
+     * answer false rather than throw for a dialog that was never built.
+     */
+    private boolean isShowing() {
+        //noinspection ConstantValue — deferred-init field, genuinely null before first show
+        return dialog != null && dialog.isShowing();
+    }
 
     protected BaseDialog(MainFrame mainFrame, String title) {
         this(mainFrame, title, true);
@@ -235,14 +253,122 @@ public abstract class BaseDialog {
         registerTab(tab);
     }
 
+    /** Where a show should land: which tab to select, and what to put the caret in. */
+    private record ShowRequest(int tabIndex, @Nullable JComponent focus) {}
+
+    /**
+     * Shows the dialog with {@code tab} selected rather than the first tab, and
+     * {@code focus} holding the caret — or the platform's default first focusable
+     * control when {@code focus} is null.
+     * <p>
+     * The tab is named by object: {@link #addTab} is the sole definition of tab order, so
+     * resolving through it is exact, and a caller cannot pass an index that quietly
+     * means a different tab after one is inserted.
+     * <p>
+     * The caret target travels with the tab request rather than being parked on the tab,
+     * so one read consumes the whole request and there is no per-tab state to leak into a
+     * later open. A tab that always leads with the same control says so by overriding
+     * {@link Tab#getInitialFocus} instead — that is a standing property of the tab, not a
+     * request about one particular show.
+     */
+    protected void showTab(Tab tab, @Nullable JComponent focus) {
+        requestedTab = tab;
+        requestedFocus = focus;
+        setVisible(true);
+    }
+
+    /**
+     * Takes the pending {@link #showTab} request, clearing it, defaulting to the first tab
+     * and no caret target when none was made.
+     * <p>
+     * Read at the very start of the show, before anything that can abort it. A show
+     * cancelled by {@code getData()} — or by a tab throwing out of it — must still
+     * consume the request, or it would survive into an unrelated later open.
+     * <p>
+     * A tab that is not registered falls back to the first tab rather than leaving the
+     * dialog on no card at all, and drops the caret target with it: that control belongs
+     * to a tab this dialog is not going to show.
+     */
+    private ShowRequest consumeShowRequest() {
+        var tab = requestedTab;
+        var focus = requestedFocus;
+        requestedTab = null;
+        requestedFocus = null;
+
+        if (tab == null) {
+            return new ShowRequest(0, focus);
+        }
+
+        var index = tabs.indexOf(tab);
+
+        return index < 0 ? new ShowRequest(0, null) : new ShowRequest(index, focus);
+    }
+
+    /**
+     * The standing caret target of the tab(s) this show puts on screen, or null when none
+     * names one.
+     * <p>
+     * With a sidebar exactly one tab is on screen. Without one every tab is, so the first
+     * that names a control wins — an arbitrary but stable choice, and no such dialog names
+     * more than one today.
+     */
+    @Nullable
+    private JComponent shownTabInitialFocus(int shownTabIndex) {
+        if (hasSidebar) {
+            return shownTabIndex < tabs.size() ? tabs.get(shownTabIndex).getInitialFocus() : null;
+        }
+
+        for (var tab : tabs) {
+            var focus = tab.getInitialFocus();
+
+            if (focus != null) {
+                return focus;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Asks {@code component} to take the caret once the window is up, if there is one.
+     * <p>
+     * Posted rather than called: {@link JComponent#requestFocusInWindow} is a no-op while
+     * the window is not showing, and a modal {@code setVisible(true)} blocks. Queuing it
+     * means it runs once the window is up either way.
+     */
+    private static void requestFocusLater(@Nullable JComponent component) {
+        if (component != null) {
+            SwingUtilities.invokeLater(component::requestFocusInWindow);
+        }
+    }
+
+    /**
+     * Selects {@code index} in the sidebar as the dialog opens. A no-op
+     * {@code setSelectedIndex} fires no event, so {@link #selectTab} is driven directly
+     * in that case.
+     */
+    private void selectInitialTab(int index) {
+        if (tabList.getSelectedIndex() == index) {
+            selectTab(index);
+        } else {
+            tabList.setSelectedIndex(index);
+        }
+    }
+
     /*
      * Selection / lifecycle flow
      *
      * setVisible(true) with no sidebar fires tabWillShow on ALL tabs and applies the content
-     * padding. With a sidebar it selects the first tab: if the list is already on index 0,
-     * selectTab(0) is called directly, because a no-op setSelectedIndex fires no event;
-     * otherwise setSelectedIndex(0) drives the ListSelectionListener, which returns early
-     * while valueIsAdjusting and otherwise calls selectTab(idx).
+     * padding. With a sidebar it selects the tab consumeShowRequest() names — the one
+     * requested through showTab, otherwise the first — consumed at the very start of the show,
+     * before anything that can abort it: if the list is already on that index, selectTab(index)
+     * is called directly, because a no-op setSelectedIndex fires no event; otherwise
+     * setSelectedIndex(index) drives the ListSelectionListener, which returns early while
+     * valueIsAdjusting and otherwise calls selectTab(idx).
+     *
+     * The same request carries the control to put the caret in. Failing one, the shown tab's
+     * own getInitialFocus() supplies it. Either way requestFocusLater queues the request, so
+     * it lands once the window is actually up.
      *
      * selectTab(index) returns immediately for a negative index. Otherwise, for each registered
      * tab t at position i it calls t.tabWillShow() when i == index and t.tabWillHide() otherwise
@@ -272,6 +398,14 @@ public abstract class BaseDialog {
         }
 
         ((CardLayout) tabCards.getLayout()).show(tabCards, String.valueOf(index));
+
+        // A tab appears either because the dialog is opening or because the user switched
+        // to it. The show path handles the first case; here the window is already up and
+        // that path has come and gone, so honor the tab's own leading control now. Read
+        // after the card swap above, or the control is not yet displayable.
+        if (isShowing()) {
+            requestFocusLater(shownTabInitialFocus(index));
+        }
     }
 
     public static void addLabeledField(
@@ -375,6 +509,10 @@ public abstract class BaseDialog {
 
     public void setVisible(boolean visible) {
         if (visible) {
+            // Consumed before anything can abort the show, so a request that never reached
+            // the screen cannot survive into a later open.
+            var showRequest = consumeShowRequest();
+
             dialog = new JDialog(mainFrame, dialogTitle, isModal);
             dialog.setResizable(isResizable());
             dialog.addWindowListener(
@@ -420,18 +558,18 @@ public abstract class BaseDialog {
             }
 
             if (hasSidebar) {
-                // Force selection to the first tab. A no-op setSelectedIndex(0)
-                // fires no event, so drive selectTab directly in that case.
-                if (tabList.getSelectedIndex() == 0) {
-                    selectTab(0);
-                } else {
-                    tabList.setSelectedIndex(0);
-                }
+                selectInitialTab(showRequest.tabIndex());
             } else {
                 for (var tab : tabs) {
                     tab.tabWillShow();
                 }
             }
+
+            // The caller asked for this control on this particular open, so it outranks the
+            // shown tab's standing choice of leading control.
+            var initialFocus = showRequest.focus() != null
+                ? showRequest.focus()
+                : shownTabInitialFocus(showRequest.tabIndex());
 
             if (!hasSidebar) {
                 var paddingKey = getContentPaddingKey();
@@ -462,6 +600,8 @@ public abstract class BaseDialog {
             if (category.isBlocking()) {
                 incrementBlockingCount();
             }
+
+            requestFocusLater(initialFocus);
 
             try {
                 dialog.setVisible(true);
@@ -646,7 +786,9 @@ public abstract class BaseDialog {
      * it is safe to call from content-population code that runs before display.
      */
     protected void repackToContent() {
-        if (!dialog.isShowing()) {
+        // Null until the first show: content-population code (document listeners on a
+        // tab's fields, say) can run before the dialog is ever constructed.
+        if (!isShowing()) {
             return;
         }
 
@@ -798,6 +940,20 @@ public abstract class BaseDialog {
          * visible. Use for lazy loading, focus requests, etc.
          */
         protected void tabWillShow() {}
+
+        /**
+         * The control that should hold the caret whenever this tab appears, or null to
+         * leave the platform's default first focusable control in charge.
+         * <p>
+         * A standing property of the tab, asked for afresh every time the tab is shown —
+         * both when the dialog opens on it and when the user switches to it in a window
+         * that is already up. A caller that wants a particular control for one particular
+         * open passes it to {@link BaseDialog#showTab} instead, and that outranks this.
+         */
+        @Nullable
+        protected JComponent getInitialFocus() {
+            return null;
+        }
 
         /**
          * Called before the dialog is disposed. Use for cleanup

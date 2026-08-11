@@ -37,6 +37,7 @@ import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.Component;
+import java.awt.Graphics2D;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.InputEvent;
@@ -79,12 +80,14 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.ActionsTestSupport;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.ScoreComponent;
 import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.util.UIUtils;
 
@@ -262,6 +265,276 @@ class ScoreInputHandlerTest extends UnitTest {
                 verify(callback, never()).requestFocusInWindow();
             }
         }
+
+        // -------------------------------------------------------------------
+        // Double-click dispatch to a ScoreComponent's openEditor()
+        // -------------------------------------------------------------------
+
+        private static final int CONTAINER_SIZE_PX = 200;
+        private static final int SCORE_COMPONENT_X_PX = 20;
+        private static final int SCORE_COMPONENT_Y_PX = 20;
+        private static final int SCORE_COMPONENT_WIDTH_PX = 100;
+        private static final int SCORE_COMPONENT_HEIGHT_PX = 40;
+        private static final int SCORE_COMPONENT_CLICK_X_PX =
+            SCORE_COMPONENT_X_PX + SCORE_COMPONENT_WIDTH_PX / 2;
+        private static final int SCORE_COMPONENT_CLICK_Y_PX =
+            SCORE_COMPONENT_Y_PX + SCORE_COMPONENT_HEIGHT_PX / 2;
+        private static final int EMPTY_AREA_CLICK_X_PX = 180;
+        private static final int EMPTY_AREA_CLICK_Y_PX = 180;
+        private static final int SINGLE_CLICK = 1;
+
+        /** What the {@link StubScoreComponent} under the click answers from {@code openEditor()}. */
+        private enum EditorOutcome {
+            OPENS,
+            DOES_NOT_OPEN
+        }
+
+        /** What {@code PlaybackController.isPlaying()} answers while the click is dispatched. */
+        private enum PlaybackState {
+            PLAYING,
+            NOT_PLAYING
+        }
+
+        @Test
+        void testMouseClickedDoubleClickOnScoreComponentWhoseOpenEditorAnswersTrueIsConsumed() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class);
+                var playback = mockStatic(PlaybackController.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                playback.when(PlaybackController::isPlaying).thenReturn(false);
+
+                handler.mouseClicked(clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
+                verify(pasteModeManager, never()).cancel();
+            }
+
+            assertThat(tree.scoreComponent().openEditorCallCount()).isEqualTo(1);
+        }
+
+        @Test
+        void testMouseClickedSingleClickOnScoreComponentFallsThroughToExistingPath() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
+
+            clickFallsThroughToExistingPath(
+                clickOnScoreComponent(tree, SINGLE_CLICK), PlaybackState.NOT_PLAYING);
+
+            // Click count 1 fails isLeftDoubleClick before scoreComponentAt is ever consulted.
+            assertThat(tree.scoreComponent().openEditorCallCount()).isZero();
+        }
+
+        @Test
+        void testMouseClickedDoubleClickOnScoreComponentWhoseOpenEditorAnswersFalseFallsThroughToExistingPath() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.DOES_NOT_OPEN);
+
+            clickFallsThroughToExistingPath(
+                clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT), PlaybackState.NOT_PLAYING);
+
+            assertThat(tree.scoreComponent().openEditorCallCount()).isEqualTo(1);
+        }
+
+        @Test
+        void testMouseClickedDoubleClickWhereNoScoreComponentSitsFallsThroughToExistingPath() {
+            var container = new JPanel();
+            container.setSize(CONTAINER_SIZE_PX, CONTAINER_SIZE_PX);
+
+            clickFallsThroughToExistingPath(
+                clickEvent(container, EMPTY_AREA_CLICK_X_PX, EMPTY_AREA_CLICK_Y_PX, UIUtils.DOUBLE_CLICK_COUNT),
+                PlaybackState.NOT_PLAYING);
+        }
+
+        @Test
+        void testMouseClickedDoubleClickDuringPlaybackDoesNotDispatchToOpenEditorAndFallsThrough() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
+
+            clickFallsThroughToExistingPath(
+                clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT), PlaybackState.PLAYING);
+
+            // isPlaying() short-circuits the dispatch before scoreComponentAt is consulted.
+            assertThat(tree.scoreComponent().openEditorCallCount()).isZero();
+        }
+
+        /**
+         * {@code scoreComponentAt} answers with the deepest match: the point also lands on a
+         * plain child nested inside the {@link StubScoreComponent}, which is not itself a
+         * score component, so the search must fall back to the ancestor it descended
+         * through. Nothing in the production tree nests a component inside a
+         * {@code ScoreComponent} today, so this is the only coverage that branch gets.
+         */
+        @Test
+        void testMouseClickedDoubleClickOnChildOfScoreComponentStillReachesOpenEditor() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
+            var child = new JPanel();
+            child.setBounds(0, 0, SCORE_COMPONENT_WIDTH_PX, SCORE_COMPONENT_HEIGHT_PX);
+            tree.scoreComponent().add(child);
+
+            dispatchDoubleClickOnScoreComponent(tree);
+
+            assertThat(tree.scoreComponent().openEditorCallCount()).isEqualTo(1);
+        }
+
+        /**
+         * The failure mode {@code scoreComponentAt} resolves by bounds to avoid: an overlay
+         * that is a <em>sibling</em> of the score component — the shape {@code LyricEditor}
+         * and {@code LineOverlayComponent} have against {@code MainPanel} — covering it and
+         * sitting above it in z-order. A stacking-order lookup answers with the overlay and
+         * never reaches the score component underneath, silently killing the gesture; a
+         * bounds search steps past the overlay because nothing in it is a score component.
+         * <p>
+         * No such overlay reaches the title band in the production tree today, so this test
+         * is the only thing standing between a future one and a gesture that quietly stops
+         * working.
+         */
+        @Test
+        void testMouseClickedDoubleClickUnderASiblingOverlayStillReachesOpenEditor() {
+            var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
+            var overlay = new JPanel();
+            overlay.setBounds(
+                SCORE_COMPONENT_X_PX, SCORE_COMPONENT_Y_PX, SCORE_COMPONENT_WIDTH_PX, SCORE_COMPONENT_HEIGHT_PX);
+
+            // Index 0 is the top of the z-order, so a stacking-order lookup finds the
+            // overlay before the score component it covers.
+            tree.container().add(overlay, 0);
+
+            dispatchDoubleClickOnScoreComponent(tree);
+
+            assertThat(tree.scoreComponent().openEditorCallCount()).isEqualTo(1);
+        }
+
+        /**
+         * Dispatches a left double-click at the center of {@code tree}'s score component,
+         * outside playback, so a test can assert what the dispatch reached.
+         * <p>
+         * The fall-through path is stubbed out even though these tests expect the dispatch
+         * to consume the click: should it ever not, the click carries on into that path,
+         * and an unstubbed collaborator would abort the test with a
+         * {@code NullPointerException} from deep inside {@code mouseClicked} instead of
+         * the {@code openEditor} assertion the test was written to report.
+         */
+        private void dispatchDoubleClickOnScoreComponent(ScoreComponentTree tree) {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class);
+                var playback = mockStatic(PlaybackController.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                playback.when(PlaybackController::isPlaying).thenReturn(false);
+
+                handler.mouseClicked(clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT));
+            }
+        }
+
+        /**
+         * Runs {@code mouseClicked} with select mode and an in-progress paste armed, and
+         * playback in {@code playbackState}, then asserts the click fell through to the
+         * existing paste-cancel / deselect / focus path — the assertion every fall-through
+         * scenario above shares.
+         */
+        private void clickFallsThroughToExistingPath(MouseEvent event, PlaybackState playbackState) {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            when(coordinator.isInSelectMode()).thenReturn(true);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class);
+                var playback = mockStatic(PlaybackController.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                playback.when(PlaybackController::isPlaying).thenReturn(playbackState == PlaybackState.PLAYING);
+
+                handler.mouseClicked(event);
+
+                verify(pasteModeManager).cancel();
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
+                verify(callback).requestFocusInWindow();
+            }
+        }
+
+        /**
+         * A container sized to hold a {@link StubScoreComponent} at a fixed position, for tests
+         * that dispatch a click through {@code scoreComponentAt}'s real bounds search — a
+         * mocked {@code Component} has no bounds for that search to test the click against.
+         */
+        private ScoreComponentTree componentTreeWithScoreComponent(EditorOutcome editorOutcome) {
+            var container = new JPanel();
+            container.setSize(CONTAINER_SIZE_PX, CONTAINER_SIZE_PX);
+            var scoreComponent = new StubScoreComponent(editorOutcome);
+            scoreComponent.setBounds(
+                SCORE_COMPONENT_X_PX, SCORE_COMPONENT_Y_PX, SCORE_COMPONENT_WIDTH_PX, SCORE_COMPONENT_HEIGHT_PX);
+            container.add(scoreComponent);
+            return new ScoreComponentTree(container, scoreComponent);
+        }
+
+        private record ScoreComponentTree(JPanel container, StubScoreComponent scoreComponent) {
+        }
+
+        /**
+         * A click of {@code clickCount} at the center of {@code tree}'s
+         * {@link StubScoreComponent} — where every dispatch test above aims.
+         */
+        private MouseEvent clickOnScoreComponent(ScoreComponentTree tree, int clickCount) {
+            return clickEvent(
+                tree.container(), SCORE_COMPONENT_CLICK_X_PX, SCORE_COMPONENT_CLICK_Y_PX, clickCount);
+        }
+
+        /**
+         * Builds a left-button click event on {@code component} at ({@code x}, {@code y}) in
+         * its own coordinate space — the same space {@code scoreComponentAt} resolves through —
+         * with the given click count.
+         */
+        private MouseEvent clickEvent(Component component, int x, int y, int clickCount) {
+            return new MouseEvent(
+                component, MouseEvent.MOUSE_CLICKED, 0L, 0, x, y, x, y, clickCount, false, MouseEvent.BUTTON1
+            );
+        }
+
+        /**
+         * A {@link ScoreComponent} stub that answers {@code openEditor()} with a fixed value and
+         * counts how many times it was called, so a test can assert whether the dispatch
+         * reached this specific component.
+         */
+        private static final class StubScoreComponent extends ScoreComponent {
+
+            private final EditorOutcome editorOutcome;
+            private int openEditorCallCount = 0;
+
+            StubScoreComponent(EditorOutcome editorOutcome) {
+                this.editorOutcome = editorOutcome;
+            }
+
+            @Override
+            protected void render(Graphics2D g2) {
+                // Not exercised by these tests.
+            }
+
+            @Override
+            public boolean openEditor() {
+                openEditorCallCount++;
+                return editorOutcome == EditorOutcome.OPENS;
+            }
+
+            int openEditorCallCount() {
+                return openEditorCallCount;
+            }
+        }
     }
 
     // -------------------------------------------------------------------
@@ -273,7 +546,7 @@ class ScoreInputHandlerTest extends UnitTest {
     void testMousePressedIsNoOpForPopupTriggerEvent() {
         var callback = mock(InputHandlerCallback.class);
         var handler = new ScoreInputHandler(callback);
-        var event = mouseEvent(MouseEvent.MOUSE_PRESSED, true);
+        var event = popupTriggerEvent(MouseEvent.MOUSE_PRESSED);
 
         handler.mousePressed(event);
 
@@ -284,7 +557,7 @@ class ScoreInputHandlerTest extends UnitTest {
     void testMouseReleasedIsNoOpForPopupTriggerEvent() {
         var callback = mock(InputHandlerCallback.class);
         var handler = new ScoreInputHandler(callback);
-        var event = mouseEvent(MouseEvent.MOUSE_RELEASED, true);
+        var event = popupTriggerEvent(MouseEvent.MOUSE_RELEASED);
 
         handler.mouseReleased(event);
 
@@ -1377,9 +1650,10 @@ class ScoreInputHandlerTest extends UnitTest {
         return true;
     }
 
-    private MouseEvent mouseEvent(int id, boolean popupTrigger) {
+    /** A left-button event of type {@code id} flagged as a popup trigger. */
+    private MouseEvent popupTriggerEvent(int id) {
         return new MouseEvent(
-            mock(Component.class), id, 0L, 0, 0, 0, 0, 0, 1, popupTrigger, MouseEvent.BUTTON1
+            mock(Component.class), id, 0L, 0, 0, 0, 0, 0, 1, true, MouseEvent.BUTTON1
         );
     }
 

@@ -1076,8 +1076,6 @@ public class MainFrame extends JFrame implements Printable {
      * double-click-to-zoom gesture is reimplemented here.
      */
     private static final class TitlePanel extends JPanel {
-        private static final int DOUBLE_CLICK_COUNT = 2;
-
         private TitlePanel() {
             super(new BorderLayout());
 
@@ -1085,10 +1083,7 @@ public class MainFrame extends JFrame implements Printable {
                 new MouseAdapter() {
                     @Override
                     public void mouseClicked(MouseEvent e) {
-                        if (
-                            SwingUtilities.isLeftMouseButton(e) &&
-                            e.getClickCount() == DOUBLE_CLICK_COUNT
-                        ) {
+                        if (UIUtils.isLeftDoubleClick(e)) {
                             toggleZoom();
                         }
                     }

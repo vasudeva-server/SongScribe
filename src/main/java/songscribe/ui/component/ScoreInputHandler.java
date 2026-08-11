@@ -27,6 +27,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Line;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -35,7 +37,9 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PitchShifter;
+import songscribe.ui.component.score.ScoreComponent;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.message.command.DeselectCommand;
@@ -68,6 +72,28 @@ public final class ScoreInputHandler extends KeyAdapter
     public void mouseClicked(MouseEvent e) {
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
+        }
+
+        // A double-click on a score component opens that component's editor — the title and
+        // subtitle open Song Settings, for instance. Components in the score tree have no
+        // mouse listeners of their own, so their clicks retarget here; dispatching from one
+        // place is what keeps every one of them on the same gesture. Clicks on a staff line
+        // never arrive: LineComponent listens for and consumes its own.
+        //
+        // Playback is refused for the dispatch only, not for the whole handler: everything
+        // below this opens an editor or a modal dialog, while clearing the selection has to
+        // keep working while the song plays. It is read from PlaybackController rather than
+        // the sequencer because the action layer's DISABLE_WHEN_PLAYING flag does not reach
+        // a mouse handler.
+        //
+        // Only the second click of the pair is consumed. The first ran the path below in
+        // full, so paste mode is already cancelled and the selection already cleared.
+        if (UIUtils.isLeftDoubleClick(e) && !PlaybackController.isPlaying()) {
+            var scoreComponent = scoreComponentAt(e);
+
+            if (scoreComponent != null && scoreComponent.openEditor()) {
+                return;
+            }
         }
 
         // A click on the ScoreView itself (not on any line) cancels paste mode and,
@@ -178,6 +204,70 @@ public final class ScoreInputHandler extends KeyAdapter
     //***********************
     // Helper methods
     //***********************
+
+    /**
+     * The {@link ScoreComponent} under {@code e}, or null when the click landed on
+     * nothing that renders part of the score.
+     * <p>
+     * The event's component is the {@link ScoreView} this handler is registered on, so
+     * the event coordinates are already in its space.
+     * <p>
+     * Deliberately not {@code SwingUtilities.getDeepestComponentAt}: that resolves by
+     * stacking order, and the overlays in this tree are <em>siblings</em> of the score
+     * components rather than descendants of them — {@code LyricEditor} and the
+     * {@code LineOverlayComponent}s are absolutely positioned children of
+     * {@code ScoreView}, laid over the {@code MainPanel} that holds the score. A stacking
+     * lookup therefore returns the overlay and never reaches the score component beneath
+     * it, and the double-click silently stops opening an editor there.
+     * {@link songscribe.ui.component.score.PreviewElementManager} learned this the same
+     * way and resolves by bounds for the same reason.
+     */
+    private static @Nullable ScoreComponent scoreComponentAt(MouseEvent e) {
+        return e.getComponent() instanceof Container container
+            ? scoreComponentAt(container, e.getX(), e.getY())
+            : null;
+    }
+
+    /**
+     * Depth-first search for the deepest {@link ScoreComponent} whose own bounds contain
+     * ({@code x}, {@code y}), expressed in {@code container}'s coordinate space.
+     * <p>
+     * Every child containing the point is examined, not just the topmost, so a
+     * non-score component lying over a score component is stepped past rather than
+     * ending the search. Descends through plain containers because the score components
+     * are nested inside them — {@code MainPanel}, {@code StaffPanel} — and answers with
+     * the deepest match, so nesting inside a {@code ScoreComponent} resolves to the inner
+     * one. Uses {@code contains} rather than the raw bounds so a component with a
+     * non-rectangular hit shape keeps it.
+     */
+    private static @Nullable ScoreComponent scoreComponentAt(Container container, int x, int y) {
+        for (var child : container.getComponents()) {
+            if (!child.isVisible()) {
+                continue;
+            }
+
+            var childX = x - child.getX();
+            var childY = y - child.getY();
+
+            if (!child.contains(childX, childY)) {
+                continue;
+            }
+
+            if (child instanceof Container childContainer) {
+                var nested = scoreComponentAt(childContainer, childX, childY);
+
+                if (nested != null) {
+                    return nested;
+                }
+            }
+
+            if (child instanceof ScoreComponent scoreComponent) {
+                return scoreComponent;
+            }
+        }
+
+        return null;
+    }
 
     private static final int[] KEY_CODES = {
         KeyEvent.VK_UP,

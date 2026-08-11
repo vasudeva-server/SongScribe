@@ -51,6 +51,8 @@ import static org.assertj.core.data.Offset.offset;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
@@ -59,6 +61,11 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * the tabs that drive them are Swing-bound private inner classes:
  * {@code extractLyricsTitle}, {@code validateLineWidthText},
  * {@code canonicalKeySelectionFrom}, and {@code applyMusicTabChanges}.
+ *
+ * <p>Everything here is a pure test of a static helper, so this class deliberately extends
+ * {@link UnitTest} and builds no dialog: {@link SongSettingsDialogShowTest} and
+ * {@link SongSettingsDialogValidationTest} are where an assembled dialog — and the mocked
+ * {@code MainFrame} singleton it needs — belong.
  *
  * <p>Row 19: {@link SongSettingsKeyCellRenderer#SELECTIONS} — 15
  * entries in canonical order — is fully covered below.

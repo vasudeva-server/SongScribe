@@ -35,11 +35,16 @@ import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Unit tests for {@link ScoreComponent}:
- * {@link ScoreComponent#resolveContentX} and {@link ScoreComponent#setMargin}.
+ * Unit tests for {@link ScoreComponent}: {@link ScoreComponent#resolveContentX},
+ * {@link ScoreComponent#setMargin}, {@link ScoreComponent#getViewScale}, and the
+ * {@link ScoreComponent#openEditor()} default.
  * <p>
- * Uses {@link TitleComponent} as the minimal concrete subclass (its constructor
- * calls no rendering code beyond {@code setMarginBottom}).
+ * Uses {@link TitleComponent} as the minimal concrete subclass for the
+ * {@code resolveContentX} / {@code setMargin} / {@code getViewScale} tests (its
+ * constructor calls no rendering code beyond {@code setMarginBottom}). The
+ * {@code openEditor()} default is tested against {@link FootnotesComponent} instead,
+ * because {@link TitleComponent} overrides {@code openEditor()} via
+ * {@link BaseTitleComponent} and so cannot exercise the base-class default.
  */
 class ScoreComponentTest extends UnitTest {
 
@@ -255,6 +260,29 @@ class ScoreComponentTest extends UnitTest {
 
             assertThat(component.getViewScale()).isSameAs(scoreView.getViewScale());
             assertThat(component.getViewScale().getZoomPercent()).isEqualTo(200);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // openEditor() default
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class OpenEditorDefault {
+
+        /**
+         * {@link ScoreComponent#openEditor()} answers false by default. Tested against
+         * {@link FootnotesComponent}, which does not override it — unlike
+         * {@link TitleComponent}, whose {@link BaseTitleComponent} superclass does.
+         */
+        @Test
+        void testDefaultOpenEditorAnswersFalse() {
+            var component = new FootnotesComponent();
+
+            assertThat(component.openEditor())
+                .as("ScoreComponent.openEditor() default answers false")
+                .isFalse();
         }
     }
 }

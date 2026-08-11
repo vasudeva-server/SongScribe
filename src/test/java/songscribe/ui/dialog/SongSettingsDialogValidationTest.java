@@ -119,23 +119,11 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
             song.setLineWidthSs(ScaleContext.inchesToSs(PageModel.MAX_LINE_WIDTH_INCHES));
         });
 
-        // Every role has to be populated: the dialog's tabs read the title, subtitle, attribution
-        // and sub-attribution fonts as they build, and an unset role throws. Only the lyrics font
-        // matters to what is being tested; the rest just have to be present.
-        fonts = new DocumentFonts();
-
-        for (var key : FontKey.values()) {
-            fonts.setFont(key, LYRICS_FONT);
-        }
-
-        var scoreView = mockEnv().score();
-        when(scoreView.getSong()).thenReturn(song);
-        when(scoreView.getDocumentFonts()).thenReturn(fonts);
-
-        BaseDialogTestHelper.configureMockFrame(mainFrame());
-        BaseDialog.resetSavedGeometry();
-
-        dialog = new SongSettingsDialog(mainFrame());
+        // Only the lyrics font matters to what is being tested; the fixture populates the
+        // other roles, which the tabs require, with the same one.
+        var built = SongSettingsDialogFixture.build(mockEnv(), song, LYRICS_FONT);
+        dialog = built.dialog();
+        fonts = built.fonts();
         populateTabs();
     }
 
