@@ -368,9 +368,21 @@ they are private-helper exposure or process-global state rather than a missing
 teardown. Three findings reach past the phase: `docs/messages.md:10` states that
 unsubscription is never needed, which is false for reassigned static fields and
 for objects retired before the process ends, and is why the whole category was
-labelled test-only; the converters leak two bus subscribers per converted file;
-and `check`'s mechanical test-only-surface finding needs an exception for a
-documented lifecycle inverse, or Phase 9's output is flagged permanently.
+labelled test-only — the live case being that every document load retires a
+`Song`, which `ScoreView.setSong` already detaches by hand; and `check`'s
+mechanical test-only-surface finding needs an exception for a documented
+lifecycle inverse, or Phase 9's output is flagged permanently.
+
+The detach obligation is declared in the type system rather than left in prose: a
+new `songscribe.lifecycle.Disposable` (§5.7), implemented by exactly the four
+classes that register something in a constructor and can be retired, with the
+tier-3 statement in `docs/lifecycle.md` and the bus-specific instance in
+`docs/messages.md`.
+
+`ScoreView` disposal and the converter leak are **out of Phase 9 by decision**
+(§5.4): the converters are to be redesigned and rewritten and are not in use
+until then, so the leak is unobserved and the seam's shape is unknown. The
+requirement is recorded against the rewrite instead.
 
 Discussion doc §6.3 lists ~11 members that exist only because singletons hold
 static mutable state and MBassador subscriptions that production never tears
@@ -408,8 +420,10 @@ which names every class, member, signature and Javadoc text. Use
 `jetbrains_rename` so call sites update automatically. Its §8 is this phase's
 task list; its §6 belongs to other phases and is not touched here.
 
-Note that §5.4 requires production wiring, not only a rename: `ScoreView.dispose()`
-and its converter call sites. The rename is not finished without it.
+This phase is not renames alone. It adds the `Disposable` interface (§5.7) and
+implements it on four classes, and amends `docs/messages.md`, `docs/lifecycle.md`
+and `CLAUDE.md`. It touches no converter and does not add `ScoreView.dispose()` —
+§5.4 records why and what the converter rewrite owes instead.
 
 Also in this phase: the three `SMuFLMetadata` members in discussion doc §6.2 that
 are already coherent internal APIs wearing scaffolding names —
