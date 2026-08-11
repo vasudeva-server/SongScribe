@@ -413,7 +413,7 @@ test in every package sets up.
 
 ## Phase 9 — Apply the lifecycle renames
 
-**Model:** Sonnet · **Effort:** medium · **Status:** ⏳
+**Model:** Sonnet · **Effort:** medium · **Status:** ✅
 
 Apply §5 of [`plans/singleton-lifecycle-contracts.md`](./singleton-lifecycle-contracts.md),
 which names every class, member, signature and Javadoc text. Use

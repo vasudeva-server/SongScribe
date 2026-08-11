@@ -97,3 +97,47 @@ cleanup runs even on emergency exits.
                                       guarantees at-most-
                                       once across paths.
 ```
+
+---
+
+## Object lifecycle
+
+Most objects in this application live as long as the process. The main window,
+the menu controller, the status bar and every action constant are created at
+startup and released by process exit; nothing tears them down, and nothing
+should.
+
+The exceptions are objects retired while the process continues, and they are
+the ones that need disposal. An object that registers itself with something
+process-global — today, the message bus — stays registered after the last
+reference to it is dropped, because the registry holds it weakly and the
+collector runs when it runs. Until then it keeps handling messages on behalf of
+something nobody is using.
+
+Such a class implements `songscribe.lifecycle.Disposable` and its class Javadoc
+names, under a `Lifecycle` heading, who calls `dispose()`.
+
+The live case is the document model. Every document load replaces the `Song`
+installed in the `ScoreView`, and `ScoreView.setSong` disposes the outgoing one.
+A `Song` left subscribed keeps handling broadcast commands and posting undo
+steps against a document nobody has open.
+
+A second case is coming rather than present: a `ScoreView` built for one
+conversion, with its controller, its `SelectionCoordinator` and that
+coordinator's `ActionReflector`, is finished with when the conversion is. The
+converters are being redesigned; whatever replaces them owes the disposal, and
+`ScoreView` acquires `dispose()` then — not before, because the rewrite decides
+whether a converter builds a view at all.
+
+Three teardowns exist and none substitutes for another:
+
+| | Ends | Reversed by |
+|---|---|---|
+| `Shutdown.now()` | the process | nothing |
+| `Foo.deinitialize()` | a static subsystem's current initialization | `Foo.initialize(...)` |
+| `foo.dispose()` | one instance, permanently | nothing |
+
+There is no point unsubscribing on the way out of the process, and no point
+running the quit sequence to discard a view. `deinitialize()` is the odd one:
+it is the only teardown you can undo, which is why it is named for the thing
+that undoes it.

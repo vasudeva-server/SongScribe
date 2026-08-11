@@ -44,6 +44,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **File-based logging**: [Logging](.agents/guides/logging.md). If the user says, "check the log", read this guide to know where to look.
 - **Nullability** — `@Nullable`, `@NullMarked`, NullAway suppressions, deferred-init fields, `requireXxx()` accessors, or reacting to an unexpected null: [Null Handling](.agents/guides/null-handling.md).
 - **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
+- **Disposing an object, or writing a class that registers itself with anything process-global** (`Disposable`, `dispose()`, a constructor-side `MessageCenter.subscribe`): [Application and Object Lifecycle](docs/lifecycle.md).
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
 - **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
 - **ABC corpus**: If the user mentions the ABC corpus, it is the .abc files in the numbered directories in ~/Documents/Centre/Music/SongScribe\ songs/ABC. 

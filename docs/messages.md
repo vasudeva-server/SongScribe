@@ -7,7 +7,18 @@ MessageCenter.post(message) // Synchronous; all handlers run on calling thread b
 MessageCenter.subscribe(listener) // in constructor
 ```
 
-**Weak references.** MBassador holds subscribers weakly. Every subscriber MUST be reachable via a strong reference (static field, instance field on a long-lived owner) for its intended lifetime. There is NO need to unsubscribe; when the subscriber is garbage collected, it will no longer receive messages.
+**Weak references.** MBassador holds subscribers weakly. Every subscriber MUST be reachable via a strong reference (static field, instance field on a long-lived owner) for its intended lifetime. A subscriber retired before the process ends needs more than dropping that reference — see **Detaching** below.
+
+### Detaching
+
+Weak references are not a substitute for unsubscribing. Until the collector runs, a subscriber that has lost its last strong reference is still registered and still receives every message — and the collector may never run.
+
+A subscriber whose lifetime is its owner's, where the owner lives as long as the process, never needs to detach. Two cases do:
+
+- **A static field that gets reassigned.** `Actions.initialize` replaces every action constant; each replaced action stays subscribed. `initialize` retires the outgoing generation for exactly this reason.
+- **An object retired before the process ends.** Loading a document replaces the `Song` in the `ScoreView`; the outgoing one is finished with, and `ScoreView.setSong` disposes it. Left subscribed, it keeps handling broadcast commands and posting undo steps against a document nobody has open.
+
+**A class that calls `MessageCenter.subscribe(this)` in its constructor implements `songscribe.lifecycle.Disposable`.** That is the whole rule, and it is mechanical: the subscribe call is the trigger, the interface is the obligation. A class that does not subscribe does not implement it. See [lifecycle.md](lifecycle.md) for what disposal promises and who calls it.
 
 ### Message kinds
 
