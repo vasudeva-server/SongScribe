@@ -357,7 +357,20 @@ a final pass catches the rest.
 
 ## Phase 8 — Singleton lifecycle contracts
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
+
+**Resolution.** Decisions are in
+[`plans/singleton-lifecycle-contracts.md`](./singleton-lifecycle-contracts.md) —
+Phase 9 applies its §5 and touches nothing in its §6. The §6.3 framing holds for
+5 members (`Actions`, `PlaybackController`, `UndoController`,
+`SelectionCoordinator`); the rest are reclassified with destinations, because
+they are private-helper exposure or process-global state rather than a missing
+teardown. Three findings reach past the phase: `docs/messages.md:10` states that
+unsubscription is never needed, which is false for reassigned static fields and
+for objects retired before the process ends, and is why the whole category was
+labelled test-only; the converters leak two bus subscribers per converted file;
+and `check`'s mechanical test-only-surface finding needs an exception for a
+documented lifecycle inverse, or Phase 9's output is flagged permanently.
 
 Discussion doc §6.3 lists ~11 members that exist only because singletons hold
 static mutable state and MBassador subscriptions that production never tears
@@ -390,16 +403,22 @@ test in every package sets up.
 
 **Model:** Sonnet · **Effort:** medium · **Status:** ⏳
 
-Apply Phase 8's decisions. Use `jetbrains_rename` so call sites update
-automatically; write the lifecycle contract Javadoc on each class and each
-renamed member. Compile with `./scripts/compile.sh` and run the unit suite with
-`./scripts/test.sh`.
+Apply §5 of [`plans/singleton-lifecycle-contracts.md`](./singleton-lifecycle-contracts.md),
+which names every class, member, signature and Javadoc text. Use
+`jetbrains_rename` so call sites update automatically. Its §8 is this phase's
+task list; its §6 belongs to other phases and is not touched here.
 
-Also in this phase: the four members in discussion doc §6.2 that are already
-coherent internal APIs wearing scaffolding names —
-`SMuFLMetadata.requireMapValueForTesting`, `getAdvanceWidthForTesting`,
-`getAdvanceWidthOrZeroForTesting`, and `Prefs.parseJsonValueForTest`. Rename each
-to its concept and write its contract.
+Note that §5.4 requires production wiring, not only a rename: `ScoreView.dispose()`
+and its converter call sites. The rename is not finished without it.
+
+Also in this phase: the three `SMuFLMetadata` members in discussion doc §6.2 that
+are already coherent internal APIs wearing scaffolding names —
+`requireMapValueForTesting`, `getAdvanceWidthForTesting`,
+`getAdvanceWidthOrZeroForTesting`. Rename each to its concept and write its
+contract. The fourth, `Prefs.parseJsonValueForTest`, is promoted rather than
+renamed — see §5.5.
+
+Compile with `./scripts/compile.sh` and run the unit suite with `./scripts/test.sh`.
 
 ---
 
