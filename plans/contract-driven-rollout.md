@@ -274,6 +274,13 @@ documents. Rebuild it around four axes:
 6. The test axis must not reintroduce coverage thinking: it checks the tests
    against the *contract's* classes and boundaries, never against the
    implementation's branches.
+7. The test axis also checks **derivation**, which is a distinct fault from
+   coverage thinking: a test can be aimed at a real contract case and still
+   assert a detail its author took from the method body. The mechanical form is
+   *does every assertion correspond to a clause of the contract?* — an assertion
+   with no clause is either a missing clause or a test written from the code.
+   See *Write from the contract, not from the code* in
+   `.claude/guides/testing-common.md`.
 
 ---
 

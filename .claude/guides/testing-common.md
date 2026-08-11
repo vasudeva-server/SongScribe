@@ -22,6 +22,43 @@ If the API has no contract yet, write the contract first. See
 test cases fall out of it, and the **Contracts** and **Contract-Driven Testing**
 sections of `~/.claude/rules/development.md` for the principles.
 
+### Write from the contract, not from the code
+
+Before writing a test, read exactly three things:
+
+1. the **contract** of the method under test,
+2. its **signature**,
+3. the **public API of its declaring class** — the other contracts on it, the
+   class Javadoc, and any `docs/` document those link to.
+
+Nothing else. Not the method body, not its private fields, not the helpers it
+calls. Those are what the contract deliberately does not promise, and a case
+derived from them passes by construction: it restates the code back to itself and
+reports the agreement as verification. It is also the case that breaks on the next
+refactor, having observed nothing that changed.
+
+Those three sources are what a caller has. Writing from them is what makes the
+test a caller, which is the only position the promise can be checked from.
+
+**When the contract does not answer the question, the finding is against the
+contract.** Not a license to open the body. Amend the contract — proposed and
+confirmed with the domain owner where the promise is a musical judgment, never
+decided unilaterally — then derive the case from the amended contract.
+
+You will read production code anyway: triaging an existing suite, diagnosing a
+failing test, and reading a coverage report all require it. The rule that survives
+is the one that keeps the contract the only source of cases:
+
+> A case you learned from the implementation does not become a test until it is in
+> the contract. Put it in the contract first, as a visible change; the test then
+> derives from a stated promise like every other one.
+
+The same boundary decides **arrangement**, which is where the pressure actually
+comes from. If the declaring class's public API cannot arrange the state a case
+needs, that is a constructor-or-factory finding, not a reason to reach further in.
+Reaching past the public API to set up a test is the same violation as writing the
+test from the body.
+
 Four consequences worth stating in test-guide terms:
 
 - **Enumerate a finite domain; sample only when you cannot.** An enum, a small set

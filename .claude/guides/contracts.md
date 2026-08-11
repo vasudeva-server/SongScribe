@@ -64,7 +64,14 @@ public static int ticks(ElementType type, int dotCount)
 
 ### The tests it yields
 
-Derived from the text above, without opening the method body:
+Deriving these without opening the method body is not a flourish of the example —
+it is the rule the test author works under. The contract, the signature, and the
+declaring class's public API are all they may derive a case from, so **a promise
+you leave out of the contract is a case nobody can write.** See *Write from the
+contract, not from the code* in
+[testing-common.md](./testing-common.md#write-from-the-contract-not-from-the-code).
+
+From the text above, then:
 
 | Contract clause | Case |
 |---|---|
