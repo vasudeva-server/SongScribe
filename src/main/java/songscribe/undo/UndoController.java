@@ -441,8 +441,11 @@ public final class UndoController {
     }
 
     /**
-     * Returns the currently pending Tier-A op-name (or {@code null}). Read by
+     * The Tier-A op-name a bracket opening now would capture. Read by
      * {@code Song.beginModification} at the outermost-bracket transition. EDT-only.
+     *
+     * @return the pending op-name, or {@code null} when no dispatch has declared one and
+     *         an edit opening now would fall back to a type-based label
      */
     public static @Nullable String getPendingOpName() {
         return INSTANCE.pendingOpName;
@@ -473,7 +476,7 @@ public final class UndoController {
      * The value-returning form of {@link #withPendingOpName(String, Runnable)}, for a body
      * whose outcome the caller must inspect after the name is restored.
      *
-     * @return Whatever {@code body} returns
+     * @return whatever {@code body} returned, unchanged
      */
     public static <T> T withPendingOpNameResult(@Nullable String opName, Supplier<T> body) {
         var priorOpName = getPendingOpName();
@@ -509,7 +512,7 @@ public final class UndoController {
      * derived from the kind of edit the step's dominant mutation records — never a bare
      * {@code "Undo"} over a non-empty stack.
      *
-     * <p>Localized through {@link Strings}; the caller presents the result as-is.
+     * @return the localized label, ready to display as-is
      */
     public static String undoLabel() {
         return INSTANCE.composeLabel(INSTANCE.undoStack, Strings.ACTION_EDIT_UNDO, Strings.ACTION_EDIT_UNDO_LABELED);
@@ -518,6 +521,8 @@ public final class UndoController {
     /**
      * The Edit-menu label for Redo, naming the operation the next {@link #redo()} would
      * re-apply. Composed exactly as {@link #undoLabel()} is, from the redo stack.
+     *
+     * @return the localized label, ready to display as-is
      */
     public static String redoLabel() {
         return INSTANCE.composeLabel(INSTANCE.redoStack, Strings.ACTION_EDIT_REDO, Strings.ACTION_EDIT_REDO_LABELED);
@@ -547,6 +552,8 @@ public final class UndoController {
      * is first occurrence). Companion ordering is not uniform, so "first mutation"
      * would mislabel — e.g. deleting a tuplet-spanned note (tuplet-removal companion
      * emitted first) must still read "Delete Note". Callers pass a non-empty step.
+     *
+     * @return the mutation the step's label is derived from
      */
     private static Mutation dominantMutation(List<? extends Mutation> step) {
         for (var mutation : step) {

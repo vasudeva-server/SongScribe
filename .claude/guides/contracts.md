@@ -25,6 +25,14 @@ first one rather than editing an existing one.
 Not every method has all eight. A method with none of them is trivial and needs
 no contract — an accessor returning a field, a one-line delegation.
 
+**`@return` is not one of the optional ones.** Any method whose return type is
+not `void` carries an `@return` tag, whatever else its contract does or does not
+have, and whatever the summary sentence already says. The one method that may
+omit it is the one that has no doc comment at all — the trivial accessor above.
+A contract that opens *"Returns the Edit-menu label for Undo…"* and then never
+tags the return has stated the promise where the call site does not show it; say
+it in the tag and let the body carry the rest.
+
 **What does not belong:** how it does it. The algorithm, the data structure, the
 iteration order (unless the order is promised), the fact that it caches. A caller
 who relies on any of that is relying on something you did not promise, and a
@@ -138,6 +146,9 @@ public static ElementType forTypeToken(String typeToken, boolean isRest, boolean
 
 It gets the hard part right — it says what `null` *means*. What it never says:
 
+- **The return, in the tag.** Every parameter has an `@param`; the result has
+  nothing. What `null` means is stated in the body only, which is the one place a
+  caller reading the signature at a call site does not see it.
 - **Precedence.** When `isGrace` is true the token is ignored entirely and the
   result is `GRACE_QUAVER`, recognised token or not. The contract does not
   mention it. `NoteTypeMappingTest` does, in an assertion description: *"grace
@@ -203,10 +214,15 @@ what the caller has to write code for.
 
 // Contract — names the condition, so the caller knows which branch they are in
 /**
- * Returns the {@link ElementType} for the given MusicXML {@code <type>} token,
- * or {@code null} if the token is not recognised.
+ * Returns the {@link ElementType} for the given MusicXML {@code <type>} token.
+ *
+ * @return the matching type, or {@code null} if the token is not recognised
  */
 ```
+
+The condition belongs in the `@return` tag itself, not only in the summary
+sentence above it: a caller deciding whether they need a null check is reading
+the tag.
 
 The same applies to a `@Nullable` **parameter**: state what passing null selects.
 `ZoomController.zoomByMagnification(double, @Nullable Point)` documents it —

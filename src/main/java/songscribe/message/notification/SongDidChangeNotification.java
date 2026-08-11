@@ -90,8 +90,10 @@ public class SongDidChangeNotification extends Message {
     }
 
     /**
-     * Returns the op-name declared by this edit's initiator, or {@code null} when the
-     * edit declared no name (the type-based fallback label applies).
+     * The name this edit's initiator declared for it.
+     *
+     * @return the declared op-name, or {@code null} when the edit declared none, in which
+     *         case the type-based fallback label applies
      */
     @Nullable
     public String getOpName() {
@@ -99,9 +101,12 @@ public class SongDidChangeNotification extends Message {
     }
 
     /**
-     * Returns the single line targeted by all line-scoped mutations in the list,
-     * or {@code null} if no line-scoped mutations exist or they target different lines.
-     * Song-scoped mutations are ignored. Result is lazily cached.
+     * The one line this edit targeted, when it targeted exactly one. Song-scoped mutations
+     * are ignored. The result is lazily cached.
+     *
+     * @return the line shared by every line-scoped mutation in the list, or {@code null}
+     *         when there are none or they target different lines — see
+     *         {@link #touchesLine} for the latter case
      */
     @Nullable
     public Line getLine() {
@@ -135,6 +140,8 @@ public class SongDidChangeNotification extends Message {
      * <p>This is the question {@link #getLine()} cannot answer for an edit that spans lines: there
      * being no <em>single</em> target line, it reports none at all, which reads as "no line was
      * touched" to a subscriber that only cares about one of them.
+     *
+     * @return {@code true} when at least one line-scoped mutation targets {@code line}
      */
     public boolean touchesLine(Line line) {
         for (var mutation : mutations) {
@@ -147,8 +154,10 @@ public class SongDidChangeNotification extends Message {
     }
 
     /**
-     * Returns {@code true} if the mutation list contains at least one instance
-     * of the given mutation subclass.
+     * Whether this edit made a change of a given kind.
+     *
+     * @return {@code true} when the mutation list holds at least one instance of
+     *         {@code type}
      */
     public boolean hasMutationOf(Class<? extends Mutation> type) {
         for (var mutation : mutations) {

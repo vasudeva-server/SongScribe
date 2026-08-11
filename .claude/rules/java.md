@@ -161,6 +161,14 @@ a full worked example. This section is the Javadoc syntax for it.
 - **Preconditions** — valid argument ranges, nullability, required receiver
   state — go in `@param`, in prose where the tag alone can't carry the
   condition (`@param dotCount number of augmentation dots (0, 1, or 2)`).
+- **`@return` is mandatory on every method whose return type is not `void`**, no
+  exceptions, even when the summary sentence already says what comes back and
+  even for a one-line method. `@return` is what the IDE shows at the call site
+  and what a reader scans for; a promise stated only in the body is a promise the
+  caller does not see. Write the tag as the answer to *what do I get back?* —
+  `@return the composed Edit-menu label`, `@return {@code true} when …` — and
+  keep what no tag can carry (boundary semantics, invariants, side effects) in
+  the body.
 - **Postconditions** — what holds of the return value and of the receiver
   afterward — go in `@return`, in prose.
 - **`@throws`** names every exception type and the exact condition that

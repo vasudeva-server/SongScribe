@@ -61,7 +61,12 @@ public final class UndoTestSupport {
     private UndoTestSupport() {
     }
 
-    /** Serializes a song to its native XML form for value-based deep comparison. */
+    /**
+     * Serializes a song to its native XML form for value-based deep comparison.
+     *
+     * @return the song's serialized form, equal for two songs holding the same document
+     *         state and differing wherever they differ
+     */
     public static String serialize(Song song) {
         var stringWriter = new StringWriter();
         var printWriter = new PrintWriter(stringWriter);
@@ -78,6 +83,8 @@ public final class UndoTestSupport {
      * <p>For a raw DOM mutator, which opens no bracket of its own. The bracket opened here
      * swallows any bracket {@code edit} does open, so this cannot tell one undo step from
      * several — for an edit that brackets itself, use {@link #captureSingleBatch}.
+     *
+     * @return the mutations the edit recorded, in recorded order
      */
     public static List<Mutation> captureBatch(Song song, Runnable edit) {
         return onlyBatchOf(song, recordNotifications(() -> song.withModification(edit)));
@@ -94,6 +101,8 @@ public final class UndoTestSupport {
      * asked for. Wrapped in an outer bracket that difference is invisible, because only the
      * outermost bracket publishes — which is exactly why such a bug survives a
      * {@code captureBatch}-based undo/redo round trip.
+     *
+     * @return the mutations of the one batch the edit posted, in recorded order
      */
     public static List<Mutation> captureSingleBatch(Song song, Runnable edit) {
         var captured = recordNotifications(edit);
@@ -107,7 +116,11 @@ public final class UndoTestSupport {
         return onlyBatchOf(song, captured);
     }
 
-    /** Every {@link SongDidChangeNotification} batch {@code action} posts, in order. */
+    /**
+     * Captures what {@code action} posts.
+     *
+     * @return every {@link SongDidChangeNotification} batch posted while it ran, in order
+     */
     private static List<List<Mutation>> recordNotifications(Runnable action) {
         var captured = new ArrayList<List<Mutation>>();
 
@@ -143,7 +156,9 @@ public final class UndoTestSupport {
         return captured.getFirst();
     }
 
-    /** A mock {@link ScoreView} whose {@code getSong()} returns {@code song}. */
+    /**
+     * @return a mock {@link ScoreView} whose {@code getSong()} returns {@code song}
+     */
     public static ScoreView scoreViewFor(Song song) {
         var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);

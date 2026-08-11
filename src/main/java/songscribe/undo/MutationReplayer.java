@@ -258,6 +258,8 @@ public final class MutationReplayer {
      * Casts a validated field value to its expected boxed type. The replayed fields
      * never carry null — their values are validated at mutation construction — so the
      * non-null return is safe; NullAway cannot see that {@code value} is non-null here.
+     *
+     * @return {@code value} as its expected type
      */
     @SuppressWarnings("NullAway")
     private static <T> T cast(@Nullable Object value, Class<T> type) {

@@ -74,8 +74,10 @@ public final class OpNames {
     }
 
     /**
-     * The single classifier both labels are built on: the category {@code type} belongs to,
-     * or {@code null} for a type in none of them.
+     * The single classifier both labels are built on.
+     *
+     * @return the category {@code type} belongs to, or {@code null} for a type in none of
+     *         them — which the caller must handle, since no category means no name
      */
     private static @Nullable Category categoryOf(ElementType type) {
         if (type.isNote()) {
@@ -112,6 +114,7 @@ public final class OpNames {
      * @param types the types of the elements being deleted, in any order; must not be
      *              empty — a deletion of nothing has no name, and nothing is promised for
      *              an empty list
+     * @return the localized name for the deletion
      */
     public static String deleteLabel(List<ElementType> types) {
         Category common = null;
@@ -165,6 +168,7 @@ public final class OpNames {
      *
      * @param type the type being inserted; must belong to one of the categories the pen
      *             can insert — a note, a rest, a barline, a repeat or a breath mark
+     * @return the localized name for the insertion
      * @throws IllegalArgumentException if {@code type} is in none of those categories,
      *                                  which no insertion the user can perform produces.
      *                                  A new {@link ElementType} category fails here
@@ -194,6 +198,8 @@ public final class OpNames {
     /**
      * Names a slide insertion by the kind of slide being attached: {@code Add Fall} for
      * {@link SlideZone#FALL}, {@code Add Glissando} for {@link SlideZone#GLISSANDO}.
+     *
+     * @return the localized name for the insertion
      */
     public static String addSlideLabel(SlideZone zone) {
         return Strings.get(zone == SlideZone.FALL
@@ -206,6 +212,8 @@ public final class OpNames {
      * StaffElement.Fall}, otherwise {@code Remove Glissando}. A slide is taken off the note that
      * carries it rather than deleted as an element of its own, so it is worded as a removal
      * even though the sibling labels here read {@code Delete}.
+     *
+     * @return the localized name for the removal
      */
     public static String deleteSlideLabel(StaffElement.Slide slide) {
         return Strings.get(slide instanceof StaffElement.Fall
@@ -216,6 +224,8 @@ public final class OpNames {
     /**
      * Names a hairpin deletion by subtype: {@code Delete Crescendo} for a {@link
      * Crescendo}, otherwise {@code Delete Diminuendo}.
+     *
+     * @return the localized name for the deletion
      */
     public static String deleteHairpinLabel(Hairpin hairpin) {
         return Strings.get(hairpin.getKind() == Hairpin.Kind.CRESCENDO
@@ -225,6 +235,8 @@ public final class OpNames {
 
     /**
      * Names an ending deletion.
+     *
+     * @return the localized name for the deletion
      */
     public static String deleteEndingLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ENDING);
@@ -232,6 +244,8 @@ public final class OpNames {
 
     /**
      * Names a whole-line deletion.
+     *
+     * @return the localized name for the deletion
      */
     public static String deleteLineLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE);
@@ -239,6 +253,8 @@ public final class OpNames {
 
     /**
      * Names a tie removal.
+     *
+     * @return the localized name for the removal
      */
     public static String removeTieLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TIE);
@@ -246,6 +262,8 @@ public final class OpNames {
 
     /**
      * Names a beam removal.
+     *
+     * @return the localized name for the removal
      */
     public static String removeBeamLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAM);
@@ -254,6 +272,8 @@ public final class OpNames {
     /**
      * Names a tuplet removal, which the user reaches by selecting the tuplet's number or
      * bracket and deleting it.
+     *
+     * @return the localized name for the removal
      */
     public static String removeTupletLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);
@@ -261,6 +281,8 @@ public final class OpNames {
 
     /**
      * Names a trill removal.
+     *
+     * @return the localized name for the removal
      */
     public static String removeTrillLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TRILL);
@@ -268,6 +290,8 @@ public final class OpNames {
 
     /**
      * Names an accidental removal.
+     *
+     * @return the localized name for the removal
      */
     public static String removeAccidentalLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL);
@@ -276,6 +300,8 @@ public final class OpNames {
     /**
      * Names an articulation removal by type: {@code Remove Staccato} or
      * {@code Remove Accent}.
+     *
+     * @return the localized name for the removal
      */
     public static String removeArticulationLabel(ArticulationType type) {
         return Strings.get(switch (type) {
@@ -290,6 +316,8 @@ public final class OpNames {
      * <p>
      * The three kinds that also have a dialog share that dialog's Remove-button key, because
      * the Delete key and the dialog reach the same edit.
+     *
+     * @return the localized name for the removal
      */
     public static String removeAttachmentLabel(Attachment attachment) {
         return Strings.get(switch (attachment) {
@@ -309,6 +337,7 @@ public final class OpNames {
      *
      * @param beforeText the syllable's text before the edit, {@code ""} if it had none
      * @param afterText  the syllable's text after the edit, {@code ""} if it now has none
+     * @return the localized name for the edit
      */
     public static String lyricLabel(String beforeText, String afterText) {
         if (beforeText.isEmpty() && !afterText.isEmpty()) {
