@@ -286,7 +286,7 @@ documents. Rebuild it around four axes:
 
 ## Phase 6 — Planning and review skills
 
-**Model:** Sonnet · **Effort:** medium · **Status:** ⏳
+**Model:** Sonnet · **Effort:** medium · **Status:** ✅
 
 All five files are global, under `~/.claude/skills/`.
 
