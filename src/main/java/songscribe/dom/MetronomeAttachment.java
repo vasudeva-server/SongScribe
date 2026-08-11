@@ -20,9 +20,6 @@
 
 package songscribe.dom;
 
-import java.awt.Font;
-import java.util.List;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.smufl.BBox;
@@ -31,9 +28,11 @@ import songscribe.smufl.SMuFLMetadata;
 /**
  * Abstract base class for metronome-style markings (tempo and beat change).
  * <p>
- * Provides SMuFL metronome glyph constants, the note-width calculation, and
- * the standard content-size implementation shared by TempoChangeAttachment
- * and BeatChangeAttachment.
+ * Provides the metronome note scale and the content-height overrides used by
+ * TempoChangeAttachment and BeatChangeAttachment. The typesetting of a marking —
+ * the glyph lookup, the advance sequence and the "=" separator — belongs to
+ * {@code songscribe.layout.MetronomeContent}, which needs a resolved font that a
+ * document-model object has no access to.
  */
 public abstract sealed class MetronomeAttachment extends Attachment
     permits TempoChangeAttachment, BeatChangeAttachment {
@@ -45,14 +44,8 @@ public abstract sealed class MetronomeAttachment extends Attachment
     private static final BBox QUARTER_NOTE_BBOX =
         SMuFLMetadata.requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
 
-    /** " = " in tempo markings and beat changes. */
-    public static final String EQUALS_STR = " = ";
-
     /** Content height derived from the quarter note glyph, scaled to metronome note size. */
     public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.height() * NOTE_SCALE;
-
-    /** Width and collision sub-regions computed together to avoid redundant computation. */
-    public record ContentMetrics(double widthSs, List<CollisionRegion> regions) {}
 
     protected MetronomeAttachment(Alignment alignment) {
         setAlignment(alignment);
@@ -67,54 +60,6 @@ public abstract sealed class MetronomeAttachment extends Attachment
     }
 
     /**
-     * Computes the content width and per-sub-region collision geometry for this marking.
-     */
-    public abstract ContentMetrics computeContentMetrics(Font attrFont);
-
-    /**
-     * Returns the SMuFL metronome glyph for the given element type, or null if unmapped.
-     */
-    public static @Nullable SMuFLGlyph metronomeGlyphFor(ElementType type) {
-        return switch (type) {
-            case SEMIBREVE -> SMuFLGlyph.MET_NOTE_WHOLE;
-            case MINIM -> SMuFLGlyph.MET_NOTE_HALF_UP;
-            case CROTCHET -> SMuFLGlyph.MET_NOTE_QUARTER_UP;
-            case QUAVER -> SMuFLGlyph.MET_NOTE_8TH_UP;
-            case SEMIQUAVER -> SMuFLGlyph.MET_NOTE_16TH_UP;
-            case DEMI_SEMIQUAVER -> SMuFLGlyph.MET_NOTE_32ND_UP;
-            default -> null;
-        };
-    }
-
-    /**
-     * Returns the advance width in staff spaces of one augmentation dot step (gap or dot itself).
-     * The layout reserves two of these per dotted note: one gap before the dot, one for the dot.
-     */
-    public static double dotAdvanceWidthSs() {
-        return SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT) * NOTE_SCALE;
-    }
-
-    /**
-     * Returns the advance width in staff spaces for the given note glyph plus any augmentation dot.
-     * Returns 0 if the note type has no metronome glyph.
-     */
-    public static double noteWidthSs(StaffElement note) {
-        var glyph = metronomeGlyphFor(note.getType());
-
-        if (glyph == null) {
-            return 0;
-        }
-
-        var widthSs = SMuFLMetadata.requireAdvanceWidth(glyph) * NOTE_SCALE;
-
-        if (note.getDotCount() > 0) {
-            widthSs += 2 * dotAdvanceWidthSs();
-        }
-
-        return widthSs;
-    }
-
-    /**
      * Returns the content height in staff-space units.
      */
     @Override
@@ -122,6 +67,12 @@ public abstract sealed class MetronomeAttachment extends Attachment
         return QUARTER_NOTE_HEIGHT_SS;
     }
 
+    /**
+     * Always returns 0. A metronome marking's width depends on the resolved annotation font,
+     * which a DOM object has no access to, so the real width lives in
+     * {@code MetronomeContent.widthSs()} and reaches the layout through
+     * {@code LayoutResult.DecorationLayout}.
+     */
     @Override
     public double getContentWidthPx() {
         return 0;

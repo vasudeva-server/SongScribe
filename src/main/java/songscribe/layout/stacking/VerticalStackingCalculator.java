@@ -366,14 +366,8 @@ public class VerticalStackingCalculator {
             if (xOffsetSs != 0 || yOffsetSs != 0 || x1ExtraSs != 0 || x2ExtraSs != 0) {
                 // For hairpins, x1ExtraSs shifts the left edge and x2ExtraSs shifts the right edge
                 // independently. Translate that into (xSs + x1, widthSs + x2 - x1).
-                builder.putDecorationLayout(element, new LayoutResult.DecorationLayout(
-                    layout.xSs() + xOffsetSs + x1ExtraSs,
-                    layout.ySs() + yOffsetSs,
-                    layout.dySs(),
-                    layout.widthSs() + x2ExtraSs - x1ExtraSs,
-                    layout.heightSs(),
-                    layout.marginSs(),
-                    layout.regions()));
+                builder.putDecorationLayout(element, layout.shiftedBy(
+                    xOffsetSs + x1ExtraSs, yOffsetSs, x2ExtraSs - x1ExtraSs));
             }
         }
     }

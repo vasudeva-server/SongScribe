@@ -24,7 +24,6 @@ import module java.desktop;
 
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.hit.HitTarget;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
 public final class TempoChangeRenderer extends MetronomeRenderer {
@@ -59,7 +58,8 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
      * <p>
      * Every mark this renderer draws is attached to a note and is therefore addressable as a hit
      * target. The song's own tempo is not one of them — it is drawn at the first line's staff
-     * header by {@link SongTempoMarkRenderer}, from the same {@code drawTempo} core, and is
+     * header by {@link SongTempoMarkRenderer}, through the same
+     * {@link MetronomeRenderer#drawContent} core fed by one {@code MetronomeContent}, and is
      * deliberately not hittable.
      */
     private void renderTempoChange(
@@ -69,17 +69,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var tempo = attachment.getTempo();
-        var setup = buildRenderSetup(note, TempoChangeAttachment.class, invariants, frame);
-
-        // A tempo change is selectable on its own. Its selection is folded into the color the
-        // setup already resolved rather than applied over it, so an unselected tempo mark still
-        // follows its owner note through playback, hover and range selection.
-        var color = RenderingUtils.decorationColor(
-            new HitTarget.Attachment(attachment), note, invariants, frame);
-
-        drawTempo(
-            g2, tempo, setup.decorationLayout().xSs(), setup.ySs(), setup.attrFont(), color);
+        renderAttachment(note, attachment, invariants, frame, g2);
     }
 
 }

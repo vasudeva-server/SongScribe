@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -41,8 +42,11 @@ import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
 import songscribe.dom.Song;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.MetronomeContent;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
@@ -73,8 +77,11 @@ class BeatChangeRendererTest extends UnitTest {
             note, new BeatChange(Duration.CROTCHET, Duration.QUAVER));
         note.addAttachment(attachment);
 
+        var font = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
+        var content = MetronomeContent.forBeatChange(attachment.getBeatChange(), font);
         var decorationLayout = new LayoutResult.DecorationLayout(
-            DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, 0.0);
+            DECORATION_X_SS, DECORATION_Y_SS, 0.0, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, 0.0,
+            content);
         var layoutResult = LayoutResult.builder()
             .putDecorationLayout(attachment, decorationLayout)
             .build();
@@ -111,4 +118,5 @@ class BeatChangeRendererTest extends UnitTest {
     void testRenderUnselectedBeatChangeDrawsInTheElementColor() {
         assertThat(renderedGlyphColors(false)).containsOnly(RenderingUtils.ELEMENT_COLOR);
     }
+
 }

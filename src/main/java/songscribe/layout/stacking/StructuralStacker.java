@@ -212,10 +212,9 @@ public class StructuralStacker {
             structuralExtents.ySetSloped(true, anchorXSs, endXSs, finalLeftYSs, finalLeftYSs + dySs);
 
             // Record the sloped layout (dySs folded in), keeping the resolved left-end Y as ySs.
-            // A tuplet has no collision sub-regions.
             builder.putDecorationLayout(tuplet,
                 new LayoutResult.DecorationLayout(
-                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs, List.of()));
+                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs, null));
         }
     }
 
@@ -804,7 +803,7 @@ public class StructuralStacker {
             stackAboveWithRegions(structuralExtents, ending, allRegions,
                 anchorXSs, widthSs,
                 ENDING_MARGIN_SS,
-                staffPosition, builder);
+                staffPosition, builder, null);
         }
     }
 

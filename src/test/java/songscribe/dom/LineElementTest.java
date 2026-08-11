@@ -37,12 +37,6 @@ class LineElementTest extends UnitTest {
     // Position and margin values used across multiple tests
     // ------------------------------------------------------------------
 
-    /** X position in staff spaces used for margin-bound tests. */
-    private static final double POSITION_X_SS = 3.0;
-
-    /** Y position in staff spaces used for margin-bound tests. */
-    private static final double POSITION_Y_SS = 5.0;
-
     /** Top margin used in multi-side margin tests. */
     private static final double MARGIN_TOP_SS = 2.0;
 
@@ -68,27 +62,6 @@ class LineElementTest extends UnitTest {
     // Row 25: getMarginBounds
     // ------------------------------------------------------------------
 
-    /**
-     * Row 25 — getMarginBounds: the top-left corner of the margin rectangle is
-     * shifted left and up by the left and top margins respectively; the size
-     * equals content + left + right (width) and content + top + bottom (height).
-     */
-    @Test
-    void testGetMarginBoundsExpandsContentByMargins() {
-        var element = StaffElementFactory.crotchet();
-        element.setPosition(POSITION_X_SS, POSITION_Y_SS);
-        element.setMarginSs(MARGIN_TOP_SS, MARGIN_RIGHT_SS, MARGIN_BOTTOM_SS, MARGIN_LEFT_SS);
-
-        var contentWidthSs = element.getContentWidthSs();
-        var contentHeightSs = element.getContentHeightSs();
-
-        var bounds = element.getMarginBounds();
-
-        assertThat(bounds.getX()).isEqualTo(POSITION_X_SS - MARGIN_LEFT_SS);
-        assertThat(bounds.getY()).isEqualTo(POSITION_Y_SS - MARGIN_TOP_SS);
-        assertThat(bounds.getWidth()).isEqualTo(contentWidthSs + MARGIN_LEFT_SS + MARGIN_RIGHT_SS);
-        assertThat(bounds.getHeight()).isEqualTo(contentHeightSs + MARGIN_TOP_SS + MARGIN_BOTTOM_SS);
-    }
 
     // ------------------------------------------------------------------
     // Row 26: collapsedVerticalMarginWith — CSS max-collapse

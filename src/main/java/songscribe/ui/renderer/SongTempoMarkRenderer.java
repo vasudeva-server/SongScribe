@@ -32,8 +32,9 @@ import songscribe.dom.SongTempoMark;
  * be selected, hovered or played back, so it always paints in
  * {@link RenderingUtils#ELEMENT_COLOR}.
  * <p>
- * It draws through the same {@code drawTempo} core as every per-note tempo change, inside the
- * staff-space transform, so the song's tempo cannot look different from its own siblings.
+ * It draws through the same {@link MetronomeRenderer#drawContent} core as every per-note tempo
+ * change, inside the staff-space transform, so the song's tempo cannot look different from its
+ * own siblings.
  */
 public final class SongTempoMarkRenderer implements ElementRenderer<SongTempoMark> {
 
@@ -68,14 +69,12 @@ public final class SongTempoMarkRenderer implements ElementRenderer<SongTempoMar
             return;
         }
 
+        // Present but contentless is a layout bug, not a mark with nothing to draw — that case
+        // is an absent layout, handled above. Drawing nothing here would hide it.
+        var content = decorationLayout.requireContent();
         var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
-        MetronomeRenderer.drawTempo(
-            g2,
-            invariants.getSong().getTempo(),
-            decorationLayout.xSs(),
-            ySs,
-            invariants.getAnnotationFont(),
-            RenderingUtils.ELEMENT_COLOR);
+        MetronomeRenderer.drawContent(
+            g2, content, decorationLayout.xSs(), ySs, RenderingUtils.ELEMENT_COLOR);
     }
 }

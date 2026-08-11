@@ -22,6 +22,9 @@ package songscribe.layout.stacking;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.layout.MetronomeContent;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.layout.LayoutResultBuilder;
@@ -606,6 +609,9 @@ public final class StackingUtils {
      * from staff) position needed across all sub-regions. Each sub-region is then
      * reserved at its own visual bottom, allowing later elements to nestle into
      * the gaps between shorter and taller sub-regions.
+     *
+     * @param content the positioned typeset content for a metronome marking, or null for
+     *                every other decoration type
      */
     public static void stackAboveWithRegions(
         StaffExtents extents,
@@ -613,7 +619,8 @@ public final class StackingUtils {
         List<CollisionRegion> regions,
         double xSs, double widthSs, double marginSs,
         int staffPosition,
-        LayoutResultBuilder builder
+        LayoutResultBuilder builder,
+        @Nullable MetronomeContent content
     ) {
         var anchorSs = anchorCeilingSs(staffPosition);
         var elementYSs = Double.MAX_VALUE;
@@ -652,7 +659,7 @@ public final class StackingUtils {
 
         builder.putDecorationLayout(element,
             new LayoutResult.DecorationLayout(
-                xSs, elementYSs, 0.0, widthSs, overallHeightSs, marginSs, regions));
+                xSs, elementYSs, 0.0, widthSs, overallHeightSs, marginSs, content));
 
     }
 

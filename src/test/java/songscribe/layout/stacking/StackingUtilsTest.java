@@ -343,7 +343,8 @@ class StackingUtilsTest extends UnitTest {
             List.of(regionA, regionB),
             ELEMENT_X_SS, ELEMENT_WIDTH_SS, REGION_MARGIN_SS,
             WITHIN_STAFF_POSITION,
-            builder);
+            builder,
+            null);
 
         // Oracle: region A drives the result (it has the larger combined yOffset+height)
         var expectedElementYSs =
@@ -377,7 +378,8 @@ class StackingUtilsTest extends UnitTest {
             List.of(regionA, regionB),
             ELEMENT_X_SS, ELEMENT_WIDTH_SS, REGION_MARGIN_SS,
             WITHIN_STAFF_POSITION,
-            builder);
+            builder,
+            null);
 
         var expectedElementYSs =
             StackingUtils.STAFF_TOP_Y_SS - REGION_MARGIN_SS - REGION_A_HEIGHT_SS;

@@ -25,23 +25,19 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
-import songscribe.error.RuntimeError;
-import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.MetronomeContent;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.ScaleContext;
-import songscribe.dom.Tempo;
 import songscribe.util.GraphicsState;
 
 /**
  * Abstract base renderer for metronome-style markings (tempo and beat change).
  * <p>
- * Provides the shared font constant, glyph drawing primitives, and decoration
- * layout lookup used by {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
+ * Provides the shared font constant, the content-painting primitive
+ * {@link #drawContent}, and decoration layout lookup used by
+ * {@link TempoChangeRenderer} and {@link BeatChangeRenderer}.
  */
 public abstract class MetronomeRenderer implements ElementRenderer<StaffElement> {
 
@@ -49,47 +45,83 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
     protected static final Font TEMPO_NOTE_FONT = RenderingUtils.getMusicFont().deriveFont(RenderingUtils.FONT_SIZE * MetronomeAttachment.NOTE_SCALE);
 
     /**
-     * Returns the SMuFL metronome glyph for the given element type,
-     * or exits if no mapping exists.
+     * Draws one metronome marking's positioned content at the given position.
+     * <p>
+     * The whole marking — glyphs, "=", BPM and description — was typeset by
+     * {@link MetronomeContent} at layout time, so this walks the items and decides
+     * nothing. It measures no advance, resolves no font and computes no position on
+     * either axis; every item carries its own. That is the point of the method, not an
+     * incidental property.
+     * <p>
+     * Deciding anything here would reintroduce the possibility of the drawn ink
+     * disagreeing with the measured box that layout, hit testing and vertical stacking
+     * all rely on — and measuring specifically would put a {@code TextLayout}
+     * construction back into the paint loop, for every marking on screen, on every
+     * scroll and every zoom step.
+     *
+     * @param g2      graphics context
+     * @param content the positioned content to paint
+     * @param xSs     left edge of the content (staff spaces)
+     * @param ySs     decoration-layout top Y position (staff spaces)
+     * @param color   the color for both the glyphs and the text
      */
-    protected static SMuFLGlyph requireMetronomeGlyph(ElementType type) {
-        var glyph = MetronomeAttachment.metronomeGlyphFor(type);
+    static void drawContent(
+        Graphics2D g2,
+        MetronomeContent content,
+        double xSs,
+        double ySs,
+        Color color
+    ) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setColor(color);
 
-        if (glyph == null) {
-            // glyph absent from the font => missing resource, not an unmapped-type bug
-            throw RuntimeError.missingResource("No metronome glyph for element type: " + type);
+            for (var item : content.items()) {
+                String text;
+
+                switch (item) {
+                    case MetronomeContent.GlyphItem glyphItem -> {
+                        g2.setFont(TEMPO_NOTE_FONT);
+                        text = glyphItem.glyph().asString();
+                    }
+                    case MetronomeContent.TextItem textItem -> {
+                        g2.setFont(textItem.scaledFont());
+                        text = textItem.text();
+                    }
+                }
+
+                g2.drawString(
+                    text,
+                    (float) (xSs + item.xSs()),
+                    (float) (ySs + item.baselineOffsetSs()));
+            }
         }
-
-        return glyph;
     }
 
     /**
-     * Shared rendering setup for metronome-style decorations.
+     * Draws the marking owned by the given attachment: the shared render sequence for
+     * every metronome-style decoration that hangs off a note.
      *
-     * @param color            decoration color
-     * @param decorationLayout layout result for this decoration
-     * @param ySs              top Y of the decoration in component staff-space coordinates
-     * @param attrFont         attribution font (unscaled, pixel units)
+     * @param element    the note owning the attachment
+     * @param attachment the attachment being drawn
      */
-    protected record RenderSetup(
-        Color color,
-        LayoutResult.DecorationLayout decorationLayout,
-        double ySs,
-        Font attrFont
-    ) {}
-
-    protected RenderSetup buildRenderSetup(
+    protected void renderAttachment(
         StaffElement element,
-        Class<? extends MetronomeAttachment> attachmentClass,
+        MetronomeAttachment attachment,
         LineInvariants invariants,
-        ElementFrame frame
+        ElementFrame frame,
+        Graphics2D g2
     ) {
-        var color = RenderingUtils.getDecorationColor(element, invariants, frame);
-        var decorationLayout = requireDecorationLayout(element, attachmentClass, invariants);
+        var decorationLayout = requireDecorationLayout(element, attachment.getClass(), invariants);
+        var content = decorationLayout.requireContent();
         var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
-        var attrFont = invariants.getAnnotationFont();
 
-        return new RenderSetup(color, decorationLayout, ySs, attrFont);
+        // A metronome marking is selectable in its own right, so its selection is folded into
+        // the color resolved from the owner note rather than applied over it: an unselected
+        // marking still follows its note through playback, hover and range selection.
+        var color = RenderingUtils.decorationColor(
+            new HitTarget.Attachment(attachment), element, invariants, frame);
+
+        drawContent(g2, content, decorationLayout.xSs(), ySs, color);
     }
 
     /**
@@ -110,144 +142,5 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         }
 
         return decorationLayout;
-    }
-
-    /**
-     * Draws a duration glyph followed by "=" using SMuFL metronome glyphs and the
-     * supplied attribution font. Returns the x position (staff spaces) after the
-     * "=" and its trailing gap, so the caller can append whatever follows.
-     *
-     * @param g2       graphics context
-     * @param duration the duration whose metronome glyph to draw
-     * @param xSs      starting X position (staff spaces)
-     * @param ySs      decoration-layout top Y position (staff spaces)
-     * @param attrFont the attribution font (unscaled, in pixel units)
-     * @param color    the color for both glyph and "=" text
-     * @return the new X position (staff spaces) after the "=" and trailing gap
-     */
-    static double drawDurationEquals(
-        Graphics2D g2,
-        Duration duration,
-        double xSs,
-        double ySs,
-        Font attrFont,
-        Color color
-    ) {
-        var note = duration.getNote();
-        var metGlyph = requireMetronomeGlyph(note.getType());
-        var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
-        var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
-
-        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(color);
-
-            g2.setFont(TEMPO_NOTE_FONT);
-            g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);
-            xSs += SMuFLMetadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
-            var dotAdvanceSs = MetronomeAttachment.dotAdvanceWidthSs();
-            xSs += dotAdvanceSs;
-
-            if (note.getDotCount() > 0) {
-                g2.drawString(
-                    SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
-                    (float) xSs,
-                    (float) glyphOriginYSs);
-                xSs += dotAdvanceSs;
-            }
-
-            g2.setFont(ScaleContext.scaleFont(attrFont));
-            g2.drawString(MetronomeAttachment.EQUALS_STR, (float) xSs, (float) textBaselineYSs);
-
-            var equalsWidthSs = ScaleContext.textWidthSs(attrFont, MetronomeAttachment.EQUALS_STR).value();
-            xSs += equalsWidthSs;
-        }
-
-        return xSs;
-    }
-
-    /**
-     * Draws one tempo marking — the metronome glyph, the "=", the BPM and the description —
-     * at the given position, in staff spaces.
-     * <p>
-     * Shared by every depiction of a {@link songscribe.dom.Tempo} on the page: the per-note
-     * {@link TempoChangeRenderer} and the song-level {@link SongTempoMarkRenderer}. Both draw
-     * inside the staff-space transform, so the song's tempo cannot look different from the tempo
-     * changes that follow it. Package-private rather than {@code protected} because
-     * {@code SongTempoMarkRenderer} is a sibling in this package, not a subclass.
-     * <p>
-     * When {@link songscribe.dom.Tempo#shouldShowTempo()} is false the glyph and the BPM are
-     * omitted and only the description is drawn.
-     *
-     * @param g2       graphics context
-     * @param tempo    the tempo to depict
-     * @param xSs      starting X position (staff spaces)
-     * @param ySs      decoration-layout top Y position (staff spaces)
-     * @param attrFont the attribution font (unscaled, in pixel units)
-     * @param color    the color for the glyph and the text
-     */
-    static void drawTempo(
-        Graphics2D g2,
-        Tempo tempo,
-        double xSs,
-        double ySs,
-        Font attrFont,
-        Color color
-    ) {
-        var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
-        var tempoBuilder = new StringBuilder(25);
-        var showTempo = tempo.shouldShowTempo();
-
-        if (showTempo) {
-            tempoBuilder.append(tempo.getVisibleTempo());
-            tempoBuilder.append(' ');
-        }
-
-        tempoBuilder.append(tempo.getTempoDescription());
-
-        if (showTempo) {
-            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, ySs, attrFont, color);
-        }
-
-        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(ScaleContext.scaleFont(attrFont));
-            g2.setColor(color);
-            g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
-        }
-    }
-
-    /**
-     * Draws a single metronome note glyph with optional augmentation dot.
-     *
-     * @param g2       graphics context
-     * @param duration the duration whose metronome glyph to draw
-     * @param xSs      starting X position (staff spaces)
-     * @param ySs      decoration-layout top Y position (staff spaces)
-     * @param color    the color for the glyph
-     */
-    protected void drawDurationGlyph(
-        Graphics2D g2,
-        Duration duration,
-        double xSs,
-        double ySs,
-        Color color
-    ) {
-        var note = duration.getNote();
-        var metGlyph = requireMetronomeGlyph(note.getType());
-        var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
-
-        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(color);
-            g2.setFont(TEMPO_NOTE_FONT);
-            g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);
-
-            if (note.getDotCount() > 0) {
-                xSs += SMuFLMetadata.requireAdvanceWidth(metGlyph) * MetronomeAttachment.NOTE_SCALE;
-                xSs += MetronomeAttachment.dotAdvanceWidthSs();
-                g2.drawString(
-                    SMuFLGlyph.MET_AUGMENTATION_DOT.asString(),
-                    (float) xSs,
-                    (float) glyphOriginYSs);
-            }
-        }
     }
 }

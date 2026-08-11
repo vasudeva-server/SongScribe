@@ -4,7 +4,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Non-obvious Packages
 
-Every top-level package under `songscribe/` has a `package-info.java` describing its role — read that before inferring a package's purpose from its name.
+`hit/package-info.java` describes that package's role and is worth reading before working in it. Every other `package-info.java` carries only the `@NullMarked` annotation — do not go looking there for a package's purpose. The list below and the design notes in `docs/` are the documentation.
 
 - smufl/ — SMuFL glyph registry: codepoints, names, and font-metric lookups
 - io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.

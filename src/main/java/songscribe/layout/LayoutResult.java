@@ -34,7 +34,6 @@ import songscribe.dom.Attachment;
 import songscribe.engraving.Staff;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
-import songscribe.dom.CollisionRegion;
 import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
@@ -969,7 +968,8 @@ public final class LayoutResult {
      * @param widthSs  Width of the decoration
      * @param heightSs Height of the decoration
      * @param marginSs Bottom margin (space between element bottom and the tier below)
-     * @param regions  Collision sub-regions for composite elements, empty for simple elements
+     * @param content  Positioned typeset content for metronome markings (beat changes, tempo
+     *                 changes and the song tempo mark); null for every other decoration type
      */
     public record DecorationLayout(
         double xSs,
@@ -978,17 +978,60 @@ public final class LayoutResult {
         double widthSs,
         double heightSs,
         double marginSs,
-        List<CollisionRegion> regions) {
+        @Nullable MetronomeContent content) {
 
         /**
-         * Creates a flat DecorationLayout without collision sub-regions (simple elements).
-         * {@code dySs} defaults to 0.0 (flat) and {@code regions} to empty.
+         * Creates a flat DecorationLayout for a simple element. {@code dySs} defaults to 0.0
+         * (flat) and {@code content} to null.
          */
         public DecorationLayout(
             double xSs, double ySs, double widthSs,
             double heightSs, double marginSs
         ) {
-            this(xSs, ySs, 0.0, widthSs, heightSs, marginSs, List.of());
+            this(xSs, ySs, 0.0, widthSs, heightSs, marginSs, null);
+        }
+
+        /**
+         * Returns the typeset content, which must be present.
+         * <p>
+         * A metronome marking's layout always carries its content — {@code SystemStacker}
+         * builds it before the layout exists. A metronome layout without content is therefore
+         * a layout bug, and drawing nothing would hide exactly the class of failure that
+         * carrying the content exists to prevent.
+         *
+         * @throws IllegalStateException if this decoration carries no content
+         */
+        public MetronomeContent requireContent() {
+            if (content == null) {
+                throw new IllegalStateException(
+                    "No MetronomeContent in this DecorationLayout");
+            }
+
+            return content;
+        }
+
+        /**
+         * Returns a copy shifted by the given offsets, with every other component carried
+         * through.
+         * <p>
+         * User X and Y offsets are applied by rebuilding this record. Doing that here rather
+         * than at the call site is what keeps a component added later from being silently
+         * dropped — a dropped {@code content} makes a nudged marking vanish from the score
+         * with no exception and nothing to catch it.
+         *
+         * @param dxSs      shift applied to the left edge
+         * @param dySsShift shift applied to the top edge
+         * @param dWidthSs  change in width
+         */
+        public DecorationLayout shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+            return new DecorationLayout(
+                xSs + dxSs,
+                ySs + dySsShift,
+                dySs,
+                widthSs + dWidthSs,
+                heightSs,
+                marginSs,
+                content);
         }
     }
 

@@ -32,9 +32,11 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.layout.MetronomeContent;
 
 /**
  * Covers the header tempo mark's layout contract: stacked only on line 0, positioned at the
@@ -48,6 +50,9 @@ class SongTempoMarkStackingTest extends UnitTest {
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double TOLERANCE = 0.001;
 
+    // Large enough that the annotation and attribution fonts cannot measure the same width.
+    private static final int ANNOTATION_FONT_SIZE_DELTA_PX = 12;
+
     // Staff positions are half staff-spaces counted downward, so a negative one is higher on
     // the page. The middle line sits inside the staff; the ledger position is well above it.
     private static final int MIDDLE_LINE_STAFF_POSITION_SP = 0;
@@ -59,8 +64,11 @@ class SongTempoMarkStackingTest extends UnitTest {
     }
 
     private static LayoutEngine engine() {
-        return new LayoutEngine(
-            lyricRenderMetrics(), STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+        return engine(DocumentFonts.defaultFonts());
+    }
+
+    private static LayoutEngine engine(DocumentFonts fonts) {
+        return new LayoutEngine(lyricRenderMetrics(), STAFF_RIGHT_MARGIN_SS, fonts);
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */
@@ -110,6 +118,70 @@ class SongTempoMarkStackingTest extends UnitTest {
         assertThat(decoration.xSs())
             .describedAs("the tempo mark must begin one notehead width right of the header's right edge")
             .isCloseTo(expectedXSs, within(TOLERANCE));
+    }
+
+    /**
+     * Regression for issue #735 divergence 3, on the song-level path. Layout once measured every
+     * metronome marking with the attribution font while rendering drew with the annotation font;
+     * the two are invisibly identical in {@code system-defaults.json}, so only a font swap this
+     * large catches a revert.
+     * <p>
+     * {@code SystemStacker} resolves the annotation font in two independent places — once for
+     * per-note attachments and once here for the song-level mark — so the beat-change guard in
+     * {@code SystemTierStackingTest} does not cover this one.
+     */
+    @Test
+    void testTempoMarkWidthUsesTheResolvedAnnotationFontNotTheAttributionFont() {
+        var fonts = DocumentFonts.defaultFonts();
+        var attributionFont = fonts.getAttributionFont();
+        fonts.setFont(
+            FontKey.ANNOTATION,
+            attributionFont.getName(),
+            attributionFont.getSize() + ANNOTATION_FONT_SIZE_DELTA_PX);
+
+        var song = new Song();
+        var line0 = song.getLine(0);
+
+        var result = require(
+            engine(fonts).layout(line0, false, false, song.getTempoMarkElement(), null),
+            "LayoutResult");
+        var decoration = require(
+            result.getDecorationLayout(song.getTempoMarkElement()), "tempo mark DecorationLayout");
+
+        var tempo = song.getTempo();
+        var annotationWidthSs =
+            MetronomeContent.forTempo(tempo, fonts.getAnnotationFont()).widthSs();
+        var attributionWidthSs = MetronomeContent.forTempo(tempo, attributionFont).widthSs();
+
+        assertThat(decoration.widthSs())
+            .describedAs("stacked width must match the resolved annotation-font content")
+            .isCloseTo(annotationWidthSs, within(TOLERANCE));
+        assertThat(decoration.widthSs())
+            .describedAs("precondition: the two fonts must produce different widths, "
+                + "or this test cannot fail")
+            .isNotCloseTo(attributionWidthSs, within(TOLERANCE));
+    }
+
+    /**
+     * The stacker must attach the typeset content to the layout it registers, because
+     * {@code SongTempoMarkRenderer} reads the mark off {@code DecorationLayout.content()} and
+     * throws when it is absent.
+     */
+    @Test
+    void testTempoMarkLayoutCarriesItsContent() {
+        var song = new Song();
+        var line0 = song.getLine(0);
+
+        var result = require(
+            engine().layout(line0, false, false, song.getTempoMarkElement(), null), "LayoutResult");
+        var decoration = require(
+            result.getDecorationLayout(song.getTempoMarkElement()), "tempo mark DecorationLayout");
+
+        assertThat(decoration.content())
+            .describedAs("the stacker must attach the content the renderer reads back")
+            .isNotNull();
+        assertThat(decoration.content().widthSs())
+            .isCloseTo(decoration.widthSs(), within(TOLERANCE));
     }
 
     @Test

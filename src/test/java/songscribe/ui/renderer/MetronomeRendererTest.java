@@ -21,137 +21,150 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
-import songscribe.dom.MetronomeAttachment;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
-import songscribe.smufl.SMuFLGlyph;
+import songscribe.layout.MetronomeContent;
 
+/**
+ * Tests for {@link MetronomeRenderer#drawContent}, which paints a metronome marking that
+ * {@link MetronomeContent} already typeset.
+ * <p>
+ * The method's entire job is to replay each item's stored position and font faithfully, so these
+ * tests assert exactly that — the string drawn, both coordinates, and the font in force — rather
+ * than counting draw calls. Counting alone would stay green while the renderer drew the wrong
+ * glyph, at the wrong height, in the wrong font.
+ */
 class MetronomeRendererTest extends UnitTest {
 
-    // Use TempoChangeRenderer (a concrete subclass) to access the protected
-    // MetronomeRenderer methods from within the same package.
-    private static final MetronomeRenderer RENDERER = TempoChangeRenderer.getInstance();
+    private static final float COORDINATE_TOLERANCE = 1e-4f;
 
-    private static final double TOLERANCE = 1e-9;
+    /** One captured {@code drawString} call: what was drawn, where, and in which font. */
+    private record DrawnString(String text, float xSs, float ySs, Font font) {}
 
-    // ==========================================================================
-    // requireMetronomeGlyph — mapping + throw (row 33)
-    // ==========================================================================
-
-    @Test
-    void testRequireMetronomeGlyphReturnsSemibreveGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.SEMIBREVE))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_WHOLE);
+    /** Builds the content for a beat change between the given note durations. */
+    private static MetronomeContent beatChangeContent(Duration durationNote, Duration beatNote) {
+        var font = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
+        return MetronomeContent.forBeatChange(new BeatChange(durationNote, beatNote), font);
     }
 
-    @Test
-    void testRequireMetronomeGlyphReturnsMinimGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.MINIM))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_HALF_UP);
+    /** Covers both the dotted and undotted left-note advance paths. */
+    private static Stream<Arguments> beatChangeShapes() {
+        return Stream.of(
+            Arguments.of(Duration.CROTCHET, Duration.CROTCHET),
+            Arguments.of(Duration.CROTCHET_DOTTED, Duration.CROTCHET)
+        );
     }
 
-    @Test
-    void testRequireMetronomeGlyphReturnsCrotchetGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.CROTCHET))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_QUARTER_UP);
-    }
+    private static List<DrawnString> captureDrawnStrings(
+        MetronomeContent content, double xSs, double ySs) {
 
-    @Test
-    void testRequireMetronomeGlyphReturnsQuaverGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.QUAVER))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_8TH_UP);
-    }
-
-    @Test
-    void testRequireMetronomeGlyphReturnsSemiquaverGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.SEMIQUAVER))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_16TH_UP);
-    }
-
-    @Test
-    void testRequireMetronomeGlyphReturnsDemiSemiquaverGlyph() {
-        assertThat(MetronomeRenderer.requireMetronomeGlyph(ElementType.DEMI_SEMIQUAVER))
-            .isEqualTo(SMuFLGlyph.MET_NOTE_32ND_UP);
-    }
-
-    @Test
-    void testRequireMetronomeGlyphThrowsForUnmappedType() {
-        // SINGLE_BARLINE has no metronome glyph; RuntimeError.exit() is redirected
-        // to AssertionError by UnitTest.suppressDialogs().
-        assertThatThrownBy(() -> MetronomeRenderer.requireMetronomeGlyph(ElementType.SINGLE_BARLINE))
-            .isInstanceOf(AssertionError.class);
-    }
-
-    // ==========================================================================
-    // drawDurationEquals — advance accounting (row 34)
-    // ==========================================================================
-
-    @Test
-    void testDrawDurationEqualsForUndottedNoteCallsTwoDrawStrings() {
-        // Undotted note: draws (1) duration glyph, (2) "=" string — no dot glyph
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final var startXSs = 2.0;
-        final var ySs = 0.0;
+        var drawn = new ArrayList<DrawnString>();
 
-        RENDERER.drawDurationEquals(g2Spy, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
+        doAnswer(invocation -> {
+            drawn.add(new DrawnString(
+                invocation.getArgument(0),
+                invocation.getArgument(1),
+                invocation.getArgument(2),
+                g2Spy.getFont()));
+            return null;
+        }).when(g2Spy).drawString(anyString(), anyFloat(), anyFloat());
 
-        verify(g2Spy, times(2)).drawString(anyString(), anyFloat(), anyFloat());
+        MetronomeRenderer.drawContent(g2Spy, content, xSs, ySs, Color.BLACK);
+
+        return drawn;
     }
 
-    @Test
-    void testDrawDurationEqualsForDottedNoteCallsThreeDrawStrings() {
-        // Dotted note: draws (1) duration glyph, (2) augmentation dot glyph, (3) "=" string
-        var g2Spy = spy(RenderContextTestHelper.realG2());
-        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final var startXSs = 2.0;
-        final var ySs = 0.0;
+    /**
+     * The structural guarantee behind issue #735, now on both axes: every coordinate the renderer
+     * hands to {@code drawString} is the item's own stored offset shifted by the content origin.
+     * The renderer computes no position of its own, so the ink and the measured box cannot
+     * diverge.
+     */
+    @ParameterizedTest(name = "{0} = {1}")
+    @MethodSource("beatChangeShapes")
+    void testDrawContentDrawsEveryItemAtItsOwnOffsetOnBothAxes(
+        Duration durationNote, Duration beatNote) {
 
-        RENDERER.drawDurationEquals(g2Spy, Duration.CROTCHET_DOTTED, startXSs, ySs, attrFont, Color.BLACK);
+        var content = beatChangeContent(durationNote, beatNote);
+        var xSs = 7.0;
+        var ySs = -3.0;
 
-        verify(g2Spy, times(3)).drawString(anyString(), anyFloat(), anyFloat());
+        var drawn = captureDrawnStrings(content, xSs, ySs);
+
+        assertThat(drawn).hasSize(content.items().size());
+
+        for (var i = 0; i < drawn.size(); i++) {
+            var item = content.items().get(i);
+
+            assertThat(drawn.get(i).xSs())
+                .as("item %d horizontal offset", i)
+                .isCloseTo((float) (xSs + item.xSs()), within(COORDINATE_TOLERANCE));
+            assertThat(drawn.get(i).ySs())
+                .as("item %d baseline", i)
+                .isCloseTo((float) (ySs + item.baselineOffsetSs()), within(COORDINATE_TOLERANCE));
+        }
     }
 
+    /**
+     * A glyph item draws its own SMuFL codepoint and a text item its own string, in order. A
+     * renderer that drew the right number of strings in the wrong order, or substituted one
+     * glyph for another, would pass a draw-count check and fail this one.
+     */
     @Test
-    void testDrawDurationEqualsReturnsXGreaterThanStart() {
-        // The returned X must be further right than the start, regardless of scale or font.
-        var g2 = RenderContextTestHelper.realG2();
-        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final var startXSs = 2.0;
-        final var ySs = 0.0;
+    void testDrawContentDrawsEachItemsOwnStringInOrder() {
+        var content = beatChangeContent(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
 
-        var endX = RENDERER.drawDurationEquals(g2, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
+        var drawn = captureDrawnStrings(content, 0.0, 0.0);
+        var expectedTexts = content.items().stream()
+            .map(item -> switch (item) {
+                case MetronomeContent.GlyphItem glyphItem -> glyphItem.glyph().asString();
+                case MetronomeContent.TextItem textItem -> textItem.text();
+            })
+            .toList();
 
-        assertThat(endX).isGreaterThan(startXSs);
+        assertThat(drawn).extracting(DrawnString::text).isEqualTo(expectedTexts);
     }
 
+    /**
+     * Glyphs draw in the metronome note font; text draws in the font the content resolved and
+     * pre-scaled. Drawing the "=" in the note font would render it as a wrong glyph entirely.
+     */
     @Test
-    void testDrawDurationEqualsForDottedNoteReturnsFurtherThanUndotted() {
-        // dotted return − undotted return ≈ dotAdvanceWidthSs() (one extra dot advance)
-        var g2 = RenderContextTestHelper.realG2();
-        var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final var startXSs = 2.0;
-        final var ySs = 0.0;
-        var dotAdvance = MetronomeAttachment.dotAdvanceWidthSs();
+    void testDrawContentDrawsGlyphsAndTextInTheirOwnFonts() {
+        var content = beatChangeContent(Duration.CROTCHET, Duration.CROTCHET);
 
-        var undottedEnd = RENDERER.drawDurationEquals(g2, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
-        var dottedEnd = RENDERER.drawDurationEquals(g2, Duration.CROTCHET_DOTTED, startXSs, ySs, attrFont, Color.BLACK);
+        var drawn = captureDrawnStrings(content, 0.0, 0.0);
 
-        assertThat(dottedEnd - undottedEnd).isCloseTo(dotAdvance, within(TOLERANCE));
+        for (var i = 0; i < drawn.size(); i++) {
+            var expectedFont = switch (content.items().get(i)) {
+                case MetronomeContent.GlyphItem _ -> MetronomeRenderer.TEMPO_NOTE_FONT;
+                case MetronomeContent.TextItem textItem -> textItem.scaledFont();
+            };
+
+            assertThat(drawn.get(i).font())
+                .as("item %d font", i)
+                .isEqualTo(expectedFont);
+        }
     }
 }

@@ -47,6 +47,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
+import songscribe.font.FontKey;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.stacking.StackingUtils;
@@ -61,6 +62,13 @@ class SystemTierStackingTest extends UnitTest {
     private static final double NOTE2_X_SS = 30.0;
     private static final double NOTE3_X_SS = 50.0;
     private static final double TOLERANCE = 0.001;
+
+    /**
+     * How much larger the annotation font is made than the attribution font in
+     * {@link BeatChangeStacking#testBeatChangeWidthUsesTheResolvedAnnotationFontNotTheAttributionFont}
+     * — large enough that the two fonts cannot produce the same content width by coincidence.
+     */
+    private static final int ANNOTATION_FONT_SIZE_DELTA_PX = 12;
 
     private static Song song;
 
@@ -105,9 +113,15 @@ class SystemTierStackingTest extends UnitTest {
     }
 
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
+        return stackColumns(columns, line, DocumentFonts.defaultFonts());
+    }
+
+    private static LayoutResult stackColumns(
+        List<ElementColumn> columns, Line line, DocumentFonts fonts) {
+
         var builder = new LayoutResultBuilder();
         var calculator = new VerticalStackingCalculator();
-        calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
+        calculator.calculate(columns, line, builder, LINE_WIDTH_SS, fonts);
         return builder.build();
     }
 
@@ -207,6 +221,32 @@ class SystemTierStackingTest extends UnitTest {
                 .isEqualTo(NOTE1_X_SS);
         }
 
+        /**
+         * A tempo change showing neither the metronome mark nor a description has nothing to
+         * draw, so it must be skipped rather than stacked.
+         * <p>
+         * Stacking it would place it from an empty collision-region list, and the placement
+         * routine derives the Y by taking the minimum across those regions starting from
+         * {@code Double.MAX_VALUE} — with no regions to visit, that starting value survives into
+         * the layout. The song-level tempo mark has always guarded this; the per-note path did
+         * not.
+         */
+        @Test
+        void testTempoAttachmentWithNothingToDrawIsSkippedRatherThanStackedAtInfinity() {
+            var note = createNote(0, false);
+            note.addAttachment(new TempoChangeAttachment(
+                note, new Tempo(140, Duration.CROTCHET, "", false)));
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line);
+
+            assertThat(result.findAttachmentDecorationLayout(note, TempoChangeAttachment.class))
+                .describedAs("a tempo change with no glyph and no description reserves nothing")
+                .isNull();
+        }
+
         @Test
         void testTempoAttachmentExactYPlacementAtAnchor() {
             var note = createNote(0, false);
@@ -223,12 +263,16 @@ class SystemTierStackingTest extends UnitTest {
             // Oracle: for fresh extents (yGet = 0.0) and a note on the middle line (staffPosition=0),
             // anchorCeilingSs = STAFF_TOP_Y_SS < 0, so regionCeilingSs = anchorCeilingSs.
             // elementY = min over regions of (anchorSs - marginSs - yOffsetSs - heightSs).
-            var attrFont = DocumentFonts.defaultFonts().getAttributionFont();
-            var metrics = tempo.computeContentMetrics(attrFont);
+            //
+            // The stacker resolves fonts.getAnnotationFont() (issue #735 divergence 3), so the
+            // oracle must build the same MetronomeContent the stacker builds, not a fixture of
+            // its own, or a font mismatch here would go undetected.
+            var annotationFont = DocumentFonts.defaultFonts().getAnnotationFont();
+            var content = MetronomeContent.forTempo(tempo.getTempo(), annotationFont);
             var anchorSs = StackingUtils.anchorCeilingSs(note);
             var expectedYSs = Double.MAX_VALUE;
 
-            for (var region : metrics.regions()) {
+            for (var region : content.regions()) {
                 var regionYSs = anchorSs - SystemStacker.TEMPO_MARGIN_SS
                     - region.yOffsetSs() - region.heightSs();
                 expectedYSs = Math.min(expectedYSs, regionYSs);
@@ -312,6 +356,77 @@ class SystemTierStackingTest extends UnitTest {
             assertThat(beatChangeLayout.ySs())
                 .describedAs("beat change should stack above hairpin")
                 .isLessThan(hairpinLayout.ySs());
+        }
+
+        // Regression for issue #735 divergence 3: every layout path measured with the
+        // attribution font while every render path drew with the annotation font. The two are
+        // invisibly identical in system-defaults.json, so only a font swap this large catches a
+        // revert back to the attribution font.
+        @Test
+        void testBeatChangeWidthUsesTheResolvedAnnotationFontNotTheAttributionFont() {
+            var fonts = DocumentFonts.defaultFonts();
+            var attributionFont = fonts.getAttributionFont();
+            fonts.setFont(
+                FontKey.ANNOTATION,
+                attributionFont.getName(),
+                attributionFont.getSize() + ANNOTATION_FONT_SIZE_DELTA_PX);
+
+            var note = createNote(0, false);
+            var beatChange =
+                new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+            note.addAttachment(beatChange);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line, fonts);
+
+            var layout = require(
+                result.getDecorationLayout(beatChange),
+                "beat change DecorationLayout");
+
+            var annotationFont = fonts.getAnnotationFont();
+            var annotationWidthSs =
+                MetronomeContent.forBeatChange(beatChange.getBeatChange(), annotationFont).widthSs();
+            var attributionWidthSs =
+                MetronomeContent.forBeatChange(beatChange.getBeatChange(), attributionFont).widthSs();
+
+            assertThat(layout.widthSs())
+                .describedAs("stacked width must match the resolved annotation-font content")
+                .isCloseTo(annotationWidthSs, within(TOLERANCE));
+            assertThat(layout.widthSs())
+                .describedAs("precondition: the two fonts must produce different widths, "
+                    + "or this test cannot fail")
+                .isNotCloseTo(attributionWidthSs, within(TOLERANCE));
+        }
+
+        /**
+         * The real stacker must attach the typeset content to the layout it registers. Every
+         * renderer reads the marking off {@code DecorationLayout.content()} and throws when it
+         * is absent, so a stacker that stopped passing it through would throw on the first
+         * repaint of any beat change — and no test that builds its own layout would notice.
+         */
+        @Test
+        void testStackedBeatChangeLayoutCarriesItsContent() {
+            var fonts = DocumentFonts.defaultFonts();
+            var note = createNote(0, false);
+            var beatChange =
+                new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+            note.addAttachment(beatChange);
+
+            var line = newLine();
+            populate(line, note);
+
+            var result = stackColumns(List.of(columnFor(note, NOTE1_X_SS)), line, fonts);
+
+            var layout = require(
+                result.getDecorationLayout(beatChange),
+                "beat change DecorationLayout");
+
+            assertThat(layout.content())
+                .describedAs("the stacker must attach the content the renderers read back")
+                .isNotNull();
+            assertThat(layout.content().widthSs()).isCloseTo(layout.widthSs(), within(TOLERANCE));
         }
 
     }

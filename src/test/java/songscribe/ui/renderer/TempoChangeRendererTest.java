@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -44,8 +45,11 @@ import songscribe.dom.Duration;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.MetronomeContent;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
@@ -68,8 +72,10 @@ class TempoChangeRendererTest extends UnitTest {
         var attachment = new TempoChangeAttachment(note, tempo);
         note.addAttachment(attachment);
 
+        var font = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
+        var content = MetronomeContent.forTempo(tempo, font);
         var decorationLayout = new LayoutResult.DecorationLayout(
-            DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0);
+            DECO_X_SS, DECO_Y_SS, 0.0, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0, content);
 
         var layoutResult = LayoutResult.builder()
             .putDecorationLayout(attachment, decorationLayout)
@@ -144,8 +150,10 @@ class TempoChangeRendererTest extends UnitTest {
         var attachment = new TempoChangeAttachment(note, tempo);
         note.addAttachment(attachment);
 
+        var font = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
+        var content = MetronomeContent.forTempo(tempo, font);
         var decorationLayout = new LayoutResult.DecorationLayout(
-            DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0);
+            DECO_X_SS, DECO_Y_SS, 0.0, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0, content);
         var layoutResult = LayoutResult.builder()
             .putDecorationLayout(attachment, decorationLayout)
             .build();
@@ -181,6 +189,34 @@ class TempoChangeRendererTest extends UnitTest {
     @Test
     void testRenderTempoChangeUnselectedDrawsInTheElementColor() {
         assertThat(renderedTempoColor(false)).isEqualTo(RenderingUtils.ELEMENT_COLOR);
+    }
+
+    @Test
+    void testRenderWithNullContentThrows() {
+        // A DecorationLayout present but carrying no MetronomeContent is a layout bug: the
+        // renderer must surface it rather than silently drawing nothing. This covers the
+        // shared MetronomeRenderer.renderAttachment path, which BeatChangeRenderer uses too.
+        var note = crotchet();
+        var tempo = new Tempo(120, Duration.CROTCHET, "Allegro", true);
+        var attachment = new TempoChangeAttachment(note, tempo);
+        note.addAttachment(attachment);
+
+        var decorationLayout = new LayoutResult.DecorationLayout(
+            DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0);
+
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(attachment, decorationLayout)
+            .build();
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .build();
+        var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+
+        assertThatThrownBy(() -> RENDERER.render(invariants, frame, note, g2Spy))
+            .isInstanceOf(IllegalStateException.class);
     }
 
 }

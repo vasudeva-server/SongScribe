@@ -31,9 +31,13 @@ import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.AnnotationAttachment;
@@ -63,6 +67,9 @@ import songscribe.hit.HitPriority;
 import songscribe.hit.HitRegion;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
+import songscribe.dom.MetronomeAttachment;
+import songscribe.layout.MetronomeContent.GlyphItem;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Covers every kind of hit region: the six that existed before this phase — a note head, a lyric
@@ -343,6 +350,127 @@ class HitRegionBuilderTest extends UnitTest {
     @Test
     void testBeatChangeRegistersAnAttachmentTarget() {
         assertRegionWinsItsOwnCenter(new HitTarget.Attachment(beatChange));
+    }
+
+    // ======================================================================
+    // Beat change hit region / content shortfall (issue #735)
+    // ======================================================================
+
+    /**
+     * End-to-end regression for issue #735: a click on the right-hand note glyph of a beat
+     * change must resolve to the attachment. Before the fix, the registered hit rect was
+     * derived from a narrower width than what {@link MetronomeContent} — and therefore the
+     * renderer — actually drew, so the right-hand note fell entirely outside the hit target.
+     * <p>
+     * The probe point is derived from {@link MetronomeContent#forBeatChange} rather than
+     * hard-coded, so it tracks whatever the font metrics say rather than the pre-fix shortfall.
+     * The glyph's own width comes from SMuFL metadata rather than from the content, so the
+     * probe does not inherit an error in whatever the content computed.
+     */
+    @Test
+    void testBeatChangeHitRegionCoversTheRightHandNoteGlyphCenter() {
+        var beatChangeLayout = layOutBeatChange(Duration.CROTCHET, Duration.CROTCHET);
+        var content = MetronomeContent.forBeatChange(
+            beatChangeLayout.attachment().getBeatChange(),
+            DocumentFonts.defaultFonts().getAnnotationFont());
+        var rightGlyph = lastGlyphItem(content);
+        var decorationLayout = beatChangeLayout.decorationLayout();
+        var rightGlyphCenterXSs = decorationLayout.xSs() + rightGlyph.xSs()
+            + glyphAdvanceSs(rightGlyph) / 2;
+        var rightGlyphCenterYSs = decorationLayout.ySs() + decorationLayout.heightSs() / 2;
+
+        assertThat(beatChangeLayout.registry().hitTest(rightGlyphCenterXSs, rightGlyphCenterYSs))
+            .isEqualTo(new HitTarget.Attachment(beatChangeLayout.attachment()));
+    }
+
+    /**
+     * The invariant that keeps the test above from regressing for other duration combinations:
+     * the registered hit rect's right edge must reach at least as far as the right-hand note
+     * glyph's right edge, for both the dotted and undotted left-note advance paths.
+     */
+    @ParameterizedTest
+    @MethodSource("beatChangeDurations")
+    void testBeatChangeHitRegionRightEdgeReachesTheRightHandNoteGlyph(
+        Duration duration, Duration beat) {
+
+        var beatChangeLayout = layOutBeatChange(duration, beat);
+        var content = MetronomeContent.forBeatChange(
+            beatChangeLayout.attachment().getBeatChange(),
+            DocumentFonts.defaultFonts().getAnnotationFont());
+        var rightGlyph = lastGlyphItem(content);
+        var decorationLayout = beatChangeLayout.decorationLayout();
+        var rightGlyphRightEdgeSs =
+            decorationLayout.xSs() + rightGlyph.xSs() + glyphAdvanceSs(rightGlyph);
+        var hitRectRightEdgeSs = regionFor(
+            beatChangeLayout.registry(), new HitTarget.Attachment(beatChangeLayout.attachment()))
+            .shapeSs().getBounds2D().getMaxX();
+
+        assertThat(hitRectRightEdgeSs)
+            .as("the hit rect for %s/%s must reach the right-hand note glyph's right edge",
+                duration, beat)
+            .isGreaterThanOrEqualTo(rightGlyphRightEdgeSs);
+    }
+
+    /** The right-hand note glyph of a beat change, which is always the content's last item. */
+    private static GlyphItem lastGlyphItem(MetronomeContent content) {
+        var lastItem = content.items().get(content.items().size() - 1);
+
+        assertThat(lastItem).isInstanceOf(GlyphItem.class);
+
+        return (GlyphItem) lastItem;
+    }
+
+    /**
+     * The glyph's own advance, computed from SMuFL metadata rather than read off the content,
+     * so a hit-region assertion cannot inherit an error in the content's own arithmetic.
+     */
+    private static double glyphAdvanceSs(GlyphItem glyphItem) {
+        return SMuFLMetadata.requireAdvanceWidth(glyphItem.glyph())
+            * MetronomeAttachment.NOTE_SCALE;
+    }
+
+    /** Covers both the dotted and undotted left-note advance paths (see {@link MetronomeContent}). */
+    private static Stream<Arguments> beatChangeDurations() {
+        return Stream.of(
+            Arguments.of(Duration.CROTCHET, Duration.CROTCHET),
+            Arguments.of(Duration.CROTCHET_DOTTED, Duration.MINIM),
+            Arguments.of(Duration.QUAVER, Duration.QUAVER));
+    }
+
+    /** The pieces of a minimal one-note, one-beat-change layout, isolated from the shared fixture. */
+    private record BeatChangeLayout(
+        BeatChangeAttachment attachment,
+        LayoutResult.DecorationLayout decorationLayout,
+        HitRegistry registry) {}
+
+    /**
+     * Lays out a fresh line carrying a single note with a single beat change attachment, reusing
+     * the shared fixture's construction style ({@code new BeatChangeAttachment(new BeatChange(...))}).
+     * A fresh line rather than the shared fixture's busy note, so the beat change is the only
+     * thing stacked above the staff and its own arithmetic is what the assertions probe.
+     */
+    private static BeatChangeLayout layOutBeatChange(Duration duration, Duration beat) {
+        var song = new Song();
+        song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
+        var line = song.getLine(0);
+        var note = noteAt(SOURCE_SP);
+        var attachment = new BeatChangeAttachment(new BeatChange(duration, beat));
+
+        song.withoutMutationTracking(() -> {
+            line.addElement(note);
+            note.addAttachment(attachment);
+        });
+
+        var beatChangeLayoutResult = engine().layout(line);
+        var decorationLayout =
+            beatChangeLayoutResult.findAttachmentDecorationLayout(note, BeatChangeAttachment.class);
+
+        if (decorationLayout == null) {
+            throw new AssertionError("the beat change was not laid out");
+        }
+
+        return new BeatChangeLayout(
+            attachment, decorationLayout, beatChangeLayoutResult.getHitRegistry());
     }
 
     @Test

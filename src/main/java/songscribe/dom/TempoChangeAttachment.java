@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import java.awt.Font;
-
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -72,10 +70,4 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     public void setTempo(Tempo tempo) {
         Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.tempo = tempo);
     }
-
-    @Override
-    public ContentMetrics computeContentMetrics(Font attrFont) {
-        return TempoContent.metrics(tempo, attrFont);
-    }
-
 }

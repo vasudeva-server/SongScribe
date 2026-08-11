@@ -29,12 +29,12 @@ import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.MetronomeAttachment;
+import songscribe.layout.MetronomeContent;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.StaffExtents;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.TempoContent;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -110,22 +110,23 @@ public class SystemStacker {
         }
 
         var line = context.getLine();
-        var metrics = TempoContent.metrics(line.getSong().getTempo(), fonts.getAttributionFont());
+        var content = MetronomeContent.forTempo(line.getSong().getTempo(), fonts.getAnnotationFont());
 
         // showTempo false with an empty description leaves nothing to draw.
-        if (metrics.widthSs() <= 0) {
+        if (content.widthSs() <= 0) {
             return;
         }
 
         stackAboveWithRegions(
             systemExtents,
             tempoMark,
-            metrics.regions(),
+            content.regions(),
             HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + SMuFLConstants.NOTE_HEAD_WIDTH_SS,
-            metrics.widthSs(),
+            content.widthSs(),
             TEMPO_MARGIN_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder);
+            builder,
+            content);
     }
 
     /**
@@ -206,10 +207,21 @@ public class SystemStacker {
 
         var xSs = column.getXSs();
         var staffPosition = column.getElement().getStaffPosition();
-        var attrFont = fonts.getAttributionFont();
-        var metrics = attachment.computeContentMetrics(attrFont);
+        var font = fonts.getAnnotationFont();
+        var content = switch (attachment) {
+            case BeatChangeAttachment beatChangeAttachment ->
+                MetronomeContent.forBeatChange(beatChangeAttachment.getBeatChange(), font);
+            case TempoChangeAttachment tempoChangeAttachment ->
+                MetronomeContent.forTempo(tempoChangeAttachment.getTempo(), font);
+        };
 
-        stackAboveWithRegions(systemExtents, attachment, metrics.regions(), xSs,
-            metrics.widthSs(), marginSs, staffPosition, builder);
+        // showTempo false with an empty description leaves nothing to draw. Stacking it anyway
+        // would place it from an empty region list, leaving its Y at Double.MAX_VALUE.
+        if (content.widthSs() <= 0) {
+            return;
+        }
+
+        stackAboveWithRegions(systemExtents, attachment, content.regions(), xSs,
+            content.widthSs(), marginSs, staffPosition, builder, content);
     }
 }

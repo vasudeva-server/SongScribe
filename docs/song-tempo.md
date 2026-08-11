@@ -56,6 +56,13 @@ glyph and the BPM number, description only. The mark disappears entirely only wh
 content width is zero, which happens when `showTempo` is false *and* the description is empty.
 It is never a switch for "hide the tempo mark" on its own.
 
+That content width is `MetronomeContent.forTempo`'s `widthSs`, and it is where the two cases part:
+with `showTempo` true the content always begins with a note glyph, so the width can never be zero;
+with it false the content is the description alone, and an empty description appends no item at
+all. `SystemStacker.stackTempoMark` reads the zero width and stacks nothing. For how that content
+is built and why the whole marking is typeset in layout rather than at paint time, see
+[Metronome Typesetting](metronome-typesetting.md).
+
 ------------------------------------------------------------------------
 
 ## The first-element rule is UI-only

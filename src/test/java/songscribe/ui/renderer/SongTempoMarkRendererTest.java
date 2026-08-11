@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -34,7 +35,10 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
+import songscribe.font.DocumentFonts;
+import songscribe.font.FontKey;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.MetronomeContent;
 
 /**
  * Covers the one decision {@link SongTempoMarkRenderer#render} makes: whether there is anything
@@ -63,8 +67,11 @@ class SongTempoMarkRendererTest extends UnitTest {
         var builder = LayoutResult.builder();
 
         if (stacked) {
+            var font = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
+            var content = MetronomeContent.forTempo(song.getTempo(), font);
             builder.putDecorationLayout(mark, new LayoutResult.DecorationLayout(
-                DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, 0.0));
+                DECORATION_X_SS, DECORATION_Y_SS, 0.0, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS,
+                0.0, content));
         }
 
         var invariants = RenderContextTestHelper.newContext(song)
@@ -107,5 +114,32 @@ class SongTempoMarkRendererTest extends UnitTest {
         assertThat(renderedStrings(song, true))
             .as("the mark must draw the song's current beats-per-minute and description")
             .anySatisfy(drawn -> assertThat(drawn).contains(String.valueOf(bpm), description));
+    }
+
+    @Test
+    void testRenderWithNullContentThrows() {
+        // A DecorationLayout present but carrying no MetronomeContent is a layout bug — distinct
+        // from the mark being unstacked, which is legitimate and handled above. The renderer must
+        // surface a present-but-contentless layout rather than silently drawing nothing.
+        var line = detachedLine();
+        var song = new Song();
+        var mark = song.getTempoMarkElement();
+
+        var decorationLayout = new LayoutResult.DecorationLayout(
+            DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, 0.0);
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(mark, decorationLayout)
+            .build();
+
+        var invariants = RenderContextTestHelper.newContext(song)
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .build();
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+
+        assertThatThrownBy(() -> RENDERER.render(
+            invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN), mark, g2Spy))
+            .isInstanceOf(IllegalStateException.class);
     }
 }

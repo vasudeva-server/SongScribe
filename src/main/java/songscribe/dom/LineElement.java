@@ -322,19 +322,6 @@ public abstract class LineElement {
     // Bounds Calculation
     // ========================================================================
 
-    /**
-     * Returns the margin bounds (content + margin) in line-relative staff-space coordinates.
-     */
-    public Rectangle2D getMarginBounds() {
-        var contentWidthSs = getContentWidthSs();
-        var contentHeightSs = getContentHeightSs();
-        return new Rectangle2D.Double(
-            positionSs.getX() - marginLeftSs,
-            positionSs.getY() - marginTopSs,
-            contentWidthSs + marginLeftSs + marginRightSs,
-            contentHeightSs + marginTopSs + marginBottomSs
-        );
-    }
 
 
 

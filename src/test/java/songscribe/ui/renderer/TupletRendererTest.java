@@ -365,7 +365,7 @@ class TupletRendererTest extends UnitTest {
         line.addSpan(tuplet);
 
         // decorLayout.xSs() = 1.0 (anchorXSs), decorLayout.widthSs() = 4.0
-        var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, dySs, 4.0, 1.0, 0.0, List.of());
+        var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, dySs, 4.0, 1.0, 0.0, null);
         var layoutResult = LayoutResult.builder()
             .putDecorationLayout(tuplet, decorLayout)
             .build();

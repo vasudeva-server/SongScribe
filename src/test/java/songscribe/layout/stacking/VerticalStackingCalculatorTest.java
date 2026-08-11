@@ -34,12 +34,18 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Duration;
+import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.dom.Tuplet;
+import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.MetronomeContent;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
@@ -256,7 +262,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         tuplet.setVerticalPositionSs(dragOffsetSs);
 
         var originalLayout = new LayoutResult.DecorationLayout(
-            1.0, originalYSs, slopeDySs, 4.0, 1.0, 0.5, List.of());
+            1.0, originalYSs, slopeDySs, 4.0, 1.0, 0.5, null);
         var builder = LayoutResult.builder();
         builder.putDecorationLayout(tuplet, originalLayout);
 
@@ -265,5 +271,45 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var shiftedLayout = require(builder.getDecorationLayout(tuplet), "shifted tuplet decoration layout");
         assertThat(shiftedLayout.ySs()).isEqualTo(originalYSs + dragOffsetSs);
         assertThat(shiftedLayout.dySs()).isEqualTo(slopeDySs);
+    }
+
+    // ======================================================================
+    // applyDecorationOffsets -- content preservation for a nudged metronome marking
+    // ======================================================================
+
+    /**
+     * A dragged beat change must keep its {@link MetronomeContent}: {@code applyDecorationOffsets}
+     * rebuilds the {@code DecorationLayout} record wholesale to apply the offset, and dropping the
+     * trailing {@code content} component there would make the marking vanish from the score with
+     * no exception and no failing test.
+     */
+    @Test
+    void testApplyDecorationOffsetsPreservesMetronomeContentForBeatChange() {
+        final var userYOffsetSs = -1.0;
+
+        var note = ElementType.CROTCHET.newInstance();
+        var beatChange = new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
+        beatChange.setUserYOffsetSs(userYOffsetSs);
+
+        var font = DocumentFonts.defaultFonts().getAnnotationFont();
+        var content = MetronomeContent.forBeatChange(beatChange.getBeatChange(), font);
+        var originalLayout = new LayoutResult.DecorationLayout(
+            1.0, -4.0, 0.0, content.widthSs(), 1.0, 0.5, content);
+
+        var builder = LayoutResult.builder();
+        builder.putDecorationLayout(beatChange, originalLayout);
+
+        new VerticalStackingCalculator().applyDecorationOffsets(builder);
+
+        var shiftedLayout =
+            require(builder.getDecorationLayout(beatChange), "shifted beat change decoration layout");
+
+        assertThat(shiftedLayout.ySs()).isEqualTo(originalLayout.ySs() + userYOffsetSs);
+        assertThat(shiftedLayout.content())
+            .describedAs("a nudged beat change must not lose its typeset content")
+            .isNotNull();
+        assertThat(shiftedLayout.content().widthSs())
+            .describedAs("the offset moves the marking, it does not remeasure it")
+            .isEqualTo(content.widthSs());
     }
 }

@@ -20,12 +20,7 @@
 
 package songscribe.dom;
 
-import java.awt.Font;
-import java.util.ArrayList;
-
 import org.jspecify.annotations.Nullable;
-
-import songscribe.util.GraphicUtils;
 
 /**
  * Represents a beat change (metric modulation) attachment on a note.
@@ -89,43 +84,5 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
      */
     public void setBeatChange(BeatChange beatChange) {
         Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.beatChange = beatChange);
-    }
-
-    /**
-     * Computes the width and per-sub-region collision geometry for the beat change.
-     * <p>
-     * The three sub-regions are the left note glyph (duration), the "=" sign, and the
-     * right note glyph (beat). The "=" sign is vertically aligned to the note cap-height,
-     * so its descender extends below {@code QUARTER_NOTE_HEIGHT_SS} and must be accounted
-     * for separately to prevent collisions with elements below.
-     *
-     * @param attrFont the attribution font (used for the "=" sign)
-     * @return width and collision sub-regions in staff-space units
-     */
-    @Override
-    public ContentMetrics computeContentMetrics(Font attrFont) {
-        var regions = new ArrayList<CollisionRegion>(3);
-
-        var leftNoteWidthSs = noteWidthSs(beatChange.duration().getNote());
-        var equalsWidthSs = ScaleContext.textWidthSs(attrFont, "=").value();
-        var rightNoteWidthSs = noteWidthSs(beatChange.beat().getNote());
-
-        regions.add(new CollisionRegion(0, 0, leftNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
-
-        var equalsLm = attrFont.getLineMetrics("=", GraphicUtils.SCREEN_FRC);
-        var equalsAscentSs = ScaleContext.pxToSs(equalsLm.getAscent());
-        var equalsDescentSs = ScaleContext.pxToSs(equalsLm.getDescent());
-        var equalsXOffsetSs = leftNoteWidthSs;
-        var equalsYOffsetSs = QUARTER_NOTE_HEIGHT_SS - equalsAscentSs;
-        regions.add(new CollisionRegion(
-            equalsXOffsetSs, equalsYOffsetSs, equalsWidthSs, equalsAscentSs + equalsDescentSs));
-
-        var rightNoteXOffsetSs = equalsXOffsetSs + equalsWidthSs;
-        regions.add(new CollisionRegion(rightNoteXOffsetSs, 0, rightNoteWidthSs, QUARTER_NOTE_HEIGHT_SS));
-
-        var totalWidthSs =
-            leftNoteWidthSs + equalsWidthSs + rightNoteWidthSs;
-
-        return new ContentMetrics(totalWidthSs, regions);
     }
 }
