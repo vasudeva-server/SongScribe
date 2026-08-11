@@ -56,7 +56,10 @@ Treat a finding as a symptom, and go looking for its cause, whenever:
   constructor or an initialization order;
 - the same behavior must be re-tested for every case, because the production
   code grew by special case rather than by fitting cases into a model;
-- an error path is uncovered because nothing outside the class can provoke it;
+- the contract promises a behavior that nothing outside the class can provoke,
+  so the only way to exercise it is to reach into internals. (A guard the
+  contract deliberately makes unreachable is not this: it is correct, and it
+  needs no test.);
 - **a test names a value as meaningless** — a stub constant called `IGNORED_*`
   or `UNUSED_*`, a comment saying a field is not read. The suite is documenting
   a design mistake as intentional and, by asserting around it, holding it in

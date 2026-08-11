@@ -28,10 +28,25 @@ reader cannot understand is a failed finding.
 1. **Where** — `SomeTest.java:123`, plus the test's purpose in plain words ("the
    test that checks a rest gets the right vertical position").
 2. **What the test does now** — what it sets up and what it checks.
-3. **What's wrong with it** — stated as *a real bug this test would not catch*,
-   described concretely: "if the code returned the wrong staff line for a rest,
-   this test would still pass, because it only checks that the result isn't
-   null."
+3. **What's wrong with it** — named against the contract, and then in
+   consequences:
+   - **it asserts no promise** — say which clause you looked for and could not
+     find, and what the test is pinning instead ("it checks that the list comes
+     back in insertion order, which nothing promises, so it will fail the next
+     time the order changes for a legitimate reason");
+   - **it cannot catch the bug it claims to** — name the bug concretely ("if the
+     code returned the wrong staff line for a rest, this test would still pass,
+     because it only checks that the result isn't null");
+   - **a promised case has no test** — quote the clause and say what would go
+     wrong unnoticed ("the contract says a dot count above two is rejected;
+     nothing checks it, so a triple-dotted note would be written with a duration
+     no reader can parse").
+
+**For a finding about a contract**, say what a caller cannot currently find out,
+and what they would do wrong as a result. "The method doesn't document its
+`@throws`" is not a finding; "a caller has no way to know this throws when the
+note is a grace note, so the obvious call in a loop over every element crashes on
+the first grace note" is.
 
 ## Rules for the writing itself
 
@@ -58,14 +73,20 @@ reader cannot understand is a failed finding.
   neutrality* in `.agents/skills/check/reference/design-flaws.md`, which applies
   to every finding, not only design ones.
 
-### Additional rules for test, coverage, and mutation findings
+### Additional rules for test and contract findings
 
-- Coverage numbers are meaningless on their own. Never report a bare percentage;
-  say which behavior is untested and what breaking it would look like.
-- For mutation results, do not just name the mutator. Say in plain words what
-  the mutation changed ("the tool flipped `<` to `<=`") and what that would mean
-  if it were a real bug ("a note exactly on the boundary would be placed one
-  line too high, and no test noticed").
+- **Name the contract clause.** Every test finding says which promise the test
+  does or should assert, quoted or paraphrased from the Javadoc. A test finding
+  that cites no clause is either about a promise nobody wrote down — in which
+  case the finding is against the contract — or about the implementation, in
+  which case it is not a finding at all.
+- **Never argue from lines or branches.** No percentages, no "this method is
+  only partly exercised", no "this branch has no test". Say which promised
+  behavior nothing checks. If the region corresponds to no promise, it is not a
+  test finding; it is a question for the contract, or a dead-code finding
+  against production.
+- **A missing test is a finding against the suite; a missing promise is a
+  finding against the contract.** Say which one you are reporting.
 
 ## Questions follow the same standard
 

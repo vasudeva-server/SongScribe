@@ -246,7 +246,7 @@ Every change here is already decided; apply it.
 
 ## Phase 5 — Rebuild the `check` skill
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
 
 `.claude/skills/check/` currently runs 7 agents across 5 phases with 7 reference
 documents. Rebuild it around four axes:
