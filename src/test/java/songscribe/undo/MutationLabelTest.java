@@ -64,15 +64,39 @@ import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Verifies {@link UndoController#undoLabel()} derives the Edit-menu op-name from a
- * step's <em>dominant</em> mutation. Steps are produced by driving real edits (so the
- * captured batch carries companion mutations), then asserting the composed label.
+ * Exercises the fallback half of {@link UndoController#undoLabel()}'s contract: what an
+ * edit that declared no op-name is called. The declared-name half — a name used verbatim
+ * when the initiator supplied one — belongs to {@link UndoOpNameLabelTest}.
  *
- * <p>Expected labels are built from the same {@link Strings} constants the production
- * code uses — never hardcoded English — but the dominant-mutation <em>selection</em> is
- * exercised independently: the tuplet-note-deletion case proves the precedence tier
- * beats companion ordering (a tuplet-removal companion is emitted before the primary
- * {@code ElementDeletion}, yet the label must read "Delete Note", not "Tuplet").
+ * <p><b>The mutation domain is enumerated, not sampled.</b> The fallback maps a step to a
+ * name through its dominant mutation, and {@code Mutation} is sealed, so the set of cases
+ * is closed and every member of it belongs here — element insertion, deletion, range
+ * deletion, replacement and modification; line insertion and deletion; line key and layout
+ * changes; every span kind in both directions; lyrics and fonts; and each
+ * {@code MetadataField} in turn, including the two that share the key-change name. Present
+ * today: the additions of each span kind but not their removals, and no range deletion.
+ *
+ * <p><b>Dominance is a precedence order, not first-wins.</b> The case that proves it is
+ * deleting a note inside a tuplet: the tuplet-removal companion is recorded first, yet the
+ * step must read "Delete Note". A first-wins implementation passes every other test in this
+ * class and fails this one.
+ *
+ * <p><b>The empty-stack boundary</b> — no steps yields the plain "Undo" and "Redo", the
+ * only case where the label carries no operation.
+ *
+ * <p><b>Agreement between the two routes to one edit</b> — a tie or beam applied by its
+ * insertion key must name the step the way the menu action naming the same edit does.
+ * A disagreement is invisible in production and shows up only as two names for one thing.
+ *
+ * <p>Expected labels are resolved through the same {@link Strings} constants production
+ * uses, never spelled out in English: the promise is which name is chosen, not what that
+ * name says in one locale.
+ *
+ * <p>Steps come from driving real edits, so each captured batch carries the companion
+ * mutations that make dominance a question at all. Where an edit for a given mutation type
+ * would take an unreasonable fixture to drive, the batch is posted directly instead — those
+ * cases test the mapping only, and cannot show what a real batch's companions would do to
+ * it.
  */
 class MutationLabelTest extends UnitTest {
 

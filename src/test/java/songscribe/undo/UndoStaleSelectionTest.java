@@ -78,8 +78,27 @@ import songscribe.ui.selection.ReflectionTestHelper;
  * re-derives its enabled state there, and the trill and tuplet actions do it by walking
  * the selected range).
  *
- * <p>Lives in {@code songscribe.undo} rather than beside the other selection tests because
- * it needs {@link UndoController#resetForTest()}, which is package-private.
+ * <h2>What this class is responsible for</h2>
+ * The live-selection guarantee of {@code docs/undo.md}, tested as the invariant it is —
+ * the range goes on naming the same surviving elements — rather than as the absence of the
+ * crash that prompted it.
+ *
+ * <p><b>The classes of mutation the range must survive</b>: one before it (the range slides
+ * down, same elements), one inside it (the range shrinks by one, remaining elements
+ * unchanged), and one on another line (the range is untouched). Together with the ordering
+ * case above, these are the ways a replayed batch can reach a selection.
+ *
+ * <p><b>The round trip</b> — undo followed by redo returns the range exactly where it
+ * started, which is the invariant the individual splices have to compose into.
+ *
+ * <p><b>Not covered here</b>: the splice itself, case by case, which is
+ * {@code SelectionCoordinatorRangeTest}'s subject and includes the clearing of a range
+ * nothing survives of. This class covers only what undo owes: that the splice runs, and
+ * runs first.
+ *
+ * <p>Lives in {@code songscribe.undo} because what it asserts is an undo guarantee, not
+ * because of any access it needs — {@link UndoController#reset()} is public API since the
+ * lifecycle contracts landed.
  */
 class UndoStaleSelectionTest extends UnitTest {
 

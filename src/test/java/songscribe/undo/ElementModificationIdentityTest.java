@@ -32,10 +32,22 @@ import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementField;
 
 /**
- * Guards the {@code copyStateFrom} identity contract: replaying an
- * {@link songscribe.message.mutation.ElementModification} restores element state
- * <em>in place</em>, never by swapping the instance. If it swapped, anchor references
- * held by spans (beams/ties) still sitting on the stacks would dangle.
+ * Exercises the element-identity guarantee of {@code docs/undo.md}: replaying an
+ * {@link songscribe.message.mutation.ElementModification} restores state <em>in place</em>
+ * and never swaps the instance, so everything holding a reference to that element stays
+ * valid.
+ *
+ * <p><b>The promise itself</b> — after an undo and again after a redo, the element at the
+ * modified index is the same object it was before, asserted by identity rather than by
+ * equality. Equality would pass under exactly the implementation the promise forbids.
+ *
+ * <p><b>The promise as a consequence</b> — a beam anchored to the modified note still
+ * points at the live note after an interleaved sequence of undos and redos. This is why
+ * identity is promised at all, and it is the case that would fail if replay reverted to
+ * {@code setElement} while the identity assertion above were somehow satisfied.
+ *
+ * <p>Two tests, and the second is not a duplicate of the first: one states the mechanism,
+ * the other states what the mechanism is for.
  */
 class ElementModificationIdentityTest extends UnitTest {
 

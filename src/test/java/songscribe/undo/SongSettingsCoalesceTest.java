@@ -37,13 +37,23 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Guards the Phase 1a coalescing fix: wrapping the whole {@code SongSettingsDialog.setData()}
- * body in one modification bracket makes its several sub-commits collapse into a single undo
- * step, so one OK is one undoable operation and undoing it once returns to the clean state.
+ * Exercises the <em>one bracket, one Undo</em> guarantee of {@code docs/undo.md} for the
+ * case that makes it a design decision rather than a mechanism: a commit that changes
+ * several fields at once. {@code SongSettingsDialog.setData()} wraps its whole body in one
+ * bracket, so its sub-commits collapse into a single step and one OK is one undoable
+ * operation.
  *
- * <p>This drives the coalescing contract directly — a single labeled outer bracket wrapping
- * two distinct metadata mutations — through the real {@link UndoController}, rather than
- * constructing the Swing dialog.
+ * <p><b>The step count</b> — two distinct metadata mutations inside one labeled outer
+ * bracket produce exactly one step, asserted by undoing once and finding the stack empty.
+ * A per-field bracket passes any assertion about the document and fails this one.
+ *
+ * <p><b>The modified flag follows</b> — one undo returns the document to clean, which is
+ * what the user experiences as the commit having been fully undone.
+ *
+ * <p>The bracket is driven directly rather than through the Swing dialog: the promise is
+ * about bracket nesting, and constructing the dialog would test its widgets instead. What
+ * this cannot show is that the dialog still opens that bracket — that is wiring, and belongs
+ * to the dialog's own e2e case.
  */
 class SongSettingsCoalesceTest extends UnitTest {
 

@@ -74,6 +74,36 @@ import songscribe.ui.selection.ReflectionTestHelper;
  * {@link Song}, so it cannot be exercised through a {@code Song}-only edit/serialize
  * harness. It is covered here by {@link Fonts} with a {@code ScoreView} test double
  * asserting the replayer dispatches {@code setFonts}, and end-to-end in Phase 7 manual.
+ *
+ * <h2>What this class is responsible for</h2>
+ * The round-trip guarantee of {@code docs/undo.md}, and it is tested as the invariant it
+ * is — undo restores the document, redo re-applies the edit — rather than as a table of
+ * expected states per mutation type. The assertion is document equality, so it holds the
+ * replayer to the whole document rather than to the part the edit was aimed at.
+ *
+ * <p><b>The mutation domain is enumerated, not sampled.</b>
+ * {@link songscribe.message.mutation.Mutation} is sealed, so
+ * the inventory is finite and knowable, and every member of it round-trips here: element
+ * insertion, deletion, range deletion, replacement and modification; line insertion and
+ * deletion; line key and line layout changes; every span kind in both directions; and the
+ * song-scoped metadata, layout and lyrics fields, each field of each enumerated in turn.
+ * A type absent from this class is an untested member of a closed set, which is why the
+ * one exclusion is named above.
+ *
+ * <p><b>The cases that are not one mutation.</b> The engine's promise is over the recorded
+ * <em>batch</em>, so the interesting cases are the ones where an edit records more than it
+ * was asked to: deleting a beamed or tied note, deleting an element out of a hairpin's
+ * span, a paste that merges two beams, an insertion that displaces the initial tempo
+ * attachment, and the deferred repairs a grace-note insertion makes to a hyphen, a melisma
+ * or a glissando. Each is the complete-emission invariant of {@code docs/mutations.md}
+ * observed from the only place it is observable — a lossy undo.
+ *
+ * <p><b>Parentage is part of the document state</b> and not part of its serialization, so
+ * {@link ElementParentage} asserts it separately: undo of a deletion reattaches, redo
+ * detaches, and a modification replay leaves parentage alone entirely.
+ *
+ * <p><b>Boundaries</b> — index 0 and the last index for insertion and deletion, the sole
+ * line of a score, and a deletion that removes an entire hairpin rather than shortening it.
  */
 class MutationReplayerRoundTripTest extends UnitTest {
 

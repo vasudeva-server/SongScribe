@@ -39,14 +39,28 @@ import songscribe.ui.component.ScoreView;
 import songscribe.undo.OpNames;
 
 /**
- * End-to-end tests for the Edit-menu Undo/Redo label. Each test drives a real edit on a
- * real {@link Song} through the real message bus into the {@link UndoController} singleton,
- * then asserts {@link UndoController#undoLabel()} / {@link UndoController#redoLabel()}.
+ * Exercises the declared-name half of {@link UndoController#undoLabel()}'s contract: an edit
+ * whose initiator declared an op-name is called by that name, verbatim. The fallback half —
+ * what an undeclared edit is called — belongs to {@link MutationLabelTest}.
  *
- * <p>A declared op-name (Tier A pending or Tier B labeled bracket) is used verbatim; an
- * undeclared edit falls back to the type-based label — never a bare {@code Undo}. The undo
- * stack is reset before each test by posting a {@link DocumentDidLoadNotification}, the same
- * path the app uses on file load.
+ * <p><b>Both ways a name is declared</b> — the Tier-B labeled bracket and a name assembled
+ * by {@code OpNames} — reach the label unchanged. The two are the same clause with
+ * different sources, and neither may be reworded on the way through.
+ *
+ * <p><b>The choice between declared and derived</b> — an edit that declares nothing gets the
+ * type-based name, so the two halves of the contract meet here: which one applies is decided
+ * by whether a name was declared, never by what the mutations happen to be.
+ *
+ * <p><b>Redo carries the same name</b> — after an undo, the step's name follows it onto the
+ * redo stack rather than being recomputed, so Redo names the operation being re-applied.
+ *
+ * <p><b>The empty-stack boundary</b> — both labels collapse to the plain verb.
+ *
+ * <p>Each case drives a real edit on a real {@link Song} through the real message bus into
+ * the singleton, which is the only way the declaration and the label meet the way they do in
+ * production. The stack is reset before each test by posting a
+ * {@link DocumentDidLoadNotification} — the path the app itself takes on file load, rather
+ * than a test-only entry point.
  */
 class UndoOpNameLabelTest extends UnitTest {
 

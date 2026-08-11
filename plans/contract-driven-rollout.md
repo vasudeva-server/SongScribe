@@ -481,7 +481,31 @@ is the known instance; its fix belongs to the `ui/selection` phase.
 
 ## Phase 11 — Pilot: `undo` contracts
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
+
+**Resolution.** Contracts written for all three classes plus the package, and a
+tier-3 *What the engine guarantees* section added to `docs/undo.md` (round trip
+and its complete-emission bargain, element identity, live selection with the
+priority it rests on, one bracket per Undo, a named edit, and a modified flag
+that is a position rather than a content comparison). Testing-approach Javadoc
+written on all 10 test classes; the four gaps found while writing them are named
+in those comments for Phase 12 to fill. Three findings acted on with the user's
+agreement: `addLabel` now classifies through `categoryOf` and throws for a type
+in no category instead of falling through to "Add Breath Mark";
+`addSlideLabel(boolean)` takes a `SlideZone`; `DEFAULT_UNDO_STACK_MAX_DEPTH` and
+the identical `undoStackMaxDepth` field collapsed into one public
+`UNDO_STACK_MAX_DEPTH` cited by the contracts. Also recorded on
+`SongDidChangeNotification` that its mutation list is never empty, which
+`UndoController` relies on to label and replay a step unguarded. Unit suite green
+(7507 passed, 1 skipped).
+
+Left for Phase 12, beyond the triage itself: `PasteReconciliationUndoTest` and
+`UndoStaleSelectionTest` each say they live in `songscribe.undo` because they
+need a package-private `resetForTest()` — stale since Phase 9 made `reset()`
+public, so their location is now free to be decided on merit. `MutationLabelTest`
+and `UndoOpNameLabelTest` both cover the empty-stack label. `MutationLabelTest`
+posts hand-built `SongDidChangeNotification`s for the mutation types it cannot
+easily drive, which `docs/mutations.md` says never to construct directly.
 
 `undo` is 1,032 main LOC and 3,354 test LOC across 141 tests — ratio 3.25. Small
 enough to finish quickly, real logic rather than wiring, and `docs/undo.md`

@@ -40,9 +40,35 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Save-point (clean-position) tracking in {@link UndoController}: the reference-based
- * clean marker survives undo/redo, is invalidated when the clean step is evicted, and
- * is reset by New/Open. The document's {@code modified} flag is recomputed against it.
+ * Exercises {@link UndoController}'s promise of a truthful modified flag: the document is
+ * modified exactly when its position in the history differs from the position at the last
+ * save. The clauses come from {@link UndoController#documentWasSaved} and
+ * {@link UndoController#documentDidLoad}; the flag is read from the {@link Song} itself,
+ * which is the only place the promise is observable.
+ *
+ * <p><b>Clean is a position</b> — saving marks the current position clean, undoing past it
+ * marks the document modified, and redoing back to it marks it clean again. The round trip
+ * through both directions is the case, not either half alone.
+ *
+ * <p><b>Eviction ends the promise</b> — once the saved position is dropped at
+ * {@value UndoController#UNDO_STACK_MAX_DEPTH} steps, no amount of undoing restores clean.
+ * Driven at exactly the boundary: the save point plus a full stack of later steps.
+ *
+ * <p><b>Discarding the redo branch ends it too</b> — a forward edit made after undoing past
+ * the save point destroys the only path back to it, leaving the document permanently
+ * modified. The same promise as eviction, reached by the other route.
+ *
+ * <p><b>A loaded document has no history</b> — New/Open clears both stacks, so nothing of
+ * the previous document can be undone into this one.
+ *
+ * <p><b>Not covered here</b>: that clean is held by reference rather than by content — that
+ * two edits producing an identical document are still distinct positions. Arranging it
+ * needs an edit and an inverse edit that leave the document byte-identical, which the model
+ * offers no direct way to build.
+ *
+ * <p>Steps are produced by driving real edits on a {@link Song}, with
+ * {@link MainFrame#getInstance()} mocked to return a {@link ScoreView} over it — the seam
+ * both handlers and the replay use to find the active document.
  */
 class UndoControllerSavePointTest extends UnitTest {
 

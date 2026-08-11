@@ -42,14 +42,42 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Stack-behavior tests for {@link UndoController}: push/undo/redo transitions,
- * linear-redo clearing, FIFO eviction at the depth limit, the reentrancy guard, and
- * the fail-safe path when a replay throws.
+ * Exercises {@link UndoController}'s stack contract — what each of
+ * {@link UndoController#songDidChange}, {@link UndoController#undo()} and
+ * {@link UndoController#redo()} promises about what is available to undo or redo next.
+ * The clean marker and the labels are contracts of the same class exercised elsewhere:
+ * {@link UndoControllerSavePointTest} and {@link UndoOpNameLabelTest}.
  *
- * <p>Steps are produced by driving real edits on a {@link Song} (the singleton records
- * them via its {@code @Handler}); {@link UndoController#undo()}/{@code redo()} fetch the
- * active document through {@link MainFrame#getInstance()}, which is mocked here to return
- * a {@link ScoreView} over that same song.
+ * <p><b>State transitions</b> — the three moves that change what is available, asserted
+ * through {@link UndoController#canUndo()}/{@link UndoController#canRedo()} and the
+ * document itself: a forward edit makes undo available and redo not; undo makes the step
+ * redoable and restores the prior document; redo restores the edited one.
+ *
+ * <p><b>Redo is a line, not a tree</b> — a forward edit made after an undo discards the
+ * redo branch rather than growing one.
+ *
+ * <p><b>Replay is invisible to recording</b> — the notification the engine's own replay
+ * bracket posts is not itself recorded, so a single undo empties a one-step stack instead
+ * of pushing a step for its own inverse. The class invariant, not a branch.
+ *
+ * <p><b>The depth boundary</b> — {@value UndoController#UNDO_STACK_MAX_DEPTH} steps are
+ * retained and pushing past it evicts the oldest, tested one step past the limit and
+ * asserted by exhausting the stack: exactly the limit is undoable, and the evicted edit
+ * remains in the document because nothing can reach it.
+ *
+ * <p><b>The fail-safe</b> — a replay that throws is an engine bug, so both stacks are
+ * cleared and the document forced modified, from the undo direction and the redo
+ * direction. Arranged with a mutation whose replay cannot succeed.
+ *
+ * <p><b>Not covered here</b>: that undo and redo are no-ops posting nothing when their
+ * stack is empty or no document is open — reachable only through
+ * {@link MainFrame#getInstance()}, and belonging with the save-point tests that already
+ * drive that seam.
+ *
+ * <p>Steps are produced by driving real edits on a {@link Song} rather than by handing the
+ * controller a hand-built batch, so what is recorded is what production records, companion
+ * mutations included. {@link MainFrame#getInstance()} is mocked to return a
+ * {@link ScoreView} over that same song, which is how undo/redo find the active document.
  */
 class UndoControllerTest extends UnitTest {
 

@@ -34,11 +34,38 @@ import songscribe.dom.StaffElement;
 import songscribe.undo.OpNames;
 
 /**
- * Unit tests for {@link OpNames} — the pure Tier-B label-assembly helper. Each test
- * drives one branch of a helper and asserts it resolves to the expected
- * {@code Strings.*} label, proving the {@code ElementType -> category} taxonomy is
- * decoded correctly (single vs. plural vs. mixed, note/grace folding, slide subtype,
- * lyric add/edit/delete transitions).
+ * Exercises {@link OpNames}: which name an edit is given, for each way the name depends on
+ * what the edit acted on. The methods are pure functions of their arguments, so every case
+ * is a call and an assertion with no fixture.
+ *
+ * <p><b>{@link OpNames#deleteLabel} — the three classes of input it distinguishes.</b> One
+ * element of a category yields the singular name, several of one category the plural, and a
+ * mix the generic name. Each category is exercised, since the category set is finite and
+ * small; the note/grace folding is a case of the second class, not a fourth class, because
+ * the promise is that they share a category. Nothing is asserted for an empty list: the
+ * contract states a non-empty precondition and promises nothing beyond it.
+ *
+ * <p><b>{@link OpNames#addLabel} — one case per category, plus the two that are not
+ * categories.</b> A grace note is named separately rather than folding into {@code Note},
+ * which is the one place the two labels' taxonomies deliberately differ. A type in no
+ * category throws, which is the clause that keeps a future {@link ElementType} from being
+ * quietly labelled as something it is not. That last case is not present today.
+ *
+ * <p><b>The subtype labels</b> — slide, hairpin, articulation and attachment names are each
+ * chosen from a small closed set, so each set belongs here enumerated in full. Present
+ * today: both slide subtypes, in each direction. Not present: the two hairpin kinds, the
+ * two articulation types, the five attachment kinds, and the fixed names
+ * ({@code deleteEndingLabel} and the four {@code remove*Label} methods), each of which
+ * promises one specific name for one specific edit.
+ *
+ * <p><b>{@link OpNames#lyricLabel} — a transition, not a value.</b> The three classes are
+ * empty → non-empty, non-empty → empty, and everything else; the third is asserted with two
+ * different non-empty strings, which is what distinguishes it from the first two.
+ *
+ * <p>Expected names are resolved through the same {@link Strings} constants production uses.
+ * The promise is which name is chosen for a given input, not what that name reads as in one
+ * locale, and a test spelling out the English would fail on a translation that changed
+ * nothing about the promise.
  */
 class OpNamesTest extends UnitTest {
 

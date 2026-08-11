@@ -54,17 +54,27 @@ import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Undo round-trip for the paste span reconciliation (#614).
+ * Exercises paste's side of the complete-emission invariant ({@code docs/mutations.md}),
+ * from the only place it is observable: the round-trip guarantee of {@code docs/undo.md}.
  *
- * <p>{@code PasteSpanReconciliation} decides which spans a paste discards, but
- * {@code tryInsertFragment} removes them through {@code Line}'s typed tracked
- * removals rather than a raw list mutation. That choice is only observable through
- * undo: a raw removal would drop the span with no {@code Mutation} record, so the
- * paste's single undo step would restore the elements and silently leave the
- * discarded beam or hairpin gone forever. These tests pin that down.
+ * <p>{@code PasteSpanReconciliation} decides which spans a paste discards, and
+ * {@code tryInsertFragment} removes them through {@code Line}'s typed tracked removals
+ * rather than a raw list mutation. Nothing about the paste's own result shows which of
+ * those two it did — a raw removal produces the identical document — so the promise is
+ * checked by undoing: an unrecorded removal restores the elements and leaves the discarded
+ * beam or hairpin gone for good.
  *
- * <p>Lives in {@code songscribe.undo} rather than beside the other paste tests
- * because it needs {@link UndoController#resetForTest()}, which is package-private.
+ * <p><b>The classes of discarded span</b> — a beam the paste dropped outright, a hairpin the
+ * paste widened, and two hairpins the paste merged into one. Each is a different shape of
+ * loss, and each must come back exactly as it was.
+ *
+ * <p><b>Parentage after undo</b> — undoing a paste detaches the pasted clones and leaves the
+ * elements that were already there attached, so the line's parentage matches the document
+ * rather than merely its element count.
+ *
+ * <p>Lives in {@code songscribe.undo} because what it asserts is an undo guarantee, not
+ * because of any access it needs — {@link UndoController#reset()} is public API since the
+ * lifecycle contracts landed.
  */
 class PasteReconciliationUndoTest extends UnitTest {
 
