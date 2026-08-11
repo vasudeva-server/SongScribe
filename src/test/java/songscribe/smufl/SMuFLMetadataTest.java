@@ -172,8 +172,8 @@ class SMuFLMetadataTest extends UnitTest {
     // -------------------------------------------------------------------------
     // requireBBox fail-loud — exits fatally when bbox is absent
     //
-    // requireMapValueForTesting exercises the same requireMapValue logic used by
-    // requireBBox/requireAdvanceWidth, but with a caller-supplied empty map so the
+    // requireMapValue is the package-private helper requireBBox/requireAdvanceWidth
+    // delegate to; called directly here with a caller-supplied empty map so the
     // test is independent of which glyphs happen to be in Bravura metadata.
     // The UnitTest base class installs RuntimeErrorTestHelper, which replaces
     // System.exit with a handler that throws AssertionError.
@@ -184,7 +184,7 @@ class SMuFLMetadataTest extends UnitTest {
         var emptyMap = new EnumMap<SMuFLGlyph, BBox>(SMuFLGlyph.class);
 
         assertThatThrownBy(
-            () -> SMuFLMetadata.requireMapValueForTesting(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK, "bounding box"))
+            () -> SMuFLMetadata.requireMapValue(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK, "bounding box"))
             .isInstanceOf(AssertionError.class);
     }
 
@@ -197,7 +197,7 @@ class SMuFLMetadataTest extends UnitTest {
         var emptyMap = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
 
         assertThatThrownBy(
-            () -> SMuFLMetadata.requireMapValueForTesting(emptyMap, SMuFLGlyph.ORNAMENT_TRILL, "advance width"))
+            () -> SMuFLMetadata.requireMapValue(emptyMap, SMuFLGlyph.ORNAMENT_TRILL, "advance width"))
             .isInstanceOf(AssertionError.class);
     }
 
@@ -258,7 +258,7 @@ class SMuFLMetadataTest extends UnitTest {
     // -------------------------------------------------------------------------
     // Row 30 — requireAnchors throws when glyph is absent from anchors map
     //
-    // Uses requireMapValueForTesting with an empty EnumMap so the test is independent
+    // Uses requireMapValue directly with an empty EnumMap so the test is independent
     // of which glyphs happen to have anchors in Bravura metadata. The UnitTest base
     // class installs RuntimeErrorTestHelper, which replaces System.exit with a handler
     // that throws AssertionError — the same mechanism used by requireBBox/requireAdvanceWidth
@@ -270,7 +270,7 @@ class SMuFLMetadataTest extends UnitTest {
         var emptyMap = new EnumMap<SMuFLGlyph, GlyphAnchors>(SMuFLGlyph.class);
 
         assertThatThrownBy(
-            () -> SMuFLMetadata.requireMapValueForTesting(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK, "anchors"))
+            () -> SMuFLMetadata.requireMapValue(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK, "anchors"))
             .isInstanceOf(AssertionError.class);
     }
 
@@ -299,15 +299,15 @@ class SMuFLMetadataTest extends UnitTest {
     //
     // All current SMuFLGlyph enum values happen to be present in Bravura's
     // glyphAdvanceWidths section. To exercise the null-return branch without
-    // depending on external data, we use getAdvanceWidthForTesting with a
-    // caller-supplied empty map, mirroring the pattern used for requireBBox above.
+    // depending on external data, we use the package-private getAdvanceWidth(Map, SMuFLGlyph)
+    // overload with a caller-supplied empty map, mirroring the pattern used for requireBBox above.
     // -------------------------------------------------------------------------
 
     @Test
     void testGetAdvanceWidthReturnsNullForAbsentGlyph() {
         var emptyMap = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
 
-        var width = SMuFLMetadata.getAdvanceWidthForTesting(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK);
+        var width = SMuFLMetadata.getAdvanceWidth(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK);
 
         assertThat(width)
             .as("getAdvanceWidth must return null when the glyph has no advance-width entry")
@@ -317,16 +317,16 @@ class SMuFLMetadataTest extends UnitTest {
     // -------------------------------------------------------------------------
     // Row 33 — getAdvanceWidthOrZero returns 0.0 when glyph is absent from advance widths
     //
-    // Uses getAdvanceWidthOrZeroForTesting with an empty map to exercise the
-    // zero-fallback branch, which cannot be reached via the public API because
-    // all current Bravura enum values have advance widths.
+    // Uses the package-private getAdvanceWidthOrZero(Map, SMuFLGlyph) overload with an
+    // empty map to exercise the zero-fallback branch, which cannot be reached via the
+    // public API because all current Bravura enum values have advance widths.
     // -------------------------------------------------------------------------
 
     @Test
     void testGetAdvanceWidthOrZeroReturnsFallbackForAbsentGlyph() {
         var emptyMap = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
 
-        var width = SMuFLMetadata.getAdvanceWidthOrZeroForTesting(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK);
+        var width = SMuFLMetadata.getAdvanceWidthOrZero(emptyMap, SMuFLGlyph.NOTEHEAD_BLACK);
 
         assertThat(width)
             .as("getAdvanceWidthOrZero must return 0.0 when the glyph has no advance-width entry")

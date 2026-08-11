@@ -94,12 +94,40 @@ public final class SMuFLMetadata {
      */
     @Nullable
     public static Double getAdvanceWidth(SMuFLGlyph glyph) {
-        return instance().advanceWidths.get(glyph);
+        return getAdvanceWidth(instance().advanceWidths, glyph);
+    }
+
+    /**
+     * Returns the advance width {@code advanceWidths} holds for {@code glyph}, or null if
+     * {@code glyph} has no entry.
+     *
+     * <p>The instance-bound {@link #getAdvanceWidth(SMuFLGlyph)} delegates here with
+     * {@code instance().advanceWidths}. Package-private so a test can exercise the
+     * null-return case with a caller-supplied map, since every {@link SMuFLGlyph} the font
+     * declares currently has a real Bravura entry and the null branch is otherwise
+     * unreachable.
+     */
+    @Nullable
+    static Double getAdvanceWidth(Map<SMuFLGlyph, Double> advanceWidths, SMuFLGlyph glyph) {
+        return advanceWidths.get(glyph);
     }
 
     /** Returns the glyph's advance width in staff spaces, or 0 if the font has no metadata for it. */
     public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
-        var width = getAdvanceWidth(glyph);
+        return getAdvanceWidthOrZero(instance().advanceWidths, glyph);
+    }
+
+    /**
+     * Returns the advance width {@code advanceWidths} holds for {@code glyph}, or 0 if
+     * {@code glyph} has no entry.
+     *
+     * <p>The instance-bound {@link #getAdvanceWidthOrZero(SMuFLGlyph)} delegates here with
+     * {@code instance().advanceWidths}. Package-private so a test can exercise the
+     * zero-fallback case with a caller-supplied map, for the same reason as
+     * {@link #getAdvanceWidth(Map, SMuFLGlyph)}.
+     */
+    static double getAdvanceWidthOrZero(Map<SMuFLGlyph, Double> advanceWidths, SMuFLGlyph glyph) {
+        var width = getAdvanceWidth(advanceWidths, glyph);
         return width != null ? width : 0.0;
     }
 
@@ -127,7 +155,25 @@ public final class SMuFLMetadata {
         return requireMapValue(instance().advanceWidths, glyph, "advance width");
     }
 
-    private static <V> V requireMapValue(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
+    /**
+     * Returns the value {@code map} holds for {@code glyph}, exiting fatally if absent.
+     *
+     * <p>{@code map} is expected to hold an entry for every {@link SMuFLGlyph} the font
+     * declares, so a miss is a metadata defect rather than a recoverable condition.
+     * {@link #requireBBox}, {@link #requireAnchors} and {@link #requireAdvanceWidth} are
+     * the instance-bound convenience wrappers; a test reaches this directly with a
+     * caller-supplied map to exercise the fail-loud path without needing a real glyph
+     * absent from Bravura metadata.
+     *
+     * @param map         the metadata map to look up {@code glyph} in
+     * @param glyph       the glyph to look up
+     * @param description the human-readable name of what {@code map} holds, used only in
+     *                     the exit message when {@code glyph} is absent
+     * @return the value {@code map} holds for {@code glyph}; never null
+     * @throws RuntimeException (via {@link RuntimeError#missingResource}) if {@code glyph}
+     *     has no entry in {@code map}
+     */
+    static <V> V requireMapValue(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
         var result = map.get(glyph);
 
         if (result == null) {
@@ -135,25 +181,6 @@ public final class SMuFLMetadata {
         }
 
         return result;
-    }
-
-    // Package-private — for use only by SMuFLMetadataTest to exercise the fail-loud path.
-    static <V> void requireMapValueForTesting(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
-        requireMapValue(map, glyph, description);
-    }
-
-    // Package-private — for use only by SMuFLMetadataTest to exercise the nullable getAdvanceWidth path
-    // with a caller-supplied map (avoids needing a real glyph absent from Bravura advance widths).
-    @Nullable
-    static Double getAdvanceWidthForTesting(Map<SMuFLGlyph, Double> map, SMuFLGlyph glyph) {
-        return map.get(glyph);
-    }
-
-    // Package-private — for use only by SMuFLMetadataTest to exercise the zero-fallback path
-    // with a caller-supplied map (avoids needing a real glyph absent from Bravura advance widths).
-    static double getAdvanceWidthOrZeroForTesting(Map<SMuFLGlyph, Double> map, SMuFLGlyph glyph) {
-        var width = map.get(glyph);
-        return width != null ? width : 0.0;
     }
 
     // --- Parsing ---
