@@ -152,8 +152,13 @@ violate the guards. The anchor re-pointing in `Line.setElement` is NOT suppresse
 
 ### Subscribing
 
-`SongDidChangeNotification` — never construct directly; posted by `Song.endModification`
-after the outermost bracket closes. Handler name: `songDidChange`.
+`SongDidChangeNotification` — never construct directly in production; posted by
+`Song.endModification` after the outermost bracket closes. Handler name: `songDidChange`.
+A test may construct and post one directly to drive a batch no real edit can produce —
+a `FontChange` (`ScoreView`-scoped, so no `Song` edit emits it) or a deliberately corrupt
+mutation exercising a replay-failure path — provided the test says so; see
+`MutationLabelTest.undoLabelForBatch` and
+`UndoControllerTest.testReplayFailureClearsBothStacksAndForcesModified`.
 
 API:
 - `getMutations()` — immutable ordered list.

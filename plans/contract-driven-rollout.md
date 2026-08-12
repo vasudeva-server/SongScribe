@@ -524,7 +524,28 @@ something to check a deletion against.
 
 ## Phase 12 — Pilot: `undo` test triage
 
-**Model:** Sonnet · **Effort:** high · **Status:** ⏳
+**Model:** Sonnet · **Effort:** high · **Status:** ✅
+
+**Resolution.** Recorded in
+[`plans/pilot-undo-results.md`](./pilot-undo-results.md). All 141 tests mapped to a real
+contract case; 2 discarded as duplicate coverage of the empty-stack label, 1 renamed to
+credit what it actually tests, 1 stale comment fixed. The four gaps Phase 11 named were
+closed: the two undo-package test classes' location was confirmed correct on merit, the
+duplicate empty-stack tests were removed, and `docs/mutations.md` now states the narrow
+test-fixture exception to "never construct `SongDidChangeNotification` directly." Test-only
+surface reconfirmed clean. A single deliberate, scoped coverage run
+(`./scripts/coverage.sh unit` over the package's ten test classes) found 22 real missing
+contract cases — six fixed-name `OpNames` methods, three enumerable small domains the class's
+own Javadoc claimed were "enumerated in full" but weren't, `deleteLabel`'s plural form for
+three of its five categories, and `UndoController`'s documented no-ops for `undo()`/`redo()`
+with nothing to do and `documentWasSaved` with no document open — all added; every other
+uncovered region was traced to a non-gap (an unreachable branch given the current
+`ElementType` enum, a case owned by a different package's tests, or the compiler's
+synthetic exhaustiveness-check branch on sealed/enum switches) and left alone. `docs/undo.md`'s
+four "Runtime flow" diagrams were dropped per D17 — each restated a contract Phase 11 had
+already written as Javadoc — replaced with a short pointer to the methods that state each
+step. Unit suite green (7527 passed, 1 skipped, up from 7507 net of the 2 discards and 22
+additions).
 
 With Phase 11's contracts in place, triage all 141 tests: keep, rewrite, or
 discard. A test mapping to no contract case is discarded, not preserved on the

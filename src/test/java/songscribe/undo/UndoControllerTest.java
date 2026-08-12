@@ -71,8 +71,8 @@ import songscribe.ui.component.ScoreView;
  *
  * <p><b>Not covered here</b>: that undo and redo are no-ops posting nothing when their
  * stack is empty or no document is open — reachable only through
- * {@link MainFrame#getInstance()}, and belonging with the save-point tests that already
- * drive that seam.
+ * {@link MainFrame#getInstance()}, and covered in {@link UndoControllerSavePointTest},
+ * which already builds that mocking seam.
  *
  * <p>Steps are produced by driving real edits on a {@link Song} rather than by handing the
  * controller a hand-built batch, so what is recorded is what production records, companion
@@ -173,7 +173,7 @@ class UndoControllerTest extends UnitTest {
 
         assertThat(line.effectiveElementCount()).isEqualTo(pushed);
 
-        // Only DEFAULT_UNDO_STACK_MAX_DEPTH steps are retained; the oldest (first) was
+        // Only UNDO_STACK_MAX_DEPTH steps are retained; the oldest (first) was
         // evicted, so it can never be undone.
         var undoable = 0;
         while (UndoController.canUndo()) {

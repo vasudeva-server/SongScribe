@@ -81,9 +81,6 @@ import songscribe.ui.selection.SelectionCoordinator;
  * step must read "Delete Note". A first-wins implementation passes every other test in this
  * class and fails this one.
  *
- * <p><b>The empty-stack boundary</b> — no steps yields the plain "Undo" and "Redo", the
- * only case where the label carries no operation.
- *
  * <p><b>Agreement between the two routes to one edit</b> — a tie or beam applied by its
  * insertion key must name the step the way the menu action naming the same edit does.
  * A disagreement is invisible in production and shows up only as two names for one thing.
@@ -97,6 +94,9 @@ import songscribe.ui.selection.SelectionCoordinator;
  * would take an unreasonable fixture to drive, the batch is posted directly instead — those
  * cases test the mapping only, and cannot show what a real batch's companions would do to
  * it.
+ *
+ * <p>The empty-stack boundary — no steps yields the plain "Undo"/"Redo" — is common to both
+ * halves of the contract and is exercised once, in {@link UndoOpNameLabelTest}.
  */
 class MutationLabelTest extends UnitTest {
 
@@ -138,22 +138,6 @@ class MutationLabelTest extends UnitTest {
         var song = new Song();
         UndoTestSupport.addCrotchets(song, song.getLine(0), count);
         return song;
-    }
-
-    // -----------------------------------------------------------------------
-    // Empty-stack plain labels
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testEmptyUndoStackShowsPlainUndoLabel() {
-        UndoController.reset();
-        assertThat(UndoController.undoLabel()).isEqualTo(Strings.get(Strings.ACTION_EDIT_UNDO));
-    }
-
-    @Test
-    void testEmptyRedoStackShowsPlainRedoLabel() {
-        UndoController.reset();
-        assertThat(UndoController.redoLabel()).isEqualTo(Strings.get(Strings.ACTION_EDIT_REDO));
     }
 
     // -----------------------------------------------------------------------

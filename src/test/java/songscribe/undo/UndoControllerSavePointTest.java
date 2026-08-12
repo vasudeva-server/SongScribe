@@ -21,6 +21,7 @@
 package songscribe.undo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -30,12 +31,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
+import songscribe.message.notification.UndoStateDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
@@ -60,6 +64,14 @@ import songscribe.ui.component.ScoreView;
  *
  * <p><b>A loaded document has no history</b> — New/Open clears both stacks, so nothing of
  * the previous document can be undone into this one.
+ *
+ * <p><b>No-ops post nothing</b> — {@link UndoController#undo()} and {@link
+ * UndoController#redo()} with nothing to do, and {@link UndoController#documentWasSaved}
+ * with no document open, leave state and the message bus untouched rather than doing
+ * nothing but announcing it; a caller that reacts to {@link UndoStateDidChangeNotification}
+ * must not see a spurious one on an edit that changed nothing. This class already builds
+ * the {@link MainFrame}/{@link ScoreView} mocking seam these cases are only reachable
+ * through, which is why {@link UndoControllerTest} leaves them here.
  *
  * <p><b>Not covered here</b>: that clean is held by reference rather than by content — that
  * two edits producing an identical document are still distinct positions. Arranging it
@@ -201,5 +213,76 @@ class UndoControllerSavePointTest extends UnitTest {
         assertThat(song.isModified())
             .as("the saved state became unreachable under linear redo, so modified stays true")
             .isTrue();
+    }
+
+    /** @return whether {@code action} posted an {@link UndoStateDidChangeNotification} */
+    private static boolean undoStateNotificationPosted(Runnable action) {
+        var posted = new boolean[1];
+        var listener = new Object() {
+            @Handler
+            void onUndoStateDidChange(UndoStateDidChangeNotification notification) {
+                posted[0] = true;
+            }
+        };
+
+        MessageCenter.subscribe(listener);
+
+        try {
+            action.run();
+        } finally {
+            MessageCenter.unsubscribe(listener);
+        }
+
+        return posted[0];
+    }
+
+    @Test
+    void testUndoIsANoOpWhenNothingToUndo() {
+        assertThat(undoStateNotificationPosted(UndoController::undo))
+            .as("undo with an empty stack posts nothing")
+            .isFalse();
+        assertThat(song.isModified()).isFalse();
+    }
+
+    @Test
+    void testRedoIsANoOpWhenNothingToRedo() {
+        assertThat(undoStateNotificationPosted(UndoController::redo))
+            .as("redo with an empty stack posts nothing")
+            .isFalse();
+        assertThat(song.isModified()).isFalse();
+    }
+
+    @Test
+    void testUndoAndRedoAreNoOpsWhenNoDocumentIsOpen() {
+        addNoteStep();
+
+        var frameWithNoDocument = mock(MainFrame.class);
+        when(frameWithNoDocument.getScoreView()).thenReturn(null);
+        mainFrameMock.when(MainFrame::getInstance).thenReturn(frameWithNoDocument);
+
+        assertThat(undoStateNotificationPosted(UndoController::undo))
+            .as("undo with no document open posts nothing")
+            .isFalse();
+        assertThat(undoStateNotificationPosted(UndoController::redo))
+            .as("redo with no document open posts nothing")
+            .isFalse();
+        assertThat(UndoController.canUndo())
+            .as("the pending step is untouched when there is no document to apply it to")
+            .isTrue();
+    }
+
+    @Test
+    void testDocumentWasSavedIsANoOpWhenNoDocumentIsOpen() {
+        // Song itself also handles DocumentWasSavedNotification and clears its own modified
+        // flag unconditionally, so that flag cannot distinguish this handler's early return
+        // from it running to completion. What a missing guard would do instead is throw:
+        // recomputeModified(scoreView.getSong()) on a null scoreView is a NullPointerException.
+        var frameWithNoDocument = mock(MainFrame.class);
+        when(frameWithNoDocument.getScoreView()).thenReturn(null);
+        mainFrameMock.when(MainFrame::getInstance).thenReturn(frameWithNoDocument);
+
+        assertThatCode(UndoControllerSavePointTest::save)
+            .as("a save with no document open must not throw despite the null scoreView")
+            .doesNotThrowAnyException();
     }
 }

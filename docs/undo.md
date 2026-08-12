@@ -69,57 +69,16 @@ into a state the engine can no longer account for.
 
 ## Runtime flow
 
-### Recording a forward edit
+Each step of the flow — recording a forward edit, composing the Edit-menu label, and
+replaying a step in either direction — is stated as a method contract rather than
+diagrammed here: a diagram of it would draw the same sequence the Javadoc already states,
+and be the copy that goes stale when the code changes.
 
-```
- forward edit                UndoController                    Song / Line
-
- user edits ──▶ Song.endModification ──▶ SongDidChangeNotification
-                                          │  (applyingReplay == false)
-                                          ▼
-                                   push UndoStep(mutations, opName) onto undoStack
-                                   clear redoStack
-                                   evict oldest if size > undoStackMaxDepth
-                                   post UndoStateDidChangeNotification
-```
-
-### Edit-menu label (`composeLabel`, per direction)
-
-```
-        step = stack.peek()
-        step == null            ──▶ "Undo" / "Redo"            (empty stack)
-        step.opName != null     ──▶ "Undo <declared op-name>"  (declared, verbatim)
-        step.opName == null     ──▶ "Undo <type-based label>"  (fallback via
-                                    opNameKey(dominantMutation(step.mutations)))
-```
-
-### Undo
-
-```
-        peek step from undoStack
-        applyingReplay = true
-        song.withModification(() -> song.withReplay(() ->
-            for m in reverse(step): MutationReplayer.applyUndo(scoreView, m)))
-        applyingReplay = false          ──▶ posts a SongDidChangeNotification
-                                            (handler sees applyingReplay==true → ignores)
-                                            (ScoreViewController still repaints from it)
-        on success: pop from undoStack, push onto redoStack
-        recompute modified vs clean
-        post UndoStateDidChangeNotification
-```
-
-### Redo
-
-```
-        peek step from redoStack
-        applyingReplay = true
-        song.withModification(() -> song.withReplay(() ->
-            for m in forward(step): MutationReplayer.applyRedo(scoreView, m)))
-        applyingReplay = false
-        on success: pop from redoStack, push onto undoStack
-        recompute modified vs clean
-        post UndoStateDidChangeNotification
-```
+- **Recording a forward edit** — `UndoController.songDidChange`.
+- **The Edit-menu label** — `UndoController.undoLabel`/`redoLabel`, which compose through
+  the private `composeLabel`.
+- **Undo and redo** — `UndoController.undo`/`redo`, and the batch each replays through,
+  `MutationReplayer.applyUndo`/`applyRedo`.
 
 ## Where an undo step's op-name comes from
 

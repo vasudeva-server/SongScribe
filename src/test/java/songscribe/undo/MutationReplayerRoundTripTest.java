@@ -550,8 +550,9 @@ class MutationReplayerRoundTripTest extends UnitTest {
             assertRoundTrip(song, () -> song.removeLine(1));
         }
 
+        /** Covers both {@code KeyField} values: {@code KEY_TYPE} and {@code ACCIDENTAL_COUNT}. */
         @Test
-        void testLineKeyAccidentalCountChangeRoundTrips() {
+        void testLineKeyTypeAndAccidentalCountChangeRoundTrips() {
             var song = songWithNotes(1);
             var line = song.getLine(0);
             var changed = song.getDefaultKeyAccidentalCount() + 2;

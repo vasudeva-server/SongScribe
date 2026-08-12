@@ -28,15 +28,29 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.undo.OpNames;
 
 /**
  * Exercises {@link OpNames}: which name an edit is given, for each way the name depends on
  * what the edit acted on. The methods are pure functions of their arguments, so every case
- * is a call and an assertion with no fixture.
+ * is a call and an assertion, with a fixture no larger than the argument the method under
+ * test declares — a bare {@link StaffElement} pair to anchor a hairpin, never a {@code Line}
+ * or a {@code Song}.
  *
  * <p><b>{@link OpNames#deleteLabel} — the three classes of input it distinguishes.</b> One
  * element of a category yields the singular name, several of one category the plural, and a
@@ -52,11 +66,14 @@ import songscribe.undo.OpNames;
  * quietly labelled as something it is not. That last case is not present today.
  *
  * <p><b>The subtype labels</b> — slide, hairpin, articulation and attachment names are each
- * chosen from a small closed set, so each set belongs here enumerated in full. Present
- * today: both slide subtypes, in each direction. Not present: the two hairpin kinds, the
- * two articulation types, the five attachment kinds, and the fixed names
- * ({@code deleteEndingLabel} and the four {@code remove*Label} methods), each of which
- * promises one specific name for one specific edit.
+ * chosen from a small closed set, so each set belongs here enumerated in full: both slide
+ * subtypes in each direction, the two hairpin kinds, the two articulation types, and the
+ * five attachment kinds.
+ *
+ * <p><b>The fixed names</b> — {@code deleteEndingLabel} and the five simple
+ * {@code remove*Label} methods each promise exactly one name for one specific edit, with no
+ * argument to vary. Each still gets its own case: a fixed method untested is a contract
+ * clause untested, the same as any other.
  *
  * <p><b>{@link OpNames#lyricLabel} — a transition, not a value.</b> The three classes are
  * empty → non-empty, non-empty → empty, and everything else; the third is asserted with two
@@ -117,15 +134,33 @@ class OpNamesTest extends UnitTest {
         }
 
         @Test
+        void testMultipleBarlinesIsPlural() {
+            assertThat(OpNames.deleteLabel(List.of(ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BARLINES));
+        }
+
+        @Test
         void testSingleRepeat() {
             assertThat(OpNames.deleteLabel(List.of(ElementType.REPEAT_LEFT)))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_REPEAT));
         }
 
         @Test
+        void testMultipleRepeatsIsPlural() {
+            assertThat(OpNames.deleteLabel(List.of(ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_REPEATS));
+        }
+
+        @Test
         void testSingleBreathMark() {
             assertThat(OpNames.deleteLabel(List.of(ElementType.BREATH_MARK)))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK));
+        }
+
+        @Test
+        void testMultipleBreathMarksIsPlural() {
+            assertThat(OpNames.deleteLabel(List.of(ElementType.BREATH_MARK, ElementType.BREATH_MARK)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS));
         }
     }
 
@@ -213,6 +248,12 @@ class OpNamesTest extends UnitTest {
         }
 
         @Test
+        void testDeleteEnding() {
+            assertThat(OpNames.deleteEndingLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_ENDING));
+        }
+
+        @Test
         void testEmptyToNonEmptyIsAdd() {
             assertThat(OpNames.lyricLabel(EMPTY, NON_EMPTY))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_LYRIC));
@@ -228,6 +269,112 @@ class OpNamesTest extends UnitTest {
         void testNonEmptyToNonEmptyIsEdit() {
             assertThat(OpNames.lyricLabel(NON_EMPTY, OTHER_NON_EMPTY))
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_EDIT_LYRIC));
+        }
+    }
+
+    @Nested
+    class HairpinLabel {
+
+        @Test
+        void testCrescendo() {
+            var anchor = StaffElementFactory.crotchet();
+            var end = StaffElementFactory.crotchet();
+            assertThat(OpNames.deleteHairpinLabel(new Crescendo(anchor, end)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_CRESCENDO));
+        }
+
+        @Test
+        void testDiminuendo() {
+            var anchor = StaffElementFactory.crotchet();
+            var end = StaffElementFactory.crotchet();
+            assertThat(OpNames.deleteHairpinLabel(new Diminuendo(anchor, end)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO));
+        }
+    }
+
+    @Nested
+    class ArticulationLabel {
+
+        @Test
+        void testStaccato() {
+            assertThat(OpNames.removeArticulationLabel(ArticulationType.STACCATO))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_STACCATO));
+        }
+
+        @Test
+        void testAccent() {
+            assertThat(OpNames.removeArticulationLabel(ArticulationType.ACCENT))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCENT));
+        }
+    }
+
+    @Nested
+    class AttachmentLabel {
+
+        @Test
+        void testFermata() {
+            assertThat(OpNames.removeAttachmentLabel(new FermataAttachment()))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_FERMATA));
+        }
+
+        @Test
+        void testDynamic() {
+            assertThat(OpNames.removeAttachmentLabel(new DynamicAttachment(DynamicAttachment.DynamicType.FORTE)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_DYNAMIC));
+        }
+
+        @Test
+        void testAnnotation() {
+            assertThat(OpNames.removeAttachmentLabel(new AnnotationAttachment("text")))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION));
+        }
+
+        @Test
+        void testTempoChange() {
+            assertThat(OpNames.removeAttachmentLabel(new TempoChangeAttachment(new Tempo())))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE));
+        }
+
+        @Test
+        void testBeatChange() {
+            var beatChange = new BeatChange(Duration.QUAVER, Duration.QUAVER);
+            assertThat(OpNames.removeAttachmentLabel(new BeatChangeAttachment(beatChange)))
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE));
+        }
+    }
+
+    /** The simple {@code remove*Label} methods: no argument, one fixed name each. */
+    @Nested
+    class FixedRemovalLabel {
+
+        @Test
+        void testTie() {
+            assertThat(OpNames.removeTieLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TIE));
+        }
+
+        @Test
+        void testBeam() {
+            assertThat(OpNames.removeBeamLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAM));
+        }
+
+        @Test
+        void testTuplet() {
+            assertThat(OpNames.removeTupletLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET));
+        }
+
+        @Test
+        void testTrill() {
+            assertThat(OpNames.removeTrillLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TRILL));
+        }
+
+        @Test
+        void testAccidental() {
+            assertThat(OpNames.removeAccidentalLabel())
+                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL));
         }
     }
 }
