@@ -349,9 +349,25 @@ suite green at 7,532 passed / 1 skipped, up 5 from 7,527.
 ## 7. Decisions taken
 
 - **D10 — the freeze holds through `ui/dialog` and no further.** Not lifted now, and
-  not extended to the full table. `ui/dialog` is the only row that can produce the
-  deletion yield the pilot could not, so it buys the second data point the decision
-  needs; after it, D10 is decided again.
+  not extended to the full table. After `ui/dialog`, D10 is decided again.
+
+  **Corrected after this section was first written:** `ui/dialog` alone is not the
+  second data point D10 needs. Its deletions come from the **restructure** (D2/D4 —
+  the record-in/record-out seam), not from a contract pass, because the pass cannot
+  run there first: `SongSettingsDialog.isValidData()` returns a boolean *and* pops a
+  modal, so there is no back-end API to contract until the seam extracts one, and
+  under D2 the dialog's own three steps are wiring, classified `none`. So
+  `ui/dialog` measures what architectural correction buys — worth knowing, since it
+  is where the 1.54× ratio came from — and says nothing about what a contract pass
+  costs or yields on `dom`, `layout` or `ui/component`.
+
+  A second **contract-pass** measurement therefore runs alongside it, on
+  `engraving`: 449 main LOC, 645 test LOC, 46 cases, ratio 1.44 against the repo's
+  1.53, no `docs/` coverage and no `package-info` content, and untouched by Phases
+  8–10. Every one of those removes a bias `undo` carried — chiefly that
+  `docs/undo.md` already existed. It is also a scout for the 19,856-LOC
+  `layout`/`engraving` row. Record: `plans/contract-pass/engraving.md`; compare it
+  against §1 above.
 - **`ui/dialog` is the next row**, ahead of foundations, on that reasoning.
 - **The remaining rows stay unplanned** until that re-decision, since rows that may not
   run should not have task lists written against them.

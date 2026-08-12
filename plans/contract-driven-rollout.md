@@ -35,6 +35,24 @@ Project guides are `.claude/guides/`, project rules `.claude/rules/`.
 
 Context is cleared between phases, so this document is the only memory.
 
+**Phases 1–13 are all ✅.** Two tracks are in flight past them, and neither is a
+numbered phase in this document:
+
+| Track | Lives in | What the next session does with it |
+|---|---|---|
+| `ui/dialog` seam (D2, D4) | `plans/ui-dialog-seam.md` | Execute it, or review it if it has not been reviewed yet. It is the **last row the D10 freeze covers** — nothing outside the rollout resumes until it is done. |
+| `engraving` contract pass | `plans/contract-pass/engraving.md` | When its record is filled in, compare it against [`pilot-retrospective.md`](./pilot-retrospective.md) §1 and write the comparison into that retrospective as a second measurement. |
+
+**Why both, and what each one answers.** They measure different things and the
+distinction decides D10. `ui/dialog` measures what **architectural correction**
+buys — the restructure is what deletes the tests there, not the contract pass —
+and that is the package the 1.54× ratio was traced to. `engraving` measures what
+the **contract pass itself** costs and yields on a package with no pre-existing
+documentation, which `undo` could not, having had `docs/undo.md` already. D10
+needs both numbers; neither substitutes for the other.
+
+For a numbered phase:
+
 1. **Find the current phase** — the first one whose status is not ✅. Statuses:
    ⏳ not started · 🔄 in progress · ✅ complete.
 2. **Read both documents** named above before touching anything.
@@ -632,7 +650,7 @@ eight (steps 3–4 merged, coverage required at step 7).
 | Area | Main LOC | Tests | Model | Notes |
 |---|---:|---:|---|---|
 | `ui/dialog` | 10,010 | 257 | Opus then Sonnet | Architectural, not a contract pass — see below |
-| Foundations | 10,931 | 448 | Sonnet | `util`, `message`, `prefs`, `smufl`, `hit`, `engraving`, `shape`, `font`, `lifecycle`, `error`; one agent per package |
+| Foundations | 10,482 | 448 | Sonnet | `util`, `message`, `prefs`, `smufl`, `hit`, `shape`, `font`, `lifecycle`, `error`; one agent per package. `engraving` **was** listed here and is counted in the `layout`, `engraving` row instead — it was in both, and 19,407 + 449 is exactly that row's 19,856. It runs first regardless, as the D10 measurement. |
 | `dom` | 15,483 | 1,213 | Opus | Heaviest domain judgment; paced by review |
 | `io`, `midi` | 15,557 | 899 | Opus then Sonnet | Round-trip invariants |
 | `layout`, `engraving` | 19,856 | 1,279 | Sonnet | Geometry: mechanical, invariant-heavy |

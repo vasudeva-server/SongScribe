@@ -60,6 +60,21 @@ No argument: ask which package rather than guessing.
 3. **Confirm the tree is clean.** `git status`. Uncommitted work from another
    task makes the per-step commits wrong; stop and say so.
 4. **Verify the branch.** Feature branches come off `develop`, never `main`.
+5. **Capture the baseline into the record's *Before* column**, before touching
+   anything. It cannot be reconstructed afterwards without archaeology, and the
+   numbers are the point of running this on a package nobody has measured:
+
+   ```bash
+   P=<dots-to-slashes>          # e.g. ui/selection
+   git rev-parse --short HEAD   # record as the start commit
+   find src/main/java/songscribe/$P -name '*.java' | xargs cat | wc -l
+   find src/test/java/songscribe/$P  -name '*.java' | xargs cat | wc -l
+   ```
+
+   Then `./scripts/test.sh <the package's test classes>` and record the **passing
+   count**, not the number of `@Test` methods — a `@ParameterizedTest` is one
+   method and many cases, and the case count is the one that means something.
+   Record the wall-clock start time; step 9 records the end.
 
 If the package has no tests (`ui/platform`, per D15), steps 3, 4 and 7 are
 recorded as N/A and skipped. Say so in the record; do not silently omit them.
@@ -252,8 +267,16 @@ percentage.**
 
 ## Step 9: Close out
 
-Fill in the record's numbers, mark the row in
-`plans/contract-driven-rollout.md`'s **Remaining phases** table, and commit.
+Re-measure with the **same commands step 0 used** and fill in the *After* column,
+plus contracts written, domain checkpoints raised, the four triage counts, and
+elapsed wall clock. Mark the row in `plans/contract-driven-rollout.md`'s
+**Remaining phases** table, and commit.
+
+The numbers exist to be compared against
+[`pilot-retrospective.md`](../../../plans/pilot-retrospective.md) §1, so measure
+the same things it did: main and test LOC, passing cases, ratio, and main-LOC
+growth as a percentage — that last one is the contract Javadoc's cost and the
+figure the rollout's remaining estimate rests on.
 
 Then report to the user: what the contracts turned out to promise, what the
 domain checkpoints changed, tests before and after with the three triage
