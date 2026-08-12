@@ -38,7 +38,7 @@ import songscribe.ui.component.MainFrame;
  *
  * <p><strong>Both combos always carry a selection.</strong> Each is built over the whole
  * {@link Duration} enum, so its model is never empty, and a non-empty combo selects its first
- * entry on construction. {@link #gatherChange()} relies on that: there is no state reachable
+ * entry on construction. {@link #gather()} relies on that: there is no state reachable
  * through the UI in which it has nothing to gather, which is why it produces a {@link BeatChange}
  * unconditionally instead of quietly declining to commit.
  */
@@ -75,7 +75,7 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
      * {@inheritDoc}
      *
      * <p>The controls start at {@link #DEFAULT_BEAT_CHANGE} when there is nothing to show. Whatever
-     * is put in comes back out: {@link #gatherChange()} called straight afterwards, with nothing
+     * is put in comes back out: {@link #gather()} called straight afterwards, with nothing
      * else touched, answers the same {@link BeatChange}.
      */
     @Override
@@ -87,7 +87,7 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     }
 
     @Override
-    protected BeatChange gatherChange() {
+    protected BeatChange gather() {
         return new BeatChange(selectedDuration(durationCombo), selectedDuration(beatCombo));
     }
 

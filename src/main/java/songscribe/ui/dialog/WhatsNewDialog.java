@@ -70,7 +70,4 @@ public class WhatsNewDialog extends StandardDialog {
     protected boolean getData() {
         return !noReleaseNotes;
     }
-
-    @Override
-    protected void setData() {}
 }

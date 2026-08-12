@@ -30,7 +30,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.fontchooser.FontChooser;
 import songscribe.util.UIUtils;
 
-public class FontDialog extends StandardDialog {
+public class FontDialog extends CommitDialog<Font> {
 
     private static final int EXTRA_PREVIEW_HEIGHT = 200;
 
@@ -86,11 +86,26 @@ public class FontDialog extends StandardDialog {
     }
 
     @Override
-    protected void setData() {
-        selectedFont = chooser.getSelectedFont();
-        super.setData();
+    protected Font gather() {
+        return chooser.getSelectedFont();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The commit is to this dialog rather than to any document: the chosen font becomes what
+     * {@link #getSelectedFont()} answers, for whoever opened the dialog to read once it closes.
+     * Cancel leaves the font the dialog was constructed with.
+     */
+    @Override
+    protected void commit(Font font) {
+        selectedFont = font;
+    }
+
+    /**
+     * @return the font OK was pressed on, or the font this dialog was constructed with when it was
+     *         cancelled or is still open
+     */
     public Font getSelectedFont() {
         return selectedFont;
     }

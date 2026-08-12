@@ -150,7 +150,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     @Override
-    protected Annotation gatherChange() {
+    protected Annotation gather() {
         var annotation = new Annotation(annotationText(), selectedAlignment());
         annotation.setPlacement(
             aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);

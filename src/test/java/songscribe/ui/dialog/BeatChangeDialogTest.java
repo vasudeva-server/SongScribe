@@ -65,7 +65,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * and OK reads Modify and Remove is offered when it does.
  *
  * <p><b>Not tested here:</b> the class contract's promise that both combos always carry a
- * selection, which {@link BeatChangeDialog#gatherChange()} relies on. Nothing reachable through
+ * selection, which {@link BeatChangeDialog#gather()} relies on. Nothing reachable through
  * the UI can empty a combo built over {@link Duration}, so the guard behind it is unreachable by
  * construction and forcing it — by installing an empty model — would assert against a state the
  * contract says cannot exist. Commit and removal are the back end's promises and are asserted in
@@ -132,7 +132,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
         dialog.populateControls(change);
 
-        assertThat(dialog.gatherChange())
+        assertThat(dialog.gather())
             .as("populating and gathering with nothing in between is the identity")
             .isEqualTo(change);
     }

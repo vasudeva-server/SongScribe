@@ -2,7 +2,9 @@
 
 `BaseDialog` (abstract) — does NOT extend `JDialog`. Creates a fresh `JDialog` on each `setVisible(true)`, disposes on `setVisible(false)`. Geometry persists per-class via static map + `Prefs` (survives restarts).
 
-`StandardDialog` extends `BaseDialog` — adds **OK/Cancel** only (no Apply). Validate-then-commit lifecycle.
+`StandardDialog` extends `BaseDialog` — adds **OK/Cancel** only (no Apply). OK verifies the focused field, runs `commitOnOk()`, and closes only if both accept.
+
+`CommitDialog<I>` extends `StandardDialog` — for a dialog whose OK commits values read from its controls. It gathers once and hands the same values to `validate` and `commit`, and presents any failure itself.
 
 ### What a dialog may touch
 
@@ -67,7 +69,7 @@ Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog`
 
 Accessors: `getMainFrame()` — window parenting only.
 
-`getScoreView()` (nullable), `requireScoreView()` (throws) and `getSong()` are still inherited but are **the escape hatch [What a dialog may touch](#what-a-dialog-may-touch) forbids**, and are being removed. Do not call them from a new dialog, and do not leave one behind in a dialog you are already editing; take the state through a back end instead.
+There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are gone; a dialog takes what it needs as values and writes through a back end. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
 
 Static helpers:
 - `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
@@ -89,13 +91,23 @@ Overridable hooks:
 
 ### StandardDialog
 
-OK click lifecycle: `isValidData()` → if true: `setData()` → `repaintScore()` → close.
+OK click lifecycle: focused field's `InputVerifier` → `commitOnOk()` → if both accept, close.
 
-Override hooks: `isValidData()`, `setData()` — both iterate tabs by default; call `super` when adding dialog-level logic.
+Override hook: `commitOnOk()` → whether the dialog may close. Default commits nothing and returns true, which is the whole of OK for a dialog that gathers no values. A dialog that commits values does not override it — it extends `CommitDialog<I>`, where it is final.
+
+Nothing here repaints the score. A commit that writes the document does so inside a modification bracket, and the bracket's `SongDidChangeNotification` is what re-lays out and repaints ([mutations](../docs/mutations.md)).
+
+### CommitDialog&lt;I&gt;
+
+OK reads the controls once and hands that one value to `validate` then `commit`, so **the values validated are the values committed** and nothing is committed when validation refuses.
+
+Override hooks: `gather()` → `I` (read-only, total over every reachable control state), `validate(I)` → `ValidationResult` (decides, displays nothing; defaults to accepting everything), `commit(I)` (called only with values `validate` accepted).
+
+`CommitDialog` presents failures itself, via `OptionDialogs` — **only the first**, since `ValidationResult` promises presentation order and stacking modal alerts is worse than under-reporting. A dialog that shows its own validation alert has re-fused deciding with displaying.
 
 `modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
 
-Canonical small example: `FontDialog` — adds content to `contentPanel`, overrides `getData()`/`setData()` with `super` calls, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`/`modifyButtonPanel()`.
+Canonical small example: `FontDialog` — adds content to `contentPanel`, overrides `getData()` with a `super` call and `gather()`/`commit()` for the chosen font, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`/`modifyButtonPanel()`.
 
 ### Tab (BaseDialog inner class)
 
@@ -103,7 +115,9 @@ Canonical small example: `FontDialog` — adds content to `contentPanel`, overri
 
 Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSectionSeparator(this)` (static on `BaseDialog`) adds the inter-section vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
 
-Lifecycle: `getData()` (populate, return false to cancel show), `setData()` (commit, StandardDialog only), `isValidData()`, `tabWillShow()`, `tabWillHide()`.
+Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`, `tabWillHide()`.
+
+**A tab populates and displays; it does not commit and it does not validate.** Both belong to the dialog, because both are about the gathered values as a whole: a rule spanning tabs cannot be checked from inside one of them, and a commit split across tabs is several undo steps for one edit. A tab contributes what its controls say and stops there.
 
 `getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
 

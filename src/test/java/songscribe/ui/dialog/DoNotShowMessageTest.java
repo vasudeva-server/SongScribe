@@ -21,32 +21,48 @@ package songscribe.ui.dialog;
 
 import java.awt.Point;
 import java.util.Collections;
-import java.util.prefs.Preferences;
+import java.util.stream.Stream;
 
 import javax.swing.JDialog;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 /**
- * Unit tests for {@link DoNotShowMessage}: suppression logic in
- * {@link DoNotShowMessage#setVisible} and pref-persistence in {@link DoNotShowMessage#setData}.
+ * Contract tests for {@link DoNotShowMessage}, whose two promises are both about the preference it
+ * was handed and neither about what that preference means elsewhere.
+ *
+ * <p><strong>Suppression</strong> — a show request produces a window exactly when the preference
+ * reads false, and produces nothing when it reads true. Both sides of that boolean are exercised;
+ * there is no third state.
+ *
+ * <p><strong>The write</strong> — OK writes {@code true} to that preference when the box is ticked
+ * and writes nothing at all otherwise. "Nothing at all" is asserted as the count of every boolean
+ * write, not merely of the expected one, so a commit that wrote {@code false} to say "keep showing
+ * it" would fail rather than pass unnoticed.
  */
 class DoNotShowMessageTest extends MainFrameMockTest {
 
-    // Use a unique prop name per test class to avoid cross-test contamination
-    private static final String PROP_NAME = "testDoNotShowMessage";
+    /**
+     * The preference the dialog under test is handed. Any boolean key serves: {@link Prefs} is
+     * mocked, so what these tests pin is that the dialog reads and writes the key it was given.
+     */
+    private static final PrefsKey SUPPRESSION_KEY = PrefsKey.SHOW_TIPS;
 
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
@@ -61,72 +77,60 @@ class DoNotShowMessageTest extends MainFrameMockTest {
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
 
-        // Always start with pref cleared
-        Preferences.userRoot().node("songscribe").remove(PROP_NAME);
-
-        dialog = new DoNotShowMessage(mainFrame(), "Test Title", "Test message.", PROP_NAME);
+        dialog = new DoNotShowMessage(mainFrame(), "Test Title", "Test message.", SUPPRESSION_KEY);
     }
 
     @AfterEach
     void tearDown() {
-        // Clear the pref so other tests are not affected
-        Preferences.userRoot().node("songscribe").remove(PROP_NAME);
         prefsMock.close();
         uiUtilsMock.close();
     }
 
-    // ---- setVisible ----
+    private record SuppressionCase(String description, boolean alreadySuppressed, int expectedWindows) {}
 
-    @Test
-    void testSetVisibleTrueShowsDialogWhenPrefNotSet() {
-        // Pref is NOT set — super.setVisible(true) must be called, creating a JDialog
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("suppressionCases")
+    void testShowProducesAWindowExactlyWhenTheMessageIsNotYetSuppressed(SuppressionCase testCase) {
+        prefsMock.when(() -> Prefs.getBoolean(SUPPRESSION_KEY))
+            .thenReturn(testCase.alreadySuppressed());
+
         try (var construction = mockConstruction(JDialog.class,
                 (d, ctx) -> BaseDialogTestHelper.configureMockDialog(d, new Point(100, 100)))) {
 
             dialog.setVisible(true);
 
             assertThat(construction.constructed())
-                .as("JDialog created when pref is not set")
-                .hasSize(1);
+                .as(testCase.description())
+                .hasSize(testCase.expectedWindows());
         }
     }
 
-    @Test
-    void testSetVisibleTrueSuppressedWhenPrefAlreadySet() {
-        // Mark pref as already shown
-        Preferences.userRoot().node("songscribe").putBoolean(PROP_NAME, true);
-
-        try (var construction = mockConstruction(JDialog.class)) {
-            dialog.setVisible(true);
-
-            assertThat(construction.constructed())
-                .as("JDialog not created when pref is already set (suppressed)")
-                .isEmpty();
-        }
+    static Stream<SuppressionCase> suppressionCases() {
+        return Stream.of(
+            new SuppressionCase("not yet suppressed shows the message", false, 1),
+            new SuppressionCase("already suppressed shows nothing", true, 0)
+        );
     }
 
-    // ---- setData ----
+    private record CommitCase(String description, boolean boxTicked, int expectedWrites) {}
 
-    @Test
-    void testSetDataWritesPrefWhenCheckboxSelected() {
-        // Simulate checkbox being checked before setData is called
-        dialog.dontShowCheck.setSelected(true);
-        dialog.setData();
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("commitCases")
+    void testOkWritesTheSuppressionOnlyWhenTheBoxIsTicked(CommitCase testCase) {
+        dialog.dontShowCheck.setSelected(testCase.boxTicked());
 
-        var storedValue = Preferences.userRoot().node("songscribe").getBoolean(PROP_NAME, false);
-        assertThat(storedValue)
-            .as("pref set to true when checkbox is selected on setData")
-            .isTrue();
+        dialog.commitOnOk();
+
+        prefsMock.verify(() -> Prefs.put(SUPPRESSION_KEY, true), times(testCase.expectedWrites()));
+        prefsMock.verify(
+            () -> Prefs.put(any(PrefsKey.class), anyBoolean()), times(testCase.expectedWrites())
+        );
     }
 
-    @Test
-    void testSetDataDoesNotWritePrefWhenCheckboxNotSelected() {
-        dialog.dontShowCheck.setSelected(false);
-        dialog.setData();
-
-        var storedValue = Preferences.userRoot().node("songscribe").getBoolean(PROP_NAME, false);
-        assertThat(storedValue)
-            .as("pref remains false when checkbox is not selected on setData")
-            .isFalse();
+    static Stream<CommitCase> commitCases() {
+        return Stream.of(
+            new CommitCase("ticked suppresses the message", true, 1),
+            new CommitCase("unticked writes nothing", false, 0)
+        );
     }
 }

@@ -24,7 +24,6 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -35,7 +34,7 @@ import songscribe.ui.component.MainFrame;
  * the controls now say, and hands that to its {@link AttachmentBackEnd}; it never looks at the
  * document to find out what it is editing, and never writes to it. Everything a subclass
  * implements is therefore about controls: {@link #populateControls} puts a value into them and
- * {@link #gatherChange()} reads one back out. Which element is being edited, whether an
+ * {@link #gather()} reads one back out. Which element is being edited, whether an
  * attachment is already there, what the undo step is called and how the write is bracketed all
  * belong to the back end, which arrives already bound to its element — see
  * {@link AttachmentEditor}, the only thing that binds one.
@@ -47,7 +46,7 @@ import songscribe.ui.component.MainFrame;
  * @param <C> the attachment's value type — a value the dialog can display and build, never a node
  *            of the document graph
  */
-public abstract class AttachmentDialog<C> extends StandardDialog {
+public abstract class AttachmentDialog<C> extends CommitDialog<C> {
 
     protected final JButton removeButton;
     private final AttachmentBackEnd<C> backEnd;
@@ -89,19 +88,6 @@ public abstract class AttachmentDialog<C> extends StandardDialog {
     protected abstract void populateControls(@Nullable C existingChange);
 
     /**
-     * Reads the controls and returns the change they currently describe.
-     *
-     * <p>Reads only: calling it leaves the controls untouched, so it may be called more than once
-     * during a single OK and answer the same thing each time. It is total over every state the
-     * controls can reach through the UI — there is no combination of selections for which a
-     * subclass may decline to produce a value. Whether the result is acceptable is
-     * {@link AttachmentBackEnd#validate}'s question, not this one's.
-     *
-     * @return the change described by the controls as they now stand
-     */
-    protected abstract C gatherChange();
-
-    /**
      * Populates the controls from the back end and labels the buttons for what OK will do.
      *
      * <p>Whether an attachment already exists is a domain fact and comes from
@@ -127,36 +113,23 @@ public abstract class AttachmentDialog<C> extends StandardDialog {
     }
 
     /**
-     * Asks the back end whether the gathered change may be applied, and shows the first reason it
-     * may not.
+     * {@inheritDoc}
      *
-     * @return {@code true} when OK may proceed to {@link #setData()}, {@code false} when the user
-     *         has been told why it may not and the dialog stays up
+     * <p>Whether an attachment may be added or changed is the back end's judgment, made against the
+     * element it is bound to.
      */
     @Override
-    protected boolean isValidData() {
-        var result = backEnd.validate(gatherChange());
-
-        if (result.isValid()) {
-            return true;
-        }
-
-        // Only the first failure is shown: stacking modal alerts is worse than under-reporting,
-        // and no attachment back end can currently produce more than one. StandardDialog takes
-        // over this presentation for every dialog in Phase 2 of plans/ui-dialog-seam.md, which is
-        // where the multi-failure question gets decided once rather than per family.
-        var failure = result.failures().getFirst();
-        var message = failure.message();
-        OptionDialogs.showErrorMessage(contentPanel, failure.titleKey(), message.key(), message.args().toArray());
-
-        return false;
+    protected ValidationResult validate(C change) {
+        return backEnd.validate(change);
     }
 
     /**
-     * Commits the gathered change through the back end, as one undoable step.
+     * {@inheritDoc}
+     *
+     * <p>Committed as one undoable step, whichever of Add and Modify OK is performing.
      */
     @Override
-    protected void setData() {
-        backEnd.apply(gatherChange());
+    protected void commit(C change) {
+        backEnd.apply(change);
     }
 }

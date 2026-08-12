@@ -73,11 +73,11 @@ such in `.agents/guides/dialogs.md`. Do not convert either.
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
 | 1 | [Design the Seam and Prove It on the AttachmentDialog Family](#-phase-1-design-the-seam-and-prove-it-on-the-attachmentdialog-family) | ✅ Complete | — |
-| 2 | [Commit the Seam to BaseDialog and StandardDialog](#-phase-2-commit-the-seam-to-basedialog-and-standarddialog) | ⏳ Pending | — |
-| 3 | [SongSettingsDialog and Its Tabs](#-phase-3-songsettingsdialog-and-its-tabs) | ⏸️ Blocked by 2 | — |
-| 4 | [KeySignatureChangeDialog](#-phase-4-keysignaturechangedialog) | ⏸️ Blocked by 2 + external | — |
-| 5 | [Export, Preferences and Resolution](#-phase-5-export-preferences-and-resolution) | ⏸️ Blocked by 2 | — |
-| 6 | [Parent-Window-Only Dialogs](#-phase-6-parent-window-only-dialogs) | ⏸️ Blocked by 2 | — |
+| 2 | [Commit the Seam to BaseDialog and StandardDialog](#-phase-2-commit-the-seam-to-basedialog-and-standarddialog) | ✅ Complete | — |
+| 3 | [SongSettingsDialog and Its Tabs](#-phase-3-songsettingsdialog-and-its-tabs) | ⏳ Pending | — |
+| 4 | [KeySignatureChangeDialog](#-phase-4-keysignaturechangedialog) | ⏸️ Blocked by external | — |
+| 5 | [Export, Preferences and Resolution](#-phase-5-export-preferences-and-resolution) | ⏳ Pending | — |
+| 6 | [Parent-Window-Only Dialogs](#-phase-6-parent-window-only-dialogs) | ⏳ Pending | — |
 | 7 | [Back-End Contracts and Their Tests](#-phase-7-back-end-contracts-and-their-tests) | ⏸️ Blocked by 3, 5 | — |
 | 8 | [Triage the Existing Test Suite](#-phase-8-triage-the-existing-test-suite) | ⏸️ Blocked by 7 | — |
 | 9 | [E2E Wiring Set](#-phase-9-e2e-wiring-set) | ⏸️ Blocked by 8 | — |
@@ -196,12 +196,73 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
 
 ---
 
-## ⏳ Phase 2: Commit the Seam to BaseDialog and StandardDialog
+## ✅ Phase 2: Commit the Seam to BaseDialog and StandardDialog
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —  <br>
-**Files:** src/main/java/songscribe/ui/dialog/BaseDialog.java, src/main/java/songscribe/ui/dialog/StandardDialog.java  <br>
+**Files:** src/main/java/songscribe/ui/dialog/CommitDialog.java, src/main/java/songscribe/ui/dialog/StandardDialog.java, src/main/java/songscribe/ui/dialog/BaseDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialog.java, src/main/java/songscribe/ui/dialog/BeatChangeDialog.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/dialog/AnnotationDialog.java, src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/WhatsNewDialog.java, src/main/java/songscribe/ui/dialog/ReportBugDialog.java  <br>
 **Recommended model/effort:** Opus, high — 1,275 lines with an inherited-accessor removal that every subclass depends on.
+
+### What it did
+
+**The lifecycle split in two classes rather than one.** `StandardDialog` keeps OK/Cancel and
+gains one hook, `commitOnOk()` → whether the dialog may close, defaulting to committing nothing.
+The new `CommitDialog<I>` owns the seam: `gather()` once, `validate(I)`, present, `commit(I)`,
+with `commitOnOk()` final so no dialog can reorder the three or let them see different values.
+A generic `StandardDialog<I>` was rejected because the two dialogs whose OK commits nothing
+(`WhatsNewDialog`, `ReportBugDialog`) would have needed a placeholder type argument to say so.
+
+**`isValidData()` is gone from both `StandardDialog` and `Tab`, and so is `Tab.setData()`.**
+Leaving a commit hook nothing calls would have failed silently; removing it fails at compile time
+instead, which is how `SongSettingsMusicTab` reaches Phase 3.
+
+**`repaintScore()` is deleted, not relocated.** Every commit that writes the document does so in a
+modification bracket, and the bracket's `SongDidChangeNotification` already re-lays out and
+repaints. `StandardDialog`'s class contract states that, so a commit reaching the screen some
+other way knows it must arrange the refresh itself.
+
+**Phase 6's four `StandardDialog` subclasses were fixed here, not deferred.** They broke on the
+lifecycle change rather than on domain reach — which Phase 6 removes none of — so leaving them
+broken would have split one change across two phases. `FontDialog` (`CommitDialog<Font>`) and
+`DoNotShowMessage` (`CommitDialog<Boolean>`) commit values and now say so; `WhatsNewDialog` and
+`ReportBugDialog` lost empty `setData()` overrides. Phase 6 keeps its real task — the widened
+field at `FontDialog.java:37` — and its class-by-class confirmation.
+
+**`DoNotShowMessage` stopped bypassing `Prefs`.** It wrote its suppression flag with raw
+`java.util.prefs.Preferences` under a hardcoded `"songscribe"` node, so `Prefs.resetAll()` could
+not clear it and no `PrefsDidChangeNotification` was posted for it. Its constructor now takes a
+`PrefsKey` rather than a `String propName`, reads through `Prefs.getBoolean` and writes through
+`Prefs.put`. Its test was rewritten against the mocked `Prefs` and parameterized — it no longer
+writes to the developer's real preference store to run.
+
+**The class has no production caller and never has** (`git log -S "new DoNotShowMessage"` finds
+only the test). Keeping it was a deliberate call: it is a facility for suppressible messages, and
+its only caller being a test is a finding to revisit, not something this track settles.
+
+### The work list Phase 2 handed on
+
+`./scripts/compile.sh` ends on **38 errors, every one inside
+`src/main/java/songscribe/ui/dialog/`**:
+
+| Phase | Class | Errors | Lines |
+|---|---|--:|---|
+| 3 | `SongSettingsDialog` | 10 | 127, 129, 134, 135, 218, 220, 221, 236, 243, 251 |
+| 3 | `SongSettingsMusicTab` | 6 | 154, 161, 163, 173, 176, 205 |
+| 3 | `SongSettingsAttributionTab` | 5 | 108, 254, 434, 530, 547 |
+| 3 | `SongSettingsTitleTab` | 4 | 378, 379, 418, 425 |
+| 3 | `SongSettingsFontTab` | 1 | 177 |
+| 4 | `KeySignatureChangeDialog` | 3 | 71, 81, 89 |
+| 5 | `ExportMidiDialog` | 4 | 65, 68, 84 (×2) |
+| 5 | `ExportPDFDialog` | 2 | 39, 51 |
+| 5 | `ResolutionDialog` | 2 | 95, 128 |
+| 5 | `PreferencesDialog` | 1 | 172 |
+
+The `AttachmentDialog` family does not appear, as Phase 2 task 3 required.
+
+**The tree does not compile until Phases 3–5 land, so no test can run until then.**
+`BeatChangeDialogTest` (re-pointed at the renamed `gather()`) and `DoNotShowMessageTest` (rewritten
+against the mocked `Prefs`) are unverified rather than failing, and are the first two to run once
+main compiles.
 
 ### Tasks
 
@@ -242,10 +303,10 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
 
 ---
 
-## ⏸️ Phase 3: SongSettingsDialog and Its Tabs
+## ⏳ Phase 3: SongSettingsDialog and Its Tabs
 
-**Status:** Blocked by 2  <br>
-**BlockedBy:** 2  <br>
+**Status:** Pending  <br>
+**BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/SongSettingsDialog.java, src/main/java/songscribe/ui/dialog/SongSettingsMusicTab.java, src/main/java/songscribe/ui/dialog/SongSettingsTitleTab.java, src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java, src/main/java/songscribe/ui/dialog/SongSettingsFontTab.java, src/main/java/songscribe/ui/dialog/SongSettingsDateInputRow.java  <br>
 **Recommended model/effort:** Opus, high — the hardest case: 491 lines plus five collaborators, cross-tab validation ordering, and ten pieces of real logic to extract.
 
@@ -311,8 +372,8 @@ This is the dialog the whole policy was written against — 491 production lines
 
 ## ⏸️ Phase 4: KeySignatureChangeDialog
 
-**Status:** Blocked by 2 + external  <br>
-**BlockedBy:** 2, and the owner's crash fix and enablement rules  <br>
+**Status:** Blocked by external  <br>
+**BlockedBy:** the owner's crash fix and enablement rules  <br>
 **Files:** src/main/java/songscribe/ui/dialog/KeySignatureChangeDialog.java, src/test/java/songscribe/ui/dialog/KeySignatureChangeDialogTest.java  <br>
 **Recommended model/effort:** Opus, medium — 98 lines applying a decided shape, but against behavior that changed after this plan was written.
 
@@ -351,10 +412,10 @@ its numbers are folded into the Phase 8 report rather than reported separately.
 
 ---
 
-## ⏸️ Phase 5: Export, Preferences and Resolution
+## ⏳ Phase 5: Export, Preferences and Resolution
 
-**Status:** Blocked by 2  <br>
-**BlockedBy:** 2  <br>
+**Status:** Pending  <br>
+**BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/ExportMidiDialog.java, src/main/java/songscribe/ui/dialog/ExportPDFDialog.java, src/main/java/songscribe/ui/dialog/PreferencesDialog.java, src/main/java/songscribe/ui/dialog/ResolutionDialog.java, src/main/java/songscribe/ui/dialog/PaperSizeStep.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/layout/PageModel.java  <br>
 **Recommended model/effort:** Sonnet, medium — four independent dialogs applying a decided shape; `ResolutionDialog` and `PaperSizeStep` carry the only non-trivial arithmetic, and `PreferencesDialog` takes no back end at all — it is decoupled through `PrefsDidChangeNotification`, which reaches outside `ui/dialog` into `ScoreViewController`.
 
@@ -451,10 +512,10 @@ its numbers are folded into the Phase 8 report rather than reported separately.
 
 ---
 
-## ⏸️ Phase 6: Parent-Window-Only Dialogs
+## ⏳ Phase 6: Parent-Window-Only Dialogs
 
-**Status:** Blocked by 2  <br>
-**BlockedBy:** 2  <br>
+**Status:** Pending  <br>
+**BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/WhatsNewDialog.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/ReportBugDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java  <br>
 **Recommended model/effort:** Sonnet, low — these need no seam; the phase exists to confirm that and to kill one known defect.
 
@@ -468,10 +529,17 @@ These seven take `MainFrame` for window parenting only and have zero `getSong()`
    corollary the no-test-only-surface rule bans, and it is named in
    `plans/test-only-surface.md`. If `FontDialogTest` needs the state, it comes from the
    dialog's public API or the test goes.
-2. Confirm by inspection, class by class, that each of the seven compiles unchanged
+2. Confirm by inspection, class by class, that each of the seven still has zero domain reach
    against the Phase 2 `BaseDialog` with `getSong()`/`getScoreView()`/
    `requireScoreView()` gone. Report any that do not — that would mean domain reach the
    inventory missed, and it belongs in Phase 3, 4 or 5 rather than being patched here.
+   - **Four of them already changed in Phase 2**, on the lifecycle rather than on domain reach:
+     `FontDialog` is now `CommitDialog<Font>`, `DoNotShowMessage` is `CommitDialog<Boolean>`, and
+     `WhatsNewDialog` and `ReportBugDialog` lost empty `setData()` overrides. Confirm those; do
+     not redo them.
+   - `DoNotShowMessage`'s `Prefs` bypass was **fixed in Phase 2**, not deferred: its constructor
+     now takes a `PrefsKey` instead of a `String propName`, and it reads through
+     `Prefs.getBoolean` and writes through `Prefs.put`. Nothing to do here.
 3. Do **not** convert `AboutDialog` to `BaseDialog`. It extends `JDialog` deliberately —
    undecorated so it can show the borderless splash pane, non-modal so it can see the
    outside click that dismisses it, and unfocusable because a borderless macOS window may
@@ -522,8 +590,8 @@ their tests.
    grows. Drive the cases from `@EnumSource` / `values()` / a sealed hierarchy's
    permitted subclasses, or assert separately that the table's rows are exactly the
    domain.
-6. If Phase 2 deprecated rather than deleted `BaseDialog.getSong()`, `getScoreView()` and
-   `requireScoreView()`, delete them now and confirm the tree compiles.
+6. Nothing to do: Phase 2 deleted `BaseDialog.getSong()`, `getScoreView()` and
+   `requireScoreView()` outright rather than deprecating them.
 7. Run `./scripts/compile.sh` (SUCCESS) and `./scripts/test.sh` (green).
 
 ---
@@ -572,12 +640,15 @@ their tests.
    widens. Add the four new keys as cases **driven from the derived trigger set**, not
    from a hand-written list — the drift that gap came from is exactly a hand-written list
    that nothing checked, and a second one in the test would reproduce it.
-9. Delete `SongSettingsDialogFixture.java` and `BaseDialogTestHelper.java` if nothing
-   surviving uses them; a helper kept for deleted tests is dead code.
-10. Report the four counts — kept, rewritten, discarded, added — and the test LOC before
+9. `StandardDialogTest`'s ten tests all drive `isValidData()`/`setData()` and the tab iteration
+   behind them — hooks Phase 2 removed. Triage them against `commitOnOk()` and `CommitDialog`'s
+   contracts rather than translating them one for one; most assert wiring and are discards.
+10. Delete `SongSettingsDialogFixture.java` and `BaseDialogTestHelper.java` if nothing
+    surviving uses them; a helper kept for deleted tests is dead code.
+11. Report the four counts — kept, rewritten, discarded, added — and the test LOC before
     and after. These are the numbers `plans/pilot-retrospective.md` §3 says the pilot
     could not produce, and they are what D10 is re-decided against.
-11. Run `./scripts/compile.sh` (SUCCESS) and `./scripts/test.sh` (green).
+12. Run `./scripts/compile.sh` (SUCCESS) and `./scripts/test.sh` (green).
 
 ---
 
@@ -618,6 +689,11 @@ not build a parallel harness.
 
 Written **last, from what the design turned out to be** — not from what this plan
 predicted it would be.
+
+**Phase 2 already corrected the sections it made false** — the `BaseDialog` accessor list, the
+`StandardDialog` OK lifecycle, the `Tab` lifecycle list — and added a `CommitDialog<I>` section,
+rather than leaving the guide lying for eight phases. Read what is there before rewriting; tasks
+3–5 below are checks now, not blank-page work.
 
 ### Tasks
 

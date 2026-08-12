@@ -53,7 +53,7 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
     }
 
     @Override
-    protected Tempo gatherChange() {
+    protected Tempo gather() {
         return new Tempo(
             tempoSection.getVisibleTempo(),
             tempoSection.getTempoType(),

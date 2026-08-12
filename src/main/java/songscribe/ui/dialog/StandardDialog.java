@@ -28,8 +28,22 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * A dialog with OK and Cancel buttons that commits changes
- * only when the user clicks OK.
+ * A dialog with OK and Cancel buttons.
+ *
+ * <p><strong>The OK lifecycle, in full:</strong> the focused field's {@link InputVerifier} is
+ * consulted, then {@link #commitOnOk()} runs, then the window is dismissed — and it is dismissed
+ * only if both of those accepted. Cancel dismisses it without either, which is what makes Cancel
+ * "discard everything": nothing this dialog can do to the outside world happens anywhere but in
+ * {@link #commitOnOk()}.
+ *
+ * <p><strong>A commit becomes visible through the notification it posts</strong>, not through
+ * anything this class does. A commit that writes the document does so inside a modification
+ * bracket, and the bracket's {@code SongDidChangeNotification} is what re-lays out and repaints the
+ * score — see {@code docs/mutations.md}. A commit that reaches the screen some other way arranges
+ * that itself.
+ *
+ * <p>A dialog whose OK commits values read from its controls extends {@link CommitDialog} rather
+ * than overriding anything here.
  */
 public abstract class StandardDialog extends BaseDialog {
 
@@ -56,13 +70,9 @@ public abstract class StandardDialog extends BaseDialog {
             // Pressing Enter fires the default button directly, without the focus
             // traversal that a mouse click performs, so the focused field's
             // InputVerifier is never consulted. Run it explicitly first.
-            if (!verifyFocusedField() || !isValidData()) {
-                return;
+            if (verifyFocusedField() && commitOnOk()) {
+                setVisible(false);
             }
-
-            setData();
-            repaintScore();
-            setVisible(false);
         });
 
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
@@ -123,39 +133,23 @@ public abstract class StandardDialog extends BaseDialog {
         super.setVisible(visible);
     }
 
-    private void repaintScore() {
-        var scoreView = getScoreView();
-
-        if (scoreView != null) {
-            scoreView.repaint();
-        }
-    }
-
     /**
-     * Returns true if all registered tabs report valid data.
-     * Subclasses may override to add dialog-level validation
-     * (call {@code super.isValidData()} to run tab iteration).
-     * Subclasses with no registered tabs may override without calling {@code super}.
+     * Performs whatever OK does beyond dismissing the dialog, and says whether it may be dismissed.
+     *
+     * <p>Runs after the focused field's {@link InputVerifier} has accepted its value and before the
+     * window is dismissed; it is the whole of the OK lifecycle between those two points, so a
+     * dialog has nowhere else to put work that OK is supposed to do. Answering false leaves the
+     * dialog up with its controls untouched, and whoever answers false has already told the user
+     * why — nothing after this point will.
+     *
+     * @return {@code true} to dismiss the dialog, {@code false} to leave it up
+     * @implSpec Commits nothing and answers true: on a dialog that gathers no values, OK means no
+     *           more than "close". {@link CommitDialog} overrides this with the
+     *           gather-validate-commit lifecycle and is final there, so a dialog that commits
+     *           values extends that class rather than overriding this.
      */
-    protected boolean isValidData() {
-        for (var tab : getTabs()) {
-            if (!tab.isValidData()) {
-                return false;
-            }
-        }
-
+    @SuppressWarnings("SameReturnValue")
+    protected boolean commitOnOk() {
         return true;
-    }
-
-    /**
-     * Writes control values back to the model by iterating registered
-     * tabs. Subclasses may override to add dialog-level commit logic
-     * (call {@code super.setData()} to run tab iteration).
-     * Subclasses with no registered tabs may override without calling {@code super}.
-     */
-    protected void setData() {
-        for (var tab : getTabs()) {
-            tab.setData();
-        }
     }
 }
