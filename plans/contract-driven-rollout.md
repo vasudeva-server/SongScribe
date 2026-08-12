@@ -56,14 +56,14 @@ only what is written here.
 |---|---|
 | D1 | **Full audit.** Every nontrivial method gets a documented contract; tests rewritten or discarded accordingly. Duration is not the constraint. |
 | D2 | Dialog unit tests go; the front-end/back-end restructuring stays. The back end must be completely UI-independent and unit-testable. A separate dialog e2e set confirms wiring only, run when a dialog is created or gains a feature. |
-| D3 | `coverage.sh` and `mutation-test.sh` stay, invoked deliberately, out of `check`'s automatic phases. |
+| D3 | `coverage.sh` and `mutation-test.sh` stay, invoked deliberately, out of `check`'s automatic phases. **Refined by Phase 13:** they are not peers. Coverage is a *required* closing step of every package phase (per-area procedure step 7); mutation stays opportunistic. Neither returns to `check`. |
 | D4 | Design a decoupling seam for `StandardDialog` — see the dialog phase. |
 | D5 | The ~11 lifecycle hooks become proper singleton teardown (discussion doc §6.3). |
 | D6 | Per-area order: write API contracts → write the testing-approach Javadoc → modify, rewrite or discard tests. |
 | D7 | **Language-neutral principles live in `~/.claude/rules/development.md`** (global). Only language- and project-specific mechanics stay local. |
 | D8 | The testing-approach Javadoc lives on the **test class**, not the production method. |
 | D9 | The dialog track runs after the pilot and the guide revision. |
-| D10 | **No other work proceeds until this is complete** — revisited after the pilot retrospective, when a rate exists. |
+| D10 | **No other work proceeds until this is complete** — revisited after the pilot retrospective, when a rate exists. **Answered by Phase 13:** the rate is 324 main LOC/hour, which puts the remaining table at ~364 hours. The freeze **holds through `ui/dialog` and no further**. That row is the only place the 1.54× ratio was ever traced to, so it is the one measurement that can say what the full audit is worth; the pilot could not, having been run on a package whose tests were already contract-shaped. When `ui/dialog` is done, D10 is decided again against two data points instead of one. |
 | D11 | One commit per *step* within a package, not per package. |
 | D12 | Branch `refactor/contract-driven-development`, from `develop`. |
 | D13 | Issue #773 is a re-sort by kind, done once the guides are rewritten. |
@@ -566,7 +566,41 @@ reads this file, so it must exist before that phase starts.
 
 ## Phase 13 — Retrospective and revision
 
-**Model:** Opus · **Effort:** high · **Status:** ⏳
+**Model:** Opus · **Effort:** high · **Status:** ✅
+
+**Resolution.** Written to [`pilot-retrospective.md`](./pilot-retrospective.md).
+The measured rate is **324 main LOC/hour** (3h13m for 1,041 main LOC), putting the
+remaining table at **~364 hours**. Contracts cost **+21.6% main LOC** — on the order
+of +25,000 lines of Javadoc across what remains, which Phases 1–4 never estimated.
+The survival rate came out at 98.6% with the case count *growing* 14%, and the
+retrospective's central finding is that this does not generalize: `undo` was chosen
+(D16) for the properties of a package whose tests were already contract-shaped, while
+the 1.54× ratio that motivated the project was only ever traced to `ui/dialog`. The
+pilot measured contract *cost* accurately and deletion *yield* not at all. The 13%
+ratio improvement it did produce came from parameterization, which needs no contracts.
+
+Five findings against Phases 1–4. Two had already been fixed mid-pilot: `@return` was
+optional (`d3be8d3f`) and parameterization was phrased descriptively rather than as a
+pre-write trigger (`66517f8a`). Three were open and are fixed here:
+
+- **A claim of enumeration is not self-enforcing** — the finding behind 22 of the
+  pilot's 161 cases, and still live in the tree, since it had been closed by adding
+  rows rather than by backing the claim. Now a rule in the global rules,
+  `testing-common.md`, `testing-unit.md` (with the exhaustiveness-assertion shape and
+  the sealed-hierarchy leaf walk) and `check`'s Axis 4 as item 6a — including the
+  boundary that a *private* domain cannot be asserted against, and that widening it is
+  test-only surface rather than the fix. Applied to `OpNamesTest`: five companion
+  tests pin each table's rows to its domain, and the two `OpNames.Category` tables had
+  their claim reworded instead. Verified failing by dropping a row.
+- **The Phase 11 / Phase 12 split was not a real split** — writing the
+  testing-approach Javadoc *is* the triage. Per-area procedure steps 3–4 merged.
+- **Coverage's status was set too low** — it produced 22 of 161 cases and was the only
+  thing that could, since a claim of completeness reads as its own evidence. Promoted
+  from an optional diagnostic paired with mutation to a *required* closing step
+  (procedure step 7); mutation stays opportunistic (step 8). D3 refined accordingly.
+
+D10 answered in the decision table: the freeze holds through `ui/dialog` and no
+further. `ui/dialog` is the next row.
 
 1. Write the retrospective to `plans/pilot-retrospective.md`, from the numbers in
    `plans/pilot-undo-results.md`: what a contract looks like in this codebase,
@@ -580,10 +614,20 @@ reads this file, so it must exist before that phase starts.
 
 ## Remaining phases
 
-Deliberately not expanded into tasks yet. Each follows the same per-area
-procedure, and their real shape depends on what Phase 13 learns — writing task
-lists for them now would be writing against an unmeasured rate and an unrevised
-guide.
+**Order settled by Phase 13: `ui/dialog` is next, and it is the last row the D10
+freeze covers.** It gets its own plan document — the architectural track below is a
+seam design plus a prototype plus a rollout across 10,010 LOC, which is more than a
+row in a table. Everything after it is contingent on the D10 re-decision that
+`ui/dialog`'s numbers will inform, so the rest of this table stays unexpanded: writing
+task lists for rows that may not run is writing against a decision nobody has made.
+
+The rate to plan against is Phase 13's: **324 main LOC/hour** and **+21.6% main LOC**
+in contract Javadoc, adjusted per row — slower where contracts are musical judgments
+needing confirmation (`dom`, `io`/`midi`), faster where they are geometry
+(`layout`/`engraving`) or contract-only (`ui/platform`).
+
+Each row follows the same per-area procedure, now seven working steps rather than
+eight (steps 3–4 merged, coverage required at step 7).
 
 | Area | Main LOC | Tests | Model | Notes |
 |---|---:|---:|---|---|
@@ -602,6 +646,17 @@ guide.
 | `ui/platform` | 590 | 0 | Sonnet | Contract only; no tests (D15) |
 | Final diagram pass | — | — | Sonnet | Whatever the package phases did not reach |
 
+**Pause points.** Two rows in this table stop for discussion instead of running
+straight through, per direction given 2026-08-11:
+
+- **`dom`** — always pause before starting. It is already the one row parallel
+  agents are barred from (see *Parallel agents* below); the same reasoning
+  extends to pausing before the phase itself, not just before delegating it.
+- **Foundations** — pause before any package agent whose work will involve
+  constructing lines of music (`Line`/`Song`-shaped fixtures or contracts).
+  Foundations packages that don't touch that proceed as planned, one agent per
+  package.
+
 **`ui/dialog` scope (D2, D4).** An architectural track. The dialog is decoupled
 in both directions: a record passed **in**, so it never reaches for `Song`,
 `MainFrame` or the score; a record gathered **out** of the widgets; and a lambda
@@ -619,7 +674,7 @@ from what the design turned out to be.
 
 ## Per-area procedure
 
-Applied in every package phase. D6 is steps 2–4. One commit per step (D11).
+Applied in every package phase. D6 is steps 2–3. One commit per step (D11).
 
 1. **Inventory.** The package's nontrivial APIs, its test-only surface from Phase
    10's record, and which existing `docs/*.md` already cover it.
@@ -627,19 +682,27 @@ Applied in every package phase. D6 is steps 2–4. One commit per step (D11).
    Javadoc for object and subsystem invariants; `docs/` for rules spanning
    subsystems. Domain contracts are proposed and confirmed, not decided
    unilaterally.
-3. **Write the testing-approach Javadoc on each test class** (D8).
-4. **Triage every existing test** against the contracts: keep, rewrite, discard.
-5. **Fix test-only surface** per its category.
-6. **Compile and run the unit suite** for the package.
-7. **Judge the package's diagrams** against the contracts that now exist (D17).
-8. **Diagnostics, deliberately and scoped** (D3, D19). Coverage answers *did this
-   code run?* and finds contract cases you forgot to write. Mutation answers
-   *does anything observe what this code produces?* and finds cases you wrote a
-   test for but pinned nothing useful about. Under contract testing a high
-   surviving-mutant count is the expected, healthy state, because contract tests
-   deliberately leave the implementation free to change — so the mutation *score*
-   measures precisely what we have decided not to optimize and is never reported
-   as a grade.
+3. **Write the testing-approach Javadoc on each test class (D8), triaging as you
+   go** — keep, rewrite, discard. These were separate steps until Phase 13; the
+   pilot showed they are one activity, because writing an accurate *what this
+   class is responsible for* comment requires checking every test in it against
+   the contract, which is the triage. See
+   [`pilot-retrospective.md`](./pilot-retrospective.md) §5.4.
+4. **Fix test-only surface** per its category.
+5. **Compile and run the unit suite** for the package.
+6. **Judge the package's diagrams** against the contracts that now exist (D17).
+7. **Run coverage once, scoped to the package's own test classes** — required, not
+   optional. It answers *did this code run?*, and it is the only step that catches
+   a contract claiming a domain it does not cover, since that claim reads as its
+   own evidence. It produced 22 of the pilot's 161 final cases. Ask of each
+   unexecuted region only whether it is a missing contract case or implementation
+   the contract promises nothing about; never write a test to turn a region green.
+8. **Mutation, opportunistically** (D19). It answers *does anything observe what
+   this code produces?* and finds cases you wrote a test for but pinned nothing
+   useful about. Under contract testing a high surviving-mutant count is the
+   expected, healthy state, because contract tests deliberately leave the
+   implementation free to change — so the mutation *score* measures precisely what
+   we have decided not to optimize and is never reported as a grade.
 
 ---
 

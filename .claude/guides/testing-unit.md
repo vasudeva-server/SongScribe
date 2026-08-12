@@ -109,6 +109,42 @@ than reading N method bodies to confirm they're identical except for a literal.
 See [Contract-Driven Testing](../guides/contracts.md) for how these cases fall
 out of the contract itself.
 
+### Asserting that a table is exhaustive
+
+A hand-listed table covers the domain on the day it is written and silently stops
+covering it the day a constant is added. Wherever the class Javadoc claims a domain
+is enumerated, something has to fail when the domain grows.
+
+Prefer deriving the rows, which needs no extra assertion:
+
+```java
+static Stream<ArticulationType> cases() {
+    return Stream.of(ArticulationType.values());       // grows on its own
+}
+```
+
+When each row needs a fixture that cannot be derived from the constant — a
+subclass instance, a built element, an expected `Strings` key — keep the table and
+assert its coverage separately:
+
+```java
+@Test
+void testCasesCoverEveryArticulationType() {
+    assertThat(cases().map(ArticulationLabelCase::type))
+        .containsExactlyInAnyOrder(ArticulationType.values());
+}
+```
+
+For a sealed hierarchy the domain is its permitted subclasses, and the assertion is
+the same shape against `Hairpin.class.getPermittedSubclasses()`. Where the
+hierarchy nests — `Attachment` permits `MetronomeAttachment`, which itself permits
+two more — the domain is the *leaves*, reached by walking `getPermittedSubclasses()`
+until it comes back empty.
+
+If the domain is private (`OpNames.Category` is a private enum), no assertion can
+reach it. Do not widen it — that is test-only surface. Reword the Javadoc to claim
+what the table actually covers, or make the taxonomy part of the contract.
+
 ## Creating Staff Elements
 
 Never call `ElementType.X.newInstance()` in a test, and never write a local

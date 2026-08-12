@@ -69,6 +69,13 @@ Four consequences worth stating in test-guide terms:
   moment a second `@Test` would be a copy of a sibling with a different literal or
   a different small piece of arrange/edit code, both become rows in one
   `record`-based case table instead. See [Unit Test Guide](./testing-unit.md#parameterized-tests-for-equivalence-classes-and-invariants).
+- **An enumeration you claim must be one the build can check.** Drive the cases
+  from the domain — `@EnumSource`, `Type.values()`, a sealed hierarchy's permitted
+  subclasses — so a new constant reaches the test on its own. Where each row needs
+  a hand-built fixture that cannot be derived that way, assert separately that the
+  table's rows are exactly the domain. A hand-listed table goes on passing while
+  the sentence claiming it is complete quietly stops being true; nothing connects
+  the two. See [Unit Test Guide](./testing-unit.md#asserting-that-a-table-is-exhaustive).
 - **A representative of each distinct input class, plus the extremes, is
   sufficient.** Volume past that is cost without safety.
 - **Where the contract is an invariant, test the invariant** across many
@@ -157,6 +164,20 @@ Where a contract case is deliberately **not** tested, the class Javadoc is where
 that is recorded, with the reason — as the last paragraph above does. An untested
 case with a stated reason is a decision; an untested case with no note is a gap.
 
+**A phrase like "enumerated, not sampled" is a claim, and this is the comment
+where it gets written.** Do not write it unless something in the class fails when
+the domain grows: cases driven from `@EnumSource` / `values()` / a sealed
+hierarchy, or an explicit assertion that the table's rows are exactly the domain.
+This is not a hypothetical failure mode — `OpNamesTest` carried the sentence for
+three domains it did not actually enumerate, and only a coverage run found it,
+because a claim of completeness reads as its own evidence.
+
+Where the domain is a private taxonomy, no assertion can reach it, and widening it
+so a test can is the [no-test-only-surface](#write-from-the-contract-not-from-the-code)
+violation rather than the way out. Either the taxonomy becomes part of the
+contract, or the comment states what it actually covers — "one case per category"
+— and does not claim enumeration.
+
 ## Choosing the level: unit vs. e2e vs. none
 
 Every testable behavior is tested at exactly one level. The contract decides
@@ -220,13 +241,19 @@ A case the contract promises and no test asserts is the fourth finding —
 
 ## Diagnostics: coverage and mutation
 
-Both are debugging aids, invoked deliberately and scoped to what you are
-investigating. Neither runs as a routine phase, and neither produces a number that
-is reported as a grade.
+Neither runs as a routine phase and neither produces a number reported as a grade,
+but they are not peers: coverage closes a package's contract pass, mutation is
+opportunistic.
 
-**Coverage** (`./scripts/coverage.sh`) answers *did this code run?* Run it once
-after a package's tests are derived, and ask of each unexecuted region exactly one
-question:
+**Coverage** (`./scripts/coverage.sh`) answers *did this code run?* **Run it once,
+scoped to the package's own test classes, as the closing step of every contract
+pass** — not as an optional extra. It is the only thing that catches a contract
+claiming a domain it does not cover, because that claim reads as its own evidence
+and re-reading it confirms it. In the `undo` pilot one scoped run produced 22 of
+the package's 161 final cases, all of them behind Javadoc asserting the domains
+were already enumerated in full.
+
+Ask of each unexecuted region exactly one question:
 
 > Does this correspond to a contract case that is missing, or to implementation
 > the contract promises nothing about?

@@ -382,6 +382,16 @@ Judged against the contract's clauses, never against the implementation.
    states, a pair of flags. All of them, via `@ParameterizedTest` with
    `@MethodSource` or `@EnumSource`, costs what picking two costs, and picking
    two is what leaves the third one broken.
+6a. **A claimed enumeration nothing keeps true.** Distinct from 6, and invisible
+    to it: the table is complete today, so nothing looks sampled, but the rows are
+    hand-written literals while the test class Javadoc says the domain is
+    "enumerated in full." Adding a constant then leaves the claim false and the
+    suite green. Check the pair — wherever the Javadoc claims a complete domain,
+    the cases must come from `@EnumSource` / `values()` / a sealed hierarchy's
+    permitted subclasses, or a separate assertion must pin the table's rows to the
+    domain. Neither present is a finding against the test, not the contract.
+    Where the domain is private, widening it is test-only surface and not the fix;
+    the finding is that the Javadoc claims what it cannot back.
 7. **A missing input class or extreme** — the contract names classes of behavior
    and their boundaries; each needs a representative, and the extremes need one
    each. Volume past that is cost without safety, so absence of a *third* example
