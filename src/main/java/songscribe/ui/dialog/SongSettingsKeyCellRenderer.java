@@ -33,7 +33,6 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.KeySignatureDisplay;
 import songscribe.ui.component.BaseLabel;
-import songscribe.ui.dialog.SongSettingsDialog.KeySelection;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 

@@ -33,6 +33,7 @@ import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -76,6 +77,12 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private final JCheckBox unofficialTranslationCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_UNOFFICIAL_TRANSLATION)
     );
+
+    // The unofficial-translation checkbox and the gap above it, as one thing that can be
+    // hidden. Always built and shown only for a song that has a translation: this dialog is
+    // reached through a cached action and outlives every document, so which song is open is
+    // not something its construction can decide.
+    private final JPanel translationRow = new JPanel();
     private final JCheckBox arrangementCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_ARRANGEMENT)
     );
@@ -89,6 +96,11 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private final JLabel subAttributionFontLabel = FontSettingRow.createFontDescriptionLabel();
     private Font attributionFont;
     private Font subAttributionFont;
+
+    // Whether the song carries a translation, which decides both whether the
+    // unofficial-translation checkbox is shown at all and whether the preview renders the
+    // translation credit. Set by populate on every opening.
+    private boolean hasTranslation = false;
 
     SongSettingsAttributionTab(SongSettingsDialog dialog, SongSettingsTitleTab titleTab) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION));
@@ -105,9 +117,11 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
         );
 
-        var fonts = dialog.requireScoreView().getDocumentFonts();
-        attributionFont = fonts.getFont(FontKey.ATTRIBUTION);
-        subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
+        // Placeholders so the font suppliers the chooser rows capture are never null before
+        // the first populate; the document's own fonts replace them on every opening.
+        var defaults = DocumentFonts.defaultFonts();
+        attributionFont = defaults.getFont(FontKey.ATTRIBUTION);
+        subAttributionFont = defaults.getFont(FontKey.SUB_ATTRIBUTION);
 
         build();
     }
@@ -251,13 +265,12 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         composerRow.add(arrangementCheck, BorderLayout.EAST);
         section.add(composerRow);
 
-        var song = dialog.getSong();
-
-        if (!song.getTranslatedLyrics().isEmpty()) {
-            BaseDialog.addSeparator(section);
-            unofficialTranslationCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
-            section.add(unofficialTranslationCheck);
-        }
+        translationRow.setLayout(new BoxLayout(translationRow, BoxLayout.Y_AXIS));
+        translationRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+        BaseDialog.addSeparator(translationRow);
+        unofficialTranslationCheck.setAlignmentX(Component.LEFT_ALIGNMENT);
+        translationRow.add(unofficialTranslationCheck);
+        section.add(translationRow);
 
         addHorizontalDivider(section);
 
@@ -431,7 +444,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     private List<AttributionLine> buildPreviewLines() {
-        var song = dialog.getSong();
         // Read live widget values, not committed Song state, so the preview
         // reflects uncommitted edits. The SongMetadata constructor normalizes
         // each field, so the raw widget text is passed through directly.
@@ -445,12 +457,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         var arrangement = arrangementCheck.isSelected();
         var unofficialTranslation = unofficialTranslationCheck.isSelected();
-        var gatedDate = SongSettingsDialog.gatedWordsDate(
-            differentDateCheckbox.isSelected(),
-            wordsDate.getYear(),
-            wordsDate.getMonth(),
-            wordsDate.getDay()
-        );
+        var gatedDate = getWordsDate();
         var metadata = new SongMetadata(
             titleTab.getTitleText(),
             titleTab.getNumberText(),
@@ -468,7 +475,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             gatedDate.month(),
             gatedDate.day()
         );
-        var showTranslation = !unofficialTranslation && !song.getTranslatedLyrics().isEmpty();
+        var showTranslation = !unofficialTranslation && hasTranslation;
         return AttributionFormatter.lines(metadata, showTranslation);
     }
 
@@ -509,45 +516,63 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         return unofficialTranslationCheck.isSelected();
     }
 
-    boolean isDifferentDate() {
-        return differentDateCheckbox.isSelected();
+    /**
+     * The date the words were written.
+     *
+     * <p>An unchecked "different date" box contributes no date at all, whatever its fields
+     * still hold — the box is what says the words have a date of their own, and its three
+     * fields keep their last values while it is hidden. Both the commit and the preview ask
+     * here, so neither can disagree with what the box says.
+     *
+     * @return the three components as typed, or {@link WordsDate#NONE} when the box is
+     *         unchecked
+     */
+    WordsDate getWordsDate() {
+        if (!differentDateCheckbox.isSelected()) {
+            return WordsDate.NONE;
+        }
+
+        return new WordsDate(wordsDate.getYear(), wordsDate.getMonth(), wordsDate.getDay());
     }
 
-    String getWordsYearText() {
-        return wordsDate.getYear();
-    }
+    /**
+     * Sets every control on this tab to show {@code input}.
+     *
+     * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
+     * with nothing else touched, answer the same values — with the one documented exception
+     * that a words date equal to the music date arrives already collapsed to
+     * {@link WordsDate#NONE}, because {@code SongMetadata} stores it that way.
+     *
+     * <p>Shows or hides the unofficial-translation checkbox to match the song, which is a
+     * per-opening decision rather than a construction-time one.
+     *
+     * @param input the settings this opening of the dialog is showing
+     */
+    void populate(SongSettingsInput input) {
+        var metadata = input.metadata();
 
-    int getWordsMonth() {
-        return wordsDate.getMonth();
-    }
+        hasTranslation = input.lyrics().hasTranslation();
+        translationRow.setVisible(hasTranslation);
 
-    int getWordsDay() {
-        return wordsDate.getDay();
-    }
+        placeField.setText(metadata.place());
+        musicDate.setValues(metadata.year(), metadata.month(), metadata.day());
+        composerField.setText(metadata.composer());
+        lyricistField.setText(metadata.lyricist());
+        sourceCombo.setSelectedItem(metadata.lyricsSource());
+        arrangementCheck.setSelected(metadata.arrangement());
+        unofficialTranslationCheck.setSelected(metadata.unofficialTranslation());
 
-    @Override
-    protected boolean getData() {
-        var song = dialog.getSong();
-        placeField.setText(song.getPlace());
-        musicDate.setValues(song.getYear(), song.getMonth(), song.getDay());
-        composerField.setText(song.getComposer());
-        lyricistField.setText(song.getLyricist());
-        sourceCombo.setSelectedItem(song.getLyricsSource());
-        arrangementCheck.setSelected(song.isArrangement());
-        unofficialTranslationCheck.setSelected(song.isUnofficialTranslation());
-
-        var wordsYear = song.getWordsYear();
-        wordsDate.setValues(wordsYear, song.getWordsMonth(), song.getWordsDay());
+        var wordsYear = metadata.wordsYear();
+        wordsDate.setValues(wordsYear, metadata.wordsMonth(), metadata.wordsDay());
         differentDateCheckbox.setSelected(!wordsYear.isEmpty());
         syncWordsDatePanel();
         wordsDate.updateFieldStates();
 
-        // Populate both font rows' description labels from the document and
-        // refresh the preview with the current fonts.
-        var fonts = dialog.requireScoreView().getDocumentFonts();
+        // Populate both font rows' description labels and, through them, refresh the preview
+        // with the fonts just set.
+        var fonts = input.fonts();
         FontSettingRow.applyFont(fonts.getFont(FontKey.ATTRIBUTION), attributionFontLabel, this::applyAttributionFont);
         FontSettingRow.applyFont(fonts.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel, this::applySubAttributionFont);
-        return true;
     }
 
     /**

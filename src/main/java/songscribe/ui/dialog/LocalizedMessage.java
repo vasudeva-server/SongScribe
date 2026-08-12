@@ -36,6 +36,11 @@ import java.util.List;
  * <p>Instances are immutable: {@link #args()} answers an unmodifiable list unaffected by later
  * changes to the list the constructor was given.
  *
+ * <p>An argument may itself be a {@code LocalizedMessage}, which is how a message names a
+ * user-facing word it must not resolve — a unit abbreviation, a role name. The presenter
+ * resolves it along with the pattern. A nested message takes no arguments of its own, so the
+ * nesting is one level deep and never recursive.
+ *
  * @param key  a {@link songscribe.Strings} constant, never a raw string literal
  * @param args the pattern arguments, in the order {@code key}'s pattern indexes them; empty when
  *             the value is literal text

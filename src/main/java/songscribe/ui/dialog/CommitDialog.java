@@ -19,6 +19,7 @@
  */
 package songscribe.ui.dialog;
 
+import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
@@ -126,16 +127,49 @@ public abstract class CommitDialog<I> extends StandardDialog {
         var result = validate(values);
 
         if (!result.isValid()) {
-            var failure = result.failures().getFirst();
-            var message = failure.message();
-            OptionDialogs.showErrorMessage(
-                contentPanel, failure.titleKey(), message.key(), message.args().toArray()
-            );
-
+            showFailure(result.failures().getFirst());
             return false;
         }
 
         commit(values);
         return true;
+    }
+
+    /**
+     * Tells the user why something was refused, as an error alert over this dialog.
+     *
+     * <p>OK's own refusals come through here, and so does any refusal a control reports before
+     * OK is ever pressed — a field whose {@link java.awt.event.FocusListener} or
+     * {@link javax.swing.InputVerifier} checks the same rule the back end will. Both routes
+     * present the same {@link ValidationFailure}, so the user cannot be told two different
+     * things about one mistake, and the rule stays stated in one place whichever way it is
+     * reached.
+     *
+     * <p>Shows exactly one alert. Where several failures were reported, choosing which is
+     * {@link #commitOnOk()}'s decision, not this method's.
+     *
+     * @param failure the reason to show, resolved to text here and nowhere earlier
+     */
+    protected final void showFailure(ValidationFailure failure) {
+        var message = failure.message();
+        OptionDialogs.showErrorMessage(
+            contentPanel, failure.titleKey(), message.key(), resolveArgs(message)
+        );
+    }
+
+    /**
+     * Resolves the arguments a message's pattern needs, turning any that is itself a
+     * {@link LocalizedMessage} into its text.
+     *
+     * <p>That nesting is how a failure names a user-facing word — a unit, a role — without
+     * whoever decided the failure having resolved it. Nested messages carry no arguments of
+     * their own, so one level is the whole of it.
+     */
+    private static Object[] resolveArgs(LocalizedMessage message) {
+        return message
+            .args()
+            .stream()
+            .map(arg -> arg instanceof LocalizedMessage nested ? Strings.get(nested.key()) : arg)
+            .toArray();
     }
 }

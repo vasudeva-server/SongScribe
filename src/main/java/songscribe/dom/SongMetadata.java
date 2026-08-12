@@ -143,4 +143,89 @@ public record SongMetadata(
         return StringUtils.processText(StringUtils.stripLinefeeds(text), true);
     }
 
+    private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;
+
+    /**
+     * Builds a title out of the opening words of {@code lyrics}, the way a song with no title
+     * of its own is conventionally named after its first line.
+     *
+     * <p>Each word's first letter is capitalized, and the words are separated by single
+     * spaces however {@code lyrics} separated them: a space and a newline both end a word.
+     *
+     * <p>The lyrics arrive in the notation the score stores them in, not as prose, so two
+     * marks are read rather than copied:
+     * <ul>
+     *   <li>an underscore is a melisma marker — a syllable held across notes — and
+     *       contributes no character, so {@code "Hel_lo"} yields {@code "Hello"};</li>
+     *   <li>a single hyphen joins the syllables of one word and disappears with it, while a
+     *       double hyphen is a real hyphen and both survives and ends a word.</li>
+     * </ul>
+     *
+     * <p>Fewer words than asked for is not an error: lyrics shorter than {@code maxWords}
+     * yield all of them. Lyrics that yield no characters at all — every one of them a melisma
+     * marker — yield an empty title rather than failing.
+     *
+     * <p>The result is not normalized; {@link #normalizeTitle} is still the step between this
+     * and a committed title.
+     *
+     * @param lyrics   the song's lyrics, run together as {@code Song.getLyricsText} builds
+     *                 them; may be empty
+     * @param maxWords how many words to take, at least 1
+     * @return the derived title, or an empty string when {@code lyrics} yields no characters
+     */
+    public static String titleFromLyrics(String lyrics, int maxWords) {
+        var words = new StringBuilder(LYRICS_TITLE_BUFFER_CAPACITY);
+        var wordCount = 0;
+        var firstLetter = false;
+        var lastHyphen = false;
+
+        goThruString:
+        for (var i = 0; i < lyrics.length(); i++) {
+            switch (lyrics.charAt(i)) {
+                case ' ', '\n' -> {
+                    wordCount++;
+
+                    if (wordCount >= maxWords) {
+                        break goThruString;
+                    }
+
+                    words.append(' ');
+                    firstLetter = true;
+                }
+                case '-' -> {
+                    if (lastHyphen) {
+                        words.append('-');
+                        wordCount++;
+                        firstLetter = true;
+                    }
+
+                    lastHyphen = !lastHyphen;
+                }
+                case '_' -> {
+                }
+                default -> {
+                    if (firstLetter) {
+                        words.append(
+                            String.valueOf(lyrics.charAt(i)).toUpperCase()
+                        );
+                        firstLetter = false;
+                    } else {
+                        words.append(lyrics.charAt(i));
+                    }
+
+                    lastHyphen = false;
+                }
+            }
+        }
+
+        // Lyrics made up only of separators (e.g. all underscores) leave the buffer empty;
+        // guard before indexing the last character so the trim does not throw on an empty
+        // buffer.
+        if (!words.isEmpty() && !Character.isLetter(words.charAt(words.length() - 1))) {
+            words.deleteCharAt(words.length() - 1);
+        }
+
+        return words.toString();
+    }
+
 }

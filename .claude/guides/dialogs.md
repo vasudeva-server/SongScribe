@@ -17,9 +17,9 @@ That line, not a package line, is where the boundary runs. A `songscribe.dom` im
 
 What the dialog needs arrives as values and leaves as values:
 
-- **a record in** — what to show, handed over at construction;
+- **a record in** — what to show. A dialog constructed per gesture takes it at construction (`AttachmentDialog`). A dialog reached through a cached `DialogOpenAction` outlives every document, so it asks its back end for the record on **each opening** instead — `SongSettingsBackEnd.read()`, called from `getData()`;
 - **a record out** — what the controls now say, gathered on OK;
-- **a back end** — a `DialogBackEnd<I>` supplied already bound to the document state it acts on. The dialog calls `validate(I)` and `apply(I)` and knows nothing else. `AttachmentBackEnd` extends it for dialogs that also offer Remove.
+- **a back end** — a `DialogBackEnd<I>` supplied already bound to the document state it acts on. The dialog calls `validate(I)` and `apply(I)` and knows nothing else. `AttachmentBackEnd` extends it for dialogs that also offer Remove; `SongSettingsBackEnd` for the one that also reads.
 
 **Whoever opens the dialog does the binding.** The free functions behind a back end are written domain-object-first, so they read and test as domain operations; a dialog calling one directly would need the `Song`, which is the coupling the back end removes. `AttachmentEditor` is the worked example — it resolves the element and line, builds the back end around them, and hands the dialog something that already holds them. Implementations live in `songscribe.ui.dialog.backend`.
 
@@ -105,6 +105,8 @@ Override hooks: `gather()` → `I` (read-only, total over every reachable contro
 
 `CommitDialog` presents failures itself, via `OptionDialogs` — **only the first**, since `ValidationResult` promises presentation order and stacking modal alerts is worse than under-reporting. A dialog that shows its own validation alert has re-fused deciding with displaying.
 
+`showFailure(ValidationFailure)` is that presentation, exposed so a control that checks a rule **before** OK — a field's `InputVerifier`, a focus listener — reports it the same way. Such a control asks the same free function the back end will (`LineWidthRules.validate` is the worked example) and hands the failure here, so the two routes cannot tell the user different things about one mistake. A `LocalizedMessage` argument that is itself a `LocalizedMessage` is resolved here, which is how a failure names a user-facing word — a unit abbreviation — without the back end having resolved it.
+
 `modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
 
 Canonical small example: `FontDialog` — adds content to `contentPanel`, overrides `getData()` with a `super` call and `gather()`/`commit()` for the chosen font, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`/`modifyButtonPanel()`.
@@ -118,6 +120,8 @@ Override `initContents()` to add components. `add(c)` auto-applies constraints. 
 Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`, `tabWillHide()`.
 
 **A tab populates and displays; it does not commit and it does not validate.** Both belong to the dialog, because both are about the gathered values as a whole: a rule spanning tabs cannot be checked from inside one of them, and a commit split across tabs is several undo steps for one edit. A tab contributes what its controls say and stops there.
+
+A tab in a record-boundary dialog takes its values as a parameter rather than reaching for them: `populate(Input)` in, a typed getter or a slice record out (`SongSettingsMusicTab.populate`/`gather`). `Tab.getData()` stays the generic hook for tabs that need no input.
 
 `getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
 

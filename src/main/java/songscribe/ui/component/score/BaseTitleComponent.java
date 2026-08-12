@@ -48,25 +48,40 @@ import songscribe.util.StringUtils;
  * When {@link #songText()} is empty the component collapses to {@code (0, 0)}
  * and no gap is emitted — a subtitle with no text takes up no space.
  * <p>
- * The preview text mechanism ({@link #setPreviewText}) lets settings dialogs
- * render unsaved text without mutating the song.
+ * The preview mechanism ({@link #setPreview}) lets settings dialogs render unsaved text
+ * without mutating the song — and without holding one, since a {@link Preview} supplies both
+ * the text and the width to wrap it at.
  */
 public abstract class BaseTitleComponent extends ScoreComponent {
 
     /**
-     * When non-null, overrides the song text drawn by the component. Lets the
-     * song settings dialog render a live preview of the unsaved text without
-     * mutating the song.
+     * Text this component draws in place of the song's own, and the width to wrap it at.
+     *
+     * <p>The two travel together because they are the two things this component would
+     * otherwise read out of the song, and a preview that supplied only one of them would
+     * still need a song for the other. Supplying both is what lets a settings dialog show
+     * unsaved text without holding the document.
+     *
+     * @param text        the text to draw; empty draws nothing and collapses the component
+     * @param wrapWidthSs the width the text may occupy before it wraps, in staff spaces
      */
-    @Nullable
-    private String previewText;
+    public record Preview(String text, double wrapWidthSs) {}
 
     /**
-     * Overrides the rendered text with the given preview text, or restores
-     * rendering from the song when {@code null}.
+     * What to draw instead of the song, or {@code null} to draw the song.
      */
-    public void setPreviewText(@Nullable String previewText) {
-        this.previewText = previewText;
+    @Nullable
+    private Preview preview;
+
+    /**
+     * Draws {@code preview} in place of the song's own text and line width, or restores
+     * rendering from the song when {@code null}.
+     *
+     * <p>A component showing a preview needs no song and never consults one, so this is the
+     * whole of what a detached preview has to be given.
+     */
+    public void setPreview(@Nullable Preview preview) {
+        this.preview = preview;
         revalidate();
         repaint();
     }
@@ -112,11 +127,18 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
     /**
      * The line width in pixels the text is allowed to occupy, used for wrapping only:
-     * the document line width scaled by this component's zoom. On the score it
-     * tracks the view zoom; a detached preview (no {@code ScoreView}) resolves to
-     * {@link songscribe.ui.ViewScale#IDENTITY} and so renders at natural size.
+     * the preview's width when one is set, otherwise the document line width, scaled by this
+     * component's zoom. On the score it tracks the view zoom; a detached preview (no
+     * {@code ScoreView}) resolves to {@link songscribe.ui.ViewScale#IDENTITY} and so renders
+     * at natural size.
      */
     private int lineWidthPx() {
+        var currentPreview = preview;
+
+        if (currentPreview != null) {
+            return toViewPx(new Ss(currentPreview.wrapWidthSs())).roundedPx();
+        }
+
         var theSong = song;
 
         if (theSong == null) {
@@ -148,24 +170,25 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         return 0;
     }
 
-    /** Returns the text to render, using the preview override when set. */
-    private String textToRender() {
-        return previewText != null ? previewText : songText();
-    }
-
     /**
      * The text to draw, or null when there is nothing to draw.
      * <p>
-     * Deliberately answerable without {@link FontMetrics}. A component that has no song
-     * has never been given a font either, and {@code getFontMetrics(null)} throws, so
-     * {@link #getPreferredSize} has to settle this <em>before</em> it measures.
+     * Deliberately answerable without {@link FontMetrics}. A component that has neither a
+     * song nor a preview has never been given a font either, and
+     * {@code getFontMetrics(null)} throws, so {@link #getPreferredSize} has to settle this
+     * <em>before</em> it measures.
      */
     private @Nullable String textToRenderOrNull() {
-        if (song == null) {
+        var currentPreview = preview;
+        String text;
+
+        if (currentPreview != null) {
+            text = currentPreview.text();
+        } else if (song != null) {
+            text = songText();
+        } else {
             return null;
         }
-
-        var text = textToRender();
 
         return text.isEmpty() ? null : text;
     }
@@ -265,10 +288,6 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
     @Override
     protected void render(Graphics2D g2) {
-        if (song == null) {
-            return;
-        }
-
         // A bare JComponent does not fill its background even when opaque, so do
         // it here. On the score the component is transparent (opaque == false);
         // the settings-dialog preview makes it opaque to paint the page color.

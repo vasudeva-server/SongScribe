@@ -74,7 +74,7 @@ such in `.agents/guides/dialogs.md`. Do not convert either.
 |-------|-------------|--------|----------|
 | 1 | [Design the Seam and Prove It on the AttachmentDialog Family](#-phase-1-design-the-seam-and-prove-it-on-the-attachmentdialog-family) | ✅ Complete | — |
 | 2 | [Commit the Seam to BaseDialog and StandardDialog](#-phase-2-commit-the-seam-to-basedialog-and-standarddialog) | ✅ Complete | — |
-| 3 | [SongSettingsDialog and Its Tabs](#-phase-3-songsettingsdialog-and-its-tabs) | ⏳ Pending | — |
+| 3 | [SongSettingsDialog and Its Tabs](#-phase-3-songsettingsdialog-and-its-tabs) | ✅ Complete | — |
 | 4 | [KeySignatureChangeDialog](#-phase-4-keysignaturechangedialog) | ⏸️ Blocked by external | — |
 | 5 | [Export, Preferences and Resolution](#-phase-5-export-preferences-and-resolution) | ⏳ Pending | — |
 | 6 | [Parent-Window-Only Dialogs](#-phase-6-parent-window-only-dialogs) | ⏳ Pending | — |
@@ -303,15 +303,114 @@ main compiles.
 
 ---
 
-## ⏳ Phase 3: SongSettingsDialog and Its Tabs
+## ✅ Phase 3: SongSettingsDialog and Its Tabs
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/SongSettingsDialog.java, src/main/java/songscribe/ui/dialog/SongSettingsMusicTab.java, src/main/java/songscribe/ui/dialog/SongSettingsTitleTab.java, src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java, src/main/java/songscribe/ui/dialog/SongSettingsFontTab.java, src/main/java/songscribe/ui/dialog/SongSettingsDateInputRow.java  <br>
 **Recommended model/effort:** Opus, high — the hardest case: 491 lines plus five collaborators, cross-tab validation ordering, and ten pieces of real logic to extract.
 
 This is the dialog the whole policy was written against — 491 production lines against
 1,346 test lines across three files plus a fixture.
+
+### What it did
+
+**`SongSettingsDialog` is a `CommitDialog<SongSettingsOutput>` holding no song and no score.**
+`SongSettingsInput` in, `SongSettingsOutput` out, `SongSettingsBackEnd` between —
+implemented by `backend/ScoreSongSettingsBackEnd` over a new `SongSettingsTarget` (four
+methods; `ScoreView` already had all four and now implements it, which is what keeps
+`JComponent` out of the package's signatures). `Actions.initialize` does the binding, so the
+opener binds and the dialog never reaches.
+
+**The back end reads as well as writes, which `AttachmentBackEnd` does not have to.**
+`SongSettingsDialog` is reached through a cached `DialogOpenAction` and outlives every
+document, so the input cannot be handed over at construction; `SongSettingsBackEnd.read()`
+answers it on each opening. `.agents/guides/dialogs.md` now states both shapes.
+
+**The extracted rules and where they went:**
+
+| Was | Now |
+|---|---|
+| `SongSettingsDialog.lyricsFit(Song, Font, Font, double)` | `backend/SongSettingsRules.lyricsFit(Song, LyricsFontChange, double)` — the two adjacent `Font`s were the signature rule's own example |
+| `canonicalKeySelectionFrom` / `applyMusicTabChanges` | `backend/SongSettingsRules`; the latter renamed `applyMusicSettings` and now takes a `Tempo`, so its four field comparisons became `Tempo.haveSameValue` |
+| `validateLineWidthText(String, boolean)` + `pendingLineWidthSs(...)` + `SongSettingsMusicTab.validateLineWidth` / `...OrShowError` / `getPendingLineWidthSs` | `backend/LineWidthRules.validate(LineWidthEntry) → ValidationResult` and `resolveSs(Song, LineWidthEntry)` |
+| `extractLyricsTitle(String, int)` | `SongMetadata.titleFromLyrics` — it derives a title, and `SongMetadata` is what owns titles |
+| `gatedWordsDate(boolean, …)` | did **not** survive as a free function — see below |
+| `SongSettingsAttributionTab.resolveLyricistText` | private on that tab; it is two lines used twice inside it |
+| `SongSettingsDateInputRow.dayEnabled` | unchanged; it was already a static predicate with no reach |
+
+**`gatedWordsDate` collapsed rather than moving.** Its four call arguments were four getters on
+the Attribution tab, all of which the dialog was reaching through. With the widget reads
+consolidated into `SongSettingsAttributionTab.getWordsDate()` — the tab's only words-date
+surface, used by both the commit and the preview — the gate is a single `if` beside the
+checkbox it is about, and its promise is that method's contract. Four getters left the tab's
+surface with it.
+
+**The `-1` sentinel is gone, and with it a double parse.** `validateLineWidthText` collapsed
+"unparseable" and "out of range" into `-1`, so `validateLineWidthOrShowError` parsed a second
+time to work out which message to show. `LineWidthRules.validate` answers a `ValidationResult`
+that already carries the right failure, and the field's `InputVerifier` and the back end now
+ask that one function. The `boolean isMetric` became `songscribe.util.LengthUnit`, which owns
+the inch/cm conversion and its own label key.
+
+**`CommitDialog.showFailure(ValidationFailure)`** is the single presentation path, so the
+verifier's pre-OK report and OK's own report cannot differ. `LocalizedMessage` gained one
+documented rule to make that work without resolving text in the back end: an argument may
+itself be a `LocalizedMessage`, resolved by the presenter — which is how the range message
+names `cm` or `inches`.
+
+### Three findings acted on, each outside `ui/dialog`
+
+1. **`BaseTitleComponent` handed the previews a whole `Song` for one number.**
+   `titlePreview.setSong(song)` existed so `lineWidthPx()` could read
+   `song.getLineWidthSs()` as a wrap constraint; the text always came from `setPreviewText`.
+   `setPreviewText(String)` is now `setPreview(@Nullable Preview)`, where
+   `Preview(String text, double wrapWidthSs)` supplies both — completing a preview seam whose
+   class doc already claimed previews needed no song. The `song == null` early return in
+   `render()` went with it; `textToRenderOrNull()` already answered that question, and it
+   answers it after the background fill rather than before.
+2. **The unofficial-translation checkbox was decided at construction and never revisited.**
+   `createMusicSection()` added it only `if (!song.getTranslatedLyrics().isEmpty())`, in a
+   dialog `DialogOpenAction` caches — so a song opened after a translation-less one never got
+   the checkbox. It is now always built, inside a `translationRow` whose visibility
+   `populate` sets. A live bug, fixed rather than reproduced.
+3. **`extractLyricsTitle` was a title-derivation rule parked on a dialog.** Moved to
+   `SongMetadata` beside `normalizeTitle`, and its contract written out — the melisma
+   underscore, the single-versus-double hyphen, and the empty result. Phase 7 task 2 already
+   lists that hyphen and melisma handling as a **domain** contract needing confirmation; it
+   is written as a proposal and is not yet confirmed.
+
+### The work list Phase 3 handed on
+
+`./scripts/compile.sh` ends on **12 errors, all in Phases 4 and 5's classes** — exactly the
+subset of Phase 2's list that Phase 3 did not own:
+
+| Phase | Class | Errors | Lines |
+|---|---|--:|---|
+| 4 | `KeySignatureChangeDialog` | 3 | 71, 81, 89 |
+| 5 | `ExportMidiDialog` | 4 | 65, 68, 84 (×2) |
+| 5 | `ExportPDFDialog` | 2 | 39, 51 |
+| 5 | `ResolutionDialog` | 2 | 95, 128 |
+| 5 | `PreferencesDialog` | 1 | 172 |
+
+**Main was verified to compile clean.** The five classes above were temporarily scaffolded —
+`getSong`/`getScoreView`/`requireScoreView` back on `BaseDialog`, `isValidData`/`setData` back
+on `StandardDialog` — `./scripts/compile.sh` printed SUCCESS with NullAway and the dead-key
+audit running over every new file, and the scaffold was then removed. Without it nothing after
+the resolution errors runs, so "the tree does not compile" would otherwise have hidden whether
+this phase's own code does.
+
+**Test-tree breakage, for Phase 8** (`./scripts/compile.sh --test`, 45 errors, scaffold in
+place). Phase 3 owns 39 of them:
+
+| File | Errors | Cause |
+|---|--:|---|
+| `SongSettingsDialogTest` | 37 | the five statics it drives all moved or changed shape |
+| `SongSettingsDialogFixture` | 1 | `new SongSettingsDialog(frame)` — the constructor takes a back end. Cascades to `SongSettingsDialogShowTest` |
+| `SongSettingsDialogValidationTest` | 1 | `getLineWidthFieldForTest()`, deleted |
+| `TempoChangeDialogTest`, `AnnotationDialogTest`, `AttachmentDialogTest`, `StandardDialogTest` | 6 | Phases 1 and 2 left these; unchanged here |
+
+Nothing was repaired, per task 6.
 
 ### Tasks
 

@@ -50,6 +50,7 @@ import songscribe.io.LoadWarning;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongFileLoader;
 import songscribe.ui.dialog.MigrationWindow;
+import songscribe.ui.dialog.backend.SongSettingsTarget;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.dom.DocPx;
@@ -119,7 +120,8 @@ public final class ScoreView
     LineLayoutProvider,
     OverlayHost,
     RenderContext,
-    ScoreActions {
+    ScoreActions,
+    SongSettingsTarget {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
