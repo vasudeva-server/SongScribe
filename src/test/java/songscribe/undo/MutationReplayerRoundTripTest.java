@@ -28,10 +28,16 @@ import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.awt.Font;
+import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
@@ -104,6 +110,15 @@ import songscribe.ui.selection.ReflectionTestHelper;
  *
  * <p><b>Boundaries</b> — index 0 and the last index for insertion and deletion, the sole
  * line of a score, and a deletion that removes an entire hairpin rather than shortening it.
+ *
+ * <p>Where a nested class's cases all drive {@code assertRoundTrip} through the same
+ * fixture-then-edit shape, they are rows in a {@code record} case table over one
+ * {@code @ParameterizedTest} rather than one method per case — {@link ElementMutations},
+ * {@link LineMutations}, {@link LineLayoutMutations}, {@link SpanMutations} and
+ * {@link SongScopedMutations}. A case whose <em>assertions</em> differ, not just its
+ * fixture — {@link ElementParentage}'s per-mutation-kind checks, {@link HairpinExecution},
+ * {@link DeferredInsertionRepair}, {@link Fonts}'s undo/redo dispatch check, and the beam
+ * merge and line key/accidental-count cases — stays its own method.
  */
 class MutationReplayerRoundTripTest extends UnitTest {
 
@@ -153,161 +168,116 @@ class MutationReplayerRoundTripTest extends UnitTest {
     @Nested
     class ElementMutations {
 
-        @Test
-        void testElementInsertionRoundTrips() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addElement(1, UndoTestSupport.crotchet()));
+        private record ElementMutationCase(String description, int noteCount, BiFunction<Song, Line, Runnable> editFactory) {
         }
 
-        @Test
-        void testElementDeletionRoundTrips() {
-            var song = songWithNotes(3);
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testElementMutationRoundTrips(ElementMutationCase testCase) {
+            var song = songWithNotes(testCase.noteCount());
             var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.removeElement(1));
+            assertRoundTrip(song, testCase.editFactory().apply(song, line));
         }
 
-        @Test
-        void testElementRangeDeletionRoundTrips() {
-            var song = songWithNotes(4);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.removeRange(1, 2));
-        }
-
-        @Test
-        void testElementReplacementRoundTrips() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.setElement(1, quaver()));
-        }
-
-        /**
-         * Retyping the song's auto-maintained terminal barline (issue #713) is an ordinary
-         * user edit, so undo must put the previous type back. Worth pinning separately from
-         * the plain replacement above because the terminal reaches
-         * {@code Line.setElement} through {@code Song.replaceTerminal}, the one path exempt
-         * from the guard that otherwise forbids replacing the terminal.
-         */
-        @Test
-        void testTerminalRetypeRoundTrips() {
-            var song = songWithNotes(3);
-            assertRoundTrip(song, () -> song.replaceTerminal(ElementType.REPEAT_RIGHT));
-        }
-
-        @Test
-        void testElementModificationRoundTrips() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () ->
-                line.modifyElement(1, ElementField.FERMATA, () -> line.getElement(1).setFermata(true)));
-        }
-
-        @Test
-        void testDeletingBeamedNoteRestoresNoteAndBeamOnUndo() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() ->
-                line.addBeaming(new Beam(line.getElement(0), line.getElement(1))));
-
-            // Deleting a beam endpoint invalidates and removes the beam as a companion;
-            // undo must restore both the note and the beam.
-            assertRoundTrip(song, () -> line.removeElement(1));
-        }
-
-        @Test
-        void testDeletingHairpinEndpointRestoresTheOriginalSpanOnUndo() {
-            var song = songWithNotes(4);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() ->
-                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2))));
-
-            // Deleting an endpoint shortens the crescendo — a companion removal plus the
-            // addition of a copy; undo must restore both the note and the original span.
-            assertRoundTrip(song, () -> line.removeElement(0));
-        }
-
-        @Test
-        void testDeletingHairpinEndNoteWithSurvivingRestRoundTrips() {
-            var song = new Song();
-            var line = song.getLine(0);
-            UndoTestSupport.addCrotchets(song, line, 3);
-            song.withoutMutationTracking(() -> {
-                line.addElement(crotchetRest());
-                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2)));
-            });
-
-            // Deleting the hairpin's end note leaves a surviving rest right after it;
-            // resolveEndIndex moves the end in to that rest rather than dropping the
-            // hairpin — undo must restore the original note and span.
-            assertRoundTrip(song, () -> line.removeElement(2));
-        }
-
-        @Test
-        void testDeletingElementBetweenHairpinsRestoresBothOnUndo() {
-            var song = songWithNotes(5);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() -> {
-                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
-                line.addCrescendo(new Crescendo(line.getElement(3), line.getElement(4)));
-            });
-
-            // Deleting the only element between them merges the two crescendos into one;
-            // undo must restore the note and both original crescendos.
-            assertRoundTrip(song, () -> line.removeElement(2));
-        }
-
-        @Test
-        void testDeletingTiedNoteRestoresNoteAndTieOnUndo() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() ->
-                line.addTie(new Tie(line.getElement(0), line.getElement(1))));
-
-            assertRoundTrip(song, () -> line.removeElement(1));
-        }
-
-        @Test
-        void testInsertingAtIndexZeroDisplacesInitialTempoAttachment() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() -> {
-                var first = line.getElement(0);
-                // The attachment's tempo value is irrelevant to the displacement
-                // round-trip; a fresh non-null Tempo keeps the null-marked package happy.
-                first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
-            });
-
-            // Prepending to the first line moves the initial-tempo attachment onto the
-            // new first element via a tracked companion modification; undo must move it back.
-            assertRoundTrip(song, () -> line.addElement(0, UndoTestSupport.crotchet()));
-        }
-
-        @Test
-        void testDeletingIndexZeroReanchorsInitialTempoAttachment() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() -> {
-                var first = line.getElement(0);
-                first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
-            });
-
-            // The mirror image of the insertion case above: deleting the first element of
-            // the first line moves the initial-tempo attachment onto the element that takes
-            // its place, via a tracked companion modification recorded after the deletion.
-            // Undo must strip that tempo and bring back the element that owned it.
-            assertRoundTrip(song, () -> line.removeElement(0));
-        }
-
-        @Test
-        void testDeletingARangeFromIndexZeroReanchorsInitialTempoAttachment() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            song.withoutMutationTracking(() -> {
-                var first = line.getElement(0);
-                first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
-            });
-
-            assertRoundTrip(song, () -> line.removeRange(0, 1));
+        static Stream<ElementMutationCase> cases() {
+            return Stream.of(
+                new ElementMutationCase("element insertion", 3,
+                    (song, line) -> () -> line.addElement(1, UndoTestSupport.crotchet())),
+                new ElementMutationCase("element deletion", 3,
+                    (song, line) -> () -> line.removeElement(1)),
+                new ElementMutationCase("element range deletion", 4,
+                    (song, line) -> () -> line.removeRange(1, 2)),
+                new ElementMutationCase("element replacement", 3,
+                    (song, line) -> () -> line.setElement(1, quaver())),
+                // Retyping the song's auto-maintained terminal barline (issue #713) is an
+                // ordinary user edit, so undo must put the previous type back. Worth pinning
+                // separately from the plain replacement above because the terminal reaches
+                // Line.setElement through Song.replaceTerminal, the one path exempt from the
+                // guard that otherwise forbids replacing the terminal.
+                new ElementMutationCase("terminal retype", 3,
+                    (song, line) -> () -> song.replaceTerminal(ElementType.REPEAT_RIGHT)),
+                new ElementMutationCase("element modification", 3, (song, line) -> () ->
+                    line.modifyElement(1, ElementField.FERMATA, () -> line.getElement(1).setFermata(true))),
+                // Deleting a beam endpoint invalidates and removes the beam as a companion;
+                // undo must restore both the note and the beam.
+                new ElementMutationCase("deleting a beamed note restores the note and the beam on undo", 3,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() ->
+                            line.addBeaming(new Beam(line.getElement(0), line.getElement(1))));
+                        return () -> line.removeElement(1);
+                    }),
+                // Deleting an endpoint shortens the crescendo — a companion removal plus the
+                // addition of a copy; undo must restore both the note and the original span.
+                new ElementMutationCase("deleting a hairpin endpoint restores the original span on undo", 4,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() ->
+                            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2))));
+                        return () -> line.removeElement(0);
+                    }),
+                // Deleting the hairpin's end note leaves a surviving rest right after it;
+                // resolveEndIndex moves the end in to that rest rather than dropping the
+                // hairpin — undo must restore the original note and span.
+                new ElementMutationCase("deleting a hairpin end note with a surviving rest round-trips", 3,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() -> {
+                            line.addElement(crotchetRest());
+                            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2)));
+                        });
+                        return () -> line.removeElement(2);
+                    }),
+                // Deleting the only element between them merges the two crescendos into
+                // one; undo must restore the note and both original crescendos.
+                new ElementMutationCase("deleting the element between two hairpins restores both on undo", 5,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() -> {
+                            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
+                            line.addCrescendo(new Crescendo(line.getElement(3), line.getElement(4)));
+                        });
+                        return () -> line.removeElement(2);
+                    }),
+                new ElementMutationCase("deleting a tied note restores the note and the tie on undo", 3,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() ->
+                            line.addTie(new Tie(line.getElement(0), line.getElement(1))));
+                        return () -> line.removeElement(1);
+                    }),
+                // Prepending to the first line moves the initial-tempo attachment onto the
+                // new first element via a tracked companion modification; undo must move it
+                // back.
+                new ElementMutationCase("inserting at index zero displaces the initial tempo attachment", 2,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() -> {
+                            var first = line.getElement(0);
+                            // The attachment's tempo value is irrelevant to the displacement
+                            // round-trip; a fresh non-null Tempo keeps the null-marked
+                            // package happy.
+                            first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
+                        });
+                        return () -> line.addElement(0, UndoTestSupport.crotchet());
+                    }),
+                // The mirror image of the insertion case above: deleting the first element
+                // of the first line moves the initial-tempo attachment onto the element
+                // that takes its place, via a tracked companion modification recorded after
+                // the deletion. Undo must strip that tempo and bring back the element that
+                // owned it.
+                new ElementMutationCase("deleting index zero reanchors the initial tempo attachment", 2,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() -> {
+                            var first = line.getElement(0);
+                            first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
+                        });
+                        return () -> line.removeElement(0);
+                    }),
+                new ElementMutationCase(
+                    "deleting a range from index zero reanchors the initial tempo attachment", 3,
+                    (song, line) -> {
+                        song.withoutMutationTracking(() -> {
+                            var first = line.getElement(0);
+                            first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
+                        });
+                        return () -> line.removeRange(0, 1);
+                    })
+            );
         }
     }
 
@@ -501,53 +471,48 @@ class MutationReplayerRoundTripTest extends UnitTest {
     @Nested
     class LineMutations {
 
-        @Test
-        void testLineInsertionThatBecomesNewLastLineRoundTrips() {
-            var song = songWithNotes(2);
-            // Appending an empty line makes it the new last line, transferring the
-            // terminal barline off the previous last line — a multi-mutation batch.
-            assertRoundTrip(song, () -> song.addLine(song.lineCount(), new Line(song)));
+        private record LineMutationCase(String description, Function<Song, Runnable> editFactory) {
         }
 
-        @Test
-        void testMidScoreLineInsertionRoundTrips() {
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testLineMutationRoundTrips(LineMutationCase testCase) {
             var song = songWithNotes(2);
-            song.withoutMutationTracking(() -> song.addLine(song.lineCount(), new Line(song)));
-
-            // Insert between the two lines — not the last line, so no terminal transfer.
-            assertRoundTrip(song, () -> song.addLine(1, new Line(song)));
+            assertRoundTrip(song, testCase.editFactory().apply(song));
         }
 
-        @Test
-        void testDeletingLastLineRoundTrips() {
-            var song = songWithNotes(2);
-            // A real append so the terminal barline lives on the appended last line;
-            // deleting it then transfers the terminal back — the delete-last-line canary.
-            song.addLine(song.lineCount(), new Line(song));
-
-            var lastIndex = song.lineCount() - 1;
-            assertRoundTrip(song, () -> song.removeLine(lastIndex));
-        }
-
-        @Test
-        void testDeletingSoleLineRoundTrips() {
-            var song = songWithNotes(2);
-
-            // Removing the only line replaces it with a fresh empty line — a
-            // LineDeletion followed by a LineInsertion (plus terminal maintenance)
-            // in one batch, exercising the replay guard that must not re-trigger
-            // repopulation while undo/redo is replaying that same batch.
-            assertRoundTrip(song, () -> song.removeLine(0));
-        }
-
-        @Test
-        void testDeletingMidScoreLineRoundTrips() {
-            var song = songWithNotes(2);
-            song.addLine(song.lineCount(), new Line(song));
-            song.addLine(song.lineCount(), new Line(song));
-
-            // Remove a middle line (not last) — no terminal maintenance.
-            assertRoundTrip(song, () -> song.removeLine(1));
+        static Stream<LineMutationCase> cases() {
+            return Stream.of(
+                // Appending an empty line makes it the new last line, transferring the
+                // terminal barline off the previous last line — a multi-mutation batch.
+                new LineMutationCase("line insertion that becomes the new last line",
+                    song -> () -> song.addLine(song.lineCount(), new Line(song))),
+                new LineMutationCase("mid-score line insertion", song -> {
+                    song.withoutMutationTracking(() -> song.addLine(song.lineCount(), new Line(song)));
+                    // Insert between the two lines — not the last line, so no terminal transfer.
+                    return () -> song.addLine(1, new Line(song));
+                }),
+                new LineMutationCase("deleting the last line", song -> {
+                    // A real append so the terminal barline lives on the appended last
+                    // line; deleting it then transfers the terminal back — the
+                    // delete-last-line canary.
+                    song.withoutMutationTracking(() -> song.addLine(song.lineCount(), new Line(song)));
+                    return () -> song.removeLine(song.lineCount() - 1);
+                }),
+                // Removing the only line replaces it with a fresh empty line — a
+                // LineDeletion followed by a LineInsertion (plus terminal maintenance) in
+                // one batch, exercising the replay guard that must not re-trigger
+                // repopulation while undo/redo is replaying that same batch.
+                new LineMutationCase("deleting the sole line", song -> () -> song.removeLine(0)),
+                new LineMutationCase("deleting a mid-score line", song -> {
+                    song.withoutMutationTracking(() -> {
+                        song.addLine(song.lineCount(), new Line(song));
+                        song.addLine(song.lineCount(), new Line(song));
+                    });
+                    // Remove a middle line (not last) — no terminal maintenance.
+                    return () -> song.removeLine(1);
+                })
+            );
         }
 
         /** Covers both {@code KeyField} values: {@code KEY_TYPE} and {@code ACCIDENTAL_COUNT}. */
@@ -571,20 +536,26 @@ class MutationReplayerRoundTripTest extends UnitTest {
     @Nested
     class LineLayoutMutations {
 
-        @Test
-        void testLyricsYPosChangeRoundTrips() {
-            var song = songWithNotes(1);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.setLyricsYPosSs(line.getLyricsYPosSs() + 3.0));
+        private record LineLayoutMutationCase(String description, Consumer<Line> edit) {
         }
 
-        @Test
-        void testElementSpacingRatioChangeRoundTrips() {
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testLineLayoutMutationRoundTrips(LineLayoutMutationCase testCase) {
             var song = songWithNotes(1);
             var line = song.getLine(0);
-            // The forward edit uses the multiplying setter (the real UI path); the
-            // replayer inverts it via the absolute setter.
-            assertRoundTrip(song, () -> line.changeElementSpacingRatio(1.5f));
+            assertRoundTrip(song, () -> testCase.edit().accept(line));
+        }
+
+        static Stream<LineLayoutMutationCase> cases() {
+            return Stream.of(
+                new LineLayoutMutationCase("lyrics Y position change",
+                    line -> line.setLyricsYPosSs(line.getLyricsYPosSs() + 3.0)),
+                // The forward edit uses the multiplying setter (the real UI path); the
+                // replayer inverts it via the absolute setter.
+                new LineLayoutMutationCase("element spacing ratio change",
+                    line -> line.changeElementSpacingRatio(1.5f))
+            );
         }
     }
 
@@ -596,20 +567,64 @@ class MutationReplayerRoundTripTest extends UnitTest {
     @Nested
     class SpanMutations {
 
-        @Test
-        void testBeamingAdditionRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addBeaming(new Beam(line.getElement(0), line.getElement(1))));
+        private record SpanMutationCase(String description, int noteCount, BiFunction<Song, Line, Runnable> editFactory) {
         }
 
-        @Test
-        void testBeamingRemovalRoundTrips() {
-            var song = songWithNotes(2);
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testSpanMutationRoundTrips(SpanMutationCase testCase) {
+            var song = songWithNotes(testCase.noteCount());
             var line = song.getLine(0);
-            var beam = new Beam(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addBeaming(beam));
-            assertRoundTrip(song, () -> line.removeBeaming(beam));
+            assertRoundTrip(song, testCase.editFactory().apply(song, line));
+        }
+
+        static Stream<SpanMutationCase> cases() {
+            return Stream.of(
+                new SpanMutationCase("beaming addition", 2,
+                    (song, line) -> () -> line.addBeaming(new Beam(line.getElement(0), line.getElement(1)))),
+                new SpanMutationCase("beaming removal", 2, (song, line) -> {
+                    var beam = new Beam(line.getElement(0), line.getElement(1));
+                    song.withoutMutationTracking(() -> line.addBeaming(beam));
+                    return () -> line.removeBeaming(beam);
+                }),
+                new SpanMutationCase("tie addition", 2,
+                    (song, line) -> () -> line.addTie(new Tie(line.getElement(0), line.getElement(1)))),
+                new SpanMutationCase("tie removal", 2, (song, line) -> {
+                    var tie = new Tie(line.getElement(0), line.getElement(1));
+                    song.withoutMutationTracking(() -> line.addTie(tie));
+                    return () -> line.removeTie(tie);
+                }),
+                new SpanMutationCase("tuplet addition", 3, (song, line) -> () -> line.addTuplet(
+                    new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES,
+                        ElementType.CROTCHET, NO_DOTS))),
+                new SpanMutationCase("tuplet removal", 3, (song, line) -> {
+                    var tuplet = new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE,
+                        TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+                    song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+                    return () -> line.removeTuplet(tuplet);
+                }),
+                new SpanMutationCase("crescendo addition", 2,
+                    (song, line) -> () -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)))),
+                new SpanMutationCase("crescendo removal", 2, (song, line) -> {
+                    var crescendo = new Crescendo(line.getElement(0), line.getElement(1));
+                    song.withoutMutationTracking(() -> line.addCrescendo(crescendo));
+                    return () -> line.removeCrescendo(crescendo);
+                }),
+                new SpanMutationCase("diminuendo addition", 2,
+                    (song, line) -> () -> line.addDiminuendo(new Diminuendo(line.getElement(0), line.getElement(1)))),
+                new SpanMutationCase("diminuendo removal", 2, (song, line) -> {
+                    var diminuendo = new Diminuendo(line.getElement(0), line.getElement(1));
+                    song.withoutMutationTracking(() -> line.addDiminuendo(diminuendo));
+                    return () -> line.removeDiminuendo(diminuendo);
+                }),
+                new SpanMutationCase("span (trill) addition", 2,
+                    (song, line) -> () -> line.addSpan(new Trill(line.getElement(0), line.getElement(1)))),
+                new SpanMutationCase("span (trill) removal", 2, (song, line) -> {
+                    var trill = new Trill(line.getElement(0), line.getElement(1));
+                    song.withoutMutationTracking(() -> line.addSpan(trill));
+                    return () -> line.removeSpan(trill);
+                })
+            );
         }
 
         @Test
@@ -643,88 +658,6 @@ class MutationReplayerRoundTripTest extends UnitTest {
             assertThat(UndoTestSupport.serialize(song))
                 .as("redo re-collapses to the wide beam")
                 .contains("<beamings>0,3;</beamings>");
-        }
-
-        @Test
-        void testTieAdditionRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addTie(new Tie(line.getElement(0), line.getElement(1))));
-        }
-
-        @Test
-        void testTieRemovalRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            var tie = new Tie(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addTie(tie));
-            assertRoundTrip(song, () -> line.removeTie(tie));
-        }
-
-        @Test
-        void testTupletAdditionRoundTrips() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE,
-                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS)));
-        }
-
-        @Test
-        void testTupletRemovalRoundTrips() {
-            var song = songWithNotes(3);
-            var line = song.getLine(0);
-            var tuplet = new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE,
-                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
-            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
-            assertRoundTrip(song, () -> line.removeTuplet(tuplet));
-        }
-
-        @Test
-        void testCrescendoAdditionRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
-        }
-
-        @Test
-        void testCrescendoRemovalRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            var crescendo = new Crescendo(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addCrescendo(crescendo));
-            assertRoundTrip(song, () -> line.removeCrescendo(crescendo));
-        }
-
-        @Test
-        void testDiminuendoAdditionRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addDiminuendo(new Diminuendo(line.getElement(0), line.getElement(1))));
-        }
-
-        @Test
-        void testDiminuendoRemovalRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            var diminuendo = new Diminuendo(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addDiminuendo(diminuendo));
-            assertRoundTrip(song, () -> line.removeDiminuendo(diminuendo));
-        }
-
-        @Test
-        void testSpanAdditionRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addSpan(new Trill(line.getElement(0), line.getElement(1))));
-        }
-
-        @Test
-        void testSpanRemovalRoundTrips() {
-            var song = songWithNotes(2);
-            var line = song.getLine(0);
-            var trill = new Trill(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addSpan(trill));
-            assertRoundTrip(song, () -> line.removeSpan(trill));
         }
     }
 
@@ -853,65 +786,37 @@ class MutationReplayerRoundTripTest extends UnitTest {
     @Nested
     class SongScopedMutations {
 
-        @Test
-        void testMetadataAttributionChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setMetadata(song.getMetadata().withTitle("Round Trip Title")));
+        private record SongScopedMutationCase(String description, Consumer<Song> edit) {
         }
 
-        @Test
-        void testMetadataTempoChangeRoundTrips() {
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testSongScopedMutationRoundTrips(SongScopedMutationCase testCase) {
             var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true)));
+            assertRoundTrip(song, () -> testCase.edit().accept(song));
         }
 
-        @Test
-        void testMetadataFootnotesChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setFootnotes("A footnote"));
-        }
-
-        @Test
-        void testMetadataDefaultKeyAccidentalCountChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3));
-        }
-
-        @Test
-        void testMetadataDefaultKeyTypeChangeRoundTrips() {
-            var song = songWithNotes(1);
-            // The document default is FLATS, so change to a genuinely different type.
-            assertRoundTrip(song, () -> song.setDefaultKeyType(KeyType.SHARPS));
-        }
-
-        @Test
-        void testLayoutLineWidthChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setLineWidthSs(song.getLineWidthSs() + 10.0));
-        }
-
-        @Test
-        void testLayoutRowHeightAdjustmentChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setRowHeightAdjustmentSs(song.getRowHeightAdjustmentSs() + 5.0));
-        }
-
-        @Test
-        void testLyricsUnderChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setUnderLyrics("under lyrics"));
-        }
-
-        @Test
-        void testLyricsBanglaChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setBanglaLyrics("bangla lyrics"));
-        }
-
-        @Test
-        void testLyricsTranslatedChangeRoundTrips() {
-            var song = songWithNotes(1);
-            assertRoundTrip(song, () -> song.setTranslatedLyrics("translated lyrics"));
+        static Stream<SongScopedMutationCase> cases() {
+            return Stream.of(
+                new SongScopedMutationCase("metadata attribution change",
+                    song -> song.setMetadata(song.getMetadata().withTitle("Round Trip Title"))),
+                new SongScopedMutationCase("metadata tempo change",
+                    song -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true))),
+                new SongScopedMutationCase("metadata footnotes change", song -> song.setFootnotes("A footnote")),
+                new SongScopedMutationCase("metadata default key accidental count change",
+                    song -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3)),
+                // The document default is FLATS, so change to a genuinely different type.
+                new SongScopedMutationCase("metadata default key type change",
+                    song -> song.setDefaultKeyType(KeyType.SHARPS)),
+                new SongScopedMutationCase("layout line width change",
+                    song -> song.setLineWidthSs(song.getLineWidthSs() + 10.0)),
+                new SongScopedMutationCase("layout row height adjustment change",
+                    song -> song.setRowHeightAdjustmentSs(song.getRowHeightAdjustmentSs() + 5.0)),
+                new SongScopedMutationCase("lyrics under change", song -> song.setUnderLyrics("under lyrics")),
+                new SongScopedMutationCase("lyrics bangla change", song -> song.setBanglaLyrics("bangla lyrics")),
+                new SongScopedMutationCase("lyrics translated change",
+                    song -> song.setTranslatedLyrics("translated lyrics"))
+            );
         }
     }
 

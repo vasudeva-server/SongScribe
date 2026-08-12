@@ -26,10 +26,14 @@ import static org.mockito.Mockito.mockStatic;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
@@ -76,9 +80,9 @@ import songscribe.ui.selection.SelectionCoordinator;
  * {@code MetadataField} in turn, including the two that share the key-change name. Present
  * today: the additions of each span kind but not their removals, and no range deletion.
  *
- * <p><b>Dominance is a precedence order, not first-wins.</b> The case that proves it is
+ * <p><b>Dominance is a precedence order, not first-wins.</b> The row that proves it is
  * deleting a note inside a tuplet: the tuplet-removal companion is recorded first, yet the
- * step must read "Delete Note". A first-wins implementation passes every other test in this
+ * step must read "Delete Note". A first-wins implementation passes every other case in this
  * class and fails this one.
  *
  * <p><b>Agreement between the two routes to one edit</b> — a tie or beam applied by its
@@ -97,6 +101,13 @@ import songscribe.ui.selection.SelectionCoordinator;
  *
  * <p>The empty-stack boundary — no steps yields the plain "Undo"/"Redo" — is common to both
  * halves of the contract and is exercised once, in {@link UndoOpNameLabelTest}.
+ *
+ * <p>Most cases below share one algorithm — build a song, optionally arrange some
+ * pre-existing state, drive one edit, and check the resulting label — so they are rows in a
+ * {@code record} case table rather than one hand-written {@code @Test} per row; only the
+ * arrange/edit code and the expected key vary. A case whose fixture or assertion is
+ * genuinely different (font changes, the last-insertion keys, the declared-name hairpin
+ * cases) gets its own table or its own method instead of being forced into this one.
  */
 class MutationLabelTest extends UnitTest {
 
@@ -106,6 +117,9 @@ class MutationLabelTest extends UnitTest {
     /** Selection that reaches past the pre-existing crescendo on [0, 1]. */
     private static final int EXTEND_SELECTION_BEGIN = 2;
     private static final int EXTEND_SELECTION_END = 3;
+
+    private static final BiConsumer<Song, Line> NO_ARRANGE = (song, line) -> {
+    };
 
     // The last-insertion key handlers read their undo label off the menu action the key
     // falls through to, which is the whole point of the two tests below.
@@ -144,92 +158,89 @@ class MutationLabelTest extends UnitTest {
     // One label per dominant mutation type
     // -----------------------------------------------------------------------
 
-    @Test
-    void testElementInsertionLabelsAddNote() {
-        var song = songWithNotes(2);
+    private record DominantMutationLabelCase(
+        String description, int noteCount, BiConsumer<Song, Line> arrange,
+        BiConsumer<Song, Line> edit, String expectedKey
+    ) {
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("dominantMutationLabelCases")
+    void testDominantMutationLabel(DominantMutationLabelCase testCase) {
+        var song = songWithNotes(testCase.noteCount());
         var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addElement(1, UndoTestSupport.crotchet())))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_ADD_NOTE));
+        song.withoutMutationTracking(() -> testCase.arrange().accept(song, line));
+
+        assertThat(undoLabelAfter(song, () -> testCase.edit().accept(song, line)))
+            .isEqualTo(labeled(testCase.expectedKey()));
     }
 
-    @Test
-    void testElementDeletionLabelsDeleteNote() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.removeElement(0)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_DELETE_NOTE));
-    }
-
-    @Test
-    void testElementReplacementLabelsReplaceNote() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.setElement(0, quaver())))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_REPLACE_NOTE));
-    }
-
-    @Test
-    void testElementModificationLabelsEditNote() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () ->
-            line.modifyElement(0, ElementField.FERMATA, () -> line.getElement(0).setFermata(true))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_EDIT_NOTE));
-    }
-
-    @Test
-    void testLineInsertionLabelsAddLine() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.addLine(song.lineCount(), new Line(song))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_ADD_LINE));
-    }
-
-    @Test
-    void testLineDeletionLabelsDeleteLine() {
-        var song = songWithNotes(1);
-        song.addLine(song.lineCount(), new Line(song));
-        var lastIndex = song.lineCount() - 1;
-        assertThat(undoLabelAfter(song, () -> song.removeLine(lastIndex)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_DELETE_LINE));
-    }
-
-    @Test
-    void testLineKeyChangeLabelsChangeKey() {
-        var song = songWithNotes(1);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.setKeyType(KeyType.SHARPS)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_KEY));
-    }
-
-    @Test
-    void testLineLayoutChangeLabelsChangeLayout() {
-        var song = songWithNotes(1);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.setLyricsYPosSs(line.getLyricsYPosSs() + 3.0)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_LAYOUT));
-    }
-
-    @Test
-    void testLayoutChangeLabelsChangeLayout() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setLineWidthSs(song.getLineWidthSs() + 10.0)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_LAYOUT));
-    }
-
-    @Test
-    void testBeamingAdditionLabelsBeaming() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addBeaming(new Beam(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_BEAMING));
-    }
-
-    @Test
-    void testTieAdditionLabelsTie() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addTie(new Tie(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TIE));
+    static Stream<DominantMutationLabelCase> dominantMutationLabelCases() {
+        return Stream.of(
+            new DominantMutationLabelCase("element insertion labels add note", 2, NO_ARRANGE,
+                (song, line) -> line.addElement(1, UndoTestSupport.crotchet()), Strings.ACTION_EDIT_OP_ADD_NOTE),
+            new DominantMutationLabelCase("element deletion labels delete note", 2, NO_ARRANGE,
+                (song, line) -> line.removeElement(0), Strings.ACTION_EDIT_OP_DELETE_NOTE),
+            new DominantMutationLabelCase("element replacement labels replace note", 2, NO_ARRANGE,
+                (song, line) -> line.setElement(0, quaver()), Strings.ACTION_EDIT_OP_REPLACE_NOTE),
+            new DominantMutationLabelCase("element modification labels edit note", 2, NO_ARRANGE,
+                (song, line) -> line.modifyElement(0, ElementField.FERMATA, () -> line.getElement(0).setFermata(true)),
+                Strings.ACTION_EDIT_OP_EDIT_NOTE),
+            new DominantMutationLabelCase("line insertion labels add line", 1, NO_ARRANGE,
+                (song, line) -> song.addLine(song.lineCount(), new Line(song)), Strings.ACTION_EDIT_OP_ADD_LINE),
+            new DominantMutationLabelCase("line deletion labels delete line", 1,
+                (song, line) -> song.addLine(song.lineCount(), new Line(song)),
+                (song, line) -> song.removeLine(song.lineCount() - 1), Strings.ACTION_EDIT_OP_DELETE_LINE),
+            new DominantMutationLabelCase("line key change labels change key", 1, NO_ARRANGE,
+                (song, line) -> line.setKeyType(KeyType.SHARPS), Strings.ACTION_EDIT_OP_CHANGE_KEY),
+            new DominantMutationLabelCase("line layout change labels change layout", 1, NO_ARRANGE,
+                (song, line) -> line.setLyricsYPosSs(line.getLyricsYPosSs() + 3.0),
+                Strings.ACTION_EDIT_OP_CHANGE_LAYOUT),
+            new DominantMutationLabelCase("layout change labels change layout", 1, NO_ARRANGE,
+                (song, line) -> song.setLineWidthSs(song.getLineWidthSs() + 10.0),
+                Strings.ACTION_EDIT_OP_CHANGE_LAYOUT),
+            new DominantMutationLabelCase("beaming addition labels beaming", 2, NO_ARRANGE,
+                (song, line) -> line.addBeaming(new Beam(line.getElement(0), line.getElement(1))),
+                Strings.ACTION_EDIT_OP_BEAMING),
+            new DominantMutationLabelCase("tie addition labels tie", 2, NO_ARRANGE,
+                (song, line) -> line.addTie(new Tie(line.getElement(0), line.getElement(1))),
+                Strings.ACTION_EDIT_OP_TIE),
+            new DominantMutationLabelCase("tuplet addition labels tuplet", 3, NO_ARRANGE,
+                (song, line) -> line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3)),
+                Strings.ACTION_EDIT_OP_TUPLET),
+            new DominantMutationLabelCase("crescendo addition labels crescendo", 2, NO_ARRANGE,
+                (song, line) -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))),
+                Strings.ACTION_EDIT_OP_CRESCENDO),
+            new DominantMutationLabelCase("diminuendo addition labels diminuendo", 2, NO_ARRANGE,
+                (song, line) -> line.addDiminuendo(new Diminuendo(line.getElement(0), line.getElement(1))),
+                Strings.ACTION_EDIT_OP_DIMINUENDO),
+            new DominantMutationLabelCase("span addition labels span", 2, NO_ARRANGE,
+                (song, line) -> line.addSpan(new Trill(line.getElement(0), line.getElement(1))),
+                Strings.ACTION_EDIT_OP_SPAN),
+            new DominantMutationLabelCase("lyrics change labels edit lyrics", 1, NO_ARRANGE,
+                (song, line) -> song.setUnderLyrics("under"), Strings.ACTION_EDIT_OP_EDIT_LYRICS),
+            new DominantMutationLabelCase("metadata attribution change labels change attribution", 1, NO_ARRANGE,
+                (song, line) -> song.setMetadata(song.getMetadata().withTitle("New")),
+                Strings.ACTION_EDIT_OP_CHANGE_ATTRIBUTION),
+            new DominantMutationLabelCase("metadata tempo change labels change tempo", 1, NO_ARRANGE,
+                (song, line) -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true)),
+                Strings.ACTION_EDIT_OP_CHANGE_TEMPO),
+            new DominantMutationLabelCase("metadata footnotes change labels change footnotes", 1, NO_ARRANGE,
+                (song, line) -> song.setFootnotes("note"), Strings.ACTION_EDIT_OP_CHANGE_FOOTNOTES),
+            new DominantMutationLabelCase(
+                "metadata default key accidental count change labels change key", 1, NO_ARRANGE,
+                (song, line) -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3),
+                Strings.ACTION_EDIT_OP_CHANGE_KEY),
+            new DominantMutationLabelCase("metadata default key type change labels change key", 1, NO_ARRANGE,
+                (song, line) -> song.setDefaultKeyType(KeyType.SHARPS), Strings.ACTION_EDIT_OP_CHANGE_KEY),
+            // Deleting a tuplet-spanned note emits the tuplet-removal companion BEFORE the
+            // primary ElementDeletion, so a "first mutation" label would read "Tuplet". The
+            // precedence tier must still select the ElementDeletion -> "Delete Note".
+            new DominantMutationLabelCase(
+                "deleting a note inside a tuplet labels delete note, not tuplet", 3,
+                (song, line) -> line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3)),
+                (song, line) -> line.removeElement(1), Strings.ACTION_EDIT_OP_DELETE_NOTE)
+        );
     }
 
     // -----------------------------------------------------------------------
@@ -277,6 +288,11 @@ class MutationLabelTest extends UnitTest {
         }
     }
 
+    private record LastInsertionKeyLabelCase(
+        String description, Consumer<? super ScoreViewController> handler, String expectedKey
+    ) {
+    }
+
     /**
      * The last-insertion keys post their commands straight from {@code ScoreInputHandler},
      * bypassing the {@code UIAction} template that otherwise sets the Tier-A op-name. Without
@@ -284,118 +300,40 @@ class MutationLabelTest extends UnitTest {
      * to {@link UndoController#opNameKey} and the key labels the very same edit differently from
      * the menu action that also performs it — "Undo Tie" against the menu's "Undo Toggle Tie".
      *
-     * <p>The handler reads the label off {@code Actions.TOGGLE_TIE_ACTION}, so this drives the
-     * real handler against the real action: the literal below is the one place the expected
-     * label is written down, and the menu entry resolves from the same declaration.
+     * <p>Each handler reads its label off the real {@code Actions.*} constant, so this drives the
+     * real handler against the real action: the expected key below is the one place each label
+     * is written down, and the menu entry resolves from the same declaration.
      */
-    @Test
-    void testTieKeyLabelsTheUndoStepTheSameWayTheMenuActionDoes() {
-        assertThat(undoLabelAfterKeyCommand(controller ->
-            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand())))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TOGGLE_TIE));
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("lastInsertionKeyLabelCases")
+    void testLastInsertionKeyLabelMatchesMenuAction(LastInsertionKeyLabelCase testCase) {
+        assertThat(undoLabelAfterKeyCommand(testCase.handler()))
+            .isEqualTo(labeled(testCase.expectedKey()));
     }
 
-    /** The beam key carries the same obligation, and read "Undo Beaming" before it did. */
-    @Test
-    void testBeamKeyLabelsTheUndoStepTheSameWayTheMenuActionDoes() {
-        assertThat(undoLabelAfterKeyCommand(controller ->
-            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand())))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TOGGLE_BEAM));
-    }
-
-    @Test
-    void testTupletAdditionLabelsTuplet() {
-        var song = songWithNotes(3);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TUPLET));
-    }
-
-    @Test
-    void testCrescendoAdditionLabelsCrescendo() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CRESCENDO));
-    }
-
-    @Test
-    void testDiminuendoAdditionLabelsDiminuendo() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song,
-            () -> line.addDiminuendo(new Diminuendo(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_DIMINUENDO));
-    }
-
-    @Test
-    void testSpanAdditionLabelsSpan() {
-        var song = songWithNotes(2);
-        var line = song.getLine(0);
-        assertThat(undoLabelAfter(song,
-            () -> line.addSpan(new Trill(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_SPAN));
-    }
-
-    @Test
-    void testLyricsChangeLabelsEditLyrics() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setUnderLyrics("under")))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_EDIT_LYRICS));
+    static Stream<LastInsertionKeyLabelCase> lastInsertionKeyLabelCases() {
+        return Stream.of(
+            new LastInsertionKeyLabelCase(
+                "tie key labels the undo step the same way the menu action does",
+                controller -> controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand()),
+                Strings.ACTION_EDIT_OP_TOGGLE_TIE),
+            // The beam key carries the same obligation, and read "Undo Beaming" before it did.
+            new LastInsertionKeyLabelCase(
+                "beam key labels the undo step the same way the menu action does",
+                controller -> controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand()),
+                Strings.ACTION_EDIT_OP_TOGGLE_BEAM)
+        );
     }
 
     // FontChange targets ScoreView, not Song, so it cannot be produced by a Song-only
     // edit — a crafted single-mutation batch exercises the label path (no companion
-    // ordering to worry about for this type).
+    // ordering to worry about for this type). The one case in this class with no sibling
+    // sharing its fixture shape, so it stays a plain @Test.
     @Test
     void testFontChangeLabelsChangeFonts() {
         assertThat(undoLabelForBatch(List.of(new FontChange(new DocumentFonts(), new DocumentFonts()))))
             .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_FONTS));
     }
-
-    // -----------------------------------------------------------------------
-    // MetadataChange fields
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testMetadataAttributionChangeLabelsChangeAttribution() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setMetadata(song.getMetadata().withTitle("New"))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_ATTRIBUTION));
-    }
-
-    @Test
-    void testMetadataTempoChangeLabelsChangeTempo() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_TEMPO));
-    }
-
-    @Test
-    void testMetadataFootnotesChangeLabelsChangeFootnotes() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setFootnotes("note")))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_FOOTNOTES));
-    }
-
-    @Test
-    void testMetadataDefaultKeyAccidentalCountChangeLabelsChangeKey() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song,
-            () -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_KEY));
-    }
-
-    @Test
-    void testMetadataDefaultKeyTypeChangeLabelsChangeKey() {
-        var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setDefaultKeyType(KeyType.SHARPS)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_KEY));
-    }
-
-    // -----------------------------------------------------------------------
-    // Precedence: dominant mutation beats companion ordering
-    // -----------------------------------------------------------------------
 
     // -----------------------------------------------------------------------
     // Declared op-names: one action, two labels
@@ -420,38 +358,39 @@ class MutationLabelTest extends UnitTest {
         return UndoController.undoLabel();
     }
 
-    @Test
-    void testAddingCrescendoLabelsAddCrescendo() {
-        var song = songWithNotes(HAIRPIN_FIXTURE_NOTE_COUNT);
-        assertThat(hairpinUndoLabel(song, 0, 1))
-            .isEqualTo(labeled(Strings.ACTION_HAIRPIN_CRESCENDO));
+    private record HairpinDeclaredLabelCase(
+        String description, Consumer<Line> arrange, int selectionBegin, int selectionEnd, String expectedKey
+    ) {
     }
 
-    @Test
-    void testExtendingCrescendoLabelsExtendCrescendoNotAddCrescendo() {
+    /**
+     * Both cases drive {@code addHairpinToSelection} over a
+     * {@value #HAIRPIN_FIXTURE_NOTE_COUNT}-note line, which resolves to either an add or an
+     * extend depending on whether the selection reaches an existing crescendo — the same
+     * mutation-batch shape either way, so a type-derived label could not tell add from extend
+     * apart, only the declared op-name can.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("hairpinDeclaredLabelCases")
+    void testHairpinDeclaredLabel(HairpinDeclaredLabelCase testCase) {
         var song = songWithNotes(HAIRPIN_FIXTURE_NOTE_COUNT);
         var line = song.getLine(0);
-        song.withoutMutationTracking(() ->
-            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
+        song.withoutMutationTracking(() -> testCase.arrange().accept(line));
 
-        // Selecting past the existing crescendo resolves to EXTEND, which must
-        // declare a different op-name than the add path — the mutation batch is the same
-        // shape either way, so a type-derived label could not tell them apart.
-        assertThat(hairpinUndoLabel(song, EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END))
-            .isEqualTo(labeled(Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND));
+        assertThat(hairpinUndoLabel(song, testCase.selectionBegin(), testCase.selectionEnd()))
+            .isEqualTo(labeled(testCase.expectedKey()));
     }
 
-    @Test
-    void testDeletingNoteInsideTupletLabelsDeleteNoteNotTuplet() {
-        var song = songWithNotes(3);
-        var line = song.getLine(0);
-        song.withoutMutationTracking(() ->
-            line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3)));
-
-        // Deleting a tuplet-spanned note emits the tuplet-removal companion BEFORE the
-        // primary ElementDeletion, so a "first mutation" label would read "Tuplet".
-        // The precedence tier must still select the ElementDeletion → "Delete Note".
-        assertThat(undoLabelAfter(song, () -> line.removeElement(1)))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_DELETE_NOTE));
+    static Stream<HairpinDeclaredLabelCase> hairpinDeclaredLabelCases() {
+        return Stream.of(
+            new HairpinDeclaredLabelCase("adding a crescendo labels add crescendo",
+                line -> {
+                }, 0, 1, Strings.ACTION_HAIRPIN_CRESCENDO),
+            // Selecting past the existing crescendo resolves to EXTEND.
+            new HairpinDeclaredLabelCase(
+                "extending a crescendo labels extend crescendo, not add crescendo",
+                line -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))),
+                EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END, Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND)
+        );
     }
 }

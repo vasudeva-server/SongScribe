@@ -5,12 +5,12 @@ contracts Phase 11 wrote. Phase 13 reads this file.
 
 ## Numbers
 
-| | Before (Phase 11 exit) | After (Phase 12 triage) | After (data-driven follow-up) |
-|---|---:|---:|---:|
-| Tests | 141 | 161 | 161 |
-| Main LOC | 1,266 | 1,266 | 1,266 |
-| Test LOC | 3,574 | 3,789 | 3,730 |
-| Test/main ratio | 2.82 | 2.99 | 2.95 |
+| | Before (Phase 11 exit) | After (Phase 12 triage) | After data-driven follow-up (`OpNamesTest`) | After data-driven follow-up (whole package) |
+|---|---:|---:|---:|---:|
+| Tests | 141 | 161 | 161 | 161 |
+| Main LOC | 1,266 | 1,266 | 1,266 | 1,266 |
+| Test LOC | 3,574 | 3,789 | 3,730 | 3,565 |
+| Test/main ratio | 2.82 | 2.99 | 2.95 | 2.82 |
 
 Contracts: 0 written in this phase (Phase 11 wrote all of them); this phase triaged
 tests against them, closed the four gaps Phase 11 named, and closed the gaps coverage
@@ -30,6 +30,24 @@ class alongside the five `remove*Label` no-arg methods, since they're the same s
 the guide with a third worked example (a multi-field record case table, using
 `OpNamesTest.DeleteLabel` itself) to close the gap that let this happen — the existing two
 examples only varied a single parameter each.
+
+The user then pointed at the same pattern in `MutationLabelTest` and
+`MutationReplayerRoundTripTest`. A record field can hold a lambda, not just a literal, so
+"same algorithm, different data" turned out to cover more than the pure-literal tables
+above: cases whose fixture-and-edit code differs but whose overall shape (arrange, act,
+assert) is identical are also this pattern, with the varying step captured as a
+`BiFunction<Song, Line, Runnable>`/`Consumer`/`Function` field rather than forced apart
+into separate methods or left unparameterized because "the data" wasn't a plain literal.
+Applied to `MutationLabelTest` (22 dominant-mutation-label cases, 2 last-insertion-key
+cases, 2 hairpin-declared-name cases — 3 tables replacing 26 methods) and
+`MutationReplayerRoundTripTest` (`ElementMutations` 14 cases, `SpanMutations` 12,
+`SongScopedMutations` 10, `LineMutations` 5, `LineLayoutMutations` 2 — 5 tables replacing
+43 methods). Not tabled: cases whose *assertions* differ, not just their fixture —
+`ElementParentage` (a different check per mutation kind), `HairpinExecution`,
+`DeferredInsertionRepair`, `Fonts` (mock-dispatch verification, not `assertRoundTrip`),
+the beam-merge case, and the line key/accidental-count case (no sibling sharing its
+shape). Same case counts and pass counts throughout; net -164 test LOC across the two
+files on top of the `OpNamesTest` pass.
 
 ## Triage outcome
 
