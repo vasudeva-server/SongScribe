@@ -64,7 +64,11 @@ Four consequences worth stating in test-guide terms:
 - **Enumerate a finite domain; sample only when you cannot.** An enum, a small set
   of states, a pair of flags — all of them, via `@ParameterizedTest` over a
   `@MethodSource` or `EnumSource`, which costs what picking two costs. Picking two
-  is what leaves the third one broken. See [Unit Test Guide](./testing-unit.md).
+  is what leaves the third one broken. This is a check that runs *before* writing
+  a test, not a refactor applied after several near-identical ones pile up: the
+  moment a second `@Test` would be a copy of a sibling with a different literal or
+  a different small piece of arrange/edit code, both become rows in one
+  `record`-based case table instead. See [Unit Test Guide](./testing-unit.md#parameterized-tests-for-equivalence-classes-and-invariants).
 - **A representative of each distinct input class, plus the extremes, is
   sufficient.** Volume past that is cost without safety.
 - **Where the contract is an invariant, test the invariant** across many

@@ -23,6 +23,17 @@ class FooTest extends UnitTest {
 
 ## Parameterized Tests for Equivalence Classes and Invariants
 
+**Check before writing any `@Test` method: will this sit beside a sibling that
+exercises the same method in the same way — same assertion shape, only the
+input, the expected value, or a small piece of arrange/edit code differing?**
+If yes, it is a row, not a method, from the first such case — not a refactor
+applied once three or four near-identical methods have accumulated, and not
+disqualified because the varying piece is a lambda rather than a literal (a
+`record` field can hold a `Function`/`Consumer`/`BiFunction` as easily as a
+value; see the third example below). This check runs at the moment you would
+otherwise copy-paste an existing test and change a literal — not only when
+adding a genuinely new case, but before reaching for copy-paste at all.
+
 `@ParameterizedTest` with `@MethodSource` (or `@EnumSource` for a plain enum) is
 the normal shape for a contract's enumerated domain or an invariant that must
 hold across many inputs — not a special case reached for only when a table gets
