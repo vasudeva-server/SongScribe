@@ -20,19 +20,26 @@
 package songscribe.ui.dialog;
 
 import java.util.Collections;
+import java.util.stream.Stream;
 
-import javax.swing.DefaultComboBoxModel;
+import org.jspecify.annotations.Nullable;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
+import songscribe.Strings;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
+import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
+import songscribe.ui.dialog.backend.AttachmentTarget;
+import songscribe.ui.dialog.backend.BeatChangeBackEnd;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,13 +48,34 @@ import static org.mockito.Mockito.mockStatic;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
- * Unit tests for {@link BeatChangeDialog}: populateControls null/existing,
- * applyChange (null-guard, add vs update), and clearChange.
+ * Exercises the contract of {@link BeatChangeDialog}, which after the dialog seam is entirely
+ * about controls: what goes into them, what comes back out, and what the buttons say.
+ *
+ * <p><b>Populating</b> — the two classes of input {@link BeatChangeDialog#populateControls} names:
+ * an existing beat change, which the combos show, and {@code null}, for which they show
+ * {@link BeatChangeDialog#DEFAULT_BEAT_CHANGE}.
+ *
+ * <p><b>Round trip</b> — the invariant that populating and then gathering returns the same
+ * {@link BeatChange}, asserted as a property rather than a table of expected outputs. Enumerated
+ * over {@link Duration} rather than sampled, so a new note value reaches this test on its own; each
+ * value is exercised in both combos at once, since the two are independent and identically built.
+ *
+ * <p><b>Button labelling</b> — the presentation decision {@link AttachmentDialog#getData()} makes
+ * from a domain fact: OK reads Add and Remove is hidden when the element carries no beat change,
+ * and OK reads Modify and Remove is offered when it does.
+ *
+ * <p><b>Not tested here:</b> the class contract's promise that both combos always carry a
+ * selection, which {@link BeatChangeDialog#gatherChange()} relies on. Nothing reachable through
+ * the UI can empty a combo built over {@link Duration}, so the guard behind it is unreachable by
+ * construction and forcing it — by installing an empty model — would assert against a state the
+ * contract says cannot exist. Commit and removal are the back end's promises and are asserted in
+ * {@code BeatChangeBackEndTest}.
  */
 class BeatChangeDialogTest extends MainFrameMockTest {
 
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
+    private StaffElement element;
     private BeatChangeDialog dialog;
 
     @BeforeEach
@@ -58,7 +86,11 @@ class BeatChangeDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new BeatChangeDialog(mainFrame());
+
+        var line = detachedLine();
+        element = crotchet();
+        line.addElement(element);
+        dialog = new BeatChangeDialog(mainFrame(), new BeatChangeBackEnd(new AttachmentTarget(line, element)));
     }
 
     @AfterEach
@@ -67,145 +99,70 @@ class BeatChangeDialogTest extends MainFrameMockTest {
         uiUtilsMock.close();
     }
 
-    // ── Row 1: populateControls(null) — defaults to CROTCHET_DOTTED / CROTCHET ──
+    private record PopulateCase(String description, @Nullable BeatChange given, BeatChange shown) {}
 
-    @Test
-    void testPopulateControlsNullDefaultsToCrotchetDottedAndCrotchet() {
-        dialog.populateControls(null);
-
-        assertThat(dialog.durationCombo.getSelectedItem())
-            .as("durationCombo defaults to CROTCHET_DOTTED when change is null")
-            .isEqualTo(Duration.CROTCHET_DOTTED);
-        assertThat(dialog.beatCombo.getSelectedItem())
-            .as("beatCombo defaults to CROTCHET when change is null")
-            .isEqualTo(Duration.CROTCHET);
+    static Stream<PopulateCase> populateCases() {
+        return Stream.of(
+            new PopulateCase("an existing beat change is shown as it stands",
+                new BeatChange(Duration.MINIM, Duration.QUAVER),
+                new BeatChange(Duration.MINIM, Duration.QUAVER)),
+            new PopulateCase("no existing beat change shows the default",
+                null,
+                BeatChangeDialog.DEFAULT_BEAT_CHANGE)
+        );
     }
 
-    // ── Row 2: populateControls(existing) — sets both combos from BeatChange ──
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("populateCases")
+    void testPopulateControlsShowsTheExistingChangeOrTheDefault(PopulateCase testCase) {
+        dialog.populateControls(testCase.given());
 
-    @Test
-    void testPopulateControlsExistingSetsComboFromBeatChange() {
-        var change = new BeatChange(Duration.MINIM, Duration.QUAVER);
+        assertThat(dialog.durationCombo.getSelectedItem())
+            .as("the duration combo shows the change being edited")
+            .isEqualTo(testCase.shown().duration());
+        assertThat(dialog.beatCombo.getSelectedItem())
+            .as("the beat combo shows the change being edited")
+            .isEqualTo(testCase.shown().beat());
+    }
+
+    @ParameterizedTest
+    @EnumSource(Duration.class)
+    void testGatherChangeReturnsWhateverPopulateControlsPutIn(Duration duration) {
+        var change = new BeatChange(duration, duration);
 
         dialog.populateControls(change);
 
-        assertThat(dialog.durationCombo.getSelectedItem())
-            .as("durationCombo reflects BeatChange.duration()")
-            .isEqualTo(Duration.MINIM);
-        assertThat(dialog.beatCombo.getSelectedItem())
-            .as("beatCombo reflects BeatChange.beat()")
-            .isEqualTo(Duration.QUAVER);
+        assertThat(dialog.gatherChange())
+            .as("populating and gathering with nothing in between is the identity")
+            .isEqualTo(change);
     }
 
-    // ── Row 3: applyChange — skips mutation when either combo is null ──
+    private record ButtonCase(String description, @Nullable BeatChange existing,
+                              String expectedOkKey, boolean removeOffered) {}
 
-    @Test
-    void testApplyChangeSkipsWhenDurationComboIsNull() {
-        var element = crotchet();
-        dialog.durationCombo.setModel(new DefaultComboBoxModel<>());
-
-        dialog.applyChange(element);
-
-        assertThat(element.findAttachment(BeatChangeAttachment.class))
-            .as("no attachment added when durationCombo is null")
-            .isNull();
+    static Stream<ButtonCase> buttonCases() {
+        return Stream.of(
+            new ButtonCase("nothing there yet, so OK adds and there is nothing to remove",
+                null, Strings.LABEL_BUTTON_ADD, false),
+            new ButtonCase("a change is there, so OK modifies and Remove is offered",
+                new BeatChange(Duration.MINIM, Duration.QUAVER), Strings.LABEL_BUTTON_MODIFY, true)
+        );
     }
 
-    @Test
-    void testApplyChangeSkipsWhenBeatComboIsNull() {
-        var element = crotchet();
-        dialog.beatCombo.setModel(new DefaultComboBoxModel<>());
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("buttonCases")
+    void testGetDataLabelsTheButtonsForWhatOkWillDo(ButtonCase testCase) {
+        if (testCase.existing() != null) {
+            element.addAttachment(new BeatChangeAttachment(element, testCase.existing()));
+        }
 
-        dialog.applyChange(element);
+        dialog.getData();
 
-        assertThat(element.findAttachment(BeatChangeAttachment.class))
-            .as("no attachment added when beatCombo is null")
-            .isNull();
-    }
-
-    // ── Row 4: applyChange — updates existing attachment vs adds new one ──
-
-    @Test
-    void testApplyChangeUpdatesExistingAttachment() {
-        var element = crotchet();
-        var original = new BeatChangeAttachment(element, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
-        element.addAttachment(original);
-
-        dialog.durationCombo.setSelectedItem(Duration.MINIM);
-        dialog.beatCombo.setSelectedItem(Duration.QUAVER);
-        dialog.applyChange(element);
-
-        var updated = element.findAttachment(BeatChangeAttachment.class);
-        assertThat(updated).isNotNull();
-        assertThat(updated)
-            .as("existing attachment updated in-place, not replaced")
-            .isSameAs(original);
-        assertThat(updated.getBeatChange())
-            .as("BeatChange updated to new duration and beat")
-            .isEqualTo(new BeatChange(Duration.MINIM, Duration.QUAVER));
-    }
-
-    @Test
-    void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = crotchet();
-
-        dialog.durationCombo.setSelectedItem(Duration.CROTCHET_DOTTED);
-        dialog.beatCombo.setSelectedItem(Duration.CROTCHET);
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(BeatChangeAttachment.class);
-        assertThat(added)
-            .as("new BeatChangeAttachment added when none existed")
-            .isNotNull();
-        assertThat(added.getBeatChange())
-            .as("new attachment has the selected duration and beat")
-            .isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
-    }
-
-    // ── getExistingChange — returns BeatChange when present; null when absent ──
-
-    @Test
-    void testGetExistingChangeReturnsBeatChangeWhenAttachmentPresent() {
-        var element = crotchet();
-        var beatChange = new BeatChange(Duration.MINIM, Duration.CROTCHET);
-        element.addAttachment(new BeatChangeAttachment(element, beatChange));
-
-        assertThat(dialog.getExistingChange(element))
-            .as("getExistingChange returns the BeatChange from the existing attachment")
-            .isSameAs(beatChange);
-    }
-
-    @Test
-    void testGetExistingChangeReturnsNullWhenNoAttachment() {
-        var element = crotchet();
-
-        assertThat(dialog.getExistingChange(element))
-            .as("getExistingChange returns null when no BeatChangeAttachment is present")
-            .isNull();
-    }
-
-    // ── Row 5: clearChange — removes attachment if present; no-op if absent ──
-
-    @Test
-    void testClearChangeRemovesExistingAttachment() {
-        var element = crotchet();
-        element.addAttachment(new BeatChangeAttachment(element, new BeatChange(Duration.MINIM, Duration.CROTCHET)));
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(BeatChangeAttachment.class))
-            .as("BeatChangeAttachment removed by clearChange")
-            .isNull();
-    }
-
-    @Test
-    void testClearChangeIsNoOpWhenNoAttachment() {
-        var element = crotchet();
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(BeatChangeAttachment.class))
-            .as("no attachment present after clearChange on element with none")
-            .isNull();
+        assertThat(dialog.okButton.getText())
+            .as("OK names the operation the element's current state calls for")
+            .isEqualTo(Strings.get(testCase.expectedOkKey()));
+        assertThat(dialog.removeButton.isVisible())
+            .as("Remove is offered only when there is something to remove")
+            .isEqualTo(testCase.removeOffered());
     }
 }

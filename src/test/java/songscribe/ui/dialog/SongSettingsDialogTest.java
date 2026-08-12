@@ -70,9 +70,9 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * <p>Row 19: {@link SongSettingsKeyCellRenderer#SELECTIONS} — 15
  * entries in canonical order — is fully covered below.
  *
- * <p>The title field's empty-value guard (a {@link songscribe.ui.component.NonEmptyGuard}
- * installed by {@code TitleTab}) is not re-tested here; its blank/non-blank
- * contract is covered comprehensively by {@code NonEmptyGuardTest}.
+ * <p>The title field's blank guard (a {@link songscribe.ui.component.NonEmptyGuard} installed by
+ * {@code TitleTab}, which puts the previous title back rather than asking about it) is not
+ * re-tested here; its contract is covered comprehensively by {@code NonEmptyGuardTest}.
  */
 class SongSettingsDialogTest extends UnitTest {
 

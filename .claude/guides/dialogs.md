@@ -4,6 +4,27 @@
 
 `StandardDialog` extends `BaseDialog` — adds **OK/Cancel** only (no Apply). Validate-then-commit lifecycle.
 
+### What a dialog may touch
+
+**A dialog may not query or modify state outside itself. It is free to use the domain's static knowledge.**
+
+That line, not a package line, is where the boundary runs. A `songscribe.dom` import in a dialog is fine when it names knowledge and wrong when it names the document:
+
+- **Knowledge — allowed.** Enums (`Duration`, `Annotation.Placement`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score.
+- **State — forbidden.** `Song`, `Line`, `StaffElement`, `ScoreView`, and reaching through `MainFrame` for any of them. `getMainFrame()` is for **window parenting only**.
+
+What the dialog needs arrives as values and leaves as values:
+
+- **a record in** — what to show, handed over at construction;
+- **a record out** — what the controls now say, gathered on OK;
+- **a back end** — a `DialogBackEnd<I>` supplied already bound to the document state it acts on. The dialog calls `validate(I)` and `apply(I)` and knows nothing else. `AttachmentBackEnd` extends it for dialogs that also offer Remove.
+
+**Whoever opens the dialog does the binding.** The free functions behind a back end are written domain-object-first, so they read and test as domain operations; a dialog calling one directly would need the `Song`, which is the coupling the back end removes. `AttachmentEditor` is the worked example — it resolves the element and line, builds the back end around them, and hands the dialog something that already holds them. Implementations live in `songscribe.ui.dialog.backend`.
+
+**The mechanical test, applied to every back-end signature: it contains no Swing type.** `validate(BeatChange)` and `apply(Tempo)` pass; anything naming a `JComponent`, a `JTextField` or a `Font`-carrying widget fails, and means logic that has not finished moving out of the dialog. A reviewer applies it without judgment.
+
+Under this rule a dialog's own three steps — gather, call validate, call apply — are wiring and carry no tests of their own.
+
 ### DialogCategory (constructor arg, default OPERATIONAL)
 
 - `INFORMATIONAL` — never blocked (About, Help, WhatsNew).
@@ -43,7 +64,10 @@ explaining why; don't "fix" either back into `BaseDialog`.
 Constructors: `(title)`, `(title, isModal)`, `(title, isModal, DialogCategory)`.
 
 Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
-Accessors: `getMainFrame()`, `getScore()` (nullable), `requireScore()` (throws), `getSong()` (requires score).
+
+Accessors: `getMainFrame()` — window parenting only.
+
+`getScoreView()` (nullable), `requireScoreView()` (throws) and `getSong()` are still inherited but are **the escape hatch [What a dialog may touch](#what-a-dialog-may-touch) forbids**, and are being removed. Do not call them from a new dialog, and do not leave one behind in a dialog you are already editing; take the state through a back end instead.
 
 Static helpers:
 - `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`

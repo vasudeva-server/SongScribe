@@ -697,7 +697,9 @@ final class MeasureMapper {
 
         var text = words.getValue();
 
-        if (text == null) {
+        // A direction whose words are blank is dropped rather than imported: an annotation may
+        // not carry blank text, and one that says nothing is not worth a placeholder.
+        if (text == null || text.isBlank()) {
             return null;
         }
 

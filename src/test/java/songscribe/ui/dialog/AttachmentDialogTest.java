@@ -19,51 +19,68 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.Point;
-import java.awt.event.ActionEvent;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
-import javax.swing.JDialog;
+import java.awt.event.ActionEvent;
 
 import org.jspecify.annotations.Nullable;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
-import songscribe.dom.ElementType;
-import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
-import songscribe.message.MessageCenter;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.prefs.Prefs;
+import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
- * Unit tests for {@link AttachmentDialog} base-class behaviour:
- * element/line fetch on first show, add/modify branching, setData mutation
- * delegation, remove-button action, and null-guard on setData/remove.
+ * Exercises the contract of {@link AttachmentDialog}, the template the three attachment dialogs
+ * share, through a stub subclass and a stub back end. What each concrete dialog does with its own
+ * controls is asserted in its own test class; what is asserted here is only what the template
+ * promises for all of them.
+ *
+ * <p><b>Opening</b> — {@link AttachmentDialog#getData()} turns one domain fact, whether the element
+ * already carries a change, into three presentation decisions: what OK is called, whether Remove is
+ * offered, and what the controls are populated with. Both states of that fact are covered, and the
+ * promise that opening is never declined is asserted alongside them.
+ *
+ * <p><b>Committing</b> — OK hands the back end exactly what the controls gathered, and the Remove
+ * button routes through the back end's removal and then closes the window.
+ *
+ * <p><b>Validating</b> — both outcomes: a valid result lets OK proceed, an invalid one stops it.
+ * That this is assertable at all without a window on screen is the point of the split — the
+ * decision now comes back as a value instead of being fused to the alert that reports it.
+ *
+ * <p><b>No longer tested here, because the behaviour moved rather than went away:</b>
+ * <ul>
+ *   <li>resolving the element and line from the score's selection, which is now
+ *       {@code AttachmentEditor}'s and is asserted there — the dialog is handed a bound back end
+ *       and never looks at the score;</li>
+ *   <li>{@code showFor}'s pre-binding, which no longer exists: binding happens at construction, so
+ *       there is no unbound state to correct;</li>
+ *   <li>the {@code IllegalStateException} guards on commit and removal, which protected against an
+ *       unbound dialog. A dialog cannot now be constructed unbound, so nothing can reach them;</li>
+ *   <li>the {@code canClearChange} veto. That hook had no production implementor — the only
+ *       override in the tree was this class's own test double — and it was removed with the seam.
+ *       A back end that needs to refuse says so with a {@link ValidationResult}.</li>
+ * </ul>
  */
 class AttachmentDialogTest extends MainFrameMockTest {
+
+    private static final String GATHERED = "gathered";
+    private static final String EXISTING = "existing";
 
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
@@ -84,366 +101,190 @@ class AttachmentDialogTest extends MainFrameMockTest {
         uiUtilsMock.close();
     }
 
-    // ── Row 1: getData() fetches element/line from score when selectedElement is null ──
+    private record OpeningCase(String description, @Nullable String existing,
+                               String expectedOkKey, boolean removeOffered) {}
 
-    @Test
-    void testGetDataFetchesElementAndLineFromScoreWhenSelectedElementIsNull() {
-        var element = crotchet();
-        var line = lineWith(ElementType.CROTCHET);
-        var song = mock(Song.class);
-        when(song.getLine(anyInt())).thenReturn(line);
-
-        var score = mockEnv().score();
-        when(score.getSingleSelectedElement()).thenReturn(element);
-        when(score.getSong()).thenReturn(song);
-
-        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
-        dialog.getData();
-
-        assertThat(dialog.selectedElement)
-            .as("selectedElement set from score selection on first call")
-            .isSameAs(element);
-        assertThat(dialog.selectedLine)
-            .as("selectedLine set from score on first call")
-            .isSameAs(line);
+    static Stream<OpeningCase> openingCases() {
+        return Stream.of(
+            new OpeningCase("nothing there yet, so OK adds and there is nothing to remove",
+                null, Strings.LABEL_BUTTON_ADD, false),
+            new OpeningCase("a change is there, so OK modifies and Remove is offered",
+                EXISTING, Strings.LABEL_BUTTON_MODIFY, true)
+        );
     }
 
-    @Test
-    void testGetDataDoesNotFetchFromScoreWhenSelectedElementAlreadySet() {
-        var element = crotchet();
-        var line = lineWith(ElementType.CROTCHET);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("openingCases")
+    void testGetDataLabelsTheButtonsForWhatOkWillDo(OpeningCase testCase) {
+        var dialog = dialogFor(testCase.existing());
 
-        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
-        // Pre-set fields — simulates what showForElement would do
-        dialog.selectedElement = element;
-        dialog.selectedLine = line;
-
-        dialog.getData();
-
-        // score.getSingleSelectedElement() must NOT have been called
-        var score = mockEnv().score();
-        verify(score, never()).getSingleSelectedElement();
-        assertThat(dialog.selectedElement)
-            .as("selectedElement left intact when already set")
-            .isSameAs(element);
-    }
-
-    @Test
-    void testGetDataWhenScoreReturnsNullSelectionLeavesSelectedElementNull() {
-        var song = mock(Song.class);
-        var score = mockEnv().score();
-        when(score.getSingleSelectedElement()).thenReturn(null);
-        when(score.getSong()).thenReturn(song);
-
-        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
-        var result = dialog.getData();
-
-        assertThat(dialog.selectedElement)
-            .as("selectedElement remains null when score has no selection")
-            .isNull();
-        assertThat(result)
-            .as("getData() returns true even when no element selected")
-            .isTrue();
-    }
-
-    // ── Row 2: getData() add/modify branching — button text and removeButton visibility ──
-
-    @Test
-    void testGetDataWhenNoExistingChangeSetsAddTextAndHidesRemoveButton() {
-        setupScoreWithElement(ElementType.CROTCHET);
-        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
-        dialog.getData();
+        var proceed = dialog.getData();
 
         assertThat(dialog.okButton.getText())
-            .as("okButton shows Add text when no existing change")
-            .isEqualTo(Strings.get(Strings.LABEL_BUTTON_ADD));
+            .as("OK names the operation the element's current state calls for")
+            .isEqualTo(Strings.get(testCase.expectedOkKey()));
         assertThat(dialog.removeButton.isVisible())
-            .as("removeButton hidden when adding")
-            .isFalse();
+            .as("Remove is offered only when there is something to remove")
+            .isEqualTo(testCase.removeOffered());
+        assertThat(proceed)
+            .as("the dialog never declines to open, its element having been resolved before it was built")
+            .isTrue();
     }
 
-    @Test
-    void testGetDataWhenExistingChangeSetsSetsModifyTextAndShowsRemoveButton() {
-        var element = setupScoreWithElement(ElementType.CROTCHET);
-        // existingChange is non-null → modify branch
-        var dialog = new ControlDialog(mainFrame(), /* existingChange= */ element);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("openingCases")
+    void testGetDataPopulatesTheControlsFromWhatTheElementCarries(OpeningCase testCase) {
+        var dialog = dialogFor(testCase.existing());
+
         dialog.getData();
 
-        assertThat(dialog.okButton.getText())
-            .as("okButton shows Modify text when existing change present")
-            .isEqualTo(Strings.get(Strings.LABEL_BUTTON_MODIFY));
-        assertThat(dialog.removeButton.isVisible())
-            .as("removeButton shown when modifying")
-            .isTrue();
+        assertThat(dialog.populateCallCount)
+            .as("the controls are populated once per opening, for a new attachment as for an existing one")
+            .isEqualTo(1);
+        assertThat(dialog.populatedWith)
+            .as("the controls are populated with the change the element carries, or null for none")
+            .isEqualTo(testCase.existing());
     }
 
-    // ── Row 3: getData() returns true unconditionally ──
-
     @Test
-    void testGetDataReturnsTrueUnconditionally() {
-        setupScoreWithElement(ElementType.CROTCHET);
-        var dialog = new ControlDialog(mainFrame(), null);
-
-        assertThat(dialog.getData())
-            .as("getData() always returns true")
-            .isTrue();
-    }
-
-    // ── Row 4: setData() delegates mutation to line.modifyElement on correct index ──
-
-    @Test
-    void testSetDataCallsModifyElementOnCorrectIndexWithCorrectField() {
-        var element = crotchet();
-        var line = spy(detachedLine());
-        line.addElement(element);
-
-        var dialog = new ControlDialog(mainFrame(), null);
-        dialog.selectedElement = element;
-        dialog.selectedLine = line;
+    void testSetDataCommitsExactlyWhatTheControlsGathered() {
+        var dialog = dialogFor(null);
 
         dialog.setData();
 
-        // Verify modifyElement was called with the correct index and the stub's field
-        verify(line).modifyElement(eq(0), eq(ElementField.ANNOTATION), any(Runnable.class));
-        assertThat(dialog.applyChangeCallCount)
-            .as("applyChange invoked inside mutation")
-            .isEqualTo(1);
+        assertThat(dialog.backEnd.applied)
+            .as("OK hands the back end the gathered change, unaltered and exactly once")
+            .containsExactly(GATHERED);
     }
 
-    // ── Row 5: remove button action — clearChange called and dialog hidden ──
+    private record ValidationCase(String description, ValidationResult result, boolean proceeds) {}
+
+    static Stream<ValidationCase> validationCases() {
+        return Stream.of(
+            new ValidationCase("an accepted change lets OK proceed",
+                ValidationResult.valid(), true),
+            new ValidationCase("a refused change stops OK",
+                ValidationResult.invalid(new ValidationFailure(
+                    Strings.ALERT_TITLE_INFORMATION, new LocalizedMessage(Strings.ALERT_TITLE_INFORMATION))),
+                false)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("validationCases")
+    void testIsValidDataAnswersWhateverTheBackEndDecided(ValidationCase testCase) {
+        var dialog = dialogFor(null);
+        dialog.backEnd.validationResult = testCase.result();
+
+        assertThat(dialog.isValidData())
+            .as("the decision is the back end's; the dialog only reports it")
+            .isEqualTo(testCase.proceeds());
+        assertThat(dialog.backEnd.validated)
+            .as("the back end is asked about the gathered change, not about something else")
+            .containsExactly(GATHERED);
+    }
 
     @Test
-    void testRemoveButtonCallsClearChangeAndHidesDialog() {
-        var element = crotchet();
-        var line = spy(detachedLine());
-        line.addElement(element);
-
-        var dialog = new ControlDialog(mainFrame(), null);
-        dialog.selectedElement = element;
-        dialog.selectedLine = line;
+    void testRemoveButtonRemovesThroughTheBackEndAndClosesTheDialog() {
+        var dialog = dialogFor(EXISTING);
 
         fireRemoveAction(dialog);
 
-        verify(line).modifyElement(eq(0), eq(ElementField.ANNOTATION), any(Runnable.class));
-        assertThat(dialog.clearChangeCallCount)
-            .as("clearChange invoked by remove action")
+        assertThat(dialog.backEnd.removeCount)
+            .as("the Remove button routes through the back end rather than touching the element")
             .isEqualTo(1);
-        assertThat(dialog.closeCallCount)
-            .as("dialog hidden after remove action")
+        assertThat(dialog.closeCount)
+            .as("the dialog closes once the removal is committed")
             .isEqualTo(1);
     }
 
-    // ── Row 5a: remove button vetoed by canClearChange ──
-
-    /**
-     * The veto must be checked before the modification bracket opens: {@code Line.modifyElement}
-     * records unconditionally, so a guard placed one line too late still refuses and still leaves
-     * the score untouched — but leaves a phantom undo step behind. Only the notification and
-     * modified-flag assertions here can see that.
-     */
-    @Test
-    void testRemoveButtonVetoedByCanClearChangeMakesNoModification() {
-        var song = new Song();
-        var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(crotchet()));
-        song.setModified(false);
-
-        var dialog = new VetoDialog(mainFrame());
-        dialog.selectedElement = line.getElement(0);
-        dialog.selectedLine = line;
-
-        try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-            fireRemoveAction(dialog);
-            messageCenterMock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
-        }
-
-        assertThat(dialog.clearChangeCallCount)
-            .as("clearChange not invoked when the removal is vetoed")
-            .isZero();
-        assertThat(song.isModified())
-            .as("a vetoed removal records no mutation")
-            .isFalse();
-        assertThat(dialog.closeCallCount)
-            .as("dialog left visible when the removal is vetoed")
-            .isZero();
-    }
-
-    // ── Row 6: setData()/remove button throw when element or line is null ──
-
-    @Test
-    void testSetDataThrowsWhenSelectedElementIsNull() {
-        var dialog = new ControlDialog(mainFrame(), null);
-        // leave selectedElement and selectedLine null
-        assertThatThrownBy(dialog::setData)
-            .as("setData throws when element is null")
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void testSetDataThrowsWhenSelectedLineIsNull() {
-        var element = crotchet();
-        var dialog = new ControlDialog(mainFrame(), null);
-        dialog.selectedElement = element;
-        // leave selectedLine null
-        assertThatThrownBy(dialog::setData)
-            .as("setData throws when line is null")
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void testRemoveButtonThrowsWhenSelectedElementIsNull() {
-        var dialog = new ControlDialog(mainFrame(), null);
-        assertThatThrownBy(() -> fireRemoveAction(dialog))
-            .as("remove action throws when element is null")
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void testRemoveButtonThrowsWhenSelectedLineIsNull() {
-        var element = crotchet();
-        var dialog = new ControlDialog(mainFrame(), null);
-        dialog.selectedElement = element;
-        assertThatThrownBy(() -> fireRemoveAction(dialog))
-            .as("remove action throws when line is null")
-            .isInstanceOf(IllegalStateException.class);
-    }
-
-    // ── Row 7: showFor(element, line) — pre-binds selectedElement/selectedLine before show ──
-
-    /**
-     * This is what stops {@link AttachmentDialog#getData()} from falling back to
-     * {@link songscribe.ui.component.ScoreView#getSingleSelectedElement()}, which answers null
-     * for a directly selected attachment.
-     */
-    @Test
-    void testShowForSetsSelectedElementAndLineThenShows() {
-        var element = crotchet();
-        var line = detachedLine();
-        line.addElement(element);
-
-        var dialog = new ControlDialog(mainFrame(), null);
-
-        try (var construction = mockConstruction(JDialog.class,
-                (mockDialog, context) -> BaseDialogTestHelper.configureMockDialog(mockDialog, new Point(100, 100)))) {
-            dialog.showFor(element, line);
-
-            assertThat(dialog.selectedElement)
-                .as("selectedElement set from showFor's argument")
-                .isSameAs(element);
-            assertThat(dialog.selectedLine)
-                .as("selectedLine set from showFor's argument")
-                .isSameAs(line);
-            assertThat(construction.constructed())
-                .as("exactly one JDialog window was created")
-                .hasSize(1);
-            // showFor asks the dialog window to become visible.
-            verify(construction.constructed().getFirst()).setVisible(true);
-        }
-    }
-
-    // ── Helpers ──
-
-    /**
-     * Stubs the mock score to return a single-element line and the given element
-     * as the selection. Returns the element for use in the test.
-     */
-    private StaffElement setupScoreWithElement(ElementType type) {
-        var element = type.newInstance();
-        var line = lineWith(type);
-        var song = mock(Song.class);
-        when(song.getLine(anyInt())).thenReturn(line);
-
-        var score = mockEnv().score();
-        when(score.getSingleSelectedElement()).thenReturn(element);
-        when(score.getSong()).thenReturn(song);
-
-        return element;
+    private ControlDialog dialogFor(@Nullable String existing) {
+        return new ControlDialog(mainFrame(), new StubBackEnd(existing));
     }
 
     private static void fireRemoveAction(ControlDialog dialog) {
         var listeners = dialog.removeButton.getActionListeners();
-        var event = new ActionEvent(dialog.removeButton, ActionEvent.ACTION_PERFORMED, "");
-        listeners[0].actionPerformed(event);
+        listeners[0].actionPerformed(
+            new ActionEvent(dialog.removeButton, ActionEvent.ACTION_PERFORMED, ""));
     }
 
     /**
-     * Minimal concrete {@link AttachmentDialog} stub.
-     *
-     * <ul>
-     *   <li>{@code existingChange} — value returned by {@link #getExistingChange}; {@code null}
-     *       → adding branch, non-null → modify branch.</li>
-     *   <li>Tracks how many times {@link #applyChange} and {@link #clearChange} are called.</li>
-     *   <li>Overrides {@link #setVisible}{@code (false)} to count close calls without triggering
-     *       the full dialog teardown (which would NPE on an uninitialised {@link javax.swing.JDialog}).</li>
-     * </ul>
+     * A back end that records what it was asked to do and answers whatever the test told it to.
+     * The template's promises are all about what it hands the back end and when, so the back end
+     * is the only place those promises are observable.
      */
-    private static class ControlDialog extends AttachmentDialog<StaffElement> {
+    private static final class StubBackEnd implements AttachmentBackEnd<String> {
 
-        final @Nullable StaffElement existingChange;
-        int applyChangeCallCount = 0;
-        int clearChangeCallCount = 0;
-        int closeCallCount = 0;
+        private final @Nullable String existing;
+        final List<String> validated = new ArrayList<>();
+        final List<String> applied = new ArrayList<>();
+        ValidationResult validationResult = ValidationResult.valid();
+        int removeCount = 0;
 
-        ControlDialog(MainFrame mainFrame, @Nullable StaffElement existingChange) {
-            super(mainFrame, "Control Dialog");
-            this.existingChange = existingChange;
+        StubBackEnd(@Nullable String existing) {
+            this.existing = existing;
         }
 
         @Override
-        protected ElementField getElementField() {
-            return ElementField.ANNOTATION;
+        public @Nullable String existingChange() {
+            return existing;
         }
 
         @Override
-        protected String opLabel(AttachmentOp op) {
-            return Strings.get(switch (op) {
-                case ADD -> Strings.ACTION_EDIT_OP_ADD_ANNOTATION;
-                case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION;
-                case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION;
-            });
+        public ValidationResult validate(String input) {
+            validated.add(input);
+            return validationResult;
         }
 
         @Override
-        protected @Nullable StaffElement getExistingChange(StaffElement element) {
-            return existingChange;
+        public void apply(String input) {
+            applied.add(input);
         }
 
         @Override
-        protected void populateControls(@Nullable StaffElement change) {
-            // no-op for testing
+        public void remove() {
+            removeCount++;
+        }
+    }
+
+    /**
+     * The smallest concrete {@link AttachmentDialog}: controls that record what they were given
+     * and always gather the same value, so that every assertion is about the template rather than
+     * about any particular set of widgets.
+     *
+     * <p>{@code setVisible(false)} is counted rather than performed, because the full teardown
+     * would reach a {@code JDialog} this fixture never creates.
+     */
+    private static final class ControlDialog extends AttachmentDialog<String> {
+
+        final StubBackEnd backEnd;
+        @Nullable String populatedWith = null;
+        int populateCallCount = 0;
+        int closeCount = 0;
+
+        ControlDialog(MainFrame mainFrame, StubBackEnd backEnd) {
+            super(mainFrame, "Control Dialog", backEnd);
+            this.backEnd = backEnd;
         }
 
         @Override
-        protected void applyChange(StaffElement element) {
-            applyChangeCallCount++;
+        protected void populateControls(@Nullable String existingChange) {
+            populatedWith = existingChange;
+            populateCallCount++;
         }
 
         @Override
-        protected void clearChange(StaffElement element) {
-            clearChangeCallCount++;
+        protected String gatherChange() {
+            return GATHERED;
         }
 
         @Override
         public void setVisible(boolean visible) {
-            if (!visible) {
-                closeCallCount++;
-                // Skip super to avoid NPE on the uninitialised JDialog field
-            } else {
+            if (visible) {
                 super.setVisible(true);
+            } else {
+                closeCount++;
             }
-        }
-    }
-
-    /** A {@link ControlDialog} whose Remove button is always vetoed. */
-    private static class VetoDialog extends ControlDialog {
-
-        VetoDialog(MainFrame mainFrame) {
-            super(mainFrame, /* existingChange= */ null);
-        }
-
-        @Override
-        protected boolean canClearChange(StaffElement element) {
-            return false;
         }
     }
 }

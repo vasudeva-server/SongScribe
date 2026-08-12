@@ -19,18 +19,28 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.Component;
 import java.util.Collections;
+import java.util.stream.Stream;
+
+import java.awt.Component;
+
+import javax.swing.JRadioButton;
+import javax.swing.text.JTextComponent;
+
+import org.jspecify.annotations.Nullable;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Annotation;
-import songscribe.dom.AnnotationAttachment;
 import songscribe.prefs.Prefs;
+import songscribe.ui.dialog.backend.AnnotationBackEnd;
+import songscribe.ui.dialog.backend.AttachmentTarget;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,8 +49,29 @@ import static org.mockito.Mockito.mockStatic;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
- * Unit tests for {@link AnnotationDialog}: populateControls null/existing,
- * applyChange (empty text, alignment+position, add vs update), and clearChange.
+ * Exercises the contract of {@link AnnotationDialog}, which after the dialog seam is entirely about
+ * controls: the text combo, the three alignment radios and the two placement radios.
+ *
+ * <p><b>Populating</b> — {@link AnnotationDialog#populateControls} maps an annotation onto the
+ * radios. Both radio groups are enumerated: every alignment the dialog can show is asserted to
+ * select its own radio, and both placements likewise, driven from
+ * {@link Annotation.Placement#values()} so a new placement reaches this test on its own. The
+ * alignment table names its rows explicitly, because the alignments are {@code float} constants on
+ * {@code Component} rather than a type with a value list — the fall-through row is what pins the
+ * contract's "left when it is neither of the other two".
+ *
+ * <p><b>Round trip</b> — the invariant that populating and then gathering returns an equivalent
+ * {@link Annotation}, covering text, alignment and placement in one property rather than one
+ * expected output per control.
+ *
+ * <p><b>Never blank</b> — the one way the user could reach a blank annotation, which is emptying
+ * the field. The guard on the combo's editor puts the previous text back, so the commit never sees
+ * it. The other direction cannot happen at all: {@link Annotation} refuses blank text outright,
+ * and {@code AnnotationTest} asserts that.
+ *
+ * <p><b>Not tested here:</b> commit and removal, which are the back end's; and the Add/Modify
+ * labelling, which the template owns for the whole family and {@code AttachmentDialogTest} asserts
+ * once.
  */
 class AnnotationDialogTest extends MainFrameMockTest {
 
@@ -56,7 +87,11 @@ class AnnotationDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new AnnotationDialog(mainFrame());
+
+        var line = detachedLine();
+        var element = crotchet();
+        line.addElement(element);
+        dialog = new AnnotationDialog(mainFrame(), new AnnotationBackEnd(new AttachmentTarget(line, element)));
     }
 
     @AfterEach
@@ -65,256 +100,131 @@ class AnnotationDialogTest extends MainFrameMockTest {
         uiUtilsMock.close();
     }
 
-    // ── Row 1: populateControls(null) — defaults to DEFAULT_ANNOTATION, left, above ──
-
     @Test
-    void testPopulateControlsNullDefaultsToDefaultAnnotationLeftAlignmentAbove() {
+    void testPopulateControlsWithNoExistingAnnotationShowsTheDefault() {
         dialog.populateControls(null);
 
         assertThat(dialog.annotationCombo.getSelectedItem())
-            .as("combo text defaults to DEFAULT_ANNOTATION")
+            .as("the combo starts at the default annotation text")
             .isEqualTo(AnnotationDialog.DEFAULT_ANNOTATION);
         assertThat(dialog.leftRadio.isSelected())
-            .as("left alignment selected by default")
-            .isTrue();
-        assertThat(dialog.centerRadio.isSelected())
-            .as("center alignment not selected by default")
-            .isFalse();
-        assertThat(dialog.rightRadio.isSelected())
-            .as("right alignment not selected by default")
-            .isFalse();
-        assertThat(dialog.aboveRadio.isSelected())
-            .as("above position selected by default")
-            .isTrue();
-        assertThat(dialog.belowRadio.isSelected())
-            .as("below position not selected by default")
-            .isFalse();
-    }
-
-    // ── Row 2: populateControls(existing) — alignment and placement mapping ──
-
-    @Test
-    void testPopulateControlsExistingMapsCenterAlignmentToCenterRadio() {
-        var annotation = new Annotation("dolce", Component.CENTER_ALIGNMENT);
-        annotation.setPlacement(Annotation.Placement.BELOW);
-
-        dialog.populateControls(annotation);
-
-        assertThat(dialog.annotationCombo.getSelectedItem())
-            .as("combo shows existing annotation text")
-            .isEqualTo("dolce");
-        assertThat(dialog.centerRadio.isSelected())
-            .as("CENTER_ALIGNMENT maps to centerRadio")
-            .isTrue();
-        assertThat(dialog.belowRadio.isSelected())
-            .as("BELOW placement maps to belowRadio")
-            .isTrue();
-    }
-
-    @Test
-    void testPopulateControlsExistingMapsRightAlignmentToRightRadio() {
-        var annotation = new Annotation("cresc.", Component.RIGHT_ALIGNMENT);
-        annotation.setPlacement(Annotation.Placement.ABOVE);
-
-        dialog.populateControls(annotation);
-
-        assertThat(dialog.rightRadio.isSelected())
-            .as("RIGHT_ALIGNMENT maps to rightRadio")
+            .as("a new annotation starts left-aligned")
             .isTrue();
         assertThat(dialog.aboveRadio.isSelected())
-            .as("ABOVE placement maps to aboveRadio")
+            .as("a new annotation starts above the staff")
             .isTrue();
     }
 
-    @Test
-    void testPopulateControlsExistingMapsOtherAlignmentToLeftRadio() {
-        // Any alignment that is neither CENTER nor RIGHT falls through to leftRadio
-        var annotation = new Annotation("fine", Component.LEFT_ALIGNMENT);
-        annotation.setPlacement(Annotation.Placement.ABOVE);
+    private record AlignmentCase(String description, float alignment) {}
+
+    static Stream<AlignmentCase> alignmentCases() {
+        return Stream.of(
+            new AlignmentCase("centered", Component.CENTER_ALIGNMENT),
+            new AlignmentCase("right-aligned", Component.RIGHT_ALIGNMENT),
+            new AlignmentCase("left-aligned", Component.LEFT_ALIGNMENT),
+            // Anything that is neither center nor right reads as left, which is the clause a
+            // value outside the three constants is here to pin.
+            new AlignmentCase("an alignment that is none of the three reads as left", 0.25f)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("alignmentCases")
+    void testPopulateControlsSelectsTheRadioForTheAnnotationsAlignment(AlignmentCase testCase) {
+        dialog.populateControls(new Annotation("dolce", testCase.alignment()));
+
+        assertThat(selectedAlignmentRadio())
+            .as("exactly the alignment radio the annotation calls for is selected")
+            .isSameAs(radioFor(testCase.alignment()));
+    }
+
+    @ParameterizedTest
+    @MethodSource("placements")
+    void testPopulateControlsSelectsTheRadioForTheAnnotationsPlacement(Annotation.Placement placement) {
+        var annotation = new Annotation("dolce");
+        annotation.setPlacement(placement);
 
         dialog.populateControls(annotation);
 
-        assertThat(dialog.leftRadio.isSelected())
-            .as("LEFT_ALIGNMENT (other) maps to leftRadio")
+        assertThat(placement == Annotation.Placement.ABOVE
+            ? dialog.aboveRadio.isSelected()
+            : dialog.belowRadio.isSelected())
+            .as("the placement radio matching the annotation is the one selected")
             .isTrue();
     }
 
-    // ── Row 3: applyChange — empty/null text removes existing attachment ──
+    static Stream<Annotation.Placement> placements() {
+        return Stream.of(Annotation.Placement.values());
+    }
 
-    @Test
-    void testApplyChangeEmptyTextRemovesExistingAttachment() {
-        var element = crotchet();
-        var attachment = new AnnotationAttachment(element, new Annotation("old"));
-        element.addAttachment(attachment);
+    static Stream<Annotation> roundTripAnnotations() {
+        return Stream.of(
+            annotation("dolce", Component.CENTER_ALIGNMENT, Annotation.Placement.BELOW),
+            annotation("cresc.", Component.RIGHT_ALIGNMENT, Annotation.Placement.ABOVE),
+            annotation("fine", Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE)
+        );
+    }
 
-        dialog.annotationCombo.setSelectedItem("");
-        dialog.applyChange(element);
+    @ParameterizedTest
+    @MethodSource("roundTripAnnotations")
+    void testGatherChangeReturnsWhatPopulateControlsPutIn(Annotation original) {
+        dialog.populateControls(original);
 
-        assertThat(element.findAttachment(AnnotationAttachment.class))
-            .as("existing attachment removed when text is empty")
-            .isNull();
+        var gathered = dialog.gatherChange();
+
+        assertThat(gathered.getAnnotation())
+            .as("the text survives the round trip")
+            .isEqualTo(original.getAnnotation());
+        assertThat(gathered.getXAlignment())
+            .as("the alignment survives the round trip")
+            .isEqualTo(original.getXAlignment());
+        assertThat(gathered.getPlacement())
+            .as("the placement survives the round trip")
+            .isEqualTo(original.getPlacement());
     }
 
     @Test
-    void testApplyChangeNullTextIsNoOpWhenNoAttachment() {
-        var element = crotchet();
+    void testEmptyingTheTextPutsItBackSoNothingBlankCanBeGathered() {
+        dialog.populateControls(new Annotation("dolce"));
+        var editor = (JTextComponent) dialog.annotationCombo.getEditor().getEditorComponent();
 
-        dialog.annotationCombo.setSelectedItem(null);
-        // no attachment present — should not throw
-        dialog.applyChange(element);
+        editor.setText("");
+        var yielded = editor.getInputVerifier().shouldYieldFocus(editor, dialog.okButton);
 
-        assertThat(element.findAttachment(AnnotationAttachment.class))
-            .as("no attachment added when text is null and none existed")
-            .isNull();
+        assertThat(editor.getText())
+            .as("emptying the field puts text back, so OK can never commit a blank annotation")
+            .isNotBlank();
+        assertThat(yielded)
+            .as("the caret is released rather than trapped in a field the user meant to leave")
+            .isTrue();
     }
 
-    // ── Row 4: applyChange — builds Annotation with correct alignment float and placement ──
+    private static Annotation annotation(String text, float alignment, Annotation.Placement placement) {
+        var annotation = new Annotation(text, alignment);
+        annotation.setPlacement(placement);
 
-    @Test
-    void testApplyChangeCenterRadioSelectedWritesCenterAlignment() {
-        var element = crotchet();
-
-        dialog.annotationCombo.setSelectedItem("test");
-        dialog.centerRadio.setSelected(true);
-        dialog.aboveRadio.setSelected(true);
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(AnnotationAttachment.class);
-        assertThat(added).as("attachment was added").isNotNull();
-        assertThat(added.getAnnotation().getXAlignment())
-            .as("CENTER_ALIGNMENT stored in annotation")
-            .isEqualTo(Component.CENTER_ALIGNMENT);
-        assertThat(added.getAnnotation().getPlacement())
-            .as("ABOVE stored in annotation")
-            .isEqualTo(Annotation.Placement.ABOVE);
+        return annotation;
     }
 
-    @Test
-    void testApplyChangeRightRadioSelectedWritesRightAlignment() {
-        var element = crotchet();
+    private JRadioButton radioFor(float alignment) {
+        if (alignment == Component.CENTER_ALIGNMENT) {
+            return dialog.centerRadio;
+        }
 
-        dialog.annotationCombo.setSelectedItem("test");
-        dialog.rightRadio.setSelected(true);
-        dialog.belowRadio.setSelected(true);
-        dialog.applyChange(element);
+        if (alignment == Component.RIGHT_ALIGNMENT) {
+            return dialog.rightRadio;
+        }
 
-        var added = element.findAttachment(AnnotationAttachment.class);
-        assertThat(added).as("attachment was added").isNotNull();
-        assertThat(added.getAnnotation().getXAlignment())
-            .as("RIGHT_ALIGNMENT stored in annotation")
-            .isEqualTo(Component.RIGHT_ALIGNMENT);
-        assertThat(added.getAnnotation().getPlacement())
-            .as("BELOW stored in annotation")
-            .isEqualTo(Annotation.Placement.BELOW);
+        return dialog.leftRadio;
     }
 
-    @Test
-    void testApplyChangeLeftRadioSelectedWritesLeftAlignment() {
-        var element = crotchet();
+    private @Nullable JRadioButton selectedAlignmentRadio() {
+        for (var radio : new JRadioButton[] { dialog.leftRadio, dialog.centerRadio, dialog.rightRadio }) {
+            if (radio.isSelected()) {
+                return radio;
+            }
+        }
 
-        dialog.annotationCombo.setSelectedItem("dolce");
-        dialog.leftRadio.setSelected(true);
-        dialog.aboveRadio.setSelected(true);
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(AnnotationAttachment.class);
-        assertThat(added).as("attachment was added").isNotNull();
-        assertThat(added.getAnnotation().getXAlignment())
-            .as("LEFT_ALIGNMENT stored in annotation")
-            .isEqualTo(Component.LEFT_ALIGNMENT);
-        assertThat(added.getAnnotation().getAnnotation())
-            .as("annotation text preserved")
-            .isEqualTo("dolce");
-    }
-
-    // ── Row 5: applyChange — updates existing attachment vs adds new one ──
-
-    @Test
-    void testApplyChangeUpdatesExistingAttachment() {
-        var element = crotchet();
-        var original = new AnnotationAttachment(element, new Annotation("old"));
-        element.addAttachment(original);
-
-        dialog.annotationCombo.setSelectedItem("new");
-        dialog.leftRadio.setSelected(true);
-        dialog.aboveRadio.setSelected(true);
-        dialog.applyChange(element);
-
-        // Still exactly one attachment (updated in-place)
-        var updated = element.findAttachment(AnnotationAttachment.class);
-        assertThat(updated).isNotNull();
-        assertThat(updated)
-            .as("existing attachment updated, not replaced")
-            .isSameAs(original);
-        assertThat(updated.getAnnotation().getAnnotation())
-            .as("annotation text updated to new value")
-            .isEqualTo("new");
-    }
-
-    @Test
-    void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = crotchet();
-        // no pre-existing attachment
-
-        dialog.annotationCombo.setSelectedItem("fine");
-        dialog.leftRadio.setSelected(true);
-        dialog.aboveRadio.setSelected(true);
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(AnnotationAttachment.class);
-        assertThat(added)
-            .as("new AnnotationAttachment added when none existed")
-            .isNotNull();
-        assertThat(added.getAnnotation().getAnnotation())
-            .as("annotation text set on new attachment")
-            .isEqualTo("fine");
-    }
-
-    // ── Row 6: clearChange — removes attachment if present; no-op if absent ──
-
-    @Test
-    void testClearChangeRemovesExistingAttachment() {
-        var element = crotchet();
-        element.addAttachment(new AnnotationAttachment(element, new Annotation("fine")));
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(AnnotationAttachment.class))
-            .as("attachment removed by clearChange")
-            .isNull();
-    }
-
-    @Test
-    void testClearChangeIsNoOpWhenNoAttachment() {
-        var element = crotchet();
-        // no attachment — clearChange should not throw
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(AnnotationAttachment.class))
-            .as("no attachment present after clearChange on element with none")
-            .isNull();
-    }
-
-    // ── getExistingChange — returns annotation when present; null when absent ──
-
-    @Test
-    void testGetExistingChangeReturnsAnnotationWhenAttachmentPresent() {
-        var element = crotchet();
-        var annotation = new Annotation("forte");
-        element.addAttachment(new AnnotationAttachment(element, annotation));
-
-        assertThat(dialog.getExistingChange(element))
-            .as("getExistingChange returns the annotation from the existing attachment")
-            .isSameAs(annotation);
-    }
-
-    @Test
-    void testGetExistingChangeReturnsNullWhenNoAttachment() {
-        var element = crotchet();
-
-        assertThat(dialog.getExistingChange(element))
-            .as("getExistingChange returns null when no AnnotationAttachment is present")
-            .isNull();
+        return null;
     }
 }

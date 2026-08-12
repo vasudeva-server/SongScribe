@@ -4,7 +4,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Non-obvious Packages
 
-`hit/package-info.java` describes that package's role and is worth reading before working in it. Every other `package-info.java` carries only the `@NullMarked` annotation — do not go looking there for a package's purpose. The list below and the design notes in `docs/` are the documentation.
+`hit/package-info.java` and `ui/dialog/backend/package-info.java` describe their packages' roles and are worth reading before working in them. Every other `package-info.java` carries only the `@NullMarked` annotation — do not go looking there for a package's purpose. The list below and the design notes in `docs/` are the documentation.
 
 - smufl/ — SMuFL glyph registry: codepoints, names, and font-metric lookups
 - io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; MusicXML I/O goes through a schema-bound `org.audiveris:proxymusic` object graph (`ScorePartwise`) rather than streaming SAX/XMLStreamWriter events — see `docs/musicxml-object-model.md`. `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
@@ -39,7 +39,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](docs/messages.md).
 - **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation System](docs/mutations.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.claude/guides/option-dialogs.md).
-- **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle): [Dialogs](.claude/guides/dialogs.md).
+- **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), **or a dialog back end** (`DialogBackEnd`, `AttachmentBackEnd`, anything in `ui/dialog/backend/`): [Dialogs](.claude/guides/dialogs.md). It states what a dialog may and may not touch, which is the rule a back end exists to keep.
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.claude/guides/prefs.md).
 - **Custom UI constants** (`FlatLafProps`, `FlatLafKeys`, `FlatLaf.properties`): [FlatLaf Properties](.claude/guides/flatlaf-props.md).
 - **File-based logging**: [Logging](.claude/guides/logging.md). If the user says, "check the log", read this guide to know where to look.

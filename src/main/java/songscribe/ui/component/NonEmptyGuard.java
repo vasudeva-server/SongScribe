@@ -19,142 +19,94 @@
 */
 package songscribe.ui.component;
 
-import songscribe.error.RuntimeError;
-
 import module java.desktop;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.Strings;
-import songscribe.ui.OptionDialogs;
-
 /**
- * An {@link InputVerifier} for a {@link JTextComponent} that prevents the
- * field from being left blank. Install it with
- * {@code field.setInputVerifier(new NonEmptyGuard(field, ...))}. While the
- * field is blank it refuses to yield focus, so a button that triggers it
- * (e.g. an OK button) will not fire. To let a button bypass the guard
- * (e.g. Cancel), call {@code button.setVerifyInputWhenFocusTarget(false)}.
+ * An {@link InputVerifier} for a field that may not be left blank. Emptying the field puts back
+ * what was in it. Install it with
+ * {@code field.setInputVerifier(new NonEmptyGuard(field, fallback))}; the field may be a combo
+ * box's editor as easily as a plain text field.
  *
- * <p>Two modes of operation:
- * <ul>
- *   <li><b>With a default value</b> — an option dialog offers the user
- *       a choice between applying the default or continuing to edit.</li>
- *   <li><b>Without a default value</b> — a warning is shown and focus
- *       is kept on the field.</li>
- * </ul>
+ * <p><strong>The field is never blank once focus has left it.</strong> That is the whole promise,
+ * and it is what lets a commit path downstream treat non-blank text as a precondition rather than
+ * as a case to handle.
+ *
+ * <p>Restoring rather than asking is deliberate. Emptying a field says what the user does
+ * <em>not</em> want and nothing about what they do, so there is no question worth putting to them:
+ * a prompt offering a substitute interrupts an edit to ask about a value the user never chose, and
+ * refusing to yield strands the caret in a field they were trying to leave. Putting the previous
+ * value back answers it the way undo would.
+ *
+ * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored value to
+ * be the one the user was looking at rather than the fallback.
  */
-public class NonEmptyGuard extends InputVerifier {
+public final class NonEmptyGuard extends InputVerifier {
 
     private final JTextComponent field;
-    private final Component parent;
-    private final String dialogTitleKey;
-    private final String messageKey;
-    private final @Nullable String defaultValueKey;
-    private final @Nullable String useDefaultLabelKey;
-    private final @Nullable String continueEditingLabelKey;
+    private String previousText;
 
     /**
-     * Creates a guard that offers the user a default value when the
-     * field is left blank.
-     *
-     * @param field                the text component to guard
-     * @param parent               parent component for dialog positioning
-     * @param dialogTitleKey       strings key for the option dialog title
-     * @param messageKey           strings key for the option dialog message body
-     * @param defaultValueKey      strings key for the value to apply when the user accepts the default
-     * @param useDefaultLabelKey   strings key for the "use default" button label
-     * @param continueEditingLabelKey strings key for the "continue editing" button label
+     * @param field    the text component to guard
+     * @param fallback what to put back when the guard has seen no good value at all — the field was
+     *                 never populated, or was populated blank. Must not itself be blank
+     * @throws IllegalArgumentException if {@code fallback} is blank, which would let the guard
+     *                                  restore a blank value and so break its own promise
      */
-    public NonEmptyGuard(
-        JTextComponent field,
-        Component parent,
-        String dialogTitleKey,
-        String messageKey,
-        String defaultValueKey,
-        String useDefaultLabelKey,
-        String continueEditingLabelKey
-    ) {
+    public NonEmptyGuard(JTextComponent field, String fallback) {
+        if (fallback.isBlank()) {
+            throw new IllegalArgumentException("fallback must not be blank");
+        }
+
         this.field = field;
-        this.parent = parent;
-        this.dialogTitleKey = dialogTitleKey;
-        this.messageKey = messageKey;
-        this.defaultValueKey = defaultValueKey;
-        this.useDefaultLabelKey = useDefaultLabelKey;
-        this.continueEditingLabelKey = continueEditingLabelKey;
+        previousText = fallback;
     }
 
     /**
-     * Creates a guard that warns the user and keeps focus when the
-     * field is left blank. No default value is offered.
+     * Marks the field's current text as the value to restore.
      *
-     * @param field          the text component to guard
-     * @param parent         parent component for dialog positioning
-     * @param dialogTitleKey strings key for the warning dialog title
-     * @param messageKey     strings key for the warning dialog message body
+     * <p>Call it after setting the field programmatically. Such a write is invisible here — it
+     * leaves the document looking exactly as typing would — so without this the guard cannot tell a
+     * value a dialog just put in from a half-finished edit, and a user who empties a freshly opened
+     * field would get the fallback instead of what they were looking at.
+     *
+     * <p>Blank text is ignored rather than remembered: a field populated with nothing has no
+     * previous value worth restoring, and taking it would break the class promise. That makes the
+     * call safe after a write that may or may not have produced anything.
      */
-    public NonEmptyGuard(
-        JTextComponent field,
-        Component parent,
-        String dialogTitleKey,
-        String messageKey
-    ) {
-        this.field = field;
-        this.parent = parent;
-        this.dialogTitleKey = dialogTitleKey;
-        this.messageKey = messageKey;
-        defaultValueKey = null;
-        useDefaultLabelKey = null;
-        continueEditingLabelKey = null;
+    public void rememberCurrentText() {
+        var text = field.getText();
+
+        if (!text.isBlank()) {
+            previousText = text;
+        }
     }
 
+    /**
+     * @return {@code true} when the field holds something other than whitespace
+     */
     @Override
     public boolean verify(JComponent input) {
         return !field.getText().isBlank();
     }
 
+    /**
+     * Restores the previous value when the field has been left blank, and always yields.
+     *
+     * <p>Yielding either way is what makes this guard invisible in use: once the previous value is
+     * back the field is valid, so there is nothing to keep the caret for. It also means a Cancel
+     * button needs no {@code setVerifyInputWhenFocusTarget(false)} on this guard's account — a
+     * blank field can never be what stops a dialog being dismissed.
+     *
+     * @return always {@code true}
+     */
     @Override
     public boolean shouldYieldFocus(JComponent source, JComponent target) {
         if (verify(source)) {
-            return true;
+            rememberCurrentText();
+        } else {
+            field.setText(previousText);
         }
 
-        if (defaultValueKey != null) {
-            return showDefaultValueDialog();
-        }
-
-        // Returning false keeps focus on the field; show the reason first.
-        OptionDialogs.showWarningMessage(parent, dialogTitleKey, messageKey);
-        return false;
-    }
-
-    private boolean showDefaultValueDialog() {
-        if (useDefaultLabelKey == null || continueEditingLabelKey == null || defaultValueKey == null) {
-            throw RuntimeError.exit("default value labels not initialized");
-        }
-
-        var useDefault = Strings.get(useDefaultLabelKey);
-        var continueEditing = Strings.get(continueEditingLabelKey);
-        var defaultVal = Strings.get(defaultValueKey);
-        var useDefaultIndex = 1;
-
-        var result = OptionDialogs.showOptionDialog(
-            parent,
-            dialogTitleKey,
-            messageKey,
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE,
-            null,
-            new Object[]{ continueEditing, useDefault },
-            continueEditing
-        );
-
-        if (result == useDefaultIndex) {
-            field.setText(defaultVal);
-            return true;
-        }
-
-        // Closed or "continue editing" -- keep focus on the field
-        return false;
+        return true;
     }
 }

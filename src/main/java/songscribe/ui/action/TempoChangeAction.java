@@ -27,7 +27,7 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.TempoChangeDialog;
+import songscribe.ui.dialog.AttachmentEditor;
 
 public final class TempoChangeAction extends UIAction {
 
@@ -66,6 +66,6 @@ public final class TempoChangeAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        new TempoChangeDialog(getMainFrame()).setVisible(true);
+        AttachmentEditor.editTempoChangeOnSelection(getMainFrame());
     }
 }

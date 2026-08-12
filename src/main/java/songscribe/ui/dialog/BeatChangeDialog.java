@@ -24,27 +24,40 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
-import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
+import songscribe.error.RuntimeError;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
-import songscribe.dom.BeatChangeAttachment;
+import songscribe.ui.component.MainFrame;
 
+/**
+ * Two note-value combos reading {@code duration = beat}, for editing the beat change on an
+ * element.
+ *
+ * <p><strong>Both combos always carry a selection.</strong> Each is built over the whole
+ * {@link Duration} enum, so its model is never empty, and a non-empty combo selects its first
+ * entry on construction. {@link #gatherChange()} relies on that: there is no state reachable
+ * through the UI in which it has nothing to gather, which is why it produces a {@link BeatChange}
+ * unconditionally instead of quietly declining to commit.
+ */
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
+
+    /**
+     * What the controls start at when the element carries no beat change: a dotted crotchet
+     * taking the beat of a crotchet, the compound-time case the dialog is opened for most often.
+     */
+    static final BeatChange DEFAULT_BEAT_CHANGE =
+        new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
 
     final JComboBox<Duration> durationCombo =
         DurationListCellRenderer.createCombo(Duration.values());
     final JComboBox<Duration> beatCombo =
         DurationListCellRenderer.createCombo(Duration.values());
 
-    public BeatChangeDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE));
+    public BeatChangeDialog(MainFrame mainFrame, AttachmentBackEnd<BeatChange> backEnd) {
+        super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), backEnd);
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
@@ -58,64 +71,43 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
         contentPanel.add(BorderLayout.CENTER, row);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The controls start at {@link #DEFAULT_BEAT_CHANGE} when there is nothing to show. Whatever
+     * is put in comes back out: {@link #gatherChange()} called straight afterwards, with nothing
+     * else touched, answers the same {@link BeatChange}.
+     */
     @Override
-    protected ElementField getElementField() {
-        return ElementField.BEAT_CHANGE;
+    protected void populateControls(@Nullable BeatChange existingChange) {
+        var change = existingChange != null ? existingChange : DEFAULT_BEAT_CHANGE;
+
+        durationCombo.setSelectedItem(change.duration());
+        beatCombo.setSelectedItem(change.beat());
     }
 
     @Override
-    protected String opLabel(AttachmentOp op) {
-        return Strings.get(switch (op) {
-            case ADD -> Strings.ACTION_EDIT_OP_ADD_BEAT_CHANGE;
-            case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_BEAT_CHANGE;
-            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE;
-        });
+    protected BeatChange gatherChange() {
+        return new BeatChange(selectedDuration(durationCombo), selectedDuration(beatCombo));
     }
 
-    @Override
-    protected @Nullable BeatChange getExistingChange(StaffElement element) {
-        var attachment = element.findAttachment(BeatChangeAttachment.class);
-        return attachment != null ? attachment.getBeatChange() : null;
-    }
+    /**
+     * The note value a combo is showing.
+     *
+     * <p>{@code JComboBox.getSelectedItem} is nullable in general, but not for these two — see the
+     * class contract. The guard states that invariant rather than defending against it: a null
+     * here means the combo was built or emptied some other way, which no code path does.
+     *
+     * @param combo one of this dialog's two note-value combos
+     * @return the selected note value
+     */
+    private static Duration selectedDuration(JComboBox<Duration> combo) {
+        var duration = (Duration) combo.getSelectedItem();
 
-    @Override
-    protected void populateControls(@Nullable BeatChange change) {
-        if (change != null) {
-            durationCombo.setSelectedItem(change.duration());
-            beatCombo.setSelectedItem(change.beat());
-        } else {
-            durationCombo.setSelectedItem(Duration.CROTCHET_DOTTED);
-            beatCombo.setSelectedItem(Duration.CROTCHET);
-        }
-    }
-
-    @Override
-    protected void applyChange(StaffElement element) {
-        var duration = (Duration) durationCombo.getSelectedItem();
-        var beat = (Duration) beatCombo.getSelectedItem();
-
-        if (duration == null || beat == null) {
-            return;
+        if (duration == null) {
+            throw RuntimeError.exit("beat change combo has no selection");
         }
 
-        var existing = element.findAttachment(BeatChangeAttachment.class);
-
-        // The change branch routes itself through the chokepoint from inside
-        // BeatChangeAttachment; wrapping both branches gives the add branch — a raw
-        // addAttachment — its routing, and collapses the pair into one edit. Any tuplets
-        // the new beat forces out are reported by the chokepoint's own notification.
-        Song.withBeatDefiningEditOn(element, () -> {
-            if (existing != null) {
-                existing.setBeatChange(new BeatChange(duration, beat));
-            } else {
-                element.addAttachment(
-                    new BeatChangeAttachment(element, new BeatChange(duration, beat)));
-            }
-        });
-    }
-
-    @Override
-    protected void clearChange(StaffElement element) {
-        AttachmentRemoval.removeBeatChange(element);
+        return duration;
     }
 }

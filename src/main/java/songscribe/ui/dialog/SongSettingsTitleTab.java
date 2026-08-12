@@ -72,6 +72,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
     // Subtitle section — field, font-description label, and preview component.
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
+    private final NonEmptyGuard titleBlankGuard;
     private final JLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final SubtitleComponent subtitlePreview = new SubtitleComponent();
 
@@ -85,15 +86,8 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         this.dialog = dialog;
         takeAction = new TakeFirstLyricsWordAction(dialog.getMainFrame());
 
-        titleField.setInputVerifier(new NonEmptyGuard(
-            titleField,
-            dialog.contentPanel,
-            Strings.ALERT_TITLE_SONG_SETTINGS,
-            Strings.CONFIRM_SONG_EMPTY_TITLE,
-            Strings.DOCUMENT_UNTITLED,
-            Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-            Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-        ));
+        titleBlankGuard = new NonEmptyGuard(titleField, Strings.get(Strings.DOCUMENT_UNTITLED));
+        titleField.setInputVerifier(titleBlankGuard);
 
         // Previews show the chosen font at its natural size: they are never given a
         // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom). Each
@@ -397,6 +391,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         );
         numberField.setText(song.getNumber());
         titleField.setText(song.getTitle());
+        titleBlankGuard.rememberCurrentText();
         subtitleField.setText(song.getSubtitle());
         takeAction.updateEnabledState();
         updateTitlePreview();
@@ -429,6 +424,11 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             titleField.setText(
                 SongSettingsDialog.extractLyricsTitle(dialog.getSong().getLyricsText(), maxWords)
             );
+
+            // Lyrics that are all melisma underscores extract to nothing, which the guard ignores
+            // — so the title the button failed to improve on is still what comes back if the user
+            // then empties the field.
+            titleBlankGuard.rememberCurrentText();
         }
     }
 }

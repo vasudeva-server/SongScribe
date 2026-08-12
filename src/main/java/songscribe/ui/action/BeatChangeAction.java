@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.BeatChangeDialog;
+import songscribe.ui.dialog.AttachmentEditor;
 
 public final class BeatChangeAction extends UIAction {
 
@@ -47,6 +47,6 @@ public final class BeatChangeAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        new BeatChangeDialog(getMainFrame()).setVisible(true);
+        AttachmentEditor.editBeatChangeOnSelection(getMainFrame());
     }
 }

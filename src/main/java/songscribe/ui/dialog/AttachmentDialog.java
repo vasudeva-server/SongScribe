@@ -24,46 +24,46 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 
 /**
- * Base dialog for adding, editing, or removing an attachment on a staff element
- * (tempo change, beat change, annotation, etc.).
+ * Base dialog for adding, changing or removing an attachment on a staff element — a tempo change,
+ * a beat change, an annotation.
+ *
+ * <p>A widget shell over a value. It shows the change the element already carries, gathers what
+ * the controls now say, and hands that to its {@link AttachmentBackEnd}; it never looks at the
+ * document to find out what it is editing, and never writes to it. Everything a subclass
+ * implements is therefore about controls: {@link #populateControls} puts a value into them and
+ * {@link #gatherChange()} reads one back out. Which element is being edited, whether an
+ * attachment is already there, what the undo step is called and how the write is bracketed all
+ * belong to the back end, which arrives already bound to its element — see
+ * {@link AttachmentEditor}, the only thing that binds one.
+ *
+ * <p><strong>Lifecycle.</strong> The back end is fixed for the life of the dialog, so a dialog
+ * instance edits exactly one element. Opening one for a different element means constructing
+ * another, which is what {@link AttachmentEditor} does on every gesture.
+ *
+ * @param <C> the attachment's value type — a value the dialog can display and build, never a node
+ *            of the document graph
  */
-public abstract class AttachmentDialog<T> extends StandardDialog {
+public abstract class AttachmentDialog<C> extends StandardDialog {
+
+    protected final JButton removeButton;
+    private final AttachmentBackEnd<C> backEnd;
 
     /**
-     * The undo op the current commit performs, so each subclass can name itself
-     * (e.g. {@code Add Tempo Change} / {@code Change Tempo Change} /
-     * {@code Remove Tempo Change}).
+     * @param mainFrame the window this dialog parents itself to
+     * @param title     the window title
+     * @param backEnd   the domain half, already bound to the element being edited
      */
-    protected enum AttachmentOp { ADD, CHANGE, REMOVE }
-
-    protected @Nullable StaffElement selectedElement = null;
-    protected @Nullable Line selectedLine = null;
-    protected final JButton removeButton;
-
-    protected AttachmentDialog(MainFrame mainFrame, String title) {
+    protected AttachmentDialog(MainFrame mainFrame, String title, AttachmentBackEnd<C> backEnd) {
         super(mainFrame, title);
+        this.backEnd = backEnd;
+
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var element = selectedElement;
-            var line = selectedLine;
-
-            if (element == null || line == null) {
-                throw new IllegalStateException("no element selected");
-            }
-
-            if (!canClearChange(element)) {
-                return;
-            }
-
-            var elementIndex = line.getElementIndex(element);
-            line.withModification(opLabel(AttachmentOp.REMOVE), () -> line.modifyElement(
-                elementIndex, getElementField(), () -> clearChange(element)));
+            backEnd.remove();
             setVisible(false);
         });
     }
@@ -75,81 +75,88 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
         return BorderLayout.SOUTH;
     }
 
-    protected abstract ElementField getElementField();
-
     /**
-     * Returns the resolved undo op-name for the given operation, letting each
-     * subclass name itself with its own noun.
-     */
-    protected abstract String opLabel(AttachmentOp op);
-
-    protected abstract @Nullable T getExistingChange(StaffElement element);
-
-    protected abstract void populateControls(@Nullable T change);
-
-    protected abstract void applyChange(StaffElement element);
-
-    protected abstract void clearChange(StaffElement element);
-
-    /**
-     * Whether the Remove button may proceed. Checked before any modification bracket opens,
-     * because {@link Line#modifyElement} records an ElementModification unconditionally and a
-     * refusal inside {@link #clearChange} would leave an empty undo step behind. A subclass that
-     * refuses is responsible for telling the user why.
-     */
-    protected boolean canClearChange(StaffElement element) {
-        return true;
-    }
-
-    /**
-     * Shows this dialog pre-bound to {@code element} on {@code line}.
+     * Sets the controls to show {@code existingChange}, or to this dialog's defaults for a new
+     * attachment when there is none.
      *
-     * <p>{@link #getData()} resolves its target from the selection via
-     * {@link songscribe.ui.component.ScoreView#getSingleSelectedElement()}, which answers null
-     * whenever the selection is a directly selected notation object rather than an element index
-     * range — the state a click on an attachment leaves behind. A caller that already knows the
-     * target must supply it here instead of relying on that resolution.
+     * <p>Called once per opening, before the window appears. An implementation writes to controls
+     * and does nothing else — in particular it does not decide what the buttons say, which
+     * {@link #getData()} owns for the whole family.
+     *
+     * @param existingChange the change the element already carries, or {@code null} when it
+     *                       carries none and the dialog is being opened to add one
      */
-    void showFor(StaffElement element, Line line) {
-        selectedElement = element;
-        selectedLine = line;
-        setVisible(true);
-    }
+    protected abstract void populateControls(@Nullable C existingChange);
 
+    /**
+     * Reads the controls and returns the change they currently describe.
+     *
+     * <p>Reads only: calling it leaves the controls untouched, so it may be called more than once
+     * during a single OK and answer the same thing each time. It is total over every state the
+     * controls can reach through the UI — there is no combination of selections for which a
+     * subclass may decline to produce a value. Whether the result is acceptable is
+     * {@link AttachmentBackEnd#validate}'s question, not this one's.
+     *
+     * @return the change described by the controls as they now stand
+     */
+    protected abstract C gatherChange();
+
+    /**
+     * Populates the controls from the back end and labels the buttons for what OK will do.
+     *
+     * <p>Whether an attachment already exists is a domain fact and comes from
+     * {@link AttachmentBackEnd#existingChange()}; what to call the button because of it is a
+     * presentation decision and is made here. OK reads <em>Add</em> when there is nothing there
+     * yet and <em>Modify</em> when there is, and Remove is offered only in the second case — which
+     * is what keeps {@link AttachmentBackEnd#remove()} off the path where it would record a step
+     * that removes nothing.
+     *
+     * @return always {@code true}; there is no state in which this dialog declines to open, as its
+     *         element was resolved before it was constructed
+     */
     @Override
     protected boolean getData() {
-        if (selectedElement == null) {
-            var score = requireScoreView();
-            selectedElement = score.getSingleSelectedElement();
-            selectedLine = score.getSong().getLine(
-                score.getSelectionCoordinator().getActiveLineIndex());
-        }
-
-        var change = selectedElement != null ? getExistingChange(selectedElement) : null;
-        var adding = change == null;
+        var existingChange = backEnd.existingChange();
+        var adding = existingChange == null;
 
         removeButton.setVisible(!adding);
         okButton.setText(Strings.get(adding ? Strings.LABEL_BUTTON_ADD : Strings.LABEL_BUTTON_MODIFY));
-
-        if (selectedElement != null) {
-            populateControls(change);
-        }
+        populateControls(existingChange);
 
         return true;
     }
 
+    /**
+     * Asks the back end whether the gathered change may be applied, and shows the first reason it
+     * may not.
+     *
+     * @return {@code true} when OK may proceed to {@link #setData()}, {@code false} when the user
+     *         has been told why it may not and the dialog stays up
+     */
     @Override
-    protected void setData() {
-        var element = selectedElement;
-        var line = selectedLine;
+    protected boolean isValidData() {
+        var result = backEnd.validate(gatherChange());
 
-        if (element == null || line == null) {
-            throw new IllegalStateException("no element selected");
+        if (result.isValid()) {
+            return true;
         }
 
-        var elementIndex = line.getElementIndex(element);
-        var op = getExistingChange(element) == null ? AttachmentOp.ADD : AttachmentOp.CHANGE;
-        line.withModification(opLabel(op), () -> line.modifyElement(
-            elementIndex, getElementField(), () -> applyChange(element)));
+        // Only the first failure is shown: stacking modal alerts is worse than under-reporting,
+        // and no attachment back end can currently produce more than one. StandardDialog takes
+        // over this presentation for every dialog in Phase 2 of plans/ui-dialog-seam.md, which is
+        // where the multi-failure question gets decided once rather than per family.
+        var failure = result.failures().getFirst();
+        var message = failure.message();
+        OptionDialogs.showErrorMessage(contentPanel, failure.titleKey(), message.key(), message.args().toArray());
+
+        return false;
+    }
+
+    /**
+     * Commits the gathered change through the back end, as one undoable step.
+     */
+    @Override
+    protected void setData() {
+        backEnd.apply(gatherChange());
     }
 }
