@@ -38,6 +38,12 @@ iteration order (unless the order is promised), the fact that it caches. A calle
 who relies on any of that is relying on something you did not promise, and a
 contract that states it has given away the freedom to change it.
 
+**Why the promise is what it is does belong**, and is not the same thing. "Runs at
+`HIGH_PRIORITY` so lower-priority subscribers reading `canUndo()` while handling
+the same notification see the step already pushed" explains a promise a reader
+would otherwise take for arbitrary and delete. The test is whether the sentence
+constrains the implementation (out) or explains the constraint (in).
+
 The first sentence is what appears in every summary table and every IDE tooltip.
 It states the whole promise in one line where the promise fits in one line.
 
@@ -126,6 +132,44 @@ every ratio N in 2..7. That is not an input/output pair; it is a property over t
 whole domain, and it is tested as one — `NoteTypeMappingTest`
 `testTicksScaleExactlyForEveryTupletRatioAndDotCount` loops every type × dot count
 × ratio and asserts exactness. One test, the entire promise.
+
+## Two properties worth writing for deliberately
+
+`ticks` is a pure function, so its contract is a table. Most contracts here are on
+methods that change something, and the `undo` pass found two properties that
+separate the ones that held up from the ones that had to be rewritten.
+
+**State the postcondition through the class's other contracts, not through its
+fields.** `UndoController.songDidChange` promises that afterwards `canUndo()` is
+true and `canRedo()` is false — not that `undoStack` gained an element. The stack
+is implementation; the two guard methods are the promise. This is what makes the
+postcondition observable, and observable is the difference between a clause a test
+can assert from outside and a clause that sends the test reaching for a field.
+
+If you cannot state a postcondition through the public API, you have found either
+a missing query method or a promise that is not really yours to make. Both are
+findings. Neither is solved by widening a field.
+
+**Give every boundary its consequence.** A boundary with only its value is half a
+clause:
+
+```java
+/*
+ * Half — the reader knows the number and not what happens at it:
+ *
+ *   <p>The stack retains at most {@value #UNDO_STACK_MAX_DEPTH} steps.
+ *
+ * Whole — the number, the behavior at it, and what it costs:
+ *
+ *   <p>The stack retains at most {@value #UNDO_STACK_MAX_DEPTH} steps; a push
+ *   past that evicts the oldest, and if the evicted step was the clean marker
+ *   the document can no longer return to clean.
+ */
+```
+
+The second form yields two tests — eviction at the limit, and the clean marker
+surviving or not. The first yields none, because nothing was promised about what
+happens when you reach the number.
 
 ## A contract that stops too early
 
@@ -275,6 +319,26 @@ first; the constant's visibility follows from it.
    is already being checked against that promise.
 3. **Then the tests**, derived from the contract's clauses — the table above is
    the shape.
+
+### Order when the code already exists
+
+Contracting existing code inverts step 2 — the code is there and the tests are
+there, and both are evidence about what someone once believed. The order that
+works:
+
+1. **Contract first, still**, and derived from the domain rather than from the
+   body. The body is the strongest available temptation and the one thing that
+   cannot tell you what the code *should* promise.
+2. **Write the test class's testing-approach Javadoc, triaging as you go.** These
+   read like two jobs and are one: stating what a test class is responsible for
+   requires accounting for every test in it against the contract, which is the
+   triage. Doing them separately means deciding each test twice.
+3. **Then the missing cases**, which are whatever step 2 could not account for.
+4. **Then coverage, once**, because a contract claiming to cover a domain reads
+   as its own evidence and re-reading it will confirm it. See *Diagnostics* in
+   [testing-common.md](./testing-common.md).
+
+`/contract-pass` runs this order over a whole package.
 
 Changing an **existing** contract is a visible decision, because callers rely on
 it. State it, get it agreed, and make it its own change. Never adjust one

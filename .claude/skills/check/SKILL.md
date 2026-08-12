@@ -180,8 +180,16 @@ yourself while fixing.
 
 ## Diagnostics are not phases
 
-Coverage and mutation testing do not run as part of this skill. Both are
-debugging aids, invoked deliberately and scoped to something specific you are
+Coverage and mutation testing do not run as part of this skill. That is a
+statement about *this skill*, not a ranking of the two tools — coverage is a
+required closing step of a package's contract pass (`/contract-pass`, step 7),
+where the whole package's contracts have just been written and a claim of
+completeness can be checked against what actually ran. A review of a diff is not
+that situation: there is no finished body of contracts to check the claim against,
+and the ranked list of uncovered regions arrives with nothing to weigh it against
+but the diff.
+
+Both are invoked deliberately and scoped to something specific you are
 investigating:
 
 - `./scripts/coverage.sh` answers *did this code run?* Of each unexecuted region
