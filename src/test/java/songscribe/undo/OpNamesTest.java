@@ -22,14 +22,18 @@ package songscribe.undo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.Attachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Crescendo;
@@ -38,6 +42,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Hairpin;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementFactory;
@@ -48,9 +53,9 @@ import songscribe.undo.OpNames;
 /**
  * Exercises {@link OpNames}: which name an edit is given, for each way the name depends on
  * what the edit acted on. The methods are pure functions of their arguments, so every case
- * is a call and an assertion, with a fixture no larger than the argument the method under
- * test declares — a bare {@link StaffElement} pair to anchor a hairpin, never a {@code Line}
- * or a {@code Song}.
+ * is a data row and one shared assertion, with a fixture no larger than the argument the
+ * method under test declares — a bare {@link StaffElement} pair to anchor a hairpin, never a
+ * {@code Line} or a {@code Song}.
  *
  * <p><b>{@link OpNames#deleteLabel} — the three classes of input it distinguishes.</b> One
  * element of a category yields the singular name, several of one category the plural, and a
@@ -70,10 +75,10 @@ import songscribe.undo.OpNames;
  * subtypes in each direction, the two hairpin kinds, the two articulation types, and the
  * five attachment kinds.
  *
- * <p><b>The fixed names</b> — {@code deleteEndingLabel} and the five simple
- * {@code remove*Label} methods each promise exactly one name for one specific edit, with no
- * argument to vary. Each still gets its own case: a fixed method untested is a contract
- * clause untested, the same as any other.
+ * <p><b>The fixed names</b> — {@code deleteLineLabel}, {@code deleteEndingLabel} and the five
+ * simple {@code remove*Label} methods each promise exactly one name for one specific edit,
+ * with no argument to vary. Each still gets its own case: a fixed method untested is a
+ * contract clause untested, the same as any other.
  *
  * <p><b>{@link OpNames#lyricLabel} — a transition, not a value.</b> The three classes are
  * empty → non-empty, non-empty → empty, and everything else; the third is asserted with two
@@ -83,298 +88,234 @@ import songscribe.undo.OpNames;
  * The promise is which name is chosen for a given input, not what that name reads as in one
  * locale, and a test spelling out the English would fail on a translation that changed
  * nothing about the promise.
+ *
+ * <p>Every nested class here is one method's contract, driven by a {@code record} case table
+ * over a single {@code @ParameterizedTest} rather than one hand-written {@code @Test} per
+ * case: the algorithm under test is identical across cases, so only the data — inputs,
+ * expected name, and a description — should vary. See {@code testing-unit.md}.
  */
 class OpNamesTest extends UnitTest {
 
     @Nested
     class DeleteLabel {
 
-        @Test
-        void testSingleNoteIsSingular() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE));
+        private record DeleteLabelCase(String description, List<ElementType> types, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testDeleteLabelMatchesExpectedName(DeleteLabelCase testCase) {
+            assertThat(OpNames.deleteLabel(testCase.types()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testMultipleNotesIsPlural() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET, ElementType.QUAVER)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTES));
-        }
-
-        @Test
-        void testNoteAndGraceFoldToNotePlural() {
-            // A pitched note and a grace note share the NOTE category, so two of them
-            // yield the plural "Delete Notes" rather than the generic "Delete Elements".
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET, ElementType.GRACE_QUAVER)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTES));
-        }
-
-        @Test
-        void testMixedCategoriesIsGeneric() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET, ElementType.SINGLE_BARLINE)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_ELEMENTS));
-        }
-
-        @Test
-        void testSingleRestIsSingular() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET_REST)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_REST));
-        }
-
-        @Test
-        void testMultipleRestsIsPlural() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.CROTCHET_REST, ElementType.QUAVER_REST)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_RESTS));
-        }
-
-        @Test
-        void testSingleBarline() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.SINGLE_BARLINE)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BARLINE));
-        }
-
-        @Test
-        void testMultipleBarlinesIsPlural() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BARLINES));
-        }
-
-        @Test
-        void testSingleRepeat() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.REPEAT_LEFT)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_REPEAT));
-        }
-
-        @Test
-        void testMultipleRepeatsIsPlural() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_REPEATS));
-        }
-
-        @Test
-        void testSingleBreathMark() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.BREATH_MARK)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK));
-        }
-
-        @Test
-        void testMultipleBreathMarksIsPlural() {
-            assertThat(OpNames.deleteLabel(List.of(ElementType.BREATH_MARK, ElementType.BREATH_MARK)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS));
+        static Stream<DeleteLabelCase> cases() {
+            return Stream.of(
+                new DeleteLabelCase("single note is singular",
+                    List.of(ElementType.CROTCHET), Strings.ACTION_EDIT_OP_DELETE_NOTE),
+                new DeleteLabelCase("multiple notes is plural",
+                    List.of(ElementType.CROTCHET, ElementType.QUAVER), Strings.ACTION_EDIT_OP_DELETE_NOTES),
+                new DeleteLabelCase("note and grace note fold to the note plural",
+                    List.of(ElementType.CROTCHET, ElementType.GRACE_QUAVER), Strings.ACTION_EDIT_OP_DELETE_NOTES),
+                new DeleteLabelCase("a mix of categories is generic",
+                    List.of(ElementType.CROTCHET, ElementType.SINGLE_BARLINE), Strings.ACTION_EDIT_OP_DELETE_ELEMENTS),
+                new DeleteLabelCase("single rest is singular",
+                    List.of(ElementType.CROTCHET_REST), Strings.ACTION_EDIT_OP_DELETE_REST),
+                new DeleteLabelCase("multiple rests is plural",
+                    List.of(ElementType.CROTCHET_REST, ElementType.QUAVER_REST), Strings.ACTION_EDIT_OP_DELETE_RESTS),
+                new DeleteLabelCase("single barline",
+                    List.of(ElementType.SINGLE_BARLINE), Strings.ACTION_EDIT_OP_DELETE_BARLINE),
+                new DeleteLabelCase("multiple barlines is plural",
+                    List.of(ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE), Strings.ACTION_EDIT_OP_DELETE_BARLINES),
+                new DeleteLabelCase("single repeat",
+                    List.of(ElementType.REPEAT_LEFT), Strings.ACTION_EDIT_OP_DELETE_REPEAT),
+                new DeleteLabelCase("multiple repeats is plural",
+                    List.of(ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT), Strings.ACTION_EDIT_OP_DELETE_REPEATS),
+                new DeleteLabelCase("single breath mark",
+                    List.of(ElementType.BREATH_MARK), Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK),
+                new DeleteLabelCase("multiple breath marks is plural",
+                    List.of(ElementType.BREATH_MARK, ElementType.BREATH_MARK), Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS)
+            );
         }
     }
 
     @Nested
     class AddLabel {
 
-        @Test
-        void testNote() {
-            assertThat(OpNames.addLabel(ElementType.CROTCHET))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_NOTE));
+        private record AddLabelCase(String description, ElementType type, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testAddLabelMatchesExpectedName(AddLabelCase testCase) {
+            assertThat(OpNames.addLabel(testCase.type()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testRest() {
-            assertThat(OpNames.addLabel(ElementType.CROTCHET_REST))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_REST));
-        }
-
-        @Test
-        void testBarline() {
-            assertThat(OpNames.addLabel(ElementType.SINGLE_BARLINE))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_BARLINE));
-        }
-
-        @Test
-        void testRepeat() {
-            assertThat(OpNames.addLabel(ElementType.REPEAT_LEFT))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_REPEAT));
-        }
-
-        @Test
-        void testBreathMark() {
-            assertThat(OpNames.addLabel(ElementType.BREATH_MARK))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_BREATH_MARK));
-        }
-
-        @Test
-        void testGraceNoteDoesNotFoldToNote() {
-            // A grace note gets its own "Add Grace Note" label rather than folding
-            // into the plain "Add Note" that a pitched note would produce.
-            assertThat(OpNames.addLabel(ElementType.GRACE_QUAVER))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_GRACE_NOTE));
+        static Stream<AddLabelCase> cases() {
+            return Stream.of(
+                new AddLabelCase("note", ElementType.CROTCHET, Strings.ACTION_EDIT_OP_ADD_NOTE),
+                new AddLabelCase("rest", ElementType.CROTCHET_REST, Strings.ACTION_EDIT_OP_ADD_REST),
+                new AddLabelCase("barline", ElementType.SINGLE_BARLINE, Strings.ACTION_EDIT_OP_ADD_BARLINE),
+                new AddLabelCase("repeat", ElementType.REPEAT_LEFT, Strings.ACTION_EDIT_OP_ADD_REPEAT),
+                new AddLabelCase("breath mark", ElementType.BREATH_MARK, Strings.ACTION_EDIT_OP_ADD_BREATH_MARK),
+                new AddLabelCase("grace note does not fold into note",
+                    ElementType.GRACE_QUAVER, Strings.ACTION_EDIT_OP_ADD_GRACE_NOTE)
+            );
         }
     }
 
     @Nested
     class SlideLabel {
 
-        @Test
-        void testAddGlissando() {
-            assertThat(OpNames.addSlideLabel(SlideZone.GLISSANDO))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_GLISSANDO));
+        private record AddSlideCase(String description, SlideZone zone, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("addCases")
+        void testAddSlideLabelMatchesExpectedName(AddSlideCase testCase) {
+            assertThat(OpNames.addSlideLabel(testCase.zone()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testAddFall() {
-            assertThat(OpNames.addSlideLabel(SlideZone.FALL))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_FALL));
+        static Stream<AddSlideCase> addCases() {
+            return Stream.of(
+                new AddSlideCase("glissando", SlideZone.GLISSANDO, Strings.ACTION_EDIT_OP_ADD_GLISSANDO),
+                new AddSlideCase("fall", SlideZone.FALL, Strings.ACTION_EDIT_OP_ADD_FALL)
+            );
         }
 
-        @Test
-        void testDeleteGlissando() {
-            assertThat(OpNames.deleteSlideLabel(new StaffElement.Glissando()))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_GLISSANDO));
+        private record DeleteSlideCase(String description, StaffElement.Slide slide, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("deleteCases")
+        void testDeleteSlideLabelMatchesExpectedName(DeleteSlideCase testCase) {
+            assertThat(OpNames.deleteSlideLabel(testCase.slide()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testDeleteFall() {
-            assertThat(OpNames.deleteSlideLabel(new StaffElement.Fall()))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_FALL));
-        }
-    }
-
-    @Nested
-    class LineAndLyricLabel {
-
-        private static final String NON_EMPTY = "word";
-        private static final String OTHER_NON_EMPTY = "other";
-        private static final String EMPTY = "";
-
-        @Test
-        void testDeleteLine() {
-            assertThat(OpNames.deleteLineLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE));
-        }
-
-        @Test
-        void testDeleteEnding() {
-            assertThat(OpNames.deleteEndingLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_ENDING));
-        }
-
-        @Test
-        void testEmptyToNonEmptyIsAdd() {
-            assertThat(OpNames.lyricLabel(EMPTY, NON_EMPTY))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_ADD_LYRIC));
-        }
-
-        @Test
-        void testNonEmptyToEmptyIsDelete() {
-            assertThat(OpNames.lyricLabel(NON_EMPTY, EMPTY))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC));
-        }
-
-        @Test
-        void testNonEmptyToNonEmptyIsEdit() {
-            assertThat(OpNames.lyricLabel(NON_EMPTY, OTHER_NON_EMPTY))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_EDIT_LYRIC));
+        static Stream<DeleteSlideCase> deleteCases() {
+            return Stream.of(
+                new DeleteSlideCase("glissando", new StaffElement.Glissando(), Strings.ACTION_EDIT_OP_DELETE_GLISSANDO),
+                new DeleteSlideCase("fall", new StaffElement.Fall(), Strings.ACTION_EDIT_OP_DELETE_FALL)
+            );
         }
     }
 
     @Nested
     class HairpinLabel {
 
-        @Test
-        void testCrescendo() {
-            var anchor = StaffElementFactory.crotchet();
-            var end = StaffElementFactory.crotchet();
-            assertThat(OpNames.deleteHairpinLabel(new Crescendo(anchor, end)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_CRESCENDO));
+        private record HairpinLabelCase(String description, Hairpin hairpin, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testDeleteHairpinLabelMatchesExpectedName(HairpinLabelCase testCase) {
+            assertThat(OpNames.deleteHairpinLabel(testCase.hairpin()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testDiminuendo() {
-            var anchor = StaffElementFactory.crotchet();
-            var end = StaffElementFactory.crotchet();
-            assertThat(OpNames.deleteHairpinLabel(new Diminuendo(anchor, end)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO));
+        static Stream<HairpinLabelCase> cases() {
+            return Stream.of(
+                new HairpinLabelCase("crescendo",
+                    new Crescendo(StaffElementFactory.crotchet(), StaffElementFactory.crotchet()),
+                    Strings.ACTION_EDIT_OP_DELETE_CRESCENDO),
+                new HairpinLabelCase("diminuendo",
+                    new Diminuendo(StaffElementFactory.crotchet(), StaffElementFactory.crotchet()),
+                    Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO)
+            );
         }
     }
 
     @Nested
     class ArticulationLabel {
 
-        @Test
-        void testStaccato() {
-            assertThat(OpNames.removeArticulationLabel(ArticulationType.STACCATO))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_STACCATO));
+        private record ArticulationLabelCase(String description, ArticulationType type, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testRemoveArticulationLabelMatchesExpectedName(ArticulationLabelCase testCase) {
+            assertThat(OpNames.removeArticulationLabel(testCase.type()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testAccent() {
-            assertThat(OpNames.removeArticulationLabel(ArticulationType.ACCENT))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCENT));
+        static Stream<ArticulationLabelCase> cases() {
+            return Stream.of(
+                new ArticulationLabelCase("staccato", ArticulationType.STACCATO, Strings.ACTION_EDIT_OP_REMOVE_STACCATO),
+                new ArticulationLabelCase("accent", ArticulationType.ACCENT, Strings.ACTION_EDIT_OP_REMOVE_ACCENT)
+            );
         }
     }
 
     @Nested
     class AttachmentLabel {
 
-        @Test
-        void testFermata() {
-            assertThat(OpNames.removeAttachmentLabel(new FermataAttachment()))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_FERMATA));
+        private record AttachmentLabelCase(String description, Attachment attachment, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testRemoveAttachmentLabelMatchesExpectedName(AttachmentLabelCase testCase) {
+            assertThat(OpNames.removeAttachmentLabel(testCase.attachment()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testDynamic() {
-            assertThat(OpNames.removeAttachmentLabel(new DynamicAttachment(DynamicAttachment.DynamicType.FORTE)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_DYNAMIC));
-        }
-
-        @Test
-        void testAnnotation() {
-            assertThat(OpNames.removeAttachmentLabel(new AnnotationAttachment("text")))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION));
-        }
-
-        @Test
-        void testTempoChange() {
-            assertThat(OpNames.removeAttachmentLabel(new TempoChangeAttachment(new Tempo())))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE));
-        }
-
-        @Test
-        void testBeatChange() {
-            var beatChange = new BeatChange(Duration.QUAVER, Duration.QUAVER);
-            assertThat(OpNames.removeAttachmentLabel(new BeatChangeAttachment(beatChange)))
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE));
+        static Stream<AttachmentLabelCase> cases() {
+            return Stream.of(
+                new AttachmentLabelCase("fermata", new FermataAttachment(), Strings.ACTION_EDIT_OP_REMOVE_FERMATA),
+                new AttachmentLabelCase("dynamic",
+                    new DynamicAttachment(DynamicAttachment.DynamicType.FORTE), Strings.ACTION_EDIT_OP_REMOVE_DYNAMIC),
+                new AttachmentLabelCase("annotation",
+                    new AnnotationAttachment("text"), Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION),
+                new AttachmentLabelCase("tempo change",
+                    new TempoChangeAttachment(new Tempo()), Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE),
+                new AttachmentLabelCase("beat change",
+                    new BeatChangeAttachment(new BeatChange(Duration.QUAVER, Duration.QUAVER)),
+                    Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE)
+            );
         }
     }
 
-    /** The simple {@code remove*Label} methods: no argument, one fixed name each. */
+    /** Every {@link OpNames} method that takes no argument and names exactly one edit. */
     @Nested
-    class FixedRemovalLabel {
+    class FixedLabel {
 
-        @Test
-        void testTie() {
-            assertThat(OpNames.removeTieLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TIE));
+        private record FixedLabelCase(String description, Supplier<String> label, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testFixedLabelMatchesExpectedName(FixedLabelCase testCase) {
+            assertThat(testCase.label().get())
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testBeam() {
-            assertThat(OpNames.removeBeamLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAM));
+        static Stream<FixedLabelCase> cases() {
+            return Stream.of(
+                new FixedLabelCase("delete line", OpNames::deleteLineLabel, Strings.ACTION_EDIT_OP_DELETE_LINE),
+                new FixedLabelCase("delete ending", OpNames::deleteEndingLabel, Strings.ACTION_EDIT_OP_DELETE_ENDING),
+                new FixedLabelCase("remove tie", OpNames::removeTieLabel, Strings.ACTION_EDIT_OP_REMOVE_TIE),
+                new FixedLabelCase("remove beam", OpNames::removeBeamLabel, Strings.ACTION_EDIT_OP_REMOVE_BEAM),
+                new FixedLabelCase("remove tuplet", OpNames::removeTupletLabel, Strings.ACTION_EDIT_OP_REMOVE_TUPLET),
+                new FixedLabelCase("remove trill", OpNames::removeTrillLabel, Strings.ACTION_EDIT_OP_REMOVE_TRILL),
+                new FixedLabelCase("remove accidental",
+                    OpNames::removeAccidentalLabel, Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL)
+            );
+        }
+    }
+
+    @Nested
+    class LyricLabel {
+
+        private record LyricLabelCase(String description, String beforeText, String afterText, String expectedKey) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("cases")
+        void testLyricLabelMatchesExpectedName(LyricLabelCase testCase) {
+            assertThat(OpNames.lyricLabel(testCase.beforeText(), testCase.afterText()))
+                .isEqualTo(Strings.get(testCase.expectedKey()));
         }
 
-        @Test
-        void testTuplet() {
-            assertThat(OpNames.removeTupletLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET));
-        }
-
-        @Test
-        void testTrill() {
-            assertThat(OpNames.removeTrillLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TRILL));
-        }
-
-        @Test
-        void testAccidental() {
-            assertThat(OpNames.removeAccidentalLabel())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL));
+        static Stream<LyricLabelCase> cases() {
+            return Stream.of(
+                new LyricLabelCase("empty to non-empty is add", "", "word", Strings.ACTION_EDIT_OP_ADD_LYRIC),
+                new LyricLabelCase("non-empty to empty is delete", "word", "", Strings.ACTION_EDIT_OP_DELETE_LYRIC),
+                new LyricLabelCase("non-empty to non-empty is edit", "word", "other", Strings.ACTION_EDIT_OP_EDIT_LYRIC)
+            );
         }
     }
 }

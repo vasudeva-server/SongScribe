@@ -5,16 +5,31 @@ contracts Phase 11 wrote. Phase 13 reads this file.
 
 ## Numbers
 
-| | Before (Phase 11 exit) | After (Phase 12 exit) |
-|---|---:|---:|
-| Tests | 141 | 161 |
-| Main LOC | 1,266 | 1,266 |
-| Test LOC | 3,574 | 3,789 |
-| Test/main ratio | 2.82 | 2.99 |
+| | Before (Phase 11 exit) | After (Phase 12 triage) | After (data-driven follow-up) |
+|---|---:|---:|---:|
+| Tests | 141 | 161 | 161 |
+| Main LOC | 1,266 | 1,266 | 1,266 |
+| Test LOC | 3,574 | 3,789 | 3,730 |
+| Test/main ratio | 2.82 | 2.99 | 2.95 |
 
 Contracts: 0 written in this phase (Phase 11 wrote all of them); this phase triaged
 tests against them, closed the four gaps Phase 11 named, and closed the gaps coverage
 surfaced. Elapsed time was not separately instrumented — single continuous session.
+
+**Data-driven follow-up.** After the triage commit, review caught `OpNamesTest`
+hand-duplicating the same assertion shape across most of its nested classes — 41 `@Test`
+methods where the algorithm under test was identical within each class and only the
+input/expected-output literals varied, the exact case `.claude/guides/testing-unit.md`'s
+"Parameterized Tests for Equivalence Classes and Invariants" section already covers, and
+that I had available but didn't apply when writing the new cases earlier in this phase.
+Rewrote all eight nested classes as `record`-based case tables driven by
+`@ParameterizedTest`/`@MethodSource` (41 cases preserved exactly, same pass count, same
+assertions); merged `deleteLineLabel`/`deleteEndingLabel` into the renamed `FixedLabel`
+class alongside the five `remove*Label` no-arg methods, since they're the same shape (a
+`Supplier<String>` and an expected key). Net -59 test LOC despite no case lost. Extended
+the guide with a third worked example (a multi-field record case table, using
+`OpNamesTest.DeleteLabel` itself) to close the gap that let this happen — the existing two
+examples only varied a single parameter each.
 
 ## Triage outcome
 

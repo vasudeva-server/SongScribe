@@ -61,6 +61,40 @@ void testTicksScaleExactlyForEveryTupletRatioAndDotCount(ElementType type, int r
 }
 ```
 
+Several cases that map varying input to a specific expected value — not an
+invariant, a table — take a `record` case table rather than one hand-written
+`@Test` per row. This is the shape a family of near-identical tests is in as soon
+as a second one is a copy of the first with different literals; don't wait for a
+third case or a "long" table before reaching for it:
+
+```java
+private record DeleteLabelCase(String description, List<ElementType> types, String expectedKey) {}
+
+@ParameterizedTest(name = "{0}")
+@MethodSource("deleteLabelCases")
+void testDeleteLabel(DeleteLabelCase testCase) {
+    assertThat(OpNames.deleteLabel(testCase.types()))
+        .isEqualTo(Strings.get(testCase.expectedKey()));
+}
+
+static Stream<DeleteLabelCase> deleteLabelCases() {
+    return Stream.of(
+        new DeleteLabelCase("single note is singular",
+            List.of(ElementType.CROTCHET), Strings.ACTION_EDIT_OP_DELETE_NOTE),
+        new DeleteLabelCase("multiple notes is plural",
+            List.of(ElementType.CROTCHET, ElementType.QUAVER), Strings.ACTION_EDIT_OP_DELETE_NOTES),
+        new DeleteLabelCase("mixed categories is generic",
+            List.of(ElementType.CROTCHET, ElementType.SINGLE_BARLINE), Strings.ACTION_EDIT_OP_DELETE_ELEMENTS)
+        // ...one row per case, not one method per case
+    );
+}
+```
+
+The record's fields are exactly what varies between cases — input, expected output,
+and a description that doubles as the parameterized test's display name (via
+`name = "{0}"`) — so a reviewer scans rows to see what is and is not covered, rather
+than reading N method bodies to confirm they're identical except for a literal.
+
 See [Contract-Driven Testing](../guides/contracts.md) for how these cases fall
 out of the contract itself.
 
