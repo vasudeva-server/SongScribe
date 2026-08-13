@@ -7,10 +7,28 @@
 # a search over .java, and everything we want to spare (docs, scripts, gradle,
 # properties) is not.
 #
-# There is deliberately no attempt to tell a symbol from a phrase. Java
-# declarations are multi-word too ("class Foo", "static final MAX_X"), so every
-# heuristic that spared prose also spared declarations. Searching Java source
-# for prose now requires saying so with the PROSE=1 prefix.
+# Two kinds of query get told apart, and they are gated differently:
+#
+#   - A search whose pattern is a single bare identifier (PascalCase,
+#     camelCase, snake_case, UPPER_SNAKE — one token, no spaces) is a symbol
+#     query by shape. PROSE=1 does not excuse it: it must show evidence that a
+#     serena symbol tool was actually tried for that identifier recently. A
+#     self-declared flag can be typed reflexively; a prior tool call in the
+#     transcript cannot be faked the same way. If the identifier is genuinely
+#     just an English word that happens to be one token, running find_symbol on
+#     it and getting nothing back *is* the required evidence — that is exactly
+#     the documented fallback condition in .agents/rules/serena.md ("reach for
+#     rg only when a jet_brains_* tool returns no results").
+#
+#   - A search whose pattern is not a single bare identifier (a phrase, a
+#     regex with alternation/spaces, a quoted sentence) cannot be a symbol
+#     query by shape — Java declarations and English phrases don't collide
+#     here the way single identifiers do — and is gated the old way: it must
+#     say PROSE=1.
+#
+# A PROSE=1 that appears on a command that isn't an rg/grep search at all does
+# nothing (see the first check below) and is denied so it doesn't calcify into
+# a reflex prefix.
 
 set -euo pipefail
 
@@ -19,20 +37,36 @@ set -euo pipefail
 # `PROSE=1 bash -c '...'` is a wrapper nobody should have to think of.
 readonly ESCAPE_HATCH='(^|[[:space:]])PROSE=1([[:space:]]|$)'
 
-cmd=$(jq -r '.tool_input.command // ""')
+# How many trailing lines of the transcript JSONL to scan for a prior serena
+# symbol query. Bounded for hook latency; "recently" is deliberately loose —
+# the rule is "tried serena first this session for this name", not "in the
+# immediately preceding tool call".
+readonly TRANSCRIPT_TAIL=500
+
+# Read stdin once — a second jq invocation against the same pipe would see
+# EOF, since the first jq call already consumed it.
+hook_input=$(cat)
+cmd=$(jq -r '.tool_input.command // ""' <<< "$hook_input")
+transcript=$(jq -r '.transcript_path // ""' <<< "$hook_input")
 
 matches() {
   local pattern="$1"
   printf '%s' "$cmd" | grep -qE "$pattern"
 }
 
-# Not a text search at all.
-if ! matches '\b(rg|grep)\b'; then
+deny() {
+  local reason="$1"
+  jq -n --arg reason "$reason" \
+    '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
   exit 0
-fi
+}
 
-# Deliberate opt-out: the caller is asserting this searches prose, not symbols.
-if matches "$ESCAPE_HATCH"; then
+# Not a text search at all. A stray PROSE=1 here has no effect anywhere below,
+# so catch it rather than let it silently pass as a habit.
+if ! matches '\b(rg|grep)\b'; then
+  if matches "$ESCAPE_HATCH"; then
+    deny 'PROSE=1 has no effect on a command that is not an rg/grep search — it only ever excuses a text search over Java source. Drop it.'
+  fi
   exit 0
 fi
 
@@ -55,6 +89,91 @@ readonly NON_JAVA_TARGET='\.(md|txt|json|xml|gradle|properties|sh|yml|yaml|html|
 # A search naming only non-Java paths is fine. A search naming no path at all
 # defaults to the working directory, which is a Java repo — so it counts.
 if ! matches "$JAVA_TARGET" && matches "$NON_JAVA_TARGET"; then
+  exit 0
+fi
+
+# --- Extract the search pattern (best-effort, not a shell parser) ---
+#
+# Grab from the rg/grep invocation up to the next pipe or semicolon. A quoted
+# argument is taken whole — a quoted multi-word phrase must stay one candidate
+# token, or naive whitespace-splitting would peel off its first word and that
+# first word alone can look identifier-shaped even though the phrase it came
+# from plainly isn't. Only when nothing is quoted do we fall back to word
+# splitting to find the first non-flag token.
+
+segment=$(printf '%s' "$cmd" | grep -oE '\b(rg|grep)\b[^|;]*' | head -1)
+
+extract_query() {
+  local seg="$1"
+
+  if [[ "$seg" =~ \"([^\"]*)\" ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  if [[ "$seg" =~ \'([^\']*)\' ]]; then
+    printf '%s' "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  local -a words
+  read -ra words <<< "$seg"
+  local skip_next=0
+  local i w
+  for ((i = 1; i < ${#words[@]}; i++)); do
+    w="${words[$i]}"
+
+    if ((skip_next)); then
+      skip_next=0
+      continue
+    fi
+
+    if [[ "$w" == -* ]]; then
+      if [[ "$w" =~ ^-(e|m|A|B|C|t|g|-type|-glob|-context)$ ]]; then
+        skip_next=1
+      fi
+      continue
+    fi
+
+    printf '%s' "$w"
+    return 0
+  done
+}
+
+query=$(extract_query "$segment")
+
+readonly IDENT_SHAPE='^[A-Za-z_][A-Za-z0-9_]*$'
+
+if [[ -n "$query" && "$query" =~ $IDENT_SHAPE ]]; then
+  serena_evidence() {
+    local ident="$1"
+    [[ -f "$transcript" ]] || return 1
+    tail -n "$TRANSCRIPT_TAIL" "$transcript" 2>/dev/null | jq -e -r \
+      --arg ident "$ident" \
+      'select(.type == "assistant") | .message.content[]?
+       | select(.type == "tool_use")
+       | select(.name | test("jet_brains_(find_symbol|find_referencing_symbols)$"))
+       | (.input | tostring)
+       | select(test("\\b" + $ident + "\\b"))' \
+      >/dev/null 2>&1
+  }
+
+  if serena_evidence "$query"; then
+    exit 0
+  fi
+
+  deny "\"$query\" looks like a single symbol name, not prose. PROSE=1 does not excuse this — it only covers phrase/text search, and a bare identifier is a symbol query by shape.
+
+Try serena first:
+  find_symbol(\"$query\")
+  find_referencing_symbols(\"Class/$query\", file)
+
+If \"$query\" is genuinely just a word, not a Java symbol, running find_symbol on it and getting nothing back is itself the evidence this hook looks for — run it, then retry the rg/grep command."
+fi
+
+# Not identifier-shaped: a real phrase/regex search. This is the case PROSE=1
+# exists for.
+if matches "$ESCAPE_HATCH"; then
   exit 0
 fi
 
@@ -82,5 +201,4 @@ untouched. A search naming no path at all defaults to this Java repo, so it coun
 as searching Java.
 EOF
 
-jq -n --arg reason "$reason" \
-  '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: $reason}}'
+deny "$reason"
