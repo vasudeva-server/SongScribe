@@ -42,17 +42,10 @@ import songscribe.smufl.SMuFLGlyph;
 /**
  * Exercises the cancellation policy stated on {@link KeyChange}.
  *
- * <p><b>The policy</b> — asserted over every ordered pair of keys
- * {@link Key#allSignatures()} yields, so the claim survives the domain growing rather than
- * covering whatever pairs someone once picked. Each pair is classified from the policy's own
- * prose into one of its three branches — key unchanged, same type, type changed — and each
- * branch has its own case asserting what that branch promises is drawn.
- *
- * <p><b>Invariants</b> — cancellation naturals never follow the signature they cancel; a
- * change to the same key draws nothing and measures zero; the width is the laid-out width of
- * the accidentals the same call yields; exactly one
- * {@link StaffHeaderMetrics#CANCELLATION_TO_KEY_GAP_SS} separates the two runs and no kerning
- * reaches across it; every returned list is immutable.
+ * <p><b>The policy</b> — one case per {@link KeyChangeKind}, which is where the reasoning about
+ * why those are the distinct kinds lives. Each case below names the kind it asserts rather than
+ * taking it as a parameter, because what each kind promises to draw differs; the invariants that
+ * hold across all of them are parameterized over {@link KeyChangeKind} instead.
  *
  * <p><b>Boundaries</b> — changes to and from {@link KeyType#NONE}, which the policy counts as
  * type changes, and {@link Key#MAX_ACCIDENTAL_COUNT}, which is the last index the
@@ -60,162 +53,130 @@ import songscribe.smufl.SMuFLGlyph;
  *
  * <p>Where the accidentals sit — the BEADGCF and FCGDAEB orders — is asserted through
  * {@link KeyChange#signatureAccidentals}, the same public answer the staff header draws from,
- * rather than by reading the tables behind it.
+ * rather than by reading the tables behind it. That method takes a single key, so its cases do
+ * enumerate {@link Key#allSignatures()}.
  */
 class KeyChangeTest extends UnitTest {
 
     /** Widths are sums of font metrics, so compare in staff spaces with this much slack. */
     private static final double TOLERANCE_SS = 1e-9;
 
-    private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
-
-    /**
-     * The three branches of the policy, as its prose states them — not as the implementation
-     * happens to branch.
-     */
-    private enum Branch {
-        /** The key does not change. */
-        UNCHANGED,
-        /** Same type, a different number of accidentals. */
-        SAME_TYPE,
-        /** Sharps to flats, flats to sharps, or to or from no key at all. */
-        TYPE_CHANGED
-    }
-
-    private static Branch branchOf(Key previous, Key next) {
-        if (previous.equals(next)) {
-            return Branch.UNCHANGED;
-        }
-
-        return previous.keyType() == next.keyType() ? Branch.SAME_TYPE : Branch.TYPE_CHANGED;
-    }
-
-    static Stream<Arguments> allOrderedPairs() {
-        var signatures = Key.allSignatures();
-
-        return signatures.stream()
-            .flatMap(previous -> signatures.stream().map(next -> Arguments.of(previous, next)));
-    }
-
-    private static Stream<Arguments> pairsIn(Branch branch) {
-        return allOrderedPairs()
-            .filter(pair -> branchOf((Key) pair.get()[0], (Key) pair.get()[1]) == branch);
-    }
-
-    static Stream<Arguments> unchangedPairs() {
-        return pairsIn(Branch.UNCHANGED);
-    }
-
-    static Stream<Arguments> sameTypePairs() {
-        return pairsIn(Branch.SAME_TYPE);
-    }
-
-    static Stream<Arguments> typeChangedPairs() {
-        return pairsIn(Branch.TYPE_CHANGED);
-    }
-
     static Stream<Key> allSignatures() {
         return Key.allSignatures().stream();
     }
 
+    /** Asserts a single unbroken run of {@code count} {@code glyph}s, which carries no gaps. */
+    private static void assertSingleRunOf(
+        List<KeyChange.DrawnAccidental> accidentals, SMuFLGlyph glyph, int count) {
+
+        assertThat(accidentals).hasSize(count).allSatisfy(accidental -> {
+            assertThat(accidental.glyph()).isEqualTo(glyph);
+            assertThat(accidental.leadingGapSs())
+                .as("a single run is not pushed apart anywhere inside itself")
+                .isEqualTo(0);
+        });
+    }
+
+    // ==========================================================================
+    // The policy, one case per kind of change
+    // ==========================================================================
+
+    private static List<KeyChange.DrawnAccidental> accidentalsOf(KeyChangeKind kind) {
+        return KeyChange.accidentals(kind.previous(), kind.next());
+    }
+
     @Test
-    void testTheBranchTablesTogetherCoverEveryOrderedPairOfKeys() {
-        var signatureCount = Key.allSignatures().size();
-        var branchedCount = unchangedPairs().count() + sameTypePairs().count() + typeChangedPairs().count();
+    void testAKeyThatDoesNotChangeDrawsNothingAndMeasuresZero() {
+        var kind = KeyChangeKind.UNCHANGED;
 
-        assertThat(branchedCount).isEqualTo((long) signatureCount * signatureCount);
-        assertThat(unchangedPairs()).isNotEmpty();
-        assertThat(sameTypePairs()).isNotEmpty();
-        assertThat(typeChangedPairs()).isNotEmpty();
+        assertThat(accidentalsOf(kind)).isEmpty();
+        assertThat(KeyChange.widthSs(kind.previous(), kind.next())).isEqualTo(0);
+        assertThat(KeyChange.accidentals(TestKeys.C_MAJOR, TestKeys.C_MAJOR))
+            .as("no key at all is unchanged too")
+            .isEmpty();
     }
 
-    // ==========================================================================
-    // The policy, branch by branch
-    // ==========================================================================
+    @Test
+    void testAddingAccidentalsOfTheSameTypeDrawsOnlyTheNewSignature() {
+        var kind = KeyChangeKind.SAME_TYPE_ADDING;
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("unchangedPairs")
-    void testUnchangedKeyDrawsNothing(Key previous, Key next) {
-        assertThat(KeyChange.accidentals(previous, next)).isEmpty();
+        assertSingleRunOf(
+            accidentalsOf(kind), SMuFLGlyph.ACCIDENTAL_SHARP, kind.next().accidentalCount());
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("sameTypePairs")
-    void testSameTypeDrawsTheNewSignatureAndNoNaturals(Key previous, Key next) {
-        assertThat(KeyChange.accidentals(previous, next))
-            .as("the new signature supersedes the old one, whether it adds or drops accidentals")
-            .hasSize(next.accidentalCount())
-            .allSatisfy(accidental ->
-                assertThat(accidental.glyph()).isEqualTo(KeyChange.accidentalGlyph(next.keyType())));
+    /**
+     * Dropping accidentals is the case a conventional engraver would cancel: the accidentals that
+     * are lost would be naturalled. This policy restates the new signature instead, so this case
+     * is a decision rather than a restatement of the one above.
+     */
+    @Test
+    void testDroppingAccidentalsOfTheSameTypeStillDrawsNoNaturals() {
+        var kind = KeyChangeKind.SAME_TYPE_DROPPING;
+
+        assertSingleRunOf(
+            accidentalsOf(kind), SMuFLGlyph.ACCIDENTAL_SHARP, kind.next().accidentalCount());
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("typeChangedPairs")
-    void testTypeChangeCancelsTheWholePreviousSignatureThenDrawsTheNewOne(Key previous, Key next) {
-        var accidentals = KeyChange.accidentals(previous, next);
-        var cancelledCount = previous.accidentalCount();
+    @Test
+    void testCancellingSharpsToNoKeyDrawsOnlyNaturals() {
+        var kind = KeyChangeKind.SHARPS_TO_NO_KEY;
 
-        assertThat(accidentals).hasSize(cancelledCount + next.accidentalCount());
+        assertSingleRunOf(
+            accidentalsOf(kind), SMuFLGlyph.ACCIDENTAL_NATURAL, kind.previous().accidentalCount());
+    }
+
+    @Test
+    void testCancellingFlatsToNoKeyDrawsOnlyNaturals() {
+        var kind = KeyChangeKind.FLATS_TO_NO_KEY;
+
+        assertSingleRunOf(
+            accidentalsOf(kind), SMuFLGlyph.ACCIDENTAL_NATURAL, kind.previous().accidentalCount());
+    }
+
+    @Test
+    void testLeavingNoKeyAtAllHasNothingToCancel() {
+        var kind = KeyChangeKind.NO_KEY_TO_SHARPS;
+
+        assertSingleRunOf(
+            accidentalsOf(kind), SMuFLGlyph.ACCIDENTAL_SHARP, kind.next().accidentalCount());
+    }
+
+    /**
+     * The only shape that draws two runs at once, and so the only one where their order, the gap
+     * between them, and the absence of a gap anywhere else are all observable.
+     */
+    @Test
+    void testAChangeOfTypeCancelsThePreviousSignatureThenDrawsTheNewOneAfterOneGap() {
+        var kind = KeyChangeKind.SHARPS_TO_FLATS;
+        var cancelledCount = kind.previous().accidentalCount();
+        var accidentals = accidentalsOf(kind);
+
+        assertThat(accidentals).hasSize(cancelledCount + kind.next().accidentalCount());
         assertThat(accidentals.subList(0, cancelledCount))
             .as("the entire previous signature is cancelled, not only the accidentals it loses")
             .allSatisfy(accidental ->
                 assertThat(accidental.glyph()).isEqualTo(SMuFLGlyph.ACCIDENTAL_NATURAL));
         assertThat(accidentals.subList(cancelledCount, accidentals.size()))
+            .as("the naturals come first, so none of them follows the signature it cancels")
             .allSatisfy(accidental ->
-                assertThat(accidental.glyph()).isEqualTo(KeyChange.accidentalGlyph(next.keyType())));
-    }
+                assertThat(accidental.glyph()).isEqualTo(SMuFLGlyph.ACCIDENTAL_FLAT));
 
-    // ==========================================================================
-    // Invariants over the whole domain
-    // ==========================================================================
-
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedPairs")
-    void testNaturalsNeverFollowTheSignatureTheyCancel(Key previous, Key next) {
-        var accidentals = KeyChange.accidentals(previous, next);
-        var seenNonNatural = false;
-
-        for (var i = 0; i < accidentals.size(); i++) {
-            if (accidentals.get(i).glyph() == SMuFLGlyph.ACCIDENTAL_NATURAL) {
-                assertThat(seenNonNatural)
-                    .as("the natural at index %d follows the signature it cancels", i)
-                    .isFalse();
-            } else {
-                seenNonNatural = true;
-            }
-        }
-    }
-
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("typeChangedPairs")
-    void testExactlyOneGapSeparatesACancellationFromTheSignatureAfterIt(Key previous, Key next) {
-        var accidentals = KeyChange.accidentals(previous, next);
-        var gapCount = accidentals.stream().filter(accidental -> accidental.leadingGapSs() != 0).count();
-
-        if (previous.keyType() == KeyType.NONE || next.keyType() == KeyType.NONE) {
-            assertThat(gapCount)
-                .as("only one run is drawn, so there is nothing to be separated from")
-                .isZero();
-            return;
-        }
-
-        assertThat(gapCount).isEqualTo(1);
-        assertThat(accidentals.get(previous.accidentalCount()).leadingGapSs())
+        assertThat(accidentals.stream().filter(accidental -> accidental.leadingGapSs() != 0))
+            .as("one gap, and only one, separates the two runs")
+            .hasSize(1);
+        assertThat(accidentals.get(cancelledCount).leadingGapSs())
             .isCloseTo(StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS, within(TOLERANCE_SS));
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("sameTypePairs")
-    void testASingleRunCarriesNoLeadingGap(Key previous, Key next) {
-        assertThat(KeyChange.accidentals(previous, next))
-            .allSatisfy(accidental -> assertThat(accidental.leadingGapSs()).isEqualTo(0));
-    }
+    // ==========================================================================
+    // Invariants across every kind of change
+    // ==========================================================================
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedPairs")
-    void testWidthIsTheLaidOutWidthOfWhatIsDrawn(Key previous, Key next) {
-        var accidentals = KeyChange.accidentals(previous, next);
-        var widthSs = KeyChange.widthSs(previous, next);
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(KeyChangeKind.class)
+    void testWidthIsTheLaidOutWidthOfWhatIsDrawn(KeyChangeKind kind) {
+        var accidentals = accidentalsOf(kind);
+        var widthSs = KeyChange.widthSs(kind.previous(), kind.next());
 
         assertThat(widthSs).isCloseTo(KeyChange.totalWidthSs(accidentals), within(TOLERANCE_SS));
         assertThat(widthSs).isNotNegative();
@@ -224,25 +185,15 @@ class KeyChangeTest extends UnitTest {
             .isEqualTo(!accidentals.isEmpty());
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedPairs")
-    void testAccidentalsAreImmutable(Key previous, Key next) {
-        var accidentals = KeyChange.accidentals(previous, next);
+    /** Immutability cannot vary with the keys, only with whether anything was drawn at all. */
+    @Test
+    void testAccidentalsAreImmutableWhetherOrNotAnythingIsDrawn() {
         var intruder = new KeyChange.DrawnAccidental(SMuFLGlyph.ACCIDENTAL_NATURAL, 0, 0);
 
         assertThatExceptionOfType(UnsupportedOperationException.class)
-            .isThrownBy(() -> accidentals.add(intruder));
-    }
-
-    // ==========================================================================
-    // The equal-keys clause, which the branch tables alone do not pin
-    // ==========================================================================
-
-    @ParameterizedTest
-    @MethodSource("allSignatures")
-    void testChangingToTheSameKeyDrawsNothingAndMeasuresZero(Key key) {
-        assertThat(KeyChange.accidentals(key, key)).isEmpty();
-        assertThat(KeyChange.widthSs(key, key)).isEqualTo(0);
+            .isThrownBy(() -> accidentalsOf(KeyChangeKind.SHARPS_TO_FLATS).add(intruder));
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> accidentalsOf(KeyChangeKind.UNCHANGED).add(intruder));
     }
 
     // ==========================================================================
@@ -326,7 +277,7 @@ class KeyChangeTest extends UnitTest {
 
     @Test
     void testCMajorSignatureDrawsNothing() {
-        assertThat(KeyChange.signatureAccidentals(C_MAJOR)).isEmpty();
+        assertThat(KeyChange.signatureAccidentals(TestKeys.C_MAJOR)).isEmpty();
     }
 
     @ParameterizedTest

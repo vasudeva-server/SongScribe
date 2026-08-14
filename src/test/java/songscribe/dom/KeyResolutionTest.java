@@ -24,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.note;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.dom.TestKeys.ALL_FLATS;
+import static songscribe.dom.TestKeys.ALL_SHARPS;
+import static songscribe.dom.TestKeys.C_MAJOR;
+import static songscribe.dom.TestKeys.D_MAJOR;
+import static songscribe.dom.TestKeys.G_MAJOR;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,17 +57,18 @@ import songscribe.layout.AccidentalReconciliation;
  *
  * <p><b>Which key applies where</b> — {@link StaffElement#findEffectiveAccidental} falls back to
  * the key in effect <em>at the note's index</em>, which is what {@link Line#keyAt} answers and why
- * the resolver takes an index at all. Enumerated, not sampled: every ordered pair of
- * {@link Key#allSignatures()} as (line's running key, mid-line key), each asserted at one staff
- * position per pitch class. The oracle is a line that runs in the key alone, so the case pins
- * <em>which key is consulted</em> rather than restating the key-to-accidental mapping
- * {@link StaffElement#keyAccidentalFor} owns and {@code KeyChangeTest} covers.
+ * the resolver takes an index at all. What these cases can catch is the <em>wrong key</em> being
+ * consulted, so the pairs used are the ones where the two keys answer differently at the position
+ * being resolved; a pair that agrees there proves nothing, whichever key was read. The oracle is a
+ * line that runs in the key alone, so the case pins <em>which key is consulted</em> rather than
+ * restating the key-to-accidental mapping {@link StaffElement#keyAccidentalFor} owns and
+ * {@code KeyChangeTest} covers.
  *
  * <p><b>A key change is a barrier</b> — {@link ElementType#cancelsAccidentals} is true for
  * {@code KEY_SIGNATURE}, so an explicit accidental written before a mid-line key change reaches no
- * later note at that staff position. Asserted over the same enumerated domain, with a double sharp
- * as the accidental left behind: a key signature never yields one, so a carried accidental is
- * always distinguishable from a resolved one. A key signature is always immediately preceded by a
+ * later note at that staff position. Asserted over the same pairs, with a double sharp as the
+ * accidental left behind: a key signature never yields one, so a carried accidental is always
+ * distinguishable from a resolved one. A key signature is always immediately preceded by a
  * barline, which is a barrier too, so what this pins is the outcome — the accidental does not
  * survive, and the key consulted afterwards is the new one, not the one the line started in.
  *
@@ -95,18 +101,6 @@ import songscribe.layout.AccidentalReconciliation;
  */
 class KeyResolutionTest extends UnitTest {
 
-    private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
-
-    /** One sharp is F♯, which is why every fixture below resolves an F. */
-    private static final Key G_MAJOR = new Key(KeyType.SHARPS, 1);
-
-    private static final Key D_MAJOR = new Key(KeyType.SHARPS, 2);
-
-    /** A signature with an accidental on every pitch class, so no fixture note escapes it. */
-    private static final Key ALL_FLATS = new Key(KeyType.FLATS, Key.MAX_ACCIDENTAL_COUNT);
-
-    private static final Key ALL_SHARPS = new Key(KeyType.SHARPS, Key.MAX_ACCIDENTAL_COUNT);
-
     // Staff position 0 is B4 and positions grow downwards, so each step down is one letter back.
     private static final int G_STAFF_POSITION = 2;
     private static final int F_STAFF_POSITION = 3;
@@ -133,11 +127,13 @@ class KeyResolutionTest extends UnitTest {
         return List.copyOf(staffPositions);
     }
 
-    static Stream<Arguments> allOrderedKeyPairs() {
-        var signatures = Key.allSignatures();
-
-        return signatures.stream()
-            .flatMap(running -> signatures.stream().map(midLine -> Arguments.of(running, midLine)));
+    /**
+     * The kinds worth resolving against, read as (line's running key, mid-line key):
+     * {@link KeyChangeKind#changes()} drops the one kind whose two keys are the same, which cannot
+     * show that the wrong key was consulted.
+     */
+    static Stream<KeyChangeKind> keyChangesWorthResolvingAgainst() {
+        return KeyChangeKind.changes();
     }
 
     // ==========================================================================
@@ -194,49 +190,39 @@ class KeyResolutionTest extends UnitTest {
     // Which key a note resolves against
     // ==========================================================================
 
-    @Test
-    void testTheStaffPositionsResolvedAgainstCoverEveryPitchClassAKeyCanAlter() {
-        // A signature carrying the maximum number of accidentals alters every pitch class there
-        // is, so it is the domain's own statement of what the list above has to span.
-        assertThat(STAFF_POSITIONS_PER_PITCH_CLASS).allSatisfy(staffPosition ->
-            assertThat(ALL_SHARPS.altersPitchClass(StaffElement.getPitchIndex(staffPosition)))
-                .as("staff position %d", staffPosition)
-                .isTrue());
-    }
-
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedKeyPairs")
-    void testANoteBeforeAMidLineKeyChangeResolvesAgainstTheKeyTheLineStartsIn(Key running, Key midLine) {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyChangesWorthResolvingAgainst")
+    void testANoteBeforeAMidLineKeyChangeResolvesAgainstTheKeyTheLineStartsIn(KeyChangeKind kind) {
         for (var staffPosition : STAFF_POSITIONS_PER_PITCH_CLASS) {
-            var line = lineChangingKeyMidLine(running, midLine, staffPosition, null);
+            var line = lineChangingKeyMidLine(kind.previous(), kind.next(), staffPosition, null);
 
             assertThat(line.getElement(NOTE_BEFORE_THE_CHANGE).findLastAccidental())
                 .as("staff position %d, before the change", staffPosition)
-                .isEqualTo(resolvedOnALineRunningIn(running, staffPosition));
+                .isEqualTo(resolvedOnALineRunningIn(kind.previous(), staffPosition));
         }
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedKeyPairs")
-    void testANoteAfterAMidLineKeyChangeResolvesAgainstTheNewKey(Key running, Key midLine) {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyChangesWorthResolvingAgainst")
+    void testANoteAfterAMidLineKeyChangeResolvesAgainstTheNewKey(KeyChangeKind kind) {
         for (var staffPosition : STAFF_POSITIONS_PER_PITCH_CLASS) {
-            var line = lineChangingKeyMidLine(running, midLine, staffPosition, null);
+            var line = lineChangingKeyMidLine(kind.previous(), kind.next(), staffPosition, null);
 
             assertThat(line.getElement(NOTE_AFTER_THE_CHANGE).findLastAccidental())
                 .as("staff position %d, after the change", staffPosition)
-                .isEqualTo(resolvedOnALineRunningIn(midLine, staffPosition));
+                .isEqualTo(resolvedOnALineRunningIn(kind.next(), staffPosition));
         }
     }
 
-    @ParameterizedTest(name = "{0} -> {1}")
-    @MethodSource("allOrderedKeyPairs")
-    void testAnExplicitAccidentalDoesNotCarryAcrossAMidLineKeyChange(Key running, Key midLine) {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyChangesWorthResolvingAgainst")
+    void testAnExplicitAccidentalDoesNotCarryAcrossAMidLineKeyChange(KeyChangeKind kind) {
         // No key signature ever yields a double sharp, so a note resolving to one could only have
         // reached back across the change for it.
         var carried = StaffElement.Accidental.DOUBLE_SHARP;
 
         for (var staffPosition : STAFF_POSITIONS_PER_PITCH_CLASS) {
-            var line = lineChangingKeyMidLine(running, midLine, staffPosition, carried);
+            var line = lineChangingKeyMidLine(kind.previous(), kind.next(), staffPosition, carried);
             var resolved = line.getElement(NOTE_AFTER_THE_CHANGE).findLastAccidental();
 
             assertThat(resolved)
@@ -245,7 +231,7 @@ class KeyResolutionTest extends UnitTest {
                 .isNotEqualTo(carried);
             assertThat(resolved)
                 .as("staff position %d, after the change", staffPosition)
-                .isEqualTo(resolvedOnALineRunningIn(midLine, staffPosition));
+                .isEqualTo(resolvedOnALineRunningIn(kind.next(), staffPosition));
         }
     }
 

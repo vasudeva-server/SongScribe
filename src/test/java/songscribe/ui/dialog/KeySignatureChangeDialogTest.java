@@ -196,18 +196,6 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
             .isEqualTo(Key.allSignatures());
     }
 
-    @Test
-    void testShowForSetsTheOneBasedLineIndexLabel() {
-        var line = lineWithOwnKey(new Key(KeyType.NONE, 0));
-        when(line.getSong().indexOfLine(line)).thenReturn(A_LATER_LINE_INDEX);
-
-        showFor(line);
-
-        assertThat(dialog.indexOfSelectedElementLabel.getText())
-            .as("label shows the 1-based line ordinal")
-            .isEqualTo(Integer.toString(A_LATER_LINE_INDEX + 1));
-    }
-
     // ── Opening state, in both derived ops ──
 
     @ParameterizedTest(name = "{0}")

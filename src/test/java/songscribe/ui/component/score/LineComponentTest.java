@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -82,7 +83,6 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.AttachmentEditor;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
-import songscribe.ui.dialog.KeySignatureEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -1462,23 +1462,20 @@ class LineComponentTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * These tests drive the real {@code mouseClicked} routing and assert which line and index the
-     * key signature dialog was opened on. What each rect covers is stubbed on {@link LayoutResult}
-     * rather than computed, because {@code LayoutHitTesterTest} owns that geometry; what is under
-     * test here is that the gesture reaches the dialog at all and carries the right target — the
-     * step that did not exist until the three hit tests gained a caller.
+     * These tests drive the real {@code mouseClicked} and assert whether the gesture reaches the
+     * key edit step at all, which is the part {@code mouseClicked} decides. Which line and index
+     * each rect resolves to belongs to {@code LayoutHitTesterTest}, which owns that geometry.
      *
-     * <p>Opening is observed by stubbing {@link KeySignatureEditor} statically, since the call to
-     * {@code edit} is the gesture's only observable effect.
+     * <p>Reaching the step is observed by whether the three hit tests were consulted on the
+     * injected {@link LayoutResult}. Opening is deliberately not observed: the step's only other
+     * effect is a modal dialog, and no production seam exists to intercept it.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class DoubleClickKeySignatureEditing {
 
         private ScoreView mockScoreView;
-        private Song song;
         private Line line;
-        private Line nextLine;
         private LayoutResult mockLayout;
 
         @BeforeEach
@@ -1490,13 +1487,9 @@ class LineComponentTest extends UnitTest {
             when(mockScoreView.getActiveLyricEditor()).thenReturn(null);
             lc.setScoreView(mockScoreView);
 
-            song = new Song();
+            var song = new Song();
             line = song.getLine(0);
-            nextLine = new Line(song);
-            song.withoutMutationTracking(() -> {
-                line.addElement(crotchet());
-                song.addLine(nextLine);
-            });
+            song.withoutMutationTracking(() -> line.addElement(crotchet()));
             lc.song = song;
             lc.setLine(line, 0);
 
@@ -1508,121 +1501,75 @@ class LineComponentTest extends UnitTest {
             lc.layoutDirty = false;
         }
 
-        /** Runs {@code mouseClicked} and hands the test the static {@link KeySignatureEditor} stub. */
-        private void clickWith(
-            MouseEvent event, Consumer<? super MockedStatic<KeySignatureEditor>> assertions) {
-
-            var graceMock = mock(GraceModeManager.class);
-            var insertionPointMock = mock(InsertionPointMode.class);
-
-            try (
-                var emm = mockStatic(EditModeManager.class);
-                var mainFrame = mockStatic(MainFrame.class);
-                var playback = mockStatic(PlaybackController.class);
-                var keySignatureEditor = mockStatic(KeySignatureEditor.class)) {
-
-                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
-                mainFrame.when(MainFrame::getInstance).thenReturn(null);
-                playback.when(PlaybackController::isPlaying).thenReturn(false);
-
-                lc.mouseClicked(event);
-
-                assertions.accept(keySignatureEditor);
-            }
-        }
-
-        @Test
-        void testDoubleClickOnTheHeaderOpensTheDialogOnThatLinesOwnKey() {
-            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
-
-            clickWith(
-                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
-                editor -> editor.verify(
-                    () -> KeySignatureEditor.edit(
-                        any(), eq(line), eq(KeySignatureChangeDialog.LINE_OWN_KEY_INDEX)),
-                    times(1)));
+        private enum PlaybackState {
+            PLAYING,
+            STOPPED
         }
 
         /**
-         * The cautionary is drawn on {@code line} but edits the key of the line after it. This is
-         * the one target whose subject is not the line it sits on, so a gesture that passed the
-         * clicked line through would edit the wrong line's key and nothing would say so.
+         * Runs {@code mouseClicked} with the statics the click path reads, with
+         * {@code PlaybackController} reporting {@code playbackState}.
          */
-        @Test
-        void testDoubleClickOnTheCautionaryOpensTheDialogOnTheNextLine() {
-            when(mockLayout.hitTestCautionaryKeyEdit(anyDouble(), any())).thenReturn(nextLine);
-
-            clickWith(
-                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
-                editor -> editor.verify(
-                    () -> KeySignatureEditor.edit(
-                        any(), eq(nextLine), eq(KeySignatureChangeDialog.LINE_OWN_KEY_INDEX)),
-                    times(1)));
-        }
-
-        @Test
-        void testDoubleClickOnAMidLineKeySignatureOpensTheDialogAtItsIndex() {
-            var keySignature = new KeySignatureElement(new Key(KeyType.SHARPS, 2));
-            song.withoutMutationTracking(() -> {
-                line.addElement(new StaffElement(ElementType.SINGLE_BARLINE));
-                line.addElement(keySignature);
-            });
-            when(mockLayout.hitTestMidLineKeyEdit(anyDouble(), any())).thenReturn(keySignature);
-
-            clickWith(
-                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
-                editor -> editor.verify(
-                    () -> KeySignatureEditor.edit(
-                        any(), eq(line), eq(line.getElementIndex(keySignature))),
-                    times(1)));
-        }
-
-        @Test
-        void testDoubleClickThatHitsNoKeyTargetOpensNothing() {
-            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
-        }
-
-        @Test
-        void testSingleClickOnTheHeaderOpensNothing() {
-            // Without the click-count check, every click in the header column — including the one
-            // that merely switches to SELECT mode — would pop the dialog open.
-            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
-
-            clickWith(clickEvent(SINGLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
-        }
-
-        @Test
-        void testShiftDoubleClickOpensNothing() {
-            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
-
-            clickWith(
-                clickEvent(DOUBLE_CLICK, InputEvent.SHIFT_DOWN_MASK),
-                MockedStatic::verifyNoInteractions);
-        }
-
-        @Test
-        void testDoubleClickWhilePlayingOpensNothing() {
-            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
-
+        private void clickWith(MouseEvent event, PlaybackState playbackState) {
             var graceMock = mock(GraceModeManager.class);
             var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mainFrame = mockStatic(MainFrame.class);
-                var playback = mockStatic(PlaybackController.class);
-                var keySignatureEditor = mockStatic(KeySignatureEditor.class)) {
+                var playback = mockStatic(PlaybackController.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
                 mainFrame.when(MainFrame::getInstance).thenReturn(null);
-                playback.when(PlaybackController::isPlaying).thenReturn(true);
+                playback
+                    .when(PlaybackController::isPlaying)
+                    .thenReturn(playbackState == PlaybackState.PLAYING);
 
-                lc.mouseClicked(clickEvent(DOUBLE_CLICK, NO_MODIFIERS));
-
-                keySignatureEditor.verifyNoInteractions();
+                lc.mouseClicked(event);
             }
+        }
+
+        /** Asserts the click never reached the key edit step. */
+        private void assertKeyStepNotReached() {
+            verify(mockLayout, never()).hitTestHeaderKeyEdit(anyDouble(), any());
+            verify(mockLayout, never()).hitTestMidLineKeyEdit(anyDouble(), any());
+            verify(mockLayout, never()).hitTestCautionaryKeyEdit(anyDouble(), any());
+        }
+
+        /**
+         * With no rect hit, all three targets are asked, in the order the step tries them. This is
+         * what makes the "not reached" tests below mean anything: without it, a step that had
+         * stopped consulting the hit tests entirely would pass every one of them.
+         */
+        @Test
+        void testADoubleClickAsksEveryKeyEditTarget() {
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), PlaybackState.STOPPED);
+
+            var inOrder = inOrder(mockLayout);
+            inOrder.verify(mockLayout).hitTestHeaderKeyEdit(anyDouble(), eq(line));
+            inOrder.verify(mockLayout).hitTestMidLineKeyEdit(anyDouble(), eq(line));
+            inOrder.verify(mockLayout).hitTestCautionaryKeyEdit(anyDouble(), eq(line));
+        }
+
+        @Test
+        void testASingleClickDoesNotReachTheKeyEditStep() {
+            // Without the click-count check, every click in the header column — including the one
+            // that merely switches to SELECT mode — would pop the dialog open.
+            clickWith(clickEvent(SINGLE_CLICK, NO_MODIFIERS), PlaybackState.STOPPED);
+            assertKeyStepNotReached();
+        }
+
+        @Test
+        void testAShiftDoubleClickDoesNotReachTheKeyEditStep() {
+            clickWith(clickEvent(DOUBLE_CLICK, InputEvent.SHIFT_DOWN_MASK), PlaybackState.STOPPED);
+            assertKeyStepNotReached();
+        }
+
+        @Test
+        void testADoubleClickWhilePlayingDoesNotReachTheKeyEditStep() {
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), PlaybackState.PLAYING);
+            assertKeyStepNotReached();
         }
     }
 

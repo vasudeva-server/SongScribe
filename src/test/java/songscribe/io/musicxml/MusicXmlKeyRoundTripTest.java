@@ -26,6 +26,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static songscribe.dom.StaffElementFactory.createNote;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.dom.TestKeys.B_FLAT_MAJOR;
+import static songscribe.dom.TestKeys.C_MAJOR;
+import static songscribe.dom.TestKeys.D_MAJOR;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.build;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.countOccurrences;
@@ -42,6 +45,7 @@ import org.audiveris.proxymusic.Attributes;
 import org.audiveris.proxymusic.ScorePartwise;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.xml.sax.SAXException;
@@ -49,6 +53,7 @@ import org.xml.sax.SAXException;
 import songscribe.UnitTest;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChange;
+import songscribe.dom.KeyChangeKind;
 import songscribe.dom.KeySignatureElement;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
@@ -64,8 +69,9 @@ import songscribe.smufl.SMuFLGlyph;
  * <p>What this class is responsible for is the <em>codec</em>: which measure a {@code <key>} is
  * written into, what it carries, what a read makes of one, and which documents the reader refuses.
  * The cancellation policy itself belongs to {@code KeyChangeTest} and is not retested here — what
- * is asserted is that the writer's {@code <cancel>} agrees with that policy for every ordered pair
- * of keys, which is the drift this codec could introduce and that class cannot.
+ * is asserted is that the writer's {@code <cancel>} agrees with that policy, once per kind of
+ * change the element distinguishes, which is the drift this codec could introduce and that class
+ * cannot.
  *
  * <p>Cases needing a document this program's own writer never produces — a mid-measure
  * {@code <key>} with no barline before it, a {@code <fifths>} out of range, a {@code <cancel>}
@@ -77,10 +83,6 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
 
     /** Staff position of F4, whose pitch class every sharp key alters and C major does not. */
     private static final int F4_STAFF_POSITION = 3;
-
-    private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
-    private static final Key THREE_SHARPS = new Key(KeyType.SHARPS, 3);
-    private static final Key TWO_FLATS = new Key(KeyType.FLATS, 2);
 
     /** Line 0 (the default key), two key changes, then a line that keeps the last key. */
     private static final int EXPECTED_LINE_COUNT = 4;
@@ -138,15 +140,15 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
                 line.addElement(crotchet());
             },
             line -> {
-                line.setKey(THREE_SHARPS);
+                line.setKey(D_MAJOR);
                 line.addElement(crotchet());
             },
             line -> {
-                line.setKey(TWO_FLATS);
+                line.setKey(B_FLAT_MAJOR);
                 line.addElement(crotchet());
             },
             line -> {
-                line.setKey(TWO_FLATS);
+                line.setKey(B_FLAT_MAJOR);
                 line.addElement(crotchet());
             }
         );
@@ -158,9 +160,9 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
 
         assertThat(reloaded.getLines()).as("line count").hasSize(EXPECTED_LINE_COUNT);
         assertThat(reloaded.getLine(0).getRunningKey()).as("line 0 key").isEqualTo(Key.DEFAULT);
-        assertThat(reloaded.getLine(1).getRunningKey()).as("line 1 key").isEqualTo(THREE_SHARPS);
-        assertThat(reloaded.getLine(2).getRunningKey()).as("line 2 key").isEqualTo(TWO_FLATS);
-        assertThat(reloaded.getLine(3).getRunningKey()).as("line 3 key").isEqualTo(TWO_FLATS);
+        assertThat(reloaded.getLine(1).getRunningKey()).as("line 1 key").isEqualTo(D_MAJOR);
+        assertThat(reloaded.getLine(2).getRunningKey()).as("line 2 key").isEqualTo(B_FLAT_MAJOR);
+        assertThat(reloaded.getLine(3).getRunningKey()).as("line 3 key").isEqualTo(B_FLAT_MAJOR);
     }
 
     @Test
@@ -233,7 +235,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
             line.addElement(singleBarline());
             line.addElement(createNote(F4_STAFF_POSITION, true));
             line.addElement(singleBarline());
-            line.addElement(new KeySignatureElement(THREE_SHARPS));
+            line.addElement(new KeySignatureElement(D_MAJOR));
             line.addElement(createNote(F4_STAFF_POSITION, true));
             line.addElement(singleBarline());
             line.addElement(createNote(F4_STAFF_POSITION, true));
@@ -249,7 +251,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
             .isInstanceOf(KeySignatureElement.class);
         assertThat(((KeySignatureElement) element).getKey())
             .as("the key it establishes")
-            .isEqualTo(THREE_SHARPS);
+            .isEqualTo(D_MAJOR);
     }
 
     @Test
@@ -286,7 +288,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
                 line.setKey(C_MAJOR);
                 line.addElement(crotchet());
                 line.addElement(singleBarline());
-                line.addElement(new KeySignatureElement(THREE_SHARPS));
+                line.addElement(new KeySignatureElement(D_MAJOR));
                 line.addElement(crotchet());
             },
             line -> line.addElement(crotchet())
@@ -294,7 +296,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
 
         assertThat(reloaded.getLine(1).getRunningKey())
             .as("the following line inherits the key the mid-line change left off in")
-            .isEqualTo(THREE_SHARPS);
+            .isEqualTo(D_MAJOR);
         assertThat(reloaded.getLine(1).getKey())
             .as("and establishes none of its own, so no <key> was written for it")
             .isNull();
@@ -304,49 +306,28 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
     // <cancel>, asked of the policy rather than restated
     // -------------------------------------------------------------------------
 
-    private record KeyPair(Key previous, Key next) {
-
-        @Override
-        public String toString() {
-            return previous + " -> " + next;
-        }
-    }
-
-    static Stream<KeyPair> everyOrderedKeyPair() {
-        var signatures = Key.allSignatures();
-        var pairs = new ArrayList<KeyPair>(signatures.size() * signatures.size());
-
-        for (var previous : signatures) {
-            for (var next : signatures) {
-                pairs.add(new KeyPair(previous, next));
-            }
-        }
-
-        return pairs.stream();
-    }
-
     @ParameterizedTest(name = "{0}")
-    @MethodSource("everyOrderedKeyPair")
-    void testCancelIsWrittenExactlyWhenTheChangeDrawsNaturals(KeyPair pair) {
+    @EnumSource(KeyChangeKind.class)
+    void testCancelIsWrittenExactlyWhenTheChangeDrawsNaturals(KeyChangeKind kind) {
         var song = buildSong(
             line -> {
-                line.setKey(pair.previous());
+                line.setKey(kind.previous());
                 line.addElement(crotchet());
             },
             line -> {
-                line.setKey(pair.next());
+                line.setKey(kind.next());
                 line.addElement(crotchet());
             }
         );
 
         var keys = writtenKeys(build(song));
 
-        if (pair.previous().equals(pair.next())) {
+        if (kind.previous().equals(kind.next())) {
             assertThat(keys).as("a key that does not change writes only measure 1's <key>").hasSize(1);
             return;
         }
 
-        var drawn = KeyChange.accidentals(pair.previous(), pair.next());
+        var drawn = KeyChange.accidentals(kind.previous(), kind.next());
         var policyCancels = drawn.getFirst().glyph() == SMuFLGlyph.ACCIDENTAL_NATURAL;
         var cancel = keys.get(1).getCancel();
 
@@ -354,7 +335,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
             assertThat(cancel).as("the policy draws naturals, so a <cancel> is owed").isNotNull();
             assertThat(cancel.getValue().intValue())
                 .as("<cancel> carries the fifths of the key being cancelled")
-                .isEqualTo(KeySignatureMapping.toFifths(pair.previous()));
+                .isEqualTo(KeySignatureMapping.toFifths(kind.previous()));
         } else {
             assertThat(cancel).as("the policy draws no naturals, so no <cancel> is owed").isNull();
         }
@@ -409,7 +390,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
 
     @Test
     void testAMidMeasureKeyPrecededByABarlineLoads() throws Exception {
-        var line = parse(twoMeasureScore(0, midMeasureKey(THREE_SHARPS, ""))).getLine(0);
+        var line = parse(twoMeasureScore(0, midMeasureKey(D_MAJOR, ""))).getLine(0);
 
         assertThat(line.getElement(FIXTURE_KEY_INDEX))
             .as("a mid-measure <key> becomes a key signature element after the barline")
@@ -420,7 +401,7 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
     void testAMidMeasureKeyWithNoBarlineBeforeItFailsAsCorrupt() {
         // The barline closing measure 1 is removed, so the <key> follows a note. Nothing else
         // about the document changes, so nothing else can account for the failure.
-        var xml = twoMeasureScore(0, midMeasureKey(THREE_SHARPS, ""))
+        var xml = twoMeasureScore(0, midMeasureKey(D_MAJOR, ""))
             .replace(FIRST_MEASURE_BARLINE, "");
 
         var exception = assertThrows(SAXException.class, () -> parse(xml));
@@ -434,13 +415,13 @@ class MusicXmlKeyRoundTripTest extends UnitTest {
         // This document claims a five-flat cancellation; the rendering must not follow it.
         var contradictoryCancel =
             '<' + MusicXmlTags.CANCEL + ">-5</" + MusicXmlTags.CANCEL + '>';
-        var line = parse(twoMeasureScore(0, midMeasureKey(THREE_SHARPS, contradictoryCancel)))
+        var line = parse(twoMeasureScore(0, midMeasureKey(D_MAJOR, contradictoryCancel)))
             .getLine(0);
         var keySignature = (KeySignatureElement) line.getElement(FIXTURE_KEY_INDEX);
 
         assertThat(keySignature.getKey())
             .as("the key comes from <fifths>; <cancel> contributes nothing to it")
-            .isEqualTo(THREE_SHARPS);
+            .isEqualTo(D_MAJOR);
         assertThat(KeyChange.accidentals(line.keyAt(FIXTURE_KEY_INDEX - 1), keySignature.getKey()))
             .as("what is drawn follows the policy, which cancels nothing here")
             .noneMatch(accidental -> accidental.glyph() == SMuFLGlyph.ACCIDENTAL_NATURAL);
