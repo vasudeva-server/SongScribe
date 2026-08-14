@@ -7,7 +7,7 @@
 # a search over .java, and everything we want to spare (docs, scripts, gradle,
 # properties) is not.
 #
-# Two kinds of query get told apart, and they are gated differently:
+# Three kinds of query get told apart, and they are gated differently:
 #
 #   - A search whose pattern is a single bare identifier (PascalCase,
 #     camelCase, snake_case, UPPER_SNAKE — one token, no spaces) is a symbol
@@ -20,10 +20,18 @@
 #     the documented fallback condition in .agents/rules/serena.md ("reach for
 #     rg only when a jet_brains_* tool returns no results").
 #
-#   - A search whose pattern is not a single bare identifier (a phrase, a
-#     regex with alternation/spaces, a quoted sentence) cannot be a symbol
-#     query by shape — Java declarations and English phrases don't collide
-#     here the way single identifiers do — and is gated the old way: it must
+#   - A search whose pattern is "new SomeType(" is a constructor call-site
+#     query by shape, gated the same way as a bare identifier (evidence, not
+#     PROSE=1) against the type name — Java constructors are named after their
+#     class, so find_referencing_symbols on the class answers it directly. It
+#     fails the bare-identifier shape (the space makes it multi-token) but is
+#     no less a symbol query, and letting PROSE=1 through here would make every
+#     constructor-usage search "add PROSE=1" instead of "use serena".
+#
+#   - A search whose pattern is neither of the above (a phrase, a regex with
+#     alternation/spaces, a quoted sentence) cannot be a symbol query by shape
+#     — Java declarations and English phrases don't collide here the way
+#     identifiers and constructor calls do — and is gated the old way: it must
 #     say PROSE=1.
 #
 # A PROSE=1 that appears on a command that isn't an rg/grep search at all does
@@ -142,22 +150,22 @@ extract_query() {
 
 query=$(extract_query "$segment")
 
+serena_evidence() {
+  local ident="$1"
+  [[ -f "$transcript" ]] || return 1
+  tail -n "$TRANSCRIPT_TAIL" "$transcript" 2>/dev/null | jq -e -r \
+    --arg ident "$ident" \
+    'select(.type == "assistant") | .message.content[]?
+     | select(.type == "tool_use")
+     | select(.name | test("jet_brains_(find_symbol|find_referencing_symbols)$"))
+     | (.input | tostring)
+     | select(test("\\b" + $ident + "\\b"))' \
+    >/dev/null 2>&1
+}
+
 readonly IDENT_SHAPE='^[A-Za-z_][A-Za-z0-9_]*$'
 
 if [[ -n "$query" && "$query" =~ $IDENT_SHAPE ]]; then
-  serena_evidence() {
-    local ident="$1"
-    [[ -f "$transcript" ]] || return 1
-    tail -n "$TRANSCRIPT_TAIL" "$transcript" 2>/dev/null | jq -e -r \
-      --arg ident "$ident" \
-      'select(.type == "assistant") | .message.content[]?
-       | select(.type == "tool_use")
-       | select(.name | test("jet_brains_(find_symbol|find_referencing_symbols)$"))
-       | (.input | tostring)
-       | select(test("\\b" + $ident + "\\b"))' \
-      >/dev/null 2>&1
-  }
-
   if serena_evidence "$query"; then
     exit 0
   fi
@@ -169,6 +177,30 @@ Try serena first:
   find_referencing_symbols(\"Class/$query\", file)
 
 If \"$query\" is genuinely just a word, not a Java symbol, running find_symbol on it and getting nothing back is itself the evidence this hook looks for — run it, then retry the rg/grep command."
+fi
+
+# "new SomeException(" and friends: a constructor call-site search. This is
+# multi-token (fails IDENT_SHAPE) but is still a symbol query, not prose — it
+# asks where a type is constructed, which find_referencing_symbols answers
+# directly by pointing at the type's own name (Java constructors are named
+# after their class). PROSE=1 must not excuse it, or every usages query for a
+# constructor becomes "add PROSE=1" instead of "use serena".
+readonly CTOR_CALL_SHAPE='^new[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)'
+
+if [[ -n "$query" && "$query" =~ $CTOR_CALL_SHAPE ]]; then
+  class_name="${BASH_REMATCH[1]}"
+
+  if serena_evidence "$class_name"; then
+    exit 0
+  fi
+
+  deny "\"$query\" is a constructor call-site search for $class_name, not prose. PROSE=1 does not excuse this — it only covers phrase/text search, and a constructor call is a symbol query by shape.
+
+Try serena first:
+  find_symbol(\"$class_name\")
+  find_referencing_symbols(\"$class_name/$class_name\", file)   # Java constructors share the class's name
+
+If \"$class_name\" is genuinely not a Java type, running find_symbol on it and getting nothing back is itself the evidence this hook looks for — run it, then retry the rg/grep command."
 fi
 
 # Not identifier-shaped: a real phrase/regex search. This is the case PROSE=1
