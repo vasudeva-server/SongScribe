@@ -37,13 +37,11 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
-import songscribe.dom.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
@@ -815,20 +813,18 @@ public abstract class BaseDialog {
         dialog.setLocation(location);
     }
 
+    /**
+     * The window this dialog parents itself to.
+     *
+     * <p><strong>Window parenting only.</strong> It is not a route to the score: a dialog may not
+     * query or modify state outside itself, and reaching the document through here is that rule
+     * broken in a longer spelling. What a dialog needs from the document arrives as values, and
+     * what it writes goes through a {@link DialogBackEnd} — see {@code .agents/guides/dialogs.md}.
+     *
+     * @return the application window, for parenting a window or an alert
+     */
     protected MainFrame getMainFrame() {
         return mainFrame;
-    }
-
-    protected @Nullable ScoreView getScoreView() {
-        return mainFrame.getScoreView();
-    }
-
-    protected ScoreView requireScoreView() {
-        return mainFrame.requireScoreView();
-    }
-
-    protected Song getSong() {
-        return mainFrame.requireScoreView().getSong();
     }
 
     /**
@@ -872,6 +868,15 @@ public abstract class BaseDialog {
         }
     }
 
+    /**
+     * One page of a tabbed dialog: a panel that owns its controls and its own layout.
+     *
+     * <p><strong>A tab populates and displays; it does not commit and it does not validate.</strong>
+     * Both of those are the dialog's, because both are about the values as a whole — a rule that
+     * spans tabs cannot be checked from inside one of them, and a commit split across tabs is
+     * several undo steps where the user made one edit. A tab therefore contributes what its
+     * controls say to the dialog's gathered values and stops there; see {@link CommitDialog}.
+     */
     @SuppressWarnings("NoopMethodInAbstractClass")
     protected abstract class Tab extends JPanel {
 
@@ -933,20 +938,6 @@ public abstract class BaseDialog {
          */
         @SuppressWarnings("SameReturnValue")
         protected boolean getData() {
-            return true;
-        }
-
-        /**
-         * Write control values back to the model. Called when the user
-         * clicks OK or Apply.
-         */
-        protected void setData() {}
-
-        /**
-         * Returns true if the tab's current field values are valid.
-         * Called before {@link #setData()} to block commits on invalid input.
-         */
-        protected boolean isValidData() {
             return true;
         }
 

@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
 import songscribe.export.PageLayoutData;
-import songscribe.ui.action.ExportPDFAction;
+import songscribe.export.PDFExporter;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.FileUtils;
 
@@ -162,7 +162,7 @@ public class PDFConverter {
 
             try {
                 var path = FileUtils.getPathWithoutExtension(file) + ".pdf";
-                ExportPDFAction.createPDF(data, new File(path));
+                PDFExporter.createPDF(data, new File(path));
                 LOG.info("Converted {} to PDF (paper: {})", file.getName(), paperSize);
             } catch (IOException e) {
                 LOG.error("Could not convert {}", file.getName(), e);

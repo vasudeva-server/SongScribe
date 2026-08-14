@@ -24,16 +24,23 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
-import songscribe.util.UIUtils;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.Annotation;
-import songscribe.dom.AttachmentRemoval;
-import songscribe.dom.StaffElement;
+import songscribe.error.RuntimeError;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.dom.AnnotationAttachment;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.NonEmptyGuard;
+import songscribe.util.UIUtils;
 
+/**
+ * An editable text combo plus alignment and placement radios, for editing the annotation on an
+ * element.
+ *
+ * <p><strong>The text is never blank.</strong> {@link Annotation} does not permit it, and the combo
+ * is editable, so a {@link NonEmptyGuard} on its editor puts the previous text back as focus
+ * leaves — turning what would be a rejected commit into an edit the user simply did not make.
+ * Emptying the field is therefore not a way to delete an annotation; the Remove button is.
+ */
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     static final String DEFAULT_ANNOTATION = "Fine";
@@ -50,12 +57,20 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
     final JRadioButton belowRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
+    private final NonEmptyGuard blankGuard;
 
-    public AnnotationDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE));
+    public AnnotationDialog(MainFrame mainFrame, AttachmentBackEnd<Annotation> backEnd) {
+        super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), backEnd);
 
         annotationCombo.setEditable(true);
         UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
+
+        if (!(annotationCombo.getEditor().getEditorComponent() instanceof JTextComponent comboEditor)) {
+            throw RuntimeError.exit("annotation combo editor is not a text component");
+        }
+
+        blankGuard = new NonEmptyGuard(comboEditor, DEFAULT_ANNOTATION);
+        comboEditor.setInputVerifier(blankGuard);
 
         var alignmentGroup = new ButtonGroup();
         alignmentGroup.add(leftRadio);
@@ -111,30 +126,11 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     @Override
-    protected ElementField getElementField() {
-        return ElementField.ANNOTATION;
-    }
-
-    @Override
-    protected String opLabel(DialogOp op) {
-        return Strings.get(switch (op) {
-            case ADD -> Strings.ACTION_EDIT_OP_ADD_ANNOTATION;
-            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION;
-            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION;
-        });
-    }
-
-    @Override
-    protected @Nullable Annotation getExistingChange(StaffElement element) {
-        var attachment = element.findAttachment(AnnotationAttachment.class);
-        return attachment != null ? attachment.getAnnotation() : null;
-    }
-
-    @Override
-    protected void populateControls(@Nullable Annotation change) {
-        var annotation = change != null ? change : new Annotation(DEFAULT_ANNOTATION);
+    protected void populateControls(@Nullable Annotation existingChange) {
+        var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
         annotationCombo.setSelectedItem(annotation.getAnnotation());
+        blankGuard.rememberCurrentText();
 
         var alignment = annotation.getXAlignment();
 
@@ -154,43 +150,46 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     @Override
-    protected void applyChange(StaffElement element) {
-        var annotationText = (String) annotationCombo.getSelectedItem();
+    protected Annotation gather() {
+        var annotation = new Annotation(annotationText(), selectedAlignment());
+        annotation.setPlacement(
+            aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
 
-        if (annotationText == null || annotationText.isEmpty()) {
-            var existing = element.findAttachment(AnnotationAttachment.class);
-
-            if (existing != null) {
-                element.removeAttachment(existing);
-            }
-
-            return;
-        }
-
-        float alignment;
-
-        if (centerRadio.isSelected()) {
-            alignment = Component.CENTER_ALIGNMENT;
-        } else if (rightRadio.isSelected()) {
-            alignment = Component.RIGHT_ALIGNMENT;
-        } else {
-            alignment = Component.LEFT_ALIGNMENT;
-        }
-
-        var annotation = new Annotation(annotationText, alignment);
-        annotation.setPlacement(aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
-
-        var existing = element.findAttachment(AnnotationAttachment.class);
-
-        if (existing != null) {
-            existing.setAnnotation(annotation);
-        } else {
-            element.addAttachment(new AnnotationAttachment(element, annotation));
-        }
+        return annotation;
     }
 
-    @Override
-    protected void clearChange(StaffElement element) {
-        AttachmentRemoval.removeAnnotation(element);
+    /**
+     * The text the editable combo is showing, which the class contract guarantees is not blank.
+     *
+     * <p>The guard states that invariant rather than defending against it: a blank or absent
+     * selection here means the combo was populated or emptied by some route that bypassed both
+     * {@link #populateControls} and the {@link NonEmptyGuard}, which nothing does.
+     *
+     * @return the annotation text, never blank
+     */
+    private String annotationText() {
+        var text = (String) annotationCombo.getSelectedItem();
+
+        if (text == null || text.isBlank()) {
+            throw RuntimeError.exit("annotation combo has no text");
+        }
+
+        return text;
+    }
+
+    /**
+     * @return the {@code Component} alignment constant the selected alignment radio stands for;
+     *         left when none is selected, matching the button group's initial state
+     */
+    private float selectedAlignment() {
+        if (centerRadio.isSelected()) {
+            return Component.CENTER_ALIGNMENT;
+        }
+
+        if (rightRadio.isSelected()) {
+            return Component.RIGHT_ALIGNMENT;
+        }
+
+        return Component.LEFT_ALIGNMENT;
     }
 }

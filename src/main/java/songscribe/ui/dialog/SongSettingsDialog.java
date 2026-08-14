@@ -21,31 +21,30 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
+import songscribe.dom.SongMetadata;
+import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.SongMetadataDidChangeNotification;
-import songscribe.message.notification.TempoDidChangeNotification;
-import songscribe.dom.Song;
-import songscribe.dom.Duration;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.MyJTextField;
-import songscribe.dom.SongMetadata;
-import songscribe.layout.LyricEditFitCalculator;
-import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.PageModel;
-import songscribe.dom.ScaleContext;
-import songscribe.util.GraphicUtils;
 
 /**
- * The Song Settings dialog. Owns the four tabs — {@link SongSettingsTitleTab},
- * {@link SongSettingsAttributionTab}, {@link SongSettingsMusicTab} and
- * {@link SongSettingsFontTab} — and the commits that no single tab can make on
- * its own, because they coalesce fields the tabs split between them.
+ * The Song Settings dialog: a widget shell over the song's title, attribution, music settings
+ * and fonts.
+ *
+ * <p>It holds no song and no score. What it shows arrives as a {@link SongSettingsInput} and
+ * what OK commits leaves as a {@link SongSettingsOutput}; everything in between is controls.
+ * Its {@link SongSettingsBackEnd} does the reading and the writing, and decides what may be
+ * committed.
+ *
+ * <p><strong>Two of its records span tabs, which is why they are assembled here.</strong> The
+ * metadata is split between the Title and Attribution tabs and the fonts across three tabs, so
+ * neither can be built from inside one of them — and a commit split across tabs would be
+ * several undo steps for one press of OK.
  */
-public class SongSettingsDialog extends StandardDialog {
+public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
 
     /**
      * What a caller wants to edit, for those that need the dialog opened somewhere
@@ -62,17 +61,29 @@ public class SongSettingsDialog extends StandardDialog {
         FONT,
     }
 
+    private final SongSettingsBackEnd backEnd;
+
     private final SongSettingsFontTab fontTab = new SongSettingsFontTab(this);
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
     private final SongSettingsAttributionTab attributionTab =
         new SongSettingsAttributionTab(this, textTab);
 
     // Built in the constructor rather than here, so its construction order relative to the
-    // tabbed container is unchanged; the dialog-level fit check needs a handle on it.
+    // tabbed container is unchanged.
     private final SongSettingsMusicTab musicTab;
 
-    public SongSettingsDialog(MainFrame mainFrame) {
+    // What this opening is showing, kept because the commit needs the two font roles no tab
+    // edits — Bangla and footnote — carried through untouched. Read only between getData()
+    // and the window closing, which is the only span in which it means anything.
+    private @Nullable SongSettingsInput input = null;
+
+    /**
+     * @param mainFrame the window this dialog parents itself to
+     * @param backEnd   the domain half, bound to whatever document is open
+     */
+    public SongSettingsDialog(MainFrame mainFrame, SongSettingsBackEnd backEnd) {
         super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
+        this.backEnd = backEnd;
 
         var tabbedContent = createTabbedContent();
         addTab(textTab);
@@ -110,345 +121,110 @@ public class SongSettingsDialog extends StandardDialog {
     }
 
     /**
-     * The fit check spans two tabs — the lyrics font comes from the Fonts tab, the width it has
-     * to fit into from the Music tab — so it belongs here rather than in either tab's own
-     * {@code isValidData()}. Ordering matters: {@code super.isValidData()} runs the Music tab's
-     * line-width validation first, so the width read below is always parseable.
+     * Reads the document once and hands the same values to every tab.
+     *
+     * <p>Once per opening, so a dialog reopened on a different song shows that song — this one
+     * is reached through a cached menu action and outlives many documents.
+     *
+     * @return always {@code true}; there is no state in which this dialog declines to open
      */
     @Override
-    protected boolean isValidData() {
-        if (!super.isValidData()) {
+    protected boolean getData() {
+        if (!super.getData()) {
             return false;
         }
 
-        var fits = lyricsFit(
-            getSong(),
-            requireScoreView().getDocumentFonts().getFont(FontKey.LYRICS),
-            fontTab.getLyricsFont(),
-            musicTab.getPendingLineWidthSs()
-        );
+        var opened = backEnd.read();
+        input = opened;
 
-        if (!fits) {
-            OptionDialogs.showErrorMessage(
-                contentPanel,
-                Strings.ALERT_TITLE_LINES_DO_NOT_FIT,
-                Strings.ALERT_FONT_CHANGE_INVALID
-            );
-        }
-
-        return fits;
-    }
-
-    /**
-     * Returns whether the song's lines still fit under the pending lyrics font and line width.
-     * A wider lyrics font widens every syllable, which widens the minimum spacing between
-     * columns; a narrower line width shrinks the budget those columns have to fit into. Either
-     * can push a line past the staff margin, and committing that anyway leaves the line laid out
-     * on its collision floors with its tail clipped in red (refs #696). Refusing the change up
-     * front keeps a fitting line fitting.
-     *
-     * <p>The two solves are deliberately asymmetric: the candidate is measured at the width the
-     * commit will apply, the baseline at the width in effect now. Measuring both at the pending
-     * width would make a width-only change compare against itself and never reject.
-     *
-     * <p>A line that already overflows is deliberately not blocked, so the user can still switch
-     * to a narrower font or a wider line to recover — the same rule
-     * {@link songscribe.ui.component.LyricEditor} applies to a widening syllable edit.
-     *
-     * @param song           the song whose lines must fit
-     * @param currentFont    the lyrics font in effect now
-     * @param newFont        the lyrics font chosen in the dialog
-     * @param newLineWidthSs the line width the commit will apply, in staff spaces
-     * @return {@code true} when the change is safe to commit
-     */
-    static boolean lyricsFit(Song song, Font currentFont, Font newFont, double newLineWidthSs) {
-        var currentLineWidthSs = song.getLineWidthSs();
-
-        // Neither input to the solve changed, so the candidate probe below would be the
-        // baseline probe: every line would agree with itself and nothing can be newly broken.
-        // Most OK presses land here — this dialog also edits the title, key, tempo, and
-        // attribution — so skip the whole-song scan rather than compute a foregone answer.
-        if (newFont.equals(currentFont) && newLineWidthSs == currentLineWidthSs) {
-            return true;
-        }
-
-        var currentMetrics = LyricRenderMetrics.forFont(currentFont);
-        var newMetrics = LyricRenderMetrics.forFont(newFont);
-
-        for (var i = 0; i < song.lineCount(); i++) {
-            var line = song.getLine(i);
-
-            // Probe the candidate first: it accepts almost every real change, and continuing
-            // here spares the baseline its own rebuild-and-solve of the line.
-            if (LyricEditFitCalculator.lineFits(line, newMetrics, newLineWidthSs)) {
-                continue;
-            }
-
-            if (LyricEditFitCalculator.lineFits(line, currentMetrics, currentLineWidthSs)) {
-                return false;
-            }
-        }
+        // The Title tab first: the Attribution tab's preview reads the title and number out
+        // of it while building the attribution block.
+        textTab.populate(opened);
+        attributionTab.populate(opened);
+        musicTab.populate(opened);
+        fontTab.populate(opened);
 
         return true;
     }
 
-    /**
-     * The Music tab's line-width field. The tabs are package-private, so this is how a
-     * test drives the field whose text {@link #isValidData} turns into the pending width.
-     */
-    MyJTextField getLineWidthFieldForTest() {
-        return musicTab.getLineWidthField();
+    @Override
+    protected SongSettingsOutput gather() {
+        return new SongSettingsOutput(gatherMetadata(), gatherFonts(), musicTab.gather());
     }
 
     /**
-     * The title, place/date, and attribution fields are split across the Text
-     * and Attribution tabs but together form a single {@link SongMetadata}
-     * record. Run the per-tab commits via {@code super.setData()}, then coalesce
-     * those fields here into one notification rather than posting per tab.
+     * {@inheritDoc}
+     *
+     * <p>What may be committed is a judgment about the document — whether the lines still fit,
+     * whether the width is one the page supports — so it is the back end's, made against the
+     * song this dialog cannot see.
      */
     @Override
-    protected void setData() {
-        getSong().withModification(Strings.get(Strings.ACTION_EDIT_OP_SONG_SETTINGS), () -> {
-            super.setData();
-            commitMetadata();
-            commitFonts();
-        });
+    protected ValidationResult validate(SongSettingsOutput values) {
+        return backEnd.validate(values);
+    }
+
+    @Override
+    protected void commit(SongSettingsOutput values) {
+        backEnd.apply(values);
     }
 
     /**
-     * Each font is owned by one tab (title by the Text tab, attribution and
-     * sub-attribution by the Attribution tab, lyrics and annotation by the Fonts
-     * tab), so no single tab can build the whole record. Coalesce each tab's
-     * chosen font here, the way {@link #commitMetadata} coalesces the split
-     * metadata fields. Bangla and footnote fonts are document-level but not
-     * surfaced by this dialog, so the copy constructor carries them through.
+     * The metadata the Title and Attribution tabs together describe.
+     *
+     * <p>Every field goes in raw: {@link SongMetadata}'s constructor normalizes each one, and
+     * it is the same constructor the Attribution tab's preview builds through, which is what
+     * makes the preview show what the commit will store.
      */
-    private void commitFonts() {
-        var newFonts = new DocumentFonts(requireScoreView().getDocumentFonts());
-        newFonts.setFont(FontKey.TITLE,           textTab.getTitleFont());
-        newFonts.setFont(FontKey.SUBTITLE,        textTab.getSubtitleFont());
-        newFonts.setFont(FontKey.ATTRIBUTION,     attributionTab.getAttributionFont());
-        newFonts.setFont(FontKey.SUB_ATTRIBUTION, attributionTab.getSubAttributionFont());
-        newFonts.setFont(FontKey.LYRICS,          fontTab.getLyricsFont());
-        newFonts.setFont(FontKey.ANNOTATION,      fontTab.getAnnotationFont());
-        requireScoreView().setFonts(newFonts);
-    }
+    private SongMetadata gatherMetadata() {
+        var wordsDate = attributionTab.getWordsDate();
 
-    private void commitMetadata() {
-        // The number and year fields validate their own range via an
-        // InputVerifier, so by commit time the text is always valid.
-        var number = textTab.getNumberText();
-        var year = attributionTab.getYearText();
-        var song = getSong();
-        var title = textTab.getTitleText();
-        var place = attributionTab.getPlaceText();
-        var month = attributionTab.getMonth();
-        var day = attributionTab.getDay();
-        var composerText = attributionTab.getComposerText();
-        var lyricistText = attributionTab.getLyricistText();
-        var lyricsSource = attributionTab.getLyricsSource();
-        var arrangement = attributionTab.isArrangement();
-        var unofficialTranslation = attributionTab.isUnofficialTranslation();
-        var wordsDate = gatedWordsDate(
-            attributionTab.isDifferentDate(),
-            attributionTab.getWordsYearText(),
-            attributionTab.getWordsMonth(),
-            attributionTab.getWordsDay()
-        );
-
-        // No change-detection here: Song.setMetadata short-circuits on an equal
-        // record, so an unchanged commit produces an empty (no-op) modification
-        // bracket that neither dirties the document nor posts a notification.
-        var newMetadata = new SongMetadata(
-            title,
-            number,
-            place,
-            year,
-            month,
-            day,
-            composerText,
-            lyricistText,
-            lyricsSource,
-            arrangement,
-            unofficialTranslation,
+        return new SongMetadata(
+            textTab.getTitleText(),
+            textTab.getNumberText(),
+            attributionTab.getPlaceText(),
+            attributionTab.getYearText(),
+            attributionTab.getMonth(),
+            attributionTab.getDay(),
+            attributionTab.getComposerText(),
+            attributionTab.getLyricistText(),
+            attributionTab.getLyricsSource(),
+            attributionTab.isArrangement(),
+            attributionTab.isUnofficialTranslation(),
             textTab.getSubtitleText(),
             wordsDate.year(),
             wordsDate.month(),
             wordsDate.day()
         );
-        song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
-    }
-
-    // Package-private static helpers.
-    //
-    // These pure-logic units are inlined into the tab classes' Swing-bound
-    // methods at their call sites. Per "Testability Over Encapsulation" they live
-    // here as self-contained, directly unit-testable helpers, and the tabs
-    // delegate to them.
-
-    /**
-     * Carries the three components of the words date for commit and preview.
-     */
-    record WordsDate(String year, int month, int day) {}
-
-    /**
-     * Returns the words date triple when the "Different date" checkbox is selected,
-     * or {@code ("", 0, 0)} when it is not, so an unchecked box never contributes
-     * a date to either the commit or the preview.
-     */
-    static WordsDate gatedWordsDate(boolean selected, String year, int month, int day) {
-        if (selected) {
-            return new WordsDate(year, month, day);
-        }
-
-        return new WordsDate("", 0, 0);
-    }
-
-    private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;
-
-    /**
-     * Builds a title from the first {@code maxWords} words of {@code lyrics},
-     * capitalising the first letter of each word. Underscores (melisma markers)
-     * are skipped and a double hyphen counts as a word break. Returns an empty
-     * string when {@code lyrics} yields no characters (e.g. only underscores).
-     */
-    static String extractLyricsTitle(String lyrics, int maxWords) {
-        var words = new StringBuilder(LYRICS_TITLE_BUFFER_CAPACITY);
-        var wordCount = 0;
-        var firstLetter = false;
-        var lastHyphen = false;
-
-        goThruString:
-        for (var i = 0; i < lyrics.length(); i++) {
-            switch (lyrics.charAt(i)) {
-                case ' ', '\n' -> {
-                    wordCount++;
-
-                    if (wordCount >= maxWords) {
-                        break goThruString;
-                    }
-
-                    words.append(' ');
-                    firstLetter = true;
-                }
-                case '-' -> {
-                    if (lastHyphen) {
-                        words.append('-');
-                        wordCount++;
-                        firstLetter = true;
-                    }
-
-                    lastHyphen = !lastHyphen;
-                }
-                case '_' -> {
-                }
-                default -> {
-                    if (firstLetter) {
-                        words.append(
-                            String.valueOf(lyrics.charAt(i)).toUpperCase()
-                        );
-                        firstLetter = false;
-                    } else {
-                        words.append(lyrics.charAt(i));
-                    }
-
-                    lastHyphen = false;
-                }
-            }
-        }
-
-        // Lyrics made up only of separators (e.g. all underscores) leave the
-        // buffer empty; guard before indexing the last character so the trim
-        // does not throw on an empty buffer.
-        if (!words.isEmpty() && !Character.isLetter(words.charAt(words.length() - 1))) {
-            words.deleteCharAt(words.length() - 1);
-        }
-
-        return words.toString();
     }
 
     /**
-     * Parses and range-validates line-width field text.
+     * The document's fonts with the six roles this dialog edits replaced.
      *
-     * @param text     the raw field text
-     * @param isMetric whether {@code text} is in centimetres (else inches)
-     * @return the width in inches if valid, or -1 if the text is empty,
-     *         unparseable, or out of range
+     * <p>Each of those six is owned by one tab — title and subtitle by the Title tab,
+     * attribution and sub-attribution by the Attribution tab, lyrics and annotation by the
+     * Fonts tab — so no tab holds the whole set. The Bangla and footnote roles are
+     * document-level but not surfaced here, and the copy carries them through unchanged.
      */
-    static double validateLineWidthText(String text, boolean isMetric) {
-        double value;
+    private DocumentFonts gatherFonts() {
+        var fonts = new DocumentFonts(requireInput().fonts());
+        fonts.setFont(FontKey.TITLE,           textTab.getTitleFont());
+        fonts.setFont(FontKey.SUBTITLE,        textTab.getSubtitleFont());
+        fonts.setFont(FontKey.ATTRIBUTION,     attributionTab.getAttributionFont());
+        fonts.setFont(FontKey.SUB_ATTRIBUTION, attributionTab.getSubAttributionFont());
+        fonts.setFont(FontKey.LYRICS,          fontTab.getLyricsFont());
+        fonts.setFont(FontKey.ANNOTATION,      fontTab.getAnnotationFont());
 
-        try {
-            value = Double.parseDouble(text);
-        } catch (NumberFormatException e) {
-            return -1;
-        }
-
-        var widthInches = isMetric ? value / GraphicUtils.CM_PER_INCH : value;
-
-        if (widthInches < PageModel.MIN_LINE_WIDTH_INCHES || widthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
-            return -1;
-        }
-
-        return widthInches;
+        return fonts;
     }
 
-    /**
-     * The line width a commit should apply, in staff spaces. Returns a negative width when
-     * {@code fieldText} is empty, unparseable, or out of range — callers validate first.
-     * <p>
-     * A field the user never edited returns {@code loadedLineWidthSs} rather than a width
-     * re-derived from its text. The text is rounded to two decimal places of the display unit
-     * for legibility, so parsing it back would quantize a width nobody changed — by up to a
-     * fraction of a pixel, which is enough to push a line that only just fits past the staff
-     * margin. Once the user types, the typed value <em>is</em> the intent and there is nothing
-     * to preserve.
-     *
-     * @param fieldText          the line-width field's current text
-     * @param loadedText         the text the field was populated with
-     * @param loadedLineWidthSs  the width the field was populated from
-     * @param isMetric           whether the field is displaying centimetres rather than inches
-     * @return the width to commit in staff spaces, or a negative value when {@code fieldText}
-     *         is empty, unparseable, or out of range
-     */
-    static double pendingLineWidthSs(
-        String fieldText, String loadedText, double loadedLineWidthSs, boolean isMetric
-    ) {
-        if (fieldText.equals(loadedText)) {
-            return loadedLineWidthSs;
+    private SongSettingsInput requireInput() {
+        var result = input;
+
+        if (result == null) {
+            throw RuntimeError.exit("song settings dialog gathered before it was populated");
         }
 
-        var widthInches = validateLineWidthText(fieldText, isMetric);
-        return ScaleContext.inchesToSs(widthInches);
-    }
-
-    /**
-     * Posts a {@link TempoDidChangeNotification} when the submitted tempo differs from the song's
-     * current one, inside a modification bracket. Posts nothing when it does not.
-     *
-     * <p>The song's key is not settable here. A song has no key of its own — its key is line 0's —
-     * so changing it is a per-line edit made on the score, not a document-wide setting.
-     */
-    static void applyMusicTabChanges(
-        Song song,
-        Duration tempoType,
-        int visibleTempo,
-        String tempoDescription,
-        boolean showTempo
-    ) {
-        var tempo = song.getTempo();
-        var tempoChanged = tempoType != tempo.getTempoType()
-            || visibleTempo != tempo.getVisibleTempo()
-            || !tempoDescription.equals(tempo.getTempoDescription())
-            || showTempo != tempo.shouldShowTempo();
-
-        if (tempoChanged) {
-            song.withModification(() -> MessageCenter.post(new TempoDidChangeNotification(
-                tempoType,
-                visibleTempo,
-                tempoDescription,
-                showTempo
-            )));
-        }
+        return result;
     }
 }

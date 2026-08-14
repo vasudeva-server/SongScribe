@@ -33,6 +33,7 @@ import songscribe.ui.KeyCellRenderer;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.BaseLabel;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.util.UIUtils;
 
@@ -179,8 +180,49 @@ public class KeySignatureChangeDialog extends StandardDialog {
      * @return {@code true} when the chosen change fits, or when nothing is chosen and
      *         {@link #setData} would commit nothing
      */
+    /**
+     * The OK lifecycle, wired to the pre-seam {@link #isValidData()} / {@link #setData()} pair
+     * this class still carries.
+     *
+     * <p><strong>Temporary.</strong> This dialog has not been migrated to the back-end seam in
+     * {@code .claude/guides/dialogs.md} — it still holds a {@link Line} and reaches through it
+     * to the document, which that guide forbids. Phase 2 of {@code plans/776-design-pass.md}
+     * rewrites it to take a bound input and a back end; this method exists only so the branch
+     * builds until then.
+     *
+     * @return {@code true} when the change was committed and the dialog may close
+     */
     @Override
-    protected boolean isValidData() {
+    protected boolean commitOnOk() {
+        if (!isValidData()) {
+            return false;
+        }
+
+        setData();
+        return true;
+    }
+
+    /**
+     * Reaches the score view through {@link #getMainFrame()}.
+     *
+     * <p><strong>Temporary, and a deliberate rule violation.</strong>
+     * {@code .claude/guides/dialogs.md} calls reaching the document through
+     * {@code getMainFrame()} "the same rule broken in a longer spelling". It stands only until
+     * Phase 2 replaces it with a back end.
+     *
+     * @return the score view; never null while a dialog the notator opened is up
+     */
+    private ScoreView requireScoreView() {
+        var scoreView = getMainFrame().getScoreView();
+
+        if (scoreView == null) {
+            throw RuntimeError.exit("KeySignatureChangeDialog shown with no score view");
+        }
+
+        return scoreView;
+    }
+
+    private boolean isValidData() {
         var selectedIndex = keysCombo.getSelectedIndex();
 
         if (selectedIndex == -1) {
@@ -235,8 +277,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
      * declined confirm gets on every other edit: it is a decision about the change, not about
      * whether the notator is still choosing one.
      */
-    @Override
-    protected void setData() {
+    private void setData() {
         var selectedIndex = keysCombo.getSelectedIndex();
 
         if (selectedIndex == -1) {

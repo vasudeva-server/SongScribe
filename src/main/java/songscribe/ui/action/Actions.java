@@ -46,6 +46,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.SongSettingsDialog;
+import songscribe.ui.dialog.backend.ScoreSongSettingsBackEnd;
 import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
 
@@ -362,7 +363,12 @@ public final class Actions {
             Strings.get(Strings.ACTION_SONG_SETTINGS),
             KeyEvent.VK_G,
             MENU_SHORTCUT_MASK,
-            SongSettingsDialog::new,
+            // Whoever opens the dialog binds its back end, so the dialog itself never reaches
+            // for the score. Lazily, inside the factory: this runs at startup, and the score
+            // view does not exist until the first document is up.
+            frame -> new SongSettingsDialog(
+                frame, new ScoreSongSettingsBackEnd(frame.requireScoreView())
+            ),
             Flag.DISABLE_WHEN_PLAYING
         );
         ABOUT_ACTION = new AboutOpenAction(mainFrame);

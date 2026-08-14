@@ -65,6 +65,15 @@ public final class AnnotationIO {
         XML.writeEndTag(pw, XML_ANNOTATION);
     }
 
+    /**
+     * Reads one {@code <annotation>} element of a legacy document.
+     *
+     * <p>The parts arrive one tag at a time and are accumulated here rather than written into an
+     * {@link Annotation} as they come, because an annotation may not exist with blank text and the
+     * text is not known until its own tag closes. Building at the end is also what lets a
+     * text-less annotation be <em>dropped</em>: {@link #endElement11} answers null for it, and the
+     * caller adds an attachment only for a non-null answer.
+     */
     public static class AnnotationReader {
 
         private static final Logger LOG = LoggerFactory.getLogger(AnnotationReader.class);
@@ -73,8 +82,11 @@ public final class AnnotationIO {
         private static final double LEGACY_ABOVE_SS = -2.0;
         private static final double LEGACY_ABOVE_PX = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
 
-        @Nullable
-        private Annotation annotation = null;
+        private boolean inAnnotation = false;
+        private String text = "";
+        private @Nullable Float xAlignment = null;
+        private Annotation.@Nullable Placement placement = null;
+        private double userYOffsetSs = 0;
 
         @Nullable
         private String lastTag;
@@ -83,7 +95,11 @@ public final class AnnotationIO {
 
         public void startElement11(String qName) {
             if (qName.equals(XML_ANNOTATION)) {
-                annotation = new Annotation("");
+                inAnnotation = true;
+                text = "";
+                xAlignment = null;
+                placement = null;
+                userYOffsetSs = 0;
                 lastTag = null;
             } else {
                 lastTag = qName;
@@ -95,25 +111,27 @@ public final class AnnotationIO {
         @Nullable
         public Annotation endElement11(String qName) {
             if (qName.equals(XML_ANNOTATION)) {
-                return annotation;
+                inAnnotation = false;
+                return build();
             }
 
-            //noinspection PointlessNullCheck -- required for NullAway
-            if (lastTag != null && annotation != null && qName.equals(lastTag)) {
+            var tag = lastTag;
+
+            if (tag != null && inAnnotation && qName.equals(tag)) {
                 var str = value.toString();
 
-                switch (lastTag) {
-                    case XML_NAME -> annotation.setAnnotation(str);
+                switch (tag) {
+                    case XML_NAME -> text = str;
                     case XML_ALIGNMENT -> {
                         try {
-                            annotation.setXAlignment(Float.parseFloat(str));
+                            xAlignment = Float.parseFloat(str);
                         } catch (NumberFormatException e) {
                             LOG.warn("Corrupt document: malformed alignment: '{}', using default", str);
                         }
                     }
                     case XML_PLACEMENT -> {
                         try {
-                            annotation.setPlacement(Annotation.Placement.valueOf(str));
+                            placement = Annotation.Placement.valueOf(str);
                         } catch (IllegalArgumentException e) {
                             LOG.warn("Corrupt document: malformed placement: '{}', using default", str);
                         }
@@ -130,7 +148,7 @@ public final class AnnotationIO {
                             var ypos = Integer.parseInt(str);
 
                             if (ypos > 0) {
-                                annotation.setUserYOffsetSs(annotation.getUserYOffsetSs() + ypos - LEGACY_ABOVE_PX);
+                                userYOffsetSs += ypos - LEGACY_ABOVE_PX;
                             }
                         } catch (NumberFormatException e) {
                             LOG.warn("Corrupt document: malformed ypos: '{}', using default", str);
@@ -138,7 +156,7 @@ public final class AnnotationIO {
                     }
                     case XML_USER_Y_OFFSET -> {
                         try {
-                            annotation.setUserYOffsetSs(Double.parseDouble(str));
+                            userYOffsetSs = Double.parseDouble(str);
                         } catch (NumberFormatException e) {
                             LOG.warn("Corrupt document: malformed userYOffset: '{}', using default", str);
                         }
@@ -149,6 +167,36 @@ public final class AnnotationIO {
             value.delete(0, value.length());
             lastTag = null;
             return null;
+        }
+
+        /**
+         * @return the annotation the accumulated parts describe, or {@code null} when it has no
+         *         text — a blank annotation is dropped rather than imported, since it could draw
+         *         nothing and {@link Annotation} does not permit one
+         */
+        @Nullable
+        private Annotation build() {
+            if (text.isBlank()) {
+                LOG.warn("Corrupt document: annotation with no text, dropping it");
+                return null;
+            }
+
+            var annotation = new Annotation(text);
+            var alignment = xAlignment;
+            var readPlacement = placement;
+
+            // Only what the document actually carried is applied; the rest keeps Annotation's own
+            // defaults rather than a second copy of them here.
+            if (alignment != null) {
+                annotation.setXAlignment(alignment);
+            }
+
+            if (readPlacement != null) {
+                annotation.setPlacement(readPlacement);
+            }
+
+            annotation.setUserYOffsetSs(userYOffsetSs);
+            return annotation;
         }
 
         public void characters(char[] ch, int start, int length) {

@@ -19,6 +19,8 @@
  */
 package songscribe.ui.dialog;
 
+import java.util.function.BiFunction;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AnnotationAttachment;
@@ -29,45 +31,60 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.dialog.backend.AnnotationBackEnd;
+import songscribe.ui.dialog.backend.AttachmentTarget;
+import songscribe.ui.dialog.backend.BeatChangeBackEnd;
+import songscribe.ui.dialog.backend.TempoChangeBackEnd;
 
 /**
- * Maps an attachment to the dialog that edits it.
+ * Opens the dialog that edits an attachment, bound to the element it sits on.
  *
- * <p>This is a class rather than a private method on {@code LineComponent} so the five-way
- * mapping can be tested without Swing, and so the routing in {@code mouseClicked} has a static
- * to observe — the call to {@link #edit} is that gesture's only observable effect.
+ * <p><strong>This is where the document meets the dialog.</strong> An {@link AttachmentDialog}
+ * holds no element, no line and no score; it holds an {@link AttachmentBackEnd} that already
+ * does. Binding one is this class's whole job, and doing it in one place is what keeps every
+ * dialog in the family free of the score — see {@link DialogBackEnd} for why the binding sits on
+ * the caller's side rather than inside the dialog.
+ *
+ * <p>Two ways in, because there are two gestures. Clicking an attachment names its element
+ * directly, and {@link #edit} takes it. Invoking a menu action names nothing, so the
+ * {@code editXxxOnSelection} methods resolve the element from the score's current selection.
+ * Both end at the same bound dialog.
+ *
+ * <p>It is a class rather than a private method on {@code LineComponent} so the mapping can be
+ * tested without Swing, and so the routing in {@code mouseClicked} has a static to observe — the
+ * call to {@link #edit} is that gesture's only observable effect.
  */
 public final class AttachmentEditor {
 
     private AttachmentEditor() {}
 
     /**
-     * Opens the dialog that edits {@code attachment}, pre-bound to its owner element, and
-     * returns whether a dialog was opened.
+     * Opens the dialog that edits {@code attachment}, bound to its owner element.
      *
-     * <p>Returns false for a fermata and a dynamic because neither has editable properties, and
-     * false when there is no element in {@code line} to bind the dialog to; in every false case
-     * the caller leaves the attachment selected and does nothing else.
+     * <p>Answers false for a fermata and a dynamic, because neither has editable properties, and
+     * false when {@code attachment}'s owner is not an element of {@code line} — including when it
+     * has no owner at all. In every false case the caller leaves the attachment selected and does
+     * nothing else. The per-line hit registry makes the mismatched-owner case unreachable today;
+     * the check is what keeps it unreachable if the registry ever stops being per-line.
+     *
+     * @param mainFrame  the window the dialog parents itself to
+     * @param attachment the attachment the user acted on
+     * @param line       the line whose hit registry produced {@code attachment}
+     * @return {@code true} when a dialog was opened
      */
     public static boolean edit(MainFrame mainFrame, Attachment attachment, Line line) {
-        var element = attachment.getOwnerElement();
+        var target = AttachmentTarget.forElement(line, attachment.getOwnerElement());
 
-        // AttachmentDialog.setData calls line.getElementIndex(element) and feeds the answer
-        // straight to line.modifyElement(...), so an element that is not in this line would
-        // reach modifyElement(-1, ...) on OK — a hard failure at the far end of a modal dialog
-        // rather than a no-op at the gesture. The per-line hit registry makes that unreachable
-        // today; this guard is what keeps it unreachable if the registry ever stops being
-        // per-line.
-        if (element == null || line.getElementIndex(element) < 0) {
+        if (target == null) {
             return false;
         }
 
         // Exhaustive by sealing: a new attachment kind fails to compile here rather than
         // silently answering "not editable".
         @Nullable AttachmentDialog<?> dialog = switch (attachment) {
-            case AnnotationAttachment ignored -> new AnnotationDialog(mainFrame);
-            case BeatChangeAttachment ignored -> new BeatChangeDialog(mainFrame);
-            case TempoChangeAttachment ignored -> new TempoChangeDialog(mainFrame);
+            case AnnotationAttachment ignored -> annotationDialog(mainFrame, target);
+            case BeatChangeAttachment ignored -> beatChangeDialog(mainFrame, target);
+            case TempoChangeAttachment ignored -> tempoChangeDialog(mainFrame, target);
             case FermataAttachment ignored -> null;
             case DynamicAttachment ignored -> null;
         };
@@ -76,7 +93,82 @@ public final class AttachmentEditor {
             return false;
         }
 
-        dialog.showFor(element, line);
+        dialog.setVisible(true);
         return true;
+    }
+
+    /**
+     * Opens the annotation dialog on the score's current selection, or does nothing when there is
+     * no single selected element to attach to.
+     *
+     * @param mainFrame the window the dialog parents itself to
+     */
+    public static void editAnnotationOnSelection(MainFrame mainFrame) {
+        openOnSelection(mainFrame, AttachmentEditor::annotationDialog);
+    }
+
+    /**
+     * Opens the beat-change dialog on the score's current selection, or does nothing when there is
+     * no single selected element to attach to.
+     *
+     * @param mainFrame the window the dialog parents itself to
+     */
+    public static void editBeatChangeOnSelection(MainFrame mainFrame) {
+        openOnSelection(mainFrame, AttachmentEditor::beatChangeDialog);
+    }
+
+    /**
+     * Opens the tempo-change dialog on the score's current selection, or does nothing when there
+     * is no single selected element to attach to.
+     *
+     * @param mainFrame the window the dialog parents itself to
+     */
+    public static void editTempoChangeOnSelection(MainFrame mainFrame) {
+        openOnSelection(mainFrame, AttachmentEditor::tempoChangeDialog);
+    }
+
+    /**
+     * Resolves the selection and opens the dialog {@code dialogFactory} builds for it.
+     *
+     * <p>Doing nothing when the selection resolves to nothing is deliberate and unreachable in
+     * practice: every action that calls this carries {@code REQUIRES_SINGLE_SELECTION} and is
+     * disabled without one. It replaces a dialog that used to open against a null element and then
+     * fail at OK, which is the worse of the two silences.
+     */
+    private static void openOnSelection(
+        MainFrame mainFrame,
+        BiFunction<MainFrame, AttachmentTarget, AttachmentDialog<?>> dialogFactory
+    ) {
+        var target = selectionTarget(mainFrame);
+
+        if (target == null) {
+            return;
+        }
+
+        dialogFactory.apply(mainFrame, target).setVisible(true);
+    }
+
+    /**
+     * @return the selected element and its line, or {@code null} when the selection is not a
+     *         single element of the active line — the state a click on a notation object leaves
+     *         behind, where {@code getSingleSelectedElement} answers null
+     */
+    private static @Nullable AttachmentTarget selectionTarget(MainFrame mainFrame) {
+        var scoreView = mainFrame.requireScoreView();
+        var line = scoreView.getSong().getLine(scoreView.getSelectionCoordinator().getActiveLineIndex());
+
+        return AttachmentTarget.forElement(line, scoreView.getSingleSelectedElement());
+    }
+
+    private static AnnotationDialog annotationDialog(MainFrame mainFrame, AttachmentTarget target) {
+        return new AnnotationDialog(mainFrame, new AnnotationBackEnd(target));
+    }
+
+    private static BeatChangeDialog beatChangeDialog(MainFrame mainFrame, AttachmentTarget target) {
+        return new BeatChangeDialog(mainFrame, new BeatChangeBackEnd(target));
+    }
+
+    private static TempoChangeDialog tempoChangeDialog(MainFrame mainFrame, AttachmentTarget target) {
+        return new TempoChangeDialog(mainFrame, new TempoChangeBackEnd(target));
     }
 }

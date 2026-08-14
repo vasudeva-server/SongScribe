@@ -168,14 +168,6 @@ public class PreferencesDialog extends BaseDialog {
         instrumentPrograms = new int[0];
     }
 
-    private void syncPlaybackPrefs() {
-        var scoreView = getScoreView();
-
-        if (scoreView != null) {
-            scoreView.syncPlaybackPrefs();
-        }
-    }
-
     // -----------------------------------------------------------------------
     // GeneralTab
     // -----------------------------------------------------------------------
@@ -462,7 +454,6 @@ public class PreferencesDialog extends BaseDialog {
                 @Override
                 protected void tickDidChange(int tick) {
                     Prefs.put(PrefsKey.PLAYBACK_NOTE_DURATION, tick);
-                    syncPlaybackPrefs();
                 }
             };
 
@@ -481,7 +472,6 @@ public class PreferencesDialog extends BaseDialog {
                 @Override
                 protected void tickDidChange(int tick) {
                     Prefs.put(PrefsKey.TEMPO_CHANGE_PERCENT, tick);
-                    syncPlaybackPrefs();
                 }
             };
 
@@ -511,12 +501,9 @@ public class PreferencesDialog extends BaseDialog {
         }
 
         private void addChangeListeners() {
-            playInsertingNoteCheck.addActionListener(_ -> {
-                Prefs.put(
-                    PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
-                );
-                syncPlaybackPrefs();
-            });
+            playInsertingNoteCheck.addActionListener(_ -> Prefs.put(
+                PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
+            ));
 
             playSelectedNoteCheck.addActionListener(_ -> Prefs.put(
                 PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
@@ -687,7 +674,6 @@ public class PreferencesDialog extends BaseDialog {
                 Prefs.put(
                     PrefsKey.INSTRUMENT, index >= 0 ? instrumentPrograms[index] : 0
                 );
-                syncPlaybackPrefs();
 
                 if (scaleAction.isPlaying()) {
                     // Restart scale if it was already playing

@@ -21,26 +21,36 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
+import com.formdev.flatlaf.FlatClientProperties;
+
 import songscribe.Strings;
 import songscribe.dom.Duration;
 import songscribe.dom.ScaleContext;
-import songscribe.layout.PageModel;
+import songscribe.dom.Tempo;
+import songscribe.error.RuntimeError;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextField;
-import songscribe.util.GraphicUtils;
+import songscribe.ui.dialog.backend.LineWidthRules;
+import songscribe.util.LengthUnit;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
 /**
  * The {@link SongSettingsDialog} Music tab: the song's tempo and line width.
  *
- * <p>There is no key signature here. A song has no key of its own — its key is line 0's — so a key
- * is changed on the score, at the line it takes effect on.
+ * <p>There is no key control here. A song has no key of its own — every line carries one, set
+ * from the score. See {@code docs/key-signatures.md}.
+ *
+ * <p>The line-width field is the only control here whose value can be wrong, and it is checked
+ * twice over on purpose: once by its own {@link LineWidthVerifier} when focus leaves it, and
+ * once by the back end when OK is pressed. Both ask
+ * {@link LineWidthRules#validate(LineWidthEntry)}, so they cannot disagree, and only one of
+ * them ever reports — OK stops at the verifier when the field still holds focus, and reaches
+ * validation only when it does not.
  */
 final class SongSettingsMusicTab extends BaseDialog.Tab {
 
@@ -57,10 +67,8 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     private final MyJTextField lineWidthField = new MyJTextField(LINE_WIDTH_FIELD_COLUMNS);
     private final JLabel unitLabel = new JLabel();
 
-    // The width the field was populated with, and the text that was put in it, so an
-    // unedited field can commit its exact loaded value instead of re-parsing the rounded
-    // display text. Both are set by revertLineWidthField on every show.
-    private double loadedLineWidthSs = 0;
+    // The text the field was populated with, so an untouched field can be told from an edited
+    // one. Set by revertLineWidthField on every show.
     private String loadedLineWidthText = "";
 
     SongSettingsMusicTab(SongSettingsDialog dialog) {
@@ -113,128 +121,59 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
         return section;
     }
 
-    @Override
-    protected boolean getData() {
-        var song = dialog.getSong();
-        tempoSection.setTempo(song.getTempo());
-        revertLineWidthField();
-        return true;
+    /**
+     * Sets every control on this tab to show {@code input}.
+     *
+     * <p>Whatever is put in comes back out: {@link #gather()} called straight afterwards, with
+     * nothing else touched, answers the same tempo — and a line width that commits as
+     * the one that came in rather than as a reading of its own rounded display text.
+     *
+     * @param input the settings this opening of the dialog is showing
+     */
+    void populate(SongSettingsInput input) {
+        var music = input.music();
+        tempoSection.setTempo(music.tempo());
+        revertLineWidthField(music.lineWidthSs());
     }
 
-    @Override
-    protected void setData() {
-        var song = dialog.getSong();
-        SongSettingsDialog.applyMusicTabChanges(
-            song,
-            tempoSection.getTempoType(),
+    /**
+     * @return what this tab's controls now say, for every state they can reach — including a
+     *         line-width field left empty or holding text that is not a number
+     */
+    MusicChoices gather() {
+        var tempo = new Tempo(
             tempoSection.getVisibleTempo(),
+            tempoSection.getTempoType(),
             tempoSection.getTempoDescription(),
             !tempoSection.isShowOnlyDescription()
         );
 
-        dialog.requireScoreView().updatePageLayout(getPendingLineWidthSs());
+        return new MusicChoices(tempo, lineWidthEntry());
     }
 
-    @Override
-    protected boolean isValidData() {
-        return validateLineWidthOrShowError();
+    /** What the line-width field says, and whether the user is the one who said it. */
+    private LineWidthEntry lineWidthEntry() {
+        var text = lineWidthField.getText();
+        var edit = text.equals(loadedLineWidthText)
+            ? LineWidthEntry.Edit.UNEDITED
+            : LineWidthEntry.Edit.EDITED;
+
+        return new LineWidthEntry(text, displayUnit(), edit);
     }
 
-    /**
-     * The line-width field. The tab is package-private, so this is how
-     * {@link SongSettingsDialog} exposes the field a test drives.
-     */
-    MyJTextField getLineWidthField() {
-        return lineWidthField;
-    }
-
-    private void revertLineWidthField() {
-        var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-        var lineWidthSs = dialog.getSong().getLineWidthSs();
-        var lineWidthInches = ScaleContext.ssToInches(lineWidthSs);
-        var displayValue = isMetric
-            ? lineWidthInches * GraphicUtils.CM_PER_INCH
-            : lineWidthInches;
+    private void revertLineWidthField(double lineWidthSs) {
+        var unit = displayUnit();
+        var displayValue = unit.fromInches(ScaleContext.ssToInches(lineWidthSs));
         var displayText = String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue));
 
-        loadedLineWidthSs = lineWidthSs;
         loadedLineWidthText = displayText;
-
         lineWidthField.setText(displayText);
-        unitLabel.setText(
-            Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
-        );
+        unitLabel.setText(Strings.get(unit.labelKey()));
     }
 
-    /** The line width the commit will apply, in staff spaces. */
-    double getPendingLineWidthSs() {
-        return SongSettingsDialog.pendingLineWidthSs(
-            lineWidthField.getText(),
-            loadedLineWidthText,
-            loadedLineWidthSs,
-            Prefs.getBoolean(PrefsKey.METRIC)
-        );
-    }
-
-    /**
-     * Parses and validates the current line width field text.
-     *
-     * @return the width in inches if valid, or -1 if the text is empty,
-     *         unparseable, or out of range
-     */
-    private double validateLineWidth() {
-        return SongSettingsDialog.validateLineWidthText(
-            lineWidthField.getText(),
-            Prefs.getBoolean(PrefsKey.METRIC)
-        );
-    }
-
-    /**
-     * Returns whether the line width field holds a usable value, showing the reason and
-     * returning false when it does not.
-     *
-     * <p>The rejection has to be reported here rather than left to
-     * {@link LineWidthVerifier}: OK only consults the verifier when the field still owns
-     * focus, so on every other path a bad width silently made OK do nothing. The two never
-     * both report — OK returns early when the verifier rejects, before validation runs.
-     */
-    private boolean validateLineWidthOrShowError() {
-        if (validateLineWidth() >= 0) {
-            return true;
-        }
-
-        // validateLineWidth collapses both failure modes to -1, so parse
-        // once more to distinguish an unparseable value from an in-range
-        // violation and show the matching message.
-        var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-
-        try {
-            Double.parseDouble(lineWidthField.getText());
-        } catch (NumberFormatException e) {
-            showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
-            return false;
-        }
-
-        showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
-        return false;
-    }
-
-    private void showLineWidthError(String key, boolean isMetric) {
-        var min = PageModel.MIN_LINE_WIDTH_INCHES;
-        var max = PageModel.MAX_LINE_WIDTH_INCHES;
-
-        if (isMetric) {
-            min *= GraphicUtils.CM_PER_INCH;
-            max *= GraphicUtils.CM_PER_INCH;
-        }
-
-        var unit = Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES);
-
-        OptionDialogs.showErrorMessage(
-            dialog.contentPanel,
-            Strings.ALERT_TITLE_LINE_WIDTH_ERROR,
-            key, min, max, unit
-        );
+    /** The unit the user has asked to see lengths in. */
+    private static LengthUnit displayUnit() {
+        return Prefs.getBoolean(PrefsKey.METRIC) ? LengthUnit.CENTIMETERS : LengthUnit.INCHES;
     }
 
     /**
@@ -248,12 +187,19 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
 
         @Override
         public boolean verify(JComponent input) {
-            return validateLineWidth() >= 0;
+            return LineWidthRules.validate(lineWidthEntry()).isValid();
         }
 
         @Override
         public boolean shouldYieldFocus(JComponent source, JComponent target) {
-            return validateLineWidthOrShowError();
+            var result = LineWidthRules.validate(lineWidthEntry());
+
+            if (result.isValid()) {
+                return true;
+            }
+
+            dialog.showFailure(result.failures().getFirst());
+            return false;
         }
     }
 }

@@ -172,12 +172,18 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         }
     }
 
-    @Override
-    protected boolean getData() {
-        var fonts = dialog.requireScoreView().getDocumentFonts();
+    /**
+     * Sets both font rows to show {@code input}'s lyrics and annotation fonts.
+     *
+     * <p>Whatever is put in comes back out: {@link #getLyricsFont()} and
+     * {@link #getAnnotationFont()} called straight afterwards answer the same two fonts.
+     *
+     * @param input the settings this opening of the dialog is showing
+     */
+    void populate(SongSettingsInput input) {
+        var fonts = input.fonts();
         FontSettingRow.applyFont(fonts.getFont(FontKey.LYRICS),     lyricsFontLabel,     lyricsFontPreview::setFont);
         FontSettingRow.applyFont(fonts.getFont(FontKey.ANNOTATION), annotationFontLabel, annotationFontPreview::setFont);
-        return true;
     }
 
     Font getLyricsFont() {

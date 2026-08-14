@@ -1,178 +1,150 @@
 /*
- * SongScribe song notation program
- * Copyright (C) Sri Chinmoy Centres International
- *
- * This file is part of SongScribe.
- *
- * SongScribe is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 3 of the License, or
- * (at your option) any later version.
- *
- * SongScribe is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
 
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 package songscribe.ui.component;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
+import java.util.stream.Stream;
 
-import javax.swing.JPanel;
+import javax.swing.JButton;
 import javax.swing.JTextField;
 
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.ui.OptionDialogs;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * Exercises the contract of {@link NonEmptyGuard}.
+ *
+ * <p><b>The class invariant</b> — the field is never blank once focus has left it — is what every
+ * case here asserts, from a different starting state: text the caller populated and the user
+ * emptied, text the user typed and then emptied, a field populated blank, and a field whose caller
+ * never announced a value at all. The last two are what the fallback exists for, and they are
+ * separate cases because only one of them calls {@link NonEmptyGuard#rememberCurrentText()}.
+ *
+ * <p><b>What counts as blank</b> — the empty string and whitespace alike, since a field holding
+ * only spaces is one the user has emptied. Both are covered, together with a non-blank value that
+ * must be left exactly as it is.
+ *
+ * <p><b>Always yields</b> — the guard never traps the caret. Asserted alongside the restoration
+ * rather than on its own, because yielding while still blank would be the failure worth catching
+ * and no single assertion sees both.
+ *
+ * <p><b>Fallback</b> — a blank fallback is refused at construction, because a guard that could
+ * restore a blank value cannot keep its own promise.
+ */
 class NonEmptyGuardTest extends UnitTest {
 
-    // Index of the "use default" button in the options array passed to showOptionDialog.
-    // The array is { continueEditing, useDefault }, so useDefault is at index 1.
-    private static final int USE_DEFAULT_INDEX = 1;
+    private static final String FALLBACK = "Untitled";
+    private static final String FOUND = "Invocation";
 
-    // Shared parent component for dialog positioning — a no-op panel used in tests
-    // to satisfy the @NonNull parent parameter without any Swing frame overhead.
-    private static final JPanel PARENT = new JPanel();
+    @ParameterizedTest
+    @ValueSource(strings = { "", "   " })
+    void testEmptyingAValueTheUserFoundPutsThatValueBack(String blanked) {
+        var field = new JTextField(FOUND);
+        var guard = new NonEmptyGuard(field, FALLBACK);
+        guard.rememberCurrentText();
 
-    // -------------------------------------------------------------------
-    // Non-blank text → verify() passes, focus yields, no dialog shown
-    // -------------------------------------------------------------------
+        field.setText(blanked);
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class NonBlank {
-
-        @Test
-        void testNonBlankTextYieldsFocusWithoutDialog() {
-            var field = new JTextField("Hello");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE
-            );
-
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                assertThat(guard.verify(field)).isTrue();
-                assertThat(guard.shouldYieldFocus(field, field)).isTrue();
-
-                // No dialog should have been shown
-                optionMock.verify(
-                    () -> OptionDialogs.showWarningMessage(any(), any(), any()),
-                    never()
-                );
-                optionMock.verify(
-                    () -> OptionDialogs.showOptionDialog(
-                        any(), any(), any(), anyInt(), anyInt(), any(), any(), any()
-                    ),
-                    never()
-                );
-            }
-        }
+        assertThat(guard.shouldYieldFocus(field, new JButton()))
+            .as("the guard releases the caret rather than stranding the user in the field")
+            .isTrue();
+        assertThat(field.getText())
+            .as("the value the user found on arriving is the value put back")
+            .isEqualTo(FOUND);
     }
 
-    // -------------------------------------------------------------------
-    // Blank text, no default → warning shown, focus not yielded
-    // -------------------------------------------------------------------
+    @Test
+    void testEmptyingAValueTheUserTypedPutsThatValueBack() {
+        var field = new JTextField(FOUND);
+        var guard = new NonEmptyGuard(field, FALLBACK);
+        guard.rememberCurrentText();
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class BlankNoDefault {
+        // A committed edit becomes the value worth restoring, not the one it replaced.
+        field.setText("Ecstasy's Heights");
+        guard.shouldYieldFocus(field, new JButton());
+        field.setText("");
 
-        @Test
-        void testBlankTextWithNoDefaultShowsWarningAndKeepsFocus() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE
-            );
+        guard.shouldYieldFocus(field, new JButton());
 
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                assertThat(guard.verify(field)).isFalse();
-                assertThat(guard.shouldYieldFocus(field, field)).isFalse();
-
-                optionMock.verify(
-                    () -> OptionDialogs.showWarningMessage(
-                        any(),
-                        any(),
-                        any()
-                    )
-                );
-            }
-        }
+        assertThat(field.getText())
+            .as("the most recent good value is restored, not the one before it")
+            .isEqualTo("Ecstasy's Heights");
     }
 
-    // -------------------------------------------------------------------
-    // Blank text, default set, user chooses "use default" → fills field, yields
-    // -------------------------------------------------------------------
+    @Test
+    void testAFieldPopulatedBlankFallsBackToTheSuppliedValue() {
+        var field = new JTextField("");
+        var guard = new NonEmptyGuard(field, FALLBACK);
+        guard.rememberCurrentText();
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class BlankWithDefaultUserChoosesDefault {
+        guard.shouldYieldFocus(field, new JButton());
 
-        @Test
-        void testUserChoosingDefaultFillsFieldAndYieldsFocus() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE,
-                Strings.DOCUMENT_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-            );
-
-            // Simulate the user pressing "use default" (index 1 in the options array)
-            try (var optionMock = mockStatic(OptionDialogs.class)) {
-                optionMock.when(
-                    () -> OptionDialogs.showOptionDialog(
-                        any(), any(), any(), anyInt(), anyInt(), any(), any(), any()
-                    )
-                ).thenReturn(USE_DEFAULT_INDEX);
-
-                assertThat(guard.shouldYieldFocus(field, field)).isTrue();
-                assertThat(field.getText()).isEqualTo(Strings.get(Strings.DOCUMENT_UNTITLED));
-            }
-        }
+        assertThat(field.getText())
+            .as("a value that was already blank is not a previous value worth restoring")
+            .isEqualTo(FALLBACK);
     }
 
-    // -------------------------------------------------------------------
-    // Blank text, default set, user dismisses / "continue editing" → keeps focus
-    // -------------------------------------------------------------------
+    @Test
+    void testAFieldNeverPopulatedAtAllFallsBackToTheSuppliedValue() {
+        var field = new JTextField("");
+        var guard = new NonEmptyGuard(field, FALLBACK);
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class BlankWithDefaultUserDismisses {
+        guard.shouldYieldFocus(field, new JButton());
 
-        @Test
-        void testUserDismissingDefaultDialogKeepsFocus() {
-            var field = new JTextField("");
-            var guard = new NonEmptyGuard(
-                field, PARENT,
-                Strings.ALERT_TITLE_SONG_SETTINGS,
-                Strings.CONFIRM_SONG_EMPTY_TITLE,
-                Strings.DOCUMENT_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-                Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-            );
-
-            // OptionDialogs is suppressed in UnitTest → returns CLOSED_OPTION (-1),
-            // which is not USE_DEFAULT_INDEX, so the guard should not yield focus
-            // and should leave the field blank.
-            assertThat(guard.shouldYieldFocus(field, field)).isFalse();
-            assertThat(field.getText()).isEmpty();
-        }
+        assertThat(field.getText())
+            .as("the fallback covers a caller that never announced a value")
+            .isEqualTo(FALLBACK);
     }
+
+    @ParameterizedTest
+    @MethodSource("keptValues")
+    void testANonBlankValueIsLeftExactlyAsItIs(String typed) {
+        var field = new JTextField(FOUND);
+        var guard = new NonEmptyGuard(field, FALLBACK);
+        guard.rememberCurrentText();
+
+        field.setText(typed);
+
+        assertThat(guard.shouldYieldFocus(field, new JButton()))
+            .as("a valid field yields")
+            .isTrue();
+        assertThat(field.getText())
+            .as("the guard touches nothing when the field holds something")
+            .isEqualTo(typed);
+    }
+
+    static Stream<String> keptValues() {
+        return Stream.of("Ecstasy's Heights", " padded ", "x");
+    }
+
+    @Test
+    void testABlankFallbackIsRefusedBecauseItCouldNotKeepThePromise() {
+        assertThatThrownBy(() -> new NonEmptyGuard(new JTextField(), " "))
+            .as("a guard whose fallback is blank could restore a blank value")
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
 }

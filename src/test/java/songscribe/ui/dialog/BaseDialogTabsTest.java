@@ -31,22 +31,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.Song;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
-import songscribe.ui.component.ScoreView;
 import songscribe.util.UIUtils;
 
 import org.jspecify.annotations.Nullable;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -521,34 +517,6 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         assertThat(dialog.getContentPaddingKey()).isEqualTo(FlatLafKey.DIALOG_STD_PADDING);
     }
 
-    // -- getScoreView / requireScoreView / getSong --
-
-    @Test
-    void testGetScoreViewReturnsNullWhenMainFrameHasNoScoreView() {
-        when(mainFrame().getScoreView()).thenReturn(null);
-        var dialog = new AccessorDialog(mainFrame());
-        assertThat(dialog.scoreView()).isNull();
-    }
-
-    @Test
-    void testRequireScoreViewPropagatesExceptionFromMainFrame() {
-        when(mainFrame().requireScoreView()).thenThrow(new RuntimeException("scoreView not initialized"));
-        var dialog = new AccessorDialog(mainFrame());
-        assertThatThrownBy(dialog::scoreViewRequired)
-            .isInstanceOf(RuntimeException.class)
-            .hasMessage("scoreView not initialized");
-    }
-
-    @Test
-    void testGetSongDelegatesToRequireScoreViewGetSong() {
-        var mockSong = mock(Song.class);
-        var mockScoreView = mock(ScoreView.class);
-        when(mainFrame().requireScoreView()).thenReturn(mockScoreView);
-        when(mockScoreView.getSong()).thenReturn(mockSong);
-        var dialog = new AccessorDialog(mainFrame());
-        assertThat(dialog.song()).isSameAs(mockSong);
-    }
-
     // -- addSeparator --
 
     @Test
@@ -671,29 +639,6 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             }
 
             return true;
-        }
-    }
-
-    /**
-     * Subclass that widens access to protected score-view accessors for testing.
-     */
-    private static class AccessorDialog extends BaseDialog {
-
-        AccessorDialog(MainFrame mainFrame) {
-            super(mainFrame, "Accessor Dialog", false);
-        }
-
-        @Nullable ScoreView scoreView() {
-            return getScoreView();
-        }
-
-        @SuppressWarnings("UnusedReturnValue")
-        ScoreView scoreViewRequired() {
-            return requireScoreView();
-        }
-
-        Song song() {
-            return getSong();
         }
     }
 }

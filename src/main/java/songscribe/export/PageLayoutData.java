@@ -35,8 +35,6 @@ public class PageLayoutData {
     public int rightOuterMarginPx = 0;
     public int topMarginPx = 0;
     public int bottomMarginPx = 0;
-    public boolean mirrored = false;
-    public int songsPerPage = 2;
     public @Nullable ScoreView scoreView = null;
 
     /**

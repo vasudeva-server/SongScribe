@@ -34,6 +34,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonEmptyGuard;
 import songscribe.ui.component.NumericTextField;
+import songscribe.ui.component.score.BaseTitleComponent;
 import songscribe.ui.component.score.SubtitleComponent;
 import songscribe.ui.component.score.TitleComponent;
 import songscribe.util.UIUtils;
@@ -72,6 +73,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
     // Subtitle section — field, font-description label, and preview component.
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
+    private final NonEmptyGuard titleBlankGuard;
     private final JLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final SubtitleComponent subtitlePreview = new SubtitleComponent();
 
@@ -80,20 +82,20 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // actually changes the tab's height.
     private boolean subtitlePreviewEmpty = true;
 
+    // The song's lyrics, which the Take button derives a title from and is disabled without,
+    // and the width the previews wrap at — the stored line width, not the pending one, so the
+    // preview shows the score as it stands rather than as the Music tab might change it. Both
+    // are set by populate on every opening.
+    private String lyricsText = "";
+    private double previewWrapWidthSs = 0;
+
     SongSettingsTitleTab(SongSettingsDialog dialog) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE));
         this.dialog = dialog;
         takeAction = new TakeFirstLyricsWordAction(dialog.getMainFrame());
 
-        titleField.setInputVerifier(new NonEmptyGuard(
-            titleField,
-            dialog.contentPanel,
-            Strings.ALERT_TITLE_SONG_SETTINGS,
-            Strings.CONFIRM_SONG_EMPTY_TITLE,
-            Strings.DOCUMENT_UNTITLED,
-            Strings.DIALOG_SONG_SETTINGS_USE_UNTITLED,
-            Strings.DIALOG_SONG_SETTINGS_CONTINUE_EDITING
-        ));
+        titleBlankGuard = new NonEmptyGuard(titleField, Strings.get(Strings.DOCUMENT_UNTITLED));
+        titleField.setInputVerifier(titleBlankGuard);
 
         // Previews show the chosen font at its natural size: they are never given a
         // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom). Each
@@ -327,14 +329,15 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private void updateTitlePreview() {
         // Normalize through the same seam the commit uses so the preview shows
         // the typographic substitution (and trimming) the score will render.
-        titlePreview.setPreviewText(
-            Song.numberedTitle(numberField.getText(), SongMetadata.normalizeTitle(titleField.getText()))
-        );
+        titlePreview.setPreview(new BaseTitleComponent.Preview(
+            Song.numberedTitle(numberField.getText(), SongMetadata.normalizeTitle(titleField.getText())),
+            previewWrapWidthSs
+        ));
     }
 
     private void updateSubtitlePreview() {
         var text = SongMetadata.normalizeTitle(subtitleField.getText());
-        subtitlePreview.setPreviewText(text);
+        subtitlePreview.setPreview(new BaseTitleComponent.Preview(text, previewWrapWidthSs));
 
         // The subtitle preview collapses to zero height when empty and expands
         // when non-empty. The dialog is packed to a fixed height at show time,
@@ -379,12 +382,24 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         return numberField.getText();
     }
 
-    @Override
-    protected boolean getData() {
-        var song = dialog.getSong();
-        var fonts = dialog.requireScoreView().getDocumentFonts();
-        titlePreview.setSong(song);
-        subtitlePreview.setSong(song);
+    /**
+     * Sets every control on this tab to show {@code input}.
+     *
+     * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
+     * with nothing else touched, answer the same title, number, subtitle and two fonts.
+     *
+     * <p>The preview width is set before any field, because writing to a field fires the
+     * preview updaters and they wrap at it.
+     *
+     * @param input the settings this opening of the dialog is showing
+     */
+    void populate(SongSettingsInput input) {
+        var metadata = input.metadata();
+        var fonts = input.fonts();
+
+        lyricsText = input.lyrics().text();
+        previewWrapWidthSs = input.music().lineWidthSs();
+
         FontSettingRow.applyFont(
             fonts.getFont(FontKey.TITLE),
             titleFontLabel,
@@ -395,12 +410,12 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             subtitleFontLabel,
             this::applySubtitleFont
         );
-        numberField.setText(song.getNumber());
-        titleField.setText(song.getTitle());
-        subtitleField.setText(song.getSubtitle());
+        numberField.setText(metadata.number());
+        titleField.setText(metadata.title());
+        titleBlankGuard.rememberCurrentText();
+        subtitleField.setText(metadata.subtitle());
         takeAction.updateEnabledState();
         updateTitlePreview();
-        return true;
     }
 
     private final class TakeFirstLyricsWordAction extends UIAction {
@@ -420,15 +435,18 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // once.
         @Override
         protected boolean enableFromSongState() {
-            return !dialog.getSong().getLyricsText().isEmpty();
+            return !lyricsText.isEmpty();
         }
 
         @Override
         protected void performAction(ActionEvent e) {
             var maxWords = ((Number) takeFirstWordsSpinnerModel.getValue()).intValue();
-            titleField.setText(
-                SongSettingsDialog.extractLyricsTitle(dialog.getSong().getLyricsText(), maxWords)
-            );
+            titleField.setText(SongMetadata.titleFromLyrics(lyricsText, maxWords));
+
+            // Lyrics that are all melisma underscores extract to nothing, which the guard ignores
+            // — so the title the button failed to improve on is still what comes back if the user
+            // then empties the field.
+            titleBlankGuard.rememberCurrentText();
         }
     }
 }

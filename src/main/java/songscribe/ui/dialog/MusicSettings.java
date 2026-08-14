@@ -19,26 +19,20 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import songscribe.dom.Tempo;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.export.PageLayoutData;
-
-public class Step extends JPanel {
-
-    protected final PageLayoutData pageLayoutData;
-
-    protected Step(PageLayoutData pageLayoutData) {
-        this.pageLayoutData = pageLayoutData;
-    }
-
-    @Nullable
-    public String getInfo() {
-        return null;
-    }
-
-    public void start() {}
-
-    public void end() {}
-}
+/**
+ * The two document settings the Song Settings Music tab shows, as the document holds them.
+ *
+ * <p>{@link MusicChoices} is the same two settings coming back out of the controls. They are
+ * separate types because the line width is not: on the way in it is the stored width, on the
+ * way out it is unvalidated field text.
+ *
+ * <p>There is no key here. A song has no key of its own — every line carries one, set from the
+ * score. See {@code docs/key-signatures.md}.
+ *
+ * @param tempo        the song's tempo — a copy, so editing the controls cannot reach the
+ *                     document's own mutable {@link Tempo}
+ * @param lineWidthSs  the stored line width, in staff spaces
+ */
+public record MusicSettings(Tempo tempo, double lineWidthSs) {}

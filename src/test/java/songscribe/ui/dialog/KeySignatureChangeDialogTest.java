@@ -247,7 +247,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
         showFor(line);
         dialog.keysCombo.setSelectedItem(inheritChoiceEntry());
-        dialog.setData();
+        dialog.commitOnOk();
 
         verify(mockEnv().ctrl()).changeLineKey(
             same(line), isNull(), eq(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY)));
@@ -260,7 +260,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
         showFor(line);
         dialog.keysCombo.setSelectedItem(chosenKey);
-        dialog.setData();
+        dialog.commitOnOk();
 
         verify(mockEnv().ctrl()).changeLineKey(
             same(line), eq(chosenKey), eq(Strings.get(Strings.ACTION_EDIT_OP_ADD_KEY)));
@@ -273,7 +273,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
         showFor(line, A_MID_LINE_INDEX);
         dialog.keysCombo.setSelectedItem(chosenKey);
-        dialog.setData();
+        dialog.commitOnOk();
 
         verify(mockEnv().ctrl()).insertKeySignature(same(line), eq(A_MID_LINE_INDEX), eq(chosenKey));
         verify(mockEnv().ctrl(), never()).changeLineKey(any(), any(), any());
@@ -284,7 +284,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         var line = lineWithOwnKey(new Key(KeyType.SHARPS, 3));
 
         showFor(line);
-        dialog.setData();
+        dialog.commitOnOk();
 
         assertNothingWasCommitted();
     }

@@ -139,7 +139,4 @@ public class ReportBugDialog extends StandardDialog {
 
     @Override
     protected boolean getData() { return true; }
-
-    @Override
-    protected void setData() {}
 }

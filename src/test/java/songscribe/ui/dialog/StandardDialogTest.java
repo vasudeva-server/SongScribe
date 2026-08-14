@@ -31,15 +31,12 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.FlatLafKey;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 /**
  * Tests for {@link StandardDialog} OK/Cancel button lifecycle logic.
@@ -65,45 +62,45 @@ class StandardDialogTest extends MainFrameMockTest {
         uiUtilsMock.close();
     }
 
-    // -- OK button: isValidData false --
+    // -- OK button: commitOnOk false --
 
     @Test
-    void testOkClickWhenIsValidDataFalseDoesNotCallSetData() {
+    void testOkClickWhenCommitOnOkFalseDoesNotCommit() {
         var dialog = new TrackingDialog(mainFrame(), false);
         fireOkAction(dialog);
-        assertThat(dialog.setDataCallCount).as("setData not called when isValidData returns false").isZero();
+        assertThat(dialog.commitCallCount).as("commit not recorded when commitOnOk returns false").isZero();
     }
 
     @Test
-    void testOkClickWhenIsValidDataFalseDoesNotCloseDialog() {
+    void testOkClickWhenCommitOnOkFalseDoesNotCloseDialog() {
         var dialog = new TrackingDialog(mainFrame(), false);
         fireOkAction(dialog);
-        assertThat(dialog.closeCallCount).as("setVisible(false) not called when isValidData returns false").isZero();
+        assertThat(dialog.closeCallCount).as("setVisible(false) not called when commitOnOk returns false").isZero();
     }
 
-    // -- OK button: isValidData true --
+    // -- OK button: commitOnOk true --
 
     @Test
-    void testOkClickWhenIsValidDataTrueCallsSetData() {
+    void testOkClickWhenCommitOnOkTrueCommits() {
         var dialog = new TrackingDialog(mainFrame(), true);
         fireOkAction(dialog);
-        assertThat(dialog.setDataCallCount).as("setData called when isValidData returns true").isEqualTo(1);
+        assertThat(dialog.commitCallCount).as("commit recorded when commitOnOk returns true").isEqualTo(1);
     }
 
     @Test
-    void testOkClickWhenIsValidDataTrueClosesDialog() {
+    void testOkClickWhenCommitOnOkTrueClosesDialog() {
         var dialog = new TrackingDialog(mainFrame(), true);
         fireOkAction(dialog);
-        assertThat(dialog.closeCallCount).as("setVisible(false) called after setData on OK click").isEqualTo(1);
+        assertThat(dialog.closeCallCount).as("setVisible(false) called after commitOnOk returns true").isEqualTo(1);
     }
 
     // -- Cancel button --
 
     @Test
-    void testCancelClickDoesNotCallSetData() {
+    void testCancelClickDoesNotCommit() {
         var dialog = new TrackingDialog(mainFrame(), true);
         fireCancelAction(dialog);
-        assertThat(dialog.setDataCallCount).as("setData not called on Cancel click").isZero();
+        assertThat(dialog.commitCallCount).as("commit not recorded on Cancel click").isZero();
     }
 
     @Test
@@ -129,54 +126,6 @@ class StandardDialogTest extends MainFrameMockTest {
         }
     }
 
-    // -- isValidData tab iteration: first failing tab short-circuits --
-
-    @Test
-    void testIsValidDataTabIterationShortCircuitsOnFirstInvalidTab() {
-        var dialog = new TabbedStandardDialog(mainFrame());
-        var tab0 = dialog.new ValidationTab(false);
-        var tab1 = dialog.new ValidationTab(true);
-        dialog.registerTab(tab0);
-        dialog.registerTab(tab1);
-
-        fireOkAction(dialog);
-
-        assertThat(tab0.isValidDataCallCount).as("tab[0].isValidData called").isEqualTo(1);
-        assertThat(tab1.isValidDataCallCount).as("tab[1].isValidData not called after tab[0] fails").isZero();
-        assertThat(dialog.setDataCallCount).as("setData not called when isValidData returns false").isZero();
-    }
-
-    // -- setData iterates all registered tabs --
-
-    @Test
-    void testSetDataIteratesAllRegisteredTabs() {
-        var dialog = new TabbedStandardDialog(mainFrame());
-        var tab0 = dialog.new ValidationTab(true);
-        var tab1 = dialog.new ValidationTab(true);
-        dialog.registerTab(tab0);
-        dialog.registerTab(tab1);
-
-        fireOkAction(dialog);
-
-        assertThat(tab0.tabSetDataCallCount).as("tab[0].setData called").isEqualTo(1);
-        assertThat(tab1.tabSetDataCallCount).as("tab[1].setData called").isEqualTo(1);
-    }
-
-    // -- repaintScore null-safe when scoreView is null --
-
-    @Test
-    void testRepaintScoreIsNullSafeWhenScoreViewIsNull() {
-        when(mainFrame().getScoreView()).thenReturn(null);
-        var dialog = new TrackingDialog(mainFrame(), true);
-
-        assertThatNoException()
-            .as("OK click with null scoreView must not throw")
-            .isThrownBy(() -> fireOkAction(dialog));
-        assertThat(dialog.setDataCallCount)
-            .as("setData called even when scoreView is null")
-            .isEqualTo(1);
-    }
-
     // -- helpers --
 
     private static void fireOkAction(StandardDialog dialog) {
@@ -194,7 +143,7 @@ class StandardDialogTest extends MainFrameMockTest {
     /**
      * Concrete {@link StandardDialog} subclass that:
      * <ul>
-     *   <li>tracks how many times {@link #setData()} was called</li>
+     *   <li>tracks how many times {@link #commitOnOk()} actually committed</li>
      *   <li>overrides {@code setVisible(false)} to count close calls without
      *       triggering the full dialog teardown (which would NPE with a null
      *       underlying {@link JDialog})</li>
@@ -203,7 +152,7 @@ class StandardDialogTest extends MainFrameMockTest {
     private static class TrackingDialog extends StandardDialog {
 
         final boolean validData;
-        int setDataCallCount = 0;
+        int commitCallCount = 0;
         int closeCallCount = 0;
 
         TrackingDialog(MainFrame mainFrame, boolean validData) {
@@ -212,13 +161,13 @@ class StandardDialogTest extends MainFrameMockTest {
         }
 
         @Override
-        protected boolean isValidData() {
-            return validData;
-        }
+        protected boolean commitOnOk() {
+            if (!validData) {
+                return false;
+            }
 
-        @Override
-        protected void setData() {
-            setDataCallCount++;
+            commitCallCount++;
+            return true;
         }
 
         @Override
@@ -256,64 +205,6 @@ class StandardDialogTest extends MainFrameMockTest {
             // If not visible, skip super to avoid NPE on the disposed JDialog
             if (visible) {
                 super.setVisible(true);
-            }
-        }
-    }
-
-    /**
-     * Concrete {@link StandardDialog} subclass that tracks how many times
-     * its base-class {@link #setData()} is called, used to verify tab iteration.
-     * Close calls skip {@code super} to avoid NPE on the uninitialized JDialog field.
-     */
-    private static class TabbedStandardDialog extends StandardDialog {
-
-        int setDataCallCount = 0;
-
-        TabbedStandardDialog(MainFrame mainFrame) {
-            super(mainFrame, "Tabbed Standard Dialog");
-        }
-
-        @Override
-        protected void setData() {
-            setDataCallCount++;
-            super.setData();
-        }
-
-        @Override
-        public void setVisible(boolean visible) {
-            // If not visible, skip super to avoid NPE on the disposed JDialog
-            if (visible) {
-                super.setVisible(true);
-            }
-        }
-
-        /**
-         * A {@link Tab} that tracks {@link #isValidData()} and {@link #setData()} calls.
-         * {@code valid} controls the return value of {@code isValidData()}.
-         */
-        class ValidationTab extends Tab {
-
-            final boolean valid;
-            int isValidDataCallCount = 0;
-            int tabSetDataCallCount = 0;
-
-            ValidationTab(boolean valid) {
-                super("Validation Tab", FlatLafKey.DIALOG_STD_PADDING);
-                this.valid = valid;
-            }
-
-            @Override
-            protected void initContents() {}
-
-            @Override
-            protected boolean isValidData() {
-                isValidDataCallCount++;
-                return valid;
-            }
-
-            @Override
-            protected void setData() {
-                tabSetDataCallCount++;
             }
         }
     }

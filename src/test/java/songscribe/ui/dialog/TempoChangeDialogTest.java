@@ -20,18 +20,22 @@
 package songscribe.ui.dialog;
 
 import java.util.Collections;
+import java.util.stream.Stream;
+
+import org.jspecify.annotations.Nullable;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Duration;
-import songscribe.dom.Line;
 import songscribe.dom.Tempo;
-import songscribe.dom.TempoChangeAttachment;
 import songscribe.prefs.Prefs;
+import songscribe.ui.dialog.backend.AttachmentTarget;
+import songscribe.ui.dialog.backend.TempoChangeBackEnd;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,9 +44,24 @@ import static org.mockito.Mockito.mockStatic;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
- * Unit tests for {@link TempoChangeDialog}: populateControls null/existing,
- * applyChange (Tempo construction + show-flag inversion, add vs update), and
- * clearChange (removeAttachment).
+ * Exercises the contract of {@link TempoChangeDialog}, which after the dialog seam is entirely
+ * about its {@link TempoSection}: what is put into it and what is read back out.
+ *
+ * <p><b>Populating</b> — the two classes of input {@link TempoChangeDialog#populateControls} names:
+ * an existing tempo, which the section shows, and {@code null}, for which it shows a default
+ * {@link Tempo}.
+ *
+ * <p><b>Round trip</b> — the invariant that populating and then gathering returns an equivalent
+ * {@link Tempo}, asserted as a property over representative tempi rather than as a table of
+ * expected outputs. It is the one assertion that pins the show-flag inversion in both directions:
+ * the section asks whether to show the description <em>alone</em> while {@link Tempo} stores
+ * whether the metronome mark is shown <em>as well</em>, so a round trip only survives if the
+ * dialog inverts consistently on the way in and on the way out. Sampled rather than enumerated —
+ * the beats-per-minute is a number, so the domain is not finite.
+ *
+ * <p><b>Not tested here:</b> commit and removal, which are the back end's promises and are
+ * asserted in {@code TempoChangeBackEndTest}; and the Add/Modify labelling, which the template
+ * owns for the whole family and {@code AttachmentDialogTest} asserts once.
  */
 class TempoChangeDialogTest extends MainFrameMockTest {
 
@@ -58,7 +77,11 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         BaseDialogTestHelper.configureMockFrame(mainFrame());
         BaseDialog.resetVisibleBlockingDialogCount();
         BaseDialog.resetSavedGeometry();
-        dialog = new TempoChangeDialog(mainFrame());
+
+        var line = detachedLine();
+        var element = crotchet();
+        line.addElement(element);
+        dialog = new TempoChangeDialog(mainFrame(), new TempoChangeBackEnd(new AttachmentTarget(line, element)));
     }
 
     @AfterEach
@@ -67,177 +90,64 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         uiUtilsMock.close();
     }
 
-    // ── Row 25: populateControls(null) — default Tempo values ──
+    private record PopulateCase(String description, @Nullable Tempo given, Tempo shown) {}
 
-    @Test
-    void testPopulateControlsNullSetsBpm120CrotchetModerateShowTempo() {
-        dialog.populateControls(null);
+    static Stream<PopulateCase> populateCases() {
+        return Stream.of(
+            new PopulateCase("an existing tempo is shown as it stands",
+                new Tempo(96, Duration.QUAVER, "Allegretto", false),
+                new Tempo(96, Duration.QUAVER, "Allegretto", false)),
+            new PopulateCase("no existing tempo shows the Tempo defaults", null, new Tempo())
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("populateCases")
+    void testPopulateControlsShowsTheExistingTempoOrTheDefault(PopulateCase testCase) {
+        var shown = testCase.shown();
+
+        dialog.populateControls(testCase.given());
 
         assertThat(dialog.tempoSection.getVisibleTempo())
-            .as("BPM matches the Tempo default")
-            .isEqualTo(Tempo.DEFAULT_BPM);
+            .as("the section shows the tempo being edited")
+            .isEqualTo(shown.getVisibleTempo());
         assertThat(dialog.tempoSection.getTempoType())
-            .as("tempo type matches the Tempo default")
-            .isEqualTo(Tempo.DEFAULT_TYPE);
+            .as("the section shows the note value the tempo is counted in")
+            .isEqualTo(shown.getTempoType());
         assertThat(dialog.tempoSection.getTempoDescription())
-            .as("description matches the Tempo default")
-            .isEqualTo(Tempo.DEFAULT_DESCRIPTION);
+            .as("the section shows the tempo's description")
+            .isEqualTo(shown.getTempoDescription());
         assertThat(dialog.tempoSection.isShowOnlyDescription())
-            .as("DEFAULT_SHOW_TEMPO=true means showOnlyDescription=false")
-            .isFalse();
+            .as("show-only-description is the inverse of the tempo's show-tempo flag")
+            .isEqualTo(!shown.shouldShowTempo());
     }
 
-    // ── Row 26: populateControls(existing) — forwards attachment's Tempo to section ──
-
-    @Test
-    void testPopulateControlsExistingForwardsTempoToSection() {
-        var element = crotchet();
-        var tempo = new Tempo(96, Duration.QUAVER, "Allegretto", false);
-        var attachment = new TempoChangeAttachment(element, tempo);
-
-        dialog.populateControls(attachment);
-
-        assertThat(dialog.tempoSection.getVisibleTempo())
-            .as("BPM forwarded from existing attachment")
-            .isEqualTo(96);
-        assertThat(dialog.tempoSection.getTempoType())
-            .as("tempo type forwarded from existing attachment")
-            .isEqualTo(Duration.QUAVER);
-        assertThat(dialog.tempoSection.getTempoDescription())
-            .as("description forwarded from existing attachment")
-            .isEqualTo("Allegretto");
-        // shouldShowTempo=false → showOnlyDescription=true
-        assertThat(dialog.tempoSection.isShowOnlyDescription())
-            .as("showOnlyDescription reflects !shouldShowTempo from existing attachment")
-            .isTrue();
+    static Stream<Tempo> roundTripTempi() {
+        return Stream.of(
+            new Tempo(),
+            new Tempo(80, Duration.MINIM, "Largo", true),
+            new Tempo(100, Duration.CROTCHET, "Andante", false)
+        );
     }
 
-    // ── Row 27: applyChange — Tempo built from section getters; showTempo = !isShowOnlyDescription() ──
+    @ParameterizedTest
+    @MethodSource("roundTripTempi")
+    void testGatherReturnsWhatPopulateControlsPutIn(Tempo tempo) {
+        dialog.populateControls(tempo);
 
-    @Test
-    void testApplyChangeBuildsTempoCombiningShowFlagInversion() {
-        var element = crotchet();
+        var gathered = dialog.gather();
 
-        // Configure section: 80 BPM, MINIM, "Largo", showOnlyDescription=false → showTempo=true
-        dialog.tempoSection.setTempo(new Tempo(80, Duration.MINIM, "Largo", true));
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(TempoChangeAttachment.class);
-        assertThat(added)
-            .as("TempoChangeAttachment was added")
-            .isNotNull();
-
-        var tempo = added.getTempo();
-        assertThat(tempo.getVisibleTempo())
-            .as("BPM written from section")
-            .isEqualTo(80);
-        assertThat(tempo.getTempoType())
-            .as("tempo type written from section")
-            .isEqualTo(Duration.MINIM);
-        assertThat(tempo.getTempoDescription())
-            .as("description written from section")
-            .isEqualTo("Largo");
-        // isShowOnlyDescription()=false → !false = true → shouldShowTempo=true
-        assertThat(tempo.shouldShowTempo())
-            .as("showTempo is the inverse of isShowOnlyDescription")
-            .isTrue();
+        assertThat(gathered.getVisibleTempo())
+            .as("the beats-per-minute survives the round trip")
+            .isEqualTo(tempo.getVisibleTempo());
+        assertThat(gathered.getTempoType())
+            .as("the note value survives the round trip")
+            .isEqualTo(tempo.getTempoType());
+        assertThat(gathered.getTempoDescription())
+            .as("the description survives the round trip")
+            .isEqualTo(tempo.getTempoDescription());
+        assertThat(gathered.shouldShowTempo())
+            .as("the show-tempo flag survives the round trip, so the inversion is consistent")
+            .isEqualTo(tempo.shouldShowTempo());
     }
-
-    @Test
-    void testApplyChangeShowTempoFalseWhenShowOnlyDescriptionTrue() {
-        var element = crotchet();
-
-        // shouldShowTempo=false → section's showOnlyDescription=true → showTempo=false
-        dialog.tempoSection.setTempo(new Tempo(100, Duration.CROTCHET, "Andante", false));
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(TempoChangeAttachment.class);
-        assertThat(added).as("attachment was added").isNotNull();
-        assertThat(added.getTempo().shouldShowTempo())
-            .as("showTempo=false when isShowOnlyDescription=true")
-            .isFalse();
-    }
-
-    // ── Row 28: applyChange — updates existing attachment vs adds new one ──
-
-    @Test
-    void testApplyChangeUpdatesExistingAttachmentInPlace() {
-        var element = crotchet();
-        var original = new TempoChangeAttachment(element, new Tempo(60, Duration.CROTCHET, "Largo", true));
-        element.addAttachment(original);
-
-        dialog.tempoSection.setTempo(new Tempo(140, Duration.QUAVER, "Presto", true));
-        dialog.applyChange(element);
-
-        var updated = element.findAttachment(TempoChangeAttachment.class);
-        assertThat(updated).isNotNull();
-        assertThat(updated)
-            .as("existing attachment updated in-place, not replaced")
-            .isSameAs(original);
-        assertThat(updated.getTempo().getVisibleTempo())
-            .as("BPM updated in existing attachment")
-            .isEqualTo(140);
-        assertThat(updated.getTempo().getTempoType())
-            .as("tempo type updated in existing attachment")
-            .isEqualTo(Duration.QUAVER);
-    }
-
-    @Test
-    void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = crotchet();
-
-        dialog.tempoSection.setTempo(new Tempo());
-        dialog.applyChange(element);
-
-        var added = element.findAttachment(TempoChangeAttachment.class);
-        assertThat(added)
-            .as("new TempoChangeAttachment added when none existed")
-            .isNotNull();
-        assertThat(added.getTempo().getVisibleTempo())
-            .as("new attachment has the configured BPM")
-            .isEqualTo(Tempo.DEFAULT_BPM);
-    }
-
-    // ── Row 29: clearChange — removes the attachment ──
-
-    @Test
-    void testClearChangeRemovesAttachment() {
-        // A real Line with its backing Song mock is needed so element.getParentLine() works.
-        var song = minimalSongMock();
-        var line = new Line(song);
-        var element = crotchet();
-        line.addElement(element);
-
-        var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));
-        element.addAttachment(attachment);
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(TempoChangeAttachment.class))
-            .as("TempoChangeAttachment removed by clearChange")
-            .isNull();
-    }
-
-    @Test
-    void testClearChangeStillRemovesTheAttachmentWhenTheElementIsInNoLine() {
-        // The dialog can outlive the element's place in the score — a delete elsewhere
-        // detaches it while the dialog is open. There is then no line to reach the song
-        // through, and asking for one anyway would throw.
-        var song = minimalSongMock();
-        var line = new Line(song);
-        var element = crotchet();
-        line.addElement(element);
-
-        var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));
-        element.addAttachment(attachment);
-
-        line.removeElement(line.getElementIndex(element));
-
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(TempoChangeAttachment.class))
-            .as("the attachment is removed whether or not the element is still in a line")
-            .isNull();
-    }
-
 }

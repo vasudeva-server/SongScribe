@@ -24,16 +24,17 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.Duration;
-import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
-import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.component.MainFrame;
 
-public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
+/**
+ * A {@link TempoSection} in a dialog, for editing the tempo change on an element.
+ *
+ * <p>The dialog owns nothing but the section: every control, and every rule about which of them
+ * is enabled, belongs to {@code TempoSection}, which the song settings use as well.
+ */
+public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
     final TempoSection tempoSection = new TempoSection(
         Duration.values(),
@@ -41,65 +42,25 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
         "tempochanges", "tempos"
     );
 
-    public TempoChangeDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
+    public TempoChangeDialog(MainFrame mainFrame, AttachmentBackEnd<Tempo> backEnd) {
+        super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), backEnd);
         contentPanel.add(BorderLayout.CENTER, tempoSection);
     }
 
     @Override
-    protected ElementField getElementField() {
-        return ElementField.TEMPO_CHANGE;
+    protected void populateControls(@Nullable Tempo existingChange) {
+        tempoSection.setTempo(existingChange != null ? existingChange : new Tempo());
     }
 
     @Override
-    protected String opLabel(DialogOp op) {
-        return Strings.get(switch (op) {
-            case ADD -> Strings.ACTION_EDIT_OP_ADD_TEMPO_CHANGE;
-            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO_CHANGE;
-            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE;
-        });
-    }
-
-    @Override
-    protected @Nullable TempoChangeAttachment getExistingChange(StaffElement element) {
-        return element.findAttachment(TempoChangeAttachment.class);
-    }
-
-    @Override
-    protected void populateControls(@Nullable TempoChangeAttachment change) {
-        tempoSection.setTempo(
-            change != null
-                ? change.getTempo()
-                : new Tempo()
-        );
-    }
-
-    @Override
-    protected void applyChange(StaffElement element) {
-        var tempo = new Tempo(
+    protected Tempo gather() {
+        return new Tempo(
             tempoSection.getVisibleTempo(),
             tempoSection.getTempoType(),
             tempoSection.getTempoDescription(),
+            // The checkbox asks whether to show the description alone; Tempo stores the opposite
+            // question — whether the metronome mark is shown as well.
             !tempoSection.isShowOnlyDescription()
         );
-        var existing = element.findAttachment(TempoChangeAttachment.class);
-
-        // A tempo change carries the beat, so both branches redefine it from here on. The
-        // change branch routes itself from inside TempoChangeAttachment; wrapping both gives
-        // the add branch — a raw addAttachment — its routing, and collapses the pair into
-        // one edit. Any tuplets the new beat forces out are reported by the chokepoint's
-        // own notification.
-        Song.withBeatDefiningEditOn(element, () -> {
-            if (existing != null) {
-                existing.setTempo(tempo);
-            } else {
-                element.addAttachment(new TempoChangeAttachment(element, tempo));
-            }
-        });
-    }
-
-    @Override
-    protected void clearChange(StaffElement element) {
-        AttachmentRemoval.removeTempoChange(element);
     }
 }

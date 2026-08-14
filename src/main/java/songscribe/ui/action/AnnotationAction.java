@@ -23,7 +23,7 @@ import module java.desktop;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.AnnotationDialog;
+import songscribe.ui.dialog.AttachmentEditor;
 
 public final class AnnotationAction extends UIAction {
 
@@ -50,6 +50,6 @@ public final class AnnotationAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        new AnnotationDialog(getMainFrame()).setVisible(true);
+        AttachmentEditor.editAnnotationOnSelection(getMainFrame());
     }
 }

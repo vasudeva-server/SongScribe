@@ -21,6 +21,16 @@ package songscribe.dom;
 
 import module java.desktop;
 
+/**
+ * A piece of text placed above or below a note — {@code dolce}, {@code cresc.}, {@code Fine}.
+ *
+ * <p><strong>Invariant: the text is never blank.</strong> An annotation with nothing to say has
+ * nothing to draw and no reason to exist, so there is no state in which one is carrying empty
+ * text — the constructors and {@link #setAnnotation} refuse it, and both readers drop such an
+ * annotation rather than building one. Every caller may therefore treat
+ * {@link #getAnnotation()} as text worth rendering, and removing an annotation is a removal
+ * rather than a blanking.
+ */
 public class Annotation {
 
     public enum Placement { ABOVE, BELOW }
@@ -38,21 +48,45 @@ public class Annotation {
      */
     private double userYOffsetSs = 0;
 
+    /**
+     * @param annotation the text to display; must not be blank
+     * @throws IllegalArgumentException if {@code annotation} is blank
+     */
     public Annotation(String annotation) {
-        this.annotation = annotation;
+        this(annotation, Component.LEFT_ALIGNMENT);
     }
 
+    /**
+     * @param annotation the text to display; must not be blank
+     * @param alignment  a {@code Component} horizontal alignment constant
+     * @throws IllegalArgumentException if {@code annotation} is blank
+     */
     public Annotation(String annotation, float alignment) {
+        requireText(annotation);
         this.annotation = annotation;
         xAlignment = alignment;
     }
 
+    /**
+     * @return the text to display, never blank
+     */
     public String getAnnotation() {
         return annotation;
     }
 
+    /**
+     * @param annotation the text to display; must not be blank
+     * @throws IllegalArgumentException if {@code annotation} is blank
+     */
     public void setAnnotation(String annotation) {
+        requireText(annotation);
         this.annotation = annotation;
+    }
+
+    private static void requireText(String annotation) {
+        if (annotation.isBlank()) {
+            throw new IllegalArgumentException("annotation text must not be blank");
+        }
     }
 
     public float getXAlignment() {

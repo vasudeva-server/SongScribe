@@ -24,39 +24,45 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
 /**
- * Base dialog for adding, editing, or removing an attachment on a staff element
- * (tempo change, beat change, annotation, etc.).
+ * Base dialog for adding, changing or removing an attachment on a staff element — a tempo change,
+ * a beat change, an annotation.
+ *
+ * <p>A widget shell over a value. It shows the change the element already carries, gathers what
+ * the controls now say, and hands that to its {@link AttachmentBackEnd}; it never looks at the
+ * document to find out what it is editing, and never writes to it. Everything a subclass
+ * implements is therefore about controls: {@link #populateControls} puts a value into them and
+ * {@link #gather()} reads one back out. Which element is being edited, whether an
+ * attachment is already there, what the undo step is called and how the write is bracketed all
+ * belong to the back end, which arrives already bound to its element — see
+ * {@link AttachmentEditor}, the only thing that binds one.
+ *
+ * <p><strong>Lifecycle.</strong> The back end is fixed for the life of the dialog, so a dialog
+ * instance edits exactly one element. Opening one for a different element means constructing
+ * another, which is what {@link AttachmentEditor} does on every gesture.
+ *
+ * @param <C> the attachment's value type — a value the dialog can display and build, never a node
+ *            of the document graph
  */
-public abstract class AttachmentDialog<T> extends StandardDialog {
+public abstract class AttachmentDialog<C> extends CommitDialog<C> {
 
-    protected @Nullable StaffElement selectedElement = null;
-    protected @Nullable Line selectedLine = null;
     protected final JButton removeButton;
+    private final AttachmentBackEnd<C> backEnd;
 
-    protected AttachmentDialog(MainFrame mainFrame, String title) {
+    /**
+     * @param mainFrame the window this dialog parents itself to
+     * @param title     the window title
+     * @param backEnd   the domain half, already bound to the element being edited
+     */
+    protected AttachmentDialog(MainFrame mainFrame, String title, AttachmentBackEnd<C> backEnd) {
         super(mainFrame, title);
+        this.backEnd = backEnd;
+
         removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
         removeButton.addActionListener(_ -> {
-            var element = selectedElement;
-            var line = selectedLine;
-
-            if (element == null || line == null) {
-                throw new IllegalStateException("no element selected");
-            }
-
-            if (!canClearChange(element)) {
-                return;
-            }
-
-            var elementIndex = line.getElementIndex(element);
-            line.withModification(opLabel(DialogOp.REMOVE), () -> line.modifyElement(
-                elementIndex, getElementField(), () -> clearChange(element)));
+            backEnd.remove();
             setVisible(false);
         });
     }
@@ -68,81 +74,62 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
         return BorderLayout.SOUTH;
     }
 
-    protected abstract ElementField getElementField();
-
     /**
-     * Returns the resolved undo op-name for the given operation, letting each
-     * subclass name itself with its own noun.
-     */
-    protected abstract String opLabel(DialogOp op);
-
-    protected abstract @Nullable T getExistingChange(StaffElement element);
-
-    protected abstract void populateControls(@Nullable T change);
-
-    protected abstract void applyChange(StaffElement element);
-
-    protected abstract void clearChange(StaffElement element);
-
-    /**
-     * Whether the Remove button may proceed. Checked before any modification bracket opens,
-     * because {@link Line#modifyElement} records an ElementModification unconditionally and a
-     * refusal inside {@link #clearChange} would leave an empty undo step behind. A subclass that
-     * refuses is responsible for telling the user why.
-     */
-    protected boolean canClearChange(StaffElement element) {
-        return true;
-    }
-
-    /**
-     * Shows this dialog pre-bound to {@code element} on {@code line}.
+     * Sets the controls to show {@code existingChange}, or to this dialog's defaults for a new
+     * attachment when there is none.
      *
-     * <p>{@link #getData()} resolves its target from the selection via
-     * {@link songscribe.ui.component.ScoreView#getSingleSelectedElement()}, which answers null
-     * whenever the selection is a directly selected notation object rather than an element index
-     * range — the state a click on an attachment leaves behind. A caller that already knows the
-     * target must supply it here instead of relying on that resolution.
+     * <p>Called once per opening, before the window appears. An implementation writes to controls
+     * and does nothing else — in particular it does not decide what the buttons say, which
+     * {@link #getData()} owns for the whole family.
+     *
+     * @param existingChange the change the element already carries, or {@code null} when it
+     *                       carries none and the dialog is being opened to add one
      */
-    void showFor(StaffElement element, Line line) {
-        selectedElement = element;
-        selectedLine = line;
-        setVisible(true);
-    }
+    protected abstract void populateControls(@Nullable C existingChange);
 
+    /**
+     * Populates the controls from the back end and labels the buttons for what OK will do.
+     *
+     * <p>Whether an attachment already exists is a domain fact and comes from
+     * {@link AttachmentBackEnd#existingChange()}; what to call the button because of it is a
+     * presentation decision and is made here. OK reads <em>Add</em> when there is nothing there
+     * yet and <em>Modify</em> when there is, and Remove is offered only in the second case — which
+     * is what keeps {@link AttachmentBackEnd#remove()} off the path where it would record a step
+     * that removes nothing.
+     *
+     * @return always {@code true}; there is no state in which this dialog declines to open, as its
+     *         element was resolved before it was constructed
+     */
     @Override
     protected boolean getData() {
-        if (selectedElement == null) {
-            var score = requireScoreView();
-            selectedElement = score.getSingleSelectedElement();
-            selectedLine = score.getSong().getLine(
-                score.getSelectionCoordinator().getActiveLineIndex());
-        }
-
-        var change = selectedElement != null ? getExistingChange(selectedElement) : null;
-        var adding = change == null;
+        var existingChange = backEnd.existingChange();
+        var adding = existingChange == null;
 
         removeButton.setVisible(!adding);
         okButton.setText(Strings.get(adding ? Strings.LABEL_BUTTON_ADD : Strings.LABEL_BUTTON_MODIFY));
-
-        if (selectedElement != null) {
-            populateControls(change);
-        }
+        populateControls(existingChange);
 
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Whether an attachment may be added or changed is the back end's judgment, made against the
+     * element it is bound to.
+     */
     @Override
-    protected void setData() {
-        var element = selectedElement;
-        var line = selectedLine;
+    protected ValidationResult validate(C change) {
+        return backEnd.validate(change);
+    }
 
-        if (element == null || line == null) {
-            throw new IllegalStateException("no element selected");
-        }
-
-        var elementIndex = line.getElementIndex(element);
-        var op = getExistingChange(element) == null ? DialogOp.ADD : DialogOp.EDIT;
-        line.withModification(opLabel(op), () -> line.modifyElement(
-            elementIndex, getElementField(), () -> applyChange(element)));
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Committed as one undoable step, whichever of Add and Modify OK is performing.
+     */
+    @Override
+    protected void commit(C change) {
+        backEnd.apply(change);
     }
 }

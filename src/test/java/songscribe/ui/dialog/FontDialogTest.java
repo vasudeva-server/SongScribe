@@ -92,10 +92,10 @@ class FontDialogTest extends MainFrameMockTest {
         var newFont = new Font(Font.MONOSPACED, Font.BOLD, CHANGED_FONT_SIZE);
         dialog.chooser.setSelectedFont(newFont);
 
-        dialog.setData();
+        dialog.commitOnOk();
 
         assertThat(dialog.getSelectedFont())
-            .as("setData() stores the chooser's current font into selectedFont")
+            .as("commitOnOk() stores the chooser's current font into selectedFont")
             .isEqualTo(newFont);
     }
 

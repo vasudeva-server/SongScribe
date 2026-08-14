@@ -41,10 +41,14 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * Unit tests for {@link AttachmentEditor#edit}: pins the attachment-kind → dialog mapping and
  * the two "nothing to edit" outcomes — a fermata/dynamic with no dialog at all, and a
  * dialog-backed attachment with nothing to bind the dialog to.
+ *
+ * <p>Binding is now observed as the dialog being shown at all, rather than as a call that hands it
+ * an element afterwards: the dialog seam moved binding into the constructor, so a dialog that was
+ * built was built bound. What the binding then reports is asserted in the back ends' own tests.
  */
 class AttachmentEditorTest extends MainFrameMockTest {
 
-    // ── Dialog-backed kinds — edit() constructs the matching dialog and delegates to showFor ──
+    // ── Dialog-backed kinds — edit() constructs the matching dialog, bound, and shows it ──
 
     @Test
     void testAnnotationAttachmentOpensAnnotationDialogBoundToOwner() {
@@ -59,7 +63,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
             assertThat(construction.constructed())
                 .as("exactly one AnnotationDialog was constructed")
                 .hasSize(1);
-            verify(construction.constructed().getFirst()).showFor(element, line);
+            verify(construction.constructed().getFirst()).setVisible(true);
             assertThat(result).as("edit() returns true when a dialog is opened").isTrue();
         }
     }
@@ -77,7 +81,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
             assertThat(construction.constructed())
                 .as("exactly one BeatChangeDialog was constructed")
                 .hasSize(1);
-            verify(construction.constructed().getFirst()).showFor(element, line);
+            verify(construction.constructed().getFirst()).setVisible(true);
             assertThat(result).as("edit() returns true when a dialog is opened").isTrue();
         }
     }
@@ -95,7 +99,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
             assertThat(construction.constructed())
                 .as("exactly one TempoChangeDialog was constructed")
                 .hasSize(1);
-            verify(construction.constructed().getFirst()).showFor(element, line);
+            verify(construction.constructed().getFirst()).setVisible(true);
             assertThat(result).as("edit() returns true when a dialog is opened").isTrue();
         }
     }
