@@ -8,10 +8,16 @@ mechanics for the ones that do.
 ## Before writing a test
 
 **Propose the list first and wait for the user.** Every test — new, added to an
-existing class, or rewritten — goes into one table with its justification and
-what design change would make it unnecessary, before any test code is written.
-Proposed deletions go in the same table. Format and rationale: *Propose the tests
-before writing them* in [design.md](/Users/aparajita/.claude/guides/design.md).
+existing class, or rewritten — goes into one table before any test code is
+written, giving its justification, **whether it is one-time or persistent**, and
+what design change would make it unnecessary. Proposed deletions go in the same
+table. Format and rationale: *Propose the tests before writing them* in
+[design.md](/Users/aparajita/.claude/guides/design.md).
+
+A one-time test is deleted in the same change that produced it. Wiring checks are
+one-time by definition — see *What a dialog may touch* in
+[dialogs.md](./dialogs.md), which already states that gather, validate and apply
+carry no tests of their own.
 
 Then read exactly three things: the **contract** of the method under test, its
 **signature**, and the **public API of its declaring class** — other contracts on
