@@ -61,10 +61,6 @@ class KeyChangeTest extends UnitTest {
     /** Widths are sums of font metrics, so compare in staff spaces with this much slack. */
     private static final double TOLERANCE_SS = 1e-9;
 
-    static Stream<Key> allSignatures() {
-        return Key.allSignatures().stream();
-    }
-
     /** Asserts a single unbroken run of {@code count} {@code glyph}s, which carries no gaps. */
     private static void assertSingleRunOf(
         List<KeyChange.DrawnAccidental> accidentals, SMuFLGlyph glyph, int count) {
@@ -280,21 +276,26 @@ class KeyChangeTest extends UnitTest {
         assertThat(KeyChange.signatureAccidentals(TestKeys.C_MAJOR)).isEmpty();
     }
 
+    /**
+     * At the maximum count for both types, which is where this can fail: the count is a loop
+     * bound over a fixed table of {@link Key#MAX_ACCIDENTAL_COUNT} staff positions, so a
+     * miscounted signature runs off the end of that table here and at no smaller count.
+     */
     @ParameterizedTest
-    @MethodSource("allSignatures")
-    void testSignatureDrawsOneGlyphPerAccidentalWithNoGaps(Key key) {
-        var accidentals = KeyChange.signatureAccidentals(key);
-
-        assertThat(accidentals).hasSize(key.accidentalCount());
-        assertThat(accidentals).allSatisfy(accidental -> {
-            assertThat(accidental.leadingGapSs())
-                .as("a signature is a single run, so nothing inside it is pushed away")
-                .isEqualTo(0);
-
-            if (key.keyType() != KeyType.NONE) {
+    @MethodSource("theWidestSignatureOfEachType")
+    void testASignatureDrawsOneGlyphPerAccidentalWithNoGaps(Key key) {
+        assertThat(KeyChange.signatureAccidentals(key))
+            .hasSize(key.accidentalCount())
+            .allSatisfy(accidental -> {
+                assertThat(accidental.leadingGapSs())
+                    .as("a signature is a single run, so nothing inside it is pushed away")
+                    .isEqualTo(0);
                 assertThat(accidental.glyph()).isEqualTo(KeyChange.accidentalGlyph(key.keyType()));
-            }
-        });
+            });
+    }
+
+    static Stream<Key> theWidestSignatureOfEachType() {
+        return Stream.of(TestKeys.ALL_SHARPS, TestKeys.ALL_FLATS);
     }
 
     @Test
@@ -302,8 +303,7 @@ class KeyChangeTest extends UnitTest {
         // Staff positions relative to the middle line, B E A D G C F.
         int[] expectedPositions = {0, -3, 1, -2, 2, -1, 3};
 
-        assertThat(staffPositionsOf(new Key(KeyType.FLATS, Key.MAX_ACCIDENTAL_COUNT)))
-            .containsExactly(expectedPositions);
+        assertThat(staffPositionsOf(TestKeys.ALL_FLATS)).containsExactly(expectedPositions);
     }
 
     @Test
@@ -311,22 +311,27 @@ class KeyChangeTest extends UnitTest {
         // Staff positions relative to the middle line, F C G D A E B.
         int[] expectedPositions = {-4, -1, -5, -2, 1, -3, 0};
 
-        assertThat(staffPositionsOf(new Key(KeyType.SHARPS, Key.MAX_ACCIDENTAL_COUNT)))
-            .containsExactly(expectedPositions);
+        assertThat(staffPositionsOf(TestKeys.ALL_SHARPS)).containsExactly(expectedPositions);
     }
 
+    /**
+     * A signature shorter than the full order draws the <em>first</em> accidentals of it, not the
+     * last ones and not an arbitrary subset. The full orders the two cases above pin are the
+     * oracle, so this adds only the truncation, which is the part they do not state.
+     *
+     * @param key a signature of fewer than {@link Key#MAX_ACCIDENTAL_COUNT} accidentals
+     */
     @ParameterizedTest
-    @MethodSource("allSignatures")
-    void testASignaturesPositionsAreAPrefixOfItsTypesFullOrder(Key key) {
-        if (key.keyType() == KeyType.NONE) {
-            assertThat(staffPositionsOf(key)).isEmpty();
-            return;
-        }
-
+    @MethodSource("aPartialSignatureOfEachType")
+    void testAShorterSignatureIsAPrefixOfItsTypesFullOrder(Key key) {
         var fullOrder = staffPositionsOf(new Key(key.keyType(), Key.MAX_ACCIDENTAL_COUNT));
 
         assertThat(staffPositionsOf(key))
             .containsExactly(Arrays.copyOf(fullOrder, key.accidentalCount()));
+    }
+
+    static Stream<Key> aPartialSignatureOfEachType() {
+        return Stream.of(TestKeys.D_MAJOR, TestKeys.B_FLAT_MAJOR);
     }
 
     private static int[] staffPositionsOf(Key key) {
