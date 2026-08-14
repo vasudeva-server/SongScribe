@@ -27,7 +27,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.KeySignatureEditor;
+import songscribe.ui.dialog.KeySignatureChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 
@@ -148,7 +148,7 @@ public final class KeySignatureChangeAction extends UIAction implements Insertio
      */
     @Override
     public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
-        KeySignatureEditor.edit(getMainFrame(), line, index);
+        new KeySignatureChangeDialog(getMainFrame()).showFor(line, index);
         return InsertionPointMode.Placement.COMPLETED;
     }
 

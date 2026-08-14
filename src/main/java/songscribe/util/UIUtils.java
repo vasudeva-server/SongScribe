@@ -37,6 +37,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
@@ -313,6 +314,27 @@ public final class UIUtils {
                 horizontal ? 1 : size.width,
                 vertical ? 1 : size.height
             )
+        );
+    }
+
+    /**
+     * Forces a combo box to render in light mode — white background, black foreground, in both
+     * the closed box and the popup — regardless of the active theme.
+     *
+     * <p>Use this for a combo whose entries are drawn as they would appear on the score itself
+     * (e.g. a key signature), which is always black on white; a themed combo showing them in the
+     * app's current (possibly dark) colors would look unlike what they represent. The FlatLaf
+     * style property covers the combo's own chrome; a {@link ListCellRenderer} still has to force
+     * the same colors on the popup rows it paints, since the property does not reach them.
+     */
+    public static void forceLightModeCombo(JComboBox<?> combo) {
+        combo.setOpaque(true);
+        combo.putClientProperty(
+            FlatClientProperties.STYLE,
+            "popupBackground: #FFFFFF; " +
+                "foreground: #000000; " +
+                "background: #FFFFFF; " +
+                "editableBackground: #FFFFFF"
         );
     }
 

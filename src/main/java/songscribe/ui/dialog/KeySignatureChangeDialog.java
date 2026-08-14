@@ -34,6 +34,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.BaseLabel;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
+import songscribe.util.UIUtils;
 
 /**
  * Names the key a change establishes, whether that change is the one at the start of a line or
@@ -97,7 +98,6 @@ public class KeySignatureChangeDialog extends StandardDialog {
         }
     }
 
-    final JLabel indexOfSelectedElementLabel = new JLabel();
     final JComboBox<Object> keysCombo = new JComboBox<>();
 
     @Nullable KeySignatureInput input = null;
@@ -105,28 +105,12 @@ public class KeySignatureChangeDialog extends StandardDialog {
     public KeySignatureChangeDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_SIGNATURE_CHANGE_TITLE));
 
-        var center = new JPanel();
-        center.setLayout(new BoxLayout(center, BoxLayout.Y_AXIS));
-
-        var large = new Dimension(0, 15);
-
-        var infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 5));
-        infoPanel.add(new JLabel(Strings.get(Strings.LABEL_KEYSIG_SELECTED_LINE)));
-        infoPanel.add(indexOfSelectedElementLabel);
-        infoPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        center.add(infoPanel);
-        center.add(Box.createRigidArea(large));
-
-        var keysPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEYSIG_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyChoiceRenderer());
-        keysPanel.add(keysCombo);
-        keysPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        center.add(keysPanel);
-
-        contentPanel.add(center);
+        keysCombo.addItemListener(_ -> okButton.setEnabled(keysCombo.getSelectedIndex() != -1));
+        UIUtils.forceLightModeCombo(keysCombo);
 
         okButton.setEnabled(false);
-        keysCombo.addItemListener(_ -> okButton.setEnabled(keysCombo.getSelectedIndex() != -1));
     }
 
     /**
@@ -154,10 +138,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
         var line = currentInput.line();
         var song = line.getSong();
         var lineIndex = song.indexOfLine(line);
-
-        indexOfSelectedElementLabel.setText(Integer.toString(lineIndex + 1));
-
-        var model = new DefaultComboBoxModel<Object>();
+        var model = new DefaultComboBoxModel<>();
 
         for (var key : Key.allSignatures()) {
             model.addElement(key);
@@ -375,7 +356,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
         ) {
             if (value instanceof Key key) {
                 @SuppressWarnings("unchecked") // this list holds only Key and InheritChoice entries
-                var keyList = (JList<? extends Key>) list;
+                var keyList = (JList<Key>) list;
                 return keyCellRenderer.getListCellRendererComponent(
                     keyList, key, index, isSelected, cellHasFocus);
             }

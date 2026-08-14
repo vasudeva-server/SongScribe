@@ -37,7 +37,6 @@ import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AttachmentEditor;
 import songscribe.ui.dialog.KeySignatureChangeDialog;
-import songscribe.ui.dialog.KeySignatureEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -968,9 +967,15 @@ public class LineComponent extends ScoreComponent
         return false;
     }
 
-    /** Opens the key signature dialog bound to {@code line} at {@code insertionIndex}. */
+    /**
+     * Opens the key signature dialog bound to {@code line} at {@code insertionIndex}.
+     *
+     * @param line the line whose key is being added, edited or written into
+     * @param insertionIndex the element index the change is anchored to;
+     *     {@link KeySignatureChangeDialog#LINE_OWN_KEY_INDEX} for the line's own key
+     */
     private void openKeySignatureDialog(Line line, int insertionIndex) {
-        KeySignatureEditor.edit(MainFrame.getInstance(), line, insertionIndex);
+        new KeySignatureChangeDialog(MainFrame.getInstance()).showFor(line, insertionIndex);
     }
 
     @Override
