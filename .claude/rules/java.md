@@ -4,6 +4,20 @@ paths: src/**/*.java
 
 # Java code style
 
+## Import Order
+
+Group imports in this order, with a blank line between each group present
+(`java.*` and `javax.*` count as one group with no blank line between them):
+
+1. `import module` statements
+2. `java.*` / `javax.*`
+3. All other third-party packages (one group, no further splitting)
+4. `songscribe.*`
+5. `import static` statements
+
+This matches the IDE's configured import layout, so don't manually reorder
+existing imports — let the IDE do that. Just place new imports in this order.
+
 ## Variables
 
 Always use `var` instead of explicit types, unless necessary for generic type inference. Use full descriptive names. Single letters are reserved for loop counters (`i`, `j`, `k`). Be sure not to shadow field names with local variables.
