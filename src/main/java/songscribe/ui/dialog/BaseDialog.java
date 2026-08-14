@@ -430,9 +430,17 @@ public abstract class BaseDialog {
             // Indent the title a bit to line up with the input field
             var indent = FlatLafProps.getInt(FlatLafKey.DIALOG_LABEL_INDENT);
             label.setBorder(BorderFactory.createEmptyBorder(0, indent, 0, 0));
-            container.add(label);
             field.setAlignmentX(Component.LEFT_ALIGNMENT);
-            container.add(field);
+
+            // Stack label above field in a dedicated panel rather than adding both directly to
+            // container: container's layout manager is the caller's choice (BorderLayout,
+            // BoxLayout, ...) and only BoxLayout-style managers stack bare children this way.
+            var panel = new JPanel();
+            panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+            panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            panel.add(label);
+            panel.add(field);
+            container.add(panel);
         }
     }
 
