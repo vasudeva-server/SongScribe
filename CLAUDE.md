@@ -32,6 +32,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 - **Writing or changing a method, class, or package contract** — any new or changed nontrivial API: [Contracts](.agents/guides/contracts.md).
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
+- **MusicXML** — reading, writing, the `ScorePartwise` object graph, a builder or mapper, or any question about what a MusicXML file may contain: [MusicXML Object Model](docs/musicxml-object-model.md). Note especially that **only SongScribe-authored files are read** — foreign input is rejected at the provenance gate, so no design effort goes into supporting it.
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](docs/lyrics.md).
 - **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](docs/unit-conversion.md).
 - **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](docs/zoom.md).

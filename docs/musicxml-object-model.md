@@ -10,6 +10,32 @@ MusicXML is the current storage format; `SongIO` and the other legacy-format cla
 
 ---
 
+## Only SongScribe documents are read
+
+**This program reads MusicXML it wrote, and nothing else.** `HeaderMapper.checkProvenance`
+rejects any document whose `<software>` is missing, blank, or not SongScribe — before any
+mapping runs — and `SongFileLoader.load` reports it to the user as
+`SongLoadResult.WrongSoftware`. There is no supported path by which another application's file
+reaches a mapper.
+
+**Spend no effort on foreign input.** Do not add a mapping, a fallback, a normalization rule,
+a model field or a test for a construct this program's own writer never emits, and do not raise
+"what if another application wrote X?" as a design question — it never gets past the gate. The
+reader's only obligation is to what the writer produces, including what older versions of the
+writer produced.
+
+The write side is the mirror image and the reason the asymmetry exists: what this program emits
+must be MusicXML that a foreign consumer reads correctly, which is what
+`MusicXmlSchemaValidator` checks on every construct the builders emit. **Output is for
+everyone; input is from us.**
+
+The reader's two lenience rules are not exceptions to this. Tolerating an element the model
+does not know, and reading a `DOCTYPE` without fetching what it names, both exist so an older
+or hand-edited SongScribe file still opens — and so a foreign file is reported as *foreign*
+rather than as *damaged*, which is a diagnostic quality, not a step toward supporting it.
+
+---
+
 ## The write pipeline
 
 ```
@@ -89,7 +115,7 @@ arrives.
 
 It runs **one structural walk** followed by **one resolution pass per pairing mark**. The walk
 builds only what a single child settles on its own — it starts a line at each `<print
-new-system>`, advances the running key signature, appends an element per barline, and calls
+new-system>`, applies each `<key>`, appends an element per barline, and calls
 `NoteMapper` per note — and records what each child produced in a `ChildSite`: the line current at
 that point, the last element the child appended, the element an `<ending>` marker or an annotation
 `<direction>` binds to, and the `NoteSite` when the child was a note. `ChildSite` is the read-side
@@ -116,7 +142,36 @@ internal order is:
 Nothing is held on the mapper. Each pass keeps its cursor as a local, and its "still open at the
 end" check is the last statement of the method that opened it — so there is no question of which
 of several flush points a new mark belongs to. The mapper's own state is three fields: the line
-being built, the running key signature, and the accidentals-converted flag.
+being built, the measure index that line started at, and the accidentals-converted flag.
+
+### Where a key signature lands, in both directions
+
+A `<key>` lives in the `<attributes>` of the measure the key **takes effect in**, and that
+position is the whole of the mapping — there is no running-key field on either side that a reader
+has to reconstruct.
+
+| Model | Written into | Read back as |
+|---|---|---|
+| `Line.getKey()` non-null | that line's first measure | `Line.setKey` on the line the measure opens |
+| `KeySignatureElement` | the measure its preceding barline opened | a `KeySignatureElement` at the current position |
+| cautionary at end of a system | nothing — rendering only | re-derived from the next line's key |
+
+A line that inherits its key emits no `<key>`, and the reader leaves it inheriting rather than
+pinning it to a carried-forward value. Pinning would round-trip identically and would then stop a
+later edit to an earlier line's key from propagating past it;
+`Song.rebuildInheritedKeysAfterParsing` settles the inheritance once the walk is done.
+
+`<cancel>` and `<mode>` are **written and never read**. Which accidentals a change cancels is
+derived from the change by `songscribe.dom.KeyChange` — the writer asks that policy rather than
+restating "when the key type differs", so the two cannot drift — and every SongScribe key is
+major, so `<mode>` carries no information the model could store. Both are emitted because
+[output is for everyone](#only-songscribe-documents-are-read).
+
+`KeySignatureElement`'s position invariant (always immediately after a barline or repeat) is
+**enforced on read**, with `DocumentValidation.corrupt`. It is the one entry point that takes
+input from a file; the editing UI and the deletion pairing maintain the invariant rather than
+re-checking it, so a mid-measure `<key>` with no barline before it would otherwise load
+invariant-violating with no error and no visible symptom.
 
 Spans are added to lines that have already been committed to the song. That is safe only because
 a load suspends mutation tracking, which is what stops `Song.addLine` from maintaining the
@@ -301,9 +356,10 @@ marshal. Dropping `type` from a `<supports>` (`#REQUIRED` in the schema) marshal
 required but missing."*
 
 A round-trip test cannot catch either case: our own unmarshal reads the malformed document back
-and recovers the same `Song`, because the reader was written to tolerate exactly what it might
-receive from someone else's export. Schema validation is the only check that sees the document
-the way a foreign MusicXML consumer would.
+and recovers the same `Song`, because the reader tolerates exactly what this writer emits.
+Schema validation is the only check that sees the document the way a foreign MusicXML consumer
+would — and since [output is for everyone](#only-songscribe-documents-are-read), that consumer
+is the one these two defects would actually break.
 
 ---
 
