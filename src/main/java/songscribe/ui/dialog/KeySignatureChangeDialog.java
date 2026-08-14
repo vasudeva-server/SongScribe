@@ -68,7 +68,7 @@ public class KeySignatureChangeDialog extends StandardDialog {
 
     @Override
     protected boolean getData() {
-        var score = requireScoreView();
+        var score = getMainFrame().requireScoreView();
         var line = score.getSong().getLine(score.getSelectedLine());
         indexOfSelectedElementLabel.setText(
             Integer.toString(score.getSong().indexOfLine(line) + 1)
@@ -79,14 +79,14 @@ public class KeySignatureChangeDialog extends StandardDialog {
     }
 
     @Override
-    protected void setData() {
+    protected boolean commitOnOk() {
         var keyType = (KeyType) keysCombo.getSelectedItem();
 
         if (keyType == null) {
-            return;
+            return true;
         }
 
-        var score = requireScoreView();
+        var score = getMainFrame().requireScoreView();
         score.getSong().postWithModification(
             Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY),
             new KeySignatureDidChangeNotification(
@@ -94,5 +94,6 @@ public class KeySignatureChangeDialog extends StandardDialog {
                 keyType,
                 (Integer) keysSpinner.getValue()
             ));
+        return true;
     }
 }

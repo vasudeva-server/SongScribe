@@ -167,10 +167,10 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @ParameterizedTest
     @MethodSource("roundTripAnnotations")
-    void testGatherChangeReturnsWhatPopulateControlsPutIn(Annotation original) {
+    void testGatherReturnsWhatPopulateControlsPutIn(Annotation original) {
         dialog.populateControls(original);
 
-        var gathered = dialog.gatherChange();
+        var gathered = dialog.gather();
 
         assertThat(gathered.getAnnotation())
             .as("the text survives the round trip")

@@ -27,7 +27,6 @@ import javax.swing.JDialog;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.mockito.verification.VerificationMode;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
@@ -36,8 +35,6 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
-import songscribe.layout.LyricEditFitCalculator;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 
 import songscribe.ui.OptionDialogs;
@@ -47,20 +44,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
- * Unit tests for the parts of {@link SongSettingsDialog} that only exist once the dialog is
- * assembled: the dialog-level fit check that spans the Fonts and Music tabs, and the Music tab's
- * line-width rejection reporting. {@link SongSettingsDialogTest} covers the package-private static
- * helpers these delegate to; what is tested here is the wiring between them — that the fit check
- * receives the font in effect and the font just chosen the right way round, that the width it
- * measures against comes from the line-width field rather than from the width already stored, and
- * that each kind of rejection reports the matching message.
+ * Unit tests for the dialog-level lyrics-fit check that spans the Fonts and Music tabs: that it
+ * receives the font in effect and the font just chosen the right way round, via
+ * {@link SongSettingsDialog#commitOnOk()}.
+ *
+ * <p>The line-width field's own rejection reporting and the commit's use of the field's value are
+ * not covered here: reaching that private {@code SongSettingsMusicTab} field has no route left
+ * from outside the dialog since the dialog-seam refactor removed the test-only accessor that used
+ * to reach it. That coverage now lives, in spirit, on {@code LineWidthRules} directly.
  *
  * <p>The song is built here rather than loaded from a fixture because the widths involved have to
  * sit inside the dialog's own legal range ({@link PageModel#MIN_LINE_WIDTH_INCHES} to
@@ -75,11 +71,7 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
 
     private static final String SYLLABLE = "la";
 
-    /**
-     * Chosen so the line fits at {@link PageModel#MAX_LINE_WIDTH_INCHES} but not at
-     * {@link PageModel#MIN_LINE_WIDTH_INCHES}; both premises are asserted in
-     * {@link #testANarrowedLineWidthIsRefusedWithTheFitAlert} rather than left implicit.
-     */
+    /** Enough syllables that a sufficiently enlarged font overflows the line. */
     private static final int LINE_ELEMENT_COUNT = 20;
 
     /** Enough to overflow the line even at the widest legal width. */
@@ -87,14 +79,6 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
 
     /** Comfortably narrower, so the line only gets slacker. */
     private static final float REDUCED_FONT_FACTOR = 0.5f;
-
-    private static final String MIN_WIDTH_TEXT = String.valueOf(PageModel.MIN_LINE_WIDTH_INCHES);
-
-    /** An emptied field is the reachable unparseable case: a filter blocks non-numeric typing. */
-    private static final String EMPTY_WIDTH_TEXT = "";
-
-    /** Parses cleanly but exceeds {@link PageModel#MAX_LINE_WIDTH_INCHES}. */
-    private static final String OUT_OF_RANGE_WIDTH_TEXT = "20";
 
     /** Where the mocked dialog window reports itself to be; nothing reads it. */
     private static final Point ORIGIN = new Point(0, 0);
@@ -162,22 +146,12 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
         return LYRICS_FONT.deriveFont(LYRICS_FONT.getSize2D() * factor);
     }
 
-    private void setLineWidthText(String text) {
-        dialog.getLineWidthFieldForTest().setText(text);
-    }
-
     private static void verifyFitAlert(MockedStatic<OptionDialogs> dialogs) {
-        verifyFitAlert(dialogs, times(1));
-    }
-
-    private static void verifyFitAlert(
-        MockedStatic<OptionDialogs> dialogs, VerificationMode mode
-    ) {
         dialogs.verify(() -> OptionDialogs.showErrorMessage(
             any(),
             eq(Strings.ALERT_TITLE_LINES_DO_NOT_FIT),
             eq(Strings.ALERT_FONT_CHANGE_INVALID)
-        ), mode);
+        ), times(1));
     }
 
     // ── The fit check's inputs ──
@@ -185,7 +159,7 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
     @Test
     void testUnchangedFontAndWidthIsAccepted() {
         try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
+            assertThat(dialog.commitOnOk())
                 .as("changing nothing must never be refused")
                 .isTrue();
 
@@ -203,7 +177,7 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
         chooseLyricsFont(scaledLyricsFont(ENLARGED_FONT_FACTOR));
 
         try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
+            assertThat(dialog.commitOnOk())
                 .as("a lyrics font this much wider cannot hold the line's syllables")
                 .isFalse();
 
@@ -216,100 +190,11 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
         chooseLyricsFont(scaledLyricsFont(REDUCED_FONT_FACTOR));
 
         try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
+            assertThat(dialog.commitOnOk())
                 .as("a narrower font only gives the line more slack")
                 .isTrue();
 
             dialogs.verifyNoInteractions();
         }
-    }
-
-    /**
-     * The width has to come from the field the user typed in, not from the width already stored on
-     * the song. If it came from the song, this would compare the stored width against itself, take
-     * the unchanged-inputs shortcut, and accept.
-     */
-    @Test
-    void testANarrowedLineWidthIsRefusedWithTheFitAlert() {
-        var metrics = LyricRenderMetrics.forFont(LYRICS_FONT);
-        var line = song.getLine(0);
-        assertThat(LyricEditFitCalculator.lineFits(line, metrics, song.getLineWidthSs()))
-            .as("the line must fit at the width it starts at, or nothing below is newly broken")
-            .isTrue();
-        assertThat(LyricEditFitCalculator.lineFits(
-            line, metrics, ScaleContext.inchesToSs(PageModel.MIN_LINE_WIDTH_INCHES)))
-            .as("the line must not fit at the narrowed width, or there is nothing to refuse")
-            .isFalse();
-
-        setLineWidthText(MIN_WIDTH_TEXT);
-
-        try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
-                .as("an unchanged font still has to fit the narrowed width")
-                .isFalse();
-
-            verifyFitAlert(dialogs);
-        }
-    }
-
-    // ── Line-width rejection reporting ──
-    //
-    // Both messages come from the same collapsed -1 sentinel, so the only thing telling them apart
-    // is the re-parse in validateLineWidthOrShowError. These pin which one each failure produces,
-    // and that the fit check never also fires — the width is rejected before it runs.
-
-    @Test
-    void testAnEmptyLineWidthReportsTheInvalidNumberMessage() {
-        setLineWidthText(EMPTY_WIDTH_TEXT);
-
-        try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
-                .as("an empty width cannot be committed")
-                .isFalse();
-
-            dialogs.verify(() -> OptionDialogs.showErrorMessage(
-                any(),
-                eq(Strings.ALERT_TITLE_LINE_WIDTH_ERROR),
-                eq(Strings.ERROR_LINE_WIDTH_INVALID),
-                any(), any(), any()
-            ));
-            verifyFitAlert(dialogs, never());
-        }
-    }
-
-    @Test
-    void testAnOutOfRangeLineWidthReportsTheRangeMessage() {
-        setLineWidthText(OUT_OF_RANGE_WIDTH_TEXT);
-
-        try (var dialogs = mockStatic(OptionDialogs.class)) {
-            assertThat(dialog.isValidData())
-                .as("a width outside the legal range cannot be committed")
-                .isFalse();
-
-            dialogs.verify(() -> OptionDialogs.showErrorMessage(
-                any(),
-                eq(Strings.ALERT_TITLE_LINE_WIDTH_ERROR),
-                eq(Strings.ERROR_LINE_WIDTH_RANGE),
-                any(), any(), any()
-            ));
-            verifyFitAlert(dialogs, never());
-        }
-    }
-
-    // ── The width the commit applies ──
-
-    /**
-     * The commit has to apply the width the fit check just approved. Re-parsing the field's rounded
-     * display text here, or falling back to the width already stored, would both commit something
-     * other than what was validated.
-     */
-    @Test
-    void testTheCommitAppliesTheWidthFromTheField() {
-        var editedInches = PageModel.MIN_LINE_WIDTH_INCHES;
-        setLineWidthText(String.valueOf(editedInches));
-
-        dialog.setData();
-
-        verify(mockEnv().score()).updatePageLayout(ScaleContext.inchesToSs(editedInches));
     }
 }

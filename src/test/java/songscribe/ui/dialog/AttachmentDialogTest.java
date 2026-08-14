@@ -147,10 +147,10 @@ class AttachmentDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    void testSetDataCommitsExactlyWhatTheControlsGathered() {
+    void testCommitOnOkCommitsExactlyWhatTheControlsGathered() {
         var dialog = dialogFor(null);
 
-        dialog.setData();
+        dialog.commitOnOk();
 
         assertThat(dialog.backEnd.applied)
             .as("OK hands the back end the gathered change, unaltered and exactly once")
@@ -172,11 +172,13 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("validationCases")
-    void testIsValidDataAnswersWhateverTheBackEndDecided(ValidationCase testCase) {
+    void testValidateAnswersWhateverTheBackEndDecided(ValidationCase testCase) {
         var dialog = dialogFor(null);
         dialog.backEnd.validationResult = testCase.result();
 
-        assertThat(dialog.isValidData())
+        var result = dialog.validate(GATHERED);
+
+        assertThat(result.isValid())
             .as("the decision is the back end's; the dialog only reports it")
             .isEqualTo(testCase.proceeds());
         assertThat(dialog.backEnd.validated)
@@ -274,7 +276,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
         }
 
         @Override
-        protected String gatherChange() {
+        protected String gather() {
             return GATHERED;
         }
 

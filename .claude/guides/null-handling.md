@@ -43,7 +43,7 @@ uses of this pattern.
 **Pattern 2 — `@SuppressWarnings("NullAway.Init")` on the field.** When no single
 method owns initialization — fields populated by a UI builder, reflection, or a
 framework callback NullAway can't see — suppress on each field. Use this only
-here; see `BorderPanel`, `ResolutionDialog` for the pattern.
+here; see `BorderPanel`, `UIConverter` for the pattern.
 
 ```java
 @SuppressWarnings("NullAway.Init")

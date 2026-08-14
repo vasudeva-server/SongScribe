@@ -132,10 +132,10 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @ParameterizedTest
     @MethodSource("roundTripTempi")
-    void testGatherChangeReturnsWhatPopulateControlsPutIn(Tempo tempo) {
+    void testGatherReturnsWhatPopulateControlsPutIn(Tempo tempo) {
         dialog.populateControls(tempo);
 
-        var gathered = dialog.gatherChange();
+        var gathered = dialog.gather();
 
         assertThat(gathered.getVisibleTempo())
             .as("the beats-per-minute survives the round trip")

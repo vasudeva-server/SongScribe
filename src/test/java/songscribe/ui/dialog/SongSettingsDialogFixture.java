@@ -25,6 +25,7 @@ import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.ui.action.MockEnvHelper;
+import songscribe.ui.dialog.backend.ScoreSongSettingsBackEnd;
 
 import static org.mockito.Mockito.when;
 
@@ -65,6 +66,7 @@ final class SongSettingsDialogFixture {
         BaseDialogTestHelper.configureMockFrame(env.frame());
         BaseDialog.resetSavedGeometry();
 
-        return new Built(new SongSettingsDialog(env.frame()), fonts);
+        return new Built(
+            new SongSettingsDialog(env.frame(), new ScoreSongSettingsBackEnd(scoreView)), fonts);
     }
 }

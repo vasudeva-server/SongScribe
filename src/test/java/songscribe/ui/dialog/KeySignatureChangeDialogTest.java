@@ -121,7 +121,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         // Force combo to have no selection
         dialog.keysCombo.setSelectedItem(null);
 
-        dialog.setData();
+        dialog.commitOnOk();
 
         verify(song, never()).postWithModification(any(), any());
     }
@@ -134,7 +134,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
         dialog.keysCombo.setSelectedItem(KeyType.SHARPS);
         dialog.keysSpinner.setValue(2);
-        dialog.setData();
+        dialog.commitOnOk();
 
         var captor = ArgumentCaptor.forClass(KeySignatureDidChangeNotification.class);
         verify(song).postWithModification(
