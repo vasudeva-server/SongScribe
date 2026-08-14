@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deny rg/grep searches over Java source. Those are usages queries, and rg
-# answers them incompletely. See .agents/rules/serena.md.
+# answers them incompletely. See .claude/rules/serena.md.
 #
 # Classification is on the search *target*, not the pattern shape: everything we
 # want to catch (callers, field usages, symbol overviews, type relationships) is
@@ -17,7 +17,7 @@
 #     transcript cannot be faked the same way. If the identifier is genuinely
 #     just an English word that happens to be one token, running find_symbol on
 #     it and getting nothing back *is* the required evidence — that is exactly
-#     the documented fallback condition in .agents/rules/serena.md ("reach for
+#     the documented fallback condition in .claude/rules/serena.md ("reach for
 #     rg only when a jet_brains_* tool returns no results").
 #
 #   - A search whose pattern is "new SomeType(" is a constructor call-site
@@ -78,7 +78,7 @@ if ! matches '\b(rg|grep)\b'; then
   exit 0
 fi
 
-# The constructor-body lookup documented in .agents/rules/serena.md.
+# The constructor-body lookup documented in .claude/rules/serena.md.
 if matches '\\s\*\\\('; then
   exit 0
 fi
@@ -92,7 +92,7 @@ fi
 
 # src/main/java, not src/main/resources — the latter holds Strings.properties.
 readonly JAVA_TARGET='\.java\b|src/[^ ]*/java|-t[[:space:]]*java|--type[= ]java'
-readonly NON_JAVA_TARGET='\.(md|txt|json|xml|gradle|properties|sh|yml|yaml|html|csv|log|groovy|py)\b|(^|[[:space:]])(docs|scripts|\.agents|\.claude|build|gradle)/'
+readonly NON_JAVA_TARGET='\.(md|txt|json|xml|gradle|properties|sh|yml|yaml|html|csv|log|groovy|py)\b|(^|[[:space:]])(docs|scripts|\.claude|build|gradle)/'
 
 # A search naming only non-Java paths is fine. A search naming no path at all
 # defaults to the working directory, which is a Java repo — so it counts.
@@ -228,7 +228,7 @@ Put PROSE=1 anywhere in the command as its own word; it need not come first, so
 it works inside a loop or a pipeline.
 
 You do not need it for a command that names only non-Java paths (docs/, scripts/,
-.agents/, .claude/, or a .md/.json/.xml/.sh/.gradle/... file) — those already pass
+.claude/, or a .md/.json/.xml/.sh/.gradle/... file) — those already pass
 untouched. A search naming no path at all defaults to this Java repo, so it counts
 as searching Java.
 EOF

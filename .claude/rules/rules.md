@@ -1,3 +1,3 @@
-@../../.agents/rules/development.md
-@../../.agents/rules/java.md
-@../../.agents/rules/serena.md
+@../../.claude/rules/development.md
+@../../.claude/rules/java.md
+@../../.claude/rules/serena.md

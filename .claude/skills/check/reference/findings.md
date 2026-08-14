@@ -70,7 +70,7 @@ the first grace note" is.
   plain words.
 - Describe the size of a fix in counts — files, call sites, tests — never in
   adjectives, and never by comparison to the other findings. See *Hedging is not
-  neutrality* in `.agents/skills/check/reference/design-flaws.md`, which applies
+  neutrality* in `.claude/skills/check/reference/design-flaws.md`, which applies
   to every finding, not only design ones.
 
 ### Additional rules for test and contract findings
@@ -96,7 +96,7 @@ would lead you to do. Never ask a question that presumes the reader has the file
 in mind. The answer options must be understandable without looking at the code.
 
 Questions are further constrained by *Never offer a menu of workarounds* in
-`.agents/skills/check/reference/design-flaws.md`.
+`.claude/skills/check/reference/design-flaws.md`.
 
 # Findings Outside the Review Target
 
@@ -142,5 +142,5 @@ Two things this does **not** license:
   Following a symptom to the design flaw that produced it — or a struggling test
   to the production design that makes it struggle — is *not* widening. That is
   the review working as intended; see
-  `.agents/skills/check/reference/design-flaws.md`.
+  `.claude/skills/check/reference/design-flaws.md`.
 - **Editing unasked in Path B.** Report and offer; change nothing until approved.
