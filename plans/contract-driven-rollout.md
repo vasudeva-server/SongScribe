@@ -41,7 +41,7 @@ numbered phase in this document:
 | Track | Lives in | What the next session does with it |
 |---|---|---|
 | `ui/dialog` seam (D2, D4) | `plans/ui-dialog-seam.md` | Execute it, or review it if it has not been reviewed yet. It is the **last row the D10 freeze covers** — nothing outside the rollout resumes until it is done. |
-| `engraving` contract pass | `plans/contract-pass/engraving.md` | When its record is filled in, compare it against [`pilot-retrospective.md`](./pilot-retrospective.md) §1 and write the comparison into that retrospective as a second measurement. |
+| `engraving` contract pass | `plans/design-pass/engraving.md` | When its record is filled in, compare it against [`pilot-retrospective.md`](./pilot-retrospective.md) §1 and write the comparison into that retrospective as a second measurement. |
 
 **Why both, and what each one answers.** They measure different things and the
 distinction decides D10. `ui/dialog` measures what **architectural correction**

@@ -9,7 +9,7 @@ disable-model-invocation: true
 SongScribe is a native Swing desktop app (not a CLI, server, TUI, Electron,
 or browser-driven app), so the generic `/run` skill's discovery/launch
 patterns do not apply and should not be attempted. Use the plain scripts
-below directly via Bash instead — see `.agents/rules/development.md`.
+below directly via Bash instead — see `.claude/rules/development.md`.
 
 ## Launching the app
 
@@ -29,8 +29,8 @@ Any other arguments are passed through to the application.
 ## Compiling and testing
 
 - `./scripts/compile.sh` — compile. No flags, no pipes, no additions.
-- `./scripts/test.sh` — run tests. See `.agents/rules/development.md` and
-  `.agents/guides/testing-e2e.md` for targets and conventions.
+- `./scripts/test.sh` — run tests. See `.claude/rules/development.md` and
+  `.claude/guides/testing-e2e.md` for targets and conventions.
 
 ## Confirming a UI change works
 
@@ -43,7 +43,7 @@ screenshot it programmatically here. To confirm a UI change:
    exercise the change themselves, or describe the exact steps for them to
    follow.
 3. Check `~/Library/Logs/SongScribe/songscribe.log` for exceptions after the
-   relevant action, per `.agents/guides/logging.md`.
+   relevant action, per `.claude/guides/logging.md`.
 
 Do not attempt xvfb, Playwright, or other headless GUI automation against
 this app — none of it applies to a native Swing desktop process.

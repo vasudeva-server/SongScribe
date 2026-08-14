@@ -361,12 +361,12 @@ suite green at 7,532 passed / 1 skipped, up 5 from 7,527.
   is where the 1.54× ratio came from — and says nothing about what a contract pass
   costs or yields on `dom`, `layout` or `ui/component`.
 
-  A second **contract-pass** measurement therefore runs alongside it, on
+  A second **design-pass** measurement therefore runs alongside it, on
   `engraving`: 449 main LOC, 645 test LOC, 46 cases, ratio 1.44 against the repo's
   1.53, no `docs/` coverage and no `package-info` content, and untouched by Phases
   8–10. Every one of those removes a bias `undo` carried — chiefly that
   `docs/undo.md` already existed. It is also a scout for the 19,856-LOC
-  `layout`/`engraving` row. Record: `plans/contract-pass/engraving.md`; compare it
+  `layout`/`engraving` row. Record: `plans/design-pass/engraving.md`; compare it
   against §1 above.
 - **`ui/dialog` is the next row**, ahead of foundations, on that reasoning.
 - **The remaining rows stay unplanned** until that re-decision, since rows that may not

@@ -106,8 +106,9 @@ and a description that doubles as the parameterized test's display name (via
 `name = "{0}"`) — so a reviewer scans rows to see what is and is not covered, rather
 than reading N method bodies to confirm they're identical except for a literal.
 
-See [Contract-Driven Testing](../guides/contracts.md) for how these cases fall
-out of the contract itself.
+See [Contracts](./contracts.md) for how these cases fall out of the contract
+itself, and [design.md](/Users/aparajita/.claude/guides/design.md) for whether
+the behavior earns a test at all.
 
 ### Asserting that a table is exhaustive
 

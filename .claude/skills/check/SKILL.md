@@ -17,14 +17,15 @@ Fix it at **every** level, including the design level. A review that patches the
 symptoms of a structural flaw and leaves the flaw standing has not improved the
 code — it has made the debt harder to see.
 
-**The yardstick is the contract, never the implementation.** What a caller is
-entitled to rely on is stated in method Javadoc, in class and `package-info.java`
-Javadoc for invariants spanning methods, and in `docs/*.md` for rules spanning
-subsystems. Code is judged against what it promises; the promise is judged
-against what the domain requires; tests are judged against the promise. Nothing
-in this skill is judged by how many lines or branches ran.
+**The yardstick is the design, then the contract, never the implementation.**
+Ask first what a type could carry that the code checks at runtime, because an
+invariant the type carries needs no contract clause and no test — that ordering
+is in `~/.claude/guides/design.md`, which every axis reads. Then: code is judged
+against what it promises; the promise against what the domain requires; a test
+against whether the design could have enforced it instead. Nothing in this skill
+is judged by how many lines or branches ran.
 
-IMPORTANT: All reviews MUST apply the Java style rules in `.agents/rules/java.md`
+IMPORTANT: All reviews MUST apply the Java style rules in `.claude/rules/java.md`
 in addition to the criteria below. When the review is done and fixes are applied,
 DO NOT run any other commands or skills on your own volition.
 
@@ -42,7 +43,7 @@ not paraphrase them into prompts.
 - **`reference/axes.md`** — the prompt preamble every agent opens with, and the
   four axis briefs.
 
-Paths in this file are relative to `.agents/skills/check/`.
+Paths in this file are relative to `.claude/skills/check/`.
 
 ## Phase 1: Determine Scope
 
@@ -143,7 +144,7 @@ After resolving the scope in any mode, split it into two subsets:
 
 For each test in the test scope, identify its **production counterpart** (e.g.
 `StringUtilsTest` → `songscribe.util.StringUtils`) using Serena per
-`.agents/rules/serena.md`, and locate that counterpart's contract — the method
+`.claude/rules/serena.md`, and locate that counterpart's contract — the method
 Javadoc, the class Javadoc, and any `docs/*.md` they link to. The Test
 Conformance axis is given the contract, not just the class.
 
@@ -182,7 +183,7 @@ yourself while fixing.
 
 Coverage and mutation testing do not run as part of this skill. That is a
 statement about *this skill*, not a ranking of the two tools — coverage is a
-required closing step of a package's contract pass (`/contract-pass`, step 7),
+required closing step of a design pass (`/design-pass`, step 9),
 where the whole package's contracts have just been written and a claim of
 completeness can be checked against what actually ran. A review of a diff is not
 that situation: there is no finished body of contracts to check the claim against,
@@ -202,7 +203,7 @@ investigating:
   implementation free to change. The score is never reported as a grade.
 
 See **Diagnostics: coverage and mutation** in
-`.agents/guides/testing-common.md`. A ranked list of uncovered regions handed to
+`.claude/guides/testing-common.md`. A ranked list of uncovered regions handed to
 an agent told to fix what it finds is a to-do list, and it structurally produces
 the green-chasing the contract regime exists to remove — which is why neither one
 runs here automatically.
@@ -212,17 +213,18 @@ runs here automatically.
 Wait for every launched agent to complete, then choose the path based on whether
 `--fix` was in `$ARGUMENTS`.
 
-**Before writing or editing any contract**, read `.agents/guides/contracts.md`
-and the **Writing a Contract in Javadoc** section of `.agents/rules/java.md` in
-full — once, not once per contract.
+**Before writing or editing any contract**, read `~/.claude/guides/design.md` for
+whether the API's fan-in earns one, then `.claude/guides/contracts.md` and the
+**Writing a Contract in Javadoc** section of `.claude/rules/java.md` in full —
+once, not once per contract.
 
-**Before writing or editing any test**, read `.agents/guides/testing-common.md`
-and `.agents/guides/testing-unit.md` in full — once, not once per test. Writing
+**Before writing or editing any test**, read `~/.claude/guides/design.md` for
+whether the behavior earns a test at all, then `.claude/guides/testing-common.md`
+and `.claude/guides/testing-unit.md` in full — once, not once per test. Writing
 tests requires the whole guide's conventions: derivation from the contract,
-naming, structure, fixtures, assertion style, and the testing-approach Javadoc on
-the test class. **If any test being written or edited is an e2e test** (extends
+naming, structure, fixtures, and assertion style. **If any test being written or edited is an e2e test** (extends
 `E2ETest`, lives under `src/test/java/songscribe/e2e/`), also read
-`.agents/guides/testing-e2e.md` in full — on top of, not instead of, the two
+`.claude/guides/testing-e2e.md` in full — on top of, not instead of, the two
 guides above.
 
 ### Two kinds of finding require explicit approval, in both paths

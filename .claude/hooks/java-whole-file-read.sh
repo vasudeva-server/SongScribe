@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Warn when reading a whole Java file large enough to be worth surveying
 # symbolically first. Allows the read — this costs tokens, not correctness.
-# See .agents/rules/serena.md.
+# See .claude/rules/serena.md.
 
 set -euo pipefail
 

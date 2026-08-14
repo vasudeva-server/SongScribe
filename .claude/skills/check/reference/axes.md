@@ -11,9 +11,9 @@ failures this skill exists to avoid.
 | Axis | Model | Input | Covers |
 |---|---|---|---|
 | Design | opus | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
-| Contract & API | opus | production scope | contract stated / complete / derived from the domain; naming; signature quality; test-only surface |
+| Contract & API | opus | production scope | depth earned by fan-in; contract stated / complete / derived from the domain; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
-| Test Conformance | sonnet | test scope and its production counterparts | do the tests exercise the contract's classes, boundaries and invariants |
+| Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
 
 ## The prompt preamble
 
@@ -21,22 +21,25 @@ Every agent this skill spawns gets this text at the top of its prompt, followed
 by its own axis brief and the material it is reviewing. Reproduce it as written;
 do not paraphrase it away.
 
-> MANDATORY: Read `.agents/rules/serena.md` and follow it for all Java
+> MANDATORY: Read `.claude/rules/serena.md` and follow it for all Java
 > exploration.
 >
 > MANDATORY: Read these two files in full before reporting anything, and follow
 > them for every finding:
 >
-> - `.agents/skills/check/reference/findings.md`
-> - `.agents/skills/check/reference/design-flaws.md`
+> - `.claude/skills/check/reference/findings.md`
+> - `.claude/skills/check/reference/design-flaws.md`
 >
-> **The yardstick of this review is the contract, never the implementation.** A
-> contract is what a caller is entitled to rely on: it lives in the method's
-> Javadoc, in the class or `package-info.java` Javadoc for invariants spanning
-> methods, and in `docs/*.md` for rules spanning subsystems. It is not a
-> description of what the code does. Judge the code against what it promises, and
-> judge the promise against what the domain requires — never judge either against
-> the number of lines or branches that run.
+> MANDATORY: Read `~/.claude/guides/design.md` before reporting. Each of its
+> rules carries the observable that flags its violation in existing code, and
+> those observables are what this review looks for.
+>
+> **The yardstick of this review is the design, then the contract, never the
+> implementation.** Ask first what a type could carry that the code checks at
+> runtime, since an invariant the type carries needs no contract clause and no
+> test. Then judge the code against what it promises, and the promise against
+> what the domain requires — never either against the number of lines or branches
+> that run.
 >
 > Your findings will be shown to a reader who has not read the code, the tests,
 > or anything else in this repository. An agent that returns dense,
@@ -90,6 +93,29 @@ with one structural mistake, what would it be?*
    state also produces. Look hardest where a general-purpose type from the
    platform (a rectangle, a point, a map, an array of two) is standing in for a
    domain idea that has a different shape.
+
+### Invariants the types could carry
+
+Run this before anything else in this axis. Each finding here deletes a guard, a
+`@throws` clause and a test permanently, and none of them rot.
+
+7a. **A validated record whose domain is a known finite set** should be a closed
+    enum. The tell is a constructor rejecting values at runtime alongside a
+    separate list somewhere enumerating the valid ones — one fact in two places.
+7b. **Two interchangeable primitives a call site could transpose** should be
+    wrapper types.
+7c. **A mode-selecting boolean, or a bare int standing for a mode**, should be an
+    enum.
+7d. **A guard whose rejected value no caller can produce.** Name the callers that
+    can reach it; if none can, the guard is dead. A dead guard that returns an
+    arbitrary default is the worst form, because it masquerades as success.
+7e. **A primitive crossing more than one layer, or the same range checked in two
+    places.** The boundary should convert the value into a domain type rather
+    than validate it and pass the raw one inward.
+7f. **A `@Nullable` that should be total** — either always derivable, in which
+    case the contract should expose the derived query rather than the raw field,
+    or null until some `init()`, which is a lifecycle defect rather than a
+    nullability one.
 
 ### Reuse and duplication
 
@@ -160,21 +186,21 @@ change touches, per *Reporting a design finding*. Consult the design notes under
 
 ## Axis 2: Contract & API — opus
 
-Every nontrivial API in the production scope is judged against its contract, and
-the contract is judged against the domain. Read
-`.agents/guides/contracts.md` and the **Writing a Contract in Javadoc** and
-**Signature Rules for Contracts** sections of `.agents/rules/java.md` before
-reporting.
+An API that **fan-in earns a contract for** is judged against that contract, and
+the contract is judged against the domain. Read `.claude/guides/contracts.md` and
+the **Writing a Contract in Javadoc** and **Signature Rules for Contracts**
+sections of `.claude/rules/java.md` before reporting.
 
-A trivial API — an accessor returning a field, a one-line delegation — needs no
-contract and is not a finding.
+### Does it earn a contract, and does it have one?
 
-### Is there a contract?
-
-1. **A nontrivial API with no contract is a finding.** Most of this codebase has
-   none yet, so scope this to what the review target adds or changes: every new
-   or modified nontrivial method, class, or package. Say what the contract should
-   promise, not merely that one is missing.
+1. **Depth follows fan-in** — how many callers rely on the promise times how
+   rarely it changes. A trivial accessor, a one-line delegation, and a private
+   helper with one caller earn an accurate name and nothing more; a full contract
+   on one of those is depth spent where nothing relies on it, and is a finding in
+   its own right.
+1a. **An API several callers rely on and that has no contract is a finding.**
+    Scope this to what the review target adds or changes. Say what the contract
+    should promise, not merely that one is missing.
 
 ### Is the contract complete?
 
@@ -292,7 +318,7 @@ it first and say what a user would see.
 2. **Null contracts** — a `@Nullable` value dereferenced without a check; a
    `@NonNull` parameter that some call site can reach with null; a null return
    the caller treats as a value. Recall that the project bans `Optional` and see
-   `.agents/guides/null-handling.md`.
+   `.claude/guides/null-handling.md`.
 3. **The code disagrees with its own contract** — the Javadoc promises one thing
    and the body does another. Say which of the two is wrong about the domain; if
    it is the contract, that is a contract finding and must be stated explicitly
@@ -330,15 +356,25 @@ say so.
 ## Axis 4: Test Conformance — sonnet
 
 Given the test scope and its production counterparts. Read
-`.agents/guides/testing-common.md` in full, and
-`.agents/guides/testing-unit.md` for the conventions; both are the source of
+`.claude/guides/testing-common.md` in full, and
+`.claude/guides/testing-unit.md` for the conventions; both are the source of
 truth for what this axis enforces.
 
 **This axis never counts branches, never asks what fraction of a method ran, and
-never proposes a test in order to reach a line.** It asks one question of the
-suite: *does it exercise what the contract promises?* If a method's contract is
-fully exercised and half the method never runs, that is a question for the
-contract or a dead-code finding against production — never a test finding.
+never proposes a test in order to reach a line.** It asks two questions of the
+suite, in this order: *should this test exist at all?* and only then *does it
+exercise what the contract promises?*
+
+A test earns its place only where the design cannot enforce the promise — a real
+algorithm with logic worth checking, an invariant spanning several calls, or
+behavior with a known-correct corpus. **A test of a guard no caller can reach, a
+test of a state a type could make unrepresentable, and a permanent pin on one
+historical bug input are all discard findings**, and the first two are handed up
+to Design as the more useful form of the same finding.
+
+If a method's contract is fully exercised and half the method never runs, that is
+a question for the contract or a dead-code finding against production — never a
+test finding.
 
 ### Mapping: does each test assert a contract case?
 
@@ -361,7 +397,7 @@ mechanical form of the check:
 3. **Does every assertion correspond to a clause of the contract?** An assertion
    with no clause is one of two things: a promise missing from the contract, or a
    test written from the code. Say which you believe it is. See *Write from the
-   contract, not from the code* in `.agents/guides/testing-common.md`.
+   contract, not from the code* in `.claude/guides/testing-common.md`.
 4. **Tells of a test written from the body** — it pins an ordering, a format, a
    collection type, or an intermediate value the contract never mentions; it
    asserts the exact number of times a collaborator was called; it breaks on a
@@ -384,14 +420,12 @@ Judged against the contract's clauses, never against the implementation.
    two is what leaves the third one broken.
 6a. **A claimed enumeration nothing keeps true.** Distinct from 6, and invisible
     to it: the table is complete today, so nothing looks sampled, but the rows are
-    hand-written literals while the test class Javadoc says the domain is
-    "enumerated in full." Adding a constant then leaves the claim false and the
-    suite green. Check the pair — wherever the Javadoc claims a complete domain,
-    the cases must come from `@EnumSource` / `values()` / a sealed hierarchy's
-    permitted subclasses, or a separate assertion must pin the table's rows to the
-    domain. Neither present is a finding against the test, not the contract.
-    Where the domain is private, widening it is test-only surface and not the fix;
-    the finding is that the Javadoc claims what it cannot back.
+    hand-written literals, so adding a constant leaves the domain uncovered and
+    the suite green. Wherever a test treats a domain as complete, the cases must
+    come from `@EnumSource` / `values()` / a sealed hierarchy's permitted
+    subclasses, or a separate assertion must pin the table's rows to the domain.
+    Neither present is a finding against the test, not the contract. Where the
+    domain is private, widening it is test-only surface and not the fix.
 7. **A missing input class or extreme** — the contract names classes of behavior
    and their boundaries; each needs a representative, and the extremes need one
    each. Volume past that is cost without safety, so absence of a *third* example
@@ -400,8 +434,9 @@ Judged against the contract's clauses, never against the implementation.
    ("the outputs sum to the requested total", "every result is positive"), the
    test should assert the property across many representative inputs, not one
    expected output per input.
-9. **A clause deliberately left untested** is a decision when the test class
-   Javadoc records it with a reason, and a gap when it does not.
+9. **A clause with no test is not automatically a gap.** Ask first whether the
+   design already enforces it and whether any caller can reach it. Report it as
+   missing only when the answer to both is no.
 
 ### Trustworthiness
 
@@ -419,15 +454,6 @@ Judged against the contract's clauses, never against the implementation.
 14. **MBassador subscribers** — a test that registers a non-persistent subscriber
     must unsubscribe it in an `@AfterEach` or a finally block, not at the end of
     a happy path. Weak references make the leak intermittent, which is worse.
-
-### The testing-approach Javadoc
-
-15. **Every test class carries one**, stating the contract it tests and how:
-    which equivalence classes, which boundaries, which invariants. A class
-    without one is a finding.
-16. **A Javadoc that lists inputs rather than promises** is the coverage habit in
-    prose form — "verifies X over all six types × three dot counts" says what
-    runs, not what is guaranteed. Rewrite it as the contract's clauses.
 
 ### Level
 

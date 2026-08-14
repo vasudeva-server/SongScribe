@@ -14,7 +14,7 @@ concern.
 Prefer unit tests otherwise — they are faster and run without approval. Use an
 E2E test only when the behavior genuinely requires simulating mouse actions
 through the real Swing pipeline. Running E2E tests requires user approval (see
-`.agents/rules/development.md`). See [Choosing the level](./testing-common.md#choosing-the-level-unit-vs-e2e-vs-none)
+`.claude/rules/development.md`). See [Choosing the level](./testing-common.md#choosing-the-level-unit-vs-e2e-vs-none)
 for the full escalation rubric.
 
 ## Running E2E Tests
