@@ -243,7 +243,7 @@ public final class ScoreView
         selectionCoordinator = new SelectionCoordinator(this);
         clipboardManager = new ClipboardManager();
         documentFontManager = new DocumentFontManager(this);
-        EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
+        EditModeManager.init(selectionCoordinator, this, this);
 
         if (headless) {
             hierarchyNavigator = null;
@@ -300,7 +300,7 @@ public final class ScoreView
 
         // One preview overlay for this view's lifetime; it is retargeted, never recreated.
         PreviewElementManager.installOverlay(this);
-        EditModeManager.getPasteModeManager().installOverlay();
+        EditModeManager.getInsertionPointMode().installOverlay();
 
         // Initialize insertion note with default type
         setPreviewElement(EditModeManager.makePreviewElement());

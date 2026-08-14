@@ -20,182 +20,80 @@
 
 package songscribe.ui.edit;
 
-import java.awt.MouseInfo;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
-import java.awt.event.MouseEvent;
 
 import javax.swing.JLayeredPane;
-import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.ViewPx;
-import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.PasteModeDidChangeNotification;
-import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.dom.Line;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.PasteOverlay;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.ui.component.score.InsertionMarkerOverlay;
-import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.undo.UndoController;
-import songscribe.util.UIUtils;
 
 /**
- * Manages the paste-mode state machine — placement of a clipboard fragment by
- * clicking (or pressing Return over) an insertion point on a line.
+ * Paste's half of the "click to place" interaction: the clipboard fragment, what counts as a
+ * valid paste index, and the insertion itself. Picking the index is
+ * {@link InsertionPointMode}'s, and this class is one of its clients.
  *
- * <p>Cmd+V with no selection moves INACTIVE to ACTIVE: the paste-mode overlay appears, every action is
- * disabled, and the preview element is suppressed. Mouse movement over a line resolves an insertion
- * index and retargets the insertion marker overlay. A click, or Return over a tracked point, calls
- * {@code tryInsertFragment}; LINE_FULL shows an error dialog and stays ACTIVE, while INSERTED exits
- * with the clipboard retained. Escape, a click outside any line, or the app being backgrounded also
- * exit. While ACTIVE, presses on a line are inert — no line select, no lyric select, no pitch drag —
- * so the click that follows is always a placement or a cancel.
+ * <p>Cmd+V with no selection calls {@link #enter()}, which puts the score into the
+ * insertion-point mode and raises the paste-mode banner. A click, or Return over a tracked
+ * point, calls {@code tryInsertFragment}: {@code LINE_FULL} shows an error dialog and declines
+ * the point, leaving the mode live for another try, while {@code INSERTED} and {@code CANCELLED}
+ * complete it. Escape, a click outside any line, or the app being backgrounded cancel it
+ * instead. In every one of those cases the banner comes down in
+ * {@link #insertionPointModeDidEnd}, the mode's single end-of-placement callback.
+ *
+ * <p>Every index the mode's geometry yields is a valid paste index, so
+ * {@link #acceptsInsertionIndex} accepts them all — see its contract for why that is a real
+ * rule and not a missing one.
  *
  * <p>See section 5 of {@code docs/clipboard.md} for the full state diagram.
  *
- * <p>All exits route through the single {@link #exit()} funnel, mirroring
- * {@code GraceModeManager.finish(boolean)}. Open-coding teardown per exit path
- * would be five paths of duplicated steps, and a missed listener removal is
- * invisible — each enter/exit cycle would leak a live listener on the layered
- * pane. Mirrors {@link GraceModeManager}'s single-flag / static-instance shape.
- * <p>
- * "Overlay" means two different things in this class, deliberately kept distinct: the
- * paste-mode <b>overlay</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
- * hosted on {@link MainFrame}'s {@link JLayeredPane}, while the insertion-point <b>marker</b>
- * ({@link #insertionMarkerOverlay}, an {@code InsertionMarkerOverlay}) is a
- * {@code LineOverlayComponent} in page space, hosted by {@link ScoreView} and sized to exactly
- * the ink it draws.
+ * <p>"Overlay" means two different things here, deliberately kept distinct: the paste-mode
+ * <b>overlay</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
+ * hosted on {@link MainFrame}'s {@link JLayeredPane} and owned by this class, while the
+ * insertion-point <b>marker</b> is a {@code LineOverlayComponent} in page space owned by
+ * {@link InsertionPointMode}.
  */
-public final class PasteModeManager {
-
-    @Nullable
-    private static PasteModeManager instance = null;
+public final class PasteModeManager implements InsertionPointMode.Client {
 
     // Dependencies
     private final ScoreView scoreView;
+    private final InsertionPointMode insertionPointMode;
 
-    // State
-    private boolean active = false;
-
-    // The insertion point the next placement will use — the line and the index
-    // before which the fragment lands. Tracked from mouse movement; -1 index means
-    // the mouse has not yet entered a line, so Return is a no-op.
+    // The banner and the layered-pane bounds listener it needs while a paste is pending.
+    // Both are created in enter() and torn down in insertionPointModeDidEnd().
     @Nullable
-    private LineComponent targetLineComponent;
-
-    private int targetIndex = -1;
-
-    // The overlay and the layered-pane bounds listener it needs while active.
-    // Both are created in enter() and torn down in the single exit() funnel.
-    @Nullable
-    private PasteOverlay overlay;
+    private PasteOverlay overlay = null;
 
     @Nullable
-    private ComponentListener overlayBoundsListener;
+    private ComponentListener overlayBoundsListener = null;
 
-    // The insertion-point marker. One instance for the lifetime of this manager (and thus of
-    // the owning ScoreView) — retargeted and shown/hidden below rather than recreated.
-    private final InsertionMarkerOverlay insertionMarkerOverlay;
-
-    public PasteModeManager(ClipboardManager clipboardManager, ScoreView scoreView) {
+    public PasteModeManager(ScoreView scoreView, InsertionPointMode insertionPointMode) {
         this.scoreView = scoreView;
-        insertionMarkerOverlay = new InsertionMarkerOverlay(scoreView);
-        instance = this;
+        this.insertionPointMode = insertionPointMode;
     }
 
     /**
-     * Registers the insertion marker as a child of the owning view. Deliberately not done in
-     * the constructor: this manager is built from {@code ScoreView}'s constructor, before the
-     * view has a layout manager to register an absolute-bounds child against, and headless
-     * views never acquire one at all. {@code ScoreView.init()} calls this on the interactive
-     * path only, mirroring {@link PreviewElementManager#installOverlay}.
-     */
-    public void installOverlay() {
-        scoreView.addOverlay(insertionMarkerOverlay);
-    }
-
-    /**
-     * Returns whether any PasteModeManager instance is currently active.
-     * Used by UIAction.enableFromPasteMode() to check paste-mode status.
-     */
-    public static boolean isActive() {
-        return instance != null && instance.active;
-    }
-
-    public boolean isInProgress() {
-        return active;
-    }
-
-    /**
-     * Returns the active {@link PasteModeManager} instance, or null when paste mode is
-     * not in progress.
-     */
-    @Nullable
-    public static PasteModeManager getActiveInstance() {
-        return instance != null && instance.active ? instance : null;
-    }
-
-    /** Returns the line component currently tracked as the insertion target, or null. */
-    @Nullable
-    public LineComponent getTargetLineComponent() {
-        return targetLineComponent;
-    }
-
-    /** Returns the tracked insertion index, or -1 if no insertion point is tracked. */
-    public int getTargetIndex() {
-        return targetIndex;
-    }
-
-    /**
-     * Returns the {@link ScoreViewController} to place clipboard content through,
-     * or null if the ScoreView has not finished initializing yet.
-     */
-    @Nullable ScoreViewController getScoreViewController() {
-        return scoreView.getController();
-    }
-
-    void setActive(boolean active) {
-        this.active = active;
-        MessageCenter.post(new PasteModeDidChangeNotification(active));
-    }
-
-    /** Sets the singleton instance; intended for test teardown only. */
-    static void setInstance(@Nullable PasteModeManager value) {
-        instance = value;
-    }
-
-    /** Returns the insertion-point marker overlay. Package-private: test support only. */
-    InsertionMarkerOverlay getInsertionMarkerOverlay() {
-        return insertionMarkerOverlay;
-    }
-
-    // -------------------------------------------------------------------------
-    // Lifecycle
-    // -------------------------------------------------------------------------
-
-    /**
-     * Enters paste mode. Called from {@code handlePaste}'s no-selection branch, so
-     * the clipboard is already known non-empty and the score already has focus.
-     * <p>
-     * {@link #syncTargetToMouse()} shows the insertion marker on the spot when a target is
-     * already resolvable (the mouse is already over a line), by routing through
-     * {@link #updateTarget}, the same path a real {@code mouseMoved} takes.
+     * Starts a paste placement: enters {@link InsertionPointMode} and raises the paste-mode
+     * banner over the score. Called from {@code handlePaste}'s no-selection branch, so the
+     * clipboard is already known non-empty and the score already has focus.
+     *
+     * <p>The banner goes up only after the mode has entered, and only when it entered on this
+     * call — a full-bleed layered-pane child added first would shadow the score from the
+     * mode's under-the-pointer lookup, and a banner raised while some other client's placement
+     * is already pending would never come down.
      */
     public void enter() {
-        if (active) {
+        if (!insertionPointMode.enter(this)) {
             return;
         }
-
-        setActive(true);
-        syncTargetToMouse();
 
         var layeredPane = MainFrame.getInstance().getLayeredPane();
         var newOverlay = new PasteOverlay(scoreView);
@@ -219,50 +117,75 @@ public final class PasteModeManager {
         layeredPane.repaint();
     }
 
+    // -------------------------------------------------------------------------
+    // InsertionPointMode.Client
+    // -------------------------------------------------------------------------
+
     /**
-     * Locates the LineComponent currently under the mouse pointer, if any, and
-     * immediately tracks it as the insertion target so the marker appears the
-     * instant paste mode is entered rather than waiting for the first real
-     * {@code mouseMoved} event. Must run before the overlay is added to
-     * the layered pane: once added, its full-bleed bounds would be the topmost
-     * hit there, shadowing the score underneath from {@link UIUtils#getComponentUnderMouse}.
+     * Accepts every index the mode offers. A fragment may be pasted before any element of a
+     * line, including before the first and after the last, so paste adds nothing to the
+     * geometric rule the mode already applies — the header and the region past the staff's
+     * right edge are excluded there, and everything left over is a paste target.
+     *
+     * <p>Whether the fragment actually fits is not decided here: it depends on the fragment's
+     * width, which is measured by {@code tryInsertFragment} once a point has been chosen, and
+     * a "line full" answer is retryable rather than a reason to refuse to track the point.
+     *
+     * @param line the line the pointer is over
+     * @param index the insertion index under the pointer
+     * @return {@code true}, always
      */
-    private void syncTargetToMouse() {
-        var component = UIUtils.getComponentUnderMouse();
-
-        if (!(component instanceof LineComponent lineComponent)) {
-            return;
-        }
-
-        var mousePosition = MouseInfo.getPointerInfo().getLocation();
-        SwingUtilities.convertPointFromScreen(mousePosition, lineComponent);
-
-        var syntheticEvent = new MouseEvent(
-            lineComponent, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0,
-            mousePosition.x, mousePosition.y, 0, false);
-
-        updateTarget(lineComponent, syntheticEvent);
+    @Override
+    public boolean acceptsInsertionIndex(Line line, int index) {
+        return true;
     }
 
     /**
-     * Cancels paste mode without placing anything. Routes through the single
-     * {@link #exit()} funnel. No-op when not in progress.
+     * Inserts the clipboard fragment at the chosen point in one modification bracket.
+     *
+     * <p>{@code LINE_FULL} declines the point: the error is already shown by
+     * {@code tryInsertFragment} and nothing was mutated, so the mode stays live and the user
+     * can pick a roomier spot. {@code EMPTY} declines it for the same reason — nothing was
+     * mutated — leaving the placement pending rather than silently consuming the gesture.
+     * {@code INSERTED} completes the placement, with the clipboard retained so another Cmd+V
+     * starts a fresh paste. {@code CANCELLED} — the user declined the ending-invalidation
+     * confirm — completes it too: declining is a decision about the paste, not about this
+     * insertion point, unlike the retryable "line full" case.
+     *
+     * @param line the line the user picked
+     * @param index the insertion index within {@code line}
+     * @return {@link InsertionPointMode.Placement#DECLINED} when nothing was inserted and the
+     *     user may try again, {@link InsertionPointMode.Placement#COMPLETED} otherwise
      */
-    public void cancel() {
-        if (active) {
-            exit();
+    @Override
+    public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
+        var controller = scoreView.getController();
+
+        if (controller == null) {
+            return InsertionPointMode.Placement.DECLINED;
         }
+
+        // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
+        // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
+        // that PasteAction relies on must be set here around the bracket instead.
+        var outcome = UndoController.withPendingOpNameResult(
+            Strings.get(Strings.ACTION_EDIT_OP_PASTE),
+            () -> line.withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
+
+        return switch (outcome) {
+            case LINE_FULL, EMPTY -> InsertionPointMode.Placement.DECLINED;
+            case INSERTED, CANCELLED -> InsertionPointMode.Placement.COMPLETED;
+        };
     }
 
     /**
-     * The single teardown funnel every exit routes through: reset the flag and post
-     * the notification (via {@link #setActive}), and drop the tracked insertion point
-     * (via {@link #clearTarget}, which also hides the insertion marker).
+     * Takes the paste-mode banner and its bounds listener back down, whether the paste was
+     * placed or abandoned. Both are dropped from the fields first, so a second call — which the
+     * mode's exactly-once promise rules out, but which costs nothing to survive — finds nothing
+     * to remove rather than removing someone else's overlay.
      */
-    private void exit() {
-        setActive(false);
-        clearTarget();
-
+    @Override
+    public void insertionPointModeDidEnd(InsertionPointMode.EndReason reason) {
         var layeredPane = MainFrame.getInstance().getLayeredPane();
         var boundsListener = overlayBoundsListener;
         overlayBoundsListener = null;
@@ -278,148 +201,6 @@ public final class PasteModeManager {
             layeredPane.remove(currentOverlay);
             layeredPane.revalidate();
             layeredPane.repaint();
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Mouse routing (consume-first from LineComponent)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Tracks the insertion point under the mouse. Returns true (consuming the event)
-     * whenever paste mode is active, so the normal preview-element handling is skipped.
-     */
-    public boolean mouseMoved(LineComponent lineComponent, MouseEvent e) {
-        if (!active) {
-            return false;
-        }
-
-        updateTarget(lineComponent, e);
-        return true;
-    }
-
-    /**
-     * Drops the tracked insertion point when the mouse leaves the line that owns it, so
-     * the marker disappears while the pointer is between lines or off the score entirely.
-     * Guarded on identity: when the pointer crosses directly into another line, that line's
-     * {@code mouseMoved} may arrive first, and this exit must not undo it.
-     */
-    public void mouseExited(LineComponent lineComponent) {
-        if (active && lineComponent == targetLineComponent) {
-            clearTarget();
-        }
-    }
-
-    /**
-     * Places the fragment at the clicked insertion point. Returns true (consuming the
-     * event) whenever paste mode is active.
-     */
-    public boolean mouseClicked(LineComponent lineComponent, MouseEvent e) {
-        if (!active) {
-            return false;
-        }
-
-        updateTarget(lineComponent, e);
-        placeAtTarget();
-        return true;
-    }
-
-    /**
-     * Places the fragment at the currently tracked insertion point (Return/Enter path).
-     * With no tracked point (the mouse never entered a line) this is a no-op and paste
-     * mode stays pending. No-op when not in progress.
-     */
-    public void place() {
-        if (!active) {
-            return;
-        }
-
-        placeAtTarget();
-    }
-
-    /**
-     * Drops the tracked insertion point and hides the insertion marker. Paste mode stays
-     * active — Return simply becomes a no-op again until the mouse re-enters a valid insertion
-     * position.
-     */
-    private void clearTarget() {
-        targetLineComponent = null;
-        targetIndex = -1;
-        insertionMarkerOverlay.setTarget(null, -1);
-    }
-
-    /**
-     * Recomputes the insertion index under the mouse and, when it or the line changes,
-     * retargets the insertion marker. {@code InsertionMarkerOverlay}'s height is identical on
-     * every line, so a line change only ever repositions the marker — Swing dirties its old and
-     * new bounds automatically when it moves, with no explicit repaint call needed.
-     */
-    private void updateTarget(LineComponent lineComponent, MouseEvent e) {
-        var line = lineComponent.getLine();
-        var layoutResult = lineComponent.getLayoutResult();
-
-        if (line == null || layoutResult == null) {
-            return;
-        }
-
-        var mouseXSs = lineComponent.getScoreView().getViewScale().toSs(new ViewPx(e.getX())).value();
-
-        // Nothing can be inserted into the staff header or past the staff's right edge,
-        // so outside that span there is no insertion point to show.
-        if (HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line)
-            || mouseXSs > line.getSong().getLineWidthSs()) {
-            clearTarget();
-            return;
-        }
-
-        // findInsertionIndex over an element head returns that element's index — never
-        // on an element, always before N — and every return path is bounded by
-        // effectiveElementCount(), so no clamping is needed.
-        var index = layoutResult.findInsertionIndex(mouseXSs, line);
-
-        if (lineComponent != targetLineComponent || index != targetIndex) {
-            targetLineComponent = lineComponent;
-            targetIndex = index;
-            insertionMarkerOverlay.setTarget(lineComponent, index);
-        }
-    }
-
-    /**
-     * Inserts the clipboard fragment at the tracked insertion point in one modification
-     * bracket. On {@code INSERTED} the mode exits (the clipboard is retained, so another
-     * Cmd+V starts a fresh paste); on {@code LINE_FULL} the error is already shown by
-     * {@code tryInsertFragment} and the mode stays active for another try.
-     *
-     * <p>{@code CANCELLED} — the user declined the ending-invalidation confirm — also
-     * exits: declining is a decision about the paste, not about this insertion point,
-     * unlike the retryable "line full" case.
-     */
-    private void placeAtTarget() {
-        var lineComponent = targetLineComponent;
-
-        if (lineComponent == null || targetIndex < 0) {
-            return;
-        }
-
-        var line = lineComponent.getLine();
-        var controller = getScoreViewController();
-
-        if (line == null || controller == null) {
-            return;
-        }
-
-        var index = targetIndex;
-
-        // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
-        // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
-        // that PasteAction relies on must be set here around the bracket instead.
-        var outcome = UndoController.withPendingOpNameResult(
-            Strings.get(Strings.ACTION_EDIT_OP_PASTE),
-            () -> line.withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
-
-        if (outcome == ScoreViewController.FragmentInsertOutcome.INSERTED
-                || outcome == ScoreViewController.FragmentInsertOutcome.CANCELLED) {
-            exit();
         }
     }
 }

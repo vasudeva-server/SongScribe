@@ -187,7 +187,7 @@ class LineSelectionHandler {
     }
 
     /** The X of a view-pixel point in the registry's line-local staff spaces. */
-    private double layoutXSs(Point viewPoint) {
+    double layoutXSs(Point viewPoint) {
         return toSs(viewPoint.x);
     }
 

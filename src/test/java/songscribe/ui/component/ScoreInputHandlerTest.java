@@ -86,7 +86,7 @@ import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.util.UIUtils;
@@ -123,10 +123,10 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
 
             try (var emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
@@ -135,36 +135,36 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
-        void testMouseClickedButton1WhenPasteModeInProgressCancelsPasteMode() {
+        void testMouseClickedButton1WhenAPlacementIsPendingCancelsIt() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (var emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
-                verify(pasteModeManager).cancel();
+                verify(insertionPointMode).cancel();
             }
         }
 
         @Test
-        void testMouseClickedButton1WhenPasteModeNotInProgressDoesNotCancel() {
+        void testMouseClickedButton1WhenNoPlacementIsPendingDoesNotCancel() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(false);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(false);
 
             try (var emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
-                verify(pasteModeManager, never()).cancel();
+                verify(insertionPointMode, never()).cancel();
             }
         }
 
@@ -175,13 +175,13 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             when(coordinator.isInSelectMode()).thenReturn(true);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
@@ -196,13 +196,13 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             when(coordinator.isInSelectMode()).thenReturn(false);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
@@ -211,29 +211,29 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         /**
-         * Unlike the Escape key — where the first press only cancels paste mode and leaves
+         * Unlike the Escape key — where the first press only cancels the pending placement and leaves
          * the selection intact — a click does both at once, since the click has already
          * moved the user's attention off the selection.
          */
         @Test
-        void testMouseClickedButton1InSelectModeWhilePasteModeInProgressCancelsAndDeselects() {
+        void testMouseClickedButton1InSelectModeWhileAPlacementIsPendingCancelsAndDeselects() {
             var callback = mock(InputHandlerCallback.class);
             var coordinator = mock(SelectionCoordinator.class);
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             when(coordinator.isInSelectMode()).thenReturn(true);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
-                verify(pasteModeManager).cancel();
+                verify(insertionPointMode).cancel();
                 mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
             }
         }
@@ -243,24 +243,24 @@ class ScoreInputHandlerTest extends UnitTest {
          * request, so the preconditions for all three are satisfied here.
          */
         @Test
-        void testMouseClickedNonButton1SkipsPasteCancelAndDeselect() {
+        void testMouseClickedNonButton1SkipsPlacementCancelAndDeselect() {
             var callback = mock(InputHandlerCallback.class);
             var coordinator = mock(SelectionCoordinator.class);
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             when(coordinator.isInSelectMode()).thenReturn(true);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON3));
 
-                verify(pasteModeManager, never()).cancel();
+                verify(insertionPointMode, never()).cancel();
                 mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
                 verify(callback, never()).requestFocusInWindow();
             }
@@ -300,20 +300,20 @@ class ScoreInputHandlerTest extends UnitTest {
             var tree = componentTreeWithScoreComponent(EditorOutcome.OPENS);
             var callback = mock(InputHandlerCallback.class);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class);
                 var playback = mockStatic(PlaybackController.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
                 playback.when(PlaybackController::isPlaying).thenReturn(false);
 
                 handler.mouseClicked(clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT));
 
                 mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
-                verify(pasteModeManager, never()).cancel();
+                verify(insertionPointMode, never()).cancel();
             }
 
             assertThat(tree.scoreComponent().openEditorCallCount()).isEqualTo(1);
@@ -423,14 +423,14 @@ class ScoreInputHandlerTest extends UnitTest {
             var coordinator = mock(SelectionCoordinator.class);
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class);
                 var playback = mockStatic(PlaybackController.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
                 playback.when(PlaybackController::isPlaying).thenReturn(false);
 
                 handler.mouseClicked(clickOnScoreComponent(tree, UIUtils.DOUBLE_CLICK_COUNT));
@@ -449,20 +449,20 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getSelectionCoordinator()).thenReturn(coordinator);
             when(coordinator.isInSelectMode()).thenReturn(true);
             var handler = new ScoreInputHandler(callback);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class);
                 var playback = mockStatic(PlaybackController.class)
             ) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
                 playback.when(PlaybackController::isPlaying).thenReturn(playbackState == PlaybackState.PLAYING);
 
                 handler.mouseClicked(event);
 
-                verify(pasteModeManager).cancel();
+                verify(insertionPointMode).cancel();
                 mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
                 verify(callback).requestFocusInWindow();
             }
@@ -602,12 +602,12 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(true);
 
             try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 var event = keyEvent(KeyEvent.VK_ESCAPE);
                 handler.keyPressed(event);
@@ -617,27 +617,27 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
-        void testKeyPressedEscapeWhenPasteModeInProgressCancelsPasteModeAndDoesNotDeselect() {
+        void testKeyPressedEscapeWhenAPlacementIsPendingCancelsItAndDoesNotDeselect() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.SELECT);
             var window = mock(Window.class);
             when(callback.getWindow()).thenReturn(window);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(false);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
 
-                verify(pasteModeManager).cancel();
+                verify(insertionPointMode).cancel();
                 // Paste-mode cancellation must short-circuit the SELECT-mode deselect
                 // fallback below it — proves the branch is exclusive, not merely reached.
                 mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
@@ -652,7 +652,7 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getWindow()).thenReturn(null);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
@@ -660,7 +660,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
 
@@ -676,7 +676,7 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getWindow()).thenReturn(window);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
@@ -685,7 +685,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
                 ui.when(() -> UIUtils.isEditingTextIn(window)).thenReturn(false);
 
                 handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
@@ -702,7 +702,7 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getWindow()).thenReturn(window);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
@@ -711,7 +711,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
                 ui.when(() -> UIUtils.isEditingTextIn(window)).thenReturn(true);
 
                 handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
@@ -726,7 +726,7 @@ class ScoreInputHandlerTest extends UnitTest {
             when(callback.getMode()).thenReturn(Mode.EDIT);
             var handler = new ScoreInputHandler(callback);
             var graceModeManager = mock(GraceModeManager.class);
-            var pasteModeManager = mock(PasteModeManager.class);
+            var insertionPointMode = mock(InsertionPointMode.class);
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
@@ -734,7 +734,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
 
@@ -766,7 +766,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
     // -------------------------------------------------------------------
     // Rows 246-254: KeyAction(VK_ENTER) places the paste-mode fragment or,
-    // outside paste mode, opens the lyric editor on the selection — either
+    // with no placement pending, opens the lyric editor on the selection — either
     // way returning before touching the selection coordinator
     // -------------------------------------------------------------------
 
@@ -775,17 +775,17 @@ class ScoreInputHandlerTest extends UnitTest {
     class EnterKeyPressed {
 
         @Test
-        void testEnterInPasteModeCallsPlaceAndSkipsSelectionHandling() {
+        void testEnterWithAPlacementPendingCallsPlaceAndSkipsSelectionHandling() {
             var callback = mock(InputHandlerCallback.class);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(true);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(true);
 
             try (var emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 pressArrowKey(callback, KeyEvent.VK_ENTER);
 
-                verify(pasteModeManager).place();
+                verify(insertionPointMode).place();
                 verify(callback, never()).editLyricOnSelection();
                 // The VK_ENTER branch returns immediately, so the arrow-key
                 // selection path below it must never run.
@@ -794,18 +794,18 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
-        void testEnterOutsidePasteModeOpensLyricEditorOnSelection() {
+        void testEnterWithNoPlacementPendingOpensLyricEditorOnSelection() {
             var callback = mock(InputHandlerCallback.class);
-            var pasteModeManager = mock(PasteModeManager.class);
-            when(pasteModeManager.isInProgress()).thenReturn(false);
+            var insertionPointMode = mock(InsertionPointMode.class);
+            when(insertionPointMode.isInProgress()).thenReturn(false);
 
             try (var emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
 
                 pressArrowKey(callback, KeyEvent.VK_ENTER);
 
                 verify(callback).editLyricOnSelection();
-                verify(pasteModeManager, never()).place();
+                verify(insertionPointMode, never()).place();
                 verify(callback, never()).getSelectionCoordinator();
             }
         }
@@ -1496,7 +1496,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         /** What leaves a key unusable, and so leaves the keystroke for the menu accelerator. */
         private enum Blocker {
-            SELECT_MODE, GRACE_IN_PROGRESS, PASTE_IN_PROGRESS
+            SELECT_MODE, GRACE_IN_PROGRESS, PLACEMENT_IN_PROGRESS
         }
 
         /** The modifiers a key could be bound with; each key must claim exactly one of them. */
@@ -1566,7 +1566,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(mock(GraceModeManager.class));
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(mock(PasteModeManager.class));
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(mock(InsertionPointMode.class));
 
                 var consumed = pressLastInsertionKey(callback, key.keyStroke());
 
@@ -1604,11 +1604,11 @@ class ScoreInputHandlerTest extends UnitTest {
             if (blocker != Blocker.SELECT_MODE) {
                 var graceModeManager = mock(GraceModeManager.class);
                 when(graceModeManager.isInProgress()).thenReturn(blocker == Blocker.GRACE_IN_PROGRESS);
-                var pasteModeManager = mock(PasteModeManager.class);
-                when(pasteModeManager.isInProgress()).thenReturn(blocker == Blocker.PASTE_IN_PROGRESS);
+                var insertionPointMode = mock(InsertionPointMode.class);
+                when(insertionPointMode.isInProgress()).thenReturn(blocker == Blocker.PLACEMENT_IN_PROGRESS);
 
                 editModeManager.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
-                editModeManager.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+                editModeManager.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMode);
             }
 
             return callback;

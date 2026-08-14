@@ -36,9 +36,11 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AttachmentEditor;
+import songscribe.ui.dialog.KeySignatureChangeDialog;
+import songscribe.ui.dialog.KeySignatureEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.edit.InsertionPointMode;
 import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
@@ -675,9 +677,9 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // Paste mode tracks the insertion point under the mouse and suppresses the
-        // normal preview element. Returns true to consume the event.
-        if (getPasteModeManager().mouseMoved(this, e)) {
+        // A pending placement tracks the insertion point under the mouse and suppresses
+        // the normal preview element. Returns true to consume the event.
+        if (getInsertionPointMode().mouseMoved(this, e)) {
             return;
         }
 
@@ -709,11 +711,11 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // While paste mode is active, a drag must not rubber-band a new selection. The press
+        // While a placement is pending, a drag must not rubber-band a new selection. The press
         // that would start one is already suppressed (see mousePressed), so a drag here would
         // band from a stale press point, and any selection it made would be replaced by the
-        // paste that follows anyway.
-        if (getPasteModeManager().isInProgress()) {
+        // placement that follows anyway.
+        if (getInsertionPointMode().isInProgress()) {
             return;
         }
 
@@ -738,9 +740,9 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // Paste mode places the clipboard fragment at the clicked insertion point.
+        // A pending placement lands at the clicked insertion point.
         // Returns true to consume the event.
-        if (getPasteModeManager().mouseClicked(this, e)) {
+        if (getInsertionPointMode().mouseClicked(this, e)) {
             return;
         }
 
@@ -800,6 +802,10 @@ public class LineComponent extends ScoreComponent
             }
 
             if (editDoubleClickedAttachment(clickHit, clickedLine)) {
+                return;
+            }
+
+            if (editDoubleClickedKeySignature(e, clickedLine)) {
                 return;
             }
         }
@@ -913,6 +919,60 @@ public class LineComponent extends ScoreComponent
         return AttachmentEditor.edit(MainFrame.getInstance(), attachment, line);
     }
 
+    /**
+     * Opens the key signature dialog for whichever of the three key edit targets the double-click
+     * landed on, returning true when one opened.
+     * <p>
+     * The targets are the line's header, a key signature standing in the middle of the line, and
+     * the cautionary drawn at the line's end — which edits the <em>next</em> line's key, not this
+     * line's, because that is the change it renders. Each is asked of {@link LayoutResult}, so the
+     * rects tested are the ones drawn, including the cautionary's overflow placement.
+     * <p>
+     * The three occupy disjoint horizontal runs — the header precedes every column, a mid-line
+     * signature owns a solved column, and the cautionary sits past the last one — so the order
+     * they are tried in cannot change which target a point resolves to. It is cheapest-first.
+     * <p>
+     * Answering false is safe for the same reason {@link #editDoubleClickedAttachment} gives:
+     * {@code handleClick} consumes the click next, so nothing is inserted at the click point.
+     */
+    private boolean editDoubleClickedKeySignature(MouseEvent e, Line line) {
+        var ready = readyLayout();
+
+        if (ready == null) {
+            return false;
+        }
+
+        var layoutResult = ready.layoutResult();
+        var mouseXSs = selectionHandler.layoutXSs(e.getPoint());
+        var headerTarget = layoutResult.hitTestHeaderKeyEdit(mouseXSs, line);
+
+        if (headerTarget != null) {
+            openKeySignatureDialog(headerTarget, KeySignatureChangeDialog.LINE_OWN_KEY_INDEX);
+            return true;
+        }
+
+        var midLineKeySignature = layoutResult.hitTestMidLineKeyEdit(mouseXSs, line);
+
+        if (midLineKeySignature != null) {
+            openKeySignatureDialog(line, line.getElementIndex(midLineKeySignature));
+            return true;
+        }
+
+        var cautionaryTarget = layoutResult.hitTestCautionaryKeyEdit(mouseXSs, line);
+
+        if (cautionaryTarget != null) {
+            openKeySignatureDialog(cautionaryTarget, KeySignatureChangeDialog.LINE_OWN_KEY_INDEX);
+            return true;
+        }
+
+        return false;
+    }
+
+    /** Opens the key signature dialog bound to {@code line} at {@code insertionIndex}. */
+    private void openKeySignatureDialog(Line line, int insertionIndex) {
+        KeySignatureEditor.edit(MainFrame.getInstance(), line, insertionIndex);
+    }
+
     @Override
     public void mousePressed(MouseEvent e) {
         if (e.getButton() != MouseEvent.BUTTON1) {
@@ -931,12 +991,12 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // While paste mode is active, a press must not change the selection — it must be
+        // While a placement is pending, a press must not change the selection — it must be
         // left for the click that follows to resolve as a placement or a cancel. Without
         // this guard, a press on the staff lines in the header flips EDIT to SELECT and
-        // selects the whole line, leaving paste mode stuck active with nothing pasted.
+        // selects the whole line, leaving the placement stuck pending with nothing placed.
         // Replacing a line means selecting it before Cmd+V (see #612's Replace).
-        if (getPasteModeManager().isInProgress()) {
+        if (getInsertionPointMode().isInProgress()) {
             return;
         }
 
@@ -1025,7 +1085,7 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseExited(MouseEvent e) {
-        getPasteModeManager().mouseExited(this);
+        getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
     }
 
@@ -1070,8 +1130,8 @@ public class LineComponent extends ScoreComponent
         return EditModeManager.getGraceModeManager();
     }
 
-    private PasteModeManager getPasteModeManager() {
-        return EditModeManager.getPasteModeManager();
+    private InsertionPointMode getInsertionPointMode() {
+        return EditModeManager.getInsertionPointMode();
     }
 
     /** Returns the preview element from edit mode, or null if unavailable. */

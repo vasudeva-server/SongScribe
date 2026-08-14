@@ -95,11 +95,19 @@ public record Fragment(
      * (inclusive), along with every {@link Span} fully contained within
      * that range.
      *
-     * <p>The captured range is first extended past a trailing breath mark
-     * ({@link Line#effectiveDeleteEnd}) and then trimmed of an
-     * orphan paired grace note at the tail. When the entire range is that one
+     * <p>The captured range is first widened at both ends — past a trailing breath mark or a key
+     * signature standing behind a barline ({@link Line#effectiveEnd}), and back over the barline
+     * in front of a key signature ({@link Line#beginIncludingKeySignatureBarline}) — and then
+     * trimmed of an orphan paired grace note at the tail. When the entire range is that one
      * orphan grace note ({@code begin == end}), the trim drops it entirely and
-     * capture returns an empty {@code Fragment}. A captured {@code FINAL_DOUBLE_BARLINE}
+     * capture returns an empty {@code Fragment}.
+     *
+     * <p><b>Widening the head is what keeps a pasted key signature legal.</b> A key signature is
+     * never the first element on a line and always follows a barline or a repeat
+     * ({@link songscribe.dom.KeySignatureElement}'s position invariant); capturing one without the
+     * barline in front of it would put a fragment on the clipboard that violates that invariant
+     * wherever it lands. The deletion side already takes both, so a cut that widened only its
+     * deletion would also disagree with its own copy. A captured {@code FINAL_DOUBLE_BARLINE}
      * is normalized to {@code DOUBLE_BARLINE} so pasted content can never violate
      * the song-owned invariant. Repeats are copied verbatim, with no balance
      * validation.
@@ -121,7 +129,12 @@ public record Fragment(
      * @return A new {@code Fragment} of clones, independent of {@code line}
      */
     public static Fragment capture(Line line, int begin, int end) {
-        var effectiveEnd = line.effectiveDeleteEnd(end);
+        // Not effectiveRange: that also reaches back over a paired grace note, which a copy must
+        // not do. A grace note cannot outlive its host, so a capture starting at a host leaves it
+        // behind; a key signature cannot exist without its barline, so a capture starting at one
+        // takes the barline too.
+        var effectiveBegin = line.beginIncludingKeySignatureBarline(begin);
+        var effectiveEnd = line.effectiveEnd(end);
 
         // The host of a paired grace note sits at the very next index, which lies
         // outside the captured range when the grace note is the last included
@@ -135,7 +148,7 @@ public record Fragment(
         var elements = new ArrayList<StaffElement>();
         var priorAccidentals = new ArrayList<StaffElement.@Nullable Accidental>();
 
-        for (var i = begin; i <= effectiveEnd; i++) {
+        for (var i = effectiveBegin; i <= effectiveEnd; i++) {
             var original = line.getElement(i);
             var clone = cloneForCapture(original);
 

@@ -42,7 +42,7 @@ import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.PasteModeDidChangeNotification;
+import songscribe.message.notification.InsertionPointModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
@@ -55,7 +55,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.ui.playback.PlaybackController;
@@ -485,7 +485,7 @@ public class UIAction extends AbstractAction implements Disposable {
 
         var activeSelection = hasActiveSelection();
         var enable =
-            enableFromPasteMode() &&
+            enableFromInsertionPointMode() &&
                 enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
@@ -611,12 +611,21 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)
-    public void pasteModeDidChange(PasteModeDidChangeNotification message) {
+    public void insertionPointModeDidChange(InsertionPointModeDidChangeNotification message) {
         updateEnabledState();
     }
 
-    protected boolean enableFromPasteMode() {
-        return !PasteModeManager.isActive();
+    /**
+     * Blanket disable while the user is picking an insertion point on a line — a paste
+     * placement, a key-signature placement, or any other client of
+     * {@link InsertionPointMode}. Called first in {@link #updateEnabledState()}'s predicate
+     * chain, so no per-action opt-in flag is involved: every action, the placing operation's
+     * own shortcut included, is off until the placement is made or abandoned.
+     *
+     * @return {@code false} while a placement is pending, {@code true} otherwise
+     */
+    protected boolean enableFromInsertionPointMode() {
+        return !InsertionPointMode.isActive();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

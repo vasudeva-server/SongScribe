@@ -23,17 +23,23 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * Posted when the paste mode state changes (active/inactive).
- * Triggers UIAction enabled-state recalculation for the {@code enableFromPasteMode} predicate.
+ * Posted when a placement becomes pending or stops being pending — the user has been
+ * asked to pick an insertion point on a line, or has just placed or cancelled.
+ * <p>
+ * Two subscribers act on it: {@code UIAction} recalculates every action's enabled state
+ * (the {@code enableFromInsertionPointMode} predicate disables all of them while a
+ * placement is pending), and {@code PreviewElementManager} suppresses the preview
+ * element so the insertion marker is the only thing tracking the mouse.
  */
-public class PasteModeDidChangeNotification extends Message {
+public class InsertionPointModeDidChangeNotification extends Message {
 
     private final boolean active;
 
-    public PasteModeDidChangeNotification(boolean active) {
+    public InsertionPointModeDidChangeNotification(boolean active) {
         this.active = active;
     }
 
+    /** @return {@code true} while a placement is pending, {@code false} once it has ended */
     public boolean isActive() {
         return active;
     }

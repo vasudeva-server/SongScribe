@@ -99,7 +99,7 @@ public final class KeyEditFitCalculator {
     public static boolean lineKeyChangeFits(Line line, Key key, LyricRenderMetrics lyricRenderMetrics) {
         var columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
 
-        return chainFits(line, columnBuilder.buildColumns(line), key, endKeyUnder(line, key), columnBuilder);
+        return chainFits(line, columnBuilder.buildColumns(line), key, line.keyAtEndOfLineUnder(key), columnBuilder);
     }
 
     /**
@@ -216,7 +216,7 @@ public final class KeyEditFitCalculator {
             currentLine = nextLine;
             currentColumns = columnBuilder.buildColumns(nextLine);
             currentHeaderKey = currentEndKey;
-            currentEndKey = endKeyUnder(nextLine, currentHeaderKey);
+            currentEndKey = nextLine.keyAtEndOfLineUnder(currentHeaderKey);
         }
     }
 
@@ -243,16 +243,6 @@ public final class KeyEditFitCalculator {
 
         return columns.isEmpty()
             || !HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs, keys).isInfeasible();
-    }
-
-    /**
-     * Returns the key {@code line} would leave off in if it were running in {@code runningKey}: the
-     * last mid-line key signature's key when it holds one, and {@code runningKey} when it does not.
-     */
-    private static Key endKeyUnder(Line line, Key runningKey) {
-        var lastKeySignatureKey = line.lastKeySignatureKey();
-
-        return lastKeySignatureKey != null ? lastKeySignatureKey : runningKey;
     }
 
     /** The line after index {@code lineIndex}, or null at the last line or off the song entirely. */
@@ -311,9 +301,8 @@ public final class KeyEditFitCalculator {
         ElementColumnBuilder columnBuilder) {
 
         var activeVerse = line.getSong().getActiveVerse();
-        var precedingType = line.getElement(insertionIndex - 1).getType();
 
-        if (!precedingType.isBarLine() && !precedingType.isRepeat()) {
+        if (KeySignatureElement.needsBarlineBefore(line, insertionIndex)) {
             columns.add(columnBuilder.buildDetachedColumn(ElementType.SINGLE_BARLINE.newInstance(), activeVerse));
         }
 

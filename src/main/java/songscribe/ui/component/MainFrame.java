@@ -528,7 +528,7 @@ public class MainFrame extends JFrame implements Printable {
 
                     @Override
                     public void appMovedToBackground(AppForegroundEvent e) {
-                        cancelPendingPaste();
+                        cancelPendingPlacement();
                         ActivationGate.activate();
                     }
                 });
@@ -545,7 +545,7 @@ public class MainFrame extends JFrame implements Printable {
 
                 @Override
                 public void windowDeactivated(WindowEvent e) {
-                    cancelPendingPaste();
+                    cancelPendingPlacement();
                     ActivationGate.activate();
                 }
             });
@@ -554,10 +554,11 @@ public class MainFrame extends JFrame implements Printable {
         setFrameSize();
     }
 
-    // Backgrounding the app cancels a pending paste — both background paths
-    // (Desktop appMovedToBackground and the windowDeactivated fallback) call here.
-    private void cancelPendingPaste() {
-        EditModeManager.getPasteModeManager().cancel();
+    // Backgrounding the app cancels a pending insertion-point placement, whatever was
+    // going to be placed — both background paths (Desktop appMovedToBackground and the
+    // windowDeactivated fallback) call here.
+    private void cancelPendingPlacement() {
+        EditModeManager.getInsertionPointMode().cancel();
     }
 
     private void installDesktopHandlers() {

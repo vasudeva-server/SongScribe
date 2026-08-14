@@ -87,7 +87,7 @@ public final class ScoreInputHandler extends KeyAdapter
         // a mouse handler.
         //
         // Only the second click of the pair is consumed. The first ran the path below in
-        // full, so paste mode is already cancelled and the selection already cleared.
+        // full, so any pending placement is already cancelled and the selection already cleared.
         if (UIUtils.isLeftDoubleClick(e) && !PlaybackController.isPlaying()) {
             var scoreComponent = scoreComponentAt(e);
 
@@ -96,11 +96,13 @@ public final class ScoreInputHandler extends KeyAdapter
             }
         }
 
-        // A click on the ScoreView itself (not on any line) cancels paste mode and,
-        // in select mode, clears the current selection — per-line clicks are handled
+        // A click on the ScoreView itself (not on any line) cancels a pending placement
+        // and, in select mode, clears the current selection — per-line clicks are handled
         // and consumed by LineComponent.
-        if (EditModeManager.getPasteModeManager().isInProgress()) {
-            EditModeManager.getPasteModeManager().cancel();
+        var insertionPointMode = EditModeManager.getInsertionPointMode();
+
+        if (insertionPointMode.isInProgress()) {
+            insertionPointMode.cancel();
         }
 
         if (callback.getSelectionCoordinator().isInSelectMode()) {
@@ -180,10 +182,10 @@ public final class ScoreInputHandler extends KeyAdapter
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             if (EditModeManager.getGraceModeManager().isInProgress()) {
                 EditModeManager.getGraceModeManager().keyPressed(e);
-            } else if (EditModeManager.getPasteModeManager().isInProgress()) {
-                // First Escape cancels paste mode and leaves any selection intact;
+            } else if (EditModeManager.getInsertionPointMode().isInProgress()) {
+                // First Escape cancels the pending placement and leaves any selection intact;
                 // a second Escape then falls through to DeselectCommand below.
-                EditModeManager.getPasteModeManager().cancel();
+                EditModeManager.getInsertionPointMode().cancel();
             } else if (callback.getMode() == Mode.SELECT) {
                 var window = callback.getWindow();
 
@@ -340,12 +342,12 @@ public final class ScoreInputHandler extends KeyAdapter
             new AbstractAction() {
                 @Override
                 public boolean isEnabled() {
-                    // Grace mode and paste mode own the keyboard while they are in progress,
-                    // matching the precedence the Escape branch establishes above. The mode
-                    // test comes first so the manager is not consulted outside edit mode.
+                    // Grace mode and a pending placement own the keyboard while they are in
+                    // progress, matching the precedence the Escape branch establishes above.
+                    // The mode test comes first so the manager is not consulted outside edit mode.
                     return callback.getMode() == Mode.EDIT
                         && !EditModeManager.getGraceModeManager().isInProgress()
-                        && !EditModeManager.getPasteModeManager().isInProgress();
+                        && !EditModeManager.getInsertionPointMode().isInProgress();
                 }
 
                 @Override
@@ -408,15 +410,14 @@ public final class ScoreInputHandler extends KeyAdapter
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            // Return/Enter places the clipboard fragment at the tracked insertion point
-            // while paste mode is active; with no tracked point it is a no-op and the
-            // paste stays pending. Outside paste mode it opens the lyric editor on the
-            // current selection.
+            // Return/Enter completes a pending placement at the tracked insertion point;
+            // with no tracked point it is a no-op and the placement stays pending. With no
+            // placement pending it opens the lyric editor on the current selection.
             if (code == KeyEvent.VK_ENTER) {
-                var pasteModeManager = EditModeManager.getPasteModeManager();
+                var insertionPointMode = EditModeManager.getInsertionPointMode();
 
-                if (pasteModeManager.isInProgress()) {
-                    pasteModeManager.place();
+                if (insertionPointMode.isInProgress()) {
+                    insertionPointMode.place();
                 } else {
                     callback.editLyricOnSelection();
                 }

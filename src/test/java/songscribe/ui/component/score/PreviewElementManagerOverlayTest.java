@@ -56,7 +56,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ModeDidChangeNotification;
-import songscribe.message.notification.PasteModeDidChangeNotification;
+import songscribe.message.notification.InsertionPointModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -351,7 +351,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
     }
 
     @Test
-    void testPasteModeDidChangeDrivesOverlayVisibility() {
+    void testInsertionPointModeDidChangeDrivesOverlayVisibility() {
         when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(0);
         // Real mouse-entered always precedes mouse-moved; restorePreviewElement (the
         // mode-driven restore path below) reads currentMouseLine, which only mouseEnteredLine
@@ -366,17 +366,19 @@ class PreviewElementManagerOverlayTest extends UnitTest {
             .as("precondition: the preview overlay must be visible before the change under test")
             .isTrue();
 
-        PreviewElementManager.instance().pasteModeDidChange(new PasteModeDidChangeNotification(true));
+        PreviewElementManager.instance()
+            .insertionPointModeDidChange(new InsertionPointModeDidChangeNotification(true));
 
         assertThat(overlay.isVisible())
-            .as("entering paste mode clears the overlay")
+            .as("a pending placement clears the overlay")
             .isFalse();
 
         lc.setMousePositionForTest(new Point(0, ON_STAFF_Y_PX));
-        PreviewElementManager.instance().pasteModeDidChange(new PasteModeDidChangeNotification(false));
+        PreviewElementManager.instance()
+            .insertionPointModeDidChange(new InsertionPointModeDidChangeNotification(false));
 
         assertThat(overlay.isVisible())
-            .as("leaving paste mode restores the overlay from the last tracked mouse line")
+            .as("ending the placement restores the overlay from the last tracked mouse line")
             .isTrue();
     }
 

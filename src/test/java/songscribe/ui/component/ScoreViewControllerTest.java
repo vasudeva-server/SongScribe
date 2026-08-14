@@ -65,6 +65,9 @@ import songscribe.layout.NoteGeometry;
 import songscribe.ui.OptionDialogs;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -100,6 +103,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.KeySignatureConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
@@ -1050,6 +1054,60 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(line.getSpans())
                 .as("the declined confirm leaves the ending in place")
                 .containsExactly(ending);
+            assertThat(clipboardManager.getFragment())
+                .as("declining must not consume the clipboard")
+                .isNotNull();
+        }
+
+        /**
+         * A paste-replace widens its deletion exactly as Delete and Cut do, so it can take a
+         * barline or a key signature the user did not select — and owes the same confirm. It was
+         * the one deletion path without it: the widening reached the pair while nothing asked.
+         */
+        @Test
+        void testHandlePasteConfirmsAPairedDeletionAndLeavesTheScoreAloneWhenDeclined() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var keySignature = new KeySignatureElement(new Key(KeyType.SHARPS, 2));
+            song.withoutMutationTracking(() -> {
+                line.addElement(crotchet());
+                line.addElement(singleBarline());
+                line.addElement(keySignature);
+                line.addElement(crotchet());
+            });
+
+            var typesBefore = line.getElements().stream().map(StaffElement::getType).toList();
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+
+            // Selecting the key signature alone: the widening reaches back for its barline.
+            ReflectionTestHelper.selectRange(coordinator, 2, 2);
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(
+                new Fragment(List.of(crotchet()), Collections.singletonList(null), List.of()));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            var controller = new ScoreViewController(
+                scoreMock, mock(MusicEditOperations.class), coordinator, clipboardManager);
+
+            try (var confirms = mockStatic(KeySignatureConfirms.class)) {
+                confirms.when(() -> KeySignatureConfirms.confirmPairedDeletion(any(), any(), anyInt(), anyInt()))
+                    .thenReturn(false);
+
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+                // Positive control: the assertions below would also pass if handlePaste had
+                // bailed out before ever reaching the confirm.
+                confirms.verify(
+                    () -> KeySignatureConfirms.confirmPairedDeletion(any(), any(), anyInt(), anyInt()));
+            }
+
+            assertThat(line.getElements().stream().map(StaffElement::getType).toList())
+                .as("declining the paired-deletion confirm must leave the line untouched")
+                .isEqualTo(typesBefore);
             assertThat(clipboardManager.getFragment())
                 .as("declining must not consume the clipboard")
                 .isNotNull();

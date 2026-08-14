@@ -1343,8 +1343,13 @@ public final class Song implements Disposable {
      *
      * <p>The cases are enumerated rather than the propagation run unconditionally, so that an
      * ordinary note or lyric edit does not walk the line list.
+     *
+     * <p>Package-private rather than private because {@link Line#applyChange} owes the same
+     * maintenance on its suspended-tracking branch, where the mutator runs without reaching
+     * {@link #applyChange}. That caller passes a null {@code startingKeyBefore}: only a line
+     * insertion or deletion can need it, and neither reaches this class through a line.
      */
-    private void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
+    void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
         switch (mutation) {
             case LineInsertion insertion -> {
                 repairLineZeroKey(startingKeyBefore);

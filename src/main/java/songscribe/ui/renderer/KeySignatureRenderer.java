@@ -129,26 +129,13 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         double xPosSs;
 
         if (layoutResult.overflowsStaffWidth()) {
-            xPosSs = contentRightEdgeSs(layoutResult)
+            xPosSs = layoutResult.contentRightEdgeSs()
                 + invariants.getSong().getDefaultRestLengthSs();
         } else {
             xPosSs = lineWidthSs - KeyChange.RIGHT_MARGIN_SS - widthSs;
         }
 
         drawRun(g2, accidentals, xPosSs, invariants);
-    }
-
-    /**
-     * Returns the X of the rightmost edge any column of the solved chain reaches, which is
-     * where the line's drawn content ends. Taking the maximum rather than the last column's
-     * edge means a wide trailing extent anywhere in the chain still pushes the cautionary
-     * clear of it.
-     */
-    private static double contentRightEdgeSs(LayoutResult layoutResult) {
-        return layoutResult.getElementColumns().values().stream()
-            .mapToDouble(ElementColumn::getRightEdgeXSs)
-            .max()
-            .orElse(0);
     }
 
     /** Paints an already laid-out run of accidentals starting at {@code xPosSs}. */

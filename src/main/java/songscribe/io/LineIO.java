@@ -253,7 +253,16 @@ public final class LineIO {
          * inherits the one already in effect.
          *
          * <p>The two halves are only a key together, so {@link Key} is what judges the pair: a
-         * combination it rejects is a corrupt document rather than something to interpret.
+         * combination it rejects is a corrupt document rather than something to interpret. Its
+         * range check also covers an out-of-range accidental count — {@code Key} is the sole
+         * authority on the domain, so this method does not duplicate that check.
+         *
+         * <p>The established key always applies from the start of the line: {@code .mssw} has no
+         * representation for a mid-line key change, so this reader never produces one.
+         *
+         * <p>Whether the established key collapses to null because it equals the key this line
+         * would inherit is {@link Line#setKey} — not this method — deciding: this method always
+         * calls {@code setKey} with the parsed key and relies on {@code setKey} to normalize it.
          *
          * @param line the line being closed
          * @throws SAXException if the parsed pair is not a valid key signature

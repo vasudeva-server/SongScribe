@@ -81,9 +81,11 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
+import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
-import songscribe.dom.Song;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
@@ -95,6 +97,7 @@ import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EditResult;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.KeySignatureConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
@@ -108,7 +111,7 @@ import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.PasteSpanReconciliation;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.hit.HitTarget;
@@ -698,10 +701,10 @@ public final class ScoreViewController {
 
     @Handler
     public void handlePasteboardOp(PasteboardOpCommand message) {
-        // Belt-and-braces: while paste mode is active all pasteboard operations are
-        // ignored. The action layer is already disabled via enableFromPasteMode; this
-        // covers any non-action dispatch path.
-        if (PasteModeManager.isActive()) {
+        // Belt-and-braces: while a placement is pending all pasteboard operations are
+        // ignored. The action layer is already disabled via enableFromInsertionPointMode;
+        // this covers any non-action dispatch path.
+        if (InsertionPointMode.isActive()) {
             return;
         }
 
@@ -732,6 +735,12 @@ public final class ScoreViewController {
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
         if (!confirmEndingInvalidatedByDeletion(line, begin, end)) {
+            return;
+        }
+
+        // Same terms for the barline / key-signature pair this cut may reach beyond the
+        // selection: asked before the clipboard is written, so declining changes nothing.
+        if (!KeySignatureConfirms.confirmPairedDeletion(score, line, begin, end)) {
             return;
         }
 
@@ -846,6 +855,12 @@ public final class ScoreViewController {
                 if (!EndingConfirms.confirmInvalidation(score)) {
                     return;
                 }
+            }
+
+            // Asked before anything is mutated, like the ending confirm above: this delete may
+            // reach a barline or a key signature the user did not select.
+            if (!KeySignatureConfirms.confirmPairedDeletion(score, line, begin, end)) {
+                return;
             }
 
             var decision = confirmDeletionRestatements(line, begin, end);
@@ -1094,17 +1109,247 @@ public final class ScoreViewController {
      * range — so the accidentals offered are the ones the deletion really removes.
      */
     private AccidentalRestatements.Decision confirmDeletionRestatements(Line line, int begin, int end) {
-        var bounds = line.effectiveDeleteRange(begin, end);
+        var bounds = line.effectiveRange(begin, end);
 
         return AccidentalRestatements.confirm(
             score, line, AccidentalRestatements.inDeletedRange(line, bounds.begin(), bounds.end()));
     }
 
     /**
-     * Deletes the element range {@code begin} through {@code end} on {@code line},
+     * Establishes {@code key} at the start of {@code line}, or clears the line's own key so that it
+     * inherits again, reconciling the accidentals the change moves and naming the resulting undo
+     * step {@code label}.
+     *
+     * <p>A key change moves pitches, so it owes the same protection an inserted barline owes: every
+     * note whose sounding pitch the change would move is given an explicit accidental, and notation
+     * the change makes redundant is cleared. Its reach is the inheritance chain — from this line
+     * forward to the first line that establishes a key of its own — which is why this is the one
+     * edit in the program whose reconciliation spans more than one line. See
+     * {@code docs/key-signatures.md}.
+     *
+     * <p>The restatement prompt, when there is one, covers the whole reach in a single dialog and
+     * is raised <b>before</b> the modification bracket opens, as every other confirm is.
+     *
+     * <p><b>The fit check is the caller's, and runs first.</b> A change that will be refused for not
+     * fitting must not first ask the user about accidentals it will never apply.
+     *
+     * @param line  The line whose own key changes
+     * @param key   The key to establish here, or null to inherit the previous line's
+     * @param label The name the undo step takes
+     * @return True when the change was committed; false when the notator cancelled at the
+     *         restatement prompt, in which case nothing was mutated and no undo step exists
+     * @throws IllegalArgumentException if {@code key} is null on a line with nothing to inherit
+     *                                  from — the first line of the song, which must establish a
+     *                                  key of its own
+     */
+    public boolean changeLineKey(Line line, @Nullable Key key, String label) {
+        var song = line.getSong();
+        var lineIndex = song.indexOfLine(line);
+
+        if (key == null && lineIndex <= 0) {
+            throw new IllegalArgumentException(
+                "the first line of a song has nothing to inherit a key from");
+        }
+
+        var runningKey = key != null ? key : song.getLine(lineIndex - 1).keyAtEndOfLine();
+        var reach = AccidentalReconciliation.lineKeyChangeReach(line, runningKey);
+
+        // Pure and pre-mutation, so the removals it would make can be read off it and asked about
+        // before anything is written.
+        var reconciled = AccidentalReconciliation.reconcileModification(
+            reach, AccidentalReconciliation.RestatementRemoval.NONE);
+
+        var decision = AccidentalRestatements.confirm(
+            score, AccidentalRestatements.accidentalsClearedBy(reconciled));
+
+        if (decision.isCancelled()) {
+            return false;
+        }
+
+        // Reconciled a second time only when the answer moves the result: accepted restatements
+        // are cleared by the same walk everything else travels.
+        var accidentalChanges = decision.answer() == AccidentalRestatements.Answer.YES
+            ? AccidentalReconciliation.reconcileModification(reach, decision.removal())
+            : reconciled;
+
+        var reconciledLines = reach.stream()
+            .map(AccidentalReconciliation.ModifiedLine::line)
+            .toList();
+
+        song.withModification(label, () -> {
+            for (var reconciledLine : accidentalChanges) {
+                AccidentalMaterializer.commit(reconciledLine.line(), reconciledLine.changes());
+            }
+
+            // The accepted restatements sitting past the reach's end, which no line of the reach
+            // reconciles.
+            AccidentalRestatements.commitOtherLines(decision, reconciledLines);
+            line.setKey(key);
+        });
+
+        return true;
+    }
+
+    /**
+     * Writes a key change into the middle of {@code line} at {@code insertionIndex}, adding ahead
+     * of it the {@link ElementType#SINGLE_BARLINE} the chosen position needs when it does not
+     * already follow a barline or repeat.
+     *
+     * <p><b>The barline is what keeps {@link KeySignatureElement}'s position invariant true
+     * without restricting where the user may click.</b> A position that already follows a barline
+     * or a repeat takes the key signature alone; every other position takes two elements, barline
+     * first. Either way they enter inside <b>one</b> modification bracket, so a single undo takes
+     * back the whole edit rather than leaving the barline behind — see {@code docs/mutations.md}.
+     *
+     * <p>Positions are measured against the line as it stands, before the bracket opens: an
+     * insertion moves nothing ahead of itself, so the key the change cancels and the positions of
+     * its predecessors are already settled.
+     *
+     * <p><b>The fit check is the caller's, and runs first</b>, exactly as it does for
+     * {@link #changeLineKey}: a change that will be refused for want of room must not first be
+     * written and then taken back.
+     *
+     * <p>An inserted key signature moves pitches from its index forward, so it owes the same
+     * reconciliation a change to the line's own key owes, and raises the same single restatement
+     * prompt. Its reach differs in shape at the head only: the host line is reconciled as an
+     * <em>insertion</em>, so the projection carries the new element and the notes after it resolve
+     * against it, while the lines that inherit are reached exactly as they are for a line-key
+     * change. See {@code docs/key-signatures.md}.
+     *
+     * @param line the line the key change is written into
+     * @param insertionIndex the index the key signature lands at — at least
+     *                       {@link Line#FIRST_LEGAL_KEY_SIGNATURE_INDEX}, since a key signature is
+     *                       never the first element on a line, and at most
+     *                       {@link Line#effectiveElementCount()}
+     * @param key the key taking effect from that position on
+     * @return true when the change was committed; false when the notator cancelled at the
+     *         restatement prompt, in which case nothing was mutated and no undo step exists
+     * @throws IndexOutOfBoundsException if {@code insertionIndex} is below
+     *                                   {@link Line#FIRST_LEGAL_KEY_SIGNATURE_INDEX} or above
+     *                                   {@link Line#effectiveElementCount()}
+     */
+    public boolean insertKeySignature(Line line, int insertionIndex, Key key) {
+        if (insertionIndex < Line.FIRST_LEGAL_KEY_SIGNATURE_INDEX
+            || insertionIndex > line.effectiveElementCount()) {
+
+            throw new IndexOutOfBoundsException(
+                "key signature insertion index " + insertionIndex + " out of bounds ["
+                    + Line.FIRST_LEGAL_KEY_SIGNATURE_INDEX + ", "
+                    + line.effectiveElementCount() + ']');
+        }
+
+        var inserted = new ArrayList<StaffElement>();
+
+        if (KeySignatureElement.needsBarlineBefore(line, insertionIndex)) {
+            inserted.add(ElementType.SINGLE_BARLINE.newInstance());
+        }
+
+        inserted.add(new KeySignatureElement(key));
+
+        // The head: the host line reconciled as an insertion, so the projection holds the new key
+        // signature and every note after it resolves against the key it establishes. Empty prior
+        // accidentals because these elements have no source context — nothing is being pasted.
+        var region = new AccidentalReconciliation.InsertionRegion(
+            line, insertionIndex, null, inserted, List.of(), List.of());
+        var hostChanges = AccidentalReconciliation.reconcile(
+            region, AccidentalReconciliation.RestatementRemoval.NONE);
+
+        // The tail: an existing key signature already standing after the insertion point still has
+        // the last word on the key this line leaves off in, so the inserted key reaches the next
+        // line only when none does.
+        var tail = AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineUnder(insertionIndex, key));
+        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
+
+        reconciled.add(new AccidentalReconciliation.ReconciledLine(line, hostChanges));
+        reconciled.addAll(AccidentalReconciliation.reconcileModification(
+            tail, AccidentalReconciliation.RestatementRemoval.NONE));
+
+        // One prompt for the whole edit, head and tail together, before any bracket opens.
+        var decision = AccidentalRestatements.confirm(
+            score, AccidentalRestatements.accidentalsClearedBy(reconciled));
+
+        if (decision.isCancelled()) {
+            return false;
+        }
+
+        var accidentalChanges = decision.answer() == AccidentalRestatements.Answer.YES
+            ? withRemovalApplied(region, tail, decision.removal())
+            : reconciled;
+        var reconciledLines = reconciled.stream()
+            .map(AccidentalReconciliation.ReconciledLine::line)
+            .toList();
+
+        var spacing = InsertionSpacingCalculator.calculateFragmentInsertion(
+            line, inserted, insertionIndex, null, null, score.getLyricRenderMetrics());
+        var insertedCount = inserted.size();
+
+        line.getSong().withModification(Strings.get(Strings.ACTION_EDIT_OP_ADD_KEY), () -> {
+            // Applied before the elements land, as every reconciliation is: the changes name live
+            // notes and their pre-insertion positions.
+            for (var reconciledLine : accidentalChanges) {
+                AccidentalMaterializer.commit(reconciledLine.line(), reconciledLine.changes());
+            }
+
+            AccidentalRestatements.commitOtherLines(decision, reconciledLines);
+
+            // The lyric seams on either side of the insertion, repaired as they are for any
+            // other bare element: the half that reads pre-insertion indices runs first, the
+            // half that reads the successor runs once every element is in.
+            line.repairNeighborsBeforeInsertion(insertionIndex);
+
+            for (var i = 0; i < insertedCount; i++) {
+                var element = inserted.get(i);
+                element.setXOffsetPx(ScaleContext.ssToRoundedPx(spacing.cloneXPositionsSs().get(i)));
+                line.addElement(insertionIndex + i, element);
+            }
+
+            line.adjustSyllablesForSuccessorAfterInsertion(insertionIndex + insertedCount - 1);
+
+            var tailShiftPx = ScaleContext.ssToRoundedPx(spacing.shiftForSubsequentElementsSs());
+
+            for (var i = insertionIndex + insertedCount; i < line.effectiveElementCount(); i++) {
+                var element = line.getElement(i);
+                element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
+            }
+        });
+
+        return true;
+    }
+
+    /**
+     * Re-runs an inserted key signature's reconciliation with the restatements the notator accepted
+     * folded in, head and tail alike.
+     *
+     * <p>Only reached on {@link AccidentalRestatements.Answer#YES}: the removal is what changes the
+     * result, so a No answer keeps the reconciliation already computed rather than repeating it.
+     *
+     * @param region the host line's insertion, exactly as first reconciled
+     * @param tail the lines inheriting from the host, exactly as first reached
+     * @param removal the accepted restatements and the staff positions they suppress
+     * @return one entry per line, host first, in the same order as the original reconciliation
+     */
+    private static List<AccidentalReconciliation.ReconciledLine> withRemovalApplied(
+        AccidentalReconciliation.InsertionRegion region,
+        List<AccidentalReconciliation.ModifiedLine> tail,
+        AccidentalReconciliation.RestatementRemoval removal) {
+
+        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
+
+        reconciled.add(new AccidentalReconciliation.ReconciledLine(
+            region.line(), AccidentalReconciliation.reconcile(region, removal)));
+        reconciled.addAll(AccidentalReconciliation.reconcileModification(tail, removal));
+
+        return reconciled;
+    }
+
+    /**
+     * Deletes the element range {@code begin} through {@code end} on {@code line} — widened to
+     * {@link Line#effectiveRange}, so an element paired with one the caller named goes with it —
      * naming the resulting undo step {@code label}. Confirmation-free: callers are
-     * responsible for any ending-invalidation confirm and for clearing the selection
-     * before calling this.
+     * responsible for any ending-invalidation confirm, for the paired barline / key-signature
+     * confirm ({@link KeySignatureConfirms#confirmPairedDeletion}), and for clearing the
+     * selection before calling this.
      * <p>
      * When invoked as the outermost modification (delete), {@code label} names the
      * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
@@ -1137,7 +1382,7 @@ public final class ScoreViewController {
         // either (deleteNote removes it with its host), so an explicit accidental on it is
         // removed content and changes the context arriving at the boundary — the same reason,
         // and the same compensation, that tryInsertFragment applies for spacing.
-        var deleteBounds = line.effectiveDeleteRange(begin, end);
+        var deleteBounds = line.effectiveRange(begin, end);
         var reconciledBegin = deleteBounds.begin();
 
         // Deletion is not fit-gated and must not become so, and it cannot need to be: a
@@ -1170,12 +1415,16 @@ public final class ScoreViewController {
                 deleteSelection(begin, end, line);
             });
         } else {
+            // The whole effective range is removed here, both ends included. The grace-note
+            // widening is the other branch's business, so what reaches this one is the range
+            // widened over a breath mark or over the barline a key signature sits behind.
+            var rangeBegin = deleteBounds.begin();
             var rangeEnd = deleteBounds.end();
 
             // Shift elements after the selection to fill the gap, mirroring the
             // per-element xPos adjustment that deleteNote performs.
             if (rangeEnd < line.effectiveElementCount() - 1) {
-                var shift = line.getElement(begin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
+                var shift = line.getElement(rangeBegin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
 
                 for (var i = rangeEnd + 1; i < line.effectiveElementCount(); i++) {
                     line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
@@ -1190,27 +1439,27 @@ public final class ScoreViewController {
                 // Clean up the element before the range: its glissando has nothing left to
                 // point at. Recorded like every other change here — stripping it raw would
                 // leave undo restoring the deleted notes but not the glissando.
-                if (begin > 0) {
-                    var prevElement = line.getElement(begin - 1);
+                if (rangeBegin > 0) {
+                    var prevElement = line.getElement(rangeBegin - 1);
 
                     if (prevElement.hasGlissando()) {
-                        line.modifyElement(begin - 1, ElementField.SLIDE, prevElement::removeSlide);
+                        line.modifyElement(rangeBegin - 1, ElementField.SLIDE, prevElement::removeSlide);
                     }
                 }
 
                 // Mirror deleteNote: adjust syllable relations and melisma extends
                 // on neighbors before removing. Both helpers require the target
                 // elements to still be present in the list.
-                line.adjustSyllablesForNeighborChange(begin - 1, line.getElement(begin));
+                line.adjustSyllablesForNeighborChange(rangeBegin - 1, line.getElement(rangeBegin));
 
-                // When rangeEnd was extended to include a trailing breath mark, this
-                // loop also runs over that breath mark. Breath marks carry no lyrics,
-                // so adjustExtendsForDeletion is a harmless no-op for it.
-                for (var i = begin; i <= rangeEnd; i++) {
+                // When the range was widened to include a trailing breath mark or a paired
+                // barline, this loop also runs over it. Neither carries lyrics, so
+                // adjustExtendsForDeletion is a harmless no-op for them.
+                for (var i = rangeBegin; i <= rangeEnd; i++) {
                     line.adjustExtendsForDeletion(i);
                 }
 
-                line.removeRange(begin, rangeEnd);
+                line.removeRange(rangeBegin, rangeEnd);
             });
         }
     }
@@ -1249,7 +1498,7 @@ public final class ScoreViewController {
     private static int pasteDisplacementIndex(
         Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
 
-        return deleteRange == null ? insertIndex : line.effectiveDeleteBegin(deleteRange.begin());
+        return deleteRange == null ? insertIndex : line.effectiveBegin(deleteRange.begin());
     }
 
     /** Outcome of {@link #tryInsertFragment}. */
@@ -1532,14 +1781,25 @@ public final class ScoreViewController {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var deleteRange = new InsertionSpacingCalculator.DeletedRange(
-            begin, line.effectiveDeleteEnd(range.end()));
+
+        // The whole range the replace really removes, widened at both ends exactly as a plain
+        // deletion is. Using the raw begin here understated it: the deletion this authorizes also
+        // takes the barline in front of a key signature at begin, so the spacing was measured for
+        // a smaller range than the one that goes.
+        var effective = line.effectiveRange(range.begin(), range.end());
+        var begin = effective.begin();
+        var deleteRange = new InsertionSpacingCalculator.DeletedRange(begin, effective.end());
 
         // A paste-replace deletes before it inserts, so it can discard an ending the
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
         // the score, the selection, and the clipboard untouched.
         if (!confirmEndingInvalidatedByDeletion(line, deleteRange.begin(), deleteRange.end())) {
+            return;
+        }
+
+        // And it can reach a barline or a key signature the user did not select, for the same
+        // reason and on the same terms as Delete and Cut.
+        if (!KeySignatureConfirms.confirmPairedDeletion(score, line, range.begin(), range.end())) {
             return;
         }
 

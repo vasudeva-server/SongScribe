@@ -59,9 +59,11 @@ import songscribe.ui.OptionDialogs;
  *   <tr><td><b>Cancel</b></td><td>Abort the whole edit — nothing mutated, no undo step.</td></tr>
  * </table>
  *
- * <p>One prompt per edit, however many accidentals the edit removes, and never on an edit that only
- * <em>adds</em> an accidental: a later accidental made redundant by an addition is wanted here, not
- * surplus.
+ * <p>One prompt per edit, however many accidentals the edit removes and however many lines they sit
+ * on, and never on an edit that only <em>adds</em> an accidental: a later accidental made redundant
+ * by an addition is wanted here, not surplus. A key change is the edit that makes the second clause
+ * of that promise load-bearing — it removes accidentals along its whole inheritance chain, and one
+ * prompt per line for a single click would be the worse failure by far.
  *
  * <p>{@link #confirm} must run in an edit's decide phase, <b>before any modification bracket
  * opens</b> — the same rule the ending confirms follow, and for the same reason: a dialog must
@@ -112,10 +114,20 @@ public final class AccidentalRestatements {
     ) {}
 
     /**
-     * One explicit accidental an edit really does take away — an {@link EditedNote} that
-     * {@link #confirm} has decided against.
+     * The elements one line of an edit changes, described pre-mutation. An edit reaches as many
+     * lines as it reaches — one for a click or a selection, the whole inheritance chain for a key
+     * change — and {@link #confirm} asks about all of them at once.
+     *
+     * @param line  The line, in its pre-edit state
+     * @param notes The elements this edit changes on {@code line}; each {@link EditedNote} indexes
+     *              into it
      */
-    private record RemovedAccidental(int index, int staffPosition, StaffElement.Accidental accidental) {}
+    public record EditedLine(Line line, List<EditedNote> notes) {
+
+        public EditedLine {
+            notes = List.copyOf(notes);
+        }
+    }
 
     /**
      * The notator's answer and everything the caller needs to honor it.
@@ -149,6 +161,19 @@ public final class AccidentalRestatements {
     }
 
     /**
+     * As {@link #confirm(Component, List)} for an edit that reaches one line — a click, a
+     * selection, everything but a key change.
+     *
+     * @param parent The component to parent the dialog on, or null when there is no owning window
+     * @param line   The line being edited; every {@link EditedNote} indexes into it
+     * @param edited The elements this edit changes, described pre-mutation
+     * @return The decision, which is always a plain proceed when nothing was found
+     */
+    public static Decision confirm(@Nullable Component parent, Line line, List<EditedNote> edited) {
+        return confirm(parent, List.of(new EditedLine(line, edited)));
+    }
+
+    /**
      * Works out which of {@code edited} actually lose an explicit accidental, scans forward for
      * restatements of each, and — when there is at least one — asks the notator what to do about
      * them.
@@ -157,17 +182,19 @@ public final class AccidentalRestatements {
      * anything: the edit is about to change all of them, so none may be offered back to the user or
      * allowed to stand in for a cancellation.
      *
+     * <p><b>One dialog covers the whole range</b>, however many lines it holds. The range exists
+     * because a key change's removals span every line that inherits the key it changes; asking once
+     * per line for one click is the failure this shape prevents.
+     *
      * <p>Mutates nothing, and shows nothing when the scan comes up empty — which is the common
      * case, so the ordinary edit is not made to pay for this feature with a dialog.
      *
      * @param parent The component to parent the dialog on, or null when there is no owning window
-     * @param line   The line being edited. Every {@link EditedNote} indexes into it; an edit whose
-     *               removals span two lines does not exist, because a removal is always something
-     *               one selection or one click does
-     * @param edited The elements this edit changes, described pre-mutation
+     * @param edited The lines this edit changes and what it changes on each, in song order and
+     *               described pre-mutation. Every line must belong to the same song
      * @return The decision, which is always a plain proceed when nothing was found
      */
-    public static Decision confirm(@Nullable Component parent, Line line, List<EditedNote> edited) {
+    public static Decision confirm(@Nullable Component parent, List<EditedLine> edited) {
         if (edited.isEmpty()) {
             return Decision.PROCEED;
         }
@@ -176,41 +203,42 @@ public final class AccidentalRestatements {
         // hashCode. Insertion-ordered so the offered notes stay in song order, since the removals
         // are scanned in song order and each scan runs forward.
         var excluded = new LinkedHashSet<StaffElement>();
-        var removed = new ArrayList<RemovedAccidental>();
+        var accidentalRemovals = new LinkedHashSet<AccidentalReconciliation.AccidentalRemoval>();
+        var suppressedStaffPositions = new LinkedHashSet<Integer>();
 
-        for (var note : edited) {
-            var element = line.getElement(note.index());
-            excluded.add(element);
+        for (var editedLine : edited) {
+            var line = editedLine.line();
 
-            var before = note.before();
+            for (var note : editedLine.notes()) {
+                var element = line.getElement(note.index());
+                excluded.add(element);
 
-            // A grace note sits outside the accidental-context system entirely — the reconciliation
-            // walk skips every element that is not a pitched note — so its accidental never lent
-            // anything to a later note and cannot have been restated.
-            if ((before != null) && element.getType().isPitchedNote() && !keepsAccidental(note)) {
-                removed.add(new RemovedAccidental(note.index(), note.staffPosition(), before));
+                var before = note.before();
+
+                // A grace note sits outside the accidental-context system entirely — the
+                // reconciliation walk skips every element that is not a pitched note — so its
+                // accidental never lent anything to a later note and cannot have been restated.
+                if ((before != null) && element.getType().isPitchedNote() && !keepsAccidental(note)) {
+                    suppressedStaffPositions.add(note.staffPosition());
+                    accidentalRemovals.add(new AccidentalReconciliation.AccidentalRemoval(
+                        line, note.index(), note.staffPosition(), before));
+                }
             }
         }
 
-        if (removed.isEmpty()) {
+        if (accidentalRemovals.isEmpty()) {
             return Decision.PROCEED;
         }
 
         var notes = new LinkedHashSet<StaffElement>();
         var lines = new LinkedHashSet<Line>();
-        var suppressedStaffPositions = new LinkedHashSet<Integer>();
-        var song = line.getSong();
+        var song = edited.getFirst().line().getSong();
 
-        for (var removal : removed) {
-            suppressedStaffPositions.add(removal.staffPosition());
+        for (var restatement :
+            AccidentalReconciliation.findRestatements(song, accidentalRemovals, excluded)) {
 
-            var restatements = AccidentalReconciliation.findRestatements(
-                song, line, removal.index(), removal.staffPosition(), removal.accidental(), excluded);
-
-            for (var restatement : restatements) {
-                if (notes.add(restatement.note())) {
-                    lines.add(restatement.line());
-                }
+            if (notes.add(restatement.note())) {
+                lines.add(restatement.line());
             }
         }
 
@@ -260,34 +288,60 @@ public final class AccidentalRestatements {
      * @param editedLine The line the edit itself is reconciling, which is skipped here
      */
     public static void commitOtherLines(Decision decision, Line editedLine) {
-        commit(decision, editedLine);
+        commitOtherLines(decision, List.of(editedLine));
     }
 
     /**
-     * As {@link #commitOtherLines}, for an edit that runs no reconciliation of its own: every line
-     * holding an accepted restatement is reconciled here, the edited one included.
+     * As {@link #commitOtherLines(Decision, Line)} for an edit that reconciles a <em>range</em> of
+     * lines — a key change. Every line of that range is skipped; what is left is the lines the edit
+     * never reached, which hold accepted restatements only because the scan runs to the end of the
+     * song rather than to the end of the range.
+     *
+     * @param decision         The notator's decision, from {@link #confirm}
+     * @param reconciledLines  Every line the edit reconciles itself, which are skipped here
+     */
+    public static void commitOtherLines(Decision decision, List<Line> reconciledLines) {
+        for (var line : decision.lines()) {
+            // Identity, not equality: Line overrides neither equals nor hashCode, so this is a
+            // reference scan over a range that is one line long for every edit but a key change.
+            if (!containsIdentical(reconciledLines, line)) {
+                commitLine(decision, line);
+            }
+        }
+    }
+
+    /**
+     * As {@link #commitOtherLines(Decision, Line)}, for an edit that runs no reconciliation of its
+     * own: every line holding an accepted restatement is reconciled here, the edited one included.
      *
      * <p>Only the click-replace path needs this. It has never reconciled — replacing a note is the
-     * one mutation #676 left uncovered — so there is no reconciliation for its own line's
-     * restatements to travel through.
+     * one mutation the accidental reconciliation never covered — so there is no reconciliation for
+     * its own line's restatements to travel through.
      *
      * <p>Call it from the same place a reconciliation would go: inside the edit's modification
      * bracket, and before the line is mutated, so the scan reads the pre-edit line exactly as every
      * other call site does.
      */
     public static void commitAllLines(Decision decision) {
-        commit(decision, null);
+        for (var line : decision.lines()) {
+            commitLine(decision, line);
+        }
     }
 
-    private static void commit(Decision decision, @Nullable Line skipped) {
-        for (var line : decision.lines()) {
-            if (line == skipped) {
-                continue;
-            }
+    private static void commitLine(Decision decision, Line line) {
+        AccidentalMaterializer.commit(line, AccidentalReconciliation.reconcileModification(
+            line, List.of(), decision.removal()));
+    }
 
-            AccidentalMaterializer.commit(line, AccidentalReconciliation.reconcileModification(
-                line, List.of(), decision.removal()));
+    /** Whether {@code lines} holds {@code line} itself, by reference rather than by equality. */
+    private static boolean containsIdentical(List<Line> lines, Line line) {
+        for (var candidate : lines) {
+            if (candidate == line) {
+                return true;
+            }
         }
+
+        return false;
     }
 
     /**
@@ -321,6 +375,49 @@ public final class AccidentalRestatements {
             var element = line.getElement(i);
 
             edited.add(new EditedNote(i, element.getStaffPosition(), element.getAccidental(), null));
+        }
+
+        return edited;
+    }
+
+    /**
+     * A key change, described for {@link #confirm}: the accidentals its reconciliation clears, on
+     * every line of its range.
+     *
+     * <p>A key change removes no accidental by itself — it moves pitches, and the reconciliation
+     * decides which notation that makes redundant. So the removals are read back off the
+     * reconciliation, which is pure and pre-mutation and can therefore be run before anyone is
+     * asked anything. Notes it clears <em>inside</em> the range end up excluded from the scan, so
+     * what the notator is offered is what the arithmetic could not reach: restatements on the lines
+     * past the range's end, where the key never moved and a matching accidental still sounds.
+     *
+     * @param reconciled The key change's reconciliation, from
+     *                   {@link AccidentalReconciliation#reconcileModification(List,
+     *                   AccidentalReconciliation.RestatementRemoval)}
+     * @return One {@link EditedLine} per reconciled line, in the same order, naming the notes that
+     *         line loses an accidental from (empty lists included)
+     */
+    public static List<EditedLine> accidentalsClearedBy(
+        List<AccidentalReconciliation.ReconciledLine> reconciled) {
+
+        var edited = new ArrayList<EditedLine>(reconciled.size());
+
+        for (var reconciledLine : reconciled) {
+            var line = reconciledLine.line();
+            var notes = new ArrayList<EditedNote>();
+
+            for (var change : reconciledLine.changes()) {
+                if (change.accidental() != null) {
+                    continue;
+                }
+
+                var note = change.note();
+
+                notes.add(new EditedNote(
+                    line.getElementIndex(note), note.getStaffPosition(), note.getAccidental(), null));
+            }
+
+            edited.add(new EditedLine(line, notes));
         }
 
         return edited;

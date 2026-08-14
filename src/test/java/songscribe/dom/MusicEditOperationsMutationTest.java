@@ -1052,6 +1052,37 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
+    void testCanMakeFirstSecondEndingSkipsAKeySignatureToReachPrecedingBarline() {
+        // A key signature is not musical content, and a key change must not move where an
+        // ending anchors: the walk passes over it and reaches the barline it sits behind,
+        // so the bracket lands exactly where it would have without the key change.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), SINGLE_BARLINE(2), KEY_SIGNATURE(3),
+        //          CROTCHET(4), REPEAT_RIGHT(5), CROTCHET(6), CROTCHET(7), SINGLE_BARLINE(8)]
+        // Selection 4–8. Skipping the key signature reaches SINGLE_BARLINE at index 2
+        // → EXTEND_SPAN with spanStart 2.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), singleBarline(), new KeySignatureElement(Key.DEFAULT),
+            crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 4, 8);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("a mid-line key change before the selection must not make the ending invalid")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be EXTEND_SPAN once the key signature is skipped")
+            .isEqualTo(EndingValidationResult.PrecedingAction.EXTEND_SPAN);
+        assertThat(result.getSpanStart())
+            .as("span start must anchor on the barline in front of the key signature, not on the "
+                + "key signature")
+            .isEqualTo(2);
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(8);
+    }
+
+    @Test
     void testCanMakeFirstSecondEndingSkipsGraceNoteToReachPrecedingNote() {
         // Same skipping rule, but the element behind the grace note is a note rather than
         // a barline, so the bracket anchors at the selection start with no extension.

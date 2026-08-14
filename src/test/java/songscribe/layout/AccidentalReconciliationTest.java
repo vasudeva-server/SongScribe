@@ -25,9 +25,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.note;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -40,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
@@ -80,17 +83,6 @@ class AccidentalReconciliationTest extends UnitTest {
 
     /** One sharp in the signature is F♯, which is why the sharp-key case below uses an F. */
     private static final int ONE_SHARP = 1;
-
-    private static StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
-        var element = crotchet();
-        element.setStaffPosition(staffPosition);
-        element.setAccidental(accidental);
-        return element;
-    }
-
-    private static StaffElement note(int staffPosition) {
-        return note(staffPosition, null);
-    }
 
     private static Line lineOf(StaffElement... elements) {
         var line = detachedLine();
@@ -793,9 +785,17 @@ class AccidentalReconciliationTest extends UnitTest {
         }
 
         private List<AccidentalReconciliation.Restatement> scanFromFirstFlat() {
+            return scanFromFirstFlat(Set.of(firstLine.getElement(FIRST_NOTE)));
+        }
+
+        private List<AccidentalReconciliation.Restatement> scanFromFirstFlat(
+            Set<StaffElement> excluded) {
+
             return AccidentalReconciliation.findRestatements(
-                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT,
-                Set.of(firstLine.getElement(FIRST_NOTE)));
+                song,
+                Set.of(new AccidentalReconciliation.AccidentalRemoval(
+                    firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT)),
+                excluded);
         }
 
         /** The removal the user accepted: both restatements, with the F position suppressed. */
@@ -852,9 +852,8 @@ class AccidentalReconciliationTest extends UnitTest {
             // going away regardless, and it must not stand in for a cancellation either.
             var excluded = Set.of(firstLine.getElement(FIRST_NOTE), firstLine.getElement(THIRD_NOTE));
 
-            assertThat(AccidentalReconciliation.findRestatements(
-                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, excluded))
-                .containsExactly(new AccidentalReconciliation.Restatement(
+            assertThat(scanFromFirstFlat(excluded)).containsExactly(
+                new AccidentalReconciliation.Restatement(
                     secondLine, secondLine.getElement(FIRST_NOTE)));
         }
 
@@ -866,9 +865,8 @@ class AccidentalReconciliationTest extends UnitTest {
 
             var excluded = Set.of(firstLine.getElement(FIRST_NOTE), firstLine.getElement(THIRD_NOTE));
 
-            assertThat(AccidentalReconciliation.findRestatements(
-                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, excluded))
-                .containsExactly(new AccidentalReconciliation.Restatement(
+            assertThat(scanFromFirstFlat(excluded)).containsExactly(
+                new AccidentalReconciliation.Restatement(
                     secondLine, secondLine.getElement(FIRST_NOTE)));
         }
 
@@ -997,6 +995,192 @@ class AccidentalReconciliationTest extends UnitTest {
                 acceptedRemoval());
 
             assertThat(accidentalChanges).containsExactly(change(firstLine, THIRD_NOTE, null));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Key changes, whose reach is a range of lines rather than one line
+    // -----------------------------------------------------------------------
+
+    /**
+     * A key change is the one edit whose reconciliation spans more than one line: it moves pitches
+     * on every line that inherits the key it changes, so it is reconciled from the change point
+     * forward to the first line that establishes a key of its own.
+     *
+     * <p>The fixture is three lines of {@code F G F} in C major, where line 0 establishes the key
+     * and lines 1 and 2 inherit it. C major writes no accidental at all, so every F sounds natural
+     * and the arithmetic of a change into a sharp key is visible on all three lines at once.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class KeyChange {
+
+        private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
+        private static final Key G_MAJOR = new Key(KeyType.SHARPS, ONE_SHARP);
+        private static final Key F_MAJOR = new Key(KeyType.FLATS, ONE_FLAT);
+
+        private static final int FIRST_LINE = 0;
+        private static final int SECOND_LINE = 1;
+        private static final int THIRD_LINE = 2;
+
+        private Song song = new Song();
+
+        @BeforeEach
+        void buildThreeInheritingLines() {
+            song = new Song();
+            song.withModification(() -> song.getLine(FIRST_LINE).setKey(C_MAJOR));
+
+            fill(song.getLine(FIRST_LINE));
+            appendInheritingLine();
+            appendInheritingLine();
+        }
+
+        /** {@code F G F}: the first F is the one a key change has to protect. */
+        private void fill(Line line) {
+            song.withModification(() -> {
+                line.addElement(note(F_STAFF_POSITION));
+                line.addElement(note(G_STAFF_POSITION));
+                line.addElement(note(F_STAFF_POSITION));
+            });
+        }
+
+        private Line appendInheritingLine() {
+            var line = new Line(song);
+            song.withModification(() -> song.addLine(line));
+            fill(line);
+            return line;
+        }
+
+        /** The range a change of the first line's key to {@code key} reconciles. */
+        private List<AccidentalReconciliation.ModifiedLine> reachOfChangingTheFirstLinesKey(Key key) {
+            return AccidentalReconciliation.lineKeyChangeReach(song.getLine(FIRST_LINE), key);
+        }
+
+        private List<AccidentalReconciliation.ReconciledLine> reconcileKeyChange(Key key) {
+            return AccidentalReconciliation.reconcileModification(
+                reachOfChangingTheFirstLinesKey(key), AccidentalReconciliation.RestatementRemoval.NONE);
+        }
+
+        /** What the note at {@code index} sounds, as a number of semitones of alteration. */
+        private static int soundingAdjustment(Line line, int index) {
+            var element = line.getElement(index);
+            var own = element.getAccidental();
+
+            return StaffElement.getPitchAdjustment(
+                own != null ? own : element.findEffectiveAccidental(line, index));
+        }
+
+        private List<Integer> soundingAdjustments() {
+            var adjustments = new ArrayList<Integer>();
+
+            for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
+                var line = song.getLine(lineIndex);
+
+                for (var index = 0; index < line.elementCount(); index++) {
+                    adjustments.add(soundingAdjustment(line, index));
+                }
+            }
+
+            return adjustments;
+        }
+
+        /** Commits a reconciled key change exactly as {@code ScoreViewController} does. */
+        private void applyKeyChange(List<AccidentalReconciliation.ReconciledLine> reconciled, Key key) {
+            song.withModification(() -> {
+                for (var reconciledLine : reconciled) {
+                    AccidentalMaterializer.commit(reconciledLine.line(), reconciledLine.changes());
+                }
+
+                song.getLine(FIRST_LINE).setKey(key);
+            });
+        }
+
+        @Test
+        void testTheReachIsEveryLineThatInheritsTheChangedKey() {
+            assertThat(reachOfChangingTheFirstLinesKey(G_MAJOR))
+                .extracting(AccidentalReconciliation.ModifiedLine::line)
+                .containsExactly(
+                    song.getLine(FIRST_LINE), song.getLine(SECOND_LINE), song.getLine(THIRD_LINE));
+        }
+
+        @Test
+        void testEveryLineInTheReachIsMaterialized() {
+            // Each line's first F sounded natural in C major and would sound sharp in G major, so
+            // each is pinned to the natural it had. The second F on each line resolves from that
+            // materialization and needs nothing of its own.
+            var reconciled = reconcileKeyChange(G_MAJOR);
+
+            assertThat(reconciled).allSatisfy(reconciledLine ->
+                assertThat(reconciledLine.changes()).containsExactly(
+                    change(reconciledLine.line(), FIRST_NOTE, StaffElement.Accidental.NATURAL)));
+        }
+
+        @Test
+        void testTheReachStopsAtTheFirstLineWithAKeyOfItsOwn() {
+            // The other half of the stopping rule: line 1 now establishes its own key, so its
+            // running key cannot move and nothing past it can either.
+            song.withModification(() -> song.getLine(SECOND_LINE).setKey(F_MAJOR));
+
+            var reconciled = reconcileKeyChange(G_MAJOR);
+
+            assertThat(reconciled).extracting(AccidentalReconciliation.ReconciledLine::line)
+                .containsExactly(song.getLine(FIRST_LINE));
+            assertThat(reconciled.getFirst().changes()).containsExactly(
+                change(song.getLine(FIRST_LINE), FIRST_NOTE, StaffElement.Accidental.NATURAL));
+        }
+
+        @Test
+        void testEveryNoteKeepsItsSoundingPitchAcrossTheChange() {
+            // The invariant, asserted on pitch rather than on a table of expected accidentals —
+            // including the notes two lines downstream, which only the range reaches.
+            var before = soundingAdjustments();
+
+            applyKeyChange(reconcileKeyChange(G_MAJOR), G_MAJOR);
+
+            assertThat(soundingAdjustments()).isEqualTo(before);
+            assertKeyPropagationInvariant(song);
+        }
+
+        @Test
+        void testAKeyChangeMovingNoPitchClassAnyNoteUsesChangesNothing() {
+            // F major alters B, and no note here is a B. The common case must not be made to pay
+            // for the feature: nothing is written, on any line of the reach.
+            var reconciled = reconcileKeyChange(F_MAJOR);
+
+            assertThat(reconciled).hasSize(song.lineCount());
+            assertThat(reconciled).allSatisfy(
+                reconciledLine -> assertThat(reconciledLine.changes()).isEmpty());
+        }
+
+        @Test
+        void testAMidLineKeySignatureReconcilesFromItsIndexForwardRatherThanFromTheStartOfItsLine() {
+            // F | F, with the key signature landing after the barline: only the F past it moves,
+            // and the F before it is in the key the line still starts in.
+            var line = song.getLine(FIRST_LINE);
+            song.withModification(() -> {
+                line.removeRange(FIRST_NOTE, THIRD_NOTE);
+                line.addElement(note(F_STAFF_POSITION));
+                line.addElement(singleBarline());
+                line.addElement(note(F_STAFF_POSITION));
+            });
+
+            var accidentalChanges = AccidentalReconciliation.reconcile(
+                insert(line, THIRD_NOTE, new KeySignatureElement(G_MAJOR)));
+
+            assertThat(accidentalChanges).containsExactly(
+                change(line, THIRD_NOTE, StaffElement.Accidental.NATURAL));
+        }
+
+        @Test
+        void testAMidLineKeySignatureReKeysTheLinesThatInheritFromItsLine() {
+            // What the line leaves off in is what the next lines inherit, so the reach of an
+            // inserted mid-line change is every line after it that inherits — with the inserted
+            // key, not the line's own.
+            var line = song.getLine(FIRST_LINE);
+
+            assertThat(AccidentalReconciliation.linesInheriting(line, G_MAJOR))
+                .extracting(AccidentalReconciliation.ModifiedLine::line)
+                .containsExactly(song.getLine(SECOND_LINE), song.getLine(THIRD_LINE));
         }
     }
 

@@ -2455,6 +2455,47 @@ class LineMutationTest extends UnitTest {
             assertKeyPropagationInvariant(song);
         }
 
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("songscribe.dom.LineMutationTest#keyAffectingEdits")
+        void testThePropagationInvariantHoldsUnderSuspendedTrackingToo(
+            String description, Consumer<Song> edit) {
+
+            // The inheritance half of the same property, under the other bracket. Suspending
+            // tracking stops the mutation being recorded; it does not stop the edit moving a key,
+            // so the chain is owed either way. The edits routed through Line.applyChange — a
+            // line's own key, a mid-line key signature — are the ones that used to escape the
+            // hook, and a table split by bracket would have kept passing without them.
+            //
+            // Line 0's clause is not asserted here because it is deliberately deferred under
+            // suspended tracking; the case below covers the settle that discharges it.
+            song.withoutMutationTracking(() -> {
+                song.addLine(new Line(song));
+                song.addLine(new Line(song));
+            });
+
+            song.withoutMutationTracking(() -> edit.accept(song));
+
+            assertInheritedKeyChainInvariant(song);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("songscribe.dom.LineMutationTest#keyAffectingEdits")
+        void testTheLoadSettleDischargesTheLineZeroClauseAfterSuspendedEdits(
+            String description, Consumer<Song> edit) {
+
+            // What a file reader actually does: build under suspended tracking, then settle. The
+            // full invariant is owed at that point, including the line-0 clause the edits above
+            // are allowed to leave open.
+            song.withoutMutationTracking(() -> {
+                song.addLine(new Line(song));
+                song.addLine(new Line(song));
+                edit.accept(song);
+                song.rebuildInheritedKeysAfterParsing();
+            });
+
+            assertKeyPropagationInvariant(song);
+        }
+
         @Test
         void testAddingALineAtZeroLeavesItHoldingTheKeyTheSongStartedIn() {
             var startingKey = line.getRunningKey();

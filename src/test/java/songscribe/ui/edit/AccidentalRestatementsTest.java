@@ -48,8 +48,8 @@ import songscribe.ui.OptionDialogs;
  * Tests for {@link AccidentalRestatements}, the prompt that asks whether an edit removing an
  * explicit accidental should also remove the later notes that restate it.
  *
- * <p>The fixture is the worked example of the #681 plan, in D♭ major — five flats, so F is
- * unaltered by the key and every flat on an F is explicit:
+ * <p>The fixture is the worked example the feature was designed against, in D♭ major — five flats,
+ * so F is unaltered by the key and every flat on an F is explicit:
  *
  * <pre>
  * line 1:  F♭  G   F♭
@@ -173,6 +173,31 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     @Test
+    void testARemovalSetSpanningSeveralStaffPositionsResolvesEachOfThem() {
+        // Give 1:1's G an explicit sharp alongside 1:0's flat, and a later restatement of that
+        // sharp on line 2. One confirm() call now removes two different staff positions in the
+        // same edit — the case the collapsed single-pass scan could break by letting one
+        // position's cancellation or threshold bleed into the other's.
+        firstLine.getElement(SECOND_NOTE).setAccidental(StaffElement.Accidental.SHARP);
+        secondLine.getElement(SECOND_NOTE).setStaffPosition(G_STAFF_POSITION);
+        secondLine.getElement(SECOND_NOTE).setAccidental(StaffElement.Accidental.SHARP);
+
+        var edited = List.of(
+            new AccidentalRestatements.EditedNote(
+                FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, null),
+            new AccidentalRestatements.EditedNote(
+                SECOND_NOTE, G_STAFF_POSITION, StaffElement.Accidental.SHARP, null));
+
+        var decision = confirmWithAnswer(JOptionPane.YES_OPTION, firstLine, edited);
+
+        assertThat(decision.removal().notes()).containsExactlyInAnyOrder(
+            firstLine.getElement(THIRD_NOTE), secondLine.getElement(FIRST_NOTE),
+            secondLine.getElement(SECOND_NOTE));
+        assertThat(decision.removal().suppressedStaffPositions())
+            .containsExactlyInAnyOrder(F_STAFF_POSITION, G_STAFF_POSITION);
+    }
+
+    @Test
     void testNoRemovesNothingButStillLetsTheEditProceed() {
         var decision = confirmWithAnswer(JOptionPane.NO_OPTION);
 
@@ -288,6 +313,85 @@ class AccidentalRestatementsTest extends UnitTest {
         assertThat(firstLine.getElement(THIRD_NOTE).getAccidental())
             .isEqualTo(StaffElement.Accidental.FLAT);
         assertThat(secondLine.getElement(FIRST_NOTE).getAccidental()).isNull();
+    }
+
+    // -----------------------------------------------------------------------
+    // The range form, which a key change is the only edit to need
+    // -----------------------------------------------------------------------
+
+    /** The flat coming off {@code 1:0} and the one coming off {@code 2:0}, as one edit. */
+    private List<AccidentalRestatements.EditedLine> flatsOffBothLines() {
+        return List.of(
+            new AccidentalRestatements.EditedLine(firstLine, toggleOffTheFirstFlat()),
+            new AccidentalRestatements.EditedLine(secondLine, List.of(
+                new AccidentalRestatements.EditedNote(
+                    FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, null))));
+    }
+
+    @Test
+    void testOneDialogCoversTheWholeRangeRatherThanOnePerLine() {
+        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+            optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                any(), any(), any(), anyInt(), anyInt())).thenReturn(JOptionPane.YES_OPTION);
+
+            var decision = AccidentalRestatements.confirm(null, flatsOffBothLines());
+
+            optionDialogs.verify(() -> OptionDialogs.showConfirmDialog(
+                any(), any(), any(), anyInt(), anyInt()));
+            assertThat(decision.answer()).isEqualTo(AccidentalRestatements.Answer.YES);
+
+            // 1:2 restates the flat coming off 1:0; 2:0 is not offered back because this same edit
+            // is what takes it away.
+            assertThat(decision.removal().notes())
+                .containsExactly(firstLine.getElement(THIRD_NOTE));
+        }
+    }
+
+    @Test
+    void testNothingIsAskedWhenNoLineOfTheRangeLosesAnAccidental() {
+        // What a key change that clears nothing produces: a line per line of its reach, each
+        // naming no note at all. The common case must not be made to pay for the feature.
+        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+            var decision = AccidentalRestatements.confirm(null, List.of(
+                new AccidentalRestatements.EditedLine(firstLine, List.of()),
+                new AccidentalRestatements.EditedLine(secondLine, List.of())));
+
+            optionDialogs.verifyNoInteractions();
+            assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
+        }
+    }
+
+    @Test
+    void testAKeyChangeIsDescribedByTheAccidentalsItsReconciliationClears() {
+        // A key change removes no accidental itself, so what it is asked about is read back off
+        // its reconciliation: the changes that clear one, never the ones that write one.
+        var reconciled = List.of(
+            new AccidentalReconciliation.ReconciledLine(firstLine, List.of(
+                new AccidentalReconciliation.AccidentalChange(
+                    firstLine.getElement(THIRD_NOTE), null))),
+            new AccidentalReconciliation.ReconciledLine(secondLine, List.of(
+                new AccidentalReconciliation.AccidentalChange(
+                    secondLine.getElement(THIRD_NOTE), StaffElement.Accidental.NATURAL))));
+
+        assertThat(AccidentalRestatements.accidentalsClearedBy(reconciled)).containsExactly(
+            new AccidentalRestatements.EditedLine(firstLine, List.of(
+                new AccidentalRestatements.EditedNote(
+                    THIRD_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, null))),
+            new AccidentalRestatements.EditedLine(secondLine, List.of()));
+    }
+
+    @Test
+    void testCommittingTheOtherLinesSkipsEveryLineTheEditReconciles() {
+        // The range form of the skip: a key change reconciles its whole reach, so no line of that
+        // reach may be reconciled a second time here.
+        var decision = confirmWithAnswer(JOptionPane.YES_OPTION);
+
+        AccidentalRestatements.commitOtherLines(decision, List.of(firstLine, secondLine));
+
+        assertThat(firstLine.getElement(THIRD_NOTE).getAccidental())
+            .isEqualTo(StaffElement.Accidental.FLAT);
+        assertThat(secondLine.getElement(FIRST_NOTE).getAccidental())
+            .isEqualTo(StaffElement.Accidental.FLAT);
     }
 
     @Test

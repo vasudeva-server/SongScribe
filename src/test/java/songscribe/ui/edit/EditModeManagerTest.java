@@ -72,12 +72,12 @@ class EditModeManagerTest extends UnitTest {
         ActionsTestSupport.initializeActions();
     }
 
-    // Resets the EditModeManager, GraceModeManager, and PasteModeManager singletons
+    // Resets the EditModeManager, GraceModeManager, and InsertionPointMode singletons
     // between tests. EditModeManager.init() (called by several nested @BeforeEach
-    // setups below) constructs a PasteModeManager, which sets its own static
+    // setups below) constructs an InsertionPointMode, which sets its own static
     // instance as a side effect — that leak must be reset here too, or a later
-    // test class's PasteModeManager.isActive()/getActiveInstance() calls see a
-    // zombie instance wired to this test's torn-down mocks.
+    // test class's InsertionPointMode.isActive() calls see a zombie instance wired
+    // to this test's torn-down mocks.
     //
     // Discarding the EditModeManager also discards both insertion slots, since they are
     // instance fields — no separate insertion reset is needed here, and the test has no
@@ -86,7 +86,7 @@ class EditModeManagerTest extends UnitTest {
     void tearDownSingletons() {
         resetEditModeManagerInstance(null);
         resetGraceModeManagerInstance(null);
-        resetPasteModeManagerInstance(null);
+        resetInsertionPointModeInstance(null);
         // Restore action state so tests don't bleed into each other.
         Actions.REST_ACTION.setSelected(false);
         Actions.DOT_ACTION_GROUP.clearSelection();
@@ -115,7 +115,6 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testInstanceReturnsAfterInit() {
             EditModeManager.init(
-                mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
                 mock(ScoreActions.class),
                 mock(ScoreView.class)
@@ -388,7 +387,6 @@ class EditModeManagerTest extends UnitTest {
         void setUp() {
             scoreActions = mock(ScoreActions.class);
             EditModeManager.init(
-                mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
                 scoreActions,
                 mock(ScoreView.class)
@@ -464,7 +462,6 @@ class EditModeManagerTest extends UnitTest {
         void setUp() {
             scoreActions = mock(ScoreActions.class);
             EditModeManager.init(
-                mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
                 scoreActions,
                 mock(ScoreView.class)
@@ -521,7 +518,6 @@ class EditModeManagerTest extends UnitTest {
         @BeforeEach
         void setUp() {
             EditModeManager.init(
-                mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
                 mock(ScoreActions.class),
                 mock(ScoreView.class)
@@ -595,7 +591,6 @@ class EditModeManagerTest extends UnitTest {
             song = new Song();
             line = song.getLine(0);
             EditModeManager.init(
-                mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
                 mock(ScoreActions.class),
                 mock(ScoreView.class)
@@ -944,7 +939,7 @@ class EditModeManagerTest extends UnitTest {
         GraceModeManager.setInstance(value);
     }
 
-    private static void resetPasteModeManagerInstance(@Nullable PasteModeManager value) {
-        PasteModeManager.setInstance(value);
+    private static void resetInsertionPointModeInstance(@Nullable InsertionPointMode value) {
+        InsertionPointMode.setInstance(value);
     }
 }

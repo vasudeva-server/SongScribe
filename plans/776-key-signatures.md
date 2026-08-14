@@ -10,20 +10,33 @@
 | 6   | [Layout Reservation and Header Spacing](#-phase-6-layout-reservation-and-header-spacing) | ✅ Done | —   |
 | 7   | [MusicXML Key Export/Import](#-phase-7-musicxml-key-exportimport) | ✅ Done | —   |
 | 7a  | [MIDI Key Signature Export](#-phase-7a-midi-key-signature-export) | ✅ Done | —   |
-| 8   | [Legacy .mssw Read](#-phase-8-legacy-mssw-read) | ⏸️ Blocked by 3 | —   |
-| 9   | [Barline Pairing and Selection Expansion](#-phase-9-barline-pairing-and-selection-expansion) | ⏸️ Blocked by 3, 5, 11 | —   |
-| 10  | [Accidental Propagation Across a Key Change](#-phase-10-accidental-propagation-across-a-key-change) | ⏸️ Blocked by 3, 9 | —   |
-| 11  | [Operation-Independent Insertion Point](#-phase-11-operation-independent-insertion-point) | ⏳ Pending | —   |
-| 12  | [Key Editing UI](#-phase-12-key-editing-ui) | ⏸️ Blocked by 4, 6, 9, 10, 11, 16 | —   |
-| 13  | [Design Document](#-phase-13-design-document) | ⏳ Pending | —   |
-| 14  | [Cross-cutting Tests](#-phase-14-cross-cutting-tests) | ⏸️ Blocked by 5, 6, 7, 8, 9, 10, 12, 17 | —   |
-| 15  | [Manual UI Verification](#-phase-15-manual-ui-verification) | ⏸️ Blocked by 14 | —   |
+| 8   | [Legacy .mssw Read](#-phase-8-legacy-mssw-read) | ✅ Done | —   |
+| 9   | [Barline Pairing and Selection Expansion](#-phase-9-barline-pairing-and-selection-expansion) | ✅ Done | —   |
+| 10a | [Restatement Scan Hoist](#-phase-10a-restatement-scan-hoist) | ✅ Done | —   |
+| 10b | [Accidental Propagation Across a Key Change](#-phase-10b-accidental-propagation-across-a-key-change) | ✅ Done | —   |
+| 11  | [Operation-Independent Insertion Point](#-phase-11-operation-independent-insertion-point) | ✅ Done | —   |
+| 12a | [Key Signature Dialog](#-phase-12a-key-signature-dialog) | ✅ Done | —   |
+| 12b | [Key Edit Hit Targets](#-phase-12b-key-edit-hit-targets) | ✅ Done | —   |
+| 12c | [Key Signature Insertion Flow](#-phase-12c-key-signature-insertion-flow) | ✅ Done | —   |
+| 12d | [Fit Rejection and Commit Routing](#-phase-12d-fit-rejection-and-commit-routing) | ✅ Done | —   |
+| 13  | [Design Document](#-phase-13-design-document) | ✅ Done | —   |
+| 14a | [MIDI Mid-line Key Test](#-phase-14a-midi-mid-line-key-test) | ✅ Done | —   |
+| 14b | [Cross-cutting Tests](#-phase-14b-cross-cutting-tests) | ✅ Done | —   |
+| 15  | [Manual UI Verification](#-phase-15-manual-ui-verification) | ⏳ Pending (manual) | —   |
 | 16  | [Shared Dialog Foundations](#-phase-16-shared-dialog-foundations) | ✅ Done | —   |
-| 17  | [Remove the Deprecated Key Accessors](#-phase-17-remove-the-deprecated-key-accessors) | ⏸️ Blocked by 4, 5, 6, 7, 8, 12 | —   |
+| 17  | [Remove the Deprecated Key Accessors](#-phase-17-remove-the-deprecated-key-accessors) | ✅ Done | —   |
 
-Phases are **not** ordered by number — **BlockedBy** is the execution order. Phases 11, 13 and 16 carry no key-signature dependency and can run first.
+The **Status** column lists only blockers that have not shipped; each phase's own **BlockedBy** line keeps the full list, done phases included, so the reasoning behind an edge survives.
 
-Some `BlockedBy` edges exist to give a shared file one writer at a time rather than because of a semantic dependency: **11 → 9 → 10** serializes `ScoreViewController.java` (Phases 9, 10, 11) and `docs/clipboard.md` (Phases 10, 11), and **5 → 9** serializes `LineRenderer.java`. Do not remove them to gain parallelism.
+Phases are **not** ordered by number — **BlockedBy** is the execution order. Phases 8, 10a, 11, 12a, 12b, 13 and 14a carry no unmet dependency and can run first.
+
+**Phase 15 is manual and interactive by design** — its task 1 requires the user's permission before `./scripts/run.sh`, and every check needs a human at the screen. It is never dispatched as part of an automated run; it is done by hand once Phase 14b is green.
+
+Some `BlockedBy` edges exist to give a shared file one writer at a time rather than because of a semantic dependency: **11 → 9 → 10b → 12d** and **9 → 12c → 12d** serialize `ScoreViewController.java` (Phases 9, 10b, 11, 12c, 12d), **11 → 9 → 10b** also serializes `docs/clipboard.md` (Phases 10b, 11), **5 → 9** serializes `LineRenderer.java`, **10a → 10b** serializes `AccidentalRestatements.java`, **12a → 9** serializes `ElementType.java` and **12a → 12d** serializes `KeySignatureChangeDialog.java`. Do not remove them to gain parallelism.
+
+**The lettered splits (10a/10b, 12a–12d, 14a/14b) are model splits.** Each `a` half is work whose outcome is already decided — a stated algorithm, a stated dialog, a stated assertion — and runs on Sonnet; each later half holds the judgment and runs on Opus. They are serialized by shared files, so splitting buys model cost, not wall-clock, except where the earlier half has no unmet dependency and can start now.
+
+**Phase 12 splits four ways, and 12b is the exception to that last clause.** 12a is the dialog, 12b the hit targets, 12c the insertion flow, 12d the fit rejections and commit routing. 12b writes `LayoutHitTester.java` and `docs/selection.md` and touches neither `ScoreViewController.java` nor the dialog, so it shares no file with any other pending phase and buys real wall-clock: it can run immediately, alongside 8, 10a, 11, 12a, 13 and 14a.
 
 * * *
 ## Conventions
@@ -393,7 +406,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 
 - The heuristic rewrites every line whose key equals the old default — a guess that silently overwrites lines the user set deliberately to that key. Inheritance replaces it: changing line 0's key reaches every line that inherits from it via the `inheritedKey` propagation in `Song.applyChange` (Phase 3 task 4), and a line with its own key stops it.
   
-- `jet_brains_find_referencing_symbols` gives exactly two posters: `SongSettingsDialog.applyMusicTabChanges:481`, which **task 8 deletes**, and `KeySignatureChangeDialog.setData:91`, which **Phase 12 task 10 rewrites** to commit through `ScoreViewController` (Phase 10 task 6) rather than through the message bus. After both, the record has no poster and the `@Handler` is unreachable — keeping it, or spending work making its `lineIndex` non-nullable, is work for code with no callers.
+- `jet_brains_find_referencing_symbols` gives exactly two posters: `SongSettingsDialog.applyMusicTabChanges:481`, which **task 8 deletes**, and `KeySignatureChangeDialog.setData:91`, which **Phase 12d task 3 rewrites** to commit through `ScoreViewController` (Phase 10 task 6) rather than through the message bus. After both, the record has no poster and the `@Handler` is unreachable — keeping it, or spending work making its `lineIndex` non-nullable, is work for code with no callers.
   
 - Deleting it also removes the four `SongNotificationHandlerTest` cases and three `SongSettingsDialogTest` cases that drive the handler directly. Those go under task 9's triage, not as a separate step.
   
@@ -458,7 +471,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 3. Change the cautionary trigger in `LineRenderer.renderKeyChanges` to compare **running keys**: draw when `song.getLine(lineIndex + 1).getRunningKey()` differs from this line's key at its last element (`line.keyAtEndOfLine()`), not the raw `Line` fields it compares today. The last-line guard (`lineIndex + 1 >= song.lineCount()`) stays.
   
-4. Fix the cautionary's position under overflow. `renderKeyChange` currently right-aligns to `song.getLineWidthSs()` unconditionally, so on an overflowing line the notes run past the margin while the cautionary stays at it, colliding. Follow the precedent at `LayoutEngine.java:405`, where `positionTerminalFlushRight` is deliberately skipped on an overflowing line because nothing should pin to a margin the content has passed: when the line's `LayoutResult.overflowsStaffWidth()` is true, position the cautionary off the solved chain's end instead of the margin. Contract this on `renderKeyChange`, because Phase 12's hit target follows the glyphs and depends on it.
+4. Fix the cautionary's position under overflow. `renderKeyChange` currently right-aligns to `song.getLineWidthSs()` unconditionally, so on an overflowing line the notes run past the margin while the cautionary stays at it, colliding. Follow the precedent at `LayoutEngine.java:405`, where `positionTerminalFlushRight` is deliberately skipped on an overflowing line because nothing should pin to a margin the content has passed: when the line's `LayoutResult.overflowsStaffWidth()` is true, position the cautionary off the solved chain's end instead of the margin. Contract this on `renderKeyChange`, because Phase 12b's hit target follows the glyphs and depends on it.
   
 5. Delete `songscribe.dom.KeySignature`'s mutable state if nothing outside layout still needs it: `setKeyType`, `setAccidentalCount`, and the constructor's `Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT)`. Clamping silently accepted corrupt input; `Key` (Phase 1) now rejects it at construction. `KeySignature` stays as the header's transient layout box, holding a `Key`. `MAX_ACCIDENTAL_COUNT` moved to `Key` in Phase 1 — update the references here.
   
@@ -589,7 +602,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
   - `cautionaryFitsSs(Line previousLine, Key next)` — whether `previousLine` still solves feasibly once its trailing reservation is widened for a cautionary to `next`. This is the check for changing a line's key when that line previously inherited.
     
-  - `keySignatureFitsSs(Line line, int insertionIndex, Key key)` — whether `line` still solves feasibly with a `KeySignatureElement` for `key` spliced in at `insertionIndex`. **When the element at** `insertionIndex - 1` **is not a barline or repeat, the width of the** `SINGLE_BARLINE` **that Phase 12 inserts alongside it is part of this measurement**, because that barline is part of the edit; a check that omitted it would accept an edit that then overflows.
+  - `keySignatureFitsSs(Line line, int insertionIndex, Key key)` — whether `line` still solves feasibly with a `KeySignatureElement` for `key` spliced in at `insertionIndex`. **When the element at** `insertionIndex - 1` **is not a barline or repeat, the width of the** `SINGLE_BARLINE` **that Phase 12c inserts alongside it is part of this measurement**, because that barline is part of the edit; a check that omitted it would accept an edit that then overflows.
     
 - Both must go through the same `solveChain` / `InsertionSpacingCalculator` splice the committed layout uses, so a pre-check verdict and the resulting layout can never disagree. `HorizontalSpacingCalculator.java:422` already states that property for the existing pre-check; these two inherit it and their contracts say so.
   
@@ -718,7 +731,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 - Delete `applyFifthsToLine` or reduce it to `line.setKey(...)`.
   
 
-7a. **Assert `KeySignatureElement`'s class invariant on read, not only on write.** Task 4 fails the *save* with `DocumentValidation.corrupt` when a mid-line key signature is not immediately preceded by a barline or repeat. The read path currently has no equivalent, and it is the one that takes input from a file: a `<key>` in a measure the reader did not open with a barline element produces a `KeySignatureElement` that Phase 2's class invariant, Phase 9's deletion pairing and Phase 12's index predicate all assume cannot exist. **There is no test, no error handling, and no visible symptom** — the model is simply invariant-violating until a later delete behaves wrongly. Before appending, assert the preceding element satisfies `isBarLine() || isRepeat()` and call `DocumentValidation.corrupt` when it does not. Test both sides: a well-formed mid-measure `<key>` loads, and one whose measure lacks its opening barline fails as corrupt.
+7a. **Assert `KeySignatureElement`'s class invariant on read, not only on write.** Task 4 fails the *save* with `DocumentValidation.corrupt` when a mid-line key signature is not immediately preceded by a barline or repeat. The read path currently has no equivalent, and it is the one that takes input from a file: a `<key>` in a measure the reader did not open with a barline element produces a `KeySignatureElement` that Phase 2's class invariant, Phase 9's deletion pairing and Phase 12c's index predicate all assume cannot exist. **There is no test, no error handling, and no visible symptom** — the model is simply invariant-violating until a later delete behaves wrongly. Before appending, assert the preceding element satisfies `isBarLine() || isRepeat()` and call `DocumentValidation.corrupt` when it does not. Test both sides: a well-formed mid-measure `<key>` loads, and one whose measure lacks its opening barline fails as corrupt.
 
 8. **Fix the live corruption bug this replaces.** `applyFifths` currently calls `applyFifthsToLine(currentLine, fifths)` for _any_ non-first `<key>`, which sets the whole line's key and retroactively re-spells every note earlier in that line. Any MusicXML file with a mid-system key change loads wrong today, silently. Add a round-trip test that would have caught it: a four-measure line with a key change in measure 3, asserting the notes in measures 1–2 keep their original spelling.
   
@@ -815,9 +828,9 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 3. Run `./scripts/compile.sh`, then `./scripts/test.sh MidiEventFactoryTest`. Must report SUCCESS / green.
 
 * * *
-## ⏸️ Phase 8: Legacy .mssw Read
-**Status:** Pending  
-**BlockedBy:** 3  
+## ✅ Phase 8: Legacy .mssw Read
+**Status:** Done  
+**BlockedBy:** 3 (done)  
 **Files:** src/main/java/songscribe/io/LineIO.java, src/main/java/songscribe/io/SongIO.java, src/test/java/songscribe/io/LineIOTest.java  
 **Recommended model/effort:** Sonnet, medium — a mechanical translation into an already-decided model, with one validation boundary to add.
 ### Tasks
@@ -859,13 +872,13 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 
 * * *
-## ⏸️ Phase 9: Barline Pairing and Selection Expansion
-**Status:** Pending  
-**BlockedBy:** 3, 5, 11  
-**Files:** src/main/java/songscribe/dom/Line.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/selection/SelectionCoordinator.java, src/main/java/songscribe/ui/component/score/LineRenderer.java, src/test/java/songscribe/dom/LineDeleteRangeTest.java  
-**Recommended model/effort:** Opus, high — a bidirectional pairing neither existing case exercises, plus a rename that changes what an existing shared method means.
+## ✅ Phase 9: Barline Pairing and Selection Expansion
+**Status:** Done  
+**BlockedBy:** 3 (done), 5 (done), 11, 12a  
+**Files:** src/main/java/songscribe/dom/Line.java, src/main/java/songscribe/dom/ElementType.java, src/main/java/songscribe/ui/selection/Selection.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/selection/SelectionCoordinator.java, src/main/java/songscribe/ui/component/score/LineRenderer.java, src/test/java/songscribe/dom/LineQueryTest.java, src/test/java/songscribe/dom/ElementTypeTest.java  
+**Recommended model/effort:** Opus, medium — every decision this phase needs is now written down, including task 6a's, so what is left is the selection-expansion routing: `Selection.Range.contains` is on a sealed interface and is asked per element index during painting, and widening it is the one step whose shape is not dictated below. **Do not split this phase** — the confirm of task 6 would be Sonnet work, but it writes `ScoreViewController.java`, which the dashboard already serializes across 9, 10b, 11, 12c and 12d, so a split buys nothing.
 ### Tasks
-1. A `KeySignatureElement` (`songscribe.dom.KeySignatureElement`, `ElementType.KEY_SIGNATURE`) is always immediately preceded by a barline or repeat element, and can never sit at index 0 of a line. The invariant holds because Phase 12's insert flow adds a `SINGLE_BARLINE` when the chosen position lacks one; nothing here has to police it, only preserve it under deletion. **Deleting the barline must delete the key signature with it**, and selecting either must show both as selected so the user sees what will go.
+1. A `KeySignatureElement` (`songscribe.dom.KeySignatureElement`, `ElementType.KEY_SIGNATURE`) is always immediately preceded by a barline or repeat element, and can never sit at index 0 of a line. The invariant holds because Phase 12c's insert flow adds a `SINGLE_BARLINE` when the chosen position lacks one; nothing here has to police it, only preserve it under deletion. **Deleting the barline must delete the key signature with it**, and selecting either must show both as selected so the user sees what will go.
   
 2. This also makes index 0 unreachable by deletion: reaching index 0 requires deleting the barline in front, which now takes the key signature too. No separate index-0 check is needed. State that reasoning in the pairing method's contract so a later reader does not add a redundant guard.
   
@@ -881,15 +894,20 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 - Update both contracts. Each currently names exactly one pairing; they now name two, and the class Javadoc should state the general rule (some elements cannot outlive their partner, and a deletion range widens to keep pairs whole) rather than each method restating it.
   
 
-4. Rename `effectiveDeleteRange`, `effectiveDeleteBegin` and `effectiveDeleteEnd`. Once selection rendering uses them (task 5) they are no longer delete-specific — `effectiveDeleteEnd`'s own doc already says "deletion or copy range". They describe the range any operation on a selection actually spans. Pick a name that says that and apply it with `jet_brains_rename` so call sites update mechanically. Changing an existing contract is a visible decision: state the rename and its reason in the commit message.
+4. **Rename the three methods to `effectiveRange`, `effectiveBegin` and `effectiveEnd`, and the `EffectiveRange` record to `EffectiveRange`.** Once selection rendering uses them (task 5) they are no longer delete-specific — `effectiveEnd`'s own doc already says "deletion or copy range", and `Fragment.capture` calls it on the copy path. The name is settled rather than left to the implementer: `effective` is already this class's prefix for "what this actually resolves to" (`Line.effectiveElementCount()`), so the three methods join a naming pattern instead of inventing one. Apply it with `jet_brains_rename` so call sites update mechanically. Changing an existing contract is a visible decision: state the rename and its reason in the commit message.
   
-5. Make selection rendering resolve through that range. It is currently called from only two places, both in `ScoreViewController` (`deleteElementRange`, around line 1139, and `confirmDeletionRestatements`, around line 1096) — selection display never asks, so today selecting a note and pressing delete silently removes a trailing breath mark or a preceding paired grace note that was never highlighted. Its own contract says "every query that asks about a deletion must ask about this range, not the caller's raw selection," and the selection display is such a query. Routing selection highlighting through it fixes the barline↔key-signature pair and the two pre-existing cases at once.
+5. Make selection rendering resolve through that range **in both directions**. The forward half is already routed — `Selection.Range.contains` (`Selection.java:138`) calls `effectiveDeleteEnd(end)`, so a trailing breath mark does read as selected. **The backward half is not**: nothing asks `effectiveBegin`, so today a preceding paired grace note is deleted without ever having been highlighted, and the barline this phase pairs backward from a key signature would go the same way. Widen `Selection.Range.contains` to test the full range rather than only its end.
+  
+
+- The two `ScoreViewController` callers (`deleteElementRange`, around line 1139, and `confirmDeletionRestatements`, around line 1096) already ask for the whole range and need no change.
+  
+- `Selection.Range.contains`'s Javadoc explains the forward case and carries a `refs #698`. Rewrite it to state the general rule and remove the issue reference (see **Conventions**).
   
 
 - The selection model is `songscribe.ui.selection.Selection`, a sealed interface with `Range` and `Target` variants. Expand at the point where a `Selection.Range` becomes highlighted columns, not by mutating the stored selection — the user's selection is what they chose; the highlight shows what an operation would reach.
   
 
-6. **Confirm before deleting either half of the pair.** The alternatives were the breath-mark precedent (silent, `effectiveDeleteEnd`) and the Ending precedent (`Line.hasEndingInvalidatedByDeletion`, which exists so the user is warned before a delete destroys an Ending). A key signature is closer to the Ending in weight — losing one silently re-spells every note after it — and the backward pairing can take a barline the user placed, which changes the measure structure. Follow `hasEndingInvalidatedByDeletion`'s shape.
+6. **Confirm before deleting either half of the pair.** The alternatives were the breath-mark precedent (silent, `effectiveEnd`) and the Ending precedent (`Line.hasEndingInvalidatedByDeletion`, which exists so the user is warned before a delete destroys an Ending). A key signature is closer to the Ending in weight — losing one silently re-spells every note after it — and the backward pairing can take a barline the user placed, which changes the measure structure. Follow `hasEndingInvalidatedByDeletion`'s shape.
   
 
 - The prompt must name **both** elements, not just the one the user selected, and must distinguish the two directions: deleting a barline also removes the key signature after it; deleting a key signature also removes the barline before it. A confirm that says only "this will delete the key signature" leaves the second case as the surprise it was meant to prevent.
@@ -897,7 +915,25 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 - Read `.claude/guides/option-dialogs.md` before adding the prompt and `.agents/guides/strings.md` before adding the message strings.
   
 
-6a. **Decide `ElementType.isNonContentElement()` for `KEY_SIGNATURE`, which Phase 2 left at its default of `false`.** The method's own doc says non-content elements "are skipped during first-second ending validation but are allowed to be present in the selection", and that the complement — what can anchor or end an ending — is exactly `isDuration()`. A key signature is neither: it cannot anchor an ending and it is not skipped, so it reaches ending validation as an element the validator has no rule for. Selection expansion is this phase's subject and a key signature now travels with its barline into every selection, which is what makes it reachable. Work out what the validator does with it, state the answer on the method, and add its row to `ElementTypeTest`'s membership table.
+6a. **`ElementType.isNonContentElement()` returns `true` for `KEY_SIGNATURE`.** Phase 2 left it at the default of `false`, and `false` is wrong: it makes an ending immediately after a mid-line key signature fail validation for no reason the user can see. Change the method to `isGraceNote() || this == BREATH_MARK || this == KEY_SIGNATURE` and state the reasoning below on it. This is settled — implement it, do not re-derive it.
+  
+
+The four readers in `MusicEditOperations`, and what each does with a key signature:
+
+- **`checkPrecedingElement` via `indexOfPrecedingContentElement` (`:1000`) is the one that decides it.** With `false`, a `KEY_SIGNATURE` immediately before the selection becomes `precedingType`, matches neither `isDuration()` nor the barline/left-repeat branch, and falls through to the catch-all that returns `EndingValidationResult.invalid()` — so a first-second ending starting right after a mid-line key change is silently refused. With `true`, the walk skips it and reaches the barline that Phase 2's class invariant guarantees is behind it, which yields `EXTEND_SPAN` onto that barline: the bracket anchors exactly where it would have if the key signature were not there. **A key signature must not move where an ending anchors**, and transparency is what delivers that.
+  
+- **`validateEndingStructure` (`:850`) counts it toward `MIN_CONTENT_ELEMENTS`** when it is content. A key signature is not musical content and must not help a selection clear the minimum; skipping it is correct.
+  
+- **`validateEndingRegionContent` (`:899`) is unaffected either way** — a `KEY_SIGNATURE` is neither a barline, a repeat, nor a duration, so it already falls through the loop body without effect. Note this in the commit message so a reviewer who checks all four sites is not left wondering why one shows no behavior change.
+  
+- **`hasEnclosingRepeat` never asks**, skipping every type it does not name.
+  
+
+The catch-all comment at `MusicEditOperations.java:1037` enumerates "the only element types left" as the right repeat and the two double barlines, and says the branch is unreachable today. That stays true with `KEY_SIGNATURE` non-content and would become false with it content. Leave the comment alone, and do not add a `KEY_SIGNATURE` branch to `checkPrecedingElement` — the whole point is that the walk never arrives there with one.
+
+Add `KEY_SIGNATURE` to `ElementTypeTest`'s `isNonContentElement` membership table, and note that `testIsDurationAndIsNonContentElementAreNeverBothTrue` already covers it once it is in the table.
+
+6b. **Ending validation reads the user's raw selection, not the widened range, and this phase must keep it that way.** Task 5 expands the highlight where a `Selection.Range` becomes highlighted columns rather than by mutating the stored selection, so `MusicEditOperations` still sees what the user chose. That matters here: `validateEndingRegionContent` rejects any barline inside an ending region, so feeding it a range widened backward onto a barline (task 3) would refuse endings that are legal today. If the expansion is implemented anywhere that `MusicEditOperations.getRange()` can observe, that is the defect.
 
 7. Test the pairing from the contracts in task 3:
   
@@ -916,14 +952,45 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 - The confirm names both elements in each direction — assert the message key chosen for a barline-initiated delete differs from the one for a key-initiated delete, since a single shared message is exactly the regression task 6 guards against.
   
+- An ending anchored immediately after a mid-line key signature validates, and anchors on the barline in front of it rather than on the key signature — the case task 6a exists for, and the one that fails today. It belongs in the ending-validation tests, not in `LineQueryTest`; find them from `MusicEditOperations.validateEndingStructure` with `jet_brains_find_referencing_symbols`.
+  
 
-8. Run `./scripts/compile.sh` and `./scripts/test.sh LineDeleteRangeTest` (create it if the delete-range tests live elsewhere; find them first). Both must report SUCCESS / green.
+**Where these cases go:** the existing range cases are `LineQueryTest`'s nested `EffectiveDeleteEnd` class — there is no `LineDeleteRangeTest`. Add the forward cases there, rename the nested class with the methods (task 4), and add a sibling nested class for the backward direction, which has no cases today.
+
+8. Run `./scripts/compile.sh`, then `./scripts/test.sh LineQueryTest` and `./scripts/test.sh ElementTypeTest`, plus the ending-validation suite found in task 7. All must report SUCCESS / green.
   
 
 * * *
-## ⏸️ Phase 10: Accidental Propagation Across a Key Change
-**Status:** Pending  
-**BlockedBy:** 3, 9  
+## ✅ Phase 10a: Restatement Scan Hoist
+**Status:** Done  
+**BlockedBy:** —  
+**Files:** src/main/java/songscribe/layout/AccidentalReconciliation.java, src/main/java/songscribe/ui/edit/AccidentalRestatements.java, src/test/java/songscribe/ui/edit/AccidentalRestatementsTest.java  
+**Recommended model/effort:** Sonnet, medium — one signature change and one loop inversion, both stated below; the algorithm and the resulting complexity are decided, not open. It changes no behavior and carries no key-signature dependency, so it can run now, before Phase 10b needs it.
+
+> Split out of Phase 10 so the Opus context there is spent on the range widening rather than on a
+> refactor whose shape is settled. Phase 10b is blocked on this one because both write
+> `AccidentalRestatements.java`.
+
+### Tasks
+1. Read `.claude/guides/contracts.md` first.
+
+2. **Hoist the restatement scan out of its per-removal loop.** `AccidentalRestatements.confirm` loops over every removed accidental calling `AccidentalReconciliation.findRestatements(song, line, …)`, and **each of those scans forward through the whole song**. That is affordable today for the reason its own contract gives — *"a removal is always something one selection or one click does"* — the premise Phase 10b deletes. A key change on line 0 of the common song (only line 0 keyed) produces removals across every line, making the loop O(removals × song length), run synchronously on the EDT before the confirm dialog appears.
+  
+
+- The scan is keyed by **staff position**, and every removal's staff position is known before the loop starts. Change `findRestatements` to take the set of `(staffPosition, accidental)` pairs and make **one** forward pass resolving all of them; `confirm`'s loop collapses to collecting the set. O(removals × song) becomes O(song), with the same result.
+  
+- Update `findRestatements`' contract for the set-taking signature, and keep the existing `excluded` semantics unchanged — the edited elements are still excluded whether or not they lose anything.
+  
+
+3. **This changes no behavior**, so the existing suites must pass unedited. Run the existing `AccidentalReconciliation`, `AccidentalRestatements`, clipboard, paste and delete tests before and after and confirm the same set passes. If one needs editing to stay green, the hoist changed behavior and the change is the defect, not the test. Add no new cases for the same result reached by a faster route; the one case worth adding is that a removal set spanning several staff positions still resolves each of them, which the collapsed loop is what could break.
+  
+4. Run `./scripts/compile.sh`, then the suites named in task 3. All must report SUCCESS / green.
+  
+
+* * *
+## ✅ Phase 10b: Accidental Propagation Across a Key Change
+**Status:** Done  
+**BlockedBy:** 3, 9, 10a  
 **Files:** src/main/java/songscribe/layout/AccidentalReconciliation.java, src/main/java/songscribe/ui/edit/AccidentalRestatements.java, src/main/java/songscribe/ui/component/ScoreViewController.java, docs/clipboard.md, src/test/java/songscribe/layout/AccidentalReconciliationTest.java, src/test/java/songscribe/ui/edit/AccidentalRestatementsTest.java  
 **Recommended model/effort:** Opus, high — widens two contracts that both state a single-line assumption in prose; the range is the first edit in the program that spans lines.
 ### Tasks
@@ -953,18 +1020,13 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 
 5. Do **not** give the key change its own copy of the reconciliation walk. `resolveOverProjection` already asks for the key at a projected index after Phase 3 task 9, so the resolver needs no key-specific branch; what this phase adds is the range and the trigger, not a second algorithm.
   
-5a. **Hoist the restatement scan out of its per-removal loop.** `AccidentalRestatements.confirm` loops over every removed accidental calling `AccidentalReconciliation.findRestatements(song, line, …)`, and **each of those scans forward through the whole song**. That is affordable today for the reason its own contract gives — *"a removal is always something one selection or one click does"* — the premise this phase deletes. A key change on line 0 of the common song (only line 0 keyed) produces removals across every line, making the loop O(removals × song length), run synchronously on the EDT before the confirm dialog appears.
-  
+5a. ~~Hoist the restatement scan out of its per-removal loop.~~ **Moved to Phase 10a**, which is why this phase is blocked on it. The premise this phase deletes — *"a removal is always something one selection or one click does"* — is what made the per-removal full-song scan affordable, so the hoist has to be in place before the range widening lands. Do not re-derive it here; if `findRestatements` still takes a single `(staffPosition, accidental)` pair when this phase starts, Phase 10a did not run and this phase is not ready.
 
-- The scan is keyed by **staff position**, and every removal's staff position is known before the loop starts. Change `findRestatements` to take the set of `(staffPosition, accidental)` pairs and make **one** forward pass resolving all of them; `confirm`'s loop collapses to collecting the set. O(removals × song) becomes O(song), with the same result.
-  
-- Update `findRestatements`' contract for the set-taking signature, and keep the existing `excluded` semantics unchanged — the edited elements are still excluded whether or not they lose anything.
-  
 5b. **Update `docs/clipboard.md` §6** (`docs/clipboard.md:437`). It restates `AccidentalReconciliation`'s contract, including that the key signature never appears in the algorithm directly and that both bounds stay within the line. The second is now false: the reach is the inheritance chain. Fix it in this phase — the phase that invalidates a doc section updates it (see **Conventions**).
   
-6. Wire the trigger in `ScoreViewController` alongside the existing `confirmDeletionRestatements` call, so a key edit reaches confirmation by the same route every other pitch-moving edit does. Phase 12's dialog commits through this path rather than mutating the model directly.
+6. Wire the trigger in `ScoreViewController` alongside the existing `confirmDeletionRestatements` call, so a key edit reaches confirmation by the same route every other pitch-moving edit does. Phase 12d task 3 redirects the dialog's commit through this path rather than letting it mutate the model directly.
   
-7. Order the confirm against Phase 12's fit rejection: **fit is checked first, restatements second.** A change that is going to be refused for not fitting must not first ask the user about accidentals it will never apply.
+7. Order the confirm against Phase 12d's fit rejection: **fit is checked first, restatements second.** A change that is going to be refused for not fitting must not first ask the user about accidentals it will never apply.
   
 8. Test the range promise, which is the whole of what this phase adds:
   
@@ -982,12 +1044,12 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 
 9. **The existing suites must pass unedited.** This phase widens the two most-called contracts in the program — every insert, delete, paste and in-place modification goes through them (`docs/clipboard.md` §6) — and task 8's cases all test the *new* range promise. Nothing there would notice an off-by-one in "a per-line call becomes a range of one." Apply Phase 11 task 6's discipline verbatim: run the existing `AccidentalReconciliation` tests, the clipboard and paste tests, and the delete tests before and after, and confirm the same set passes. **If one of them needs editing to stay green, the widening changed behavior and the change is the defect, not the test.**
   
-10. Run `./scripts/compile.sh`, then `./scripts/test.sh AccidentalReconciliationTest` and `./scripts/test.sh AccidentalRestatementsTest` (find their real names first; create them only if no such tests exist), plus the suites named in task 9. All must report SUCCESS / green.
+10. Run `./scripts/compile.sh`, then `./scripts/test.sh AccidentalReconciliationTest` and `./scripts/test.sh AccidentalRestatementsTest` — both exist, at `src/test/java/songscribe/layout/` and `src/test/java/songscribe/ui/edit/` — plus the suites named in task 9. All must report SUCCESS / green.
   
 
 * * *
-## ⏳ Phase 11: Operation-Independent Insertion Point
-**Status:** Pending  
+## ✅ Phase 11: Operation-Independent Insertion Point
+**Status:** Done  
 **BlockedBy:** —  
 **Files:** src/main/java/songscribe/ui/edit/InsertionPointMode.java, src/main/java/songscribe/ui/edit/PasteModeManager.java, src/main/java/songscribe/ui/component/score/InsertionMarkerOverlay.java, src/main/java/songscribe/ui/component/score/LineComponent.java, src/main/java/songscribe/ui/component/ScoreInputHandler.java, src/main/java/songscribe/ui/component/ScoreViewController.java, docs/clipboard.md, src/test/java/songscribe/ui/edit/InsertionPointModeTest.java, src/test/java/songscribe/ui/edit/PasteModeManagerTest.java  
 **Recommended model/effort:** Opus, high — extracting a mode from the one operation that has always owned it, without changing paste's behavior by a pixel.
@@ -999,7 +1061,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 3. `songscribe.ui.edit.PasteModeManager` is today both things at once: the interaction that lets the user pick an index on a line (mouse tracking, the Return/Enter path, the marker overlay, dropping the point when the mouse leaves the line) and the paste that consumes it. Separate them. The interaction becomes a reusable mode; paste becomes one client of it.
   
 
-- **The reusable half is `songscribe.ui.edit.InsertionPointMode`.** Naming it here is not cosmetic: Phase 12 task 5 is written against it from a separate context, and an unnamed class is one each phase invents differently.
+- **The reusable half is `songscribe.ui.edit.InsertionPointMode`.** Naming it here is not cosmetic: Phase 12c task 2 is written against it from a separate context, and an unnamed class is one each phase invents differently.
   
 - It owns: the tracked `(Line, index)` pair, the mouse and keyboard handling that moves it, `InsertionMarkerOverlay`, cancellation, and a **per-client predicate for which indices may be tracked**. It reports the chosen index to its client and exits.
   
@@ -1010,7 +1072,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 - Write `InsertionPointMode`'s contract before moving any code. State what a client is entitled to: it will be called back with an index its own predicate accepted, or told the user cancelled, **exactly once** — never both, never twice, never neither.
   
 
-4. The index predicate is the seam that makes this phase worth doing. Paste's current rule stays exactly as it is; the key-signature client (Phase 12) supplies a different one. Do not fold either rule into the mode.
+4. The index predicate is the seam that makes this phase worth doing. Paste's current rule stays exactly as it is; the key-signature client (Phase 12c) supplies a different one. Do not fold either rule into the mode.
   
 5. `LineComponent` (`:678`, `:741`) and `ScoreInputHandler` (`:411`) dispatch to paste mode by name. Route them through the mode instead, so a second client needs no further edits to either file. `jet_brains_find_referencing_symbols` on `PasteModeManager`'s members gives the full set — work from that rather than from the three line numbers above.
   
@@ -1028,15 +1090,84 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 
 * * *
-## ⏸️ Phase 12: Key Editing UI
-**Status:** Pending  
-**BlockedBy:** 4, 6, 9, 10, 11, 16  
-**Files:** src/main/java/songscribe/ui/dialog/KeySignatureChangeDialog.java, src/main/java/songscribe/ui/action/KeySignatureChangeAction.java, src/main/java/songscribe/layout/LayoutHitTester.java, src/main/java/songscribe/ui/component/ScoreViewController.java, docs/selection.md, src/test/java/songscribe/ui/dialog/KeySignatureChangeDialogTest.java  
-**Recommended model/effort:** Opus, high — three edit entry points, an insert flow with an implicit barline, and two fit rejections, all interacting.
+## ✅ Phase 12a: Key Signature Dialog
+**Status:** Done  
+**BlockedBy:** 4, 16 (both done)  
+**Files:** src/main/java/songscribe/ui/dialog/KeySignatureChangeDialog.java, src/main/java/songscribe/dom/ElementType.java, src/test/java/songscribe/ui/dialog/KeySignatureChangeDialogTest.java  
+**Recommended model/effort:** Sonnet, high — the dialog's shape is fully specified below and every part it is built from already exists: `KeyCellRenderer` and `DialogOp` from Phase 16, the button row from `AttachmentDialog.modifyButtonPanel`, the entries from `Key.allSignatures()`. Nothing here is a decision; the judgment that produced this specification is already spent.
+
+> Split out of Phase 12 so that the interaction work gets the Opus context on its own. That
+> interaction work then split again, into three: **12b** (hit targets), **12c** (the index predicate
+> and the implicit barline) and **12d** (the fit rejections and the commit route). This half has no
+> unmet dependency and can run now, in parallel with Phases 9, 10a, 11 and 12b. Phase 12d is blocked
+> on it because both write `KeySignatureChangeDialog.java`; Phase 9 is blocked on it because both
+> write `ElementType.java`.
+
 ### Tasks
 1. Read `.claude/guides/dialogs.md`, `.claude/guides/option-dialogs.md`, and `.agents/guides/strings.md` first.
   
-2. **The interaction model is settled by #53. Do not re-derive it.** There is no song-wide key; each line has or inherits a key. Three double-click targets edit a key:
+2. **Give `KEY_SIGNATURE` a case in `ElementType.categoryName()`.** It currently falls through to the `IllegalStateException` at the end of the method, so Phase 12b's fit rejection — whose message is "There isn't enough room on this line for this {0}." — would throw instead of alerting, on the exact path that exists to tell the user something is too wide. Add the case and its string (read `.agents/guides/strings.md` first).
+  
+3. Give the dialog an input record — `record KeySignatureInput(Line line, int insertionIndex, DialogOp op)`. It carries **no incoming key**: see task 4.
+  
+
+- Do not describe `Key` as "a copy the dialog cannot edit in place." `Key` is an immutable record, so no implementation could violate that promise — it describes the code rather than promising anything, and a test derived from it can never fail. There is no such clause and no such test.
+  
+- `BaseDialog.DialogOp { ADD, EDIT, REMOVE }` and `KeyCellRenderer` come from **Phase 16**. Use them; do not create, rename or restyle either.
+  
+4. Rewrite `KeySignatureChangeDialog`. It currently reads `line.getKeyType()` and `line.getKeyAccidentalCount()` into a combo and a spinner (`KeySignatureChangeDialog.java:75-76`). It becomes a single combo over `Key.allSignatures()` plus an explicit "inherit" choice for lines other than line 0 — line 0 cannot inherit and must not offer it. **The combo uses** `KeyCellRenderer` from Phase 16, so a key is picked here exactly as it was picked in song settings: glyph plus display name, not a type combo and a count spinner. Do not write a second renderer, and do not restyle this one.
+  
+
+- **The dialog opens with no selection, and OK is disabled until the user picks something.** It does **not** pre-select the key already in effect. Pre-selecting it makes the default commit a no-op key change, and a no-op mid-line `KeySignatureElement` is invisible — nothing drawn changes — while still being a `cancelsAccidentals()` barrier that re-spells every note after it, and still dragging Phase 12b's auto-inserted barline into the score. A blank combo makes every commit a deliberate choice.
+  
+- The line's current key is not otherwise hidden from the user: it is drawn in the header, and Phase 3's `setKey` collapses a chosen key that equals the inherited one back to null, so picking "the same key" cannot pin a line by accident.
+  
+- A key type combo plus a separate count spinner can express the invalid states `Key` rejects (`NONE` with a count, `SHARPS` with zero). One combo over the 15 valid signatures cannot. That is why the control changes shape.
+  
+- **No mode control**, because the model has no mode. Every SongScribe key is major; see Phase 1.
+  
+- Buttons follow the attachment dialogs' algorithm — `AttachmentDialog.modifyButtonPanel` and `opLabel` are where that lives. Reuse it; do not hand-build a button row.
+  
+
+5. **Leave the commit path as Phase 4 left it** — `line.setKey` inside a modification bracket — and do not invent a second one. Phase 12b task 6 redirects that single call through `ScoreViewController` so the edit reaches accidental reconciliation (Phase 10b task 6) by the same route every other pitch-moving edit does. Redirecting one call is not a temporary duplicate; writing a reconciliation path here that Phase 12b would replace would be.
+  
+6. Fix the crash noted in #53: the dialog currently crashes when invoked. Verify the rewritten dialog opens from a fresh song, from a song with existing key changes, and in both `ADD` and `EDIT` ops.
+  
+7. Write the dialog's tests from the contracts above:
+  
+
+- Line 0's dialog offers no "inherit" choice; a later line's does.
+  
+- Choosing "inherit" on a line with a key sets its key to null.
+  
+- Choosing a key on an inheriting line sets it.
+  
+- The combo's entries are exactly `Key.allSignatures()` — assert against the list rather than a hand-written expectation, so a domain change reaches the test.
+  
+- The dialog opens with **nothing selected** and OK disabled, in both `ADD` and `EDIT`; picking any entry enables OK. That is the whole of task 4's opening promise, and both sides of it need a case.
+  
+- `ElementType.categoryName()` returns a name for `KEY_SIGNATURE` rather than throwing — the one case that proves task 2, and the failure it prevents is an exception on the alert path.
+  
+
+8. Run `./scripts/compile.sh` and `./scripts/test.sh KeySignatureChangeDialogTest`. Both must report SUCCESS / green.
+  
+
+* * *
+## ✅ Phase 12b: Key Edit Hit Targets
+**Status:** Done  
+**BlockedBy:** 5 (done), 6 (done)  
+**Files:** src/main/java/songscribe/layout/LayoutHitTester.java, docs/selection.md, src/test/java/songscribe/layout/LayoutHitTesterTest.java  
+**Recommended model/effort:** Sonnet, medium — three rects whose geometry already exists: the header region from `HorizontalSpacingCalculator`, the cautionary from `KeySignatureRenderer` (Phase 5, including its overflow position), and a mid-line element's own bounds. The interaction model below is settled, so what is left is wiring rects to an existing hit tester and writing the doc section.
+
+> **This is the one Phase 12 half that buys wall-clock.** It shares no file with any other pending
+> phase — not `ScoreViewController.java`, not `KeySignatureChangeDialog.java` — so it runs
+> immediately, in parallel with 8, 10a, 11, 12a, 13 and 14a. It makes the targets *hittable*;
+> Phases 12c and 12d decide what happens when one is hit.
+
+### Tasks
+1. Read `.claude/guides/contracts.md` and `docs/selection.md` first.
+  
+2. **The interaction model is settled by #53. Do not re-derive it.** It is stated here because this phase creates the targets; Phases 12c and 12d cite it rather than restating it. There is no song-wide key; each line has or inherits a key. Three double-click targets edit a key:
   
 
 - **A line's header key signature** edits **that line's** key. If the line was inheriting, setting a key gives it that key and a cautionary is then drawn automatically at the end of the previous line. Removing an existing key makes the line inherit again and the cautionary disappears.
@@ -1050,7 +1181,42 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 4. Update `LayoutHitTester` so all three rects in task 2 are hit targets. `HorizontalSpacingCalculator.isWithinHeaderXSs(double, Line)` already bounds the header region and now resolves through the line's running key. The cautionary's rect is the one `KeySignatureRenderer` draws — including the overflow-relative position Phase 5 gives it, so the target follows the glyphs rather than the margin.
   
-5. **Adding a mid-line key signature** uses Phase 11's insertion-point mode with its own index predicate. The predicate rejects:
+
+- Contract each target by **what it resolves to**, not by where it sits: the header resolves to its own line, the cautionary to the **next** line, a mid-line rect to its `KeySignatureElement`. That is the promise Phases 12c and 12d are written against, and a hit test that returns a rect without saying what it identifies leaves them to re-derive it.
+  
+
+5. **Update `docs/selection.md`.** Line 117 describes the header as "the clef and key signature, and a press there selects the …" — this phase makes that header a double-click edit target, and adds two more (the cautionary, and a mid-line key signature's accidental rect). State all three and how they relate to the press-to-select behavior the section already documents. The phase that invalidates a doc section updates it (see **Conventions**), and it is this phase that creates all three targets.
+  
+6. Extend `LayoutHitTesterTest` for the three targets, derived from task 4's contract:
+  
+
+- A point inside a line's header resolves to that line; a point just outside it does not.
+  
+- A point inside the cautionary resolves to the **next** line, not the line it is drawn on — the one case where the target and its subject differ, and the one a reader would get backwards.
+  
+- On a line where `overflowsStaffWidth()` is true, the cautionary's target sits off the solved chain's end rather than at the margin. Phase 5 moved the glyphs; this asserts the target moved with them.
+  
+- A point inside a mid-line key signature's accidental rect resolves to that `KeySignatureElement`.
+  
+
+7. Run `./scripts/compile.sh` and `./scripts/test.sh LayoutHitTesterTest`. Both must report SUCCESS / green.
+  
+
+* * *
+## ✅ Phase 12c: Key Signature Insertion Flow
+**Status:** Done  
+**BlockedBy:** 9, 11, 12a  
+**Files:** src/main/java/songscribe/ui/action/KeySignatureChangeAction.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/test/java/songscribe/ui/action/KeySignatureChangeActionTest.java  
+**Recommended model/effort:** Opus, medium — the predicate's three rejected indices are stated below, but the implicit barline and the key signature must enter as one modification so undo takes them back together, and that bracket interacts with Phase 9's pairing and Phase 11's freshly extracted mode. The rules are decided; how they compose through the mutation bracket is not.
+
+> Blocked on **11** for the insertion-point mode it extracts, on **9** for the barline-plus-key-signature
+> pair the predicate has to recognize, and on **12a** for the dialog this flow opens. It writes
+> `ScoreViewController.java`, which is why **12d** follows it.
+
+### Tasks
+1. Read `.claude/guides/dialogs.md` and `docs/mutations.md` first. **The dialog itself is Phase 12a's** — do not restyle it, re-shape its combo or re-decide its opening state; this phase decides where the user may put a key signature. **The hit targets are Phase 12b's** — see its task 2 for the settled interaction model.
+  
+2. **Adding a mid-line key signature** uses Phase 11's insertion-point mode with its own index predicate. The predicate rejects:
   
 
 - index 0,
@@ -1062,81 +1228,77 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 
 Once the user picks an index, show the dialog. Contract the predicate as its own method so the three rules are testable without driving the UI.
 
-6. **When the chosen index is not immediately after a barline or repeat, insert a** `SINGLE_BARLINE` **before the key signature.** This is what keeps the Phase 2 class invariant true without restricting where the user may click. Both elements go in as one modification so undo takes them back together — read `docs/mutations.md` for the bracket's obligations.
+3. **When the chosen index is not immediately after a barline or repeat, insert a** `SINGLE_BARLINE` **before the key signature.** This is what keeps the Phase 2 class invariant true without restricting where the user may click. Both elements go in as one modification so undo takes them back together — read `docs/mutations.md` for the bracket's obligations.
   
-6a. **Give `KEY_SIGNATURE` a case in `ElementType.categoryName()`.** It currently falls through to the `IllegalStateException` at the end of the method, so the fit rejection in task 7 — whose message is "There isn't enough room on this line for this {0}." — throws instead of alerting, on the exact path that exists to tell the user something is too wide. Add the case and its string (read `.agents/guides/strings.md` first). Add `src/main/java/songscribe/dom/ElementType.java` to this phase's **Files**.
+3a. ~~Give `KEY_SIGNATURE` a case in `ElementType.categoryName()`.~~ **Done in Phase 12a**, because Phase 12d's alert message goes through it and would throw instead of alerting. If `categoryName()` still throws for `KEY_SIGNATURE` when this phase starts, Phase 12a did not run and this phase is not ready.
 
-7. **Two fit rejections, both from Phase 6's** `KeyEditFitCalculator`:
+4. Update `KeySignatureChangeAction`'s flags. #53 records that `Flag.DISABLE_WHEN_BAR_SELECTED` can be removed. Keep `DISABLE_WHEN_PLAYING`, `DISABLE_WHEN_EDITING_TEXT`, `DISABLE_IN_GRACE_MODE` and `OPENS_DIALOG`. The action no longer needs a position guard — invoking it enters the insertion-point mode, and the predicate of task 2 is what excludes the illegal indices.
   
-
-- Changing a line's key when that line did **not** previously have one creates a cautionary on the previous line. Call `cautionaryFitsSs` before accepting; if it fails, alert and reject the modification.
-  
-- Adding a mid-line key signature must fit on its line. Call `keySignatureFitsSs` before accepting; if it fails, alert and reject. The auto-inserted barline of task 6 is already inside that measurement.
+5. Write tests for what this phase adds. **The dialog's own cases are Phase 12a's** and **the hit targets are Phase 12b's** — do not restate either.
   
 
-Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` and `.agents/guides/strings.md` before writing either.
-
-8. `BaseDialog.DialogOp { ADD, EDIT, REMOVE }` and `KeyCellRenderer` come from **Phase 16**. Use them; do not create, rename or restyle either here.
-  
-9. Give the dialog an input record — `record KeySignatureInput(Line line, int insertionIndex, DialogOp op)`. It carries **no incoming key**: see task 10.
-  
-
-- Do not describe `Key` as "a copy the dialog cannot edit in place." `Key` is an immutable record, so no implementation could violate that promise — it describes the code rather than promising anything, and a test derived from it can never fail. There is no such clause and no such test.
-  
-10. Rewrite `KeySignatureChangeDialog`. It currently reads `line.getKeyType()` and `line.getKeyAccidentalCount()` into a combo and a spinner (`KeySignatureChangeDialog.java:75-76`) and posts a `KeySignatureDidChangeNotification` (deleted in Phase 4). It becomes a single combo over `Key.allSignatures()` plus an explicit "inherit" choice for lines other than line 0 — line 0 cannot inherit and must not offer it. **The combo uses** `KeyCellRenderer` from Phase 16, so a key is picked here exactly as it was picked in song settings: glyph plus display name, not a type combo and a count spinner. Do not write a second renderer, and do not restyle this one.
-  
-
-- **The dialog opens with no selection, and OK is disabled until the user picks something.** It does **not** pre-select the key already in effect. Pre-selecting it makes the default commit a no-op key change, and a no-op mid-line `KeySignatureElement` is invisible — nothing drawn changes — while still being a `cancelsAccidentals()` barrier that re-spells every note after it, and still dragging the auto-inserted barline of task 6 into the score. A blank combo makes every commit a deliberate choice.
-  
-- The line's current key is not otherwise hidden from the user: it is drawn in the header, and Phase 3's `setKey` collapses a chosen key that equals the inherited one back to null, so picking "the same key" cannot pin a line by accident.
-  
-
-- A key type combo plus a separate count spinner can express the invalid states `Key` rejects (`NONE` with a count, `SHARPS` with zero). One combo over the 15 valid signatures cannot. That is why the control changes shape.
-  
-- **No mode control**, because the model has no mode. Every SongScribe key is major; see Phase 1.
-  
-- Buttons follow the attachment dialogs' algorithm — `AttachmentDialog.modifyButtonPanel` and `opLabel` are where that lives. Reuse it; do not hand-build a button row.
-  
-
-11. Fix the crash noted in #53: the dialog currently crashes when invoked. Verify the rewritten dialog opens from a fresh song, from a song with existing key changes, and in both `ADD` and `EDIT` ops.
-  
-12. Update `KeySignatureChangeAction`'s flags. #53 records that `Flag.DISABLE_WHEN_BAR_SELECTED` can be removed. Keep `DISABLE_WHEN_PLAYING`, `DISABLE_WHEN_EDITING_TEXT`, `DISABLE_IN_GRACE_MODE` and `OPENS_DIALOG`. The action no longer needs a position guard — invoking it enters the insertion-point mode, and the predicate of task 5 is what excludes the illegal indices.
-  
-13. Write dialog tests from the contracts above:
-  
-
-- Line 0's dialog offers no "inherit" choice; a later line's does.
-  
-- Choosing "inherit" on a line with a key sets its key to null.
-  
-- Choosing a key on an inheriting line sets it.
-  
-- The combo's entries are exactly `Key.allSignatures()` — assert against the list rather than a hand-written expectation, so a domain change reaches the test.
-  
-- The dialog opens with **nothing selected** and OK disabled, in both `ADD` and `EDIT`; picking any entry enables OK. That is the whole of task 10's opening promise, and both sides of it need a case.
-  
 - The index predicate rejects 0, `effectiveElementCount() - 1`, and all three indices around an existing barline-plus-key-signature pair, and accepts an ordinary interior index. Parameterize over a line whose indices span every case, including the index before the pair's barline — the one a predicate that only looks at the key signature would wrongly accept.
   
 - Adding at an index not preceded by a barline produces two elements, barline then key signature, and one undo restores both.
   
-- A change whose cautionary does not fit is rejected and leaves the model untouched — assert the model, not the alert, since an alert that fires while the edit still lands is the failure worth catching.
+- Adding at an index already preceded by a barline produces one element, not two — the other side of task 3, and the case that catches an unconditional barline insert.
   
 
-14. **Update `docs/selection.md`.** Line 117 describes the header as "the clef and key signature, and a press there selects the …" — this phase makes that header a double-click edit target, and adds two more (the cautionary, and a mid-line key signature's accidental rect). State all three and how they relate to the press-to-select behavior the section already documents. The phase that invalidates a doc section updates it (see **Conventions**).
-  
-15. Run `./scripts/compile.sh` and `./scripts/test.sh KeySignatureChangeDialogTest`. Both must report SUCCESS / green.
+6. Run `./scripts/compile.sh` and `./scripts/test.sh KeySignatureChangeActionTest`. Both must report SUCCESS / green.
   
 
 * * *
-## ⏳ Phase 13: Design Document
-**Status:** Pending  
+## ✅ Phase 12d: Fit Rejection and Commit Routing
+**Status:** Done  
+**BlockedBy:** 6 (done), 10b, 12a, 12c  
+**Files:** src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/dialog/KeySignatureChangeDialog.java, src/test/java/songscribe/ui/dialog/KeySignatureChangeDialogTest.java  
+**Recommended model/effort:** Opus, high — two rejections and two user prompts whose ordering is a correctness question, on the one path where a refused edit could still reach the model. This is where the judgment in Phase 12 concentrates.
+
+> Blocked on **10b** for the reconciliation route task 3 redirects into, on **12a** for the dialog it
+> edits, and on **12c** for `ScoreViewController.java`.
+
+### Tasks
+1. Read `.claude/guides/option-dialogs.md` and `.agents/guides/strings.md` first. **The dialog's shape is Phase 12a's** — do not restyle it, re-shape its combo or re-decide its opening state; this phase decides when an edit is refused and by what route an accepted one commits.
+  
+2. **Two fit rejections, both from Phase 6's** `KeyEditFitCalculator`:
+  
+
+- Changing a line's key when that line did **not** previously have one creates a cautionary on the previous line, and — through inheritance — re-keys the header of every line that inherits from it. Call `lineKeyChangeFits(Line, Key, LyricRenderMetrics)` before accepting; if it fails, alert and reject the modification.
+  
+- Adding a mid-line key signature must fit on its line, and moves the key its line leaves off in. Call `keySignatureFits` before accepting; if it fails, alert and reject. The barline Phase 12c auto-inserts is already inside that measurement.
+  
+- **Neither name is `…Ss`-suffixed and neither is a partial query.** Phase 6 folded the cautionary check into `lineKeyChangeFits`, which walks the whole inheritance chain, after finding that a check covering only the previous line's cautionary accepts an edit that then overflows elsewhere. Read Phase 6's closing notes before calling either; the class exposes no half of the check on its own.
+  
+
+Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` and `.agents/guides/strings.md` before writing either.
+
+3. **Redirect the dialog's commit through `ScoreViewController`.** Phase 12a leaves it committing via `line.setKey` inside a modification bracket; route that single call through the path Phase 10b task 6 wires, so a key edit reaches accidental reconciliation and its restatement confirm by the same route every other pitch-moving edit does. Change nothing else in the dialog.
+  
+4. Order the two user prompts: **fit is checked first, restatements second** (Phase 10b task 7). A change that is going to be refused for not fitting must not first ask the user about accidentals it will never apply.
+  
+5. Write tests for what this phase adds. **The dialog's own cases are Phase 12a's** — its combo entries, its inherit choice and its opening state are already covered there; do not restate them.
+  
+
+- A change whose cautionary does not fit is rejected and leaves the model untouched — assert the model, not the alert, since an alert that fires while the edit still lands is the failure worth catching.
+  
+- A mid-line key signature that does not fit its line is rejected and leaves the model untouched — the second rejection, which the first case does not reach.
+  
+- A rejected-for-fit change never asks about restatements. That is task 4's ordering, and it is the only assertion that distinguishes the two orders.
+  
+
+6. Run `./scripts/compile.sh` and `./scripts/test.sh KeySignatureChangeDialogTest`. Both must report SUCCESS / green.
+  
+
+* * *
+## ✅ Phase 13: Design Document
+**Status:** Done  
 **BlockedBy:** —  
 **Files:** docs/key-signatures.md, CLAUDE.md  
 **Recommended model/effort:** Sonnet, medium — the design is settled and stated below; this is writing it down, not deciding it.
 ### Tasks
 1. Write `docs/key-signatures.md` as a tier-3 design document — architectural and domain rules that span subsystems, which no single class's Javadoc can state. Read `.claude/guides/contracts.md` §"When it belongs in `docs/` instead" for what qualifies, and `docs/mutations.md` for the house shape.
   
-2. **Include exactly one diagram: the inheritance chain and its stopping rule.** Draw a short run of lines — some with their own key, some inheriting, one carrying a mid-line change — and mark where a change to one line's key stops propagating. That rule ("forward to the first line with its own key") governs four subsystems independently: `inheritedKey` propagation (Phase 3), reconciliation reach (Phase 10), cautionary derivation (Phase 5) and MusicXML emission (Phase 7). The list below states it four separate times; the picture is the one copy they can all point at.
+2. **Include exactly one diagram: the inheritance chain and its stopping rule.** Draw a short run of lines — some with their own key, some inheriting, one carrying a mid-line change — and mark where a change to one line's key stops propagating. That rule ("forward to the first line with its own key") governs four subsystems independently: `inheritedKey` propagation (Phase 3), reconciliation reach (Phase 10b), cautionary derivation (Phase 5) and MusicXML emission (Phase 7). The list below states it four separate times; the picture is the one copy they can all point at.
   
 
 - No other diagram. The rest of this document is contracts stated once, and a diagram that redraws them is maintenance cost with no reader benefit.
@@ -1186,11 +1348,26 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
   
 
 * * *
-## ⏸️ Phase 14: Cross-cutting Tests
-**Status:** Pending  
-**BlockedBy:** 5, 6, 7, 8, 9, 10, 12, 17  
-**Files:** src/test/java/songscribe/dom/KeyResolutionTest.java, src/test/java/songscribe/midi/LineTrackBuilderTest.java  
-**Recommended model/effort:** Opus, high — these are the properties that span phases, and each one is where two subsystems could disagree without any single phase's tests noticing.
+## ✅ Phase 14a: MIDI Mid-line Key Test
+**Status:** Done  
+**BlockedBy:** 2, 3 (both done)  
+**Files:** src/test/java/songscribe/midi/LineTrackBuilderTest.java  
+**Recommended model/effort:** Sonnet, medium — one assertion against a chain that already exists, with no subsystem disagreement to reason about. It needs only the element and the index-taking resolution, both of which shipped in Phases 2 and 3, so it can run now rather than waiting behind every other phase.
+
+### Tasks
+1. Read `.agents/guides/testing-unit.md` first.
+  
+2. Add a MIDI test to `LineTrackBuilderTest`: notes after a mid-line key change get the pitches the new key implies. MIDI pitch flows through `StaffElement.getPitch()` → `findLastAccidental()` → `findEffectiveAccidental(Line, int)` → `keyInEffectAt(Line, int)`, so this requires no MIDI-side change — the test asserts that the chain actually carries the index through, which is the thing that could silently break.
+  
+3. Run `./scripts/compile.sh`, then `./scripts/test.sh LineTrackBuilderTest`. Both must report SUCCESS / green.
+  
+
+* * *
+## ✅ Phase 14b: Cross-cutting Tests
+**Status:** Done  
+**BlockedBy:** 5, 6, 7, 8, 9, 10b, 12b, 12c, 12d, 17  
+**Files:** src/test/java/songscribe/dom/KeyResolutionTest.java  
+**Recommended model/effort:** Opus, high — these are the properties that span phases, and each one is where two subsystems could disagree without any single phase's tests noticing. The MIDI case, which is a single chain rather than a disagreement, went to Phase 14a.
 ### Tasks
 1. Read `.agents/guides/testing-unit.md` and `.claude/guides/contracts.md` first. Every case below is derived from a stated contract; do not add cases by reading implementations.
   
@@ -1208,13 +1385,13 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
 - **Inheritance chains.** With lines keyed `[C, null, null, D, null]`, every line's `getRunningKey()` is correct, and a mid-line change on line 1 changes what lines 2 and 3 inherit.
   
 
-3. Add a MIDI test to `LineTrackBuilderTest`: notes after a mid-line key change get the pitches the new key implies. MIDI pitch flows through `StaffElement.getPitch()` → `findLastAccidental()` → `findEffectiveAccidental(Line, int)` → `keyInEffectAt(Line, int)`, so this requires no MIDI-side change — the test asserts that the chain actually carries the index through, which is the thing that could silently break.
+3. ~~Add a MIDI test to `LineTrackBuilderTest`.~~ **Done in Phase 14a.**
   
 4. Run `./scripts/compile.sh`, then the full unit suite with `./scripts/test.sh`. Report the result. If any pre-existing test fails, fix it — do not assume it was already failing and do not stash to check.
   
 
 * * *
-## ⏸️ Phase 15: Manual UI Verification
+## ⏳ Phase 15: Manual UI Verification
 **Status:** Pending  
 **BlockedBy:** 14  
 **Files:** —  
@@ -1292,13 +1469,13 @@ Two shared-dialog refactors that Phase 12 depends on and that have nothing to do
   
 
 * * *
-## ⏸️ Phase 17: Remove the Deprecated Key Accessors
-**Status:** Pending  
-**BlockedBy:** 4, 5, 6, 7, 8, 12  
+## ✅ Phase 17: Remove the Deprecated Key Accessors
+**Status:** Done  
+**BlockedBy:** 4, 5, 6, 7, 8, 12a, 12b, 12c, 12d  
 **Files:** src/main/java/songscribe/dom/Line.java  
 **Recommended model/effort:** Sonnet, low — a deletion whose safety the compiler proves.
 
-Phase 3 kept `Line.getKeyType()` and `Line.getKeyAccidentalCount()` alive as `@Deprecated` delegates so that every phase between it and Phase 12 could pass its own compile gate. Every consumer is now converted.
+Phase 3 kept `Line.getKeyType()` and `Line.getKeyAccidentalCount()` alive as `@Deprecated` delegates so that every phase between it and the last of the Phase 12 halves could pass its own compile gate. Every consumer is now converted.
 
 ### Tasks
 1. Confirm with `jet_brains_find_referencing_symbols` on both members that no reference remains in `src/main` or `src/test`. If any does, that phase left work undone — report it rather than converting the call site here.

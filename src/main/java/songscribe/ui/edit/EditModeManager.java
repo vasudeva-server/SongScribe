@@ -67,19 +67,17 @@ public final class EditModeManager {
      * Creates the singleton instance and wires it to the given dependencies.
      * Must be called exactly once, during ScoreView construction.
      *
-     * @param clipboardManager The clipboard manager for paste operations
      * @param selectionCoordinator The selection coordinator for selection operations
      * @param scoreActions Callback interface for ScoreView actions
-     * @param scoreView The owning ScoreView, held by PasteModeManager to reach the
-     *     ScoreViewController once it exists
+     * @param scoreView The owning ScoreView, held by InsertionPointMode for the marker overlay
+     *     and by PasteModeManager to reach the ScoreViewController once it exists
      */
     public static void init(
-        ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions,
         ScoreView scoreView
     ) {
-        INSTANCE = new EditModeManager(clipboardManager, selectionCoordinator, scoreActions, scoreView);
+        INSTANCE = new EditModeManager(selectionCoordinator, scoreActions, scoreView);
     }
 
     /** Returns the initialized instance; throws if {@link #init} has not been called. */
@@ -98,6 +96,7 @@ public final class EditModeManager {
 
     private final ScoreActions scoreActions;
     private final GraceModeManager graceModeManager;
+    private final InsertionPointMode insertionPointMode;
     private final PasteModeManager pasteModeManager;
 
     // Whether the preview element is visible (based on mouse position in mouse mode)
@@ -121,14 +120,14 @@ public final class EditModeManager {
     private Insertion lastInsertion = null;
 
     private EditModeManager(
-        ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
         ScoreActions scoreActions,
         ScoreView scoreView
     ) {
         this.scoreActions = scoreActions;
         graceModeManager = new GraceModeManager(selectionCoordinator);
-        pasteModeManager = new PasteModeManager(clipboardManager, scoreView);
+        insertionPointMode = new InsertionPointMode(scoreView);
+        pasteModeManager = new PasteModeManager(scoreView, insertionPointMode);
         MessageCenter.subscribe(this);
     }
 
@@ -137,6 +136,17 @@ public final class EditModeManager {
      */
     public static GraceModeManager getGraceModeManager() {
         return instance().graceModeManager;
+    }
+
+    /**
+     * The mode that lets the user pick an insertion point on a line, shared by every
+     * operation that needs one. Input handlers route through this rather than through a
+     * particular client, so a new kind of placement needs no edit to them.
+     *
+     * @return the insertion-point mode
+     */
+    public static InsertionPointMode getInsertionPointMode() {
+        return instance().insertionPointMode;
     }
 
     /**

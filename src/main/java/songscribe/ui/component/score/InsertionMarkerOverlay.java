@@ -31,12 +31,13 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
 /**
- * The paste-mode insertion-point marker: a single rounded vertical line spanning every staff
- * position a note could occupy, shown at the line and index {@code PasteModeManager} is
- * currently tracking as the placement target.
+ * The insertion-point marker: a single rounded vertical line spanning every staff position a
+ * note could occupy, shown at the line and index {@code InsertionPointMode} is currently
+ * tracking as the placement target — for a paste, a key-signature change, or any other client
+ * of that mode.
  * <p>
  * Exactly one instance exists for the lifetime of the owning {@link ScoreView}; it is retargeted
- * and shown or hidden by {@code PasteModeManager} rather than being recreated. Its height is
+ * and shown or hidden by {@code InsertionPointMode} rather than being recreated. Its height is
  * identical on every line — it is bounded by the compile-time constants
  * {@link Staff#MIN_STAFF_POSITION_SP} and {@link Staff#MAX_STAFF_POSITION_SP} — so only its x
  * position and the zoom-driven scale ever change.
@@ -44,7 +45,7 @@ import songscribe.util.GraphicsState;
 public final class InsertionMarkerOverlay extends LineOverlayComponent {
 
     /**
-     * Thickness of the paste-mode insertion-point marker, in staff spaces. Package-private so
+     * Thickness of the insertion-point marker, in staff spaces. Package-private so
      * {@code InsertionMarkerOverlayTest} can compute expected bounds without duplicating the
      * literal.
      */
@@ -101,7 +102,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
             return null;
         }
 
-        // betweenElementsOnly=true: paste placement never snaps onto an existing element's own
+        // betweenElementsOnly=true: a placement never snaps onto an existing element's own
         // position, so mouseXSs is ignored.
         var previewElement = ElementType.CROTCHET.newInstance();
         // Center the marker on the head the insertion X was computed for, measured per type rather

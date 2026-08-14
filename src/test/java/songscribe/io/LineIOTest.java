@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
@@ -38,6 +39,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.AttributesImpl;
@@ -62,6 +66,24 @@ import songscribe.dom.Tuplet;
 import songscribe.dom.Ending;
 import songscribe.message.MessageCenter;
 
+/**
+ * Unit tests for {@link LineIO}: {@link LineIO#writeLine} and {@link LineIO.LineReader}.
+ *
+ * <p>Most nested classes correspond one-to-one with a {@code writeLine} field or an
+ * {@code endElement11} switch case — {@link EndElement11Keys} to the {@code <keys>} case,
+ * {@link EndElement11Keytype} to {@code <keytype>}, and so on — and drive {@link LineIO.LineReader}
+ * directly via {@link #parseLineTag} / {@link #parseLineKeyTags}, against a {@link #minimalSongMock()
+ * mock Song} whose only job is to let a bare {@link songscribe.dom.Line} accept the setters the
+ * reader calls.
+ *
+ * <p>Key translation is the exception: {@link songscribe.dom.Line#getKey()}'s collapse-to-null
+ * normalization compares against a line's inherited key, which is settled only once every line in
+ * a document has been parsed (see {@link SongIO.DocumentReader#getSong()}) — a single isolated
+ * {@code <line>} has nothing to inherit from and so can never exercise it. {@link
+ * LegacyDocumentKeyCollapse} therefore parses a full hand-built document through {@link
+ * #parseXml}, the one case in this class that tests {@link LineIO} in concert with {@link SongIO}
+ * rather than in isolation.
+ */
 @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
 class LineIOTest extends UnitTest {
 
@@ -530,6 +552,51 @@ class LineIOTest extends UnitTest {
                 .hasMessageContaining("malformed")
                 .hasMessageContaining(badValue);
         }
+
+        @Test
+        void testKeytypeOfNoneWithNonZeroKeysIsCorrupt() throws Exception {
+            // Both tags present and explicit this time, unlike testAKeysValueWithNoMatchingKeytypeIsCorrupt
+            // above — NONE paired with a count is still half a key, even with nothing left implicit.
+            assertThatThrownBy(() -> parseLineKeyTags(String.valueOf(KEY_COUNT), KeyType.NONE.name()))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("invalid key signature");
+        }
+
+        private record OutOfRangeCase(String description, int keys) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("outOfRangeCases")
+        void testKeysOutsideValidRangeIsCorrupt(OutOfRangeCase testCase) {
+            // Key's own range check, not a duplicate of it — see applyParsedKey's contract.
+            assertThatThrownBy(() -> parseLineKeyTags(String.valueOf(testCase.keys()), KeyType.SHARPS.name()))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("invalid key signature");
+        }
+
+        static Stream<OutOfRangeCase> outOfRangeCases() {
+            return Stream.of(
+                new OutOfRangeCase("one below the minimum", -1),
+                new OutOfRangeCase("one past the maximum", Key.MAX_ACCIDENTAL_COUNT + 1)
+            );
+        }
+
+        private record BoundaryCase(String description, int keys, KeyType keyType) {}
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("boundaryCases")
+        void testKeysAtValidRangeBoundarySucceeds(BoundaryCase testCase) throws Exception {
+            var parsedLine = parseLineKeyTags(String.valueOf(testCase.keys()), testCase.keyType().name());
+
+            assertThat(parsedLine).isNotNull();
+            assertThat(parsedLine.getKey()).isEqualTo(new Key(testCase.keyType(), testCase.keys()));
+        }
+
+        static Stream<BoundaryCase> boundaryCases() {
+            return Stream.of(
+                new BoundaryCase("the minimum, zero accidentals", 0, KeyType.NONE),
+                new BoundaryCase("the maximum accidental count", Key.MAX_ACCIDENTAL_COUNT, KeyType.SHARPS)
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -547,6 +614,16 @@ class LineIOTest extends UnitTest {
                 .hasMessageContaining("invalid key signature");
         }
 
+        @ParameterizedTest
+        @EnumSource(value = KeyType.class, names = "NONE", mode = EnumSource.Mode.EXCLUDE)
+        void testNamedKeytypeWithZeroKeysIsCorrupt(KeyType keyType) throws Exception {
+            // Both tags present and explicit this time, unlike testAKeytypeWithNoMatchingKeysValueIsCorrupt
+            // above — a named type paired with zero accidentals is still half a key, whichever type it is.
+            assertThatThrownBy(() -> parseLineKeyTags("0", keyType.name()))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("invalid key signature");
+        }
+
         @Test
         void testALineWithNoKeyTagsEstablishesNoKeyOfItsOwn() throws Exception {
             var parsedLine = parseLineTag(LineIO.XML_NOTE_DIST_CHANGE, "1.0");
@@ -555,6 +632,76 @@ class LineIOTest extends UnitTest {
             assertThat(parsedLine.getKey())
                 .as("no key delta in the file means the line is in the key already in effect")
                 .isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // LegacyDocumentKeyCollapse — the read-time translation contract as a whole,
+    // exercised through a full document rather than one <line>. See the class
+    // Javadoc for why this case alone cannot be driven through LineReader in isolation.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class LegacyDocumentKeyCollapse {
+
+        private static final Key DOCUMENT_KEY = new Key(KeyType.SHARPS, 3);
+        private static final Key CHANGED_KEY = new Key(KeyType.FLATS, 5);
+
+        /**
+         * The old writer decided whether to write a line's {@code <keys>}/{@code <keytype>} by
+         * comparing to the file's single song-level default, not to the key the immediately
+         * preceding line actually left the song in. A run of consecutive lines that all share one
+         * non-default key therefore all carry the same explicit tags in the file, restating a key
+         * that does not change after the first line. Only that first line should survive
+         * translation as an established key; {@link LineIO.LineReader#applyParsedKey} cannot know
+         * that when it runs — see the class Javadoc — so it is {@link SongIO}'s job to collapse
+         * the restatement once every line's inherited key is known.
+         */
+        @Test
+        void testALineWhoseTagsRestateWhatItInheritsCollapsesToNull() throws Exception {
+            var song = parseXml(threeLineDocumentXml());
+
+            assertThat(song.getLine(0).getKey())
+                .as("line 0 takes the document-level key the file carried")
+                .isEqualTo(DOCUMENT_KEY);
+            assertThat(song.getLine(1).getKey())
+                .as("line 1's tags differ from the document default, so they establish a real change")
+                .isEqualTo(CHANGED_KEY);
+            assertThat(song.getLine(2).getKey())
+                .as("line 2's tags only restate line 1's key, which is exactly what it inherits")
+                .isNull();
+            assertThat(song.getLine(2).getRunningKey())
+                .as("collapsing the restatement to null must not change the key line 2 is actually in")
+                .isEqualTo(CHANGED_KEY);
+        }
+
+        private static String threeLineDocumentXml() {
+            return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <composition version="2.0">
+                  <keys>3</keys>
+                  <keytype>SHARPS</keytype>
+                  <lines>
+                    %s
+                    %s
+                    %s
+                  </lines>
+                  <view/>
+                </composition>
+                """.formatted(lineXml(""), lineXml("<keys>5</keys><keytype>FLATS</keytype>"), lineXml("<keys>5</keys><keytype>FLATS</keytype>"));
+        }
+
+        private static String lineXml(String keyTags) {
+            return """
+                <line>
+                  %s
+                  <lyricsypos>0.0</lyricsypos>
+                  <notes>
+                    <note type="CROTCHET"><staffposition>0</staffposition></note>
+                    <note type="SINGLE_BARLINE"><staffposition>0</staffposition></note>
+                  </notes>
+                </line>
+                """.formatted(keyTags);
         }
     }
 

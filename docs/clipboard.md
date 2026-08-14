@@ -16,7 +16,7 @@ paste (`instantiate`) go through it:
 
 ```
   copy:   Line ──capture(line,begin,end)──> Fragment{elements[], priorAccidentals[], spans[]}  ──> ClipboardManager.fragment
-                    ├─ effectiveDeleteEnd() extends past trailing breath mark
+                    ├─ effectiveEnd() extends past trailing breath mark
                     ├─ drop orphan paired grace note at the tail
                     ├─ clone elements → IdentityHashMap<orig,clone>
                     ├─ resolve each element's effective accidental against the ORIGINAL
@@ -81,7 +81,7 @@ like `Ending.bracketRanges`.
 
 - **Trailing breath mark.** A breath mark is positionally attached to the element
   before it, so a copy or cut ending at `end` must also carry a breath mark sitting
-  at `end + 1`. This is computed once by `Line.effectiveDeleteEnd`
+  at `end + 1`. This is computed once by `Line.effectiveEnd`
   (a pure query, no line mutation) and shared by copy, cut, the paste-replace
   fit check, and the selection highlight — one rule, one implementation.
 - **Orphan paired grace note.** If the last element the effective range would
@@ -107,7 +107,7 @@ in directly would be.
 
 `ScoreViewController.deleteElementRange(Line, int, int)` is the extracted body of
 the element-range delete path: grace-pair fallback, the breath-mark extension (via
-`effectiveDeleteEnd`), glissando strip on the preceding element, `xOffsetPx`
+`effectiveEnd`), glissando strip on the preceding element, `xOffsetPx`
 gap-fill for the elements after the range, lyric-seam adjustment, and
 `Line.removeRange`. It performs **no confirmation** and returns nothing — every
 caller has already run whatever confirmation it needs and already knows the range
@@ -119,13 +119,16 @@ check `line.hasEndingInvalidatedByDeletion(...)` and run
 the selection and open a modification bracket once the user has agreed (or there
 was nothing to confirm).
 
-### `effectiveDeleteEnd` — a pure query
+### `effectiveEnd` / `effectiveBegin` — pure queries
 
-`Line.effectiveDeleteEnd(int end)` extends `end` past a trailing breath mark and
-mutates nothing. It is shared, unchanged, by `deleteElementRange`,
+`Line.effectiveEnd(int end)` extends `end` past a trailing breath mark and past a
+key signature paired with a barline at `end`; `Line.effectiveBegin(int begin)`
+extends `begin` back over a paired grace note and over the barline a key signature
+at `begin` sits behind. Both mutate nothing, and `Line.effectiveRange` is the two of
+them as one `EffectiveRange`. They are shared, unchanged, by `deleteElementRange`,
 `Fragment.capture`, `tryInsertFragment`'s paste-replace delete range, and
-`LineSelectionState.isElementSelected` — the breath-mark rule is defined once, so
-what paints as selected is exactly what a delete or a copy carries away.
+`Selection.Range.contains` — the pairing rules are defined once, so what paints as
+selected is exactly what a delete or a copy carries away.
 
 ### Cut = confirm-first, then one bracket
 
@@ -342,46 +345,85 @@ When `handlePaste` runs with no active selection, it doesn't insert anything
 directly — it hands off to `PasteModeManager.enter()`, which puts the score into a
 modal "click to place" state.
 
-```
-                    Cmd+V, no selection
-        INACTIVE ─────────────────────────> ACTIVE ──────────> [overlay shown, all actions disabled,
-            ^                                 │                 preview element suppressed]
-            │                                 │
-            │                          mouseMoved on a line
-            │                                 │  └─> findInsertionIndex → track (lc, index),
-            │                                 │      retarget insertion marker overlay
-            │                                 │
-            │        ┌── click / Return ──────┤   (Return with no tracked point ⇒ no-op, stay ACTIVE)
-            │        │      └─> tryInsertFragment(index, no deleteRange)
-            │        │             ├─ LINE_FULL ─> error dialog ─> STAY ACTIVE
-            │        │             └─ INSERTED  ─> exit  (clipboard retained)
-            │        │
-            └────────┴── Escape (before DeselectCommand; selection left intact)
-                     ├── click outside any line
-                     └── app backgrounded
+Two classes share that state, and the split is the point: **`InsertionPointMode`
+owns picking a spot on a line, `PasteModeManager` owns what goes there.** Paste is
+one client of the mode; mid-line key signatures are another
+(`docs/key-signatures.md`). Nothing in the mode knows about clipboards, and nothing
+in `PasteModeManager` knows how a mouse position becomes an index.
 
-        ALL exits funnel through ONE exit():
-            active=false → post notification → remove overlay → remove ComponentListener
+```
+  PasteModeManager (the client)              InsertionPointMode (the interaction)
+  ─────────────────────────────              ────────────────────────────────────
+      Cmd+V, no selection
+            │
+            └── enter() ────────────────────> enter(client) ──> ACTIVE
+                   │ (only if entry succeeded)      │            [all actions disabled,
+                   └─> raise PasteOverlay banner    │             preview suppressed]
+                                                    │
+                                             mouseMoved on a line
+                                                    │  ├─> header / past right edge ⇒ clear
+                                                    │  ├─> findInsertionIndex → index
+              acceptsInsertionIndex(line, i) <──────┤  ├─> client rejects it     ⇒ clear
+                   (paste: always true)             │  └─> track (lc, i), retarget marker
+                                                    │
+                                          click / Return ─── (no tracked point ⇒ no-op, stay ACTIVE)
+                                                    │
+              insertionPointChosen(line, i) <───────┘
+                   └─> tryInsertFragment(i, no deleteRange)
+                          ├─ LINE_FULL / EMPTY ─> DECLINED ──> STAY ACTIVE (error already shown)
+                          └─ INSERTED / CANCELLED ─> COMPLETED ─> exit(PLACED)
+                                                                       │
+                                                    ┌──────────────────┘
+                                        cancel() ───┤ Escape (before DeselectCommand;
+                                                    │        selection left intact)
+                                                    ├ click outside any line
+                                                    └ app backgrounded  ─> exit(CANCELLED)
+                                                    │
+              insertionPointModeDidEnd(reason) <────┘
+                   └─> take the banner and its ComponentListener back down
 
         While ACTIVE, presses on a line are inert — no line select, no lyric select, no
         pitch drag — so the click that follows is always a placement or a cancel.
 ```
 
+### Who owns which transition
+
+| Transition | Owner |
+|---|---|
+| enter / refuse a second client | `InsertionPointMode.enter(Client)` |
+| the paste banner going up | `PasteModeManager.enter()` |
+| mouse tracking, header and right-edge exclusion, marker retargeting | `InsertionPointMode.updateTarget` |
+| which of the remaining indices are legal | the client's `acceptsInsertionIndex` |
+| click / Return resolving to a chosen index | `InsertionPointMode.mouseClicked` / `place` |
+| inserting the fragment, and whether the point is retryable | `PasteModeManager.insertionPointChosen` |
+| Escape, click-off-line, backgrounding | `InsertionPointMode.cancel` |
+| the single teardown funnel | `InsertionPointMode.exit` |
+| the paste banner coming down | `PasteModeManager.insertionPointModeDidEnd` |
+
 ### State and the single `exit()` funnel
 
-`PasteModeManager` mirrors `GraceModeManager`'s shape exactly: a private `active`
+`InsertionPointMode` mirrors `GraceModeManager`'s shape exactly: a private `active`
 flag, `isInProgress()`, and a static `instance` backing a static `isActive()` for
 callers (`UIAction`, `ScoreViewController.handlePasteboardOp`) that don't hold a
-reference. There are five distinct ways out of paste mode — successful placement,
-"line full" leaves you in place so that's *not* an exit, Escape, a click outside
-any line, and the app being backgrounded — and all of them route through one
-private `exit()`: reset the `active` flag and post
-`PasteModeDidChangeNotification(false)`, drop the tracked insertion point and
-repaint the line that had been showing it, remove the layered-pane bounds
-`ComponentListener`, and remove the `PasteOverlay` from the layered pane. Nothing
-open-codes any of those four steps outside `exit()` — a missed listener removal
-would otherwise be invisible, silently leaking one more live listener on the
-layered pane every enter/exit cycle.
+reference. At most one placement is pending application-wide — a second client
+asking while one is running is refused, and told so by `enter`'s return value so it
+doesn't put chrome on screen that nothing will take down.
+
+There are five distinct ways out — a completed placement, Escape, a click outside
+any line, the app being backgrounded, and (for paste) a "line full" answer, which
+leaves you in place so that's *not* an exit — and every real exit routes through one
+private `exit(EndReason)`: reset the `active` flag and post
+`InsertionPointModeDidChangeNotification(false)`, drop the tracked insertion point
+and hide the marker, then call the client's `insertionPointModeDidEnd`. Nothing
+open-codes any of those steps outside `exit()` — a missed step is invisible: the
+marker left painted with no placement pending, or a client never told its placement
+ended and leaving its banner up for good.
+
+**The client's entitlement is exactly one end-of-placement report** — `PLACED` or
+`CANCELLED`, never both, never twice, never neither, and always after the mode has
+already gone idle. `insertionPointChosen` may run several times before it (each
+`DECLINED` answer is a refused point, not an ending); at most one of those calls is
+terminal.
 
 Mouse tracking (`updateTarget`, called from `LineComponent.mouseMoved` /
 `mouseClicked`) converts the event's view-pixel X to staff spaces with the same
@@ -389,18 +431,25 @@ recipe `PreviewElementManager.trackMouse` uses, then calls
 `LayoutResult.findInsertionIndex` directly — over an element head it returns that
 element's index, so the tracked insertion point is never on top of an element,
 and every return path from `findInsertionIndex` is already bounded by
-`effectiveElementCount()`, so no clamping is needed at the call site.
+`effectiveElementCount()`, so no clamping is needed at the call site. The staff
+header and everything past the staff's right edge are excluded there, because they
+hold no insertion point whatever is being placed; anything finer is the client's
+predicate, consulted on every move.
+
+`LineComponent` and `ScoreInputHandler` route through
+`EditModeManager.getInsertionPointMode()` rather than through any one client, so a
+new kind of placement needs no edit to either of them.
 
 ### Blanket action disable
 
-`UIAction.enableFromPasteMode()` returns `!PasteModeManager.isActive()` and is
-called first in `updateEnabledState()`'s predicate chain, so **every** action —
-menu, toolbar, and the paste shortcut itself — is disabled the instant paste mode
-is active, with no per-action opt-in required. There's no saved/restored toggle
-state here (unlike grace mode's `saveActionStates`/`restoreActionStatesWithFlag`,
-which exists to preserve *selected* toggle state): paste mode doesn't touch
-toggle state, so exiting simply re-runs `updateEnabledState()` and everything
-re-evaluates from the current context.
+`UIAction.enableFromInsertionPointMode()` returns `!InsertionPointMode.isActive()`
+and is called first in `updateEnabledState()`'s predicate chain, so **every** action —
+menu, toolbar, and the placing operation's own shortcut — is disabled the instant a
+placement is pending, with no per-action opt-in required. There's no saved/restored
+toggle state here (unlike grace mode's `saveActionStates`/`restoreActionStatesWithFlag`,
+which exists to preserve *selected* toggle state): the mode doesn't touch toggle
+state, so exiting simply re-runs `updateEnabledState()` and everything re-evaluates
+from the current context.
 
 ### `PasteAction`'s flag requirements
 
@@ -418,16 +467,18 @@ states.
 ### Overlay: layered pane, not the glass pane
 
 The `PasteOverlay` pill (naming the mode and its exits) is added directly to
-`MainFrame`'s `JLayeredPane` (`PALETTE_LAYER`) on `enter()`, and removed only
-inside `exit()`. It is deliberately **not** installed as the glass pane:
+`MainFrame`'s `JLayeredPane` (`PALETTE_LAYER`) by `PasteModeManager.enter()`, and
+removed only in `insertionPointModeDidEnd`. It belongs to the client rather than to
+`InsertionPointMode` because its text names *the operation*, not the interaction.
+It is deliberately **not** installed as the glass pane:
 `ActivationGate` calls `frame.setGlassPane` exactly once at startup, caches that
 pane in its own static field, and never re-reads `frame.getGlassPane()` —
 swapping the glass pane out from under it would leave the gate toggling a
 detached component, so a click meant to reactivate a backgrounded app would fall
 through to the score and place the pending paste. Because a `JLayeredPane` child
 gets no layout, `PasteModeManager` tracks the pane's size itself with a
-`ComponentListener` added on `enter()` and removed in `exit()`, keeping the
-overlay full-bleed through window resizes. `PasteOverlay` itself has no mouse
+`ComponentListener` added on `enter()` and removed alongside the banner, keeping
+the overlay full-bleed through window resizes. `PasteOverlay` itself has no mouse
 listeners — AWT never selects a listener-free component as a mouse-event target,
 so every click (including one landing on the pill) passes through to the score
 underneath, which is exactly what placement-by-click requires.
@@ -465,10 +516,13 @@ accidental: its own prior accidental if it had one, otherwise `NATURAL`. That
 inherited no accidental in its source context must still read as an explicit
 natural if the destination context would otherwise sharpen or flatten it.
 
-The key signature never appears in the algorithm directly. It's the last branch
-of `StaffElement.findEffectiveAccidental`, so resolving the note's context
-before the edit against the source line and after against the destination line
-compares the two keys implicitly.
+The key signature never appears in the comparison. It's the last branch of
+`StaffElement.findEffectiveAccidental` and of the projected-sequence resolver
+that mirrors it, so resolving the note's context before the edit against the
+source line and after against the destination line compares the two keys
+implicitly. That is what lets a *key change* be reconciled by the same walk as
+everything else: the edit states the key each line will run in and the algorithm
+never learns that anything unusual happened. See `docs/key-signatures.md`.
 
 A note that ends a tie is never a candidate for materialization or removal: a
 tie asserts that two notes are one sounding pitch, so the tied note has no pitch
@@ -507,24 +561,26 @@ content" rule below.
 **The limit.** A restatement of the accidental *being removed* is invisible to
 this arithmetic — on its own line it may be doing real work, since the backward
 scan resets at the line boundary. Removing those needs the notator's judgement,
-not arithmetic, and is deliberately left to a separate, follow-up feature
-(#681) rather than left as an unrecognized hole.
+not arithmetic, which is why `songscribe.ui.edit.AccidentalRestatements` asks
+rather than deciding: it scans forward for them, offers them in one dialog, and
+turns a Yes into the `RestatementRemoval` the reconciliation folds in.
 
 ### What can move a note's inherited context
 
-Two kinds of edit can change the accidental a note inherits: an explicit
-accidental added or removed, and a barline or repeat added or removed, because
-either cancels every accidental before it. Both matter equally — assuming only
-the first is what produced the paste/barrier-insertion defect this reconciliation
-closes.
+Three kinds of edit can change the accidental a note inherits: an explicit
+accidental added or removed; a barline or repeat added or removed, because
+either cancels every accidental before it; and a key change, which moves what
+every note not covered by an explicit accidental sounds. All three matter
+equally — assuming only the first is what produced the paste/barrier-insertion
+defect this reconciliation closes.
 
 Two rules keep that from recurring:
 
 - No call site decides for itself whether reconciliation is needed. It always
   runs, for every edit that can move accidental context.
-- The list of element types that cancel accidentals (barlines, repeats) stays
-  in exactly two places — `StaffElement.findEffectiveAccidental` and
-  `AccidentalReconciliation.resolveOverProjection`, which mirrors it for the
+- The list of element types that cancel accidentals (barlines, repeats, key
+  signatures) stays in exactly two places — `StaffElement.findEffectiveAccidental`
+  and `AccidentalReconciliation.resolveOverProjection`, which mirrors it for the
   projected (not-yet-committed) sequence — and is never copied anywhere else.
 
 ### The two bounds, and why the pass is a single left-to-right walk
@@ -538,6 +594,26 @@ Both bounds are satisfied structurally by a single left-to-right pass over the
 projected sequence, not by an early exit: each emitted change is written back
 onto the projected position before the walk continues, so later positions
 resolve against the already-reconciled state.
+
+### Reach — how many lines one reconciliation covers
+
+The bounds above are *within* a line, because the backward scan is. **How far a
+reconciliation reaches is a separate question, and a key change answers it
+differently from every other edit.** A key change moves what every uncovered note
+sounds on its own line *and* on every line that inherits that key, so it is
+reconciled over a range: `AccidentalReconciliation.reconcileModification(List<
+ModifiedLine>, RestatementRemoval)`, whose range runs from the change point
+forward to the first line establishing a key of its own —
+`AccidentalReconciliation.lineKeyChangeReach` and `.linesInheriting` build it, and
+`docs/key-signatures.md` states the stopping rule the whole feature shares.
+Each `ModifiedLine` carries the key its line will then run in; the walk itself is
+unchanged, because the lines are independent (accidental context resets at a line
+boundary — what crosses it is the key).
+
+Every other edit is a range of one, which is exactly what the per-line
+`reconcileModification(Line, …)` overload is. `AccidentalRestatements.confirm`
+takes the same range and raises **one** dialog for it: one prompt per edit, not
+one per line.
 
 ### Ordering — materialize before layout is projected
 
@@ -615,10 +691,12 @@ Carried over from `specs/65-clipboard.md`:
   the `Fragment` reshape from §6, and its line fragment carries offsets — the
   opposite of the element fragment's "semantic content, not layout corrections"
   rule.
-- **#53 (mid-line key changes).** Separate. The resolver
-  (`StaffElement.findEffectiveAccidental`) now accepts it via `keyInEffectAt`;
-  nothing in this architecture implements it. It also breaks the
-  one-key-per-line assumption in `HorizontalSpacingCalculator.isWithinHeaderXSs`.
+- **Mid-line key changes.** No longer out of scope: they are their own subsystem,
+  documented in [key-signatures.md](key-signatures.md), and they reuse this
+  document's §5 insertion-point mode to pick the spot. What is stated here is only
+  the seam — the resolver (`StaffElement.findEffectiveAccidental`) reaches a
+  mid-line key through `keyInEffectAt`, and a key-signature placement is a second
+  `InsertionPointMode.Client` beside `PasteModeManager`.
 - **#11 (ABC import).** Separate. Listed only as a future call site of
   `AccidentalReconciliation`, needed for two cases: ABC's default applies an
   accidental to the pitch class in *all* octaves within the bar, while

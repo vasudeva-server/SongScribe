@@ -125,18 +125,30 @@ public sealed interface Selection {
         /**
          * Returns whether the element at {@code elementIndex} reads as selected.
          *
-         * <p>Wider than {@code begin..end} by design: a breath mark immediately after the
-         * range counts as selected. It is owned by the element before it and goes wherever
-         * that element goes — a deletion or a copy of the range carries it along
-         * ({@link Line#effectiveDeleteEnd}) — so it has to read as selected too, or deleting
-         * the range would take away an element the user never saw highlighted (refs #698).
+         * <p>Wider than {@code begin..end} by design, at both ends: an element paired with one
+         * the range names goes wherever its partner goes, so a deletion or a copy of the range
+         * carries it along (see {@link Line}'s pairing rule and {@link Line#effectiveRange}).
+         * It therefore has to read as selected too, or an operation would take away an element
+         * the user never saw highlighted. Both directions matter — the pair a key signature
+         * makes with the barline before it lies backward.
+         *
+         * <p>The expansion happens here, where a range becomes highlighted columns, and not in
+         * the stored range: what the user selected is what they chose, and the highlight shows
+         * what an operation would reach. Nothing that validates an edit against the selection
+         * may read it through this query.
          *
          * <p>This is the one query that disagrees with the raw range, and the disagreement is
          * deliberate: every other query, and everything the tie/beam/tuplet toggles are built
          * from, reports {@code begin..end} itself.
+         *
+         * @param elementIndex index of the element to test
+         * @return {@code true} when the element is inside the range or paired with an element
+         *     that is
          */
         public boolean contains(int elementIndex) {
-            return elementIndex >= begin && elementIndex <= line.effectiveDeleteEnd(end);
+            var effective = line.effectiveRange(begin, end);
+
+            return elementIndex >= effective.begin() && elementIndex <= effective.end();
         }
 
         /** The single selected element, or null if the range covers more than one. */

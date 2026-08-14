@@ -409,7 +409,13 @@ public final class SelectionCoordinator implements Disposable {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether the element at the given index on the given line is selected.
+     * Returns whether the element at the given index on the given line reads as selected —
+     * {@link Selection.Range#contains}'s answer, which covers an element paired with one the
+     * range names as well as the range itself.
+     *
+     * @param elementIndex the element's index on the line; negative yields false
+     * @param lineIndex    the line the element sits on
+     * @return {@code true} when that element reads as selected
      */
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex != lineIndex || elementIndex < 0) {
@@ -505,8 +511,9 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Returns whether the element at {@code elementIndex} on the line at {@code lineIndex} falls
-     * inside the selected index range.
+     * Returns whether the element at {@code elementIndex} on the line at {@code lineIndex} reads
+     * as covered by the selected index range — {@link Selection.Range#contains}'s answer, which
+     * is wider than {@code begin..end} where a pair straddles an end of it.
      * <p>
      * Separate from {@link #isSelected} because a range is not a thing a click addresses — it is
      * the other selection shape (see {@link Selection}) — and because every caller that draws an
@@ -516,6 +523,7 @@ public final class SelectionCoordinator implements Disposable {
      *
      * @param elementIndex the element's index on the line; out of range yields false
      * @param lineIndex    the line the element sits on
+     * @return {@code true} when that element reads as covered by the selected range
      */
     public boolean isElementRangeSelected(int elementIndex, int lineIndex) {
         if (activeLineIndex != lineIndex || elementIndex < 0) {

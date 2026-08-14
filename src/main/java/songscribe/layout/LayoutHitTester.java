@@ -26,6 +26,8 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.KeyChange;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
@@ -77,6 +79,98 @@ public final class LayoutHitTester {
         }
 
         return null;
+    }
+
+    // ==========================================================================
+    // Key Edit Hit Targets
+    // ==========================================================================
+
+    /**
+     * Returns {@code line} when {@code mouseXSs} falls within its staff header — the clef and key
+     * signature — the header's double-click target for editing that line's own key.
+     * <p>
+     * Every line's header is a target, whether or not the line holds a key of its own: a header
+     * that merely restates an inherited key is drawn identically to one that changes it, so a click
+     * cannot tell them apart and both accept it.
+     *
+     * @param mouseXSs mouse X coordinate, in staff-space units
+     * @param line     the line whose header is being tested
+     * @return {@code line} itself, or {@code null} when {@code mouseXSs} falls outside the header
+     */
+    public @Nullable Line hitTestHeaderKeyEdit(double mouseXSs, Line line) {
+        return HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line) ? line : null;
+    }
+
+    /**
+     * Returns the line whose key the cautionary key change at the end of {@code line} would edit
+     * — the line <em>following</em> {@code line}, not {@code line} itself — when {@code mouseXSs}
+     * falls within the cautionary's drawn run of accidentals.
+     * <p>
+     * The cautionary warns the performer about the key the next line begins in, so double-clicking
+     * it edits that line's key where the change is visible, rather than reopening {@code line}'s
+     * own key a second time. This returns {@code null}, and nothing is drawn to click on, when
+     * {@code line} is the song's last line or the two lines' running keys agree —
+     * {@link KeyChange#accidentals} answers an empty run in both cases.
+     * <p>
+     * The rect tested is the one rendering draws, including its
+     * {@link LayoutResult#overflowsStaffWidth() overflow} placement: on a line whose content
+     * overflows the staff, the run sits one line rest past the rightmost solved column rather than
+     * pinned to the margin, and this target follows it there.
+     *
+     * @param mouseXSs mouse X coordinate, in staff-space units
+     * @param line     the line whose end is being tested for its cautionary
+     * @return the following line, or {@code null} when no cautionary is drawn or {@code mouseXSs}
+     *         falls outside its drawn run
+     */
+    public @Nullable Line hitTestCautionaryKeyEdit(double mouseXSs, Line line) {
+        var nextKey = line.nextLineRunningKey();
+
+        if (nextKey == null) {
+            return null;
+        }
+
+        var accidentals = KeyChange.accidentals(line.keyAtEndOfLine(), nextKey);
+
+        if (accidentals.isEmpty()) {
+            return null;
+        }
+
+        var widthSs = KeyChange.totalWidthSs(accidentals);
+        var song = line.getSong();
+        var startXSs = layoutResult.overflowsStaffWidth()
+            ? layoutResult.contentRightEdgeSs() + song.getDefaultRestLengthSs()
+            : song.getLineWidthSs() - KeyChange.RIGHT_MARGIN_SS - widthSs;
+
+        if (mouseXSs < startXSs || mouseXSs > startXSs + widthSs) {
+            return null;
+        }
+
+        return song.getLine(song.indexOfLine(line) + 1);
+    }
+
+    /**
+     * Returns the {@link KeySignatureElement} at {@code mouseXSs} on {@code line} — the rect
+     * bounded by that element's own rendered accidentals is the mid-line double-click target for
+     * editing it.
+     * <p>
+     * Delegates to {@link #findElementAtXSs}, so the same column bounds spacing solved apply; a
+     * key signature carries no leading accidental of its own, so {@link ColumnSpan#HEAD} and
+     * {@link ColumnSpan#FULL_INK} agree for it and the choice between them is immaterial here.
+     *
+     * @param mouseXSs mouse X coordinate, in staff-space units
+     * @param line     the line to search
+     * @return the {@link KeySignatureElement} at that position, or {@code null} when
+     *         {@code mouseXSs} does not fall within a mid-line key signature's column
+     */
+    public @Nullable KeySignatureElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
+        var index = findElementAtXSs(mouseXSs, line, ColumnSpan.FULL_INK);
+
+        if (index < 0) {
+            return null;
+        }
+
+        var element = line.getElement(index);
+        return element instanceof KeySignatureElement keySignature ? keySignature : null;
     }
 
     // ==========================================================================

@@ -252,6 +252,9 @@ public abstract class UnitTest {
      * <p>Every one of these is a chokepoint that wraps the caller's real work, so an
      * unstubbed mock would swallow the runnable entirely and the edit under test would
      * simply never happen — a silent no-op rather than a failure that names itself.
+     * {@code maintainKeyInvariant} is deliberately not among them: a mock has no line list to
+     * propagate keys across, so its default no-op is the correct behavior, and a test that
+     * cares about propagation builds a real Song.
      */
     @SuppressWarnings("ReturnOfNull")
     public static Song minimalSongMock() {
@@ -288,6 +291,22 @@ public abstract class UnitTest {
             .as("line 0 has nothing to inherit from, so it must establish a key of its own")
             .isNotNull();
 
+        assertInheritedKeyChainInvariant(song);
+    }
+
+    /**
+     * Asserts the inheritance half of {@link Song}'s key invariant only: every line that
+     * establishes no key of its own is in the key in effect at the end of the line before it.
+     * Says nothing about line 0.
+     *
+     * <p>This half is what holds under {@link Song#withoutMutationTracking(Runnable)}, where the
+     * line-0 clause is deliberately deferred: a reader adds lines one at a time, so line 0 is
+     * briefly the only line and the key the document ends up in is not yet known. The reader
+     * settles it with {@link Song#rebuildInheritedKeysAfterParsing()} at the end of the load, and
+     * only then does the full invariant hold. Use {@link #assertKeyPropagationInvariant} anywhere
+     * a modification bracket was open — which is every edit the user can make.
+     */
+    public static void assertInheritedKeyChainInvariant(Song song) {
         for (var lineIndex = 1; lineIndex < song.lineCount(); lineIndex++) {
             var line = song.getLine(lineIndex);
 

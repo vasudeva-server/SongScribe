@@ -23,86 +23,318 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
+
+import java.util.ArrayList;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import songscribe.UnitTest;
 
 class LineQueryTest extends UnitTest {
 
+    /** Line 0 of a fresh song, holding {@code elements} in the order given. */
+    private static Line lineOf(StaffElement... elements) {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        song.withoutMutationTracking(() -> {
+            for (var element : elements) {
+                line.addElement(element);
+            }
+        });
+
+        return line;
+    }
+
+    /** A key signature element, in whatever key — the pairing rules never read the key. */
+    private static KeySignatureElement keySignature() {
+        return new KeySignatureElement(Key.DEFAULT);
+    }
+
     // -----------------------------------------------------------------------
-    // effectiveDeleteEnd — pure query, must not mutate
+    // effectiveEnd — pure query, must not mutate
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class EffectiveDeleteEnd {
+    class EffectiveEnd {
 
         @Test
         void testExtendsPastATrailingBreathMark() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var note = crotchet();
-            var breath = breathMark();
-            song.withoutMutationTracking(() -> {
-                line.addElement(note);
-                line.addElement(breath);
-            });
+            var line = lineOf(crotchet(), breathMark());
 
-            assertThat(line.effectiveDeleteEnd(0))
+            assertThat(line.effectiveEnd(0))
                 .as("a breath mark after end is attached to it, so the range must extend past it")
                 .isEqualTo(1);
         }
 
         @Test
         void testLeavesANonBreathMarkSuccessorAlone() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var noteA = crotchet();
-            var noteB = crotchet();
-            song.withoutMutationTracking(() -> {
-                line.addElement(noteA);
-                line.addElement(noteB);
-            });
+            var line = lineOf(crotchet(), crotchet());
 
-            assertThat(line.effectiveDeleteEnd(0))
+            assertThat(line.effectiveEnd(0))
                 .as("a plain successor is not attached to end, so the range must not grow")
                 .isEqualTo(0);
         }
 
         @Test
         void testHandlesEndAtTheLastElement() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var note = crotchet();
-            song.withoutMutationTracking(() -> line.addElement(note));
+            var line = lineOf(crotchet());
 
-            assertThat(line.effectiveDeleteEnd(0))
+            assertThat(line.effectiveEnd(0))
                 .as("there is no successor to inspect, so end must come back unchanged")
                 .isEqualTo(0);
         }
 
         @Test
+        void testExtendsPastAKeySignatureBehindTheBarlineAtEnd() {
+            var line = lineOf(crotchet(), singleBarline(), keySignature(), crotchet());
+
+            assertThat(line.effectiveEnd(1))
+                .as("a key signature cannot outlive the barline it sits behind")
+                .isEqualTo(2);
+        }
+
+        @Test
+        void testExtendsPastAKeySignatureBehindTheRepeatAtEnd() {
+            var line = lineOf(crotchet(), repeatLeft(), keySignature(), crotchet());
+
+            assertThat(line.effectiveEnd(1))
+                .as("a repeat hosts a key signature exactly as a barline does")
+                .isEqualTo(2);
+        }
+
+        @Test
+        void testLeavesABarlineWithNoKeySignatureAfterItAlone() {
+            var line = lineOf(crotchet(), singleBarline(), crotchet());
+
+            assertThat(line.effectiveEnd(1))
+                .as("a barline with no key signature behind it is paired with nothing")
+                .isEqualTo(1);
+        }
+
+        @Test
         void testMutatesNothing() {
-            var song = new Song();
-            var line = song.getLine(0);
             var note = crotchet();
             var breath = breathMark();
-            song.withoutMutationTracking(() -> {
-                line.addElement(note);
-                line.addElement(breath);
-            });
+            var line = lineOf(note, breath);
 
             var countBefore = line.elementCount();
 
-            line.effectiveDeleteEnd(0);
+            line.effectiveEnd(0);
 
             assertThat(line.elementCount())
-                .as("effectiveDeleteEnd is a pure query and must not add or remove elements")
+                .as("effectiveEnd is a pure query and must not add or remove elements")
                 .isEqualTo(countBefore);
             assertThat(line.getElement(0)).isSameAs(note);
             assertThat(line.getElement(1)).isSameAs(breath);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // effectiveBegin — pure query, must not mutate
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EffectiveBegin {
+
+        @Test
+        void testExtendsBackOverAPairedGraceNote() {
+            var grace = graceQuaver();
+            grace.setGlissando();
+            var line = lineOf(grace, crotchet());
+
+            assertThat(line.effectiveBegin(1))
+                .as("a paired grace note cannot outlive its host, so the range must reach back over it")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testExtendsBackOverTheBarlineAKeySignatureSitsBehind() {
+            var line = lineOf(crotchet(), singleBarline(), keySignature(), crotchet());
+
+            assertThat(line.effectiveBegin(2))
+                .as("the pair goes whole, so deleting the key signature reaches back over its barline")
+                .isEqualTo(1);
+        }
+
+        @Test
+        void testExtendsBackOverTheRepeatAKeySignatureSitsBehind() {
+            var line = lineOf(crotchet(), repeatLeftRight(), keySignature(), crotchet());
+
+            assertThat(line.effectiveBegin(2))
+                .as("a repeat hosts a key signature exactly as a barline does")
+                .isEqualTo(1);
+        }
+
+        @Test
+        void testLeavesAKeySignatureWithNoBarlineBeforeItAlone() {
+            var line = lineOf(crotchet(), keySignature(), crotchet());
+
+            assertThat(line.effectiveBegin(1))
+                .as("nothing pairs backward from a key signature that sits behind no barline")
+                .isEqualTo(1);
+        }
+
+        @Test
+        void testLeavesAnUnpairedBeginAlone() {
+            var line = lineOf(crotchet(), crotchet());
+
+            assertThat(line.effectiveBegin(1))
+                .as("a plain predecessor is not paired with begin, so the range must not grow")
+                .isEqualTo(1);
+        }
+
+        @Test
+        void testHandlesBeginAtTheFirstElement() {
+            var line = lineOf(crotchet(), crotchet());
+
+            assertThat(line.effectiveBegin(0))
+                .as("there is no predecessor to inspect, so begin must come back unchanged")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testMutatesNothing() {
+            var barline = singleBarline();
+            var key = keySignature();
+            var line = lineOf(crotchet(), barline, key, crotchet());
+
+            var countBefore = line.elementCount();
+
+            line.effectiveBegin(2);
+
+            assertThat(line.elementCount())
+                .as("effectiveBegin is a pure query and must not add or remove elements")
+                .isEqualTo(countBefore);
+            assertThat(line.getElement(1)).isSameAs(barline);
+            assertThat(line.getElement(2)).isSameAs(key);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // effectiveRange — both directions at once, and what a deletion cannot leave behind
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EffectiveRangeQuery {
+
+        @Test
+        void testARangeCoveringOnlyTheKeySignatureWidensBackward() {
+            var line = lineOf(singleBarline(), keySignature(), crotchet());
+
+            assertThat(line.effectiveRange(1, 1))
+                .as("selecting only the key signature must still carry its barline")
+                .isEqualTo(new Line.EffectiveRange(0, 1));
+        }
+
+        @Test
+        void testAKeySignatureLastOnTheLineWidensBackwardOnly() {
+            var line = lineOf(crotchet(), singleBarline(), keySignature());
+
+            assertThat(line.effectiveRange(2, 2))
+                .as("there is nothing after the key signature, so only the backward pair applies")
+                .isEqualTo(new Line.EffectiveRange(1, 2));
+        }
+
+        @Test
+        void testARangeStartingOnOneKeySignatureAndEndingOnAnothersBarlineWidensBothWays() {
+            var line = lineOf(
+                singleBarline(), keySignature(), crotchet(), singleBarline(), keySignature(), crotchet());
+
+            assertThat(line.effectiveRange(1, 3))
+                .as("both pairs straddle the range, so it widens at both ends")
+                .isEqualTo(new Line.EffectiveRange(0, 4));
+        }
+
+        @Test
+        void testNoDeletionCanLeaveAKeySignatureAtIndexZero() {
+            var line = lineOf(
+                singleBarline(), keySignature(), crotchet(), singleBarline(), keySignature(), crotchet());
+            var elementCount = line.elementCount();
+
+            for (var from = 0; from < elementCount; from++) {
+                for (var to = from; to < elementCount; to++) {
+                    var range = line.effectiveRange(from, to);
+                    var survivors = new ArrayList<StaffElement>();
+
+                    for (var i = 0; i < elementCount; i++) {
+                        if (i < range.begin() || i > range.end()) {
+                            survivors.add(line.getElement(i));
+                        }
+                    }
+
+                    assertThat(survivors.isEmpty()
+                        || survivors.getFirst().getType() != ElementType.KEY_SIGNATURE)
+                        .as("deleting [%d, %d] must not leave a key signature at index 0", from, to)
+                        .isTrue();
+                }
+            }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // keyPairDeletion — what a confirmation prompt has to name
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class KeyPairDeletionQuery {
+
+        /** A line and a raw range that together produce one {@link Line.KeyPairDeletion} answer. */
+        private record PairingCase(Line line, int from, int to) {}
+
+        /**
+         * The case for each answer. A switch expression over the enum, so a new answer breaks
+         * this method until someone writes the range that produces it.
+         */
+        private PairingCase caseFor(Line.KeyPairDeletion answer) {
+            return switch (answer) {
+                case NONE -> new PairingCase(lineOf(crotchet(), singleBarline(), crotchet()), 0, 1);
+
+                case KEY_SIGNATURE_AFTER -> new PairingCase(
+                    lineOf(crotchet(), singleBarline(), keySignature(), crotchet()), 0, 1);
+
+                case BARLINE_BEFORE -> new PairingCase(
+                    lineOf(crotchet(), singleBarline(), keySignature(), crotchet()), 2, 3);
+
+                case BOTH -> new PairingCase(
+                    lineOf(singleBarline(), keySignature(), crotchet(), singleBarline(), keySignature(), crotchet()),
+                    1,
+                    3);
+            };
+        }
+
+        @ParameterizedTest
+        @EnumSource(Line.KeyPairDeletion.class)
+        void testEachAnswerIsReportedForTheRangeThatProducesIt(Line.KeyPairDeletion answer) {
+            var pairingCase = caseFor(answer);
+
+            assertThat(pairingCase.line().keyPairDeletion(pairingCase.from(), pairingCase.to()))
+                .as("the range built for %s must be reported as %s", answer, answer)
+                .isEqualTo(answer);
+        }
+
+        @ParameterizedTest
+        @EnumSource(Line.KeyPairDeletion.class)
+        void testANonNoneAnswerMeansTheEffectiveRangeIsWiderThanTheRawOne(Line.KeyPairDeletion answer) {
+            var pairingCase = caseFor(answer);
+            var line = pairingCase.line();
+            var range = line.effectiveRange(pairingCase.from(), pairingCase.to());
+            var widened = range.begin() < pairingCase.from() || range.end() > pairingCase.to();
+
+            assertThat(widened)
+                .as("%s must agree with the widening effectiveRange performs", answer)
+                .isEqualTo(answer != Line.KeyPairDeletion.NONE);
         }
     }
 

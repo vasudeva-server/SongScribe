@@ -35,6 +35,7 @@ import songscribe.engraving.Staff;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.KeySignature;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
@@ -645,6 +646,45 @@ public final class LayoutResult {
      */
     public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
         return hitTester.hitTestLyric(lyricRenderMetrics, line, pointPx);
+    }
+
+    /**
+     * Returns the X of the rightmost edge any column of this result's solved chain reaches, which
+     * is where the line's drawn content ends.
+     *
+     * <p>The maximum rather than the last column's edge: a wide trailing extent anywhere in the
+     * chain still has to be cleared, and on an overflowing line this is what the cautionary key
+     * signature is placed past — by the renderer that draws it and by the hit test that finds it,
+     * which must agree to the pixel or the target drifts off the glyphs.
+     *
+     * @return the rightmost solved column edge, or 0 when the chain holds no columns
+     */
+    public double contentRightEdgeSs() {
+        return elementColumns.values().stream()
+            .mapToDouble(ElementColumn::getRightEdgeXSs)
+            .max()
+            .orElse(0);
+    }
+
+    /**
+     * Delegates to {@link LayoutHitTester#hitTestHeaderKeyEdit}.
+     */
+    public @Nullable Line hitTestHeaderKeyEdit(double mouseXSs, Line line) {
+        return hitTester.hitTestHeaderKeyEdit(mouseXSs, line);
+    }
+
+    /**
+     * Delegates to {@link LayoutHitTester#hitTestCautionaryKeyEdit}.
+     */
+    public @Nullable Line hitTestCautionaryKeyEdit(double mouseXSs, Line line) {
+        return hitTester.hitTestCautionaryKeyEdit(mouseXSs, line);
+    }
+
+    /**
+     * Delegates to {@link LayoutHitTester#hitTestMidLineKeyEdit}.
+     */
+    public @Nullable KeySignatureElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
+        return hitTester.hitTestMidLineKeyEdit(mouseXSs, line);
     }
 
     // Package-private for direct unit testing of the formula.

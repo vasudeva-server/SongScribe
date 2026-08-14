@@ -34,6 +34,7 @@ import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import songscribe.UnitTest;
 import songscribe.dom.Annotation;
@@ -41,6 +42,9 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
@@ -465,6 +469,42 @@ class FragmentTest extends UnitTest {
 
             assertThat(fragment.elements()).hasSize(2);
             assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.BREATH_MARK);
+        }
+
+        @Test
+        void testCapturingAKeySignatureTakesTheBarlineInFrontOfIt() {
+            // [A, barline, key] — capturing just the key signature must reach back over its
+            // barline. A key signature is never the first element on a line and always follows a
+            // barline or repeat, so a fragment holding one alone violates that invariant wherever
+            // it is pasted: at index 0, or straight after a note.
+            var line = detachedLine();
+            line.addElement(crotchet());
+            line.addElement(singleBarline());
+            line.addElement(new KeySignatureElement(new Key(KeyType.SHARPS, 2)));
+
+            var fragment = Fragment.capture(line, 2, 2);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.elements().getFirst().getType().isBarLine())
+                .as("the barline must lead the fragment so the key signature stays legal")
+                .isTrue();
+            assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.KEY_SIGNATURE);
+        }
+
+        @Test
+        void testCapturingAHostDoesNotReachBackForItsGraceNote() {
+            // The other half of the head rule, and the reason a copy cannot simply use
+            // effectiveRange: the grace-note pairing runs the other way. A grace note cannot
+            // outlive its host, so a capture starting at a host leaves the grace note behind
+            // rather than pulling it in.
+            var line = detachedLine();
+            line.addElement(pairedGraceNote());
+            line.addElement(crotchet());
+
+            var fragment = Fragment.capture(line, 1, 1);
+
+            assertThat(fragment.elements()).hasSize(1);
+            assertThat(fragment.elements().getFirst().getType()).isEqualTo(ElementType.CROTCHET);
         }
 
         @Test

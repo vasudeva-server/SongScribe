@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -53,6 +54,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
@@ -76,9 +81,11 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.AttachmentEditor;
+import songscribe.ui.dialog.KeySignatureChangeDialog;
+import songscribe.ui.dialog.KeySignatureEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -852,7 +859,7 @@ class LineComponentTest extends UnitTest {
          * no further processing occurs.
          *
          * <p>Observable: the paste-mode guard sits immediately after the grace-mode branch, so
-         * without the early return {@code pasteMock.isInProgress()} would be called.
+         * without the early return {@code insertionPointMock.isInProgress()} would be called.
          *
          * <p>A ScoreView is required even though the press is consumed: the focus grab that
          * precedes every mode guard calls {@code getScoreView()} unconditionally.
@@ -863,16 +870,16 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             when(graceMock.mousePressed(any(LineComponent.class), any(MouseEvent.class)))
                 .thenReturn(true);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
             lc.setScoreView(mock(ScoreView.class));
 
             try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
                 lc.mousePressed(event);
             }
 
-            verify(pasteMock, never()).isInProgress();
+            verify(insertionPointMock, never()).isInProgress();
         }
 
         /**
@@ -891,8 +898,8 @@ class LineComponentTest extends UnitTest {
 
             try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager)
-                    .thenReturn(mock(PasteModeManager.class));
+                emm.when(EditModeManager::getInsertionPointMode)
+                    .thenReturn(mock(InsertionPointMode.class));
                 lc.mousePressed(event);
             }
 
@@ -901,13 +908,13 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // mouseDragged routing — paste mode suppresses rubber-band selection
+    // mouseDragged routing — a pending placement suppresses rubber-band selection
     // -------------------------------------------------------------------------
 
     /**
      * A rubber-band drag announces itself to the selection coordinator via
      * {@code dragDidStart} before it does anything else, so that call is what these tests
-     * observe. Paste mode already suppresses the press that would start a band; without the
+     * observe. A pending placement already suppresses the press that would start a band; without the
      * matching guard in {@code mouseDragged}, the drag would still band from a stale press
      * point.
      */
@@ -948,41 +955,41 @@ class LineComponentTest extends UnitTest {
         }
 
         /**
-         * Arms a band with a press on empty staff, then runs {@code mouseDragged} with paste mode
+         * Arms a band with a press on empty staff, then runs {@code mouseDragged} with a placement
          * reporting the given in-progress state.
          *
          * <p>Only an armed band reaches the paste guard — a drag with nothing armed bails first,
          * which would let both tests pass for the wrong reason. The press is delivered straight to
          * the selection handler rather than through {@code LineComponent.mousePressed}, whose hit
          * cascade lays the line out and needs loaded fonts this fixture has no use for. Arming
-         * before paste mode starts is also the scenario the drag guard exists for: a band armed by
-         * an earlier press, with paste mode starting before the mouse moves.
+         * before the placement starts is also the scenario the drag guard exists for: a band armed by
+         * an earlier press, with the placement starting before the mouse moves.
          */
         private void dragWithPasteInProgress(boolean inProgress) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
-            when(pasteMock.isInProgress()).thenReturn(inProgress);
+            var insertionPointMock = mock(InsertionPointMode.class);
+            when(insertionPointMock.isInProgress()).thenReturn(inProgress);
 
             // A null hit target is a genuine miss, which is exactly what arms a band.
             lc.getSelectionHandler().handlePress(mouseEvent(MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1), null);
 
             try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
 
                 lc.mouseDragged(mouseEvent(MouseEvent.MOUSE_DRAGGED, MouseEvent.BUTTON1));
             }
         }
 
         @Test
-        void testDragDuringPasteModeDoesNotStartASelection() {
+        void testDragWithAPlacementPendingDoesNotStartASelection() {
             dragWithPasteInProgress(true);
 
             verify(dragTracker, never()).dragDidStart(any());
         }
 
         @Test
-        void testDragOutsidePasteModeStartsASelection() {
+        void testDragWithNoPlacementPendingStartsASelection() {
             dragWithPasteInProgress(false);
 
             verify(dragTracker).dragDidStart(lc);
@@ -1156,14 +1163,14 @@ class LineComponentTest extends UnitTest {
          */
         private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
 
                 lc.mouseClicked(event);
 
@@ -1299,7 +1306,7 @@ class LineComponentTest extends UnitTest {
             MouseEvent event,
             Consumer<? super MockedStatic<AttachmentEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
@@ -1308,7 +1315,7 @@ class LineComponentTest extends UnitTest {
                 var attachmentEditor = mockStatic(AttachmentEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
                 mainFrame.when(MainFrame::getInstance).thenReturn(null);
                 playback.when(PlaybackController::isPlaying).thenReturn(playing);
 
@@ -1451,6 +1458,175 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Double-click on a key edit target opens the key signature dialog
+    // -------------------------------------------------------------------------
+
+    /**
+     * These tests drive the real {@code mouseClicked} routing and assert which line and index the
+     * key signature dialog was opened on. What each rect covers is stubbed on {@link LayoutResult}
+     * rather than computed, because {@code LayoutHitTesterTest} owns that geometry; what is under
+     * test here is that the gesture reaches the dialog at all and carries the right target — the
+     * step that did not exist until the three hit tests gained a caller.
+     *
+     * <p>Opening is observed by stubbing {@link KeySignatureEditor} statically, since the call to
+     * {@code edit} is the gesture's only observable effect.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DoubleClickKeySignatureEditing {
+
+        private ScoreView mockScoreView;
+        private Song song;
+        private Line line;
+        private Line nextLine;
+        private LayoutResult mockLayout;
+
+        @BeforeEach
+        void setUp() {
+            mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(null);
+            lc.setScoreView(mockScoreView);
+
+            song = new Song();
+            line = song.getLine(0);
+            nextLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                line.addElement(crotchet());
+                song.addLine(nextLine);
+            });
+            lc.song = song;
+            lc.setLine(line, 0);
+
+            // A registry that resolves to nothing, so the lyric and attachment steps both decline
+            // and the click reaches the key step. Each key test then stubs the one rect it wants.
+            mockLayout = mock(LayoutResult.class);
+            when(mockLayout.getHitRegistry()).thenReturn(HitRegistry.builder().build());
+            lc.layoutResult = mockLayout;
+            lc.layoutDirty = false;
+        }
+
+        /** Runs {@code mouseClicked} and hands the test the static {@link KeySignatureEditor} stub. */
+        private void clickWith(
+            MouseEvent event, Consumer<? super MockedStatic<KeySignatureEditor>> assertions) {
+
+            var graceMock = mock(GraceModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mainFrame = mockStatic(MainFrame.class);
+                var playback = mockStatic(PlaybackController.class);
+                var keySignatureEditor = mockStatic(KeySignatureEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
+                mainFrame.when(MainFrame::getInstance).thenReturn(null);
+                playback.when(PlaybackController::isPlaying).thenReturn(false);
+
+                lc.mouseClicked(event);
+
+                assertions.accept(keySignatureEditor);
+            }
+        }
+
+        @Test
+        void testDoubleClickOnTheHeaderOpensTheDialogOnThatLinesOwnKey() {
+            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                editor -> editor.verify(
+                    () -> KeySignatureEditor.edit(
+                        any(), eq(line), eq(KeySignatureChangeDialog.LINE_OWN_KEY_INDEX)),
+                    times(1)));
+        }
+
+        /**
+         * The cautionary is drawn on {@code line} but edits the key of the line after it. This is
+         * the one target whose subject is not the line it sits on, so a gesture that passed the
+         * clicked line through would edit the wrong line's key and nothing would say so.
+         */
+        @Test
+        void testDoubleClickOnTheCautionaryOpensTheDialogOnTheNextLine() {
+            when(mockLayout.hitTestCautionaryKeyEdit(anyDouble(), any())).thenReturn(nextLine);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                editor -> editor.verify(
+                    () -> KeySignatureEditor.edit(
+                        any(), eq(nextLine), eq(KeySignatureChangeDialog.LINE_OWN_KEY_INDEX)),
+                    times(1)));
+        }
+
+        @Test
+        void testDoubleClickOnAMidLineKeySignatureOpensTheDialogAtItsIndex() {
+            var keySignature = new KeySignatureElement(new Key(KeyType.SHARPS, 2));
+            song.withoutMutationTracking(() -> {
+                line.addElement(new StaffElement(ElementType.SINGLE_BARLINE));
+                line.addElement(keySignature);
+            });
+            when(mockLayout.hitTestMidLineKeyEdit(anyDouble(), any())).thenReturn(keySignature);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                editor -> editor.verify(
+                    () -> KeySignatureEditor.edit(
+                        any(), eq(line), eq(line.getElementIndex(keySignature))),
+                    times(1)));
+        }
+
+        @Test
+        void testDoubleClickThatHitsNoKeyTargetOpensNothing() {
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testSingleClickOnTheHeaderOpensNothing() {
+            // Without the click-count check, every click in the header column — including the one
+            // that merely switches to SELECT mode — would pop the dialog open.
+            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
+
+            clickWith(clickEvent(SINGLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testShiftDoubleClickOpensNothing() {
+            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, InputEvent.SHIFT_DOWN_MASK),
+                MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testDoubleClickWhilePlayingOpensNothing() {
+            when(mockLayout.hitTestHeaderKeyEdit(anyDouble(), any())).thenReturn(line);
+
+            var graceMock = mock(GraceModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mainFrame = mockStatic(MainFrame.class);
+                var playback = mockStatic(PlaybackController.class);
+                var keySignatureEditor = mockStatic(KeySignatureEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
+                mainFrame.when(MainFrame::getInstance).thenReturn(null);
+                playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+                lc.mouseClicked(clickEvent(DOUBLE_CLICK, NO_MODIFIERS));
+
+                keySignatureEditor.verifyNoInteractions();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Click on a lyric — a registry-reported HitTarget.Lyric
     // -------------------------------------------------------------------------
 
@@ -1512,14 +1688,14 @@ class LineComponentTest extends UnitTest {
          */
         private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
 
                 lc.mouseClicked(event);
 
@@ -1628,7 +1804,7 @@ class LineComponentTest extends UnitTest {
         /** Runs the real {@code mousePressed} with playback reporting {@code playing}. */
         private void pressWhilePlaying(boolean playing) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
@@ -1636,7 +1812,7 @@ class LineComponentTest extends UnitTest {
                 var playback = mockStatic(PlaybackController.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
                 playback.when(PlaybackController::isPlaying).thenReturn(playing);
 
                 lc.mousePressed(new MouseEvent(
@@ -1728,14 +1904,14 @@ class LineComponentTest extends UnitTest {
          */
         private void moveWith(Consumer<? super MockedStatic<PreviewElementManager>> assertions) {
             var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            var insertionPointMock = mock(InsertionPointMode.class);
 
             try (
                 var emm = mockStatic(EditModeManager.class);
                 var preview = mockStatic(PreviewElementManager.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                emm.when(EditModeManager::getInsertionPointMode).thenReturn(insertionPointMock);
 
                 lc.mouseMoved(new MouseEvent(
                     lc, MouseEvent.MOUSE_MOVED, 0L, NO_MODIFIERS,

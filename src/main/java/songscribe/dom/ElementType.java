@@ -524,6 +524,10 @@ public enum ElementType {
             return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK);
         }
 
+        if (this == KEY_SIGNATURE) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_KEY_SIGNATURE);
+        }
+
         throw new IllegalStateException("No category name for element type " + this);
     }
 
@@ -533,9 +537,18 @@ public enum ElementType {
      * non-content: they may sit inside an ending but cannot anchor or end it.
      * The complement — the elements that can anchor or end an ending — is
      * exactly {@link #isDuration()} (notes and rests).
+     * <p>
+     * A key signature is non-content for two reasons that point the same way. It is not
+     * musical content, so it must not help a selection reach the minimum an ending needs;
+     * and a key change must not move where an ending anchors, which is what being skipped
+     * delivers — the backward walk for the preceding element passes over it and reaches the
+     * barline that {@link KeySignatureElement}'s position invariant guarantees behind it, so
+     * the bracket lands exactly where it would have had the key change not been there.
+     *
+     * @return {@code true} for grace notes, breath marks and key signatures
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == BREATH_MARK;
+        return isGraceNote() || this == BREATH_MARK || this == KEY_SIGNATURE;
     }
 
     /**

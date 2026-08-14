@@ -311,7 +311,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
             ElementType.GRACE_QUAVER,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.BREATH_MARK,
+            ElementType.BREATH_MARK, ElementType.KEY_SIGNATURE,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE
         }) {
             assertThat(type.isDuration() && type.isNonContentElement())
@@ -410,9 +410,10 @@ class ElementTypeTest extends UnitTest {
 
     @Test
     void testIsNonContentElementMembership() {
-        // True set: grace notes, breath mark
+        // True set: grace notes, breath mark, key signature
         assertThat(ElementType.GRACE_QUAVER.isNonContentElement()).isTrue();
         assertThat(ElementType.BREATH_MARK.isNonContentElement()).isTrue();
+        assertThat(ElementType.KEY_SIGNATURE.isNonContentElement()).isTrue();
 
         // False set: all other types
         for (var type : new ElementType[]{

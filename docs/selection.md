@@ -7,8 +7,10 @@ affects what gets selected.
 
 **Issue:** vasudeva-server/SongScribe#721
 
-Scope: this covers only the band geometry introduced by #721 — how a drag's
-horizontal extent turns into a selected range. It does not cover the
+Scope: this covers the band geometry introduced by #721 — how a drag's
+horizontal extent turns into a selected range — and, below, the double-click
+key-edit targets added later, which reuse some of that same header and
+cautionary geometry for a different gesture. It does not cover the
 `HitPriority` cascade that resolves a click to a `HitTarget`, the click
 (non-drag) selection path, or the anchor contract for Shift+click range
 extension (#748); those are pre-existing and unrelated to this document.
@@ -114,8 +116,10 @@ The leading contribution is clamped, before the band is computed, to the
 stretch of staff a selection is allowed to cover:
 
 - **Left** — one document pixel past the staff header's right edge. The
-  header is the clef and key signature, and a press there selects the
-  staff lines rather than sweeping, so the band stops just clear of it.
+  header is the clef and key signature; a single press there selects the
+  staff lines rather than sweeping, so the band stops just clear of it. A
+  double-click there does something else entirely — see **Double-click
+  key-edit targets** below.
 - **Right** — the auto-maintained terminal's left ink edge, or the end of
   the staff (`Song.getLineWidthSs()`) on a line that has no terminal. There
   is no matching one-pixel gap here: the terminal is right-aligned with the
@@ -148,6 +152,43 @@ press leaves the band unarmed and the drag that follows is a complete
 no-op: no band is painted and the selection is left alone. A rubber band
 swept across bare staff would tell the user the gesture is doing something
 it cannot do.
+
+## Double-click key-edit targets
+
+There is no song-wide key; each line has or inherits one. Three double-click
+targets edit a key, all resolved by `LayoutHitTester` and contracted by
+**what each resolves to**, not by where it sits — a hit test that only
+answered "is this point inside the rect" would leave every caller to
+re-derive which line or element the rect stands for:
+
+- **A line's header** — the same clef-and-key-signature region a single
+  press there selects the staff lines for (see **Left**, above) — double-
+  clicks to edit **that line's own** key. Every header is a target, whether
+  or not the line holds a key of its own: a header that merely restates an
+  inherited key is drawn identically to one that changes it, so both accept
+  the double-click. If the line was inheriting, setting a key on it gives it
+  that key and a cautionary is then drawn automatically at the end of the
+  previous line; removing an existing key makes the line inherit again and
+  the cautionary disappears.
+- **The cautionary key change at the end of a line** double-clicks to edit
+  the key of the **following** line, not the line the cautionary is drawn
+  on. It renders a change that lives on the line after it, so double-
+  clicking it edits that change where the user sees it — the one target
+  whose subject differs from the line it visually sits on. The rect tested
+  is the one rendering draws, including the overflow-relative placement an
+  overflowing line gives it (see `LayoutResult#overflowsStaffWidth`), so the
+  target follows the glyphs rather than the staff margin.
+- **A mid-line key signature's own rendered accidentals** double-click to
+  edit that `KeySignatureElement` directly — an ordinary column, hit-tested
+  the same way any other element's column is.
+
+These are edit targets, not selection targets: the single-press-selects-
+the-staff-lines behavior the header keeps under the band geometry above is
+unrelated to what a double-click there does, and neither the band nor these
+targets change what the other one hits. What happens once a double-click
+resolves to one of the three — opening a dialog, routing a commit, reporting
+a fit rejection — belongs to `ScoreViewController`, not to this document or
+to the hit-testing layer.
 
 ## Why band geometry is stored in staff spaces
 

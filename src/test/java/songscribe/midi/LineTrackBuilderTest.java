@@ -39,6 +39,9 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
@@ -51,8 +54,10 @@ import songscribe.ui.playback.PlaybackController;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
+import static songscribe.dom.StaffElementFactory.createNote;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause" })
 class LineTrackBuilderTest extends UnitTest {
@@ -610,6 +615,45 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOffs.getFirst().getTick())
                 .as("normal note-off tick at full duration")
                 .isEqualTo(PPQ);
+        }
+    }
+
+    // ── Mid-line key change — NOTE_ON pitch reflects the key at each note's index ──
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MidLineKeyChange {
+
+        // F4: the pitch class every sharp key alters and C major (the running key of a
+        // detached line) does not.
+        private static final int F4_STAFF_POSITION = 3;
+        private static final int MID_LINE_KEY_SHARP_COUNT = 3;
+
+        @Test
+        void testNoteAfterAMidLineKeyChangeSoundsThePitchTheNewKeyImplies() throws Exception {
+            // Barline, mid-line key change, note — KeySignatureElement's position invariant.
+            var line = detachedLine();
+            var beforeNote = createNote(F4_STAFF_POSITION, true);
+            line.addElement(beforeNote);
+            line.addElement(singleBarline());
+            line.addElement(new KeySignatureElement(new Key(KeyType.SHARPS, MID_LINE_KEY_SHARP_COUNT)));
+            var afterNote = createNote(F4_STAFF_POSITION, true);
+            line.addElement(afterNote);
+
+            var track = buildTrack(line, new Tempo());
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+
+            assertThat(noteOns).as("both notes emit NOTE_ON").hasSize(2);
+
+            var beforePitch = ((ShortMessage) noteOns.get(0).getMessage()).getData1();
+            var afterPitch = ((ShortMessage) noteOns.get(1).getMessage()).getData1();
+
+            // findEffectiveAccidental resolves against each note's own index, so the identical
+            // staff position before and after the key change must sound a semitone apart — the
+            // note after the change carries the F-sharp the new key implies, the one before does not.
+            assertThat(afterPitch)
+                .as("note after the mid-line key change sounds the F-sharp the new key implies")
+                .isEqualTo(beforePitch + 1);
         }
     }
 

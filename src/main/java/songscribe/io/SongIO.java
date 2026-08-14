@@ -345,6 +345,33 @@ public final class SongIO {
         }
 
         /**
+         * Re-collapses each line's own key against its now-settled inherited key.
+         *
+         * <p>{@code .mssw}'s writer decided whether to write a line's {@code <keys>}/
+         * {@code <keytype>} tags by comparing to the file's single song-level default, not to the
+         * key the line actually inherits from the line before it. A file whose song ran in one
+         * non-default key across several consecutive lines therefore restates that same key on
+         * every one of them, and {@link LineIO.LineReader#applyParsedKey} — which runs before any
+         * line's inherited key is known, since that is settled only once every line has been
+         * parsed — establishes each restated value verbatim rather than collapsing it.
+         *
+         * <p>{@link Song#loadFrom} settles every line's inherited key in one forward pass before
+         * this runs, so calling {@link Line#setKey} again here, with the value the line already
+         * holds, lets {@code setKey}'s own normalization rule collapse what {@code
+         * applyParsedKey} had no way to know to collapse. Every line is safe to pass through this
+         * way: one whose key already differs from what it inherits is unaffected, by
+         * {@code setKey}'s own no-op check, and one that already inherits (key null) stays null.
+         *
+         * @param song the song {@link Song#loadFrom} has just populated, with mutation tracking
+         *             still suspended
+         */
+        private static void collapseLineKeysMatchingInheritance(Song song) {
+            for (var line : song.getLines()) {
+                line.setKey(line.getKey());
+            }
+        }
+
+        /**
          * Refuses to fetch anything a {@code DOCTYPE} names, handing the parser an
          * empty stand-in instead. {@code SAXParser.parse} installs this handler as
          * the entity resolver, so this override is all it takes — see
@@ -824,6 +851,7 @@ public final class SongIO {
 
             try {
                 song.loadFrom(data);
+                collapseLineKeysMatchingInheritance(song);
                 if (attributionUserYOffsetSs != 0) {
                     song.getAttributionElement().setUserYOffsetSs(attributionUserYOffsetSs);
                 }

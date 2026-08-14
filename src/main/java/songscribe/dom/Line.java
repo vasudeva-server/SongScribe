@@ -70,6 +70,15 @@ import songscribe.message.mutation.TupletRemoval;
  * different line to index 0 and when a document is loaded. A line that belongs to no song is
  * subject to the same rule for the same reason: nothing precedes it, so it must carry its own key
  * before anything asks what key it is in.
+ *
+ * <p><b>Pairing rule.</b> Some elements cannot outlive their partner: a paired grace note goes
+ * with its host, a breath mark with the element it hangs off, and a key signature with the
+ * barline it sits behind. A range that names one half of such a pair therefore widens to cover
+ * the other, in whichever direction the partner lies — {@link #effectiveBegin},
+ * {@link #effectiveEnd} and {@link #effectiveRange} are that widening, and each states only the
+ * pairs it resolves rather than restating this rule. The widening is a query, never a mutation:
+ * it is what a deletion or a copy really carries away, and therefore also what the selection
+ * highlight has to show.
  */
 public class Line implements LyricRun, SpanLookup {
 
@@ -192,8 +201,12 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p>A modification bracket must be open — the mutation is recorded and the
      * mutator runs inside it. If the song has suspended tracking via
-     * {@link Song#withoutMutationTracking(Runnable)}, the mutator runs directly
-     * without tracking.
+     * {@link Song#withoutMutationTracking(Runnable)}, the mutator runs without
+     * being recorded.
+     *
+     * <p>Either way the song's key invariant is restored afterwards. The suspended
+     * path is not a shortcut past it: a key edit made under suspended tracking moves
+     * the same keys as one made inside a bracket, so it owes the same maintenance.
      *
      * @throws IllegalStateException if the song has neither an open modification
      *     bracket nor suspended tracking
@@ -201,6 +214,13 @@ public class Line implements LyricRun, SpanLookup {
     public void applyChange(Mutation mutation, Runnable mutator) {
         if (song.isMutationTrackingSuspended()) {
             mutator.run();
+
+            // Suspending tracking stops the mutation being recorded; it does not stop the edit
+            // moving a key. Without this the invariant was skipped on the whole suspended path,
+            // leaving every later line's inherited key stale with no error and nothing visible
+            // to notice. No line-0 repair can be owed here — that needs a LineInsertion or
+            // LineDeletion, and those reach Song.applyChange directly rather than through a line.
+            song.maintainKeyInvariant(mutation, null);
             return;
         }
 
@@ -332,6 +352,13 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * The lowest element index a {@link KeySignatureElement} can occupy. Index 0 is forbidden by
+     * that class's position invariant — a key signature always follows a barline or repeat — so
+     * every backward scan for one stops here rather than at 0.
+     */
+    public static final int FIRST_LEGAL_KEY_SIGNATURE_INDEX = 1;
+
+    /**
      * Returns the key in effect at {@code elementIndex} within this line: {@link #getRunningKey()},
      * overridden by the last {@link KeySignatureElement} at or before that index.
      *
@@ -376,9 +403,44 @@ public class Line implements LyricRun, SpanLookup {
      *         the line is empty; never null
      */
     public Key keyAtEndOfLine() {
-        var lastKeySignatureKey = lastKeySignatureKey();
+        return keyAtEndOfLineUnder(getRunningKey());
+    }
 
-        return lastKeySignatureKey != null ? lastKeySignatureKey : getRunningKey();
+    /**
+     * Returns the key this line would leave off in if it were running in {@code runningKey}: its
+     * last mid-line {@link KeySignatureElement}'s key when it holds one, and {@code runningKey}
+     * when it does not.
+     *
+     * <p>This is {@link #keyAtEndOfLine()} under a <em>hypothetical</em> running key, which is what
+     * every caller projecting an edit needs — a fit pre-check walking the inheritance chain, an
+     * accidental reconciliation deriving that chain's reach, and an insertion asking what its own
+     * key changes downstream. A line holding a mid-line change ends in that change's key however
+     * it began, and that is the asymmetry each of them would otherwise re-derive.
+     *
+     * @param runningKey the key to suppose this line begins in
+     * @return the key in effect after this line's last element under that supposition; never null
+     */
+    public Key keyAtEndOfLineUnder(Key runningKey) {
+        return keyAtEndOfLineUnder(FIRST_LEGAL_KEY_SIGNATURE_INDEX, runningKey);
+    }
+
+    /**
+     * As {@link #keyAtEndOfLineUnder(Key)}, counting only key signatures at or after
+     * {@code fromIndex}.
+     *
+     * <p>The bounded form is what an edit inserting a key signature at {@code fromIndex} needs:
+     * the key it establishes reaches the end of the line only when no existing key signature
+     * already stands after it, and {@code runningKey} is then the inserted key rather than the
+     * line's own.
+     *
+     * @param fromIndex the lowest element index to count a key signature at
+     * @param runningKey the key to suppose is in effect from {@code fromIndex} onward
+     * @return the key in effect after this line's last element under that supposition; never null
+     */
+    public Key keyAtEndOfLineUnder(int fromIndex, Key runningKey) {
+        var lastKeySignatureKey = lastKeySignatureKeyFrom(fromIndex);
+
+        return lastKeySignatureKey != null ? lastKeySignatureKey : runningKey;
     }
 
     /**
@@ -393,7 +455,31 @@ public class Line implements LyricRun, SpanLookup {
      * @return the last mid-line key change's key, or null when this line holds no key signature
      */
     public @Nullable Key lastKeySignatureKey() {
-        for (var scanIndex = elements.size() - 1; scanIndex > 0; scanIndex--) {
+        return lastKeySignatureKeyFrom(FIRST_LEGAL_KEY_SIGNATURE_INDEX);
+    }
+
+    /**
+     * Returns the key the last {@link KeySignatureElement} at or after {@code fromIndex}
+     * establishes, or null when no key signature stands there.
+     *
+     * <p>This is what an edge inserting a key signature at {@code fromIndex} needs and
+     * {@link #lastKeySignatureKey()} cannot give: the key the line will leave off in afterwards is
+     * the inserted one <em>only if</em> no existing key signature already stands after the
+     * insertion point, and this is the question that decides it.
+     *
+     * <p>Indices below {@link #FIRST_LEGAL_KEY_SIGNATURE_INDEX} are treated as that index rather
+     * than rejected, because no key signature can stand before it —
+     * {@link KeySignatureElement}'s position invariant forbids index 0 — so a lower bound asks
+     * about a stretch of the line that cannot hold an answer.
+     *
+     * @param fromIndex the lowest element index to consider
+     * @return the last key signature's key at or after {@code fromIndex}, or null when there is
+     *         none
+     */
+    public @Nullable Key lastKeySignatureKeyFrom(int fromIndex) {
+        var lowestIndex = Math.max(fromIndex, FIRST_LEGAL_KEY_SIGNATURE_INDEX);
+
+        for (var scanIndex = elements.size() - 1; scanIndex >= lowestIndex; scanIndex--) {
             if (elements.get(scanIndex) instanceof KeySignatureElement keySignature) {
                 return keySignature.getKey();
             }
@@ -443,26 +529,6 @@ public class Line implements LyricRun, SpanLookup {
      */
     void setInheritedKey(@Nullable Key inheritedKey) {
         this.inheritedKey = inheritedKey;
-    }
-
-    /**
-     * @return the type of the key in effect at the start of this line
-     * @deprecated replaced by {@link #getKey()} and {@link #getRunningKey()}; removed in the phase
-     *             that removes the last consumer.
-     */
-    @Deprecated
-    public KeyType getKeyType() {
-        return getRunningKey().keyType();
-    }
-
-    /**
-     * @return the number of accidentals in the key in effect at the start of this line
-     * @deprecated replaced by {@link #getKey()} and {@link #getRunningKey()}; removed in the phase
-     *             that removes the last consumer.
-     */
-    @Deprecated
-    public int getKeyAccidentalCount() {
-        return getRunningKey().accidentalCount();
     }
 
     // ========================================================================
@@ -946,13 +1012,49 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * A breath mark immediately after {@code end} is positionally attached to the
-     * last selected element, so it must be included in a deletion or copy range that
-     * ends at {@code end}. Returns {@code end} extended past that trailing breath
-     * mark, or {@code end} unchanged if there is none. Pure query — mutates nothing.
+     * Whether the element at {@code index} is a key signature sitting behind the barline or
+     * repeat immediately before it — the one bidirectional pair on a line, since a key change
+     * belongs at the head of a measure (see {@link KeySignatureElement}'s position invariant).
+     * <p>
+     * The barline is tested rather than assumed. The invariant makes the test hold for every
+     * key signature a document of this program's own making can contain, and re-testing it
+     * here is what keeps the widening from reaching past a key signature that arrived any
+     * other way.
+     *
+     * @param index element index; out of range, or 0, yields false — index 0 has nothing
+     *     before it to pair with
+     * @return {@code true} when {@code index} and {@code index - 1} are such a pair
      */
-    public int effectiveDeleteEnd(int end) {
+    private boolean isKeySignatureBehindBarline(int index) {
+        if (index < 1 || index >= effectiveElementCount()) {
+            return false;
+        }
+
+        if (getElement(index).getType() != ElementType.KEY_SIGNATURE) {
+            return false;
+        }
+
+        var precedingType = getElement(index - 1).getType();
+
+        return precedingType.isBarLine() || precedingType.isRepeat();
+    }
+
+    /**
+     * The last element a range ending at {@code end} really covers — see the pairing rule in
+     * this class's Javadoc. Two elements after {@code end} belong to it: a breath mark, which
+     * is positionally attached to the element before it, and a key signature whose barline is
+     * the element at {@code end}. Pure query — mutates nothing.
+     *
+     * @param end the last element the caller named
+     * @return {@code end} extended past the element paired with it, or {@code end} unchanged
+     *     when nothing after it is paired with it; never less than {@code end}
+     */
+    public int effectiveEnd(int end) {
         if (end + 1 < effectiveElementCount() && getElement(end + 1).getType().isBreathMark()) {
+            return end + 1;
+        }
+
+        if (isKeySignatureBehindBarline(end + 1)) {
             return end + 1;
         }
 
@@ -960,25 +1062,120 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * A paired grace note immediately before {@code begin} cannot outlive its host, so it
-     * must be included in a deletion range that begins at {@code begin}. Returns
-     * {@code begin} extended back over that grace note, or {@code begin} unchanged if there
-     * is none. Pure query — mutates nothing.
+     * The first element a range beginning at {@code begin} really covers — see the pairing rule
+     * in this class's Javadoc. Two elements before {@code begin} belong to it: a paired grace
+     * note, which cannot outlive its host, and the barline a key signature at {@code begin}
+     * sits behind. Pure query — mutates nothing.
+     * <p>
+     * <b>The barline case is a decision, not a symmetry.</b> A key signature cannot outlive its
+     * barline, but a barline can outlive its key: deleting the key alone would leave a valid
+     * line. The pair goes whole so that a barline the insertion flow added only to host a key
+     * does not linger once the key is gone. The cost is the other case — a barline the user
+     * placed themselves goes with the key that happened to follow it, merging two measures —
+     * which is why deleting either half is confirmed before it happens
+     * ({@link #keyPairDeletion}). Neither half of that reasoning is redundant; the backward
+     * extension is not derivable from the forward one.
+     * <p>
+     * This is also why no deletion can leave a key signature at index 0: reaching index 0 takes
+     * deleting the barline in front of it, which carries the key signature along. A separate
+     * index-0 guard would be dead code.
+     *
+     * @param begin the first element the caller named
+     * @return {@code begin} extended back over the element paired with it, or {@code begin}
+     *     unchanged when nothing before it is paired with it; never greater than {@code begin}
      */
-    public int effectiveDeleteBegin(int begin) {
-        return isHostOfPairedGraceNote(begin) ? begin - 1 : begin;
+    public int effectiveBegin(int begin) {
+        if (isHostOfPairedGraceNote(begin)) {
+            return begin - 1;
+        }
+
+        return beginIncludingKeySignatureBarline(begin);
     }
 
-    /** The inclusive element range a deletion actually removes. */
-    public record DeleteBounds(int begin, int end) {}
+    /**
+     * {@code begin} extended back over the barline a key signature at {@code begin} sits behind,
+     * or {@code begin} unchanged when no key signature stands there. Pure query — mutates
+     * nothing.
+     *
+     * <p>This is the barline half of {@link #effectiveBegin} on its own, for the caller that owes
+     * that widening but not the grace-note one: a <b>copy</b>. A key signature captured without
+     * the barline in front of it is a clipboard fragment that violates
+     * {@link KeySignatureElement}'s position invariant wherever it lands, so a copy must take
+     * both. A paired grace note is the opposite case — it cannot outlive its host, so a copy
+     * beginning at a host simply leaves the grace note behind rather than reaching back for it.
+     *
+     * @param begin the first element the caller named
+     * @return {@code begin - 1} when a key signature at {@code begin} sits behind a barline,
+     *     otherwise {@code begin}; never greater than {@code begin}
+     */
+    public int beginIncludingKeySignatureBarline(int begin) {
+        return isKeySignatureBehindBarline(begin) ? begin - 1 : begin;
+    }
+
+    /** The inclusive element range a deletion or a copy actually covers. */
+    public record EffectiveRange(int begin, int end) {}
 
     /**
-     * The range a deletion of {@code begin} through {@code end} actually removes, widened at
-     * both ends by {@link #effectiveDeleteBegin} and {@link #effectiveDeleteEnd}. Every query
-     * that asks about a deletion must ask about this range, not the caller's raw selection.
+     * The range a deletion or copy of {@code begin} through {@code end} actually covers, widened
+     * at both ends by {@link #effectiveBegin} and {@link #effectiveEnd}. Every query that asks
+     * about a deletion must ask about this range, not the caller's raw selection.
+     *
+     * @param begin the first element the caller named
+     * @param end   the last element the caller named
+     * @return the widened range, which always contains {@code [begin, end]}
      */
-    public DeleteBounds effectiveDeleteRange(int begin, int end) {
-        return new DeleteBounds(effectiveDeleteBegin(begin), effectiveDeleteEnd(end));
+    public EffectiveRange effectiveRange(int begin, int end) {
+        return new EffectiveRange(effectiveBegin(begin), effectiveEnd(end));
+    }
+
+    /** Which half of a barline / key-signature pair a deletion carries beyond its own range. */
+    public enum KeyPairDeletion {
+
+        /** The range is paired with no key signature and no barline outside it. */
+        NONE,
+
+        /** The range ends on a barline, and the key signature behind it goes too. */
+        KEY_SIGNATURE_AFTER,
+
+        /** The range begins on a key signature, and the barline it sits behind goes too. */
+        BARLINE_BEFORE,
+
+        /** Both of the above: the range begins on a key signature and ends on another's barline. */
+        BOTH
+    }
+
+    /**
+     * Which half of a barline / key-signature pair a deletion of {@code [from, to]} would remove
+     * beyond what the caller named — the elements a confirmation prompt has to name, because the
+     * user did not select them and would otherwise lose them unannounced.
+     * <p>
+     * Answers against the pre-deletion line, so call it before deleting, and answers about the
+     * same pairs {@link #effectiveRange} widens over: a non-{@code NONE} answer means that range
+     * is strictly wider than {@code [from, to]} at that end. The grace-note and breath-mark
+     * pairs are silent and never reported here.
+     *
+     * @param from the first element the caller named
+     * @param to   the last element the caller named
+     * @return which paired elements the deletion carries along, {@link KeyPairDeletion#NONE}
+     *     when it carries none
+     */
+    public KeyPairDeletion keyPairDeletion(int from, int to) {
+        var takesBarlineBefore = isKeySignatureBehindBarline(from);
+        var takesKeyAfter = isKeySignatureBehindBarline(to + 1);
+
+        if (takesBarlineBefore && takesKeyAfter) {
+            return KeyPairDeletion.BOTH;
+        }
+
+        if (takesBarlineBefore) {
+            return KeyPairDeletion.BARLINE_BEFORE;
+        }
+
+        if (takesKeyAfter) {
+            return KeyPairDeletion.KEY_SIGNATURE_AFTER;
+        }
+
+        return KeyPairDeletion.NONE;
     }
 
     public double getLyricsYPosSs() {

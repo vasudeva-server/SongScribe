@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -145,7 +146,12 @@ import songscribe.dom.Tie;
  * outright. An extra early stop would be a pure optimization over a pass bounded by one line's
  * element count that runs once per mutation, not once per frame — so none is added.
  *
- * <p>Both bounds stay within the line, because the backward scan does.
+ * <p>Both bounds hold <em>within</em> a line, because the backward scan stays inside it. How far a
+ * reconciliation <em>reaches</em> is a separate question, and one edit answers it differently:
+ * a key change moves pitches on every line that inherits the key, so it is reconciled over a range
+ * of lines — {@link #reconcileModification(List, RestatementRemoval)}, fed by
+ * {@link #linesInheriting} — ending where the inheritance chain does. Every other edit is a range
+ * of one. See {@code docs/key-signatures.md} for the chain and its stopping rule.
  *
  * <h2>Pure and pre-mutation</h2>
  * This unit reads the live, unmutated line and <b>mutates nothing</b>. Callers apply the returned
@@ -258,6 +264,55 @@ public final class AccidentalReconciliation {
     }
 
     /**
+     * One line an in-place modification reaches, described <em>before</em> any of it happens.
+     *
+     * <p>Two things can move a note's context on a line: a note the user changed there, and the
+     * key the line runs in. Both are stated here, so a modification that moves only the key — a
+     * key change, which reaches every line that inherits it — is the same walk with an empty
+     * change list rather than an algorithm of its own.
+     *
+     * @param line       The line, in its pre-modification state
+     * @param changes    Each changed note's intended post-change state on {@code line}; empty for a
+     *                   line the modification re-keys without touching a note on it
+     * @param runningKey The key in effect at the <em>start</em> of {@code line} once the
+     *                   modification commits. Equal to {@link Line#getRunningKey()} unless this
+     *                   modification moves it. A mid-line {@link KeySignatureElement} still
+     *                   overrides it from its own index forward, exactly as it does on the
+     *                   committed line
+     */
+    public record ModifiedLine(Line line, List<IntendedChange> changes, Key runningKey) {
+
+        public ModifiedLine {
+            changes = List.copyOf(changes);
+        }
+
+        /** A line whose key does not move: the ordinary in-place modification. */
+        public static ModifiedLine of(Line line, List<IntendedChange> changes) {
+            return new ModifiedLine(line, changes, line.getRunningKey());
+        }
+
+        /** A line a key change re-keys without the user having touched a note on it. */
+        public static ModifiedLine reKeyed(Line line, Key runningKey) {
+            return new ModifiedLine(line, List.of(), runningKey);
+        }
+    }
+
+    /**
+     * The accidentals one line of a modification's range has to change, as
+     * {@link #reconcileModification(List, RestatementRemoval)} returns them. The caller applies
+     * each line's changes to that line.
+     *
+     * @param line    The line the changes sit on
+     * @param changes The changes to apply there, in element order; empty when that line needs none
+     */
+    public record ReconciledLine(Line line, List<AccidentalChange> changes) {
+
+        public ReconciledLine {
+            changes = List.copyOf(changes);
+        }
+    }
+
+    /**
      * A later note asserting the same sounding adjustment as an accidental an edit is about to
      * remove. Carries its line because the scan crosses line boundaries and the caller reconciles
      * one line at a time.
@@ -292,72 +347,215 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * Returns the later notes that restate an accidental this edit is about to remove: notes at
-     * {@code staffPosition} carrying an explicit accidental of the same sounding adjustment as
-     * {@code removed}, from just after {@code fromIndex} on {@code line} through the end of the
-     * song.
+     * One explicit accidental an edit is about to remove, as {@link #findRestatements} needs it to
+     * resolve every removal of an edit in a single forward pass over the song.
      *
-     * <p>The scan <b>stops at an explicit cancellation</b> — the first explicit accidental at that
-     * staff position with a different adjustment. Past that point a matching accidental reads as a
-     * fresh decision, not a restatement of the one being removed.
+     * <p>Each removal carries its own line: an edit's removals no longer all sit on one line, since
+     * a key change removes accidentals everywhere its reach takes it.
      *
-     * <p>It does not stop at a barline or a line boundary, and that is the point: a restatement on
-     * a later line is exactly the case no context arithmetic can identify, because line reset makes
-     * it non-redundant on its own line. Only the notator can say whether it was still meant.
+     * @param line          The line the removed accidental sits on
+     * @param fromIndex     The removed accidental's index on {@code line}; that removal's scan
+     *                      starts just after it
+     * @param staffPosition The staff position the removed accidental was written at
+     * @param accidental    The accidental being removed
+     */
+    public record AccidentalRemoval(
+        Line line, int fromIndex, int staffPosition, StaffElement.Accidental accidental) {}
+
+    /**
+     * One {@link AccidentalRemoval}'s progress through the {@link #findRestatements} pass, mutated
+     * in place as the pass advances.
+     */
+    private static final class PendingRemoval {
+        private final int lineIndex;
+        private final int fromIndex;
+        private final int adjustment;
+        private boolean stopped = false;
+
+        private PendingRemoval(int lineIndex, int fromIndex, int adjustment) {
+            this.lineIndex = lineIndex;
+            this.fromIndex = fromIndex;
+            this.adjustment = adjustment;
+        }
+
+        /** Whether the pass has passed this removal's own position and can start collecting. */
+        private boolean hasStarted(int lineIndex, int index) {
+            if (lineIndex != this.lineIndex) {
+                return lineIndex > this.lineIndex;
+            }
+
+            return index > fromIndex;
+        }
+    }
+
+    /**
+     * Returns the later notes that restate any accidental in {@code removals}: for each removal,
+     * notes at its staff position carrying an explicit accidental of the same sounding adjustment,
+     * from just after its own position through the end of the song.
+     *
+     * <p>Resolves every removal in a single forward pass over the song, so the cost is the length
+     * of the song once, however many removals there are and however many lines they sit on — what
+     * makes this affordable for an edit whose removals span a range of lines.
+     *
+     * <p>Each removal's scan <b>stops at an explicit cancellation</b> — the first explicit
+     * accidental at that removal's staff position with a different adjustment. Past that point a
+     * matching accidental reads as a fresh decision, not a restatement of the one being removed. A
+     * cancellation reached by one removal's scan never stops another removal's scan, even one at
+     * the same staff position.
+     *
+     * <p>No removal's scan stops at a barline or a line boundary, and that is the point: a
+     * restatement on a later line is exactly the case no context arithmetic can identify, because
+     * line reset makes it non-redundant on its own line. Only the notator can say whether it was
+     * still meant.
      *
      * <p>Pure and pre-mutation, like everything else in this class.
      *
-     * @param song          The song to scan
-     * @param line          The line the removed accidental sits on
-     * @param fromIndex     The removed accidental's index on {@code line}; the scan starts after it
-     * @param staffPosition The staff position the removed accidental was written at
-     * @param removed       The accidental being removed
-     * @param excluded      Notes this edit itself deletes or changes, which are neither collected
-     *                      nor allowed to stop the scan — they are not going to be there afterwards
+     * @param song     The song to scan
+     * @param removals The accidentals this edit is about to remove, on whichever lines they sit;
+     *                 one whose line the song does not hold is ignored
+     * @param excluded Notes this edit itself deletes or changes, which are neither collected nor
+     *                 allowed to stop any removal's scan — they are not going to be there afterwards
      * @return The restatements to offer, in song order (empty when there are none)
      */
     public static List<Restatement> findRestatements(
         Song song,
-        Line line,
-        int fromIndex,
-        int staffPosition,
-        StaffElement.Accidental removed,
+        Set<AccidentalRemoval> removals,
         Set<StaffElement> excluded) {
 
-        var startLineIndex = song.indexOfLine(line);
+        var pendingByPosition = new HashMap<Integer, List<PendingRemoval>>();
+        var startLineIndex = Integer.MAX_VALUE;
 
-        if (startLineIndex < 0) {
+        for (var removal : removals) {
+            var lineIndex = song.indexOfLine(removal.line());
+
+            if (lineIndex < 0) {
+                continue;
+            }
+
+            startLineIndex = Math.min(startLineIndex, lineIndex);
+            pendingByPosition
+                .computeIfAbsent(removal.staffPosition(), position -> new ArrayList<>())
+                .add(new PendingRemoval(lineIndex, removal.fromIndex(), adjustmentOf(removal.accidental())));
+        }
+
+        if (pendingByPosition.isEmpty()) {
             return List.of();
         }
 
-        var removedAdjustment = adjustmentOf(removed);
         var restatements = new ArrayList<Restatement>();
 
         for (var lineIndex = startLineIndex; lineIndex < song.lineCount(); lineIndex++) {
             var scanLine = song.getLine(lineIndex);
-            var start = (lineIndex == startLineIndex) ? (fromIndex + 1) : 0;
 
-            for (var i = start; i < scanLine.effectiveElementCount(); i++) {
+            for (var i = 0; i < scanLine.effectiveElementCount(); i++) {
                 var element = scanLine.getElement(i);
                 var own = element.getAccidental();
 
-                if ((own == null)
-                    || (element.getStaffPosition() != staffPosition)
-                    || !element.getType().isPitchedNote()
-                    || excluded.contains(element)) {
-
+                if ((own == null) || !element.getType().isPitchedNote() || excluded.contains(element)) {
                     continue;
                 }
 
-                if (adjustmentOf(own) != removedAdjustment) {
-                    return restatements;
+                var pending = pendingByPosition.get(element.getStaffPosition());
+
+                if (pending == null) {
+                    continue;
                 }
 
-                restatements.add(new Restatement(scanLine, element));
+                var elementAdjustment = adjustmentOf(own);
+
+                for (var state : pending) {
+                    if (state.stopped || !state.hasStarted(lineIndex, i)) {
+                        continue;
+                    }
+
+                    if (elementAdjustment != state.adjustment) {
+                        state.stopped = true;
+                    } else {
+                        restatements.add(new Restatement(scanLine, element));
+                    }
+                }
             }
         }
 
         return restatements;
+    }
+
+    /**
+     * Returns the whole range a change to {@code line}'s own key reconciles: {@code line} itself,
+     * in the key it will then run in, followed by every line that inherits from it.
+     *
+     * <p>A change to a line's own key moves the key it leaves off in only when it holds no mid-line
+     * {@link KeySignatureElement}; one that does pins its end key, so the change reaches no further
+     * than that mid-line change does. That is why the tail is derived here rather than asked of the
+     * caller — but an edit that <em>adds or removes</em> a mid-line key signature moves the end key
+     * in a way only that edit knows, and calls {@link #linesInheriting} with it directly.
+     *
+     * @param line       The line whose own key changes
+     * @param runningKey The key {@code line} will run in once the change commits
+     * @return The range, in song order, always starting with {@code line}
+     */
+    public static List<ModifiedLine> lineKeyChangeReach(Line line, Key runningKey) {
+        var keyAtEndOfLine = line.keyAtEndOfLineUnder(runningKey);
+
+        var reach = new ArrayList<ModifiedLine>();
+        reach.add(ModifiedLine.reKeyed(line, runningKey));
+        reach.addAll(linesInheriting(line, keyAtEndOfLine));
+
+        return reach;
+    }
+
+    /**
+     * Returns the lines a key change reaches <em>beyond</em> the line it lands on: each following
+     * line that inherits, carrying the key it then runs in, in song order.
+     *
+     * <p>The walk stops at the first line that establishes a key of its own — nothing past such a
+     * line can move, because its own running key cannot — and at the first line the change leaves
+     * running in the key it already ran in, for the same reason. That is the stopping rule
+     * {@code docs/key-signatures.md} states for the inheritance chain; this is the
+     * accidental-reconciliation reach it governs.
+     *
+     * <p>Pure and pre-mutation, like everything else in this class: the lines are read as they
+     * stand and nothing is written to them.
+     *
+     * @param line           The line the key change lands on, which is <b>not</b> in the result —
+     *                       its own reconciliation is the caller's, and takes a different shape for
+     *                       an inserted key signature than for a change to the line's own key
+     * @param keyAtEndOfLine The key {@code line} will leave off in once the change commits: its
+     *                       last mid-line {@link KeySignatureElement}'s key when it holds one, and
+     *                       its new running key when it does not
+     * @return One {@link ModifiedLine} per reached line, in song order; empty when the change
+     *         moves nothing downstream or when {@code line} is not in its song
+     */
+    public static List<ModifiedLine> linesInheriting(Line line, Key keyAtEndOfLine) {
+        var song = line.getSong();
+        var lineIndex = song.indexOfLine(line);
+
+        if (lineIndex < 0) {
+            return List.of();
+        }
+
+        var reached = new ArrayList<ModifiedLine>();
+        var runningKey = keyAtEndOfLine;
+
+        for (var index = lineIndex + 1; index < song.lineCount(); index++) {
+            var nextLine = song.getLine(index);
+
+            if ((nextLine.getKey() != null) || runningKey.equals(nextLine.getRunningKey())) {
+                return reached;
+            }
+
+            reached.add(ModifiedLine.reKeyed(nextLine, runningKey));
+
+            // A mid-line change on that line pins the key it leaves off in, so the change stops
+            // propagating there even though the line itself was re-keyed.
+            var lastKeySignatureKey = nextLine.lastKeySignatureKey();
+
+            if (lastKeySignatureKey != null) {
+                runningKey = lastKeySignatureKey;
+            }
+        }
+
+        return reached;
     }
 
     /**
@@ -415,7 +613,11 @@ public final class AccidentalReconciliation {
                 : ProjectedElement.survivor(line, i));
         }
 
-        return reconcileSequence(line, sequence, region.insertedSpans(), insertIndex, removal);
+        // An insert or a delete cannot move the key the line starts in — only a mid-line key
+        // signature it brings in or takes away, which the projection already carries.
+        return reconcileSequence(
+            new Projection(line, line.getRunningKey(), sequence, region.insertedSpans(), insertIndex),
+            removal);
     }
 
     /**
@@ -453,6 +655,56 @@ public final class AccidentalReconciliation {
     public static List<AccidentalChange> reconcileModification(
         Line line, List<IntendedChange> changes, RestatementRemoval removal) {
 
+        return reconcileModification(List.of(ModifiedLine.of(line, changes)), removal)
+            .getFirst()
+            .changes();
+    }
+
+    /**
+     * Returns the accidentals that must change for an in-place modification spanning a
+     * <em>range</em> of lines to preserve every pitch the user did not change and to strand no
+     * notation it made redundant.
+     *
+     * <p>A key change is the modification that needs this: it moves pitches on every line that
+     * inherits the key it changes, and stopping at the line the user clicked on would let notes on
+     * the lines after it change pitch with nothing said. Every other modification is a range of
+     * one, which is what the per-line {@link #reconcileModification(Line, List, RestatementRemoval)}
+     * is — the same walk, called once. {@link #linesInheriting} builds the tail of a key change's
+     * range; its head is the caller's, because a line that receives an inserted key signature is
+     * reconciled by {@link #reconcile(InsertionRegion, RestatementRemoval)} instead.
+     *
+     * <p>The lines are reconciled independently: accidental context resets at a line boundary, so
+     * nothing one line's walk decides can reach the next. What crosses the boundary is the key,
+     * and it arrives as each {@link ModifiedLine}'s own {@code runningKey}.
+     *
+     * <p>Reads the live lines and mutates nothing; the caller applies the result before building
+     * any projected layout.
+     *
+     * @param lines   The modification's range, in song order, each line in its pre-modification
+     *                state
+     * @param removal The accepted restatements and the staff positions their acceptance suppresses
+     * @return One entry per line of {@code lines}, in the same order, holding that line's changes
+     *         (empty for a line that needs none)
+     */
+    public static List<ReconciledLine> reconcileModification(
+        List<ModifiedLine> lines, RestatementRemoval removal) {
+
+        var reconciled = new ArrayList<ReconciledLine>(lines.size());
+
+        for (var modified : lines) {
+            reconciled.add(new ReconciledLine(modified.line(), reconcileLine(modified, removal)));
+        }
+
+        return reconciled;
+    }
+
+    /** One line of {@link #reconcileModification(List, RestatementRemoval)}'s range. */
+    private static List<AccidentalChange> reconcileLine(
+        ModifiedLine modified, RestatementRemoval removal) {
+
+        var line = modified.line();
+        var changes = modified.changes();
+        var runningKey = modified.runningKey();
         var removedOnLine = new ArrayList<Integer>();
 
         for (var i = 0; i < line.elementCount(); i++) {
@@ -461,13 +713,18 @@ public final class AccidentalReconciliation {
             }
         }
 
-        if (changes.isEmpty() && removedOnLine.isEmpty()) {
+        // A moved key moves the context arriving at every note on the line, so the walk starts at
+        // the top of it — and the emptiness short-circuit cannot fire, however little else the
+        // modification does here.
+        var keyMoved = !runningKey.equals(line.getRunningKey());
+
+        if (changes.isEmpty() && removedOnLine.isEmpty() && !keyMoved) {
             return List.of();
         }
 
         var changeByIndex = new ArrayList<@Nullable IntendedChange>(
             Collections.nCopies(line.elementCount(), null));
-        var lowestChangedIndex = Integer.MAX_VALUE;
+        var lowestChangedIndex = keyMoved ? 0 : Integer.MAX_VALUE;
 
         for (var change : changes) {
             changeByIndex.set(change.index(), change);
@@ -500,11 +757,36 @@ public final class AccidentalReconciliation {
             sequence.add(ProjectedElement.changed(line.getElement(i), change));
         }
 
-        return reconcileSequence(line, sequence, List.of(), lowestChangedIndex, removal);
+        return reconcileSequence(
+            new Projection(line, runningKey, sequence, List.of(), lowestChangedIndex), removal);
     }
 
     /**
-     * Walks {@code sequence} left to right from {@code startPosition}, emitting an
+     * A mutation's projected element sequence and everything the walk over it needs: the line the
+     * mutation lands on, the key that line will run in afterwards, the fragment's own spans, and
+     * the position the walk starts at.
+     *
+     * @param line          The line, in its pre-mutation state — the source of the ties the
+     *                      exclusion consults, and of the pre-mutation contexts the elements
+     *                      carry
+     * @param runningKey    The key in effect at the start of {@code line} once the mutation
+     *                      commits; the fallback a backward scan reaching the start of the line
+     *                      resolves against
+     * @param elements      The projected sequence, in order
+     * @param insertedSpans Spans arriving with an inserted fragment, not yet on {@code line}
+     * @param startPosition The first position in {@code elements} the walk visits; nothing before
+     *                      it can change
+     */
+    private record Projection(
+        Line line,
+        Key runningKey,
+        List<ProjectedElement> elements,
+        List<Span> insertedSpans,
+        int startPosition
+    ) {}
+
+    /**
+     * Walks {@code projection}'s elements left to right from its start position, emitting an
      * {@link AccidentalChange} for every protected note whose sounding accidental would otherwise
      * change, and for every surviving note whose own accidental this edit made redundant. Nothing
      * before the mutation point can change, which is why the walk starts there.
@@ -519,14 +801,11 @@ public final class AccidentalReconciliation {
      * re-establishes the context and ends the region the user consented to change.
      */
     private static List<AccidentalChange> reconcileSequence(
-        Line line,
-        List<ProjectedElement> sequence,
-        List<Span> insertedSpans,
-        int startPosition,
-        RestatementRemoval removal) {
+        Projection projection, RestatementRemoval removal) {
 
+        var sequence = projection.elements();
         var suppressedStaffPositions = new HashSet<>(removal.suppressedStaffPositions());
-        var ties = collectTies(line, insertedSpans);
+        var ties = collectTies(projection.line(), projection.insertedSpans());
         var positionsByElement = new IdentityHashMap<StaffElement, Integer>();
 
         for (var position = 0; position < sequence.size(); position++) {
@@ -535,7 +814,7 @@ public final class AccidentalReconciliation {
 
         var accidentalChanges = new ArrayList<AccidentalChange>();
 
-        for (var position = startPosition; position < sequence.size(); position++) {
+        for (var position = projection.startPosition(); position < sequence.size(); position++) {
             var projected = sequence.get(position);
 
             // Ahead of everything below, so a barline or a repeat is never a candidate for any of
@@ -572,7 +851,7 @@ public final class AccidentalReconciliation {
                 continue;
             }
 
-            var after = resolveOverProjection(line, sequence, position);
+            var after = resolveOverProjection(projection, position);
 
             if (projected.explicit != null) {
                 if (removesRedundantAccidental(projected, after)) {
@@ -654,8 +933,9 @@ public final class AccidentalReconciliation {
      * accidental left out of it.
      */
     private static StaffElement.@Nullable Accidental resolveOverProjection(
-        Line line, List<ProjectedElement> sequence, int position) {
+        Projection projection, int position) {
 
+        var sequence = projection.elements();
         var target = sequence.get(position);
 
         for (var scanPosition = position - 1; scanPosition >= 0; scanPosition--) {
@@ -664,7 +944,7 @@ public final class AccidentalReconciliation {
 
             if (elementType.cancelsAccidentals()) {
                 return StaffElement.keyAccidentalFor(
-                    keyOverProjection(line, sequence, scanPosition), target.staffPosition);
+                    keyOverProjection(projection, scanPosition), target.staffPosition);
             }
 
             if ((candidate.staffPosition == target.staffPosition) && (candidate.explicit != null)) {
@@ -673,25 +953,25 @@ public final class AccidentalReconciliation {
         }
 
         // The scan passed every earlier position without meeting a barrier, and a key signature is
-        // a barrier, so there is none in front of this note: the line's own running key stands.
-        return StaffElement.keyAccidentalFor(line.getRunningKey(), target.staffPosition);
+        // a barrier, so there is none in front of this note: the key the line will run in stands.
+        return StaffElement.keyAccidentalFor(projection.runningKey(), target.staffPosition);
     }
 
     /**
      * Returns the key in effect at {@code position} in the projected sequence: the key of the last
-     * {@link KeySignatureElement} at or before it, and otherwise {@code line}'s running key.
+     * {@link KeySignatureElement} at or before it, and otherwise the key the line will run in.
      *
      * <p>The mirror of {@link Line#keyAt} over a projection rather than over the live element
      * list, and it has to be — the projection is what the line will hold once the mutation
-     * commits, key signatures added or removed included.
+     * commits, key signatures added or removed included, and the running key it falls back to is
+     * the one the mutation leaves the line in rather than the one it starts in.
      *
-     * @param line      the destination line, whose running key is the fallback
-     * @param sequence  the projected element sequence
-     * @param position  the position within {@code sequence} to resolve at, inclusive
+     * @param projection the mutation being previewed
+     * @param position   the position within the projected sequence to resolve at, inclusive
      * @return the key in effect there; never null
      */
-    private static Key keyOverProjection(
-        Line line, List<ProjectedElement> sequence, int position) {
+    private static Key keyOverProjection(Projection projection, int position) {
+        var sequence = projection.elements();
 
         for (var scanPosition = position; scanPosition >= 0; scanPosition--) {
             if (sequence.get(scanPosition).element instanceof KeySignatureElement keySignature) {
@@ -699,7 +979,7 @@ public final class AccidentalReconciliation {
             }
         }
 
-        return line.getRunningKey();
+        return projection.runningKey();
     }
 
     /**

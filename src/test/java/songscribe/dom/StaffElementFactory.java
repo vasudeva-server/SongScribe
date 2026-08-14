@@ -20,10 +20,37 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 /** Shared factory methods for {@link StaffElement} instances used across test classes. */
 public final class StaffElementFactory {
 
     private StaffElementFactory() {}
+
+    /**
+     * A crotchet at {@code staffPosition} carrying {@code accidental}.
+     *
+     * @param staffPosition the note's staff position
+     * @param accidental the accidental to write on it, or null for a note that carries none
+     * @return the note
+     */
+    public static StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
+        var note = crotchet();
+        note.setStaffPosition(staffPosition);
+        note.setAccidental(accidental);
+        return note;
+    }
+
+    /**
+     * A crotchet at {@code staffPosition} carrying no accidental — one that sounds whatever the
+     * key in effect there says it does.
+     *
+     * @param staffPosition the note's staff position
+     * @return the note
+     */
+    public static StaffElement note(int staffPosition) {
+        return note(staffPosition, null);
+    }
 
     public static StaffElement semibreve() {
         return ElementType.SEMIBREVE.newInstance();

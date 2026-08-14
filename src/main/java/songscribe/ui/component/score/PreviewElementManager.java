@@ -43,7 +43,7 @@ import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
-import songscribe.message.notification.PasteModeDidChangeNotification;
+import songscribe.message.notification.InsertionPointModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
@@ -267,7 +267,7 @@ public final class PreviewElementManager {
     }
 
     @Handler
-    public void pasteModeDidChange(PasteModeDidChangeNotification message) {
+    public void insertionPointModeDidChange(InsertionPointModeDidChangeNotification message) {
         if (message.isActive()) {
             clearPreviewElement();
         } else {

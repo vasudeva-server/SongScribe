@@ -92,6 +92,28 @@ public class KeySignatureElement extends StructuralElement {
         return new KeySignatureElement(key, previousKey);
     }
 
+    /**
+     * Whether writing a key signature at {@code insertionIndex} on {@code line} needs a barline
+     * placed in front of it for this class's position invariant to hold.
+     *
+     * <p>Two callers have to agree about this and would otherwise each spell out the test: the fit
+     * pre-check, which must measure the barline's column because it is part of the edit, and the
+     * commit, which must actually write it. A disagreement between them accepts an edit that then
+     * does not fit, or reserves room for a barline that never arrives — neither of which anything
+     * would report.
+     *
+     * @param line the line the key signature would be written into
+     * @param insertionIndex the index it would land at, at least
+     *     {@link Line#FIRST_LEGAL_KEY_SIGNATURE_INDEX}
+     * @return {@code true} when the element already at {@code insertionIndex - 1} is neither a
+     *     barline nor a repeat, so a {@link ElementType#SINGLE_BARLINE} is owed in front
+     */
+    public static boolean needsBarlineBefore(Line line, int insertionIndex) {
+        var precedingType = line.getElement(insertionIndex - 1).getType();
+
+        return !precedingType.isBarLine() && !precedingType.isRepeat();
+    }
+
     @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public KeySignatureElement clone() {
