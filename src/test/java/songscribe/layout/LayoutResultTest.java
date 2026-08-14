@@ -41,6 +41,7 @@ import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -65,7 +66,7 @@ class LayoutResultTest extends UnitTest {
     // T3b: LayoutResultBuilder.setKeySignature() round-trips through getKeySignature()
     @Test
     void testBuilderKeySignatureRoundTrip() {
-        var keySig = new KeySignature(KeyType.FLATS, 2);
+        var keySig = new KeySignature(new Key(KeyType.FLATS, 2));
         var result = LayoutResult.builder()
             .setKeySignature(keySig)
             .build();

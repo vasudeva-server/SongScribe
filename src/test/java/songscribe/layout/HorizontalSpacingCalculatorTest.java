@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.engraving.StaffHeaderMetrics;
@@ -37,8 +38,10 @@ import songscribe.engraving.SMuFLConstants;
  */
 class HorizontalSpacingCalculatorTest extends UnitTest {
 
-    private static final int THREE_KEY_ACCIDENTALS = 3;
-    private static final int SEVEN_KEY_ACCIDENTALS = 7;
+    private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
+    private static final Key THREE_SHARPS = new Key(KeyType.SHARPS, 3);
+    private static final Key SEVEN_SHARPS = new Key(KeyType.SHARPS, Key.MAX_ACCIDENTAL_COUNT);
+    private static final Key SEVEN_FLATS = new Key(KeyType.FLATS, Key.MAX_ACCIDENTAL_COUNT);
 
     /** The clef's right edge — where the header ends when there is no key signature. */
     private static final double CLEF_RIGHT_EDGE_SS =
@@ -60,29 +63,23 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
 
     @Test
     void testHeaderRightEdgeWithoutKeySignatureIsTheClefRightEdge() {
-        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.NONE, 0))
-            .isEqualTo(CLEF_RIGHT_EDGE_SS);
-    }
-
-    @Test
-    void testHeaderRightEdgeWithNullKeyTypeIsTheClefRightEdge() {
-        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(null, THREE_KEY_ACCIDENTALS))
+        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(C_MAJOR))
             .isEqualTo(CLEF_RIGHT_EDGE_SS);
     }
 
     @Test
     void testHeaderRightEdgeWithThreeSharps() {
         var expected = HorizontalSpacingCalculator.calculateKeySignatureXSs()
-            + KeySignature.widthSs(KeyType.SHARPS, THREE_KEY_ACCIDENTALS);
-        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.SHARPS, THREE_KEY_ACCIDENTALS))
+            + KeySignature.widthSs(THREE_SHARPS);
+        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(THREE_SHARPS))
             .isEqualTo(expected);
     }
 
     @Test
     void testHeaderRightEdgeWithSevenFlats() {
         var expected = HorizontalSpacingCalculator.calculateKeySignatureXSs()
-            + KeySignature.widthSs(KeyType.FLATS, SEVEN_KEY_ACCIDENTALS);
-        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.FLATS, SEVEN_KEY_ACCIDENTALS))
+            + KeySignature.widthSs(SEVEN_FLATS);
+        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(SEVEN_FLATS))
             .isEqualTo(expected);
     }
 
@@ -90,8 +87,8 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     void testFlatsMakeANarrowerHeaderThanSharps() {
         // The flat glyph is narrower than the sharp, and LilyPond spaces each accidental
         // by its own glyph width rather than a shared column width.
-        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.FLATS, SEVEN_KEY_ACCIDENTALS))
-            .isLessThan(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.SHARPS, SEVEN_KEY_ACCIDENTALS));
+        assertThat(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(SEVEN_FLATS))
+            .isLessThan(HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(SEVEN_SHARPS));
     }
 
     // ==========================================================================
@@ -103,7 +100,7 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
     void testFirstNoteWithoutKeySignatureSpansFromTheClefLeftEdge() {
         // minimum-fixed-space is a floor on the whole span, and the clef does not fill it,
         // so the clef's own width drops out of the answer entirely.
-        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(KeyType.NONE, 0))
+        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(C_MAJOR))
             .isEqualTo(LayoutEngine.CLEF_X_POSITION_SS + StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
     }
 
@@ -112,21 +109,21 @@ class HorizontalSpacingCalculatorTest extends UnitTest {
         assertThat(StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS)
             .describedAs("the max() below is only exercised when the clef is the narrower of the two")
             .isGreaterThan(SMuFLConstants.G_CLEF_WIDTH_SS);
-        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(KeyType.NONE, 0))
+        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(C_MAJOR))
             .isGreaterThanOrEqualTo(CLEF_RIGHT_EDGE_SS);
     }
 
     @Test
     void testFirstNoteWithKeySignatureSitsPastItsRightEdge() {
-        var expected = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KeyType.SHARPS, THREE_KEY_ACCIDENTALS)
+        var expected = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(THREE_SHARPS)
             + StaffHeaderMetrics.KEY_SIGNATURE_FIRST_NOTE_GAP_SS;
-        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(KeyType.SHARPS, THREE_KEY_ACCIDENTALS))
+        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(THREE_SHARPS))
             .isEqualTo(expected);
     }
 
     @Test
     void testFirstNoteMovesRightAsTheKeySignatureGrows() {
-        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(KeyType.SHARPS, THREE_KEY_ACCIDENTALS))
-            .isLessThan(HorizontalSpacingCalculator.calculateFirstElementXSs(KeyType.SHARPS, SEVEN_KEY_ACCIDENTALS));
+        assertThat(HorizontalSpacingCalculator.calculateFirstElementXSs(THREE_SHARPS))
+            .isLessThan(HorizontalSpacingCalculator.calculateFirstElementXSs(SEVEN_SHARPS));
     }
 }

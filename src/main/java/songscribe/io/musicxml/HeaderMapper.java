@@ -25,6 +25,8 @@ import org.audiveris.proxymusic.Credit;
 import org.audiveris.proxymusic.FormattedText;
 import org.audiveris.proxymusic.ScorePartwise;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.Constants;
@@ -32,6 +34,7 @@ import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.io.DocumentValidation;
 import songscribe.util.DateUtils;
 
 /**
@@ -59,6 +62,8 @@ import songscribe.util.DateUtils;
  * <p>See {@code docs/musicxml-object-model.md} for the full routing table.
  */
 final class HeaderMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HeaderMapper.class);
 
     private final Song song;
 
@@ -462,15 +467,20 @@ final class HeaderMapper {
      * reader's {@code parseIntOrThrow}/{@code parseDoubleOrThrow} convention — the
      * writer only ever emits an enum constant name, so an unknown token means a
      * corrupt document.
+     *
+     * @param token the {@code lyrics-source} miscellaneous-field value
+     * @return the source it names; never null
+     * @throws SAXException if {@code token} names no {@link Song.LyricsSource} constant
      */
     private static Song.LyricsSource lyricsSourceOrThrow(String token) throws SAXException {
         try {
             return Song.LyricsSource.valueOf(token);
         } catch (IllegalArgumentException e) {
-            throw new SAXException(
-                "Corrupt document: malformed <" + MusicXmlTags.MISC_LYRICS_SOURCE +
-                "> value: '" + token + '\'', e
-            );
+            // The IllegalArgumentException is dropped rather than chained, as it is in
+            // DocumentValidation's own parseXxxOrThrow methods: it says only that the constant
+            // does not exist, which is what the message below already reports, with the field.
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: malformed <{}> value: '{}'", MusicXmlTags.MISC_LYRICS_SOURCE, token);
         }
     }
 

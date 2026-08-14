@@ -174,7 +174,7 @@ public final class ReflectionTestHelper {
         List<UIAction> managedActions,
         Song song
     ) {
-        var line = new Line(song);
+        var line = UnitTest.detachedLine(song);
 
         for (var note : notes) {
             line.addElement(note);

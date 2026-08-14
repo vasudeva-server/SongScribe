@@ -22,11 +22,16 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.quaver;
 
+import java.util.Set;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
@@ -180,6 +185,74 @@ class ElementTypeTest extends UnitTest {
         }
     }
 
+    /**
+     * The types whose presence wipes out every accidental written before them. Driven against
+     * {@link ElementType#values()} below, so a constant added to the enum without a decision
+     * about this promise fails here rather than silently answering {@code false}.
+     *
+     * <p>The IO aliases are deliberately absent: {@code isBarLine()} is an ordinal-range test
+     * that ends at {@code FINAL_DOUBLE_BARLINE}, and {@code isRepeat()} compares identity, so
+     * an alias already answers {@code false} to both.
+     */
+    private static final Set<ElementType> CANCELS_ACCIDENTALS = Set.of(
+        ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
+        ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
+        ElementType.KEY_SIGNATURE
+    );
+
+    @ParameterizedTest
+    @EnumSource(ElementType.class)
+    void testCancelsAccidentalsIsTrueForBarlinesRepeatsAndKeySignaturesOnly(ElementType type) {
+        assertThat(type.cancelsAccidentals())
+            .as("%s.cancelsAccidentals()", type)
+            .isEqualTo(CANCELS_ACCIDENTALS.contains(type));
+    }
+
+    /**
+     * The types with nowhere in the file to store an annotation. Driven against
+     * {@link ElementType#values()} below for the same reason as
+     * {@link #CANCELS_ACCIDENTALS}: a new constant must force a decision rather than inherit
+     * {@code true} and lose the user's text on save.
+     *
+     * <p>The IO aliases are absent because both tests behind this are identity comparisons, so
+     * an alias already answers {@code true} — harmlessly, since the aliases share their
+     * canonical type's prototype and no element ever reports one as its type.
+     */
+    private static final Set<ElementType> CANNOT_CARRY_ANNOTATION = Set.of(
+        ElementType.BREATH_MARK, ElementType.KEY_SIGNATURE
+    );
+
+    @ParameterizedTest
+    @EnumSource(ElementType.class)
+    void testCanCarryAnnotationIsFalseOnlyForTypesWithNowhereToStoreOne(ElementType type) {
+        assertThat(type.canCarryAnnotation())
+            .as("%s.canCarryAnnotation()", type)
+            .isEqualTo(!CANNOT_CARRY_ANNOTATION.contains(type));
+    }
+
+    /**
+     * A type's instance is an element of the class that type needs, not merely one reporting that
+     * type: a key signature carries a {@link Key}, so a caller reaching one through the registry
+     * must get a {@link KeySignatureElement} it can ask. Driven from {@link ElementType#values()},
+     * so a later type with a class of its own fails here until it gets one.
+     */
+    @ParameterizedTest
+    @EnumSource(ElementType.class)
+    void testTheInstanceIsAKeySignatureElementExactlyForTheKeySignatureType(ElementType type) {
+        assertThat(type.getInstance() instanceof KeySignatureElement)
+            .as("%s.getInstance() is a KeySignatureElement", type)
+            .isEqualTo(type == ElementType.KEY_SIGNATURE);
+    }
+
+    /** A clone of the shared instance is one the document can hold, key and all. */
+    @Test
+    void testNewInstanceOfAKeySignatureCarriesAKey() {
+        assertThat(ElementType.KEY_SIGNATURE.newInstance())
+            .asInstanceOf(type(KeySignatureElement.class))
+            .extracting(KeySignatureElement::getKey)
+            .isEqualTo(new Key(KeyType.NONE, 0));
+    }
+
     @Test
     void testIsBarLineMembership() {
         // True set: single, double, final double
@@ -197,7 +270,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.QUAVER_REST, ElementType.SEMIQUAVER_REST, ElementType.DEMI_SEMIQUAVER_REST,
             ElementType.GRACE_QUAVER,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.BREATH_MARK
+            ElementType.BREATH_MARK, ElementType.KEY_SIGNATURE
         }) {
             assertThat(type.isBarLine()).as("%s.isBarLine()", type).isFalse();
         }
@@ -356,11 +429,11 @@ class ElementTypeTest extends UnitTest {
 
     @Test
     void testIsNonDurationMembership() {
-        // True set: barlines, repeats, breath mark
+        // True set: barlines, repeats, breath mark, key signature
         for (var type : new ElementType[]{
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
             ElementType.REPEAT_LEFT, ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT,
-            ElementType.BREATH_MARK
+            ElementType.BREATH_MARK, ElementType.KEY_SIGNATURE
         }) {
             assertThat(type.isNonDuration()).as("%s.isNonDuration()", type).isTrue();
         }

@@ -22,20 +22,26 @@ package songscribe.message.mutation;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Key;
 import songscribe.dom.Line;
 
 /**
- * Mutation recording a key-signature change on a specific line.
- * Used when the key accidental count or key type of a line is updated.
- * The runtime types of {@code oldValue} and {@code newValue} are validated against
- * {@link KeyField#getExpectedType()} at construction time.
+ * Mutation recording a change to the key a line establishes at its own start.
+ *
+ * <p>Both values carry the meaning {@link Line#getKey()} gives them: a null key means the line
+ * establishes nothing and inherits the key in effect at the end of the previous line. Both are
+ * the values {@link Line#setKey} settled on after its no-op normalization, not the raw argument
+ * it was handed, so replaying either one reproduces the recorded state exactly.
+ *
+ * <p>A mid-line key change is a {@code KeySignatureElement} and is recorded as an ordinary
+ * element mutation instead; this record covers only the line's own key.
+ *
+ * @param line   the line whose key changed
+ * @param oldKey the key the line established before the change, or null if it inherited
+ * @param newKey the key the line establishes after the change, or null if it now inherits
  */
-public record LineKeyChange(Line line, KeyField field, @Nullable Object oldValue, @Nullable Object newValue)
+public record LineKeyChange(Line line, @Nullable Key oldKey, @Nullable Key newKey)
     implements Mutation, LineScopedMutation {
-
-    public LineKeyChange {
-        FieldTypeValidator.validate("LineKeyChange", field, field.getExpectedType(), oldValue, newValue);
-    }
 
     @Override
     public Line getLine() {

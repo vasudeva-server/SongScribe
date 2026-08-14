@@ -39,7 +39,6 @@ class SongIsEmptyTest extends UnitTest {
             null, "", "", "", 0, 0, "", "", "", "",
             Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
             "", false,
-            Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0, List.of(), false, 1,
             "", "", 0, 0
         );
@@ -57,7 +56,6 @@ class SongIsEmptyTest extends UnitTest {
             null, "", "", "", 0, 0, "", "", "", "",
             Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
             "", false,
-            Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0, List.of(emptyLine), false, 1,
             "", "", 0, 0
         );

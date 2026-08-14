@@ -42,6 +42,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -115,6 +116,9 @@ class MutationLabelTest extends UnitTest {
     private static final int HAIRPIN_FIXTURE_NOTE_COUNT = 4;
 
     /** Selection that reaches past the pre-existing crescendo on [0, 1]. */
+    // Any key that differs from the fixture song's own is enough to make the change land.
+    private static final int ONE_SHARP = 1;
+
     private static final int EXTEND_SELECTION_BEGIN = 2;
     private static final int EXTEND_SELECTION_END = 3;
 
@@ -192,7 +196,7 @@ class MutationLabelTest extends UnitTest {
                 (song, line) -> song.addLine(song.lineCount(), new Line(song)),
                 (song, line) -> song.removeLine(song.lineCount() - 1), Strings.ACTION_EDIT_OP_DELETE_LINE),
             new DominantMutationLabelCase("line key change labels change key", 1, NO_ARRANGE,
-                (song, line) -> line.setKeyType(KeyType.SHARPS), Strings.ACTION_EDIT_OP_CHANGE_KEY),
+                (song, line) -> line.setKey(new Key(KeyType.SHARPS, ONE_SHARP)), Strings.ACTION_EDIT_OP_CHANGE_KEY),
             new DominantMutationLabelCase("line layout change labels change layout", 1, NO_ARRANGE,
                 (song, line) -> line.setLyricsYPosSs(line.getLyricsYPosSs() + 3.0),
                 Strings.ACTION_EDIT_OP_CHANGE_LAYOUT),
@@ -227,12 +231,6 @@ class MutationLabelTest extends UnitTest {
                 Strings.ACTION_EDIT_OP_CHANGE_TEMPO),
             new DominantMutationLabelCase("metadata footnotes change labels change footnotes", 1, NO_ARRANGE,
                 (song, line) -> song.setFootnotes("note"), Strings.ACTION_EDIT_OP_CHANGE_FOOTNOTES),
-            new DominantMutationLabelCase(
-                "metadata default key accidental count change labels change key", 1, NO_ARRANGE,
-                (song, line) -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3),
-                Strings.ACTION_EDIT_OP_CHANGE_KEY),
-            new DominantMutationLabelCase("metadata default key type change labels change key", 1, NO_ARRANGE,
-                (song, line) -> song.setDefaultKeyType(KeyType.SHARPS), Strings.ACTION_EDIT_OP_CHANGE_KEY),
             // Deleting a tuplet-spanned note emits the tuplet-removal companion BEFORE the
             // primary ElementDeletion, so a "first mutation" label would read "Tuplet". The
             // precedence tier must still select the ElementDeletion -> "Delete Note".

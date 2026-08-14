@@ -30,6 +30,8 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChange;
 import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
@@ -127,7 +129,7 @@ public final class HorizontalSpacingCalculator {
      * @return X position in staff-space units where the first note should be placed
      */
     public static double calculateFirstElementXSs(Line line) {
-        return calculateFirstElementXSs(line.getKeyType(), line.getKeyAccidentalCount());
+        return calculateFirstElementXSs(line.getRunningKey());
     }
 
     /**
@@ -139,17 +141,16 @@ public final class HorizontalSpacingCalculator {
      * {@link StaffHeaderMetrics#CLEF_FIRST_NOTE_SPAN_SS} on the span from the clef's <em>left</em>
      * edge, which the clef alone does not fill.
      *
-     * @param keyType            Type of accidentals in the key signature, may be null
-     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @param key the key the header draws; {@link KeyType#NONE} draws no key signature
      * @return X position in staff-space units where the first note should be placed
      */
-    public static double calculateFirstElementXSs(@Nullable KeyType keyType, int keyAccidentalCount) {
-        if (KeySignature.widthSs(keyType, keyAccidentalCount) == 0) {
+    public static double calculateFirstElementXSs(Key key) {
+        if (KeySignature.widthSs(key) == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS
                 + Math.max(SMuFLConstants.G_CLEF_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
         }
 
-        return calculateHeaderRightEdgeSs(keyType, keyAccidentalCount)
+        return calculateHeaderRightEdgeSs(key)
             + StaffHeaderMetrics.KEY_SIGNATURE_FIRST_NOTE_GAP_SS;
     }
 
@@ -173,22 +174,22 @@ public final class HorizontalSpacingCalculator {
      */
     public static double calculateHeaderRightEdgeSs(@Nullable Line line) {
         if (line == null) {
-            return calculateHeaderRightEdgeSs(null, 0);
+            return calculateHeaderRightEdgeSs(new Key(KeyType.NONE, 0));
         }
 
-        return calculateHeaderRightEdgeSs(line.getKeyType(), line.getKeyAccidentalCount());
+        return calculateHeaderRightEdgeSs(line.getRunningKey());
     }
 
     /**
      * Returns the X position of the right edge of the staff header
      * (clef + optional key signature), in staff-space units.
      *
-     * @param keyType            Type of accidentals in the key signature, may be null
-     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @param key the key the header draws; {@link KeyType#NONE} draws no key signature, so
+     *            the header ends at the clef's right edge
      * @return X position in staff-space units of the header's right edge
      */
-    public static double calculateHeaderRightEdgeSs(@Nullable KeyType keyType, int keyAccidentalCount) {
-        var keySignatureWidthSs = KeySignature.widthSs(keyType, keyAccidentalCount);
+    public static double calculateHeaderRightEdgeSs(Key key) {
+        var keySignatureWidthSs = KeySignature.widthSs(key);
 
         if (keySignatureWidthSs == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_WIDTH_SS;
@@ -216,6 +217,20 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Calculates minimum spacing between columns based on geometric extents.
+     *
+     * <p>The result is an origin-to-origin delta, and what it guarantees is a constant:
+     * {@link #MIN_COLUMN_GAP_SS} of clear space between the two columns' facing ink, whatever
+     * either column holds. That is the promise a caller relies on at the floor — not the number
+     * itself, which is whatever the pair's extents make it.
+     *
+     * <p>A mid-line {@link songscribe.dom.KeySignatureElement} is an ordinary column here and gets
+     * the same promise on both sides. Its position invariant fixes what those sides are: a barline
+     * or repeat before it, and (except at the end of a line) a note after it. So the barline's ink
+     * clears the first accidental by {@link #MIN_COLUMN_GAP_SS}, and the last accidental clears the
+     * following note's leftmost ink — its accidental when it has one — by the same. The key
+     * signature's contribution is its <em>drawn</em> width, the accidentals
+     * {@code KeyChange} lays out for the change it makes, so a wider change pushes the note further
+     * rather than letting it overlap the naturals.
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
@@ -453,7 +468,20 @@ public final class HorizontalSpacingCalculator {
      * sits at {@code origin + rightExtentExclAug/2 − syllableWidth/2} (refs #330).
      */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Line line) {
-        var firstElementXSs = calculateFirstElementXSs(line);
+        return calculateAnchorXSs(firstColumn, line.getRunningKey());
+    }
+
+    /**
+     * The same anchor against a stated header key rather than the one {@code line} currently
+     * carries, so an edit that re-headers a line can be measured before it is committed
+     * ({@link KeyEditFitCalculator}). A wider key signature moves the whole chain right.
+     *
+     * @param firstColumn the chain's first column
+     * @param headerKey   the key the header draws
+     * @return the anchor X the solved gaps are laid out from
+     */
+    public static double calculateAnchorXSs(ElementColumn firstColumn, Key headerKey) {
+        var firstElementXSs = calculateFirstElementXSs(headerKey);
         var firstXSs = firstElementXSs;
 
         if (firstColumn.hasSyllable()) {
@@ -490,17 +518,40 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain: its own
-     * right extent, plus a full line rest when it does not carry the auto-maintained terminal
-     * barline. A terminal is pinned flush-right by {@code LayoutEngine.positionTerminalFlushRight},
-     * so its own extent already ends the line; any other last element must stop one line rest short
-     * of the margin instead of sitting flush against it (refs #617).
+     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain, for the
+     * key change {@code line} actually leads into ({@link LineKeys#of(Line)}).
      *
      * @param lastColumn the chain's last column
-     * @param line       the line being solved (for the song's line rest)
+     * @param line       the line being solved (for the song's line rest and the next line's key)
      * @return the span to pass as {@code trailingReservationSs} to {@link #solveChain}
      */
     public static double trailingReservationSs(ElementColumn lastColumn, Line line) {
+        return trailingReservationSs(lastColumn, line, LineKeys.of(line));
+    }
+
+    /**
+     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain: its own
+     * right extent, plus a trailing gap. The gap is zero when {@code lastColumn} carries the
+     * auto-maintained terminal barline — a terminal is pinned flush-right by
+     * {@code LayoutEngine.positionTerminalFlushRight}, so its own extent already ends the line —
+     * and otherwise a full line rest, so any other last element stops one line rest short of the
+     * margin instead of sitting flush against it (refs #617).
+     *
+     * <p>A cautionary key signature is drawn in that same trailing space when the next line begins
+     * in a different key, so the gap widens to hold it: the reservation is the larger of the line
+     * rest and the cautionary's width plus {@link KeyChange#RIGHT_MARGIN_SS}. It is a maximum
+     * rather than a sum because the two occupy the same run — the cautionary is drawn <em>into</em>
+     * the trailing gap, not after it. The two clauses never both bind: only the song's last line
+     * carries the auto-maintained terminal, and only a line with a line after it leads into a
+     * cautionary.
+     *
+     * @param lastColumn the chain's last column
+     * @param line       the line being solved (for the song's line rest)
+     * @param keys       the keys to solve the line against — its own when the line is being laid
+     *                   out, an edit's projection when one is being measured
+     * @return the span to pass as {@code trailingReservationSs} to {@link #solveChain}
+     */
+    private static double trailingReservationSs(ElementColumn lastColumn, Line line, LineKeys keys) {
         var song = line.getSong();
         // The song's own terminal-identity test, not a bare type check: a barline that merely looks
         // like a terminal — one ending a non-last line, or a projected clone that is not the line's
@@ -508,8 +559,30 @@ public final class HorizontalSpacingCalculator {
         var nonTerminalGapSs = song.isAutoMaintainedTerminal(lastColumn.getElement(), line)
             ? 0.0
             : song.getDefaultRestLengthSs();
+        var trailingGapSs = Math.max(nonTerminalGapSs, cautionaryReservationSs(keys));
 
-        return lastColumn.getRightExtentSs() + nonTerminalGapSs;
+        return lastColumn.getRightExtentSs() + trailingGapSs;
+    }
+
+    /**
+     * Returns the run the cautionary key signature at the end of a line occupies — its drawn width
+     * plus the margin it keeps from the staff's right edge — or zero when no cautionary is drawn
+     * there.
+     *
+     * <p>What is drawn is {@link KeyChange}'s answer for the pair of keys, never a second reading
+     * of the cancellation policy, so the space reserved here and the accidentals
+     * {@code KeySignatureRenderer} paints cannot disagree. Zero covers both "no next line" and
+     * "the next line is in the same key" — the margin is part of the cautionary's run, so a line
+     * that draws no cautionary must not be charged for it either.
+     */
+    private static double cautionaryReservationSs(LineKeys keys) {
+        var nextRunningKey = keys.nextRunningKey();
+
+        if (nextRunningKey == null || keys.keyAtEndOfLine().equals(nextRunningKey)) {
+            return 0.0;
+        }
+
+        return KeyChange.widthSs(keys.keyAtEndOfLine(), nextRunningKey) + KeyChange.RIGHT_MARGIN_SS;
     }
 
     /**
@@ -525,10 +598,30 @@ public final class HorizontalSpacingCalculator {
      * @return the anchor, the lifted spring chain, and the solver's verdict
      */
     public static LineSolution solveLine(List<ElementColumn> columns, Line line, double staffRightMarginSs) {
+        return solveLine(columns, line, staffRightMarginSs, LineKeys.of(line));
+    }
+
+    /**
+     * The same solve against <em>projected</em> keys rather than the ones the song currently holds,
+     * so an edit that re-keys a line can be measured before it is committed
+     * ({@link KeyEditFitCalculator}). Everything else — springs, lyric lift, optical corrections,
+     * anchor, reservation, solver — is the identical path {@link #solveLine(List, Line, double)}
+     * takes, which is what makes a pre-check verdict and the committed layout agree.
+     *
+     * @param columns            the line's columns in element order (never empty)
+     * @param line               the line being solved (for the song's line rest and beam lookup)
+     * @param staffRightMarginSs the maximum allowed line width in staff spaces
+     * @param keys               the keys to solve against; {@link LineKeys#of(Line)} is what the
+     *                           committed layout uses
+     * @return the anchor, the lifted spring chain, and the solver's verdict
+     */
+    public static LineSolution solveLine(
+        List<ElementColumn> columns, Line line, double staffRightMarginSs, LineKeys keys) {
+
         var lifted = LyricLift.applyLyricLift(buildSprings(columns, line), columns);
         var springs = OpticalSpacing.applyCorrections(lifted, columns);
-        var firstXSs = calculateAnchorXSs(columns.getFirst(), line);
-        var reservationSs = trailingReservationSs(columns.getLast(), line);
+        var firstXSs = calculateAnchorXSs(columns.getFirst(), keys.headerKey());
+        var reservationSs = trailingReservationSs(columns.getLast(), line, keys);
         var result = solveChain(springs, firstXSs, reservationSs, staffRightMarginSs);
 
         if (LogUtils.isTracingSpacing(LOG)) {

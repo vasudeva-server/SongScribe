@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
+import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
@@ -59,6 +60,9 @@ import songscribe.shape.BezierBow;
 class LayoutEngineTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
+
+    /** A key with accidentals, so a header drawn from it is distinguishable from an empty one. */
+    private static final Key HEADER_KEY = new Key(KeyType.SHARPS, 3);
     private static final double TOLERANCE = 0.001;
 
     /**
@@ -319,20 +323,18 @@ class LayoutEngineTest extends UnitTest {
         assertThat(clef.getXSs()).isCloseTo(LayoutEngine.CLEF_X_POSITION_SS, within(TOLERANCE));
     }
 
-    // T2: layout() stores a KeySignature immediately after the clef with correct key data
+    // T2: layout() stores a KeySignature immediately after the clef, drawing the line's own key
     @Test
     void testLayoutStoresKeySignatureAfterClef() {
         var line = detachedLine();
-        line.setKeyType(KeyType.SHARPS);
-        line.setKeyAccidentalCount(3);
+        line.setKey(HEADER_KEY);
 
         var result = require(engine().layout(line), "LayoutResult");
         var keySig = require(result.getKeySignature(), "KeySignature");
 
         assertThat(keySig.getXSs())
             .isCloseTo(HorizontalSpacingCalculator.calculateKeySignatureXSs(), within(TOLERANCE));
-        assertThat(keySig.getKeyType()).isEqualTo(KeyType.SHARPS);
-        assertThat(keySig.getAccidentalCount()).isEqualTo(3);
+        assertThat(keySig.getKey()).isEqualTo(HEADER_KEY);
     }
 
     // T3: On the last line, the final barline is positioned flush-right
@@ -1680,18 +1682,23 @@ class LayoutEngineTest extends UnitTest {
             .containsExactly(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
     }
 
-    // T24: createHeaderElements null keyType → key signature stored with KeyType.NONE
+    // T24: createHeaderElements draws the line's running key, so a line that establishes no key
+    //      of its own still shows the key it inherits rather than an empty header.
     @Test
-    void testCreateHeaderElementsNullKeyTypeDefaultsToNone() {
-        // detachedLine() returns a Line with null keyType (no key set).
-        var line = detachedLine();
+    void testHeaderShowsTheInheritedKeyOnALineThatEstablishesNone() {
+        var song = new Song();
+        song.withModification(() -> song.getLine(0).setKey(HEADER_KEY));
+        song.addLine(new Line(song));
+        var inheritingLine = song.getLine(1);
 
-        var result = require(engine().layout(line), "LayoutResult");
+        assertThat(inheritingLine.getKey())
+            .describedAs("the second line must establish no key of its own, or it inherits nothing")
+            .isNull();
+
+        var result = require(engine().layout(inheritingLine), "LayoutResult");
         var keySig = require(result.getKeySignature(), "KeySignature");
 
-        assertThat(keySig.getKeyType())
-            .describedAs("null keyType in line must produce KeyType.NONE in key signature")
-            .isEqualTo(KeyType.NONE);
+        assertThat(keySig.getKey()).isEqualTo(HEADER_KEY);
     }
 
     // T30: beamCount → flag levels per note type (QUAVER 1, SEMIQUAVER 2, DEMI_SEMIQUAVER 3)

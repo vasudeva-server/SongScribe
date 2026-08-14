@@ -58,6 +58,8 @@ public final class MusicXmlTags {
     static final String        ATTRIBUTES     = "attributes";
     static final String        KEY            = "key";
     static final String        FIFTHS         = "fifths";
+    static final String        CANCEL         = "cancel";
+    static final String        MODE           = "mode";
     static final String        PRINT          = "print";
     static final String        BARLINE        = "barline";
     static final String        BAR_STYLE      = "bar-style";
@@ -197,6 +199,10 @@ public final class MusicXmlTags {
     static final String ATTR_PAGE        = "page";
     static final String ATTR_PLACEMENT   = "placement";
     static final String ATTR_ELEMENT     = "element";
+
+    // Element content values — <key>'s <mode>. Every SongScribe key is major, so this is the
+    // only value the writer emits and the reader never reads one back.
+    static final String MODE_MAJOR = "major";
 
     // Element content values — tempo / metronome direction subtree. The
     // <metronome-relation> symbol between the two metric-modulation note groups;

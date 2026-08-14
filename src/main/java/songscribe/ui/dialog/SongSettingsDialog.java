@@ -24,13 +24,11 @@ import module java.desktop;
 import songscribe.Strings;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.Duration;
-import songscribe.dom.KeyType;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
@@ -48,13 +46,6 @@ import songscribe.util.GraphicUtils;
  * its own, because they coalesce fields the tabs split between them.
  */
 public class SongSettingsDialog extends StandardDialog {
-
-    /**
-     * A single entry in the key-signature combo: a {@link KeyType} paired with
-     * an accidental count. {@code (FLATS, 0)} is the canonical no-accidentals
-     * value; {@code SHARPS, 0} is never produced.
-     */
-    public record KeySelection(KeyType keyType, int count) {}
 
     /**
      * What a caller wants to edit, for those that need the dialog opened somewhere
@@ -432,29 +423,18 @@ public class SongSettingsDialog extends StandardDialog {
     }
 
     /**
-     * Maps the song's stored default key to its canonical combo entry. Zero
-     * accidentals always canonicalises to {@code (FLATS, 0)} — the combo has no
-     * {@code (SHARPS, 0)} entry — otherwise the stored key type is preserved.
-     */
-    static KeySelection canonicalKeySelectionFrom(Song song) {
-        var accidentalCount = song.getDefaultKeyAccidentalCount();
-        var keyType = accidentalCount == 0 ? KeyType.FLATS : song.getDefaultKeyType();
-        return new KeySelection(keyType, accidentalCount);
-    }
-
-    /**
-     * Posts a {@link TempoDidChangeNotification} and/or a
-     * {@link KeySignatureDidChangeNotification} for whichever of tempo / key
-     * differs from the song's current state, coalesced into one modification
-     * bracket. Posts nothing when neither changed.
+     * Posts a {@link TempoDidChangeNotification} when the submitted tempo differs from the song's
+     * current one, inside a modification bracket. Posts nothing when it does not.
+     *
+     * <p>The song's key is not settable here. A song has no key of its own — its key is line 0's —
+     * so changing it is a per-line edit made on the score, not a document-wide setting.
      */
     static void applyMusicTabChanges(
         Song song,
         Duration tempoType,
         int visibleTempo,
         String tempoDescription,
-        boolean showTempo,
-        KeySelection keySelection
+        boolean showTempo
     ) {
         var tempo = song.getTempo();
         var tempoChanged = tempoType != tempo.getTempoType()
@@ -462,30 +442,13 @@ public class SongSettingsDialog extends StandardDialog {
             || !tempoDescription.equals(tempo.getTempoDescription())
             || showTempo != tempo.shouldShowTempo();
 
-        var keyChanged = keySelection.keyType() != song.getDefaultKeyType()
-            || keySelection.count() != song.getDefaultKeyAccidentalCount();
-
-        // Wrap both notifications in one bracket so tempo and key changes coalesce
-        // into a single SongDidChangeNotification when both are modified.
-        if (tempoChanged || keyChanged) {
-            song.withModification(() -> {
-                if (tempoChanged) {
-                    MessageCenter.post(new TempoDidChangeNotification(
-                        tempoType,
-                        visibleTempo,
-                        tempoDescription,
-                        showTempo
-                    ));
-                }
-
-                if (keyChanged) {
-                    MessageCenter.post(new KeySignatureDidChangeNotification(
-                        null,
-                        keySelection.keyType(),
-                        keySelection.count()
-                    ));
-                }
-            });
+        if (tempoChanged) {
+            song.withModification(() -> MessageCenter.post(new TempoDidChangeNotification(
+                tempoType,
+                visibleTempo,
+                tempoDescription,
+                showTempo
+            )));
         }
     }
 }

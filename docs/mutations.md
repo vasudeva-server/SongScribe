@@ -15,20 +15,19 @@ Song-scoped (no `Line`): `LineInsertion`, `LineDeletion`, `MetadataChange`, `Fon
 Several mutations identify *which* field changed via a field enum. Three shapes exist
 — don't assume every field enum implies validation:
 
-- **Validated `Object` old/new values** — `LineKeyChange` (`KeyField`),
-  `LineLayoutChange` (`LineLayoutField`), `MetadataChange` (`MetadataField`),
-  `LayoutChange` (`LayoutField`). The record's canonical
+- **Validated `Object` old/new values** — `LineLayoutChange` (`LineLayoutField`),
+  `MetadataChange` (`MetadataField`), `LayoutChange` (`LayoutField`). The record's canonical
   constructor calls `FieldTypeValidator.validate`, so a value whose runtime type does
   not match the field's `getExpectedType()` fails at construction rather than at cast
   time during undo replay or in a subscriber:
 
   ```java
-  public record LineKeyChange(Line line, KeyField field,
-                              @Nullable Object oldValue, @Nullable Object newValue)
+  public record LineLayoutChange(Line line, LineLayoutField field,
+                                 @Nullable Object oldValue, @Nullable Object newValue)
       implements Mutation, LineScopedMutation {
 
-      public LineKeyChange {
-          FieldTypeValidator.validate("LineKeyChange", field, field.getExpectedType(),
+      public LineLayoutChange {
+          FieldTypeValidator.validate("LineLayoutChange", field, field.getExpectedType(),
                                       oldValue, newValue);
       }
       // ...
@@ -45,7 +44,9 @@ Several mutations identify *which* field changed via a field enum. Three shapes 
   `FieldTypeValidator`.
 
 - **Typed values, no validation** — `LyricsChange` carries `String oldText/newText`
-  with `LyricsField`, and `FontChange` carries full `DocumentFonts oldFonts/newFonts`
+  with `LyricsField`, `LineKeyChange` carries `@Nullable Key oldKey/newKey` (no field
+  enum — a line has one key, and null on either side means the line inherits rather than
+  establishing one), and `FontChange` carries full `DocumentFonts oldFonts/newFonts`
   snapshots (no field enum — a multi-role commit is one undoable group); concrete
   field types make a runtime validator unnecessary.
 
@@ -87,6 +88,11 @@ contract:
   pre-mutation snapshot (e.g. a press-time clone in a drag handler); otherwise use a
   `Line` helper. `Line.applyChange` additionally runs the mutator *without* recording
   when `withoutMutationTracking` is active.
+  `Song.applyChange` is also where the key invariant is restored — the key each line
+  inherits, and line 0 establishing one — because every mutation that can move a key
+  routes through it, replay included. Its line-0 repair emits its own `LineKeyChange` into
+  the same batch, so undo does not leave a line silently pinned; the inherited keys
+  themselves are derived and are re-derived rather than recorded.
 
 Canonical direct-`applyChange` example — `PitchShifter.commitPitchShift` (uses the
 `Line` variants; pitch already changed during the drag, so each `ElementModification`

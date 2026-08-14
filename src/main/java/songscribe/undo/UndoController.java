@@ -614,7 +614,6 @@ public final class UndoController {
             case ATTRIBUTION -> Strings.ACTION_EDIT_OP_CHANGE_ATTRIBUTION;
             case TEMPO -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO;
             case FOOTNOTES -> Strings.ACTION_EDIT_OP_CHANGE_FOOTNOTES;
-            case DEFAULT_KEY_ACCIDENTAL_COUNT, DEFAULT_KEY_TYPE -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
         };
     }
 }

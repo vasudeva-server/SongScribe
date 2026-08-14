@@ -54,6 +54,7 @@ import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -479,8 +480,7 @@ public class MusicXmlCorpusGenerator {
 
         var song = buildSong(
             line -> {
-                line.setKeyType(Song.DEFAULT_KEY_TYPE);
-                line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
+                line.setKey(Key.DEFAULT);
 
                 var first = crotchet();
                 line.addElement(first);
@@ -491,8 +491,7 @@ public class MusicXmlCorpusGenerator {
                 perNote.addAttachment(new TempoChangeAttachment(perNote, perNoteTempo));
             },
             line -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(THREE_SHARPS);
+                line.setKey(new Key(KeyType.SHARPS, THREE_SHARPS));
 
                 var described = crotchet();
                 line.addElement(described);
@@ -503,16 +502,14 @@ public class MusicXmlCorpusGenerator {
                 modulated.addAttachment(new BeatChangeAttachment(modulated, metricModulation));
             },
             line -> {
-                line.setKeyType(KeyType.NONE);
-                line.setKeyAccidentalCount(ABSENT_DATE_PART);
+                line.setKey(new Key(KeyType.NONE, 0));
 
                 var hidden = crotchet();
                 line.addElement(hidden);
                 hidden.addAttachment(new TempoChangeAttachment(hidden, hiddenTempo));
             },
             line -> {
-                line.setKeyType(KeyType.FLATS);
-                line.setKeyAccidentalCount(TWO_FLATS);
+                line.setKey(new Key(KeyType.FLATS, TWO_FLATS));
                 line.addElement(crotchet());
             }
         );
@@ -648,8 +645,7 @@ public class MusicXmlCorpusGenerator {
 
         var song = buildSong(
             line -> {
-                line.setKeyType(Song.DEFAULT_KEY_TYPE);
-                line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
+                line.setKey(Key.DEFAULT);
 
                 var note = crotchet();
                 note.setStaffPosition(C4);
@@ -660,8 +656,7 @@ public class MusicXmlCorpusGenerator {
                     annotation("dolce", Component.CENTER_ALIGNMENT, Annotation.Placement.ABOVE, ANNOTATION_ABOVE_Y_SS)));
             },
             line -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(ONE_SHARP);
+                line.setKey(new Key(KeyType.SHARPS, ONE_SHARP));
 
                 var note = crotchet();
                 note.setStaffPosition(F4);

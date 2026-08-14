@@ -517,8 +517,7 @@ class StaffElementTest extends UnitTest {
         var note = new StaffElement(ElementType.CROTCHET);
         note.setStaffPosition(-4);
         song.withoutMutationTracking(() -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(1);
+            line.setKey(new Key(KeyType.SHARPS, 1));
             line.addElement(note);
         });
 
@@ -628,8 +627,7 @@ class StaffElementTest extends UnitTest {
         var end = new StaffElement(ElementType.CROTCHET);
         end.setStaffPosition(STAFF_POSITION_F5);
         song.withoutMutationTracking(() -> {
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_ALL);
+            line.setKey(new Key(KeyType.FLATS, KEY_ACCIDENTAL_COUNT_ALL));
             line.addElement(anchor);
             line.addElement(barline);
             line.addElement(end);
@@ -684,8 +682,7 @@ class StaffElementTest extends UnitTest {
         noteC.setStaffPosition(STAFF_POSITION_F5);
         var tieAB = new Tie(noteA, noteB);
         song.withoutMutationTracking(() -> {
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_ALL);
+            line.setKey(new Key(KeyType.FLATS, KEY_ACCIDENTAL_COUNT_ALL));
             line.addElement(noteA);
             line.addElement(firstBarline);
             line.addElement(noteB);
@@ -763,8 +760,7 @@ class StaffElementTest extends UnitTest {
         var note = new StaffElement(ElementType.CROTCHET);
         note.setStaffPosition(STAFF_POSITION_F5);
         song.withoutMutationTracking(() -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_F_ONLY);
+            line.setKey(new Key(KeyType.SHARPS, KEY_ACCIDENTAL_COUNT_F_ONLY));
             line.addElement(unrelated);
             line.addElement(note);
         });
@@ -1169,8 +1165,7 @@ class StaffElementTest extends UnitTest {
         var note = new StaffElement(ElementType.CROTCHET);
         note.setStaffPosition(STAFF_POSITION_F5);
         song.withoutMutationTracking(() -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_F_ONLY);
+            line.setKey(new Key(KeyType.SHARPS, KEY_ACCIDENTAL_COUNT_F_ONLY));
             line.addElement(note);
         });
 

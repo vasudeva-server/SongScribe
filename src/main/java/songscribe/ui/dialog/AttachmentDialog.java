@@ -35,13 +35,6 @@ import songscribe.ui.component.MainFrame;
  */
 public abstract class AttachmentDialog<T> extends StandardDialog {
 
-    /**
-     * The undo op the current commit performs, so each subclass can name itself
-     * (e.g. {@code Add Tempo Change} / {@code Change Tempo Change} /
-     * {@code Remove Tempo Change}).
-     */
-    protected enum AttachmentOp { ADD, CHANGE, REMOVE }
-
     protected @Nullable StaffElement selectedElement = null;
     protected @Nullable Line selectedLine = null;
     protected final JButton removeButton;
@@ -62,7 +55,7 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
             }
 
             var elementIndex = line.getElementIndex(element);
-            line.withModification(opLabel(AttachmentOp.REMOVE), () -> line.modifyElement(
+            line.withModification(opLabel(DialogOp.REMOVE), () -> line.modifyElement(
                 elementIndex, getElementField(), () -> clearChange(element)));
             setVisible(false);
         });
@@ -81,7 +74,7 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
      * Returns the resolved undo op-name for the given operation, letting each
      * subclass name itself with its own noun.
      */
-    protected abstract String opLabel(AttachmentOp op);
+    protected abstract String opLabel(DialogOp op);
 
     protected abstract @Nullable T getExistingChange(StaffElement element);
 
@@ -148,7 +141,7 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
         }
 
         var elementIndex = line.getElementIndex(element);
-        var op = getExistingChange(element) == null ? AttachmentOp.ADD : AttachmentOp.CHANGE;
+        var op = getExistingChange(element) == null ? DialogOp.ADD : DialogOp.EDIT;
         line.withModification(opLabel(op), () -> line.modifyElement(
             elementIndex, getElementField(), () -> applyChange(element)));
     }

@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -55,6 +56,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -82,6 +85,9 @@ class LineRendererTest extends UnitTest {
 
     private static final int FONT_SIZE = 12;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, FONT_SIZE);
+
+    /** A key a second line can establish that no line inherits, so the boundary really changes. */
+    private static final Key NEXT_LINE_KEY = new Key(KeyType.SHARPS, 3);
 
     /** A real LineRenderer under test, wired to a mock LineComponent. */
     private LineRenderer renderer;
@@ -596,7 +602,7 @@ class LineRendererTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // renderKeyChanges — last-line guard (row 23)
+    // renderKeyChanges — the last-line guard and the running keys it compares
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -628,6 +634,15 @@ class LineRendererTest extends UnitTest {
                 .build();
         }
 
+        /** A two-line song whose second line establishes {@code nextKey}. */
+        private Song songWithSecondLineIn(Key nextKey) {
+            var song = new Song();
+            song.addLine(new Line(song));  // appends a second line
+            song.withModification(() -> song.getLine(1).setKey(nextKey));
+
+            return song;
+        }
+
         /**
          * When the line is the last line in the song ({@code lineIndex + 1 >= lineCount}),
          * {@code renderKeyChanges} returns immediately without delegating to
@@ -645,19 +660,41 @@ class LineRendererTest extends UnitTest {
         }
 
         /**
-         * When the line is NOT the last line ({@code lineIndex + 1 < lineCount}),
-         * {@code renderKeyChanges} delegates to {@link KeySignatureRenderer#renderKeyChange}.
+         * The two keys handed to {@link KeySignatureRenderer#renderKeyChange} are the running
+         * keys — the key this line leaves off in, and the key the next line begins in — not
+         * the lines' own keys, which the second line here does not have until it is given one.
          */
         @Test
-        void testNonLastLineDelegatesToRenderer() {
-            // Song with 2 lines → lineIndex=0 is not the last line
-            var song = new Song();
-            song.addLine(new Line(song));  // appends a second line
+        void testNonLastLinePassesTheRunningKeyOnEachSideOfTheBoundary() {
+            var song = songWithSecondLineIn(NEXT_LINE_KEY);
             var g2 = spyGraphics();
 
             renderer.renderKeyChanges(g2, invariantsFor(song));
 
-            verify(ksrInstance).renderKeyChange(any(), any(), any(), anyDouble(), any());
+            verify(ksrInstance).renderKeyChange(
+                any(),
+                eq(song.getLine(0).keyAtEndOfLine()),
+                eq(NEXT_LINE_KEY),
+                anyDouble(),
+                any());
+        }
+
+        /**
+         * A line that inherits its key still reports that key as its running key, so the
+         * boundary is handed two equal keys and the renderer is left to draw nothing —
+         * the cautionary is not suppressed here.
+         */
+        @Test
+        void testAnInheritingNextLineIsStillDelegatedWithMatchingKeys() {
+            var song = new Song();
+            song.addLine(new Line(song));  // appends a second line, which inherits
+            var g2 = spyGraphics();
+            var runningKey = song.getLine(0).keyAtEndOfLine();
+
+            renderer.renderKeyChanges(g2, invariantsFor(song));
+
+            verify(ksrInstance)
+                .renderKeyChange(any(), eq(runningKey), eq(runningKey), anyDouble(), any());
         }
     }
 

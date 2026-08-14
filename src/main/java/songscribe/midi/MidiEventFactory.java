@@ -21,7 +21,9 @@ package songscribe.midi;
 
 import module java.desktop;
 
+import songscribe.dom.Key;
 import songscribe.dom.Tempo;
+import songscribe.io.musicxml.KeySignatureMapping;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 /**
@@ -33,6 +35,10 @@ public final class MidiEventFactory {
     static final int MICROSECONDS_PER_MINUTE = 60_000_000;
     private static final int PERCENT = 100;
     private static final int TEMPO_MESSAGE_LENGTH = 3;
+    private static final int KEY_SIGNATURE_MESSAGE_LENGTH = 2;
+
+    /** {@code mi} byte for a MIDI key signature meta-event: every SongScribe key is major. */
+    private static final byte MAJOR_MODE = 0;
 
     private MidiEventFactory() {
     }
@@ -68,5 +74,24 @@ public final class MidiEventFactory {
             TEMPO_MESSAGE_LENGTH
         );
         track.add(new MidiEvent(tempoMessage, ticks));
+    }
+
+    /**
+     * Adds a KEY_SIGNATURE meta message ({@code FF 59}) to the given track.
+     *
+     * @param key the key taking effect at {@code ticks}; never null
+     */
+    public static void addKeySignatureEvent(Track track, int ticks, Key key)
+        throws InvalidMidiDataException {
+        var keySignatureMessage = new MetaMessage();
+        keySignatureMessage.setMessage(
+            MidiMetaMessageTypes.KEY_SIGNATURE,
+            new byte[]{
+                (byte) KeySignatureMapping.toFifths(key),
+                MAJOR_MODE,
+            },
+            KEY_SIGNATURE_MESSAGE_LENGTH
+        );
+        track.add(new MidiEvent(keySignatureMessage, ticks));
     }
 }

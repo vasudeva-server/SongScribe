@@ -36,6 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -106,8 +107,7 @@ class AccidentalRestatementsTest extends UnitTest {
             line.addElement(element);
         }
 
-        line.setKeyType(KeyType.FLATS);
-        line.setKeyAccidentalCount(FIVE_FLATS);
+        line.setKey(new Key(KeyType.FLATS, FIVE_FLATS));
         return line;
     }
 

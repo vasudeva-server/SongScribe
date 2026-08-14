@@ -61,13 +61,61 @@ Each element's position depends on the cumulative skyline of everything stacked 
 
 ### Example 1: First note horizontal position
 
-**Scenario**: First note on a line, with or without key signature
+**Scenario**: First note on a line, with or without a key signature in the header
 
-**Rule**: The first note is positioned `3.5 ss` (`HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS`) from the right extent of the clef (if no key signature) or key signature (if present).
+**Which key the header draws**: the line's **running** key (`Line.getRunningKey()`) — its own key when it establishes one, otherwise the key it inherits from the line before it. Every line draws its key signature, whether it established that key or inherited it, so "no key of its own" is not "no key signature". A line whose running key is C major draws no accidentals and is the no-key-signature case below.
+
+**Rule**: LilyPond measures the first note from a different edge depending on what it follows (`HorizontalSpacingCalculator.calculateFirstElementXSs`):
+
+- **With a key signature** — the note sits `StaffHeaderMetrics.KEY_SIGNATURE_FIRST_NOTE_GAP_SS` past the key signature's right edge.
+- **Without one** — the span from the clef's *left* edge has a floor of `StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS`, which the clef's own width does not fill, so the clef's width drops out of the answer.
 
 ```
-[Clef] or [Clef][KeySig] ---> 3.5 ss ---> [First Note]
+[Clef] ------ CLEF_FIRST_NOTE_SPAN_SS ------> [First Note]
+[Clef][KeySig] -- KEY_SIGNATURE_FIRST_NOTE_GAP_SS --> [First Note]
 ```
+
+### Example 1a: Mid-line key signature
+
+**Scenario**: A key change written into the middle of a line (`KeySignatureElement`)
+
+A key signature is not only a header fixture. A `KeySignatureElement` is an ordinary element in the line's element list and is placed by the same spring chain as every other column, subject to its position invariant: never at index 0, always immediately after a barline or repeat.
+
+**Rules**:
+
+1. **Width**: the column's right extent is the change's *drawn* width — the accidentals `KeyChange` lays out between the key in effect immediately before the element and the element's own key — not a per-type constant. A change that cancels the previous signature is wider than one that does not, and the spacing reflects that.
+2. **Minimum spacing**: `HorizontalSpacingCalculator.calculateMinimumColumnSpacingSs` gives it the same promise it gives every column — `MIN_COLUMN_GAP_SS` of clear space between facing ink on each side. The barline before it clears the first accidental by that gap; the last accidental clears the following note's leftmost ink (its accidental when it has one) by the same.
+
+```
+[Barline] -- MIN_COLUMN_GAP_SS --> [♮♮♮ ♯♯] -- MIN_COLUMN_GAP_SS --> [Note]
+             cancellation naturals ─┘   └─ new signature
+```
+
+### Example 1b: Cautionary key signature at the end of a line
+
+**Scenario**: The next line begins in a different key
+
+**Rule**: A cautionary key signature is drawn in the trailing space at the end of the line, warning the performer what the next line starts in. Layout reserves room for it in `HorizontalSpacingCalculator.trailingReservationSs`: the trailing gap past the last column becomes the larger of the line rest and the cautionary's width plus `KeyChange.RIGHT_MARGIN_SS`. The larger, not the sum — the cautionary is drawn *into* the trailing gap, not after it.
+
+The keys compared are the **running** keys on each side of the boundary: `Line.keyAtEndOfLine()` (which accounts for a mid-line change) against `Line.nextLineRunningKey()`. A null answer from the latter — the song's last line — means there is nothing to warn about, so nothing is drawn and nothing is reserved.
+
+```
+[... notes ...] --- max(line rest, cautionary + RIGHT_MARGIN_SS) --> | staff right margin
+                                   [♭♭♭] ─┘
+```
+
+### Example 1c: What a key change costs, and where it is checked
+
+A key change is not local to the line it is made on. It claims horizontal space in four places, and `songscribe.layout.KeyEditFitCalculator` measures all four before the editor accepts the edit:
+
+1. the **cautionary** at the end of the line before it (Example 1b);
+2. the **header** of every line the change re-keys (Example 1);
+3. the **cautionary at the end of each of those lines**, since the key they leave off in moves with them;
+4. for a mid-line change, the **key signature column** itself (Example 1a), plus the barline the editor inserts when the chosen position does not already open a measure.
+
+"Every line the change re-keys" is the inheritance chain: a line with no key of its own inherits from the line before it, so a change propagates forward and stops at the first line that establishes its own key — the same rule `Song`'s inherited-key propagation follows.
+
+Each of those lines is measured by the identical `HorizontalSpacingCalculator.solveLine` the committed layout runs, over columns built by the same `ElementColumnBuilder`. The keys a solve reads off a line travel together in `songscribe.layout.LineKeys` — header key, key at end of line, next line's running key — so a pre-check states the keys the edit would produce rather than reading some from the edit and the rest from the unedited document.
 
 ### Example 2: Note Y position coordinate system
 

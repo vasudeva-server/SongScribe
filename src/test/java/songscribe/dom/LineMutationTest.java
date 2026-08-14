@@ -30,11 +30,17 @@ import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
@@ -48,7 +54,6 @@ import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
-import songscribe.message.mutation.KeyField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineKeyChange;
@@ -58,6 +63,31 @@ import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 
+/**
+ * Tests {@link Line}'s mutators from the caller's side of the mutation system: what each one
+ * changes on the line, and what it records so that undo can reverse it.
+ *
+ * <h2>What this class is responsible for</h2>
+ * The <em>recording</em> half of {@code docs/mutations.md} — that an edit posts one batch, that
+ * the batch names the right mutation type, and that a mutation carries the before- and
+ * after-values a replay needs. The <em>replaying</em> half is
+ * {@code MutationReplayerRoundTripTest}'s, so nothing here drives undo; a case that needs a
+ * document restored belongs there.
+ *
+ * <p>Beyond recording, it covers what a mutator does to the line that no mutation states: the
+ * companion removals an edit drags along (an invalidated ending, a tuplet a duration change
+ * breaks), the terminal guards, the syllable and melisma repairs an insertion or deletion owes
+ * its neighbours, and the key a line is in.
+ *
+ * <p><b>Keys are tested as an invariant, not as a table.</b> {@link LineKeys} asserts the
+ * contract's distinct clauses — the key a line establishes, the key it inherits, the key in
+ * effect at an index, the key the line after it begins in (with both ways there can be no line
+ * after it), and the normalization that keeps a line from pinning the key it already
+ * inherits — and then applies {@link UnitTest#assertKeyPropagationInvariant} over a table of
+ * every edit that can move a key. Pinning expected keys per edit would test the arithmetic of
+ * one fixture; the invariant is the promise, and a missed propagation case is what breaks it.
+ * The pitch classes a key alters are {@code KeyTest}'s, not this class's.
+ */
 class LineMutationTest extends UnitTest {
 
     private static final int VERSE = 1;
@@ -108,9 +138,10 @@ class LineMutationTest extends UnitTest {
 
             song.removeLine(0);
 
+            // The batch also carries a LineKeyChange: the promoted line was inheriting, and line 0
+            // has nothing to inherit from, so it has to establish the key it was already in.
             var notification = captureSingleDidChange();
-            assertThat(notification.getMutations()).hasSize(1);
-            var deletion = (LineDeletion) notification.getMutations().getFirst();
+            var deletion = findSingleMutationOfType(notification, LineDeletion.class);
             assertThat(deletion.lineIndex()).isEqualTo(0);
             assertThat(deletion.deletedLine()).isSameAs(line);
         }
@@ -2236,216 +2267,288 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // keyExists (Row 43)
+    // Line keys: setKey, getRunningKey, keyAt, and the propagation they drive
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class KeyExists {
+    class LineKeys {
 
-        // FLAT_SHARP_ORDINAL[FLATS][0] = 0 (B flat)
-        private static final int FLAT_PITCH_B = 0;
-        // FLAT_SHARP_ORDINAL[FLATS][1] = 3 (E flat)
-        private static final int FLAT_PITCH_E = 3;
-        // FLAT_SHARP_ORDINAL[SHARPS][0] = 4 (F sharp)
-        private static final int SHARP_PITCH_F = 4;
-        // FLAT_SHARP_ORDINAL[SHARPS][1] = 1 (C sharp)
-        private static final int SHARP_PITCH_C = 1;
-        // A pitch that is never in any 1-accidental key
-        private static final int UNACCIDENTALIZED_PITCH_D = 2;
+        private static final Key ONE_SHARP = new Key(KeyType.SHARPS, 1);
+        private static final Key TWO_SHARPS = new Key(KeyType.SHARPS, 2);
+        private static final Key THREE_FLATS = new Key(KeyType.FLATS, 3);
+        private static final Key C_MAJOR = new Key(KeyType.NONE, 0);
 
-        @BeforeEach
-        void resetKeySignature() {
-            // A fresh Song initializes line 0 with 5 flats. Reset to no key so each
-            // test starts from a known null/0 state without firing tracked mutations.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(null);
-                line.setKeyAccidentalCount(0);
-            });
+        /** Index of the key signature in the fixture {@link #lineWithMidLineKeyChange} builds. */
+        private static final int MID_LINE_KEY_INDEX = 2;
+
+        @Test
+        void testSetKeyEstablishesTheKeyOnTheLine() {
+            song.withModification(() -> line.setKey(ONE_SHARP));
+
+            assertThat(line.getKey()).isEqualTo(ONE_SHARP);
         }
 
         @Test
-        void testKeyExistsReturnsFalseWhenKeyTypeIsNull() {
-            // keyType is null after reset — no accidental matches any pitch.
-            assertThat(line.keyExists(FLAT_PITCH_B)).isFalse();
-        }
+        void testSetKeyFiresLineKeyChangeCarryingBothKeys() {
+            var previous = line.getKey();
+            song.withModification(() -> line.setKey(ONE_SHARP));
 
-        @Test
-        void testKeyExistsForFlatPitchInFlatKey() {
-            // 1-flat key adds a B-flat; pitch 0 (B) must be found.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.FLATS);
-                line.setKeyAccidentalCount(1);
-            });
-            assertThat(line.keyExists(FLAT_PITCH_B)).isTrue();
-        }
-
-        @Test
-        void testKeyExistsForAbsentFlatPitchInOneFlatKey() {
-            // 1-flat key only contains B-flat; E-flat (ordinal 3) must not be found.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.FLATS);
-                line.setKeyAccidentalCount(1);
-            });
-            assertThat(line.keyExists(FLAT_PITCH_E)).isFalse();
-        }
-
-        @Test
-        void testKeyExistsForFlatPitchInTwoFlatKey() {
-            // 2-flat key adds B-flat and E-flat; both pitches must be found.
-            var twoFlats = 2;
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.FLATS);
-                line.setKeyAccidentalCount(twoFlats);
-            });
-            assertThat(line.keyExists(FLAT_PITCH_B)).isTrue();
-            assertThat(line.keyExists(FLAT_PITCH_E)).isTrue();
-        }
-
-        @Test
-        void testKeyExistsForSharpPitchInSharpKey() {
-            // 1-sharp key adds an F-sharp; pitch 4 (F) must be found.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(1);
-            });
-            assertThat(line.keyExists(SHARP_PITCH_F)).isTrue();
-        }
-
-        @Test
-        void testKeyExistsForAbsentSharpPitchInOneSharpKey() {
-            // 1-sharp key only contains F-sharp; C-sharp (ordinal 1) must not be found.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(1);
-            });
-            assertThat(line.keyExists(SHARP_PITCH_C)).isFalse();
-        }
-
-        @Test
-        void testKeyExistsForSharpPitchInTwoSharpKey() {
-            // 2-sharp key adds F-sharp and C-sharp; both pitches must be found.
-            var twoSharps = 2;
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(twoSharps);
-            });
-            assertThat(line.keyExists(SHARP_PITCH_F)).isTrue();
-            assertThat(line.keyExists(SHARP_PITCH_C)).isTrue();
-        }
-
-        @Test
-        void testKeyExistsReturnsFalseForUnaccidentalizedPitch() {
-            // Pitch D (ordinal 2) does not appear in a 1-sharp or 1-flat key.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(1);
-            });
-            assertThat(line.keyExists(UNACCIDENTALIZED_PITCH_D)).isFalse();
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // setKeyAccidentalCount — fires LineKeyChange; no-op when unchanged (Row 44)
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class SetKeyAccidentalCount {
-
-        @BeforeEach
-        void resetKeySignature() {
-            // Reset to a known 0/null state so tests are independent of Song's defaults.
-            song.withoutMutationTracking(() -> {
-                line.setKeyType(null);
-                line.setKeyAccidentalCount(0);
-            });
-        }
-
-        @Test
-        void testSetKeyAccidentalCountFiresLineKeyChange() {
-            var initialCount = 0;
-            var newCount = 2;
-            song.withModification(() -> line.setKeyAccidentalCount(newCount));
-
-            var notification = captureSingleDidChange();
-            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
+            var keyChange = findSingleMutationOfType(captureSingleDidChange(), LineKeyChange.class);
             assertThat(keyChange.line()).isSameAs(line);
-            assertThat(keyChange.field()).isEqualTo(KeyField.ACCIDENTAL_COUNT);
-            assertThat(keyChange.oldValue()).isEqualTo(initialCount);
-            assertThat(keyChange.newValue()).isEqualTo(newCount);
+            assertThat(keyChange.oldKey()).isEqualTo(previous);
+            assertThat(keyChange.newKey()).isEqualTo(ONE_SHARP);
         }
 
         @Test
-        void testSetKeyAccidentalCountIsNoOpWhenUnchanged() {
-            // Setting the count to the current value (0) must post no notification.
-            var unchanged = 0;
-            song.withModification(() -> line.setKeyAccidentalCount(unchanged));
-
-            // No SongDidChangeNotification should have been posted.
-            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
-        }
-
-        @Test
-        void testSetKeyAccidentalCountUpdatesCount() {
-            var newCount = 3;
-            song.withModification(() -> line.setKeyAccidentalCount(newCount));
-            assertThat(line.getKeyAccidentalCount()).isEqualTo(newCount);
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // setKeyType — fires LineKeyChange (Row 45)
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class SetKeyType {
-
-        @BeforeEach
-        void resetKeySignature() {
-            // Reset to null so tests are independent of Song's 5-flat default.
-            song.withoutMutationTracking(() -> line.setKeyType(null));
-        }
-
-        @Test
-        void testSetKeyTypeFiresLineKeyChange() {
-            // Initial keyType is null (after reset); setting to FLATS must fire a LineKeyChange.
-            song.withModification(() -> line.setKeyType(KeyType.FLATS));
-
-            var notification = captureSingleDidChange();
-            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
-            assertThat(keyChange.line()).isSameAs(line);
-            assertThat(keyChange.field()).isEqualTo(KeyField.KEY_TYPE);
-            assertThat(keyChange.oldValue()).isNull();
-            assertThat(keyChange.newValue()).isEqualTo(KeyType.FLATS);
-        }
-
-        @Test
-        void testSetKeyTypeIsNoOpWhenUnchanged() {
-            // keyType is null after reset; setting it to null again must post nothing.
-            song.withModification(() -> line.setKeyType(null));
+        void testSetKeyPostsNothingWhenTheLineAlreadyHoldsThatKey() {
+            song.withModification(() -> line.setKey(Key.DEFAULT));
 
             messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         }
 
         @Test
-        void testSetKeyTypeUpdatesKeyType() {
-            song.withModification(() -> line.setKeyType(KeyType.SHARPS));
-            assertThat(line.getKeyType()).isEqualTo(KeyType.SHARPS);
+        void testSetKeyNormalizesToNullWhenTheLineAlreadyInheritsThatKey() {
+            var second = appendLine();
+
+            song.withModification(() -> second.setKey(line.getRunningKey()));
+
+            assertThat(second.getKey())
+                .as("pinning a line to the key it already inherits would stop inheritance there")
+                .isNull();
         }
 
         @Test
-        void testSetKeyTypeRecordsOldValue() {
-            // Set to FLATS without tracking, then change to SHARPS — old value must be FLATS.
-            song.withoutMutationTracking(() -> line.setKeyType(KeyType.FLATS));
-            song.withModification(() -> line.setKeyType(KeyType.SHARPS));
+        void testGetRunningKeyEqualsTheLinesOwnKeyWhenItHasOne() {
+            song.withModification(() -> line.setKey(THREE_FLATS));
 
-            var notification = captureSingleDidChange();
-            var keyChange = findSingleMutationOfType(notification, LineKeyChange.class);
-            assertThat(keyChange.oldValue()).isEqualTo(KeyType.FLATS);
-            assertThat(keyChange.newValue()).isEqualTo(KeyType.SHARPS);
+            assertThat(line.getRunningKey()).isEqualTo(THREE_FLATS);
         }
+
+        @Test
+        void testAChainOfInheritingLinesAllReportTheSameRunningKey() {
+            var second = appendLine();
+            var third = appendLine();
+            song.withModification(() -> line.setKey(TWO_SHARPS));
+
+            assertThat(second.getKey()).isNull();
+            assertThat(third.getKey()).isNull();
+            assertThat(second.getRunningKey()).isEqualTo(TWO_SHARPS);
+            assertThat(third.getRunningKey()).isEqualTo(TWO_SHARPS);
+        }
+
+        @Test
+        void testALineWithItsOwnKeyStopsInheritanceReachingPastIt() {
+            var second = appendLine();
+            var third = appendLine();
+            song.withModification(() -> second.setKey(THREE_FLATS));
+
+            song.withModification(() -> line.setKey(TWO_SHARPS));
+
+            assertThat(second.getRunningKey()).isEqualTo(THREE_FLATS);
+            assertThat(third.getRunningKey()).isEqualTo(THREE_FLATS);
+        }
+
+        @Test
+        void testKeyAtZeroIsTheRunningKeyEvenOnALineHoldingAMidLineKeySignature() {
+            lineWithMidLineKeyChange();
+
+            assertThat(line.keyAt(0)).isEqualTo(line.getRunningKey());
+        }
+
+        @Test
+        void testKeyAtIsInclusiveAtAKeySignaturesOwnIndex() {
+            lineWithMidLineKeyChange();
+            var runningKey = line.getRunningKey();
+
+            assertThat(line.keyAt(MID_LINE_KEY_INDEX - 1))
+                .as("just before the key signature")
+                .isEqualTo(runningKey);
+            assertThat(line.keyAt(MID_LINE_KEY_INDEX))
+                .as("at the key signature — inclusive")
+                .isEqualTo(TWO_SHARPS);
+            assertThat(line.keyAt(MID_LINE_KEY_INDEX + 1))
+                .as("just after the key signature")
+                .isEqualTo(TWO_SHARPS);
+        }
+
+        @Test
+        void testAMidLineKeySignatureChangesWhatTheNextLineInherits() {
+            var second = appendLine();
+
+            lineWithMidLineKeyChange();
+
+            assertThat(second.getRunningKey()).isEqualTo(TWO_SHARPS);
+            assertKeyPropagationInvariant(song);
+        }
+
+        /**
+         * Null says the line changes key nowhere along its length, which is what a caller
+         * projecting an edit needs: under a hypothetical running key such a line ends in the
+         * hypothetical, where a line with a mid-line change still ends in that change's key.
+         */
+        @Test
+        void testLastKeySignatureKeyIsNullOnALineThatChangesKeyNowhere() {
+            assertThat(line.lastKeySignatureKey()).isNull();
+        }
+
+        @Test
+        void testLastKeySignatureKeyIsTheLastMidLineChangesKey() {
+            lineWithMidLineKeyChange();
+
+            assertThat(line.lastKeySignatureKey()).isEqualTo(TWO_SHARPS);
+        }
+
+        /**
+         * The key the cautionary at the end of a line warns about is the <em>running</em> key of
+         * the line after it, so a following line that merely inherits still answers with the key
+         * it is in rather than with null.
+         */
+        @Test
+        void testNextLineRunningKeyIsTheFollowingLinesRunningKey() {
+            var second = appendLine();
+
+            song.withModification(() -> line.setKey(TWO_SHARPS));
+
+            assertThat(second.getKey()).as("the second line must be inheriting for this case").isNull();
+            assertThat(line.nextLineRunningKey()).isEqualTo(second.getRunningKey());
+        }
+
+        /**
+         * Null is the "nothing to warn about" answer, and it covers both ways a line can have no
+         * next line: it is the song's last, or the song does not hold it at all.
+         */
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("songscribe.dom.LineMutationTest#linesWithNoNextLine")
+        void testNextLineRunningKeyIsNullWhenThereIsNoLineAfterIt(
+            String description, Function<Song, Line> lineUnderTest) {
+
+            appendLine();
+
+            assertThat(lineUnderTest.apply(song).nextLineRunningKey()).isNull();
+        }
+
+        @Test
+        void testRemovingAMidLineKeySignatureRestoresWhatTheNextLineInherits() {
+            var second = appendLine();
+            lineWithMidLineKeyChange();
+            var restored = line.getRunningKey();
+
+            song.withModification(() -> line.removeElement(MID_LINE_KEY_INDEX));
+
+            assertThat(second.getRunningKey()).isEqualTo(restored);
+            assertKeyPropagationInvariant(song);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @MethodSource("songscribe.dom.LineMutationTest#keyAffectingEdits")
+        void testThePropagationInvariantHoldsAfterEveryKeyAffectingEdit(
+            String description, Consumer<Song> edit) {
+
+            song.withoutMutationTracking(() -> {
+                song.addLine(new Line(song));
+                song.addLine(new Line(song));
+            });
+
+            song.withModification(() -> edit.accept(song));
+
+            assertKeyPropagationInvariant(song);
+        }
+
+        @Test
+        void testAddingALineAtZeroLeavesItHoldingTheKeyTheSongStartedIn() {
+            var startingKey = line.getRunningKey();
+
+            song.addLine(0, new Line(song));
+
+            assertThat(song.getLine(0).getKey()).isEqualTo(startingKey);
+            assertThatNoException().isThrownBy(() -> song.getLine(0).getRunningKey());
+            assertKeyPropagationInvariant(song);
+        }
+
+        @Test
+        void testRemovingLineZeroLeavesThePromotedLineHoldingWhatItWasInheriting() {
+            var second = appendLine();
+            song.withModification(() -> line.setKey(THREE_FLATS));
+            assertThat(second.getKey()).as("second line inherits before the removal").isNull();
+
+            song.removeLine(0);
+
+            assertThat(song.getLine(0)).isSameAs(second);
+            assertThat(second.getKey()).isEqualTo(THREE_FLATS);
+            assertKeyPropagationInvariant(song);
+        }
+
+        /**
+         * Appends a line that establishes no key of its own, so it inherits.
+         */
+        private Line appendLine() {
+            var appended = new Line(song);
+            song.withoutMutationTracking(() -> song.addLine(appended));
+            return appended;
+        }
+
+        /**
+         * Fills {@link #line} with a note, a barline, a key signature for {@link #TWO_SHARPS} and
+         * a note, so the key signature sits at {@link #MID_LINE_KEY_INDEX} behind the barline its
+         * position invariant requires.
+         */
+        private void lineWithMidLineKeyChange() {
+            song.withModification(() -> {
+                line.addElement(0, new StaffElement(ElementType.CROTCHET));
+                line.addElement(1, new StaffElement(ElementType.SINGLE_BARLINE));
+                line.addElement(MID_LINE_KEY_INDEX, new KeySignatureElement(TWO_SHARPS));
+                line.addElement(MID_LINE_KEY_INDEX + 1, new StaffElement(ElementType.CROTCHET));
+            });
+        }
+    }
+
+    /** The two ways a line can have no line after it: it is the song's last, or it is not in it. */
+    static Stream<Arguments> linesWithNoNextLine() {
+        return Stream.of(
+            Arguments.of("the song's last line",
+                (Function<Song, Line>) song -> song.getLine(song.lineCount() - 1)),
+            Arguments.of("a line the song does not hold",
+                (Function<Song, Line>) Line::new));
+    }
+
+    /**
+     * Every kind of edit that can move a key, as the propagation hook enumerates them: the line's
+     * own key set and cleared, a mid-line key signature added and removed, and a line inserted and
+     * removed. One property — the invariant — applied to the whole table.
+     */
+    static Stream<Arguments> keyAffectingEdits() {
+        Consumer<Song> addMidLineKeySignature = song -> {
+            var target = song.getLine(1);
+            target.addElement(0, new StaffElement(ElementType.SINGLE_BARLINE));
+            target.addElement(1, new KeySignatureElement(new Key(KeyType.SHARPS, 2)));
+        };
+
+        return Stream.of(
+            Arguments.of("setting a line's key",
+                (Consumer<Song>) song -> song.getLine(1).setKey(new Key(KeyType.SHARPS, 3))),
+            Arguments.of("clearing a line's key",
+                (Consumer<Song>) song -> {
+                    song.getLine(1).setKey(new Key(KeyType.SHARPS, 3));
+                    song.getLine(1).setKey(null);
+                }),
+            Arguments.of("setting line 0's key, which every later line inherits",
+                (Consumer<Song>) song -> song.getLine(0).setKey(new Key(KeyType.NONE, 0))),
+            Arguments.of("adding a mid-line key signature", addMidLineKeySignature),
+            Arguments.of("removing a mid-line key signature",
+                (Consumer<Song>) song -> {
+                    addMidLineKeySignature.accept(song);
+                    song.getLine(1).removeElement(1);
+                }),
+            Arguments.of("inserting a line in the middle",
+                (Consumer<Song>) song -> song.addLine(1, new Line(song))),
+            Arguments.of("inserting a line at index 0",
+                (Consumer<Song>) song -> song.addLine(0, new Line(song))),
+            Arguments.of("removing a middle line",
+                (Consumer<Song>) song -> song.removeLine(1)),
+            Arguments.of("removing line 0",
+                (Consumer<Song>) song -> song.removeLine(0))
+        );
     }
 
     // -----------------------------------------------------------------------

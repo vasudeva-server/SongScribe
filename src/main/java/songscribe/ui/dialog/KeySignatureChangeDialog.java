@@ -23,7 +23,7 @@ import module java.desktop;
 
 
 import songscribe.Strings;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.ui.component.MainFrame;
 
@@ -87,12 +87,9 @@ public class KeySignatureChangeDialog extends StandardDialog {
         }
 
         var score = requireScoreView();
-        score.getSong().postWithModification(
-            Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY),
-            new KeySignatureDidChangeNotification(
-                score.getSelectedLine(),
-                keyType,
-                (Integer) keysSpinner.getValue()
-            ));
+        var song = score.getSong();
+        var line = song.getLine(score.getSelectedLine());
+        var key = new Key(keyType, (Integer) keysSpinner.getValue());
+        song.withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY), () -> line.setKey(key));
     }
 }

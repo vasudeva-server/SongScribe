@@ -235,6 +235,17 @@ class TieInvalidationTest extends UnitTest {
         }
 
         @Test
+        void testInsertedKeySignatureInvalidates() {
+            // The second exclusion in isLegalSeparator. Tested on Tie directly for the same
+            // reason as the final double barline above: Line.addElement would refuse a bare
+            // key signature, which must follow a barline, so this branch of the rule is
+            // otherwise unreachable from the line API.
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.KEY_SIGNATURE))
+                .as("a key change can alter the pitch the second note sounds, so the two are no longer tied")
+                .isSameAs(SpanOutcome.Simple.REMOVE);
+        }
+
+        @Test
         void testInsertedNoteAtAnchorRetains() {
             // Inserting at the anchor's index displaces the anchor rightwards, landing the
             // new note before the tie rather than inside it.

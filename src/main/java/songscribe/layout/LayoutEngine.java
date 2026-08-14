@@ -1423,14 +1423,16 @@ public class LayoutEngine {
      * The clef is placed at {@link #CLEF_X_POSITION_SS}. The key signature follows at
      * {@link HorizontalSpacingCalculator#calculateKeySignatureXSs()}, one clef width plus
      * LilyPond's clef-to-key-signature gap further right.
+     * <p>
+     * The header draws the line's {@linkplain Line#getRunningKey() running key} — its own key
+     * where it establishes one, and the key it inherits where it does not — so every line's
+     * header shows the key actually in effect where the line begins.
      */
     private static void createHeaderElements(Line line, LayoutResultBuilder builder) {
         var clef = new Clef();
         clef.setPosition(CLEF_X_POSITION_SS, 0);
         builder.setClef(clef);
-        var rawKeyType = line.getKeyType();
-        var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
-        var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
+        var keySig = new KeySignature(line.getRunningKey());
         keySig.setPosition(HorizontalSpacingCalculator.calculateKeySignatureXSs(), 0);
         builder.setKeySignature(keySig);
     }

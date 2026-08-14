@@ -27,6 +27,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -161,8 +162,7 @@ class PitchSpellingTest extends UnitTest {
             song.removeLine(0);
 
             var line = new Line(song);
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(1);
+            line.setKey(new Key(KeyType.SHARPS, 1));
 
             var note = crotchet();
             note.setStaffPosition(fSharpStaffPosition);
@@ -188,8 +188,7 @@ class PitchSpellingTest extends UnitTest {
             song.removeLine(0);
 
             var line = new Line(song);
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(1);
+            line.setKey(new Key(KeyType.FLATS, 1));
 
             var note = crotchet();
             note.setStaffPosition(bFlatStaffPosition);

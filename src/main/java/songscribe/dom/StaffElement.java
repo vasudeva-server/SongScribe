@@ -665,21 +665,29 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     /**
-     * Returns the accidental the key signature of {@code line} puts in effect for the pitch class
-     * of {@code staffPosition}, or null when the key leaves that pitch unaltered.
+     * Returns the accidental {@code key} puts in effect for the pitch class of
+     * {@code staffPosition}.
      *
-     * <p>Static and staff-position-taking so that the projected-layout resolver in
+     * <p>Static and key-and-staff-position-taking so that the projected-layout resolver in
      * {@code AccidentalReconciliation}, which walks positions rather than live notes, shares this
      * one definition of the key fallback instead of restating it. The two must agree: the resolver
      * decides what the line <em>will</em> read as, and {@link #findEffectiveAccidental} decides
-     * what it reads as now.
+     * what it reads as now. It takes a {@link Key} rather than a {@link Line} for the same reason
+     * — a line no longer has one key, so resolving which key applies is the caller's job and
+     * happens before this call.
+     *
+     * @param key           the key in effect at the position being resolved
+     * @param staffPosition the staff position whose pitch class is being asked about
+     * @return {@link Accidental#FLAT} when {@code key} is a flat key that alters that pitch class,
+     *         {@link Accidental#SHARP} when it is a sharp key that does, and null when the key
+     *         leaves that pitch unaltered
      */
-    public static @Nullable Accidental keyAccidentalFor(Line line, int staffPosition) {
-        if (!line.keyExists(getPitchIndex(staffPosition))) {
+    public static @Nullable Accidental keyAccidentalFor(Key key, int staffPosition) {
+        if (!key.altersPitchClass(getPitchIndex(staffPosition))) {
             return null;
         }
 
-        return (line.getKeyType() == KeyType.FLATS)
+        return (key.keyType() == KeyType.FLATS)
             ? Accidental.FLAT
             : Accidental.SHARP;
     }
@@ -749,7 +757,13 @@ public class StaffElement extends LineElement implements Cloneable {
      *   <li>It reaches a <em>barrier</em> — an element whose
      *       {@link ElementType#cancelsAccidentals()} is true — and stops there, falling back to
      *       the key signature. That method is shared with the projected-layout resolver in
-     *       {@code AccidentalReconciliation}, so both agree on what cancels.</li>
+     *       {@code AccidentalReconciliation}, so both agree on what cancels. When the barrier is
+     *       itself a {@link KeySignatureElement}, its key <em>is</em> the key in effect at
+     *       {@code index}: a key signature is a barrier, so no later one can sit between the two
+     *       or the scan would have stopped at that one first. Reading it off the barrier is what
+     *       lets this path — which runs per note, per layout pass and per {@link #getPitch()} —
+     *       avoid walking the same elements a second time through {@link Line#keyAt}. A barline
+     *       barrier carries no key, so that case still asks the line.</li>
      *   <li>It finds an earlier element at the same staff position carrying an explicit
      *       accidental, and returns it. Matching is by staff position, so the scan is
      *       octave-specific, as staff notation requires.</li>
@@ -781,6 +795,10 @@ public class StaffElement extends LineElement implements Cloneable {
                     var anchor = tieAnchorBefore(targetLine, tieEndElement, scanIndex);
 
                     if (anchor == null) {
+                        if (element instanceof KeySignatureElement keySignature) {
+                            return keyAccidentalFor(keySignature.getKey(), staffPosition);
+                        }
+
                         return keyInEffectAt(targetLine, index);
                     }
 
@@ -860,15 +878,17 @@ public class StaffElement extends LineElement implements Cloneable {
      * Returns the accidental the key signature puts in effect for this note's pitch class at
      * {@code index} within {@code targetLine}.
      *
-     * <p>This is the seam for #53 (mid-line key changes). Today a line carries exactly one key
-     * signature, so {@code index} is unused and this simply delegates to
-     * {@link #keyAccidentalFor}. When a line can carry several, only this method changes
-     * instead of the resolver — #53 will also add key changes to
-     * {@link #findEffectiveAccidental}'s barrier list, since a key change cancels prior
-     * accidentals just as a barline does.
+     * <p>A line may carry several keys — its own, and one per mid-line key signature — so which
+     * one applies depends on {@code index}. {@link Line#keyAt} answers that; this method turns
+     * the answer into an accidental for this note's pitch class.
+     *
+     * @param targetLine the line being resolved within
+     * @param index      the index within {@code targetLine} at which the note sits
+     * @return the accidental the key in effect there puts on this note's pitch class, or null when
+     *         that key leaves it unaltered
      */
     private @Nullable Accidental keyInEffectAt(Line targetLine, int index) {
-        return keyAccidentalFor(targetLine, staffPosition);
+        return keyAccidentalFor(targetLine.keyAt(index), staffPosition);
     }
 
     @Override

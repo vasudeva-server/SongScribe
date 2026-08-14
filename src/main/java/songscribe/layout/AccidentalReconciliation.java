@@ -29,6 +29,8 @@ import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.Song;
@@ -633,7 +635,13 @@ public final class AccidentalReconciliation {
      * mutation, by scanning back over the projected sequence with the rules
      * {@link StaffElement#findEffectiveAccidental} uses on a real line: stop at any barline or
      * repeat, match an earlier position with the same staff position and a non-null explicit
-     * accidental, and otherwise fall back to the destination line's key signature.
+     * accidental, and otherwise fall back to the key signature.
+     *
+     * <p>Which key that is depends on the position, because a mid-line key signature changes it —
+     * and it is read off the <em>projected</em> sequence, not off the line, because the mutation
+     * being previewed may itself add or remove one. That is what keeps this resolver and
+     * {@link StaffElement#findEffectiveAccidental} agreeing about a pitch: a preview and the
+     * committed result disagreeing is exactly the failure this guards.
      *
      * <p>The resolver's tie escape — carrying an accidental across a barrier through a tie — has
      * no counterpart here, and cannot need one: it could only ever fire for a note ending a tie
@@ -655,7 +663,8 @@ public final class AccidentalReconciliation {
             var elementType = candidate.element.getType();
 
             if (elementType.cancelsAccidentals()) {
-                return StaffElement.keyAccidentalFor(line, target.staffPosition);
+                return StaffElement.keyAccidentalFor(
+                    keyOverProjection(line, sequence, scanPosition), target.staffPosition);
             }
 
             if ((candidate.staffPosition == target.staffPosition) && (candidate.explicit != null)) {
@@ -663,7 +672,34 @@ public final class AccidentalReconciliation {
             }
         }
 
-        return StaffElement.keyAccidentalFor(line, target.staffPosition);
+        // The scan passed every earlier position without meeting a barrier, and a key signature is
+        // a barrier, so there is none in front of this note: the line's own running key stands.
+        return StaffElement.keyAccidentalFor(line.getRunningKey(), target.staffPosition);
+    }
+
+    /**
+     * Returns the key in effect at {@code position} in the projected sequence: the key of the last
+     * {@link KeySignatureElement} at or before it, and otherwise {@code line}'s running key.
+     *
+     * <p>The mirror of {@link Line#keyAt} over a projection rather than over the live element
+     * list, and it has to be — the projection is what the line will hold once the mutation
+     * commits, key signatures added or removed included.
+     *
+     * @param line      the destination line, whose running key is the fallback
+     * @param sequence  the projected element sequence
+     * @param position  the position within {@code sequence} to resolve at, inclusive
+     * @return the key in effect there; never null
+     */
+    private static Key keyOverProjection(
+        Line line, List<ProjectedElement> sequence, int position) {
+
+        for (var scanPosition = position; scanPosition >= 0; scanPosition--) {
+            if (sequence.get(scanPosition).element instanceof KeySignatureElement keySignature) {
+                return keySignature.getKey();
+            }
+        }
+
+        return line.getRunningKey();
     }
 
     /**

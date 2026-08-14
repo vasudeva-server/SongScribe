@@ -64,10 +64,10 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     }
 
     @Override
-    protected String opLabel(AttachmentOp op) {
+    protected String opLabel(DialogOp op) {
         return Strings.get(switch (op) {
             case ADD -> Strings.ACTION_EDIT_OP_ADD_BEAT_CHANGE;
-            case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_BEAT_CHANGE;
+            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_BEAT_CHANGE;
             case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE;
         });
     }

@@ -263,6 +263,11 @@ final class MusicXmlRoundTripSupport {
                 builder.build(line);
                 song.addLine(line);
             }
+
+            // The song's own line 0 was dropped above, so this stands the key invariant back up
+            // exactly as a file load does: a builder that set no key leaves its line in the
+            // document key, and every later line is in the key the line before it ends in.
+            song.rebuildInheritedKeysAfterParsing();
         });
 
         return song;

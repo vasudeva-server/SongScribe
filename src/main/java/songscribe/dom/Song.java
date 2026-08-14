@@ -35,10 +35,16 @@ import songscribe.lifecycle.Disposable;
 import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.ElementRangeDeletion;
+import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
@@ -46,7 +52,6 @@ import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
@@ -65,6 +70,14 @@ import songscribe.util.StringUtils;
  * spurious undo steps against the dead document — until it is garbage-collected;
  * {@code dispose()} makes the detach deterministic rather than GC-timing-dependent.
  * {@code ScoreView.setSong} calls it when replacing the active {@code Song}.
+ *
+ * <h2>Key invariant</h2>
+ * A song has no key of its own — its key is line 0's. Across the line list, two things always
+ * hold: line 0 establishes a key of its own ({@link Line#getKey()} is non-null), and every other
+ * line's inherited key equals the key in effect at the end of the line before it. A {@code Song}
+ * is what maintains both — see {@link #applyChange} for the editing path and
+ * {@link #rebuildInheritedKeysAfterParsing()} for the loading one — which is why the rule is
+ * stated here rather than on {@link Line}, which can only state what one line promises.
  */
 public final class Song implements Disposable {
 
@@ -105,9 +118,6 @@ public final class Song implements Disposable {
             return Strings.get(labelKey);
         }
     }
-
-    public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
-    public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
     /** The position the song-level tempo defines its beat at — the very start of the song. */
     private static final int FIRST_LINE_INDEX = 0;
@@ -202,10 +212,6 @@ public final class Song implements Disposable {
     // wires the pane to this Song before any constructor body runs.
     private final AttributionPane attributionPane = new AttributionPane();
 
-    // The number of accidentals in the key signature and the type of key (flats or sharps)
-    private int defaultKeyAccidentalCount;
-    private KeyType defaultKeyType = DEFAULT_KEY_TYPE;
-
     private double rowHeightAdjustmentSs = 0;
 
     // Line-wide rest length driving derived column spacing (#330); persisted in the MusicXML
@@ -272,15 +278,13 @@ public final class Song implements Disposable {
 
     public Song() {
         init();
-        defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
 
         // Suspend mutation tracking so that setup changes don't post a spurious
         // SongDidChangeNotification to global subscribers before this Song is
         // installed in any ScoreView.
         withoutMutationTracking(() -> {
             var initialLine = new Line(this);
-            initialLine.setKeyAccidentalCount(defaultKeyAccidentalCount);
-            initialLine.setKeyType(defaultKeyType);
+            initialLine.setKey(Key.DEFAULT);
             initialLine.addElement(newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
             lines.add(initialLine);
         });
@@ -373,8 +377,6 @@ public final class Song implements Disposable {
         applyBanglaLyrics(data.banglaLyrics());
         applyTranslatedLyrics(data.translatedLyrics());
         applyFootnotes(data.footnotes());
-        applyDefaultKeyAccidentalCount(data.defaultKeyAccidentalCount());
-        applyDefaultKeyType(data.defaultKeyType());
 
         // Apply layout
         applyRowHeightAdjustmentSs(data.rowHeightAdjustmentSs());
@@ -386,9 +388,11 @@ public final class Song implements Disposable {
 
         var loadedLines = data.lines();
 
-        for (var lineIndex = 0; lineIndex < loadedLines.size(); lineIndex++) {
-            lines.add(getLine(loadedLines, lineIndex));
-        }
+        lines.addAll(loadedLines);
+
+        // The per-mutation propagation hook never ran: parsing is done under suspended tracking,
+        // so no line's key change reached applyChange. One forward pass settles them all.
+        rebuildInheritedKeysAfterParsing();
 
         hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
         formatVersion = data.formatVersion();
@@ -399,19 +403,6 @@ public final class Song implements Disposable {
         // Note: SongChanged(FULL) is NOT posted here because the
         // song hasn't been installed into ScoreView yet. ScoreView.setSong()
         // posts the FULL message after all state is consistent.
-    }
-
-    private Line getLine(List<? extends Line> loadedLines, int lineIndex) {
-        var line = loadedLines.get(lineIndex);
-        applyLineDefaults(line);
-        return line;
-    }
-
-    private void applyLineDefaults(Line line) {
-        if ((line.getKeyAccidentalCount() == 0) && (line.getKeyType() == null)) {
-            line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-            line.setKeyType(defaultKeyType);
-        }
     }
 
     // ========== Getters (public, read-only API) ==========
@@ -622,12 +613,18 @@ public final class Song implements Disposable {
         return metadata.number();
     }
 
-    public int getDefaultKeyAccidentalCount() {
-        return defaultKeyAccidentalCount;
-    }
-
-    public KeyType getDefaultKeyType() {
-        return defaultKeyType;
+    /**
+     * Returns the key this song starts in, which is line 0's own key — a song holds no key of its
+     * own. Line 0 always establishes one, because it has nothing to inherit from.
+     *
+     * <p>This is the query every caller that used to ask the song for its key asks instead, so
+     * that reaching for line 0 is written once rather than at each of them.
+     *
+     * @return the key in effect at the start of the song; {@link Key#DEFAULT} while the song holds
+     *         no lines, which only a reader part-way through a load ever sees
+     */
+    public Key getStartingKey() {
+        return lines.isEmpty() ? Key.DEFAULT : lines.getFirst().getRunningKey();
     }
 
     public boolean isModified() {
@@ -815,20 +812,6 @@ public final class Song implements Disposable {
         return trimmed.isEmpty() ? SRI_CHINMOY : trimmed;
     }
 
-    public void setDefaultKeyAccidentalCount(int defaultKeyAccidentalCount) {
-        mutateMetadata(
-            MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, this.defaultKeyAccidentalCount, defaultKeyAccidentalCount,
-            () -> this.defaultKeyAccidentalCount = defaultKeyAccidentalCount
-        );
-    }
-
-    public void setDefaultKeyType(KeyType defaultKeyType) {
-        mutateMetadata(
-            MetadataField.DEFAULT_KEY_TYPE, this.defaultKeyType, defaultKeyType,
-            () -> this.defaultKeyType = defaultKeyType
-        );
-    }
-
     // -- Layout setters --
 
     public void setRowHeightAdjustmentSs(double rowHeightAdjustment) {
@@ -953,16 +936,7 @@ public final class Song implements Disposable {
         var previousLastLine = lines.isEmpty() ? null : lines.getLast();
 
         withModification(() -> modifications.withAutoMaintenance(() -> {
-            applyChange(new LineInsertion(lineIndex, line), () -> {
-                lines.add(lineIndex, line);
-
-                // A replayed line (undo of a deletion) carries its own key
-                // state — a keyless (0, null) line would otherwise be
-                // clobbered with the document default.
-                if (!isReplaying()) {
-                    applyLineDefaults(line);
-                }
-            });
+            applyChange(new LineInsertion(lineIndex, line), () -> lines.add(lineIndex, line));
 
             // Only the pair the new line landed between can have been pulled apart; every
             // other pair shifts by the same amount and stays adjacent.
@@ -1327,11 +1301,196 @@ public final class Song implements Disposable {
      * then records {@code mutation} in the accumulated batch. Under suspended tracking the
      * mutator runs and nothing is recorded.
      *
+     * <p>Every mutation that can move a key — a line's own key, a mid-line key signature, or a
+     * line insertion or deletion that shifts what a line inherits — brings the key invariant
+     * back up to date here, after the mutator has run. This is the only place that does it, and
+     * that is deliberate: the ten mutators that can carry a key each route through this one
+     * method, undo and redo replay through it too, and an omission at any individual mutator
+     * would be wrong pitches on every line downstream with no error and nothing visible to
+     * notice. An ordinary note edit costs one type test and no walk.
+     *
      * @throws IllegalStateException if called outside a modification bracket
      * @see ModificationSession#applyChange
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
+        // Captured before the mutator runs: a line insertion or deletion can promote a different
+        // line to index 0, and only the key the song started in can tell the repair below what
+        // that line should now establish. Null while a document is being built, where line 0 may
+        // not be in a key yet — the load settles that at the end, in one pass.
+        var startingKeyBefore = promotesLineZero(mutation) ? startingKey() : null;
+
         modifications.applyChange(mutation, mutator);
+
+        maintainKeyInvariant(mutation, startingKeyBefore);
+    }
+
+    private static boolean promotesLineZero(Mutation mutation) {
+        return mutation instanceof LineInsertion || mutation instanceof LineDeletion;
+    }
+
+    private @Nullable Key startingKey() {
+        if (lines.isEmpty()) {
+            return null;
+        }
+
+        var firstLine = lines.getFirst();
+        return firstLine.getKey() != null ? firstLine.getKey() : firstLine.getInheritedKey();
+    }
+
+    /**
+     * Restores the key invariant after {@code mutation} — line 0 establishing a key of its own,
+     * and every later line's inherited key matching the key at the end of the line before it.
+     *
+     * <p>The cases are enumerated rather than the propagation run unconditionally, so that an
+     * ordinary note or lyric edit does not walk the line list.
+     */
+    private void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
+        switch (mutation) {
+            case LineInsertion insertion -> {
+                repairLineZeroKey(startingKeyBefore);
+                propagateInheritedKeysFrom(insertion.lineIndex());
+            }
+            case LineDeletion deletion -> {
+                repairLineZeroKey(startingKeyBefore);
+                propagateInheritedKeysFrom(deletion.lineIndex());
+            }
+            case LineKeyChange change -> propagateInheritedKeysAfter(change.line());
+            case ElementInsertion insertion -> {
+                if (changesKey(insertion.element())) {
+                    propagateInheritedKeysAfter(insertion.line());
+                }
+            }
+            case ElementDeletion deletion -> {
+                if (changesKey(deletion.deletedElement())) {
+                    propagateInheritedKeysAfter(deletion.line());
+                }
+            }
+            case ElementReplacement replacement -> {
+                if (changesKey(replacement.oldElement()) || changesKey(replacement.newElement())) {
+                    propagateInheritedKeysAfter(replacement.line());
+                }
+            }
+            case ElementRangeDeletion rangeDeletion -> {
+                if (rangeDeletion.deletedElements().stream().anyMatch(Song::changesKey)) {
+                    propagateInheritedKeysAfter(rangeDeletion.line());
+                }
+            }
+            case ElementModification modification -> {
+                if (changesKey(modification.beforeElement()) || changesKey(modification.afterElement())) {
+                    propagateInheritedKeysAfter(modification.line());
+                }
+            }
+            default -> {
+                // Nothing else can move a key.
+            }
+        }
+    }
+
+    private static boolean changesKey(StaffElement element) {
+        return element.getType() == ElementType.KEY_SIGNATURE;
+    }
+
+    /**
+     * Restores line 0's own key when a mutation has left it with none. Line 0 has nothing to
+     * inherit from, so it must establish a key, and the only value that leaves what the user sees
+     * unchanged is the key that line was already sounding: the key it inherited a moment ago, or —
+     * for a line that has just been inserted at index 0 and so inherited nothing — the key the
+     * song itself started in.
+     *
+     * <p>Recorded as a {@link LineKeyChange} in the same batch, so undo puts the line back to
+     * inheriting rather than leaving it silently pinned to the key it was repaired with.
+     *
+     * <p>Skipped while mutation tracking is suspended. A file reader adds its lines one at a time,
+     * so line 0 is briefly the only line and the key it will end up in is not yet known; guessing
+     * one here would pin a key the document never had, and the key would stand, because
+     * {@link #rebuildInheritedKeysAfterParsing()} leaves a line that already has one alone.
+     */
+    private void repairLineZeroKey(@Nullable Key startingKeyBefore) {
+        if (lines.isEmpty() || isMutationTrackingSuspended()) {
+            return;
+        }
+
+        var firstLine = lines.getFirst();
+
+        if (firstLine.getKey() != null) {
+            firstLine.setInheritedKey(null);
+            return;
+        }
+
+        var inherited = firstLine.getInheritedKey();
+        Key materialized;
+
+        if (inherited != null) {
+            materialized = inherited;
+        } else if (startingKeyBefore != null) {
+            materialized = startingKeyBefore;
+        } else {
+            materialized = Key.DEFAULT;
+        }
+
+        // Cleared first so setKey's no-op normalization cannot collapse the repair back to null.
+        firstLine.setInheritedKey(null);
+        firstLine.setKey(materialized);
+    }
+
+    private void propagateInheritedKeysAfter(Line line) {
+        propagateInheritedKeysFrom(lines.indexOf(line) + 1);
+    }
+
+    /**
+     * Reassigns the inherited key of every line from {@code firstAffectedLineIndex} forward,
+     * stopping after the first line that establishes a key of its own: that line's running key
+     * cannot have moved, so nothing past it can either. A song with a key on every line therefore
+     * costs one step.
+     */
+    private void propagateInheritedKeysFrom(int firstAffectedLineIndex) {
+        // A document under construction may not have put line 0 in a key yet, and until it does
+        // there is no key for any later line to be in either. The load settles the whole list in
+        // one pass at the end.
+        if (lines.isEmpty() || lines.getFirst().getKey() == null) {
+            return;
+        }
+
+        // Line 0 inherits nothing, so propagation always starts at line 1 or later.
+        for (var lineIndex = Math.max(firstAffectedLineIndex, 1); lineIndex < lines.size(); lineIndex++) {
+            var line = lines.get(lineIndex);
+            line.setInheritedKey(lines.get(lineIndex - 1).keyAtEndOfLine());
+
+            if (line.getKey() != null) {
+                return;
+            }
+        }
+    }
+
+    /**
+     * Settles the key invariant across every line in one forward pass, after a
+     * {@link #newParsingStub() parsing stub} or a {@link #loadFrom(SongData)} has been fully
+     * populated. File readers build lines under suspended mutation tracking, so the per-mutation
+     * propagation in {@link #applyChange} never ran for any of them.
+     *
+     * <p>Must be called while mutation tracking is still suspended, so the fix-up is silent — no
+     * notification, no undo entry and no {@code modified} flag.
+     *
+     * <p>Line 0 has nothing to inherit from, so a document whose first line establishes no key of
+     * its own falls back to {@link Key#DEFAULT}. Every reader is expected to have put the key its
+     * file carried on line 0 before calling this — the fallback is for a file that named no key
+     * anywhere, not the route by which a stated one arrives.
+     */
+    public void rebuildInheritedKeysAfterParsing() {
+        if (lines.isEmpty()) {
+            return;
+        }
+
+        var firstLine = lines.getFirst();
+        firstLine.setInheritedKey(null);
+
+        if (firstLine.getKey() == null) {
+            firstLine.setKey(Key.DEFAULT);
+        }
+
+        for (var lineIndex = 1; lineIndex < lines.size(); lineIndex++) {
+            lines.get(lineIndex).setInheritedKey(lines.get(lineIndex - 1).keyAtEndOfLine());
+        }
     }
 
     /**
@@ -1476,35 +1635,6 @@ public final class Song implements Disposable {
     }
 
     @Handler
-    public void keySignatureDidChange(KeySignatureDidChangeNotification update) {
-        withModification(() -> {
-            if (update.getLineIndex() == null) {
-                // Song-level default with propagation to matching lines.
-                var oldKeyType = defaultKeyType;
-                var oldAccidentalCount = defaultKeyAccidentalCount;
-
-                setDefaultKeyType(update.getKeyType());
-                setDefaultKeyAccidentalCount(update.getAccidentalCount());
-
-                for (var i = 0; i < lineCount(); i++) {
-                    var line = getLine(i);
-
-                    if (line.getKeyAccidentalCount() == oldAccidentalCount
-                        && line.getKeyType() == oldKeyType) {
-                        line.setKeyAccidentalCount(defaultKeyAccidentalCount);
-                        line.setKeyType(defaultKeyType);
-                    }
-                }
-            } else {
-                // Per-line update.
-                var line = getLine(update.getLineIndex());
-                line.setKeyType(update.getKeyType());
-                line.setKeyAccidentalCount(update.getAccidentalCount());
-            }
-        });
-    }
-
-    @Handler
     public void layoutDidChange(LayoutDidChangeNotification update) {
         withModification(() -> {
             if (update.getRowHeightAdjustmentSs() != null) {
@@ -1535,14 +1665,6 @@ public final class Song implements Disposable {
 
     private void applyFootnotes(String text) {
         footnotes = StringUtils.processText(text, false);
-    }
-
-    private void applyDefaultKeyType(KeyType keyType) {
-        defaultKeyType = keyType;
-    }
-
-    private void applyDefaultKeyAccidentalCount(int count) {
-        defaultKeyAccidentalCount = count;
     }
 
     private void applyRowHeightAdjustmentSs(double rowHeightAdjustment) {

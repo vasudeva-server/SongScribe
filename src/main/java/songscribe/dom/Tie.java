@@ -64,8 +64,17 @@ public class Tie extends Span {
      * Returns whether {@code type} may sit between two tied notes.
      *
      * <p>Non-duration elements take no time, so the notes on either side stay adjacent in
-     * the music even though an element separates them on the staff. A final double barline
-     * is the exception: it ends the piece, so nothing may sound across it (refs #527).
+     * the music even though an element separates them on the staff. Two are excluded:
+     *
+     * <ul>
+     *   <li>a final double barline ends the piece, so nothing may sound across it
+     *       (refs #527);</li>
+     *   <li>a key signature can alter the pitch class the two notes sit at, so the note
+     *       after it may no longer sound what the note before it did — and a tie joins two
+     *       notes of the same pitch. The rule excludes every key change rather than only
+     *       the ones that happen to touch that pitch class, so that whether a tie survives
+     *       does not depend on where its notes sit.</li>
+     * </ul>
      *
      * <p>One definition, two readers: {@code RangeQueries.canToggleTie} asks it before letting
      * the user create a tie over a separator, and {@link #isInvalidatedByInsertion} asks it
@@ -79,7 +88,9 @@ public class Tie extends Span {
      * accumulate, since each one still takes no time and the notes stay adjacent in the music.
      */
     public static boolean isLegalSeparator(ElementType type) {
-        return type.isNonDuration() && type != ElementType.FINAL_DOUBLE_BARLINE;
+        return type.isNonDuration()
+            && type != ElementType.FINAL_DOUBLE_BARLINE
+            && type != ElementType.KEY_SIGNATURE;
     }
 
     /**

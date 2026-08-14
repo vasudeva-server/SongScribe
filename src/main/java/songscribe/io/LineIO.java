@@ -32,6 +32,7 @@ import org.xml.sax.SAXException;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
@@ -69,22 +70,14 @@ public final class LineIO {
         pw.println("    <" + XML_LINE + '>');
         XML.setIndent(6);
 
-        var song = line.getSong();
-        var lineKeyType = line.getKeyType();
+        // A line writes its key only where it establishes one. A line that inherits writes no key
+        // tags at all, which is what the reader reads back as inheriting; line 0 always
+        // establishes one, so the song's starting key is always in the file.
+        var key = line.getKey();
 
-        if (
-            (line.getKeyAccidentalCount() != song.getDefaultKeyAccidentalCount()) ||
-                (lineKeyType != song.getDefaultKeyType())
-        ) {
-            XML.writeValue(
-                pw,
-                XML_KEYS,
-                Integer.toString(line.getKeyAccidentalCount())
-            );
-
-            if (lineKeyType != null) {
-                XML.writeValue(pw, XML_KEYTYPE, lineKeyType.name());
-            }
+        if (key != null) {
+            XML.writeValue(pw, XML_KEYS, Integer.toString(key.accidentalCount()));
+            XML.writeValue(pw, XML_KEYTYPE, key.keyType().name());
         }
 
         if (line.getElementSpacingRatio() != 1f) {
@@ -244,9 +237,43 @@ public final class LineIO {
         private int legacyFsEndingYPosPx;
         private int legacyTrillYPosPx;
 
+        // The <keys> and <keytype> tags arrive as two separate elements, and neither half is a
+        // key on its own, so they are held until </line> and turned into one Key there.
+        private int parsedKeyAccidentalCount = 0;
+        private @Nullable KeyType parsedKeyType = null;
+
         public LineReader(Song song) {
             this.song = song;
             resetLegacyOffsets();
+        }
+
+        /**
+         * Establishes on {@code line} the key its {@code <keys>} and {@code <keytype>} tags
+         * describe, if it carried any. A line with neither tag establishes no key of its own and
+         * inherits the one already in effect.
+         *
+         * <p>The two halves are only a key together, so {@link Key} is what judges the pair: a
+         * combination it rejects is a corrupt document rather than something to interpret.
+         *
+         * @param line the line being closed
+         * @throws SAXException if the parsed pair is not a valid key signature
+         */
+        private void applyParsedKey(Line line) throws SAXException {
+            var parsedType = parsedKeyType;
+            var accidentalCount = parsedKeyAccidentalCount;
+
+            if (parsedType == null && accidentalCount == 0) {
+                return;
+            }
+
+            var keyType = parsedType != null ? parsedType : KeyType.NONE;
+
+            try {
+                line.setKey(new Key(keyType, accidentalCount));
+            } catch (IllegalArgumentException e) {
+                throw DocumentValidation.corrupt(
+                    LOG, "Corrupt document: invalid key signature: {} with {} accidentals", keyType, accidentalCount);
+            }
         }
 
         private void resetLegacyOffsets() {
@@ -508,6 +535,8 @@ public final class LineIO {
                     lastTag = null;
                     noteReader = new StaffElementIO.StaffElementReader();
                     resetLegacyOffsets();
+                    parsedKeyAccidentalCount = 0;
+                    parsedKeyType = null;
                 }
             } else if (where == Where.NOTES && noteReader != null) {
                 noteReader.startElement11(qName, attributes);
@@ -549,6 +578,7 @@ public final class LineIO {
             } else if (where == Where.LINE) {
                 if (qName.equals(XML_LINE)) {
                     where = null;
+                    applyParsedKey(line);
                     createTiesFromPendingPairs(line);
                     createEndingsFromPendingPairs(line);
                     createTrillsFromPendingPairs(line);
@@ -563,10 +593,10 @@ public final class LineIO {
                     var str = value.toString();
 
                     switch (lastTag) {
-                        case XML_KEYS -> line.setKeyAccidentalCount(DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str));
+                        case XML_KEYS -> parsedKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> {
                             try {
-                                line.setKeyType(KeyType.valueOf(str));
+                                parsedKeyType = KeyType.valueOf(str);
                             } catch (IllegalArgumentException e) {
                                 throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
                             }

@@ -20,184 +20,145 @@
 
 package songscribe.layout;
 
-import org.junit.jupiter.api.Nested;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChange;
 import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.dom.ScaleContext;
-import songscribe.smufl.SMuFLGlyph;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+/**
+ * Exercises the contract of {@link KeySignature}, the header's positioned layout box for a
+ * {@link Key}.
+ *
+ * <p><b>Valid domain</b> — enumerated, not sampled: every key
+ * {@link Key#allSignatures()} names, driven from that list so a change to the domain reaches
+ * these cases on its own. A {@code KeySignature} can hold nothing else — {@code Key}'s own
+ * constructor rejects the pairs that used to be clamped here, and {@code KeyTest} owns those
+ * cases.
+ *
+ * <p><b>Width</b> — the accidentals nest at their glyph's ink width, so a signature is that
+ * width times its accidental count. Asserted per key rather than for a sharp and a flat
+ * example, since the two glyphs differ in width and every count is a distinct answer.
+ *
+ * <p><b>The shared-measurement invariant</b> — the header's width for a key equals
+ * {@link KeyChange}'s width for a change into that key from C major, which is the same run of
+ * accidentals reached by the other route. This is the promise that keeps a header and a
+ * cautionary key change from drifting apart, and the one clause here that would survive a
+ * rewrite of how either side computes.
+ *
+ * <p><b>Boundary</b> — {@link KeyType#NONE} draws nothing and measures zero in both
+ * dimensions; it is the only key that does.
+ *
+ * <p><b>Unit conversion</b> — the {@code Px} accessors derive from the {@code Ss} ones. One
+ * representative key, since the conversion does not vary with the key.
+ */
 class KeySignatureTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
 
-    // Clamp bounds for accidentalCount — mirror the production contract
-    private static final int MIN_ACCIDENTAL_COUNT = 0;
+    /** A key with accidentals, for the cases that do not vary across the domain. */
+    private static final Key REPRESENTATIVE_KEY = new Key(KeyType.SHARPS, 2);
 
-    // Sentinel values that lie one step outside the legal range
-    private static final int BELOW_MIN_ACCIDENTAL_COUNT = -1;
-    private static final int ABOVE_MAX_ACCIDENTAL_COUNT = KeySignature.MAX_ACCIDENTAL_COUNT + 1;
-
-    // -----------------------------------------------------------------------
-    // Row 37 + Row 42: constructor and setAccidentalCount clamp to 0–7
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class AccidentalCountClamping {
-
-        @Test
-        void testConstructorClampsBelowMinToMin() {
-            var keySig = new KeySignature(KeyType.SHARPS, BELOW_MIN_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.getAccidentalCount()).isEqualTo(MIN_ACCIDENTAL_COUNT);
-        }
-
-        @Test
-        void testConstructorClampsAboveMaxToMax() {
-            var keySig = new KeySignature(KeyType.SHARPS, ABOVE_MAX_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.getAccidentalCount()).isEqualTo(KeySignature.MAX_ACCIDENTAL_COUNT);
-        }
-
-        @Test
-        void testSetAccidentalCountClampsBelowMinToMin() {
-            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
-            keySig.setAccidentalCount(BELOW_MIN_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.getAccidentalCount()).isEqualTo(MIN_ACCIDENTAL_COUNT);
-        }
-
-        @Test
-        void testSetAccidentalCountClampsAboveMaxToMax() {
-            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
-            keySig.setAccidentalCount(ABOVE_MAX_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.getAccidentalCount()).isEqualTo(KeySignature.MAX_ACCIDENTAL_COUNT);
-        }
+    static Stream<Key> allKeys() {
+        return Key.allSignatures().stream();
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class EmptySignature {
-
-        @Test
-        void testNoneReturnsZeroDimensions() {
-            var keySig = new KeySignature(KeyType.NONE, 0);
-
-            assertThat(keySig.getContentWidthSs()).isZero();
-            assertThat(keySig.getContentHeightSs()).isZero();
-            assertThat(keySig.getContentWidthPx()).isZero();
-            assertThat(keySig.getContentHeightPx()).isZero();
-        }
-
-        @Test
-        void testZeroAccidentalsReturnsZeroDimensions() {
-            var keySig = new KeySignature(KeyType.SHARPS, 0);
-
-            assertThat(keySig.getContentWidthSs()).isZero();
-            assertThat(keySig.getContentHeightSs()).isZero();
-        }
-
-        @Test
-        void testWidthOfANegativeAccidentalCountIsZero() {
-            // The static width is read straight off a Line's raw accidental count, which no
-            // clamp protects. A negative width would place the first note left of the clef.
-            assertThat(KeySignature.widthSs(KeyType.SHARPS, BELOW_MIN_ACCIDENTAL_COUNT)).isZero();
-        }
-
-        @Test
-        void testWidthOfANullKeyTypeIsZero() {
-            assertThat(KeySignature.widthSs(null, KeySignature.MAX_ACCIDENTAL_COUNT)).isZero();
-        }
+    static Stream<Key> keysWithAccidentals() {
+        return allKeys().filter(key -> key.keyType() != KeyType.NONE);
     }
 
     // -----------------------------------------------------------------------
-    // Row 38: hasAccidentals() — direct assertions for all three conditions
+    // The key it was built for
     // -----------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class HasAccidentals {
-
-        // count == 0 → false regardless of type
-        @Test
-        void testHasAccidentalsReturnsFalseWhenCountIsZero() {
-            var keySig = new KeySignature(KeyType.SHARPS, MIN_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.hasAccidentals()).isFalse();
-        }
-
-        // type NONE → false regardless of count
-        @Test
-        void testHasAccidentalsReturnsFalseWhenTypeIsNone() {
-            var keySig = new KeySignature(KeyType.NONE, KeySignature.MAX_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.hasAccidentals()).isFalse();
-        }
-
-        // count > 0 and type != NONE → true
-        @Test
-        void testHasAccidentalsReturnsTrueWhenCountPositiveAndTypeNotNone() {
-            var keySig = new KeySignature(KeyType.SHARPS, KeySignature.MAX_ACCIDENTAL_COUNT);
-
-            assertThat(keySig.hasAccidentals()).isTrue();
-        }
+    @ParameterizedTest
+    @MethodSource("allKeys")
+    void testTheSignatureHoldsTheKeyItWasBuiltFor(Key key) {
+        assertThat(new KeySignature(key).getKey()).isEqualTo(key);
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class Sharps {
+    // -----------------------------------------------------------------------
+    // Width
+    // -----------------------------------------------------------------------
 
-        @Test
-        void testWidthIsCountTimesSharpBBoxWidth() {
-            var keySig = new KeySignature(KeyType.SHARPS, 3);
-            var sharpBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
-            var expected = 3 * sharpBBox.width();
+    @ParameterizedTest
+    @MethodSource("keysWithAccidentals")
+    void testWidthIsTheAccidentalCountTimesItsGlyphInkWidth(Key key) {
+        var glyphWidthSs =
+            StaffHeaderMetrics.accidentalInkBboxSs(KeyChange.accidentalGlyph(key.keyType()));
 
-            assertThat(keySig.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
-        }
-
-        @Test
-        void testHeightIsSharpBBoxHeight() {
-            var keySig = new KeySignature(KeyType.SHARPS, 3);
-            var sharpBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_SHARP);
-
-            assertThat(keySig.getContentHeightSs()).isCloseTo(sharpBBox.height(), within(EPSILON));
-        }
+        assertThat(new KeySignature(key).getContentWidthSs())
+            .isCloseTo(key.accidentalCount() * glyphWidthSs, within(EPSILON));
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class Flats {
-
-        @Test
-        void testWidthIsCountTimesFlatBBoxWidth() {
-            var keySig = new KeySignature(KeyType.FLATS, 4);
-            var flatBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_FLAT);
-            var expected = 4 * flatBBox.width();
-
-            assertThat(keySig.getContentWidthSs()).isCloseTo(expected, within(EPSILON));
-        }
-
-        @Test
-        void testHeightIsFlatBBoxHeight() {
-            var keySig = new KeySignature(KeyType.FLATS, 4);
-            var flatBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ACCIDENTAL_FLAT);
-
-            assertThat(keySig.getContentHeightSs()).isCloseTo(flatBBox.height(), within(EPSILON));
-        }
+    /**
+     * The header and a cautionary key change measure the same run of accidentals, so a change
+     * into {@code key} from C major — which draws no cancellation, only the new signature — is
+     * exactly as wide as the header for {@code key}.
+     */
+    @ParameterizedTest
+    @MethodSource("allKeys")
+    void testWidthAgreesWithTheWidthOfAChangeIntoTheSameKey(Key key) {
+        assertThat(KeySignature.widthSs(key))
+            .isCloseTo(KeyChange.widthSs(new Key(KeyType.NONE, 0), key), within(EPSILON));
     }
+
+    // -----------------------------------------------------------------------
+    // Height
+    // -----------------------------------------------------------------------
+
+    @ParameterizedTest
+    @MethodSource("keysWithAccidentals")
+    void testHeightIsTheAccidentalGlyphBBoxHeight(Key key) {
+        var bbox = SMuFLMetadata.requireBBox(KeyChange.accidentalGlyph(key.keyType()));
+
+        assertThat(new KeySignature(key).getContentHeightSs())
+            .isCloseTo(bbox.height(), within(EPSILON));
+    }
+
+    // -----------------------------------------------------------------------
+    // The C major boundary — the one key that draws nothing
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCMajorMeasuresZeroInBothDimensions() {
+        var keySig = new KeySignature(new Key(KeyType.NONE, 0));
+
+        assertThat(keySig.getContentWidthSs()).isZero();
+        assertThat(keySig.getContentHeightSs()).isZero();
+        assertThat(keySig.getContentWidthPx()).isZero();
+        assertThat(keySig.getContentHeightPx()).isZero();
+    }
+
+    @ParameterizedTest
+    @MethodSource("keysWithAccidentals")
+    void testEveryKeyWithAccidentalsMeasuresMoreThanZero(Key key) {
+        var keySig = new KeySignature(key);
+
+        assertThat(keySig.getContentWidthSs()).isPositive();
+        assertThat(keySig.getContentHeightSs()).isPositive();
+    }
+
+    // -----------------------------------------------------------------------
+    // Unit conversion
+    // -----------------------------------------------------------------------
 
     @Test
     void testPxDerivesFromSs() {
-        var keySig = new KeySignature(KeyType.SHARPS, 2);
+        var keySig = new KeySignature(REPRESENTATIVE_KEY);
+
         assertThat(keySig.getContentWidthPx())
             .isCloseTo(ScaleContext.ssToPx(keySig.getContentWidthSs()), within(EPSILON));
         assertThat(keySig.getContentHeightPx())

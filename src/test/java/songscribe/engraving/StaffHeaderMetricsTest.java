@@ -48,7 +48,6 @@ class StaffHeaderMetricsTest extends UnitTest {
     // under test, so re-deriving them from the constants would prove nothing.
     private static final double LILYPOND_CLEF_TO_KEY_SIGNATURE_SS = 0.82;
     private static final double LILYPOND_CANCELLATION_TO_KEY_SS = 0.5;
-    private static final double LILYPOND_KEY_TO_CANCELLATION_SS = 0.3;
     private static final double LILYPOND_KEY_SIGNATURE_TO_FIRST_NOTE_SS = 2.5;
     private static final double LILYPOND_CLEF_TO_FIRST_NOTE_SS = 5.0;
 
@@ -68,22 +67,6 @@ class StaffHeaderMetricsTest extends UnitTest {
         // from KeyCancellation's space-alist, (key-signature . (extra-space . 0.5)).
         assertThat(StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS)
             .isEqualTo(LILYPOND_CANCELLATION_TO_KEY_SS);
-    }
-
-    @Test
-    void testKeyToCancellationGapMatchesItsLilyPondSpaceAlistEntry() {
-        // The reverse order reads the other table: KeySignature's space-alist,
-        // (key-cancellation . (extra-space . 0.3)).
-        assertThat(StaffHeaderMetrics.KEY_TO_CANCELLATION_GAP_SS)
-            .isEqualTo(LILYPOND_KEY_TO_CANCELLATION_SS);
-    }
-
-    @Test
-    void testTheTwoCancellationGapsAreNotInterchangeable() {
-        // Collapsing them back into one constant is the mistake these two entries exist to
-        // prevent, so pin that they really do differ.
-        assertThat(StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS)
-            .isNotEqualTo(StaffHeaderMetrics.KEY_TO_CANCELLATION_GAP_SS);
     }
 
     @Test

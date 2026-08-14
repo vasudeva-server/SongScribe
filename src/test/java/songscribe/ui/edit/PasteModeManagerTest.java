@@ -35,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
@@ -74,8 +75,7 @@ class PasteModeManagerTest extends UnitTest {
 
     // A line with no key-signature accidentals and an arbitrary width wide enough to hold
     // several insertion points, shared by every target-tracking fixture below.
-    private static final KeyType KEY_TYPE = KeyType.NONE;
-    private static final int KEY_ACCIDENTAL_COUNT = 0;
+    private static final Key HEADER_KEY = new Key(KeyType.NONE, 0);
     private static final double LINE_WIDTH_SS = 200.0;
 
     // Added past the content span's edges to build a mouse x unambiguously outside it.
@@ -570,13 +570,13 @@ class PasteModeManagerTest extends UnitTest {
         PasteModeManager.setInstance(value);
     }
 
-    /** A Line stub with a fixed key-signature accidental count and line width. */
+    /** A Line stub with a fixed running key and line width. */
     private static Line lineStub() {
         var song = mock(Song.class);
         when(song.getLineWidthSs()).thenReturn(LINE_WIDTH_SS);
         var line = mock(Line.class);
         when(line.getSong()).thenReturn(song);
-        when(line.getKeyAccidentalCount()).thenReturn(KEY_ACCIDENTAL_COUNT);
+        when(line.getRunningKey()).thenReturn(HEADER_KEY);
         return line;
     }
 
@@ -610,7 +610,7 @@ class PasteModeManagerTest extends UnitTest {
 
     /** The left edge, in staff spaces, of the insertable content span used by {@link #lineStub()}. */
     private static double contentLeftSs() {
-        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KEY_TYPE, KEY_ACCIDENTAL_COUNT);
+        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(HEADER_KEY);
     }
 
     /** A view-pixel x that lands inside the content span (header right edge .. line width). */

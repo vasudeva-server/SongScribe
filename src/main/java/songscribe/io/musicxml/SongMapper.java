@@ -91,6 +91,10 @@ final class SongMapper {
             // ending in a note or a non-terminal barline.
             song.installTerminalAfterParsing();
 
+            // Likewise for the key invariant: the mappers set line keys under suspended tracking,
+            // so the per-mutation propagation never ran for any of them.
+            song.rebuildInheritedKeysAfterParsing();
+
             // Grace-host pairing is only settled once every <slide> has been resolved, so
             // the melisma repair runs over the finished song rather than per note. A file
             // written before the melisma was automatic may put the syllable on the host,

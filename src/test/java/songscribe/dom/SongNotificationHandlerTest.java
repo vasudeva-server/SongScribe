@@ -37,18 +37,22 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 
 /**
  * Tests for {@link Song}'s {@code @Handler} notification methods:
- * {@link Song#tempoDidChange}, {@link Song#keySignatureDidChange},
- * and {@link Song#layoutDidChange}.
+ * {@link Song#tempoDidChange} and {@link Song#layoutDidChange}.
  *
  * <p>Handlers are called directly to avoid the real bus, and
  * {@link MessageCenter} is mocked to intercept emitted notifications.
+ *
+ * <p>There is no key handler to test. A song has no key of its own — its key is line 0's — so a
+ * key change is a {@link Line} edit made directly, not a broadcast the song reinterprets. The
+ * cases that drove the old handler asserted a propagation heuristic that no longer exists:
+ * rewriting every line whose key matched the old song default. Inheritance replaces it, and
+ * {@code LineMutationTest} is where it is tested.
  */
 class SongNotificationHandlerTest extends UnitTest {
 
@@ -224,106 +228,6 @@ class SongNotificationHandlerTest extends UnitTest {
                 .asInstanceOf(type(Tempo.class))
                 .extracting(Tempo::getTempoDescription)
                 .isEqualTo(newDescription);
-        }
-    }
-
-
-    // -----------------------------------------------------------------------
-    // keySignatureDidChange
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class KeySignatureDidChange {
-
-        private static final int MATCHING_ACCIDENTAL_COUNT = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
-        private static final KeyType MATCHING_KEY_TYPE = Song.DEFAULT_KEY_TYPE;
-
-        private static final int NEW_ACCIDENTAL_COUNT = 3;
-        private static final KeyType NEW_KEY_TYPE = KeyType.SHARPS;
-
-        private static final int DIFFERENT_ACCIDENTAL_COUNT = 2;
-
-        /**
-         * Adds a line whose initial key matches the song defaults (so the song-level
-         * handler will update it), plus a line with a different key (which the handler
-         * must leave alone).
-         */
-        private Line addMatchingLine() {
-            var line = new Line(song);
-            song.withoutMutationTracking(() -> {
-                line.setKeyAccidentalCount(MATCHING_ACCIDENTAL_COUNT);
-                line.setKeyType(MATCHING_KEY_TYPE);
-            });
-            song.addLine(line);
-            return line;
-        }
-
-        private Line addNonMatchingLine() {
-            var line = new Line(song);
-            song.withoutMutationTracking(() -> {
-                line.setKeyAccidentalCount(DIFFERENT_ACCIDENTAL_COUNT);
-                line.setKeyType(KeyType.SHARPS);
-            });
-            song.addLine(line);
-            return line;
-        }
-
-        @Test
-        void testSongLevelChangePropagatesToMatchingLinesOnly() {
-            // Song-level update (lineIndex == null) must update song defaults and every
-            // line whose key currently equals the old song defaults, but leave lines with
-            // a different key unchanged.
-            var matchingLine = addMatchingLine();
-            var nonMatchingLine = addNonMatchingLine();
-
-            // Clear addLine notifications so only keySignatureDidChange's mutations are captured.
-            messageCenterMock.clearInvocations();
-
-            song.keySignatureDidChange(new KeySignatureDidChangeNotification(
-                null, NEW_KEY_TYPE, NEW_ACCIDENTAL_COUNT
-            ));
-
-            // Song-level defaults must be updated.
-            assertThat(song.getDefaultKeyType()).isEqualTo(NEW_KEY_TYPE);
-            assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(NEW_ACCIDENTAL_COUNT);
-
-            // The matching line must follow the new song default.
-            assertThat(matchingLine.getKeyType()).isEqualTo(NEW_KEY_TYPE);
-            assertThat(matchingLine.getKeyAccidentalCount()).isEqualTo(NEW_ACCIDENTAL_COUNT);
-
-            // The non-matching line must be left unchanged.
-            assertThat(nonMatchingLine.getKeyAccidentalCount()).isEqualTo(DIFFERENT_ACCIDENTAL_COUNT);
-        }
-
-        @Test
-        void testPerLineChangeAffectsExactlyThatLine() {
-            // A per-line update (lineIndex != null) must change only the targeted line's
-            // key signature and leave song defaults and other lines intact.
-            var lineA = addMatchingLine();
-            var lineB = addMatchingLine();
-
-            // Clear addLine notifications so only keySignatureDidChange's mutations are captured.
-            messageCenterMock.clearInvocations();
-
-            // Target lineA (index 0 in the lines added above, but Song starts with 1 line,
-            // so lineA is at index 1 and lineB at index 2).
-            var lineAIndex = song.indexOfLine(lineA);
-            song.keySignatureDidChange(new KeySignatureDidChangeNotification(
-                lineAIndex, NEW_KEY_TYPE, NEW_ACCIDENTAL_COUNT
-            ));
-
-            // lineA must have the new key.
-            assertThat(lineA.getKeyType()).isEqualTo(NEW_KEY_TYPE);
-            assertThat(lineA.getKeyAccidentalCount()).isEqualTo(NEW_ACCIDENTAL_COUNT);
-
-            // lineB must be unchanged.
-            assertThat(lineB.getKeyType()).isEqualTo(MATCHING_KEY_TYPE);
-            assertThat(lineB.getKeyAccidentalCount()).isEqualTo(MATCHING_ACCIDENTAL_COUNT);
-
-            // Song-level defaults must be unchanged.
-            assertThat(song.getDefaultKeyType()).isEqualTo(MATCHING_KEY_TYPE);
-            assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(MATCHING_ACCIDENTAL_COUNT);
         }
     }
 

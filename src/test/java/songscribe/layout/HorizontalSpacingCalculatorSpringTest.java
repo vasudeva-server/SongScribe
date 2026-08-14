@@ -25,21 +25,29 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.awt.Font;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChange;
+import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -53,6 +61,16 @@ import songscribe.dom.StaffElement;
  * legacy absolute gaps for normal (2.5) and grace (2.0) gaps, and yield 2.0 for a tight beam gap
  * (not a legacy value — refs Phase 5a deviation note), and a non-default line rest scales them all
  * proportionally.
+ *
+ * <p>It also holds the chain-level promises the same class makes over those springs:
+ * {@link HorizontalSpacingCalculator#solveLine} and
+ * {@link HorizontalSpacingCalculator#trailingReservationSs}. The trailing reservation's two clauses
+ * are covered separately — the terminal/non-terminal line rest, and the cautionary key signature
+ * the gap widens to hold, whose max() is asserted from both sides.
+ *
+ * <p>A mid-line {@code KeySignatureElement} is covered as an ordinary column: that its width is the
+ * change it draws rather than its type's floor, and that both gaps its position invariant allows
+ * clear the facing ink by {@link HorizontalSpacingCalculator#MIN_COLUMN_GAP_SS}.
  */
 class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
@@ -154,6 +172,87 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /** A plain word-final syllable in the verse being laid out — carries no melisma of its own. */
     private static final Lyric PLAIN_SYLLABLE_LYRIC =
         new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+    // --- Cautionary key signature and mid-line key signature geometry ---
+
+    /** Seven sharps against the song's starting five flats: naturals plus a full new signature. */
+    private static final Key WIDE_CAUTIONARY_KEY = new Key(KeyType.SHARPS, Key.MAX_ACCIDENTAL_COUNT);
+    /**
+     * The same type as the song's starting key with fewer accidentals. The policy draws no naturals
+     * for that, so the cautionary is one flat wide and stays under the line rest.
+     */
+    private static final Key NARROW_CAUTIONARY_KEY = new Key(KeyType.FLATS, 1);
+
+    /** The key a line carries before its mid-line change, chosen so the change cancels. */
+    private static final Key MID_LINE_PREVIOUS_KEY = new Key(KeyType.FLATS, 3);
+    private static final Key MID_LINE_KEY = new Key(KeyType.SHARPS, 3);
+
+    /** The key signature's index in {@link #lineWithMidLineKeySignature()}'s columns. */
+    private static final int KEY_SIGNATURE_COLUMN = 1;
+
+    /** Lyric metrics for a fixture with no lyrics: every measured width is zero. */
+    private static final LyricRenderMetrics NO_LYRIC_METRICS = new LyricRenderMetrics(
+        new Font(Font.MONOSPACED, Font.PLAIN, 12), new Font(Font.MONOSPACED, Font.PLAIN, 12), 0.0, 0.0, 0.0);
+
+    /**
+     * @param description   the row's display name
+     * @param nextLineKey   the key the second line establishes, or null to leave it inheriting
+     * @param cautionaryWins whether the cautionary's run is the larger side of the reservation's max
+     */
+    record CautionaryReservationCase(String description, @Nullable Key nextLineKey, boolean cautionaryWins) {}
+
+    static Stream<CautionaryReservationCase> cautionaryReservationCases() {
+        return Stream.of(
+            new CautionaryReservationCase("an inheriting next line draws no cautionary", null, false),
+            new CautionaryReservationCase(
+                "a cautionary wider than the line rest widens the gap", WIDE_CAUTIONARY_KEY, true),
+            new CautionaryReservationCase(
+                "a cautionary narrower than the line rest leaves it alone", NARROW_CAUTIONARY_KEY, false));
+    }
+
+    /** @param gapIndex the index of the gap under test in the fixture's spring chain */
+    record KeySignatureGapCase(String description, int gapIndex) {}
+
+    static Stream<KeySignatureGapCase> keySignatureGapCases() {
+        return Stream.of(
+            new KeySignatureGapCase("barline to key signature", KEY_SIGNATURE_COLUMN - 1),
+            new KeySignatureGapCase("key signature to note", KEY_SIGNATURE_COLUMN));
+    }
+
+    /** A two-line song whose second line establishes {@code nextLineKey}, or inherits when null. */
+    private static Song twoLineSong(@Nullable Key nextLineKey) {
+        var song = new Song();
+        song.addLine(new Line(song));
+
+        if (nextLineKey != null) {
+            song.withModification(() -> song.getLine(1).setKey(nextLineKey));
+        }
+
+        return song;
+    }
+
+    /** The run a cautionary occupies at the end of {@code line}: its drawn width plus its margin. */
+    private static double cautionaryRunSs(Line line, Key nextRunningKey) {
+        var previousKey = line.keyAtEndOfLine();
+
+        return previousKey.equals(nextRunningKey)
+            ? 0.0
+            : KeyChange.widthSs(previousKey, nextRunningKey) + KeyChange.RIGHT_MARGIN_SS;
+    }
+
+    /**
+     * A line shaped the way {@link KeySignatureElement}'s position invariant requires — barline,
+     * key signature, note — so both of the key signature's gaps can be measured on one fixture.
+     */
+    private static Line lineWithMidLineKeySignature() {
+        var line = detachedLine();
+        line.setKey(MID_LINE_PREVIOUS_KEY);
+        line.addElement(singleBarline());
+        line.addElement(new KeySignatureElement(MID_LINE_KEY));
+        line.addElement(crotchet());
+
+        return line;
+    }
 
     private static ElementColumn column(
         ElementType type,
@@ -1482,6 +1581,80 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         assertThat(HorizontalSpacingCalculator.trailingReservationSs(plainColumn(), line))
             .isCloseTo(HEAD_RIGHT_EXTENT_SS + SCALED_LINE_REST_SS, within(TOLERANCE));
+    }
+
+    /**
+     * The cautionary key signature at the end of a line is drawn <em>into</em> the trailing gap, so
+     * the reservation is the larger of the line rest and the cautionary's run — never their sum.
+     * Each row asserts, before the reservation itself, that it really is arranged on the side of
+     * that maximum it claims, so a row cannot quietly stop exercising its side.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("cautionaryReservationCases")
+    void testTrailingReservationSsTakesTheLargerOfTheLineRestAndTheCautionary(
+        CautionaryReservationCase testCase) {
+
+        var song = twoLineSong(testCase.nextLineKey());
+        var line = song.getLine(0);
+        var cautionaryRunSs = cautionaryRunSs(line, song.getLine(1).getRunningKey());
+
+        assertThat(cautionaryRunSs > song.getDefaultRestLengthSs())
+            .as("the row must be arranged on the side of the max() it claims")
+            .isEqualTo(testCase.cautionaryWins());
+
+        var expectedGapSs = testCase.cautionaryWins() ? cautionaryRunSs : song.getDefaultRestLengthSs();
+
+        assertThat(HorizontalSpacingCalculator.trailingReservationSs(plainColumn(), line))
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + expectedGapSs, within(TOLERANCE));
+    }
+
+    /** The last line has no next line to warn about, so its reservation is the plain line rest. */
+    @Test
+    void testTrailingReservationSsReservesNoCautionaryOnTheLastLine() {
+        var song = twoLineSong(WIDE_CAUTIONARY_KEY);
+
+        assertThat(HorizontalSpacingCalculator.trailingReservationSs(plainColumn(), song.getLine(1)))
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + song.getDefaultRestLengthSs(), within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // A mid-line key signature is spaced like any other column
+    // ==========================================================================
+
+    /**
+     * The one non-note column whose width is not a property of its type: what a key signature draws
+     * is the change it makes, so it must be measured against the key in effect before it rather
+     * than against {@code ElementType.KEY_SIGNATURE}'s floor.
+     */
+    @Test
+    void testMidLineKeySignatureColumnIsAsWideAsTheChangeItDraws() {
+        var line = lineWithMidLineKeySignature();
+        var columns = new ElementColumnBuilder(NO_LYRIC_METRICS).buildColumns(line);
+
+        assertThat(columns.get(KEY_SIGNATURE_COLUMN).getRightExtentSs())
+            .isCloseTo(KeyChange.widthSs(MID_LINE_PREVIOUS_KEY, MID_LINE_KEY), within(TOLERANCE))
+            .describedAs("a cancelling change draws naturals as well, so it is wider than the floor")
+            .isGreaterThan(ElementType.KEY_SIGNATURE.getElementWidthSs());
+    }
+
+    /**
+     * Both sides of a mid-line key signature get the promise every column pair gets:
+     * {@link HorizontalSpacingCalculator#MIN_COLUMN_GAP_SS} of clear space between facing ink. The
+     * key signature's position invariant fixes what those sides are — a barline before it, a note
+     * after it — so this is the whole domain of gaps it can sit in.
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keySignatureGapCases")
+    void testMinimumSpacingClearsAMidLineKeySignaturesInkOnBothSides(KeySignatureGapCase testCase) {
+        var line = lineWithMidLineKeySignature();
+        var columns = new ElementColumnBuilder(NO_LYRIC_METRICS).buildColumns(line);
+        var springs = HorizontalSpacingCalculator.buildSprings(columns, line);
+        var gapIndex = testCase.gapIndex();
+        var inkToInkSs = springs.get(gapIndex).strutSs()
+            - columns.get(gapIndex).getRightExtentSs()
+            - Math.abs(columns.get(gapIndex + 1).getLeftExtentSs());
+
+        assertThat(inkToInkSs).isCloseTo(HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
     }
 
     /**

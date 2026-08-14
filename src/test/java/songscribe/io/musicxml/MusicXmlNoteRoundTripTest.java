@@ -44,6 +44,7 @@ import songscribe.dom.ArticulationType;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.StaffElement;
 
@@ -517,8 +518,7 @@ class MusicXmlNoteRoundTripTest extends UnitTest {
     @Test
     void testNoteAlteredByKeyHasCorrectAlterInOutput() throws Exception {
         var song = buildSong(line -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
+            line.setKey(new Key(KeyType.SHARPS, G_MAJOR_SHARP_COUNT));
             var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             // No explicit accidental — the key makes it F#.
@@ -539,8 +539,7 @@ class MusicXmlNoteRoundTripTest extends UnitTest {
     @Test
     void testNoteAlteredByKeyRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
+            line.setKey(new Key(KeyType.SHARPS, G_MAJOR_SHARP_COUNT));
             var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             line.addElement(note);
@@ -572,8 +571,7 @@ class MusicXmlNoteRoundTripTest extends UnitTest {
     @Test
     void testCautionaryNaturalHasZeroAlterInOutput() throws Exception {
         var song = buildSong(line -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
+            line.setKey(new Key(KeyType.SHARPS, G_MAJOR_SHARP_COUNT));
             var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             note.setAccidental(StaffElement.Accidental.NATURAL);
@@ -594,8 +592,7 @@ class MusicXmlNoteRoundTripTest extends UnitTest {
     @Test
     void testCautionaryNaturalRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
+            line.setKey(new Key(KeyType.SHARPS, G_MAJOR_SHARP_COUNT));
             var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             note.setAccidental(StaffElement.Accidental.NATURAL);

@@ -27,7 +27,6 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.Duration;
-import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -53,10 +52,10 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
     }
 
     @Override
-    protected String opLabel(AttachmentOp op) {
+    protected String opLabel(DialogOp op) {
         return Strings.get(switch (op) {
             case ADD -> Strings.ACTION_EDIT_OP_ADD_TEMPO_CHANGE;
-            case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO_CHANGE;
+            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO_CHANGE;
             case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE;
         });
     }

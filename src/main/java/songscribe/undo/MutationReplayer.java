@@ -39,7 +39,6 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.FontChange;
-import songscribe.message.mutation.KeyField;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
@@ -141,7 +140,7 @@ public final class MutationReplayer {
             }
             case LineInsertion(var lineIndex, var _) -> song.removeLine(lineIndex);
             case LineDeletion(var lineIndex, var deletedLine) -> song.addLine(lineIndex, deletedLine);
-            case LineKeyChange(var line, var field, var oldValue, var _) -> applyKeyField(line, field, oldValue);
+            case LineKeyChange(var line, var oldKey, var _) -> line.setKey(oldKey);
             case LineLayoutChange(var line, var field, var oldValue, var _) ->
                 applyLineLayoutField(line, field, oldValue);
             case SpanAddition(var line, var element) -> line.removeSpan(element);
@@ -193,7 +192,7 @@ public final class MutationReplayer {
             }
             case LineInsertion(var lineIndex, var line) -> song.addLine(lineIndex, line);
             case LineDeletion(var lineIndex, var _) -> song.removeLine(lineIndex);
-            case LineKeyChange(var line, var field, var _, var newValue) -> applyKeyField(line, field, newValue);
+            case LineKeyChange(var line, var _, var newKey) -> line.setKey(newKey);
             case LineLayoutChange(var line, var field, var _, var newValue) ->
                 applyLineLayoutField(line, field, newValue);
             case SpanAddition(var line, var element) -> line.addSpan(element);
@@ -215,13 +214,6 @@ public final class MutationReplayer {
         }
     }
 
-    private static void applyKeyField(Line line, KeyField field, @Nullable Object value) {
-        switch (field) {
-            case ACCIDENTAL_COUNT -> line.setKeyAccidentalCount(cast(value, Integer.class));
-            case KEY_TYPE -> line.setKeyType(cast(value, KeyType.class));
-        }
-    }
-
     private static void applyLineLayoutField(Line line, LineLayoutField field, @Nullable Object value) {
         switch (field) {
             case LYRICS_Y_POS_SS -> line.setLyricsYPosSs(cast(value, Double.class));
@@ -233,8 +225,6 @@ public final class MutationReplayer {
         switch (field) {
             case ATTRIBUTION -> song.setMetadata(cast(value, SongMetadata.class));
             case TEMPO -> song.setTempo(cast(value, Tempo.class));
-            case DEFAULT_KEY_ACCIDENTAL_COUNT -> song.setDefaultKeyAccidentalCount(cast(value, Integer.class));
-            case DEFAULT_KEY_TYPE -> song.setDefaultKeyType(cast(value, KeyType.class));
             case FOOTNOTES -> song.setFootnotes(cast(value, String.class));
         }
     }

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 
 import static java.awt.font.TextAttribute.FONT;
@@ -96,117 +97,100 @@ class KeySignatureDisplayTest extends UnitTest {
     // --- Row 1: tonicFor SHARPS ------------------------------------------
 
     @Test
-    void testTonicForSharpsCount0ReturnsEmptyString() {
-        // SHARP_TONICS[0]="" → full string is empty (count=0 also empties the suffix)
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 0));
-        assertThat(result).isEmpty();
-    }
-
-    @Test
     void testTonicForSharpsCount1ReturnsG() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 1));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 1)));
         assertThat(result).startsWith(SHARP_TONICS[1]);
     }
 
     @Test
     void testTonicForSharpsCount2ReturnsD() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 2));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 2)));
         assertThat(result).startsWith(SHARP_TONICS[2]);
     }
 
     @Test
     void testTonicForSharpsCount3ReturnsA() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 3));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 3)));
         assertThat(result).startsWith(SHARP_TONICS[3]);
     }
 
     @Test
     void testTonicForSharpsCount4ReturnsE() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 4));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 4)));
         assertThat(result).startsWith(SHARP_TONICS[4]);
     }
 
     @Test
     void testTonicForSharpsCount5ReturnsB() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 5));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 5)));
         assertThat(result).startsWith(SHARP_TONICS[5]);
     }
 
     @Test
     void testTonicForSharpsCount6ReturnsFSharp() {
         // SHARP_TONICS[6] = "F" + SHARP_GLYPH — two-char tonic
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 6));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 6)));
         assertThat(result).startsWith(SHARP_TONICS[6]);
     }
 
     @Test
     void testTonicForSharpsCount7ReturnsCSharp() {
         // SHARP_TONICS[7] = "C" + SHARP_GLYPH — two-char tonic
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 7));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 7)));
         assertThat(result).startsWith(SHARP_TONICS[7]);
     }
 
     // --- Row 2: tonicFor FLATS -------------------------------------------
 
     @Test
-    void testTonicForFlatsCount0ReturnsC() {
-        // FLAT_TONICS[0]="C", count=0 → suffix="" → full="C"
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 0));
+    void testTonicForNoAccidentalsReturnsC() {
+        // Key(NONE, 0) is the canonical no-accidentals key; tonicFor's NONE branch
+        // reads FLAT_TONICS[0]="C", and suffixFor is empty at count==0 → full="C"
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.NONE, 0)));
         assertThat(result).isEqualTo(FLAT_TONICS[0]);
     }
 
     @Test
     void testTonicForFlatsCount1ReturnsF() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 1));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 1)));
         assertThat(result).startsWith(FLAT_TONICS[1]);
     }
 
     @Test
     void testTonicForFlatsCount2ReturnsBFlat() {
         // FLAT_TONICS[2] = "B" + FLAT_GLYPH — two-char tonic
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 2));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 2)));
         assertThat(result).startsWith(FLAT_TONICS[2]);
     }
 
     @Test
     void testTonicForFlatsCount3ReturnsEFlat() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 3));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 3)));
         assertThat(result).startsWith(FLAT_TONICS[3]);
     }
 
     @Test
     void testTonicForFlatsCount4ReturnsAFlat() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 4));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 4)));
         assertThat(result).startsWith(FLAT_TONICS[4]);
     }
 
     @Test
     void testTonicForFlatsCount5ReturnsDFlat() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 5));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 5)));
         assertThat(result).startsWith(FLAT_TONICS[5]);
     }
 
     @Test
     void testTonicForFlatsCount6ReturnsGFlat() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 6));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 6)));
         assertThat(result).startsWith(FLAT_TONICS[6]);
     }
 
     @Test
     void testTonicForFlatsCount7ReturnsCFlat() {
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 7));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 7)));
         assertThat(result).startsWith(FLAT_TONICS[7]);
-    }
-
-    // --- Row 3: suffixFor returns empty for NONE or count==0 --------------
-
-    @Test
-    void testSuffixForNoneTypeEqualsTonicOnly() {
-        // NONE → suffix="" → full is just the tonic, no suffix appended
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.NONE, 3));
-        // tonic for NONE is FLAT_TONICS[3] = "E" + FLAT_GLYPH, suffix=""
-        var tonic = FLAT_TONICS[3];
-        assertThat(result).isEqualTo(tonic);
     }
 
     // --- Row 4: suffixFor returns non-empty suffix with count for SHARPS --
@@ -214,14 +198,14 @@ class KeySignatureDisplayTest extends UnitTest {
     @Test
     void testSuffixForSharpsCount1ContainsSingularSharp() {
         // suffix = " · 1 sharp"
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 1));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 1)));
         assertThat(result).contains("1").contains("sharp");
     }
 
     @Test
     void testSuffixForSharpsCount2ContainsPluralSharps() {
         // suffix = " · 2 sharps"
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 2));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 2)));
         assertThat(result).contains("2").contains("sharps");
     }
 
@@ -229,7 +213,7 @@ class KeySignatureDisplayTest extends UnitTest {
     void testSuffixForSharpsCountContainsCountAndWord() {
         // Verify the choice format for counts 3–7 (counts 1 and 2 are covered by the preceding tests)
         for (var count = 3; count <= SHARP_TONICS.length - 1; count++) {
-            var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, count));
+            var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, count)));
             assertThat(result)
                 .as("count=" + count)
                 .contains(String.valueOf(count))
@@ -242,14 +226,14 @@ class KeySignatureDisplayTest extends UnitTest {
     @Test
     void testSuffixForFlatsCount1ContainsSingularFlat() {
         // suffix = " · 1 flat"
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 1));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 1)));
         assertThat(result).contains("1").contains("flat");
     }
 
     @Test
     void testSuffixForFlatsCount2ContainsPluralFlats() {
         // suffix = " · 2 flats"
-        var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, 2));
+        var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 2)));
         assertThat(result).contains("2").contains("flats");
     }
 
@@ -257,7 +241,7 @@ class KeySignatureDisplayTest extends UnitTest {
     void testSuffixForFlatsCountContainsCountAndWord() {
         // Verify the choice format for counts 3–7
         for (var count = 3; count <= FLAT_TONICS.length - 1; count++) {
-            var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, count));
+            var result = textOf(KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, count)));
             assertThat(result)
                 .as("count=" + count)
                 .contains(String.valueOf(count))
@@ -271,7 +255,7 @@ class KeySignatureDisplayTest extends UnitTest {
     void testTonicHasAccidentalFlatsBelowThresholdHasNoGlyphFont() {
         // FLATS count < MIN_FLAT_COUNT_WITH_ACCIDENTAL (2) → no accidental → no glyph-font override
         // FLATS/1: tonic = "F" (1 char), no accidental branch → only labelFont applied
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.FLATS, 1);
+        var attributed = KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 1));
         var fontAtTonic = fontAt(attributed, 0);
         assertThat(trackingAt(attributed, 0)).isNull();
         // Only label font family — not the music font family
@@ -282,7 +266,8 @@ class KeySignatureDisplayTest extends UnitTest {
     void testTonicHasAccidentalFlatsAtThresholdHasGlyphFont() {
         // FLATS count == MIN_FLAT_COUNT_WITH_ACCIDENTAL (2) → accidental present
         // FLAT_TONICS[2] = "B♭" (2 chars), glyphIndex = 1
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.FLATS, MIN_FLAT_COUNT_WITH_ACCIDENTAL);
+        var attributed = KeySignatureDisplay.getDisplayName(
+            new Key(KeyType.FLATS, MIN_FLAT_COUNT_WITH_ACCIDENTAL));
         // Index 1 (♭) must use the music font (Bravura family)
         var glyphFont = fontAt(attributed, 1);
         assertThat(glyphFont.getName()).containsIgnoringCase("Bravura");
@@ -296,7 +281,8 @@ class KeySignatureDisplayTest extends UnitTest {
     void testTonicHasAccidentalSharpsBelowThresholdHasNoGlyphFont() {
         // SHARPS count < MIN_SHARP_COUNT_WITH_ACCIDENTAL (6) → no accidental
         // SHARP_TONICS[5] = "B" (1 char)
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.SHARPS, MIN_SHARP_COUNT_WITH_ACCIDENTAL - 1);
+        var attributed = KeySignatureDisplay.getDisplayName(
+            new Key(KeyType.SHARPS, MIN_SHARP_COUNT_WITH_ACCIDENTAL - 1));
         var fontAtTonic = fontAt(attributed, 0);
         assertThat(trackingAt(attributed, 0)).isNull();
         assertThat(fontAtTonic.getName()).doesNotContainIgnoringCase("Bravura");
@@ -306,38 +292,13 @@ class KeySignatureDisplayTest extends UnitTest {
     void testTonicHasAccidentalSharpsAtThresholdHasGlyphFont() {
         // SHARPS count == MIN_SHARP_COUNT_WITH_ACCIDENTAL (6) → accidental present
         // SHARP_TONICS[6] = "F♯" (2 chars), glyphIndex = 1
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.SHARPS, MIN_SHARP_COUNT_WITH_ACCIDENTAL);
+        var attributed = KeySignatureDisplay.getDisplayName(
+            new Key(KeyType.SHARPS, MIN_SHARP_COUNT_WITH_ACCIDENTAL));
         // Index 1 (♯) must use the music font
         var glyphFont = fontAt(attributed, 1);
         assertThat(glyphFont.getName()).containsIgnoringCase("Bravura");
         // Index 0 ('F') must have tracking applied
         assertThat(trackingAt(attributed, 0)).isNotNull().isGreaterThan(0f);
-    }
-
-    // --- Row 8: tonicHasAccidental NONE always returns false ---------------
-
-    @Test
-    void testTonicHasAccidentalNoneWithNonzeroCountHasNoGlyphFont() {
-        // KeyType.NONE → tonicHasAccidental returns false regardless of count
-        // Even with count = 7, no glyph font is applied
-        for (var count = 1; count <= FLAT_TONICS.length - 1; count++) {
-            var attributed = KeySignatureDisplay.getDisplayName(KeyType.NONE, count);
-            var text = textOf(attributed);
-            // Tonic is non-empty; font at index 0 must not be Bravura
-            var fontAt0 = fontAt(attributed, 0);
-            assertThat(fontAt0.getName())
-                .as("NONE/count=" + count + " text=" + text)
-                .doesNotContainIgnoringCase("Bravura");
-        }
-    }
-
-    // --- Row 9: getDisplayName with count==0 or NONE: empty-string guard ---
-
-    @Test
-    void testGetDisplayNameSharpsCount0ReturnsAttributedOverEmptyString() {
-        // SHARP_TONICS[0]="" and suffix for count=0 is "" → full="" → empty-string guard fires
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 0);
-        assertThat(textOf(attributed)).isEmpty();
     }
 
     // --- Row 10: getDisplayName no tonic accidental — single labelFont only ---
@@ -346,7 +307,7 @@ class KeySignatureDisplayTest extends UnitTest {
     void testGetDisplayNameNoAccidentalAppliesSingleLabelFont() {
         // SHARPS/1: tonic="G" (no accidental), suffix=" · 1 sharp"
         // All characters should have the same font (labelFont); no TRACKING attribute anywhere.
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.SHARPS, 1);
+        var attributed = KeySignatureDisplay.getDisplayName(new Key(KeyType.SHARPS, 1));
         var text = textOf(attributed);
         var fontAt0 = fontAt(attributed, 0);
 
@@ -371,7 +332,7 @@ class KeySignatureDisplayTest extends UnitTest {
         // Index 0 ('E') → letterWithGapFont (labelFont + TRACKING > 0)
         // Index 1 ('♭') → glyphFont (Bravura family)
         // Index 2+ (suffix chars) → labelFont (no tracking, no Bravura)
-        var attributed = KeySignatureDisplay.getDisplayName(KeyType.FLATS, 3);
+        var attributed = KeySignatureDisplay.getDisplayName(new Key(KeyType.FLATS, 3));
         var text = textOf(attributed);
 
         // Tonic is letter + glyph; glyphIndex = 1

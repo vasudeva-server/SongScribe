@@ -42,6 +42,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -71,12 +72,9 @@ class MusicXmlBarlineRoundTripTest extends UnitTest {
      * MusicXML round-trip preserves: key signature, line count, and per-line barline sequence.
      */
     private static void assertPopulatedSubsetEquals(Song expected, Song actual) {
-        assertThat(actual.getDefaultKeyAccidentalCount())
-            .as("default key accidental count")
-            .isEqualTo(expected.getDefaultKeyAccidentalCount());
-        assertThat(actual.getDefaultKeyType())
-            .as("default key type")
-            .isEqualTo(expected.getDefaultKeyType());
+        assertThat(actual.getStartingKey())
+            .as("the key the song starts in")
+            .isEqualTo(expected.getStartingKey());
         assertThat(actual.lineCount())
             .as("line count")
             .isEqualTo(expected.lineCount());
@@ -431,10 +429,9 @@ class MusicXmlBarlineRoundTripTest extends UnitTest {
     @Test
     void testKeySignatureWithSharpsRoundTrips() throws Exception {
         final var sharpCount = 3;
-        var song = buildSong(line -> line.addElement(finalDoubleBarline()));
-        song.withoutMutationTracking(() -> {
-            song.setDefaultKeyType(KeyType.SHARPS);
-            song.setDefaultKeyAccidentalCount(sharpCount);
+        var song = buildSong(line -> {
+            line.setKey(new Key(KeyType.SHARPS, sharpCount));
+            line.addElement(finalDoubleBarline());
         });
 
         var song2 = roundTrip(song);
@@ -444,10 +441,9 @@ class MusicXmlBarlineRoundTripTest extends UnitTest {
     @Test
     void testKeySignatureWithFlatsRoundTrips() throws Exception {
         final var flatCount = 2;
-        var song = buildSong(line -> line.addElement(finalDoubleBarline()));
-        song.withoutMutationTracking(() -> {
-            song.setDefaultKeyType(KeyType.FLATS);
-            song.setDefaultKeyAccidentalCount(flatCount);
+        var song = buildSong(line -> {
+            line.setKey(new Key(KeyType.FLATS, flatCount));
+            line.addElement(finalDoubleBarline());
         });
 
         var song2 = roundTrip(song);

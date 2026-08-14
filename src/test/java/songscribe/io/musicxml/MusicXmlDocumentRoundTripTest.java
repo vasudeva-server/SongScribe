@@ -37,6 +37,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Duration;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -197,8 +198,7 @@ class MusicXmlDocumentRoundTripTest extends UnitTest {
 
         var song = buildSong(
             line -> {
-                line.setKeyType(Song.DEFAULT_KEY_TYPE);
-                line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
+                line.setKey(Key.DEFAULT);
 
                 var note = crotchet();
                 line.addElement(note);
@@ -207,8 +207,7 @@ class MusicXmlDocumentRoundTripTest extends UnitTest {
                 note.addAttachment(new AnnotationAttachment(note, aboveAnnotation()));
             },
             line -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(MID_SONG_KEY_ACCIDENTAL_COUNT);
+                line.setKey(new Key(KeyType.SHARPS, MID_SONG_KEY_ACCIDENTAL_COUNT));
 
                 var note = crotchet();
                 line.addElement(note);
@@ -306,12 +305,10 @@ class MusicXmlDocumentRoundTripTest extends UnitTest {
         var firstLine = reloaded.getLine(FIRST_LINE_INDEX);
         var secondLine = reloaded.getLine(SECOND_LINE_INDEX);
 
-        assertThat(firstLine.getKeyType()).as("first line key type").isEqualTo(Song.DEFAULT_KEY_TYPE);
-        assertThat(firstLine.getKeyAccidentalCount())
-            .as("first line accidental count").isEqualTo(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
-        assertThat(secondLine.getKeyType()).as("second line key type").isEqualTo(KeyType.SHARPS);
-        assertThat(secondLine.getKeyAccidentalCount())
-            .as("second line accidental count").isEqualTo(MID_SONG_KEY_ACCIDENTAL_COUNT);
+        assertThat(firstLine.getRunningKey()).as("first line key").isEqualTo(Key.DEFAULT);
+        assertThat(secondLine.getRunningKey())
+            .as("second line key")
+            .isEqualTo(new Key(KeyType.SHARPS, MID_SONG_KEY_ACCIDENTAL_COUNT));
 
         var firstNote = firstLine.getElement(0);
         var secondNote = secondLine.getElement(0);

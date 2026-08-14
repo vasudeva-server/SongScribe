@@ -44,6 +44,8 @@ import songscribe.message.MessageCenterTestHelper;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -58,6 +60,7 @@ import org.xml.sax.SAXException;
 
 import songscribe.error.RuntimeErrorTestHelper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -270,9 +273,59 @@ public abstract class UnitTest {
         return songMock;
     }
 
-    /** Creates a Line backed by a minimal Song mock. */
+    /**
+     * Asserts {@link Song}'s key invariant over every line of {@code song}: line 0 establishes a
+     * key of its own, and every line that establishes none is in the key in effect at the end of
+     * the line before it.
+     *
+     * <p>Shared rather than local to one test class on purpose. The failure a missed propagation
+     * produces is wrong pitches on every line downstream, with no error and nothing visible to
+     * notice, and it can be produced by any edit that moves a key — so the assertion belongs after
+     * every such edit, in whichever class makes it.
+     */
+    public static void assertKeyPropagationInvariant(Song song) {
+        assertThat(song.getLine(0).getKey())
+            .as("line 0 has nothing to inherit from, so it must establish a key of its own")
+            .isNotNull();
+
+        for (var lineIndex = 1; lineIndex < song.lineCount(); lineIndex++) {
+            var line = song.getLine(lineIndex);
+
+            if (line.getKey() != null) {
+                continue;
+            }
+
+            assertThat(line.getRunningKey())
+                .as("line %d establishes no key, so it is in the key line %d ends in",
+                    lineIndex, lineIndex - 1)
+                .isEqualTo(song.getLine(lineIndex - 1).keyAtEndOfLine());
+        }
+    }
+
+    /**
+     * Creates a Line backed by a minimal Song mock, in C major.
+     *
+     * <p>Nothing precedes a detached line, so it has to establish a key of its own before anything
+     * asks what key it is in — the same rule {@link songscribe.dom.Song} keeps for line 0. C major
+     * is the key that draws nothing, so a fixture that does not care about the key gets a header
+     * with no accidentals in it. A test that does care sets its own.
+     */
     protected static Line detachedLine() {
-        return new Line(minimalSongMock());
+        return detachedLine(minimalSongMock());
+    }
+
+    /**
+     * The same for a fixture that has to supply its own {@link Song} — a mock it has stubbed
+     * further, or a real song with mutation tracking suspended. A line the song's line list does
+     * not hold still has nothing before it, so it establishes its own key just as line 0 does.
+     *
+     * @param song the song the line belongs to; must have mutation tracking suspended, since
+     *             establishing the line's key is a tracked change
+     */
+    public static Line detachedLine(Song song) {
+        var line = new Line(song);
+        line.setKey(new Key(KeyType.NONE, 0));
+        return line;
     }
 
     /** Creates a line containing elements of the given types (in order), unattached to a song. */

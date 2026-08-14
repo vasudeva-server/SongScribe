@@ -234,8 +234,8 @@ class NoteTypeMappingTest extends UnitTest {
     }
 
     /**
-     * {@code MusicXmlWriter}'s element loop dispatches barlines, repeats and breath marks to
-     * their own branches and sends everything else down the {@code <note>} branch, where an
+     * {@code MusicXmlWriter}'s element loop dispatches barlines, repeats, breath marks and key
+     * signatures to their own branches and sends everything else down the {@code <note>} branch, where an
      * element whose type has no {@code <type>} token is silently skipped — it simply does not
      * reach the saved file. That skip is only safe while every type that gets there has a
      * token. A new note-like {@link ElementType} added without a {@code FORWARD_MAP} entry
@@ -248,7 +248,8 @@ class NoteTypeMappingTest extends UnitTest {
             // ever reports an alias as its type. Normalise to what the writer actually sees.
             var elementType = type.newInstance().getType();
 
-            if (elementType.isBarLine() || elementType.isRepeat() || elementType.isBreathMark()) {
+            if (elementType.isBarLine() || elementType.isRepeat() || elementType.isBreathMark()
+                || elementType == ElementType.KEY_SIGNATURE) {
                 continue;
             }
 

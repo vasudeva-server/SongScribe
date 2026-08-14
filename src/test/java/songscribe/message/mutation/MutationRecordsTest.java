@@ -45,6 +45,7 @@ import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.SongMetadata;
@@ -65,6 +66,10 @@ class MutationRecordsTest extends UnitTest {
     private static final int QUINTUPLET_GRADE = 5;
     private static final int QUINTUPLET_NORMAL_NOTES = 4;
     private static final int NO_DOTS = 0;
+
+    // Two distinct keys, so a change between them is a real change in both directions.
+    private static final int ONE_FLAT = 1;
+    private static final int ONE_SHARP = 1;
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -218,31 +223,23 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testLineKeyChangeExposesFields() {
             var line = detachedLine();
-            var mutation = new LineKeyChange(line, KeyField.KEY_TYPE, KeyType.FLATS, KeyType.SHARPS);
+            var oldKey = new Key(KeyType.FLATS, ONE_FLAT);
+            var newKey = new Key(KeyType.SHARPS, ONE_SHARP);
+            var mutation = new LineKeyChange(line, oldKey, newKey);
 
             assertThat(mutation.line()).isSameAs(line);
-            assertThat(mutation.field()).isEqualTo(KeyField.KEY_TYPE);
-            assertThat(mutation.oldValue()).isEqualTo(KeyType.FLATS);
-            assertThat(mutation.newValue()).isEqualTo(KeyType.SHARPS);
+            assertThat(mutation.oldKey()).isEqualTo(oldKey);
+            assertThat(mutation.newKey()).isEqualTo(newKey);
             assertThat(mutation.getLine()).isSameAs(line);
         }
 
         @Test
-        void testLineKeyChangeRejectsTypeMismatch() {
-            // ACCIDENTAL_COUNT expects Integer; passing a String must throw.
-            var line = detachedLine();
-            assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(
-                () -> new LineKeyChange(line, KeyField.ACCIDENTAL_COUNT, "bad", 1)
-            );
-        }
-
-        @Test
-        void testLineKeyChangeAcceptsNullValues() {
-            // Null old and new values represent an unset key signature — no exception expected.
-            // KEY_TYPE is the field documented to accept null (unset key signature).
+        void testLineKeyChangeAcceptsNullKeys() {
+            // Null means the line establishes no key of its own and inherits one, on either side
+            // of the change — a line can start inheriting and a line can stop.
             var line = detachedLine();
             assertThatNoException().isThrownBy(
-                () -> new LineKeyChange(line, KeyField.KEY_TYPE, null, null)
+                () -> new LineKeyChange(line, null, null)
             );
         }
 
@@ -468,19 +465,6 @@ class MutationRecordsTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
-    @MethodSource("keyFieldExpectedTypes")
-    void testKeyFieldReturnsExpectedType(KeyField field, Class<?> expectedType) {
-        assertThat(field.getExpectedType()).isEqualTo(expectedType);
-    }
-
-    static Stream<Arguments> keyFieldExpectedTypes() {
-        return Stream.of(
-            Arguments.of(KeyField.ACCIDENTAL_COUNT, Integer.class),
-            Arguments.of(KeyField.KEY_TYPE, KeyType.class)
-        );
-    }
-
-    @ParameterizedTest(name = "{0}.getExpectedType() returns {1}")
     @MethodSource("layoutFieldExpectedTypes")
     void testLayoutFieldReturnsExpectedType(LayoutField field, Class<?> expectedType) {
         assertThat(field.getExpectedType()).isEqualTo(expectedType);
@@ -516,8 +500,6 @@ class MutationRecordsTest extends UnitTest {
         return Stream.of(
             Arguments.of(MetadataField.ATTRIBUTION, SongMetadata.class),
             Arguments.of(MetadataField.TEMPO, Tempo.class),
-            Arguments.of(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT, Integer.class),
-            Arguments.of(MetadataField.DEFAULT_KEY_TYPE, KeyType.class),
             Arguments.of(MetadataField.FOOTNOTES, String.class)
         );
     }

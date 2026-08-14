@@ -47,6 +47,8 @@ import songscribe.UnitTest;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.SlideZone;
@@ -107,17 +109,30 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static final int VALIDATION_LINE_ELEMENT_COUNT = 4;
 
     /**
-     * Returns the narrowest margin an insertion can still be laid out within: every projected gap
-     * frozen on its strut, anchored at the projected first X, with the last column's right extent
+     * Returns the narrowest margin a projected chain can still be laid out within: every projected
+     * gap frozen on its strut, anchored at the projected first X, with the trailing reservation
      * inside the margin. This is the boundary {@code fitsWithinLine} solves against.
+     * <p>
+     * The chain is read back through the same {@link HorizontalSpacingCalculator#solveLine} the
+     * gate runs, so the springs measured here are the lyric-lifted, optically corrected ones the
+     * gate actually solves rather than a second derivation of them. The margin passed in is
+     * irrelevant to the springs — only the verdict depends on it.
      */
-    private static double fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult result) {
+    private static double fullyCompressedWidthSs(Line line, List<ElementColumn> projectedColumns) {
         // Every gap gives down to its strut — mirroring
         // SpringSpacer.compress, so this is the solver's true floor rather than an underestimate.
-        var floorSpanSs = result.projectedSprings().stream()
+        var solution = HorizontalSpacingCalculator.solveLine(projectedColumns, line, WIDE_LINE_SS);
+        var floorSpanSs = solution.springs().stream()
             .mapToDouble(Spring::strutSs)
             .sum();
-        return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
+
+        return solution.firstXSs()
+            + floorSpanSs
+            + HorizontalSpacingCalculator.trailingReservationSs(projectedColumns.getLast(), line);
+    }
+
+    private static double fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult result) {
+        return fullyCompressedWidthSs(result.line(), result.projectedColumns());
     }
 
     /**
@@ -172,7 +187,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     private static Line lineWithCrotchets(int count, Song song) {
-        return lineWithCrotchets(count, new Line(song));
+        return lineWithCrotchets(count, detachedLine(song));
     }
 
     private static Line lineWithCrotchets(int count, Line line) {
@@ -211,7 +226,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Song song) {
-        return lineWithGraceAtIndex(numCrotchetsBefore, new Line(song));
+        return lineWithGraceAtIndex(numCrotchetsBefore, detachedLine(song));
     }
 
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Line line) {
@@ -483,7 +498,11 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var graceNote = ElementType.GRACE_QUAVER.getInstance();
             var projection = InsertionSpacingCalculator.calculateInsertion(
                 line, graceNote, line.elementCount(), null, null);
-            when(song.getLineWidthSs()).thenReturn(fullyCompressedWidthSs(projection) - BOUNDARY_SLACK_SS);
+            // Measured before the stub is opened: the measurement reads the song mock itself, and
+            // Mockito rejects a call on a mock inside an unfinished when(...).
+            var compressedWidthSs = fullyCompressedWidthSs(projection);
+
+            when(song.getLineWidthSs()).thenReturn(compressedWidthSs - BOUNDARY_SLACK_SS);
 
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
                 line, line.elementCount(), null, null)).isFalse();
@@ -515,7 +534,10 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var hostNote = ElementType.CROTCHET.getInstance();
             var projection = InsertionSpacingCalculator.calculateInsertion(
                 line, hostNote, graceIndex + 1, null, null);
-            when(song.getLineWidthSs()).thenReturn(fullyCompressedWidthSs(projection) - BOUNDARY_SLACK_SS);
+            // Measured before the stub is opened, as in testLineTooNarrowEvenFullyCompressed.
+            var compressedWidthSs = fullyCompressedWidthSs(projection);
+
+            when(song.getLineWidthSs()).thenReturn(compressedWidthSs - BOUNDARY_SLACK_SS);
 
             assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceIndex, null)).isFalse();
         }
@@ -1101,10 +1123,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static double fullyCompressedWidthSs(
         InsertionSpacingCalculator.FragmentInsertionResult result) {
 
-        var floorSpanSs = result.projectedSprings().stream()
-            .mapToDouble(Spring::strutSs)
-            .sum();
-        return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
+        return fullyCompressedWidthSs(result.line(), result.projectedColumns());
     }
 
     /**
@@ -1269,7 +1288,8 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 line, fragment, line.effectiveElementCount(), null, null, null);
 
             var lastCloneExtentSs = lightweightColumn(crotchet()).getRightExtentSs();
-            assertThat(result.projectedTrailingReservationSs())
+            assertThat(HorizontalSpacingCalculator.trailingReservationSs(
+                    result.projectedColumns().getLast(), result.line()))
                 .isEqualTo(lastCloneExtentSs + Song.DEFAULT_REST_LENGTH_SS);
         }
 
@@ -1322,7 +1342,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         @Test
         void testSurroundingPredecessorSyllableWidensGapToFragmentCloneWhenLyricMetricsSupplied() {
-            var line = new Line(songWithLineWidth(WIDE_LINE_SS));
+            var line = detachedLine(songWithLineWidth(WIDE_LINE_SS));
             var predecessor = crotchet();
             predecessor.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "encouragement", Lyric.Extend.NONE);
             var predecessorXSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, predecessor, null, null);
@@ -1591,9 +1611,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
          * its strut, mirroring {@code SpringSpacer.compress}.
          */
         private static double compressedFloorSs(InsertionSpacingCalculator.ModificationResult result) {
-            return result.projectedFirstXSs()
-                + result.projectedSprings().stream().mapToDouble(Spring::strutSs).sum()
-                + result.projectedTrailingReservationSs();
+            return fullyCompressedWidthSs(result.line(), result.projectedColumns());
         }
 
         /**

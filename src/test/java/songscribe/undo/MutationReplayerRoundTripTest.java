@@ -47,8 +47,11 @@ import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
@@ -118,10 +121,13 @@ import songscribe.ui.selection.ReflectionTestHelper;
  * {@link SongScopedMutations}. A case whose <em>assertions</em> differ, not just its
  * fixture — {@link ElementParentage}'s per-mutation-kind checks, {@link HairpinExecution},
  * {@link DeferredInsertionRepair}, {@link Fonts}'s undo/redo dispatch check, and the beam
- * merge and line key/accidental-count cases — stays its own method.
+ * merge and line key cases — stays its own method.
  */
 class MutationReplayerRoundTripTest extends UnitTest {
 
+
+    /** Any key that differs from the fixture song's own, so the change is a real one. */
+    private static final int ONE_SHARP = 1;
 
     /** A triplet: three notes in the time of two of its written value. */
     private static final int TRIPLET_GRADE = 3;
@@ -515,16 +521,68 @@ class MutationReplayerRoundTripTest extends UnitTest {
             );
         }
 
-        /** Covers both {@code KeyField} values: {@code KEY_TYPE} and {@code ACCIDENTAL_COUNT}. */
         @Test
-        void testLineKeyTypeAndAccidentalCountChangeRoundTrips() {
+        void testLineKeyChangeRoundTrips() {
             var song = songWithNotes(1);
             var line = song.getLine(0);
-            var changed = song.getDefaultKeyAccidentalCount() + 2;
-            assertRoundTrip(song, () -> {
-                line.setKeyType(KeyType.SHARPS);
-                line.setKeyAccidentalCount(changed);
+            // A genuinely different key from the one the song starts in, whatever that is.
+            var changed = song.getStartingKey().accidentalCount() + 2;
+            assertRoundTrip(song, () -> line.setKey(new Key(KeyType.SHARPS, changed)));
+        }
+
+        /**
+         * The key a later line inherits is derived state, so it is outside the recorded batch and
+         * outside the serialized document: replay has to bring it back by re-deriving it, and if
+         * it does not, every line downstream sounds in the wrong key with no error and nothing
+         * visible to notice.
+         */
+        @Test
+        void testUndoAndRedoOfALineKeyChangeRestoreWhatTheFollowingLinesInherit() {
+            var song = songWithNotes(1);
+            var line = song.getLine(0);
+            var following = new Line(song);
+            song.withoutMutationTracking(() -> song.addLine(following));
+
+            var keyBefore = line.getRunningKey();
+            var changedKey = new Key(KeyType.SHARPS, ONE_SHARP);
+            var batch = UndoTestSupport.captureBatch(song, () -> line.setKey(changedKey));
+            assertThat(following.getRunningKey()).isEqualTo(changedKey);
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(following.getRunningKey()).isEqualTo(keyBefore);
+            assertKeyPropagationInvariant(song);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(following.getRunningKey()).isEqualTo(changedKey);
+            assertKeyPropagationInvariant(song);
+        }
+
+        /**
+         * The same guarantee for a key change written mid-line rather than at a line's start —
+         * a different mutation type reaching the same derived state.
+         */
+        @Test
+        void testUndoOfAMidLineKeySignatureInsertionRestoresWhatTheFollowingLineInherits() {
+            var song = songWithNotes(1);
+            var line = song.getLine(0);
+            var following = new Line(song);
+            song.withoutMutationTracking(() -> song.addLine(following));
+
+            var keyBefore = line.getRunningKey();
+            var changedKey = new Key(KeyType.SHARPS, ONE_SHARP);
+            var batch = UndoTestSupport.captureBatch(song, () -> {
+                line.addElement(1, new StaffElement(ElementType.SINGLE_BARLINE));
+                line.addElement(2, new KeySignatureElement(changedKey));
             });
+            assertThat(following.getRunningKey()).isEqualTo(changedKey);
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(following.getRunningKey()).isEqualTo(keyBefore);
+            assertKeyPropagationInvariant(song);
         }
     }
 
@@ -803,11 +861,6 @@ class MutationReplayerRoundTripTest extends UnitTest {
                 new SongScopedMutationCase("metadata tempo change",
                     song -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true))),
                 new SongScopedMutationCase("metadata footnotes change", song -> song.setFootnotes("A footnote")),
-                new SongScopedMutationCase("metadata default key accidental count change",
-                    song -> song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount() + 3)),
-                // The document default is FLATS, so change to a genuinely different type.
-                new SongScopedMutationCase("metadata default key type change",
-                    song -> song.setDefaultKeyType(KeyType.SHARPS)),
                 new SongScopedMutationCase("layout line width change",
                     song -> song.setLineWidthSs(song.getLineWidthSs() + 10.0)),
                 new SongScopedMutationCase("layout row height adjustment change",

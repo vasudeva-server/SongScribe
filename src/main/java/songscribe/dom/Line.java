@@ -27,6 +27,7 @@ import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -34,6 +35,7 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.CrescendoAddition;
@@ -46,7 +48,6 @@ import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
-import songscribe.message.mutation.KeyField;
 import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LineLayoutChange;
 import songscribe.message.mutation.LineLayoutField;
@@ -58,12 +59,19 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 
+/**
+ * One system of the score: an ordered list of staff elements, the spans drawn over them, and the
+ * key that is in effect across them.
+ *
+ * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
+ * actually takes effect at the start of the line; null means the line inherits the key in effect
+ * at the end of the previous line. Line 0 of a song is always non-null — there is nothing before
+ * it to inherit from — and {@link Song} is what maintains that, both when a mutation promotes a
+ * different line to index 0 and when a document is loaded. A line that belongs to no song is
+ * subject to the same rule for the same reason: nothing precedes it, so it must carry its own key
+ * before anything asks what key it is in.
+ */
 public class Line implements LyricRun, SpanLookup {
-
-    private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
-        new int[]{0, 3, 6, 2, 5, 1, 4},
-        new int[]{4, 1, 5, 2, 6, 3, 0},
-    };
 
     private static final String TERMINAL_NOT_REMOVABLE =
         "The auto-maintained terminal may not be removed";
@@ -79,9 +87,24 @@ public class Line implements LyricRun, SpanLookup {
     private final List<Span> spansView = Collections.unmodifiableList(spans);
 
     private final Song song;
-    private int keys = 0;
-    @Nullable
-    private KeyType keyType = null;
+
+    /**
+     * The key this line establishes at its own start, or null when it inherits one.
+     * See the key invariant in this class's Javadoc.
+     */
+    private @Nullable Key key = null;
+
+    /**
+     * The key in effect at the end of the previous line — null on line 0 and on a line that
+     * belongs to no song, non-null on every other line of a song.
+     * <p>
+     * This is state, not a cache: there is no invalidate-and-recompute path, and every mutation
+     * that can change it drives {@link Song}'s propagation instead. It exists so that
+     * {@link #getRunningKey()}, which runs once per note during accidental resolution, is a field
+     * read rather than a walk back to line 0.
+     */
+    private @Nullable Key inheritedKey = null;
+
     private final List<StaffElement> elements = new ArrayList<>();
 
     /**
@@ -164,10 +187,6 @@ public class Line implements LyricRun, SpanLookup {
         return song;
     }
 
-    public int getKeyAccidentalCount() {
-        return keys;
-    }
-
     /**
      * Applies a single mutation, delegating to the parent song's bracket.
      *
@@ -239,32 +258,211 @@ public class Line implements LyricRun, SpanLookup {
         }
     }
 
-    public void setKeyAccidentalCount(int keys) {
-        if (this.keys == keys) {
+    /**
+     * Returns the key this line establishes at its own start.
+     *
+     * @return the key that takes effect at the start of this line, or null when this line
+     *         establishes no key of its own and inherits the key in effect at the end of the
+     *         previous line
+     */
+    public @Nullable Key getKey() {
+        return key;
+    }
+
+    /**
+     * Establishes {@code key} at the start of this line, or clears the line's own key so that it
+     * inherits again.
+     *
+     * <p><b>A no-op change normalizes to null.</b> When {@code key} equals the key this line would
+     * inherit, the line's own key is set to null instead, because a line holds a key only where
+     * one actually changes. Pinning a line to the key it already inherits looks identical — every
+     * header draws its key either way — but it stops inheritance there, so a later change upstream
+     * would silently fail to reach this line or anything past it.
+     *
+     * <p>Records a {@link LineKeyChange} carrying the normalized value, and posts nothing when the
+     * normalized value is the one the line already holds. The key in effect on the lines that
+     * follow is {@link Song}'s to bring up to date, driven by that record.
+     *
+     * @param key the key to establish here, or null to inherit
+     * @throws IllegalStateException if the song has neither an open modification bracket nor
+     *                               suspended tracking
+     */
+    public void setKey(@Nullable Key key) {
+        var normalized = key != null && key.equals(inheritedKey) ? null : key;
+
+        if (Objects.equals(this.key, normalized)) {
             return;
         }
 
-        var old = this.keys;
+        var old = this.key;
         applyChange(
-            new LineKeyChange(this, KeyField.ACCIDENTAL_COUNT, old, keys),
-            () -> this.keys = keys
+            new LineKeyChange(this, old, normalized),
+            () -> this.key = normalized
         );
     }
 
-    public @Nullable KeyType getKeyType() {
-        return keyType;
-    }
+    /**
+     * Returns the key actually in effect at the <em>start</em> of this line: this line's own key
+     * when it has one, and otherwise the key in effect at the end of the previous line, which
+     * accounts for any mid-line key signature that line carried.
+     *
+     * <p>Equals {@link #getKey()} whenever that is non-null.
+     *
+     * @return the key in effect at the start of this line; never null
+     * @throws songscribe.error.RuntimeError if this line establishes no key and has nothing to
+     *                                       inherit from, which the key invariant in this class's
+     *                                       Javadoc forbids
+     */
+    public Key getRunningKey() {
+        var ownKey = key;
 
-    public void setKeyType(@Nullable KeyType keyType) {
-        if (this.keyType == keyType) {
-            return;
+        if (ownKey != null) {
+            return ownKey;
         }
 
-        var old = this.keyType;
-        applyChange(
-            new LineKeyChange(this, KeyField.KEY_TYPE, old, keyType),
-            () -> this.keyType = keyType
-        );
+        var inherited = inheritedKey;
+
+        if (inherited == null) {
+            throw RuntimeError.exit(
+                "line establishes no key and inherits none; the key invariant has been broken"
+            );
+        }
+
+        return inherited;
+    }
+
+    /**
+     * Returns the key in effect at {@code elementIndex} within this line: {@link #getRunningKey()},
+     * overridden by the last {@link KeySignatureElement} at or before that index.
+     *
+     * <p>The bound is <em>inclusive</em>: a key signature at {@code elementIndex} is in effect at
+     * {@code elementIndex}. {@code keyAt(0)} therefore always equals {@link #getRunningKey()},
+     * because index 0 can never hold a key signature — see {@link KeySignatureElement}'s position
+     * invariant.
+     *
+     * <p>The domain is an <em>insertion</em> index, so {@link #elementCount()} is valid and means
+     * the position just past the last element: a caller resolving what an element about to be
+     * appended would be in has an index to ask about. An empty line answers
+     * {@link #getRunningKey()} at its one valid index.
+     *
+     * @param elementIndex the index into this line's elements, {@code 0..}{@link #elementCount()}
+     * @return the key in effect at that index; never null
+     * @throws IndexOutOfBoundsException if {@code elementIndex} is negative or greater than
+     *                                   {@link #elementCount()}
+     */
+    public Key keyAt(int elementIndex) {
+        if (elementIndex < 0 || elementIndex > elements.size()) {
+            throw new IndexOutOfBoundsException(
+                "element index " + elementIndex + " out of bounds for line of " + elements.size()
+            );
+        }
+
+        for (var scanIndex = Math.min(elementIndex, elements.size() - 1); scanIndex > 0; scanIndex--) {
+            if (elements.get(scanIndex) instanceof KeySignatureElement keySignature) {
+                return keySignature.getKey();
+            }
+        }
+
+        return getRunningKey();
+    }
+
+    /**
+     * Returns the key in effect after this line's last element — the key the next line inherits.
+     *
+     * <p>Prefer this to {@code keyAt(elementCount() - 1)}, which is the same answer on a line with
+     * elements and an {@link IndexOutOfBoundsException} on one without.
+     *
+     * @return the key in effect at the end of this line, which is {@link #getRunningKey()} when
+     *         the line is empty; never null
+     */
+    public Key keyAtEndOfLine() {
+        var lastKeySignatureKey = lastKeySignatureKey();
+
+        return lastKeySignatureKey != null ? lastKeySignatureKey : getRunningKey();
+    }
+
+    /**
+     * Returns the key the last {@link KeySignatureElement} on this line establishes.
+     *
+     * <p>Null says the line changes key nowhere along its length, so the key it leaves off in is
+     * whatever it started in. That distinction is what a caller projecting an edit needs and
+     * {@link #keyAtEndOfLine()} cannot give: under a <em>hypothetical</em> running key, a line with
+     * a mid-line change still ends in that change's key, and a line without one ends in the
+     * hypothetical.
+     *
+     * @return the last mid-line key change's key, or null when this line holds no key signature
+     */
+    public @Nullable Key lastKeySignatureKey() {
+        for (var scanIndex = elements.size() - 1; scanIndex > 0; scanIndex--) {
+            if (elements.get(scanIndex) instanceof KeySignatureElement keySignature) {
+                return keySignature.getKey();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the key the following line begins in — the key a cautionary key signature at the end
+     * of this line warns the performer about. Paired with {@link #keyAtEndOfLine()} it is the whole
+     * input to {@link KeyChange}: what the cautionary draws, and how much room layout reserves for
+     * it, both come from that pair.
+     *
+     * <p>Null is the "there is nothing to warn about" answer, and a caller that has one has nothing
+     * further to decide: no cautionary is drawn and none is reserved for.
+     *
+     * @return the following line's {@link #getRunningKey()}, or null when this line is the song's
+     *         last line or is not one of the song's lines at all — a detached line, or one being
+     *         measured before it is added
+     */
+    public @Nullable Key nextLineRunningKey() {
+        var lineIndex = song.indexOfLine(this);
+
+        if (lineIndex < 0 || lineIndex + 1 >= song.lineCount()) {
+            return null;
+        }
+
+        return song.getLine(lineIndex + 1).getRunningKey();
+    }
+
+    /**
+     * @return the key in effect at the end of the previous line, or null when nothing precedes
+     *         this line
+     */
+    @Nullable
+    Key getInheritedKey() {
+        return inheritedKey;
+    }
+
+    /**
+     * Records the key in effect at the end of the previous line. Derived state, written only by
+     * {@link Song}'s propagation and never recorded as a mutation — see the field's own note.
+     *
+     * @param inheritedKey the key in effect at the end of the previous line, or null when nothing
+     *                     precedes this line
+     */
+    void setInheritedKey(@Nullable Key inheritedKey) {
+        this.inheritedKey = inheritedKey;
+    }
+
+    /**
+     * @return the type of the key in effect at the start of this line
+     * @deprecated replaced by {@link #getKey()} and {@link #getRunningKey()}; removed in the phase
+     *             that removes the last consumer.
+     */
+    @Deprecated
+    public KeyType getKeyType() {
+        return getRunningKey().keyType();
+    }
+
+    /**
+     * @return the number of accidentals in the key in effect at the start of this line
+     * @deprecated replaced by {@link #getKey()} and {@link #getRunningKey()}; removed in the phase
+     *             that removes the last consumer.
+     */
+    @Deprecated
+    public int getKeyAccidentalCount() {
+        return getRunningKey().accidentalCount();
     }
 
     // ========================================================================
@@ -781,22 +979,6 @@ public class Line implements LyricRun, SpanLookup {
      */
     public DeleteBounds effectiveDeleteRange(int begin, int end) {
         return new DeleteBounds(effectiveDeleteBegin(begin), effectiveDeleteEnd(end));
-    }
-
-    /**
-     * @param pitchType 0 for B, 1 for C, 2 for D, ..., 6 for A
-     * @return true if there is a leading key for that pitch type
-     */
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    public boolean keyExists(int pitchType) {
-        if (keyType == null) {
-            return false;
-        }
-
-        var nonNullKeyType = keyType;
-        return IntStream.range(0, keys).anyMatch(
-            i -> FLAT_SHARP_ORDINAL[nonNullKeyType.ordinal() - 1][i] == pitchType
-        );
     }
 
     public double getLyricsYPosSs() {

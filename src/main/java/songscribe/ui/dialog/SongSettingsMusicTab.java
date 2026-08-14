@@ -21,13 +21,9 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import com.formdev.flatlaf.FlatClientProperties;
-
 import songscribe.Strings;
 import songscribe.dom.Duration;
 import songscribe.dom.ScaleContext;
-import songscribe.dom.Song;
-import songscribe.error.RuntimeError;
 import songscribe.layout.PageModel;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -36,19 +32,19 @@ import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MyJTextField;
-import songscribe.ui.dialog.SongSettingsDialog.KeySelection;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
 
 /**
- * The {@link SongSettingsDialog} Music tab: the song's tempo, default key
- * signature, and line width.
+ * The {@link SongSettingsDialog} Music tab: the song's tempo and line width.
+ *
+ * <p>There is no key signature here. A song has no key of its own — its key is line 0's — so a key
+ * is changed on the score, at the line it takes effect on.
  */
 final class SongSettingsMusicTab extends BaseDialog.Tab {
 
     private static final int LINE_WIDTH_FIELD_COLUMNS = 6;
-    private static final int KEY_COMBO_VISIBLE_ROWS = 7;
 
     private final SongSettingsDialog dialog;
 
@@ -56,10 +52,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
         Duration.values(),
         Strings.get(Strings.DIALOG_SONG_SETTINGS_SHOW_ONLY_DESCRIPTION),
         "tempos"
-    );
-
-    private final JComboBox<KeySelection> keyCombo = new JComboBox<>(
-        SongSettingsKeyCellRenderer.SELECTIONS.toArray(new KeySelection[0])
     );
 
     private final MyJTextField lineWidthField = new MyJTextField(LINE_WIDTH_FIELD_COLUMNS);
@@ -75,19 +67,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC));
         this.dialog = dialog;
 
-        keyCombo.setRenderer(new SongSettingsKeyCellRenderer());
-        keyCombo.setMaximumRowCount(KEY_COMBO_VISIBLE_ROWS);
-
-        // Key signature is always drawn in a light mode to match the score
-        keyCombo.setOpaque(true);
-        keyCombo.putClientProperty(
-            FlatClientProperties.STYLE,
-            "popupBackground: #FFFFFF; " +
-                "foreground: #000000; " +
-                "background: #FFFFFF; " +
-                "editableBackground: #FFFFFF"
-        );
-
         InputUtils.addDecimalFilter(lineWidthField);
         lineWidthField.setInputVerifier(new LineWidthVerifier());
 
@@ -97,8 +76,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     @Override
     protected void initContents() {
         add(createTempoSection(), constraints);
-        BaseDialog.addSectionSeparator(this);
-        add(createKeySignatureSection());
         BaseDialog.addSectionSeparator(this);
         add(createLineWidthSection());
     }
@@ -110,19 +87,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
 
         // Don't let the section grow vertically
         section.add(tempoSection);
-        UIUtils.setFlexibleWidth(section);
-        return section;
-    }
-
-    private JPanel createKeySignatureSection() {
-        var section = new BaseDialog.TitledSection(
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_KEY_SIGNATURE)
-        );
-        keyCombo.setMaximumSize(keyCombo.getPreferredSize());
-        keyCombo.setAlignmentX(Component.LEFT_ALIGNMENT);
-        section.add(keyCombo);
-
-        // Don't let the section grow vertically
         UIUtils.setFlexibleWidth(section);
         return section;
     }
@@ -153,7 +117,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     protected boolean getData() {
         var song = dialog.getSong();
         tempoSection.setTempo(song.getTempo());
-        setKeyComboFromSong(song);
         revertLineWidthField();
         return true;
     }
@@ -166,8 +129,7 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
             tempoSection.getTempoType(),
             tempoSection.getVisibleTempo(),
             tempoSection.getTempoDescription(),
-            !tempoSection.isShowOnlyDescription(),
-            getKeyTypeAndCountFromCombo()
+            !tempoSection.isShowOnlyDescription()
         );
 
         dialog.requireScoreView().updatePageLayout(getPendingLineWidthSs());
@@ -184,20 +146,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
      */
     MyJTextField getLineWidthField() {
         return lineWidthField;
-    }
-
-    private void setKeyComboFromSong(Song song) {
-        keyCombo.setSelectedItem(SongSettingsDialog.canonicalKeySelectionFrom(song));
-    }
-
-    private KeySelection getKeyTypeAndCountFromCombo() {
-        var selected = (KeySelection) keyCombo.getSelectedItem();
-
-        if (selected == null) {
-            throw RuntimeError.exit("Key combo has no selection");
-        }
-
-        return selected;
     }
 
     private void revertLineWidthField() {

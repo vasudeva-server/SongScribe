@@ -253,6 +253,13 @@ public abstract class BaseDialog {
         registerTab(tab);
     }
 
+    /**
+     * The undo op the current commit performs, so each subclass can name itself
+     * (e.g. {@code Add Tempo Change} / {@code Change Tempo Change} /
+     * {@code Remove Tempo Change}).
+     */
+    protected enum DialogOp { ADD, EDIT, REMOVE }
+
     /** Where a show should land: which tab to select, and what to put the caret in. */
     private record ShowRequest(int tabIndex, @Nullable JComponent focus) {}
 

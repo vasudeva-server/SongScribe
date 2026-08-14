@@ -39,6 +39,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
@@ -285,8 +286,7 @@ class AccidentalReconciliationTest extends UnitTest {
             // The cross-key paste: the B sounded unaltered in its source, and one flat in the
             // destination signature alters it. You cannot write "nothing" and get a natural.
             var line = lineOf(note(G_STAFF_POSITION));
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(ONE_FLAT);
+            line.setKey(new Key(KeyType.FLATS, ONE_FLAT));
             var pastedB = note(B_STAFF_POSITION);
 
             var accidentalChanges = AccidentalReconciliation.reconcile(
@@ -489,8 +489,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var line = lineOf(
                 note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL), note(G_STAFF_POSITION),
                 note(F_STAFF_POSITION, StaffElement.Accidental.SHARP));
-            line.setKeyType(KeyType.SHARPS);
-            line.setKeyAccidentalCount(ONE_SHARP);
+            line.setKey(new Key(KeyType.SHARPS, ONE_SHARP));
 
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
                 line, toggle(FIRST_NOTE, null, F_STAFF_POSITION));
@@ -779,8 +778,7 @@ class AccidentalReconciliationTest extends UnitTest {
 
         private static Line flatKeyLine(StaffElement... elements) {
             var line = lineOf(elements);
-            line.setKeyType(KeyType.FLATS);
-            line.setKeyAccidentalCount(FIVE_FLATS);
+            line.setKey(new Key(KeyType.FLATS, FIVE_FLATS));
             return line;
         }
 

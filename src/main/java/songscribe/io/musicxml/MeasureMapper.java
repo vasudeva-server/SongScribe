@@ -51,6 +51,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -59,6 +60,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.io.DocumentValidation;
 
 /**
  * Maps the first {@code <part>} of an unmarshalled {@code <score-partwise>} onto the
@@ -70,10 +72,21 @@ import songscribe.dom.Tuplet;
  * <p><b>Shape.</b> One structural walk, then one resolution pass per mark that pairs two
  * positions — the read-side mirror of {@code ScorePartwiseBuilder}'s adjustment passes.
  * The walk builds only what a single child settles on its own: it starts a line at each
- * new-system marker, advances the key signature, appends an element per barline and calls
+ * new-system marker, applies each {@code <key>}, appends an element per barline and calls
  * {@link NoteMapper} per note. What each child produced is recorded in its
  * {@link ChildSite}, so a pass can ask where an element sits in the document without
  * re-deriving it.
+ *
+ * <p><b>Where a {@code <key>} lands</b> is decided by the measure it sits in: the measure that
+ * opened the current line establishes that line's own {@link Line#setKey key}, and any other
+ * measure appends a {@link KeySignatureElement} at the current position. Nothing carries a
+ * running key forward — a line the file gave no {@code <key>} inherits, which is what
+ * {@code Song.rebuildInheritedKeysAfterParsing} settles once the walk is done.
+ *
+ * <p><b>Two children of {@code <key>} are deliberately not read.</b> {@code <cancel>} is derived
+ * from the key change itself by {@code songscribe.dom.KeyChange}, so a document renders under this
+ * program's cancellation policy rather than under whichever one wrote it; {@code <mode>} is never
+ * read because no SongScribe key has a mode and only this program's own files reach a mapper.
  *
  * <p>The passes then run over the finished sites. A mark whose two ends are different
  * positions — a beam, a tie, a tuplet bracket, a trill, a glissando, a hairpin, a volta —
@@ -189,15 +202,11 @@ final class MeasureMapper {
     @Nullable
     private Line currentLine = null;
 
-    // The signed-fifths key signature currently in effect. Measure 1 seeds it from
-    // the song default; a later line's <key> advances it. It is applied to each new
-    // line so a key persists across lines until restated — mirroring the writer,
-    // which emits a <key> only when a line's key differs from this running value.
-    private int runningFifths = 0;
-
-    // True once the measure-1 <key> has set the song default and seeded
-    // runningFifths, distinguishing the song-default key from a per-line change.
-    private boolean songDefaultKeySet = false;
+    // The measure index at which the current line started, or -1 before any line has. A <key>
+    // in that measure establishes the line's own key; a <key> in any other measure is a mid-line
+    // change. No running key is carried: a line the file gave no <key> establishes none, so it
+    // inherits, which is what Song.rebuildInheritedKeysAfterParsing settles once the walk is over.
+    private int lineStartMeasureIndex = -1;
 
     // True once any note's <accidental> token was a retired legacy token converted
     // to its replacement; carried into SongLoadResult.Success by the caller.
@@ -217,7 +226,9 @@ final class MeasureMapper {
      * @return true when any note's {@code <accidental>} was a retired legacy token
      *         converted to its replacement
      * @throws SAXException if the document is corrupt (a tuplet with no valid span,
-     *                      a note before any line has been started)
+     *                      a note before any line has been started, a {@code <fifths>} no key
+     *                      signature can hold, or a mid-measure {@code <key>} with no barline
+     *                      before it)
      */
     static boolean map(ScorePartwise score, Song song) throws SAXException {
         var mapper = new MeasureMapper(song);
@@ -284,10 +295,10 @@ final class MeasureMapper {
 
             if (child instanceof Print print) {
                 if (ProxyMusicAccess.startsNewSystem(print)) {
-                    startNewLine();
+                    startNewLine(site.measureIndex);
                 }
             } else if (child instanceof Attributes attributes) {
-                mapAttributes(attributes);
+                mapAttributes(attributes, site.measureIndex);
             } else if (child instanceof Barline barline) {
                 walkBarline(site, barline);
             } else if (child instanceof Note pmNote) {
@@ -307,21 +318,18 @@ final class MeasureMapper {
     /**
      * Commits the line that just ended and starts the next one detached from the
      * song. The new line is not added until it, too, is complete.
+     *
+     * <p>The new line establishes no key of its own. A MusicXML key persists until restated, and
+     * that is what {@link Line}'s inheritance already means, so a line the file gave no
+     * {@code <key>} is left inheriting rather than pinned to a carried-forward value. Pinning it
+     * would look identical and round-trip, and would then stop a later edit to an earlier line's
+     * key from reaching it.
      */
-    private void startNewLine() {
+    private void startNewLine(int measureIndex) {
         commitCurrentLine();
 
-        var line = new Line(song);
-        currentLine = line;
-
-        // A key signature persists until restated. For every line after the first,
-        // seed the new line with the running key so lines that keep it (the writer
-        // emits no <key> for them) still round-trip; a <key> in this line's first
-        // measure overrides it. The first line is skipped: its key is the song
-        // default, materialized when the line is added.
-        if (songDefaultKeySet) {
-            applyFifthsToLine(line, runningFifths);
-        }
+        currentLine = new Line(song);
+        lineStartMeasureIndex = measureIndex;
     }
 
     private void commitCurrentLine() {
@@ -330,44 +338,87 @@ final class MeasureMapper {
         }
     }
 
-    private void mapAttributes(Attributes attributes) {
+    private void mapAttributes(Attributes attributes, int measureIndex) throws SAXException {
         for (var key : attributes.getKey()) {
             var fifths = ProxyMusicAccess.keyFifths(key);
 
             if (fifths != null) {
-                applyFifths(fifths);
+                applyFifths(fifths, measureIndex);
             }
         }
+
+        // <cancel> is deliberately not read. Which accidentals a key change cancels is derived
+        // from the change itself by songscribe.dom.KeyChange, so a document is rendered under
+        // this program's cancellation policy rather than under whichever one wrote the file.
+        // <mode> is likewise not read: no SongScribe key has a mode, and only files this program
+        // wrote get past the provenance gate, so an incoming <mode> is always the "major" this
+        // writer emitted.
     }
 
     /**
-     * Applies a {@code <key>}: measure 1's key is the song default and seeds the
-     * running key; every later one is a per-line key change.
+     * Applies one {@code <key>}, at the position the document puts it.
+     *
+     * <p>A {@code <key>} in the measure that opened the current line establishes that
+     * <em>line's</em> key. Measure 1 is not a special case: a song has no key of its own, so the
+     * key measure 1 names is the first line's key exactly as any later one is its own line's.
+     *
+     * <p>A {@code <key>} in any other measure is a mid-line change and appends a
+     * {@link KeySignatureElement} at the current position, so only the notes <em>after</em> it are
+     * re-spelled. Applying it to the whole line instead is what made a document with a mid-system
+     * key change load wrong.
+     *
+     * <p>A {@code <key>} before any line has started is ignored, matching how this reader treats
+     * every other child that arrives before its {@code <print new-system>}.
+     *
+     * @throws SAXException if a mid-measure {@code <key>} is not immediately preceded by a barline
+     *                      or repeat element, or if {@code fifths} is out of range
      */
-    private void applyFifths(int fifths) {
-        if (songDefaultKeySet) {
-            runningFifths = fifths;
-            var line = currentLine;
+    private void applyFifths(int fifths, int measureIndex) throws SAXException {
+        var line = currentLine;
 
-            if (line != null) {
-                applyFifthsToLine(line, fifths);
-            }
-
+        if (line == null) {
             return;
         }
 
-        // Line 1 itself is materialized from the default when it is added, so it is
-        // not set here.
-        song.setDefaultKeyAccidentalCount(KeySignatureMapping.accidentalCount(fifths));
-        song.setDefaultKeyType(KeySignatureMapping.keyType(fifths));
-        runningFifths = fifths;
-        songDefaultKeySet = true;
+        var key = KeySignatureMapping.toKey(fifths);
+
+        if (measureIndex == lineStartMeasureIndex) {
+            line.setKey(key);
+            return;
+        }
+
+        requireKeySignaturePosition(line);
+        line.addElement(new KeySignatureElement(key));
     }
 
-    /** Applies a signed-fifths key signature to {@code line} — the writer's inverse. */
-    private static void applyFifthsToLine(Line line, int fifths) {
-        line.setKeyType(KeySignatureMapping.keyType(fifths));
-        line.setKeyAccidentalCount(KeySignatureMapping.accidentalCount(fifths));
+    /**
+     * Enforces {@link KeySignatureElement}'s position invariant on the way in.
+     *
+     * <p>The writer opens the measure a mid-line key change sits in with that change's barline, so
+     * a mid-measure {@code <key>} with no barline before it describes a model this program cannot
+     * build. Nothing downstream would notice: the deletion pairing and the editing UI both read
+     * the invariant rather than re-checking it, so the document would simply load
+     * invariant-violating and misbehave later, with no error and no visible symptom.
+     *
+     * @throws SAXException if {@code line} is empty, or its last element is neither a barline nor
+     *                      a repeat
+     */
+    private static void requireKeySignaturePosition(Line line) throws SAXException {
+        var elementCount = line.elementCount();
+
+        if (elementCount == 0) {
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: mid-measure <key> is not preceded by a barline; the line is empty");
+        }
+
+        var previousType = line.getElement(elementCount - 1).getType();
+
+        if (!previousType.isBarLine() && !previousType.isRepeat()) {
+            throw DocumentValidation.corrupt(
+                LOG,
+                "Corrupt document: mid-measure <key> is not preceded by a barline; preceded by {}",
+                previousType);
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -483,17 +534,26 @@ final class MeasureMapper {
      * @throws SAXException if no line has been started yet
      */
     private StaffElement appendToCurrentLine(ElementType elementType) throws SAXException {
-        var line = requireCurrentLine("Barline element encountered before any line was started");
+        var line = requireCurrentLine("barline element");
         var element = elementType.newInstance();
         line.addElement(element);
         return element;
     }
 
-    private Line requireCurrentLine(String message) throws SAXException {
+    /**
+     * Returns the line being built, for a child that cannot be mapped without one.
+     *
+     * @param construct the document construct being mapped, named as a reader would recognize it
+     *                  in the file — it is what the diagnostic reports as having arrived too early
+     * @return the current line; never null
+     * @throws SAXException if no line has been started yet
+     */
+    private Line requireCurrentLine(String construct) throws SAXException {
         var line = currentLine;
 
         if (line == null) {
-            throw new SAXException(message);
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: {} encountered before any line was started", construct);
         }
 
         return line;
@@ -504,7 +564,7 @@ final class MeasureMapper {
     // -------------------------------------------------------------------------
 
     private void walkNote(ChildSite site, Note pmNote) throws SAXException {
-        var line = requireCurrentLine("<note> encountered before any line was started");
+        var line = requireCurrentLine("<note>");
         var mapped = NoteMapper.map(pmNote, line);
         var element = mapped.element();
 
@@ -1199,7 +1259,8 @@ final class MeasureMapper {
             }
 
             if (open == null) {
-                throw new SAXException("Corrupt document: <tuplet type=\"stop\"> with no matching start");
+                throw DocumentValidation.corrupt(
+                    LOG, "Corrupt document: <tuplet type=\"stop\"> with no matching start");
             }
 
             buildTuplet(open, note);
@@ -1211,7 +1272,8 @@ final class MeasureMapper {
 
     private static void requireNoOpenTuplet(@Nullable OpenTuplet open) throws SAXException {
         if (open != null) {
-            throw new SAXException("Corrupt document: dangling <tuplet type=\"start\"> with no matching stop");
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: dangling <tuplet type=\"start\"> with no matching stop");
         }
     }
 
@@ -1229,7 +1291,8 @@ final class MeasureMapper {
         }
 
         if (!tuplet.hasValidSpan(line)) {
-            throw new SAXException("Corrupt document: tuplet does not span at least two non-rest notes");
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: tuplet does not span at least two non-rest notes");
         }
 
         if (marker.verticalPositionSs() != 0) {

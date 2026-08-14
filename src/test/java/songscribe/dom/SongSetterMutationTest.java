@@ -193,7 +193,7 @@ class SongSetterMutationTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class TempoAndKeyMetadataSetters {
+    class TempoMetadataSetters {
 
         @Test
         void testSetTempoPostsMutation() {
@@ -265,41 +265,9 @@ class SongSetterMutationTest extends UnitTest {
                 .isSameAs(existingTempo);
         }
 
-        @Test
-        void testSetDefaultKeyAccidentalCountPostsMutation() {
-            var oldCount = song.getDefaultKeyAccidentalCount();
-            song.setDefaultKeyAccidentalCount(oldCount - 1);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.DEFAULT_KEY_ACCIDENTAL_COUNT);
-            assertThat(mutation.oldValue()).isEqualTo(oldCount);
-            assertThat(mutation.newValue()).isEqualTo(oldCount - 1);
-        }
-
-        @Test
-        void testSetDefaultKeyAccidentalCountSameValuePostsNothing() {
-            song.setDefaultKeyAccidentalCount(song.getDefaultKeyAccidentalCount());
-            verifyNoNotificationPosted();
-        }
-
-        @Test
-        void testSetDefaultKeyTypePostsMutation() {
-            var oldKeyType = song.getDefaultKeyType();
-            var newKeyType = oldKeyType == KeyType.FLATS ? KeyType.SHARPS : KeyType.FLATS;
-
-            song.setDefaultKeyType(newKeyType);
-
-            var mutation = captureSingleMetadataChange();
-            assertThat(mutation.field()).isEqualTo(MetadataField.DEFAULT_KEY_TYPE);
-            assertThat(mutation.oldValue()).isEqualTo(oldKeyType);
-            assertThat(mutation.newValue()).isEqualTo(newKeyType);
-        }
-
-        @Test
-        void testSetDefaultKeyTypeSameValuePostsNothing() {
-            song.setDefaultKeyType(song.getDefaultKeyType());
-            verifyNoNotificationPosted();
-        }
+        // The song-wide key setters are gone: a song has no key of its own, so there is no
+        // metadata field for one. A key change is a Line edit, recorded as a LineKeyChange and
+        // tested in LineMutationTest.
     }
 
     // -----------------------------------------------------------------------

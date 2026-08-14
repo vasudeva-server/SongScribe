@@ -116,10 +116,10 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     }
 
     @Override
-    protected String opLabel(AttachmentOp op) {
+    protected String opLabel(DialogOp op) {
         return Strings.get(switch (op) {
             case ADD -> Strings.ACTION_EDIT_OP_ADD_ANNOTATION;
-            case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION;
+            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION;
             case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION;
         });
     }

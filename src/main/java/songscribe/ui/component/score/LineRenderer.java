@@ -487,34 +487,38 @@ class LineRenderer {
     }
 
     /**
-     * Renders key signature changes at the end of a line.
+     * Renders the cautionary key change at the end of a line — the warning to the performer
+     * that the next line starts in a different key.
      * <p>
-     * When the next line has a different key signature, this renders
-     * naturals (if needed) and the new key signature at the end of
-     * the current line as a warning to the performer.
+     * The two keys compared are the <em>running</em> keys, not the lines' own keys: the key
+     * this line leaves off in ({@link Line#keyAtEndOfLine()}, which accounts for a key
+     * signature part-way through it) against the key the next line begins in
+     * ({@link Line#nextLineRunningKey()}, which resolves an inherited key). Comparing the lines'
+     * own keys would miss a mid-line change and would report a change on every line that
+     * merely inherits.
+     * <p>
+     * The last line has no next line to warn about, so nothing is drawn there — the same null
+     * answer {@code HorizontalSpacingCalculator.trailingReservationSs} reserves nothing for, so
+     * what is drawn and what layout kept clear for it are decided from one source.
      * Package-private for testing.
      *
      * @param g2  Graphics context
      * @param invariants Line invariants
      */
     void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
-        var song = invariants.getSong();
-        var lineIndex = invariants.getLineIndex();
+        var line = invariants.requireCurrentLine();
+        var nextRunningKey = line.nextLineRunningKey();
 
-        // Only render if there's a next line
-        if (lineIndex + 1 >= song.lineCount()) {
+        if (nextRunningKey == null) {
             return;
         }
 
-        var line = invariants.requireCurrentLine();
-        var nextLine = song.getLine(lineIndex + 1);
-
-        // Delegate to KeySignatureRenderer
+        // Delegate to KeySignatureRenderer, which draws nothing when the keys match.
         KeySignatureRenderer.getInstance().renderKeyChange(
             g2,
-            line,
-            nextLine,
-            song.getLineWidthSs(),
+            line.keyAtEndOfLine(),
+            nextRunningKey,
+            invariants.getSong().getLineWidthSs(),
             invariants
         );
     }

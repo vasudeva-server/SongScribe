@@ -24,6 +24,7 @@ import java.text.AttributedString;
 import java.util.Map;
 
 import songscribe.Strings;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.RenderingUtils;
@@ -52,7 +53,16 @@ public final class KeySignatureDisplay {
 
     private KeySignatureDisplay() {}
 
-    public static AttributedString getDisplayName(KeyType keyType, int count) {
+    /**
+     * Returns the key's display name, e.g. {@code "D" + SHARP_GLYPH + " major · 2 sharps"}.
+     *
+     * @param key the key to name
+     * @return an {@link AttributedString} with the tonic's accidental, if any, rendered in the
+     *         music font and the rest in the UI label font
+     */
+    public static AttributedString getDisplayName(Key key) {
+        var keyType = key.keyType();
+        var count = key.accidentalCount();
         var tonic = tonicFor(keyType, count);
         var suffix = suffixFor(keyType, count);
         var full = tonic + suffix;

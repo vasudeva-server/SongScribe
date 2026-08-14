@@ -30,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -41,7 +42,6 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -52,23 +52,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link SongSettingsDialog}'s package-private static helpers,
  * which carry the dialog's pure logic so it stays directly testable even though
  * the tabs that drive them are Swing-bound private inner classes:
- * {@code extractLyricsTitle}, {@code validateLineWidthText},
- * {@code canonicalKeySelectionFrom}, and {@code applyMusicTabChanges}.
+ * {@code extractLyricsTitle}, {@code validateLineWidthText}, and
+ * {@code applyMusicTabChanges}.
  *
  * <p>Everything here is a pure test of a static helper, so this class deliberately extends
  * {@link UnitTest} and builds no dialog: {@link SongSettingsDialogShowTest} and
  * {@link SongSettingsDialogValidationTest} are where an assembled dialog — and the mocked
  * {@code MainFrame} singleton it needs — belong.
- *
- * <p>Row 19: {@link SongSettingsKeyCellRenderer#SELECTIONS} — 15
- * entries in canonical order — is fully covered below.
  *
  * <p>The title field's empty-value guard (a {@link songscribe.ui.component.NonEmptyGuard}
  * installed by {@code TitleTab}) is not re-tested here; its blank/non-blank
@@ -227,87 +223,12 @@ class SongSettingsDialogTest extends UnitTest {
         }
     }
 
-    // ── canonicalKeySelectionFrom — (any, 0) → (FLATS, 0) canonicalization ──
-
-    @Nested
-    class CanonicalKeySelectionFrom {
-
-        private static final int SHARP_COUNT = 3;
-        private static final int FLAT_COUNT = 2;
-
-        @Test
-        void testZeroAccidentalsCanonicalizesToFlatsZero() {
-            // When accidental count is 0, the canonical type is always FLATS.
-            var song = new Song();
-            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.FLATS, 0));
-
-            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
-
-            assertThat(selection.keyType())
-                .as("zero accidentals always maps to FLATS canonical type")
-                .isEqualTo(KeyType.FLATS);
-            assertThat(selection.count())
-                .as("accidental count is preserved as 0")
-                .isEqualTo(0);
-        }
-
-        @Test
-        void testZeroSharpsAlsoCanonicalizesToFlatsZero() {
-            // The combo has no "(SHARPS, 0)" entry, only "(FLATS, 0)", so a
-            // (SHARPS, 0) song key must canonicalize to FLATS.
-            var song = new Song();
-            song.setDefaultKeyType(KeyType.SHARPS);
-            song.setDefaultKeyAccidentalCount(0);
-
-            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
-
-            assertThat(selection.keyType())
-                .as("(SHARPS, 0) canonicalizes to FLATS type")
-                .isEqualTo(KeyType.FLATS);
-            assertThat(selection.count())
-                .as("accidental count is still 0")
-                .isEqualTo(0);
-        }
-
-        @Test
-        void testNonZeroAccidentalCountPreservesKeyType() {
-            var song = new Song();
-            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.SHARPS, SHARP_COUNT));
-
-            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
-
-            assertThat(selection.keyType())
-                .as("non-zero sharp count preserves SHARPS key type")
-                .isEqualTo(KeyType.SHARPS);
-            assertThat(selection.count())
-                .as("accidental count is preserved")
-                .isEqualTo(SHARP_COUNT);
-        }
-
-        @Test
-        void testNonZeroFlatCountPreservesKeyType() {
-            var song = new Song();
-            song.keySignatureDidChange(new KeySignatureDidChangeNotification(null, KeyType.FLATS, FLAT_COUNT));
-
-            var selection = SongSettingsDialog.canonicalKeySelectionFrom(song);
-
-            assertThat(selection.keyType())
-                .as("non-zero flat count preserves FLATS key type")
-                .isEqualTo(KeyType.FLATS);
-            assertThat(selection.count())
-                .as("accidental count is preserved")
-                .isEqualTo(FLAT_COUNT);
-        }
-    }
-
     // ── applyMusicTabChanges — change-detection and notification posting ──
 
     @Nested
     class ApplyMusicTabChanges {
 
         private static final int VISIBLE_TEMPO_DELTA = 20;
-        private static final int SHARPS_COUNT = 2;
-        private static final int EXPECTED_POST_COUNT = 2;
         private static final int NO_POSTS = 0;
         private static final int ONE_POST = 1;
 
@@ -329,7 +250,7 @@ class SongSettingsDialogTest extends UnitTest {
         @Test
         void testNoChangePostsNoMessage() {
             // Opening Song Settings and confirming it untouched must not dirty the document:
-            // every submitted value already matches the song, so neither notification is due.
+            // every submitted value already matches the song, so no notification is due.
             var tempo = song.getTempo();
 
             SongSettingsDialog.applyMusicTabChanges(
@@ -337,91 +258,38 @@ class SongSettingsDialogTest extends UnitTest {
                 tempo.getTempoType(),
                 tempo.getVisibleTempo(),
                 tempo.getTempoDescription(),
-                tempo.shouldShowTempo(),
-                SongSettingsDialog.canonicalKeySelectionFrom(song)
+                tempo.shouldShowTempo()
             );
 
             messageCenterMock.verify(() -> MessageCenter.post(any()), times(NO_POSTS));
         }
 
         @Test
-        void testTempoOnlyChangePostsOnlyTheTempoNotification() {
-            // Each notification is gated on its own value-changed check, so editing the tempo
-            // alone must not also announce a key-signature change the user never made.
-            var tempo = song.getTempo();
-
-            SongSettingsDialog.applyMusicTabChanges(
-                song,
-                tempo.getTempoType(),
-                tempo.getVisibleTempo() + VISIBLE_TEMPO_DELTA,
-                tempo.getTempoDescription(),
-                tempo.shouldShowTempo(),
-                SongSettingsDialog.canonicalKeySelectionFrom(song)
-            );
-
-            messageCenterMock.verify(
-                () -> MessageCenter.post(any(TempoDidChangeNotification.class)), times(ONE_POST));
-            messageCenterMock.verify(
-                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
-                times(NO_POSTS));
-        }
-
-        @Test
-        void testKeyOnlyChangePostsOnlyTheKeyNotification() {
-            // The mirror of the test above: changing the key alone must not announce a tempo
-            // change, which would record a spurious undo step for a tempo nobody edited.
-            var tempo = song.getTempo();
-
-            SongSettingsDialog.applyMusicTabChanges(
-                song,
-                tempo.getTempoType(),
-                tempo.getVisibleTempo(),
-                tempo.getTempoDescription(),
-                tempo.shouldShowTempo(),
-                new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT)
-            );
-
-            messageCenterMock.verify(
-                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
-                times(ONE_POST));
-            messageCenterMock.verify(
-                () -> MessageCenter.post(any(TempoDidChangeNotification.class)), times(NO_POSTS));
-        }
-
-        @Test
-        void testBothChangedPostsBothNotificationsCarryingTheSubmittedValues() {
+        void testTempoChangePostsTheNotificationCarryingTheSubmittedValues() {
             var tempo = song.getTempo();
             var newVisibleTempo = tempo.getVisibleTempo() + VISIBLE_TEMPO_DELTA;
-            var newKey = new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT);
 
             SongSettingsDialog.applyMusicTabChanges(
                 song,
                 tempo.getTempoType(),
                 newVisibleTempo,
                 tempo.getTempoDescription(),
-                tempo.shouldShowTempo(),
-                newKey
+                tempo.shouldShowTempo()
             );
 
             var messageCaptor = ArgumentCaptor.forClass(Message.class);
             messageCenterMock.verify(
                 () -> MessageCenter.post(messageCaptor.capture()),
-                times(EXPECTED_POST_COUNT)
+                times(ONE_POST)
             );
 
             var tempoNotifications = messageCaptor.getAllValues().stream()
                 .filter(TempoDidChangeNotification.class::isInstance)
                 .map(TempoDidChangeNotification.class::cast)
                 .toList();
-            var keyNotifications = messageCaptor.getAllValues().stream()
-                .filter(KeySignatureDidChangeNotification.class::isInstance)
-                .toList();
 
             assertThat(tempoNotifications)
                 .as("exactly one TempoDidChangeNotification was posted")
-                .hasSize(1);
-            assertThat(keyNotifications)
-                .as("exactly one KeySignatureDidChangeNotification was posted")
                 .hasSize(1);
 
             var tempoNotification = tempoNotifications.get(0);
@@ -558,67 +426,6 @@ class SongSettingsDialogTest extends UnitTest {
             assertThat(SongSettingsDateInputRow.dayEnabled(false, 0))
                 .as("day disabled when year invalid and month 0")
                 .isFalse();
-        }
-    }
-
-    // ── Row 19: KeyCellRenderer.SELECTIONS — 15 entries, canonical order ──
-
-    @Nested
-    class KeyCellRendererSelections {
-
-        private static final int EXPECTED_SELECTION_COUNT = 15;
-        private static final int MAX_ACCIDENTALS = 7;
-
-        @Test
-        void testSelectionsHasExactly15Entries() {
-            assertThat(SongSettingsKeyCellRenderer.SELECTIONS)
-                .as("1 no-accidentals + 7 flats + 7 sharps = 15 entries")
-                .hasSize(EXPECTED_SELECTION_COUNT);
-        }
-
-        @Test
-        void testFirstEntryIsNoAccidentals() {
-            var first = SongSettingsKeyCellRenderer.SELECTIONS.getFirst();
-
-            assertThat(first.keyType())
-                .as("first entry has FLATS type (canonical no-accidentals)")
-                .isEqualTo(KeyType.FLATS);
-            assertThat(first.count())
-                .as("first entry has 0 accidentals")
-                .isEqualTo(0);
-        }
-
-        @Test
-        void testFlatEntriesAreInOrderAfterNoAccidentals() {
-            // Entries 1–7 must be FLATS with counts 1..7 in ascending order.
-            var selections = SongSettingsKeyCellRenderer.SELECTIONS;
-
-            for (var i = 1; i <= MAX_ACCIDENTALS; i++) {
-                var sel = selections.get(i);
-                assertThat(sel.keyType())
-                    .as("entry %d should be FLATS", i)
-                    .isEqualTo(KeyType.FLATS);
-                assertThat(sel.count())
-                    .as("entry %d should have %d flat(s)", i, i)
-                    .isEqualTo(i);
-            }
-        }
-
-        @Test
-        void testSharpEntriesAreInOrderAfterFlats() {
-            // Entries 8–14 must be SHARPS with counts 1..7 in ascending order.
-            var selections = SongSettingsKeyCellRenderer.SELECTIONS;
-            var sharpStart = MAX_ACCIDENTALS + 1;
-
-            for (var i = 0; i < MAX_ACCIDENTALS; i++) {
-                var sel = selections.get(sharpStart + i);
-                assertThat(sel.keyType())
-                    .as("entry %d should be SHARPS", sharpStart + i)
-                    .isEqualTo(KeyType.SHARPS);
-                assertThat(sel.count())
-                    .as("entry %d should have %d sharp(s)", sharpStart + i, i + 1)
-                    .isEqualTo(i + 1);
-            }
         }
     }
 

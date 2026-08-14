@@ -30,7 +30,6 @@ import org.audiveris.proxymusic.BarStyle;
 import org.audiveris.proxymusic.Barline;
 import org.audiveris.proxymusic.ClefSign;
 import org.audiveris.proxymusic.Direction;
-import org.audiveris.proxymusic.Key;
 import org.audiveris.proxymusic.Note;
 import org.audiveris.proxymusic.Print;
 import org.audiveris.proxymusic.RightLeftMiddle;
@@ -41,9 +40,13 @@ import org.audiveris.proxymusic.YesNo;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChange;
+import songscribe.dom.KeySignatureElement;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.smufl.SMuFLGlyph;
 
 /**
  * Builds the {@code <measure>} objects one {@link Line} contributes to a
@@ -74,9 +77,16 @@ import songscribe.dom.StaffElement;
  * </ul>
  *
  * <p>What does <em>not</em> dissolve is the key-signature carry. A MusicXML key persists
- * until restated, so which lines emit a key is genuine sequential state about the emitted
- * format, not a streaming workaround — it lives in {@link ScoreState} alongside the measure
- * counter.
+ * until restated, so which lines and which mid-line key changes emit a {@code <key>} is genuine
+ * sequential state about the emitted format, not a streaming workaround — it lives in
+ * {@link ScoreState} alongside the measure counter.
+ *
+ * <p><b>Where a {@code <key>} goes.</b> It lives in the {@code <attributes>} of the measure the
+ * key takes effect in: a {@link Line} whose {@link Line#getRunningKey()} differs from the running
+ * key emits one into that line's first measure, and a {@link KeySignatureElement} emits one into
+ * the measure the barline before it opened. The cautionary key signature drawn at the end of a
+ * system is <em>rendering only</em> and is never written — the reader re-derives it from the next
+ * line's key.
  *
  * <p><b>One owner for the loop.</b> This class decides where the measure boundaries fall
  * <em>and</em> builds the notes and directions between them, calling {@link NoteBuilder},
@@ -101,18 +111,19 @@ final class MeasureBuilder {
      * (measure numbers are continuous across lines) and the key signature currently in
      * effect.
      *
-     * <p>Measure 1 emits the song default key through the full {@code <attributes>} block;
-     * each later line whose effective key differs from the running value emits a key-only
-     * {@code <attributes>} and advances it. A MusicXML key persists until restated, so lines
-     * that keep the running key emit nothing and the reader carries it forward.
+     * <p>Measure 1 emits the key the song starts in through the full {@code <attributes>} block;
+     * every later key change — a line whose running key differs from this value, or a mid-line
+     * {@link KeySignatureElement} — emits a key-only {@code <attributes>} and advances it. A
+     * MusicXML key persists until restated, so lines that keep the running key emit nothing and
+     * the reader carries it forward.
      */
     static final class ScoreState {
 
         private int nextMeasureNumber = MusicXmlUnits.FIRST_MEASURE_NUMBER;
-        private int runningFifths;
+        private Key runningKey;
 
-        private ScoreState(int runningFifths) {
-            this.runningFifths = runningFifths;
+        private ScoreState(Key runningKey) {
+            this.runningKey = runningKey;
         }
 
         /** Whether the next measure opened will be the score's first. */
@@ -126,12 +137,15 @@ final class MeasureBuilder {
     }
 
     /**
-     * Creates the running state for a whole-song build, with the key signature initialized to
-     * {@code song}'s default.
+     * Creates the running state for a whole-song build, with the key signature initialized to the
+     * key {@code song} starts in — the same value measure 1's {@code <attributes>} carries, so the
+     * seed and the first written {@code <key>} cannot disagree.
+     *
+     * @param song the song about to be built
+     * @return the fresh running state, positioned before measure 1
      */
     static ScoreState newScoreState(Song song) {
-        return new ScoreState(
-            KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount()));
+        return new ScoreState(song.getStartingKey());
     }
 
     // -------------------------------------------------------------------------
@@ -245,11 +259,12 @@ final class MeasureBuilder {
         if (isFirstMeasure) {
             measure.getNoteOrBackupOrForward().add(buildAttributes(context));
         } else {
-            var lineFifths = effectiveKeyFifths(context.song(), line);
+            var lineKey = line.getRunningKey();
 
-            if (lineFifths != state.runningFifths) {
-                measure.getNoteOrBackupOrForward().add(buildKeyOnlyAttributes(context, lineFifths));
-                state.runningFifths = lineFifths;
+            if (!lineKey.equals(state.runningKey)) {
+                measure.getNoteOrBackupOrForward()
+                    .add(buildKeyOnlyAttributes(context, state.runningKey, lineKey));
+                state.runningKey = lineKey;
             }
         }
 
@@ -312,6 +327,21 @@ final class MeasureBuilder {
                     measure = openMeasure(context, state, measures);
                     output.measureAfter = measure;
                 }
+            } else if (type == ElementType.KEY_SIGNATURE) {
+                // The key takes effect here, so its <key> goes in this measure's <attributes>.
+                // KeySignatureElement's position invariant puts a barline immediately before this
+                // element, and that barline opened the measure we are in — so the <attributes>
+                // lands at the head of the measure, which is where the schema wants it.
+                //
+                // The cast is unguarded on purpose: every KEY_SIGNATURE element is a
+                // KeySignatureElement, and one that is not must fail here rather than fall into
+                // the branch below, which appends nothing for an element with no <note> form and
+                // would drop the key change without a word.
+                var newKey = ((KeySignatureElement) element).getKey();
+                measure.getNoteOrBackupOrForward()
+                    .add(buildKeyOnlyAttributes(context, line.keyAt(i - 1), newKey));
+                state.runningKey = newKey;
+                output.measure = measure;
             } else {
                 appendElementContent(context, measure, line, i, output);
 
@@ -332,21 +362,6 @@ final class MeasureBuilder {
     }
 
     /**
-     * The signed-fifths encoding of {@code line}'s effective key: its own key when
-     * set, otherwise the song default (matching how every line is materialized
-     * from the default on load).
-     */
-    private static int effectiveKeyFifths(Song song, Line line) {
-        var lineKeyType = line.getKeyType();
-
-        if (lineKeyType == null) {
-            return KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
-        }
-
-        return KeySignatureMapping.toFifths(lineKeyType, line.getKeyAccidentalCount());
-    }
-
-    /**
      * Creates a numbered {@code <measure>}. Exposed for the empty-song case, which contributes
      * one measure belonging to no line.
      */
@@ -357,16 +372,20 @@ final class MeasureBuilder {
     }
 
     /**
-     * Builds the full {@code <attributes>} block measure 1 carries: divisions, the song's
-     * default key, an unmetered {@code <time>} and a treble clef.
+     * Builds the full {@code <attributes>} block measure 1 carries: divisions, the key the song
+     * starts in, an unmetered {@code <time>} and a treble clef.
+     *
+     * <p>Measure 1's {@code <key>} never carries a {@code <cancel>}: nothing precedes it, so there
+     * is no signature for it to cancel.
+     *
+     * @param context the shared build context
+     * @return the {@code <attributes>} block
      */
     static Attributes buildAttributes(BuildContext context) {
         var factory = context.factory();
-        var song = context.song();
         var attributes = factory.createAttributes();
         attributes.setDivisions(BigDecimal.valueOf(MusicXmlUnits.DIVISIONS));
-        attributes.getKey().add(
-            buildKey(context, KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount())));
+        attributes.getKey().add(buildKey(context, null, context.song().getStartingKey()));
 
         // SongScribe songs are unmetered, so the time signature is present but not printed.
         var time = factory.createTime();
@@ -395,18 +414,65 @@ final class MeasureBuilder {
     }
 
     /**
-     * Builds the key-only {@code <attributes>} block a line emits when its effective key
-     * differs from the running one.
+     * Builds the key-only {@code <attributes>} block a key change emits — at the head of the line
+     * it starts, or at the head of the measure a mid-line {@link KeySignatureElement} opens.
+     *
+     * @param context     the shared build context
+     * @param previousKey the key in effect immediately before the change
+     * @param newKey      the key taking effect
+     * @return an {@code <attributes>} block whose only child is the {@code <key>}
      */
-    private static Attributes buildKeyOnlyAttributes(BuildContext context, int fifths) {
+    private static Attributes buildKeyOnlyAttributes(BuildContext context, Key previousKey, Key newKey) {
         var attributes = context.factory().createAttributes();
-        attributes.getKey().add(buildKey(context, fifths));
+        attributes.getKey().add(buildKey(context, previousKey, newKey));
         return attributes;
     }
 
-    private static Key buildKey(BuildContext context, int fifths) {
-        var key = context.factory().createKey();
-        key.setFifths(BigInteger.valueOf(fifths));
+    /**
+     * Builds the {@code <key>} for a change to {@code newKey}, with the {@code <cancel>} the
+     * change owes and the {@code <mode>} every SongScribe key carries.
+     *
+     * <p><b>The {@code <cancel>} comes from the policy, not from a second copy of it.</b>
+     * {@link KeyChange} promises that a change which cancels puts its naturals first, so the
+     * question "is a cancellation owed?" is answered by asking what the change draws. Restating
+     * the rule here — "when the key type differs" — would leave this file answering the old
+     * question after the policy changed, with both subsystems' tests still passing.
+     *
+     * <p>Child order ({@code cancel, fifths, mode}) comes from the generated class's
+     * {@code propOrder}, so unlike {@code <lyric>}'s choice list the caller cannot get it wrong.
+     *
+     * @param context     the shared build context
+     * @param previousKey the key in effect immediately before the change, or null at measure 1,
+     *                    where nothing precedes the key and no cancellation is possible
+     * @param newKey      the key taking effect
+     * @return the {@code <key>} node
+     */
+    private static org.audiveris.proxymusic.Key buildKey(
+        BuildContext context, @Nullable Key previousKey, Key newKey) {
+
+        var factory = context.factory();
+        var key = factory.createKey();
+
+        if (previousKey != null) {
+            var drawn = KeyChange.accidentals(previousKey, newKey);
+
+            if (!drawn.isEmpty() && drawn.getFirst().glyph() == SMuFLGlyph.ACCIDENTAL_NATURAL) {
+                // <cancel>'s value is the signed fifths of the key being cancelled, not of the
+                // new one.
+                var cancel = factory.createCancel();
+                cancel.setValue(BigInteger.valueOf(KeySignatureMapping.toFifths(previousKey)));
+                key.setCancel(cancel);
+            }
+        }
+
+        key.setFifths(BigInteger.valueOf(KeySignatureMapping.toFifths(newKey)));
+
+        // Written on every <key> and never read back: nothing in the model stores a mode, and
+        // only SongScribe-authored files get past the provenance gate, so an incoming <mode> is
+        // always the one this writer emitted. It is written because output is for everyone — a
+        // foreign consumer reads it.
+        key.setMode(MusicXmlTags.MODE_MAJOR);
+
         return key;
     }
 

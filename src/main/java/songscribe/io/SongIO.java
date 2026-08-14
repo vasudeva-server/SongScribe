@@ -39,6 +39,7 @@ import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
@@ -118,13 +119,10 @@ public final class SongIO {
                 "\">"
         );
         XML.setIndent(2);
-        XML.writeValue(
-            pw,
-            XML_KEYS,
-            Integer.toString(c.getDefaultKeyAccidentalCount())
-        );
-        var keyType = c.getDefaultKeyType();
-        XML.writeValue(pw, XML_KEYTYPE, keyType.name());
+
+        // No song-level key is written: a song has no key of its own, so every line that
+        // establishes one writes it (LineIO.writeLine) and there is nothing left over to put
+        // here. The read path still honours the tag, because old files carry it.
 
         TempoIO.writeTempo(c.getTempo(), pw, 2);
 
@@ -293,14 +291,58 @@ public final class SongIO {
         private int wordsDay = 0;
         @Nullable
         private String invalidLyricsDate = null;
-        private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
-        private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
+        // The song-level key an old file carried, held as its two tags until they can be
+        // judged together. Only line 0 consumes it — see applyDocumentKeyToFirstLine.
+        private int documentKeyAccidentalCount = Key.DEFAULT.accidentalCount();
+        private KeyType documentKeyType = Key.DEFAULT.keyType();
         private double attributionUserYOffsetSs = 0;
         private double rowHeightAdjustmentSs = 0;
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
         private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
+
+        /**
+         * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
+         *
+         * <p>The two tags are an unconstrained pair, so combinations no key signature can have are
+         * representable in a {@code .mssw} file and do occur: a named accidental type with a count
+         * of 0, which alters no pitch and draws no accidental, and — from a corrupt file — a type
+         * of {@link KeyType#NONE} with a count. Both mean C major, which is what the pair always
+         * sounded and drew as, so both normalize to it here rather than failing the load.
+         *
+         * @return the document-level key, normalized to a valid key signature
+         */
+        private Key documentKey() {
+            if (documentKeyType == KeyType.NONE || documentKeyAccidentalCount == 0) {
+                return new Key(KeyType.NONE, 0);
+            }
+
+            return new Key(documentKeyType, documentKeyAccidentalCount);
+        }
+
+        /**
+         * Establishes the document-level key on the first parsed line when that line established
+         * none of its own.
+         *
+         * <p>{@code .mssw} writes a line's key only where it differs from the document-level one,
+         * so a line with no key tags means "the key already in effect". Line 0 has nothing to
+         * inherit from, which is why it — and only it — needs the document-level value; every
+         * later keyless line genuinely inherits.
+         *
+         * @param lines the parsed lines, in document order
+         */
+        private void applyDocumentKeyToFirstLine(List<Line> lines) {
+            if (lines.isEmpty()) {
+                return;
+            }
+
+            var firstLine = lines.getFirst();
+
+            if (firstLine.getKey() == null) {
+                firstLine.setKey(documentKey());
+            }
+        }
 
         /**
          * Refuses to fetch anything a {@code DOCTYPE} names, handing the parser an
@@ -469,7 +511,12 @@ public final class SongIO {
                             return;
                         }
 
-                        parsedLines.add(new Line(parsingSong));
+                        // v1.0 carries no per-line key, so this auto-created line is in the
+                        // document key. It has to establish it here rather than at the end of the
+                        // load, because the append position below measures the header it draws.
+                        var autoCreatedLine = new Line(parsingSong);
+                        autoCreatedLine.setKey(documentKey());
+                        parsedLines.add(autoCreatedLine);
                     }
 
                     var line = parsedLines.getLast();
@@ -517,9 +564,9 @@ public final class SongIO {
                     var str = value.toString();
 
                     switch (lastTag) {
-                        case XML_KEYS -> defaultKeyAccidentalCount =
+                        case XML_KEYS -> documentKeyAccidentalCount =
                             Integer.parseInt(str);
-                        case XML_KEYTYPE -> defaultKeyType =
+                        case XML_KEYTYPE -> documentKeyType =
                             KeyType.valueOf(str);
                         case XML_NUMBER -> number = str;
                         case XML_TITLE -> title =
@@ -585,10 +632,10 @@ public final class SongIO {
 
                     switch (lastTag) {
                         case XML_KEYS ->
-                            defaultKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
+                            documentKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> {
                             try {
-                                defaultKeyType = KeyType.valueOf(str);
+                                documentKeyType = KeyType.valueOf(str);
                             } catch (IllegalArgumentException e) {
                                 throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
                             }
@@ -726,6 +773,12 @@ public final class SongIO {
 
             MigrationPipeline.runPreAssembly(ctx);
 
+            // Line 0 has nothing to inherit from, so it takes the document-level key when the
+            // file gave it none of its own. Done before the lines reach the Song, because that
+            // is where a line's key still stands alone: once installed, Line.setKey would
+            // normalize this away against a key the line does not yet inherit.
+            applyDocumentKeyToFirstLine(ctx.lines);
+
             // After migration, format version is CURRENT_FORMAT_VERSION (discrete attribution fields).
             var formatVersion = CURRENT_FORMAT_VERSION;
 
@@ -747,8 +800,6 @@ public final class SongIO {
                 arrangement,
                 footnotes,
                 unofficialTranslation,
-                defaultKeyAccidentalCount,
-                defaultKeyType,
                 ctx.rowHeightAdjustmentSs,
                 ctx.lineWidthSs,
                 ctx.lines,

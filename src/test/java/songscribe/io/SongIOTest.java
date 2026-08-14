@@ -46,6 +46,7 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -739,8 +740,8 @@ class SongIOTest extends UnitTest {
         @Test
         void testRoundTripPreservesAllFields() throws Exception {
             var song = new Song();
-            song.setDefaultKeyAccidentalCount(NON_DEFAULT_KEY_ACCIDENTAL_COUNT);
-            song.setDefaultKeyType(KeyType.SHARPS);
+            song.withModification(() ->
+                song.getLine(0).setKey(new Key(KeyType.SHARPS, NON_DEFAULT_KEY_ACCIDENTAL_COUNT)));
             song.setMetadata(new SongMetadata(
                 "My Song", String.valueOf(NON_DEFAULT_NUMBER), "London", "2024",
                 NON_DEFAULT_MONTH, NON_DEFAULT_DAY,
@@ -754,12 +755,9 @@ class SongIOTest extends UnitTest {
 
             var reloaded = legacyRoundTrip(song);
 
-            assertThat(reloaded.getDefaultKeyAccidentalCount())
-                .as("keys round-trip")
-                .isEqualTo(NON_DEFAULT_KEY_ACCIDENTAL_COUNT);
-            assertThat(reloaded.getDefaultKeyType())
-                .as("keytype round-trip")
-                .isEqualTo(KeyType.SHARPS);
+            assertThat(reloaded.getStartingKey())
+                .as("keys/keytype round-trip")
+                .isEqualTo(new Key(KeyType.SHARPS, NON_DEFAULT_KEY_ACCIDENTAL_COUNT));
             assertThat(reloaded.getNumber())
                 .as("number round-trip")
                 .isEqualTo(String.valueOf(NON_DEFAULT_NUMBER));

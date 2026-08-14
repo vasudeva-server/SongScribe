@@ -48,10 +48,8 @@ class SongLoadingTest extends UnitTest {
         var stub = Song.newParsingStub();
         var dataLine = new Line(stub);
         stub.withoutMutationTracking(() -> {
-            // Pre-set key defaults so applyLineDefaults finds them already applied and is a no-op,
-            // avoiding a setKeyAccidentalCount call that would require a bracket or suspension.
-            dataLine.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
-            dataLine.setKeyType(Song.DEFAULT_KEY_TYPE);
+            // Line 0 establishes the song's key, so the loaded line carries one.
+            dataLine.setKey(Key.DEFAULT);
             dataLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
         });
 
@@ -59,7 +57,6 @@ class SongLoadingTest extends UnitTest {
             null, "", "", "", 0, 0, "", "", "", "",
             Song.SRI_CHINMOY, Song.SRI_CHINMOY, LyricsSource.LYRICIST, false,
             "", false,
-            Song.DEFAULT_KEY_ACCIDENTAL_COUNT, Song.DEFAULT_KEY_TYPE,
             0.0, 0.0,
             List.of(dataLine), false, 1,
             "", "", 0, 0
@@ -110,8 +107,6 @@ class SongLoadingTest extends UnitTest {
             true,
             "See note 1",
             true,
-            2,
-            KeyType.SHARPS,
             1.5,
             50.0,
             List.of(lineWithTempo),
@@ -138,8 +133,6 @@ class SongLoadingTest extends UnitTest {
         assertThat(song.isArrangement()).isTrue();
         assertThat(song.getFootnotes()).isEqualTo("See note 1");
         assertThat(song.isUnofficialTranslation()).isTrue();
-        assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(2);
-        assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.SHARPS);
         assertThat(song.getRowHeightAdjustmentSs()).isEqualTo(1.5);
         assertThat(song.getLineWidthSs()).isEqualTo(50.0);
         assertThat(song.lineCount()).isEqualTo(1);
@@ -175,8 +168,6 @@ class SongLoadingTest extends UnitTest {
             false,
             "",
             false,
-            Song.DEFAULT_KEY_ACCIDENTAL_COUNT,
-            Song.DEFAULT_KEY_TYPE,
             0.0,
             0.0,
             List.of(newLine),

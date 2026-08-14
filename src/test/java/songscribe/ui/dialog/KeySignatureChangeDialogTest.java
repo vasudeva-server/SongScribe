@@ -24,14 +24,13 @@ import java.util.Collections;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
-import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.util.UIUtils;
 
@@ -47,8 +46,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link KeySignatureChangeDialog}: getData() control population
- * and setData() notification posting (including the null-guard on keysCombo).
+ * Unit tests for {@link KeySignatureChangeDialog}: getData() control population and setData()
+ * committing the chosen key to the selected line (including the null-guard on keysCombo).
  */
 class KeySignatureChangeDialogTest extends MainFrameMockTest {
 
@@ -113,43 +112,35 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
             .isEqualTo(ACCIDENTAL_COUNT);
     }
 
-    // ── Row 23: setData() — skips post when keysCombo selection is null ──
+    // ── Row 23: setData() — changes nothing when keysCombo selection is null ──
 
     @Test
-    void testSetDataSkipsPostWhenKeysComboIsNull() {
+    void testSetDataChangesNothingWhenKeysComboIsNull() {
         var song = setupScoreAndLine(KeyType.FLATS, ACCIDENTAL_COUNT);
         // Force combo to have no selection
         dialog.keysCombo.setSelectedItem(null);
 
         dialog.setData();
 
-        verify(song, never()).postWithModification(any(), any());
+        verify(song, never()).withModification(any(String.class), any(Runnable.class));
     }
 
-    // ── Row 24: setData() — posts KeySignatureDidChangeNotification with correct fields ──
+    // ── Row 24: setData() — establishes the chosen key on the selected line ──
 
     @Test
-    void testSetDataPostsNotificationWithSelectedKeyTypeAndSpinnerValue() {
+    void testSetDataEstablishesTheSelectedKeyOnTheSelectedLine() {
         var song = setupScoreAndLine(KeyType.FLATS, ACCIDENTAL_COUNT);
+        var newAccidentalCount = 2;
 
         dialog.keysCombo.setSelectedItem(KeyType.SHARPS);
-        dialog.keysSpinner.setValue(2);
+        dialog.keysSpinner.setValue(newAccidentalCount);
         dialog.setData();
 
-        var captor = ArgumentCaptor.forClass(KeySignatureDidChangeNotification.class);
-        verify(song).postWithModification(
-            eq(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY)), captor.capture());
-
-        var notification = captor.getValue();
-        assertThat(notification.getKeyType())
-            .as("notification carries the selected key type")
-            .isEqualTo(KeyType.SHARPS);
-        assertThat(notification.getAccidentalCount())
-            .as("notification carries the spinner integer value")
-            .isEqualTo(2);
-        assertThat(notification.getLineIndex())
-            .as("notification carries the selected line index from score")
-            .isEqualTo(SELECTED_LINE_INDEX);
+        verify(song).withModification(
+            eq(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY)), any(Runnable.class));
+        assertThat(song.getLine(SELECTED_LINE_INDEX).getKey())
+            .as("the selected line establishes the key the dialog submitted")
+            .isEqualTo(new Key(KeyType.SHARPS, newAccidentalCount));
     }
 
     // ── Helpers ──
@@ -163,8 +154,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
      */
     private Song setupScoreAndLine(KeyType keyType, int accidentalCount) {
         var line = detachedLine();
-        line.setKeyType(keyType);
-        line.setKeyAccidentalCount(accidentalCount);
+        line.setKey(new Key(keyType, accidentalCount));
 
         var song = mock(Song.class);
         when(song.getLine(SELECTED_LINE_INDEX)).thenReturn(line);
@@ -172,6 +162,10 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         when(song.isMutationTrackingSuspended()).thenReturn(true);
         doAnswer(answerVoid(Runnable::run))
             .when(song).withModification(any(Runnable.class));
+        doAnswer(invocation -> {
+            invocation.getArgument(1, Runnable.class).run();
+            return null;
+        }).when(song).withModification(any(String.class), any(Runnable.class));
 
         var score = mockEnv().score();
         when(score.getSelectedLine()).thenReturn(SELECTED_LINE_INDEX);

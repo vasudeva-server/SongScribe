@@ -29,6 +29,7 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -103,6 +105,25 @@ class LineIOTest extends UnitTest {
         return reader.endElement11("line");
     }
 
+    /**
+     * Same as {@link #parseLineTag} but feeds both halves of a key signature, which is the only
+     * form the reader accepts — neither tag is a key on its own.
+     */
+    @Nullable
+    private static Line parseLineKeyTags(String keys, String keyType) throws SAXException {
+        var emptyAttrs = new AttributesImpl();
+        var reader = new LineIO.LineReader(minimalSongMock());
+        reader.startElement11("line", emptyAttrs);
+
+        for (var tag : List.of(Map.entry(LineIO.XML_KEYS, keys), Map.entry(LineIO.XML_KEYTYPE, keyType))) {
+            reader.startElement11(tag.getKey(), emptyAttrs);
+            reader.characters(tag.getValue().toCharArray(), 0, tag.getValue().length());
+            reader.endElement11(tag.getKey());
+        }
+
+        return reader.endElement11("line");
+    }
+
     /** Same as {@link #parseLineTag} but returns the {@link LegacyLineOffsets} captured by the reader. */
     @Nullable
     private static LegacyLineOffsets parseLegacyOffsets(String tagName, String content) throws SAXException {
@@ -116,19 +137,22 @@ class LineIOTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // WriteLineDeltaKeySig — row 1
+    // WriteLineKeySig — a line writes its key only where it establishes one
     // -------------------------------------------------------------------------
 
+    /**
+     * The two sides of {@code writeLine}'s key clause. There is no song-level key to compare
+     * against any more: what decides the tags is whether the line establishes a key of its own,
+     * which is also what their absence reads back as.
+     */
     @Nested
-    class WriteLineDeltaKeySig {
+    class WriteLineKeySig {
+
+        private static final int TWO_SHARPS = 2;
 
         @Test
-        void testDifferingKeyWritesKeysAndKeytypeTags() throws Exception {
-            // Line key differs from song default (5 flats) → tags must appear
-            song.withModification(() -> {
-                line.setKeyAccidentalCount(2);
-                line.setKeyType(KeyType.SHARPS);
-            });
+        void testALineThatEstablishesAKeyWritesKeysAndKeytypeTags() throws Exception {
+            song.withModification(() -> line.setKey(new Key(KeyType.SHARPS, TWO_SHARPS)));
 
             var output = writeLine(line);
 
@@ -137,10 +161,15 @@ class LineIOTest extends UnitTest {
         }
 
         @Test
-        void testMatchingSongDefaultOmitsKeysTags() throws Exception {
-            // Line key matches song default → tags must be absent
-            var output = writeLine(line);
+        void testALineThatInheritsOmitsKeysTags() throws Exception {
+            // A line added after line 0 with no key of its own inherits, and inheriting is
+            // exactly what writing no tags means.
+            var inheritingLine = new Line(song);
+            song.addLine(inheritingLine);
 
+            var output = writeLine(inheritingLine);
+
+            assertThat(inheritingLine.getKey()).as("the added line establishes no key").isNull();
             assertThat(output).doesNotContain('<' + LineIO.XML_KEYS + '>');
             assertThat(output).doesNotContain('<' + LineIO.XML_KEYTYPE + '>');
         }
@@ -469,12 +498,21 @@ class LineIOTest extends UnitTest {
         private static final int KEY_COUNT = 5;
 
         @Test
-        void testKeysTagSetsKeyAccidentalCount() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_KEYS, String.valueOf(KEY_COUNT));
+        void testKeysAndKeytypeTagsTogetherSetTheLineKey() throws Exception {
+            // Neither tag is a key on its own, so the reader holds both until </line> and
+            // establishes one key from the pair.
+            var parsedLine = parseLineKeyTags(String.valueOf(KEY_COUNT), KeyType.FLATS.name());
 
             assertThat(parsedLine).isNotNull();
+            assertThat(parsedLine.getKey()).isEqualTo(new Key(KeyType.FLATS, KEY_COUNT));
+        }
 
-            assertThat(parsedLine.getKeyAccidentalCount()).isEqualTo(KEY_COUNT);
+        @Test
+        void testAKeysValueWithNoMatchingKeytypeIsCorrupt() throws Exception {
+            // A count without a type is half a key, and Key is what judges the pair.
+            assertThatThrownBy(() -> parseLineTag(LineIO.XML_KEYS, String.valueOf(KEY_COUNT)))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("invalid key signature");
         }
 
         @Test
@@ -502,12 +540,21 @@ class LineIOTest extends UnitTest {
     class EndElement11Keytype {
 
         @Test
-        void testKeytypeTagSetsKeyType() throws Exception {
-            var parsedLine = parseLineTag(LineIO.XML_KEYTYPE, KeyType.FLATS.name());
+        void testAKeytypeWithNoMatchingKeysValueIsCorrupt() throws Exception {
+            // FLATS with a count of 0 violates Key's biconditional invariant.
+            assertThatThrownBy(() -> parseLineTag(LineIO.XML_KEYTYPE, KeyType.FLATS.name()))
+                .isInstanceOf(SAXException.class)
+                .hasMessageContaining("invalid key signature");
+        }
+
+        @Test
+        void testALineWithNoKeyTagsEstablishesNoKeyOfItsOwn() throws Exception {
+            var parsedLine = parseLineTag(LineIO.XML_NOTE_DIST_CHANGE, "1.0");
 
             assertThat(parsedLine).isNotNull();
-
-            assertThat(parsedLine.getKeyType()).isEqualTo(KeyType.FLATS);
+            assertThat(parsedLine.getKey())
+                .as("no key delta in the file means the line is in the key already in effect")
+                .isNull();
         }
     }
 

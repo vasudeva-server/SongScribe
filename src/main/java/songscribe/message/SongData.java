@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
@@ -45,6 +44,10 @@ import songscribe.ui.component.ScoreView;
  * Fonts are not stored on {@code SongData}; they are built directly into a
  * {@link songscribe.font.DocumentFonts} by the reader and installed on
  * {@link ScoreView} separately.
+ * <p>
+ * No key is carried here either. A song has no key of its own — its key is line 0's — so a
+ * reader establishes the key its file named on the {@link Line} it belongs to, and the lines
+ * arrive already carrying it.
  */
 public record SongData(
     @Nullable Tempo tempo,
@@ -63,8 +66,6 @@ public record SongData(
     boolean arrangement,
     String footnotes,
     boolean unofficialTranslation,
-    int defaultKeyAccidentalCount,
-    KeyType defaultKeyType,
     double rowHeightAdjustmentSs,
     double lineWidthSs,
     List<Line> lines,

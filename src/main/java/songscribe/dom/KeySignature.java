@@ -20,105 +20,63 @@
 
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.engraving.StaffHeaderMetrics;
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Represents the key signature (sharps or flats) at the start of a staff line.
+ * The key signature (sharps or flats) drawn at the start of a staff line, as a positioned
+ * layout box.
+ * <p>
+ * This is a transient layout object rather than part of the document model: layout builds one
+ * per line from the line's running key and the renderer paints it. A line's own key lives on
+ * {@link Line}, and a change part-way through a line lives in a {@link KeySignatureElement}.
  * <p>
  * The KeySignature is positioned absolutely after the clef and does not contribute
  * to Staff's bounds. It has its own margin for spacing to the first note.
  * <p>
- * The width depends on the number of accidentals (0-7 sharps or flats).
+ * Its measurements are {@link KeyChange}'s measurements of the same run of accidentals the
+ * renderer draws, so the header and a cautionary key change at the end of a line can never
+ * disagree about how wide one signature is.
  */
 public class KeySignature extends LineElement {
 
-    /** Maximum number of accidentals in any standard key signature (0–7). */
-    public static final int MAX_ACCIDENTAL_COUNT = 7;
-
-    /** The type of key signature (sharps or flats). */
-    private KeyType keyType;
-
-    /** Number of accidentals (0–{@link #MAX_ACCIDENTAL_COUNT}). */
-    private int accidentalCount;
+    /** The key this signature draws. */
+    private final Key key;
 
     /**
-     * Creates a key signature with no accidentals.
-     */
-    public KeySignature() {
-        this(KeyType.NONE, 0);
-    }
-
-    /**
-     * Creates a key signature with the specified type and accidental count.
+     * Creates a header key signature for the given key.
      *
-     * @param keyType         Type of accidentals (SHARPS or FLATS)
-     * @param accidentalCount Number of accidentals (0-7)
+     * @param key the key to draw; a key of {@link KeyType#NONE} draws nothing and measures
+     *            zero in both dimensions
      */
-    public KeySignature(KeyType keyType, int accidentalCount) {
-        this.keyType = keyType;
-        this.accidentalCount = Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT);
+    public KeySignature(Key key) {
+        this.key = key;
     }
 
     /**
-     * Returns the key type (SHARPS, FLATS, or NONE).
-     */
-    public KeyType getKeyType() {
-        return keyType;
-    }
-
-    /**
-     * Sets the key type.
-     */
-    public void setKeyType(KeyType keyType) {
-        this.keyType = keyType;
-    }
-
-    /**
-     * Returns the number of accidentals (0-7).
-     */
-    public int getAccidentalCount() {
-        return accidentalCount;
-    }
-
-    /**
-     * Sets the number of accidentals.
+     * Returns the key this signature draws.
      *
-     * @param accidentalCount Number of accidentals (clamped to 0-7)
+     * @return the key; never null
      */
-    public void setAccidentalCount(int accidentalCount) {
-        this.accidentalCount = Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT);
-    }
-
-    /**
-     * Returns whether this key signature has any accidentals.
-     */
-    public boolean hasAccidentals() {
-        return accidentalCount > 0 && keyType != KeyType.NONE;
+    public Key getKey() {
+        return key;
     }
 
     @Override
     public double getContentWidthSs() {
-        return widthSs(keyType, accidentalCount);
+        return widthSs(key);
     }
 
     /**
-     * Returns the width of a key signature with the given type and accidental count,
-     * in staff-space units. Zero when there is nothing to draw — a null or
-     * {@link KeyType#NONE} type, or a count that is not positive.
+     * Returns how wide a header key signature for {@code key} is, in staff-space units.
+     * <p>
+     * The answer is {@link KeyChange}'s, so a signature in the header and the same signature
+     * drawn as a cautionary at the end of the previous line cannot drift apart in width.
      *
-     * @param keyType         Type of accidentals, may be null
-     * @param accidentalCount Number of accidentals
+     * @param key the key to measure
+     * @return the width in staff spaces; zero for {@link KeyType#NONE}, and never negative
      */
-    public static double widthSs(@Nullable KeyType keyType, int accidentalCount) {
-        if (keyType == null || keyType == KeyType.NONE || accidentalCount <= 0) {
-            return 0;
-        }
-
-        return accidentalCount * StaffHeaderMetrics.accidentalInkBboxSs(accidentalGlyph(keyType));
+    public static double widthSs(Key key) {
+        return KeyChange.totalWidthSs(KeyChange.signatureAccidentals(key));
     }
 
     @Override
@@ -129,25 +87,20 @@ public class KeySignature extends LineElement {
     /**
      * Returns the content height in staff-space units — the bbox height of the active
      * accidental glyph. Kerning and inter-glyph vertical variation are out of scope.
+     *
+     * @return the height in staff spaces; zero for {@link KeyType#NONE}, which draws nothing
      */
     @Override
     public double getContentHeightSs() {
-        if (!hasAccidentals()) {
+        if (key.keyType() == KeyType.NONE) {
             return 0;
         }
 
-        return SMuFLMetadata.requireBBox(accidentalGlyph(keyType)).height();
+        return SMuFLMetadata.requireBBox(KeyChange.accidentalGlyph(key.keyType())).height();
     }
 
     @Override
     public double getContentHeightPx() {
         return ScaleContext.ssToPx(getContentHeightSs());
-    }
-
-    /**
-     * Returns the accidental glyph a key signature of the given type is drawn with.
-     */
-    private static SMuFLGlyph accidentalGlyph(KeyType keyType) {
-        return keyType == KeyType.FLATS ? SMuFLGlyph.ACCIDENTAL_FLAT : SMuFLGlyph.ACCIDENTAL_SHARP;
     }
 }

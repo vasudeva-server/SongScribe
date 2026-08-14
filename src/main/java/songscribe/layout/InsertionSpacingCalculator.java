@@ -44,13 +44,13 @@ import songscribe.dom.StaffElement;
  *   <li><b>Where does the element go?</b> — the natural (uncompressed) length of the
  *       {@link Spring} on either side of the insertion point, measured from the neighbours'
  *       <em>current</em> positions, so only the elements after the insertion point move.</li>
- *   <li><b>Does it still fit?</b> — {@link InsertionResult#fitsWithinLine} runs the identical
- *       {@link HorizontalSpacingCalculator#solveChain solve} the layout engine runs, over the same
- *       projected columns {@link LayoutEngine} would build after the commit — every column with the
- *       new one spliced in, <em>including the auto-maintained terminal barline</em>, anchored by the
- *       shared {@link HorizontalSpacingCalculator#calculateAnchorXSs}. Solving the exact chain the
- *       layout will solve is what guarantees the two agree: an insert the gate accepts always lays
- *       out. An insert is refused only when even full compression to every gap's strut overflows the
+ *   <li><b>Does it still fit?</b> — {@link InsertionResult#fitsWithinLine} hands the projected
+ *       columns {@link LayoutEngine} would build after the commit — every column with the new one
+ *       spliced in, <em>including the auto-maintained terminal barline</em> — to the same
+ *       {@link HorizontalSpacingCalculator#solveLine} the layout engine calls. Running the one
+ *       solve rather than reassembling its steps is what guarantees the two agree: an insert the
+ *       gate accepts always lays out, and a step added to the solve reaches the gate on its own. An
+ *       insert is refused only when even full compression to every gap's strut overflows the
  *       margin; a line with slack simply compresses to absorb the new element.</li>
  * </ul>
  * <p>
@@ -67,30 +67,35 @@ public final class InsertionSpacingCalculator {
      * inserted element, the shift amount for subsequent elements, and the projected
      * line width after the insertion.
      *
-     * @param insertedElementXSs             X position where the inserted element should be placed
-     * @param shiftForSubsequentElementsSs   Amount to shift all elements after the insertion point (always >= 0)
-     * @param newLineWidthSs                 Projected line width after the insertion
-     * @param projectedSprings               The lyric-stretched spring chain of the line as LayoutEngine
-     *                                       will build it after the commit — every column with the new
-     *                                       one spliced in, including the terminal barline — what
-     *                                       {@link #fitsWithinLine} solves
-     * @param projectedFirstXSs              X the projected chain is anchored at
-     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
-     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
-     *                                       last column origin — its right extent, plus a full line
-     *                                       rest when that column is not the auto-maintained terminal
-     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
+     * @param insertedElementXSs           X position where the inserted element should be placed
+     * @param shiftForSubsequentElementsSs Amount to shift all elements after the insertion point (always >= 0)
+     * @param newLineWidthSs               Projected line width after the insertion
+     * @param line                         The line the insertion lands on
+     * @param projectedColumns             The line's columns as {@link LayoutEngine} will build them
+     *                                     after the commit — every column with the new one spliced
+     *                                     in, including the terminal barline — what {@link #solve}
+     *                                     solves
      */
     public record InsertionResult(
         double insertedElementXSs,
         double shiftForSubsequentElementsSs,
         double newLineWidthSs,
-        List<Spring> projectedSprings,
-        double projectedFirstXSs,
-        double projectedTrailingReservationSs
+        Line line,
+        List<ElementColumn> projectedColumns
     ) {
         public InsertionResult {
-            projectedSprings = List.copyOf(projectedSprings);
+            projectedColumns = List.copyOf(projectedColumns);
+        }
+
+        /**
+         * Runs the projected line through {@link HorizontalSpacingCalculator#solveLine} — the whole
+         * solve the layout engine runs, over the columns the commit will produce.
+         *
+         * @param staffRightMarginSs The maximum allowed line width in staff spaces
+         * @return the anchor, the spring chain and the solver's verdict
+         */
+        public HorizontalSpacingCalculator.LineSolution solve(double staffRightMarginSs) {
+            return HorizontalSpacingCalculator.solveLine(projectedColumns, line, staffRightMarginSs);
         }
 
         /**
@@ -102,9 +107,7 @@ public final class InsertionSpacingCalculator {
          * @return {@code true} unless the projected spring chain solves INFEASIBLE
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return !HorizontalSpacingCalculator.solveChain(
-                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
-                .isInfeasible();
+            return !solve(staffRightMarginSs).isInfeasible();
         }
     }
 
@@ -140,31 +143,25 @@ public final class InsertionSpacingCalculator {
      * the single shift to apply to all surviving elements after the fragment, and the projected
      * spring chain its fit gate solves. The multi-element analogue of {@link InsertionResult}.
      *
-     * @param cloneXPositionsSs              X position for each fragment clone, in fragment order
-     * @param shiftForSubsequentElementsSs   Amount to shift every surviving element after the
-     *                                       fragment (negative when a paste-replace pulls the
-     *                                       tail left)
-     * @param projectedSprings               The lyric-stretched spring chain of the line as LayoutEngine
-     *                                       will build it after the operation — the surviving columns
-     *                                       with the fragment's clones spliced in, including the terminal
-     *                                       barline — what {@link #fitsWithinLine} solves
-     * @param projectedFirstXSs              X the projected chain is anchored at
-     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
-     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
-     *                                       last column origin — its right extent, plus a full line
-     *                                       rest when that column is not the auto-maintained terminal
-     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
+     * @param cloneXPositionsSs            X position for each fragment clone, in fragment order
+     * @param shiftForSubsequentElementsSs Amount to shift every surviving element after the
+     *                                     fragment (negative when a paste-replace pulls the
+     *                                     tail left)
+     * @param line                         The line the fragment lands on
+     * @param projectedColumns             The line's columns as {@link LayoutEngine} will build them
+     *                                     after the operation — the surviving columns with the
+     *                                     fragment's clones spliced in, including the terminal
+     *                                     barline — what {@link #fitsWithinLine} solves
      */
     public record FragmentInsertionResult(
         List<Double> cloneXPositionsSs,
         double shiftForSubsequentElementsSs,
-        List<Spring> projectedSprings,
-        double projectedFirstXSs,
-        double projectedTrailingReservationSs
+        Line line,
+        List<ElementColumn> projectedColumns
     ) {
         public FragmentInsertionResult {
             cloneXPositionsSs = List.copyOf(cloneXPositionsSs);
-            projectedSprings = List.copyOf(projectedSprings);
+            projectedColumns = List.copyOf(projectedColumns);
         }
 
         /**
@@ -177,9 +174,8 @@ public final class InsertionSpacingCalculator {
          * @return {@code true} unless the projected spring chain solves INFEASIBLE
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return !HorizontalSpacingCalculator.solveChain(
-                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
-                .isInfeasible();
+            return !HorizontalSpacingCalculator
+                .solveLine(projectedColumns, line, staffRightMarginSs).isInfeasible();
         }
     }
 
@@ -192,25 +188,14 @@ public final class InsertionSpacingCalculator {
      * be positioned — every index keeps the element it had — and the result carries only what the
      * gate needs.
      *
-     * @param projectedSprings               The lyric-stretched spring chain of the line as
-     *                                       {@link LayoutEngine} will build it after the
-     *                                       modification — every column with the changed ones
-     *                                       swapped out, including the terminal barline — what
-     *                                       {@link #fitsWithinLine} solves
-     * @param projectedFirstXSs              X the projected chain is anchored at
-     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
-     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
-     *                                       last column origin — its right extent, plus a full line
-     *                                       rest when that column is not the auto-maintained terminal
-     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
+     * @param line             The line being modified
+     * @param projectedColumns The line's columns as {@link LayoutEngine} will build them after the
+     *                         modification — every column with the changed ones swapped out,
+     *                         including the terminal barline — what {@link #fitsWithinLine} solves
      */
-    public record ModificationResult(
-        List<Spring> projectedSprings,
-        double projectedFirstXSs,
-        double projectedTrailingReservationSs
-    ) {
+    public record ModificationResult(Line line, List<ElementColumn> projectedColumns) {
         public ModificationResult {
-            projectedSprings = List.copyOf(projectedSprings);
+            projectedColumns = List.copyOf(projectedColumns);
         }
 
         /**
@@ -223,9 +208,8 @@ public final class InsertionSpacingCalculator {
          * @return {@code true} unless the projected spring chain solves INFEASIBLE
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return !HorizontalSpacingCalculator.solveChain(
-                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
-                .isInfeasible();
+            return !HorizontalSpacingCalculator
+                .solveLine(projectedColumns, line, staffRightMarginSs).isInfeasible();
         }
     }
 
@@ -356,24 +340,16 @@ public final class InsertionSpacingCalculator {
 
         // The fit gate must solve the SAME chain LayoutEngine will after the commit — including the
         // auto-maintained terminal barline, which the positioning chain above excludes (the terminal
-        // is pinned flush-right, not shifted). Appending it here, and anchoring with the shared
-        // calculateAnchorXSs, is what keeps the pre-check and the committed layout from disagreeing:
-        // without it a nearly-full line could pass the gate, commit, then fail to lay out.
-        var fitColumns = new ArrayList<>(columns);
+        // is pinned flush-right, not shifted). Handing the columns to the shared
+        // HorizontalSpacingCalculator.solveLine, rather than assembling a chain here, is what keeps
+        // the pre-check and the committed layout from disagreeing: without the terminal a nearly-full
+        // line could pass the gate, commit, then fail to lay out, and a chain assembled here would
+        // drift from solveLine the moment a step is added to it.
+        var fitColumns = new ArrayList<ElementColumn>(columns);
         appendTerminalIfPresent(
             fitColumns, line, lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null);
 
-        var fitSprings = LyricLift.applyLyricLift(
-            HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
-        var fitFirstXSs = HorizontalSpacingCalculator.calculateAnchorXSs(fitColumns.getFirst(), line);
-
-        return new InsertionResult(
-            insertedElementXSs,
-            shiftSs,
-            newLineWidthSs,
-            fitSprings,
-            fitFirstXSs,
-            HorizontalSpacingCalculator.trailingReservationSs(fitColumns.getLast(), line));
+        return new InsertionResult(insertedElementXSs, shiftSs, newLineWidthSs, line, fitColumns);
     }
 
     /**
@@ -573,22 +549,12 @@ public final class InsertionSpacingCalculator {
 
         // The fit gate solves the SAME chain LayoutEngine will after the commit — the positioning
         // columns PLUS the auto-maintained terminal barline (excluded above because layout pins it
-        // flush-right, not shifted). Anchoring with the shared calculateAnchorXSs and lyric-lifting
-        // the springs keeps the pre-check and the committed layout from disagreeing, exactly as
-        // calculateInsertion does for a single element.
-        var fitColumns = new ArrayList<>(columns);
+        // flush-right, not shifted) — through the shared solveLine, exactly as calculateInsertion
+        // does for a single element.
+        var fitColumns = new ArrayList<ElementColumn>(columns);
         appendTerminalIfPresent(fitColumns, line, columnBuilder);
 
-        var fitSprings = LyricLift.applyLyricLift(
-            HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
-        var fitFirstXSs = HorizontalSpacingCalculator.calculateAnchorXSs(fitColumns.getFirst(), line);
-
-        return new FragmentInsertionResult(
-            cloneXPositionsSs,
-            shiftSs,
-            fitSprings,
-            fitFirstXSs,
-            HorizontalSpacingCalculator.trailingReservationSs(fitColumns.getLast(), line));
+        return new FragmentInsertionResult(cloneXPositionsSs, shiftSs, line, fitColumns);
     }
 
     /**
@@ -643,13 +609,7 @@ public final class InsertionSpacingCalculator {
 
         appendTerminalIfPresent(columns, line, columnBuilder);
 
-        var springs = LyricLift.applyLyricLift(
-            HorizontalSpacingCalculator.buildSprings(columns, line), columns);
-
-        return new ModificationResult(
-            springs,
-            HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line),
-            HorizontalSpacingCalculator.trailingReservationSs(columns.getLast(), line));
+        return new ModificationResult(line, columns);
     }
 
     /**

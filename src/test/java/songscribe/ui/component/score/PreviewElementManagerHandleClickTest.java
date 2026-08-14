@@ -41,6 +41,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.Strings;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -276,8 +277,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         }
 
         private void flatKey(Line target) {
-            target.setKeyType(KeyType.FLATS);
-            target.setKeyAccidentalCount(FIVE_FLATS);
+            target.setKey(new Key(KeyType.FLATS, FIVE_FLATS));
         }
 
         private StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {

@@ -1026,9 +1026,9 @@ class LineComponentTest extends UnitTest {
         void testReturnsShiftedFrameWhenThisIsActiveGraceLineWithPreview() {
             final var shiftSs = 3.5;
             final var insertionIndex = 2;
-            // Only the shift is read here; the projected spring chain the fit gate would
-            // solve is irrelevant to the preview frame, so an empty chain stands in for it.
-            var preview = new InsertionResult(0.0, shiftSs, 0.0, List.of(), 0.0, 0.0);
+            // Only the shift is read here; the projected columns the fit gate would solve are
+            // irrelevant to the preview frame, so an empty projection stands in for them.
+            var preview = new InsertionResult(0.0, shiftSs, 0.0, detachedLine(), List.of());
 
             var graceMock = mock(GraceModeManager.class);
             when(graceMock.getGraceLineComponent()).thenReturn(lc);

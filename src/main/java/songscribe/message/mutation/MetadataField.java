@@ -20,7 +20,6 @@
 
 package songscribe.message.mutation;
 
-import songscribe.dom.KeyType;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Tempo;
 
@@ -34,8 +33,6 @@ public enum MetadataField {
     /** Coarse attribution record swap — old/new values are {@link SongMetadata} instances. */
     ATTRIBUTION(SongMetadata.class),
     TEMPO(Tempo.class),
-    DEFAULT_KEY_ACCIDENTAL_COUNT(Integer.class),
-    DEFAULT_KEY_TYPE(KeyType.class),
     FOOTNOTES(String.class);
 
     private final Class<?> expectedType;

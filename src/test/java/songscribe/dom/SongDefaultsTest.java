@@ -45,46 +45,21 @@ class SongDefaultsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // applyLineDefaults
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class ApplyLineDefaults {
-
-        @Test
-        void testDefaultKeyAppliedWhenCountZeroAndTypeNull() {
-            var song = new Song();
-            var line = new Line(song);
-            song.withoutMutationTracking(() -> {
-                line.setKeyAccidentalCount(0);
-                line.setKeyType(null);
-                song.addLine(line);
-            });
-
-            assertThat(line.getKeyAccidentalCount()).isEqualTo(song.getDefaultKeyAccidentalCount());
-            assertThat(line.getKeyType()).isEqualTo(song.getDefaultKeyType());
-        }
-
-        @Test
-        void testDefaultKeyNotAppliedWhenCountNonZero() {
-            var song = new Song();
-            var line = new Line(song);
-            song.withoutMutationTracking(() -> {
-                line.setKeyAccidentalCount(2);
-                line.setKeyType(KeyType.SHARPS);
-                song.addLine(line);
-            });
-
-            assertThat(line.getKeyAccidentalCount()).isEqualTo(2);
-            assertThat(line.getKeyType()).isEqualTo(KeyType.SHARPS);
-        }
-
-    }
-
-    // -----------------------------------------------------------------------
     // Standard defaults
     // -----------------------------------------------------------------------
+
+    @Test
+    void testANewLineEstablishesNoKeyOfItsOwn() {
+        // The key half of applyLineDefaults is gone: a document has no key to push onto a new
+        // line, because a line either establishes a key or is in the one already in effect.
+        var song = new Song();
+        var line = new Line(song);
+        song.addLine(line);
+
+        assertThat(line.getKey()).isNull();
+        assertThat(line.getRunningKey()).isEqualTo(song.getLine(0).getRunningKey());
+        assertKeyPropagationInvariant(song);
+    }
 
     @Test
     void testDefaultAttribution() {
@@ -96,10 +71,12 @@ class SongDefaultsTest extends UnitTest {
     }
 
     @Test
-    void testDefaultKeySignature() {
+    void testANewSongStartsInTheDefaultKey() {
+        // A song has no key of its own: the key it starts in is line 0's, which a new song
+        // establishes as Key.DEFAULT.
         var song = new Song();
-        assertThat(song.getDefaultKeyAccidentalCount()).isEqualTo(5);
-        assertThat(song.getDefaultKeyType()).isEqualTo(KeyType.FLATS);
+        assertThat(song.getStartingKey()).isEqualTo(Key.DEFAULT);
+        assertThat(song.getLine(0).getKey()).isEqualTo(Key.DEFAULT);
     }
 
     @Test

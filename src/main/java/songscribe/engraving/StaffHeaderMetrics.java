@@ -41,8 +41,10 @@ import songscribe.smufl.SMuFLMetadata;
  * right edge, {@code minimum-fixed-space} from its left edge.
  * <p>
  * The tables are directional: LilyPond reads the {@code space-alist} of the <em>left</em>
- * item and looks the gap up under the <em>right</em> item's name, so each pair of parts has
- * its own entry for each order they can appear in.
+ * item and looks the gap up under the <em>right</em> item's name, so the entry to port is the
+ * one for the order the two parts actually appear in. Only one order arises here — a
+ * cancellation always precedes the key signature it makes way for, never follows it, per the
+ * policy on {@code songscribe.dom.KeyChange} — so only that direction is ported.
  */
 public final class StaffHeaderMetrics {
 
@@ -55,20 +57,11 @@ public final class StaffHeaderMetrics {
 
     /**
      * Gap from a cancellation (the run of naturals) to the key signature that follows it —
-     * the order LilyPond itself always uses, and the one this program draws when the key
-     * changes type. LilyPond {@code KeyCancellation} {@code space-alist}: the
-     * {@code key-signature} entry, an {@code extra-space} of
-     * {@value}.
-     */
-    public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
-
-    /**
-     * Gap from a key signature to a cancellation that follows it — the reverse order, which
-     * this program draws when the key keeps its type but sheds accidentals. LilyPond
-     * {@code KeySignature} {@code space-alist}: the {@code key-cancellation} entry, an
+     * the order LilyPond itself always uses, and the only order this program draws. LilyPond
+     * {@code KeyCancellation} {@code space-alist}: the {@code key-signature} entry, an
      * {@code extra-space} of {@value}.
      */
-    public static final double KEY_TO_CANCELLATION_GAP_SS = 0.3;
+    public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
 
     /**
      * Gap from the key signature's right edge to the first note.

@@ -33,6 +33,7 @@ import songscribe.smufl.BBox;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.error.RuntimeError;
@@ -58,17 +59,26 @@ public enum ElementType {
     // Grace notes
     GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0),
 
-    // Other
+    // Repeats
     REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
     REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
     REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
+
     // Half a staff space above the top staff line. This is the single source for where a
     // breath mark sits: NoteRenderer.renderBreathMark() derives the glyph's Y from it and the
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
     BREATH_MARK("Breath mark", 0, -5),
+
+    // Barlines
     SINGLE_BARLINE("Single barline", 0, 0),
     DOUBLE_BARLINE("Double barline", 0, 0),
     FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
+
+    // Key signatures. Deliberately placed after the barlines and before the IO aliases: the
+    // three ordinal-range predicates — isNote(), isRest() and isBarLine() — all end before
+    // this point, so none of them picks it up.
+    KEY_SIGNATURE("Key signature", 0, 0),
+
     // IO aliases
     SEMIBREVEREST(ElementType.SEMIBREVE_REST),
     MINIMREST(ElementType.MINIM_REST),
@@ -199,7 +209,20 @@ public enum ElementType {
         defaultStaffPosition = aliasOf.defaultStaffPosition;
     }
 
+    /**
+     * Builds the shared instance {@link #getInstance()} hands out and {@link #newInstance()} clones.
+     * <p>
+     * The instance's Java class matches the type: a key signature is a {@link KeySignatureElement},
+     * so a caller that reaches an element through the type registry gets one it can ask for a key,
+     * and a {@code newInstance()} clone is an element the document can hold. It starts in C major —
+     * the key that draws nothing — because a default instance states no key of its own and a
+     * caller that means a particular key sets it.
+     */
     private StaffElement createDefaultInstance() {
+        if (this == KEY_SIGNATURE) {
+            return new KeySignatureElement(new Key(KeyType.NONE, 0));
+        }
+
         if (isRest() || isNonDuration()) {
             return new StructuralElement(this);
         }
@@ -420,7 +443,7 @@ public enum ElementType {
     }
 
     public boolean isNonDuration() {
-        return isBarLine() || isRepeat() || isBreathMark();
+        return isBarLine() || isRepeat() || isBreathMark() || this == KEY_SIGNATURE;
     }
 
     /**
@@ -436,11 +459,12 @@ public enum ElementType {
      *
      * <p>The same {@code isBarLine() || isRepeat()} test appears elsewhere in the codebase for
      * unrelated reasons — closing a MusicXML measure, bounding an ending, choosing a glyph — so
-     * this is deliberately narrow rather than a general "is a structural marker". #53 (mid-line
-     * key changes) adds key changes here, and only here.
+     * this is deliberately narrow rather than a general "is a structural marker". A key change
+     * belongs here, and only here: a new key signature resets what a later note at the same
+     * staff position inherits, but it does not close a measure, bound an ending or pick a glyph.
      */
     public boolean cancelsAccidentals() {
-        return isBarLine() || isRepeat();
+        return isBarLine() || isRepeat() || this == KEY_SIGNATURE;
     }
 
     public boolean isGraceNote() {
@@ -453,16 +477,26 @@ public enum ElementType {
 
     /**
      * Whether an annotation attached to this element type survives a save/reload round trip.
-     * Every type can except a breath mark, which has no place in the file to put one: the writer
-     * stores a breath mark inside the preceding note's markup rather than as an item of its own,
-     * and on reading, the breath-mark element is created as a side effect of finishing that note —
-     * by which point the note has already taken the pending annotation.
+     * Two types cannot carry one, each for its own reason:
+     *
+     * <ul>
+     *   <li>a <b>breath mark</b> has no place in the file to put one: the writer stores a breath
+     *       mark inside the preceding note's markup rather than as an item of its own, and on
+     *       reading, the breath-mark element is created as a side effect of finishing that note —
+     *       by which point the note has already taken the pending annotation;</li>
+     *   <li>a <b>key signature</b> is an attribute of the measure its preceding barline or repeat
+     *       opens, not an item of its own, so there is nothing in the file to hang an annotation
+     *       on. Nothing is lost to the user: selecting a key signature selects that barline or
+     *       repeat with it, and the annotation attaches there.</li>
+     * </ul>
      *
      * <p>Attaching one anyway would lose it silently on save, so the annotation action disables
-     * itself for such an element rather than let the user type text that cannot be stored.
+     * itself for such an element rather than let the user type text that cannot be stored. The
+     * action asks whether <em>any</em> selected element can carry one, which is why a key
+     * signature selected together with its barline still leaves the action enabled.
      */
     public boolean canCarryAnnotation() {
-        return !isBreathMark();
+        return !isBreathMark() && this != KEY_SIGNATURE;
     }
 
     /**
@@ -623,6 +657,7 @@ public enum ElementType {
 
         computeBarlineBoundsSs();
         computeRepeatBoundsSs();
+        computeKeySignatureBoundsSs();
 
         // Copy bounds to alias types
         for (var type : values()) {
@@ -782,6 +817,28 @@ public enum ElementType {
         var leftRightWidth = 2 * dotsAdvance + 4 * LineThickness.BARLINE_SEPARATION_SS
             + 2 * LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS;
         REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, Staff.STAFF_HEIGHT_SS, topOffset);
+    }
+
+    /**
+     * Sets {@code KEY_SIGNATURE}'s bounds to the degenerate case: the narrowest key signature
+     * that draws anything, a single accidental, spanning the staff vertically the way a
+     * barline does.
+     * <p>
+     * Every other type in this enum has one width, so the constant is the whole answer. A key
+     * signature does not: its width depends on the {@link Key} it carries and on the key it
+     * cancels, neither of which the enum constant knows. The real width comes from the element
+     * instance ({@code KeySignatureElement.getContentWidthSs()}); what is set here is only the
+     * floor, so that a caller reasoning from the type alone never over-reserves and
+     * {@code validateElementBounds} still has something positive to check.
+     */
+    private static void computeKeySignatureBoundsSs() {
+        var narrowestAccidentalSs = Math.min(
+            StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_FLAT),
+            StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_SHARP)
+        );
+
+        KEY_SIGNATURE.setSymmetricBounds(
+            narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HEIGHT_SS / 2);
     }
 
     private static BBox requireBBox(@Nullable SMuFLGlyph glyph, ElementType context) {
