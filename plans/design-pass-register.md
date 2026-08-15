@@ -123,10 +123,15 @@ mechanism has verified. Start there, not here.
 There is no test suite to run (see *The order, and why*), and a passing compile
 proves integration rather than correctness.
 
-Done so far: `Key` is a 15-constant enum identified by its position on the circle
-of fifths, `KeyType` and `KeyMapping` are deleted, and `songscribe.io`
-`LegacyKeyType` owns the `.mssw` tag pair. Four items remain, the first of which
-replaces a `RuntimeError.exit()` in a model getter.
+**Only `Key` itself has been through the regime**, and the pass is early rather
+than nearly done. `Key` is now a 15-constant enum identified by its position on
+the circle of fifths, `KeyType` and `KeyMapping` are deleted, and
+`songscribe.io.LegacyKeyType` owns the `.mssw` tag pair. Everything else in the
+key system — `Line`'s key state, `KeyChangeElement`, `KeySignature`, the
+cautionary path, the edit path — is unread.
+
+The next session starts by asking the user for the bugs they have in hand and
+fixing those, then runs the architectural review the record's phase B describes.
 
 Passes 5, 6 and 12 then cover what is left of the elements, `Line` and `Song`:
 everything that is not key state.

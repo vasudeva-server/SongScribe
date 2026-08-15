@@ -7,16 +7,22 @@ Run by `/design-pass keys`.
 Branch `776-key-signature`. Start commit `3c452cea`; last commit `24febe64`.
 
 This record was backfilled at `24febe64`, after the `Key` enum work was already
-committed. Steps 1–4 below are recorded from what the work actually did rather
-than captured live, so their *Before* numbers are reconstructed from the start
-commit and the per-step commit discipline begins with the remaining items.
+committed, so its *Before* numbers are reconstructed from the start commit and
+the per-step commit discipline begins with the remaining work.
+
+**Only `Key` itself has been through the regime.** The first version of this
+record marked steps 1 and 2 complete; they were not. The types it names were
+reached by following `Key`'s call sites during the enum conversion, which is not
+an inventory, and the unrepresentable-states step was credited to the whole
+system on the strength of one type. Read *Remaining work* as the real state:
+three phases, none of them started.
 
 | Step | Status | Notes |
 |---|---|---|
-| 1 Inventory | ✅ | `Key`, `KeyType`, `KeySignature`, `KeyChangeElement`, plus reach into `layout`, `io`, `io/musicxml`, `midi`, `ui`. |
-| 2 Unrepresentable states | ✅ | The pass's centre of gravity — see *Domain contracts confirmed*. |
-| 3 Extraction | ✅ | `KeyMapping` dissolved; `LegacyKeyType` extracted; `signatureHeightSs()` pulled into `Key`. |
-| 4 Contracts | 🔄 | `Key` and `LegacyKeyType` done. `Line`/`Song` key resolution outstanding — item 1 below. |
+| 1 Inventory | ⏳ | **Never run.** The types below were reached through `Key`, not enumerated by a read of the key system. |
+| 2 Unrepresentable states | 🔄 | `Key` only. `Line`'s nullable key state and `KeyChangeElement.previousKey()`'s three cases are this step's subject and are untouched. |
+| 3 Extraction | 🔄 | Done where the enum work reached: `KeyMapping` dissolved, `LegacyKeyType` extracted, `signatureHeightSs()` pulled into `Key`. Not swept. |
+| 4 Contracts | 🔄 | `Key` and `LegacyKeyType` done. Everything else outstanding. |
 | 5 Test triage | ⏳ | No suite exists (see the register). Proposal owed before anything is written. |
 | 6 Test-only surface | ⏳ | |
 | 7 Compile and run | 🔄 | Both source sets compile. **The app has not been run**; nothing here is verified on screen. |
@@ -105,7 +111,39 @@ noted in passing and left alone.
 
 ## Remaining work
 
-In order. All of it is key-system work, so none defers to a later pass.
+**The pass has barely started.** `Key` itself is settled; the rest of the key
+system has not been read. Three phases, in this order:
+
+### Phase A — bugs the user names
+
+The user has bugs in hand that no read would find, because they are behaviour
+watched going wrong rather than shape visible in the code. **Ask for them at the
+start of the session and fix those first.** They are not listed here because
+they have not been named yet; record each one here as it is named, with what it
+turned out to be.
+
+### Phase B — the architectural review of the key framework
+
+This is step 1 and step 2 done properly, over the whole system rather than over
+`Key`. It has not been done. Known starting points, not a complete list — the
+point of the read is to find what is not on it:
+
+- **`Line`'s key state.** `getKey()` is nullable, `getRunningKey()` exits the
+  application, `inheritedKey` is a cached second copy of a derivable fact.
+- **`KeyChangeElement.previousKey()`** resolves through three cases, one of which
+  is a null parent line falling back to `NO_ACCIDENTALS`.
+- **`KeySignature`** is a layout box in `dom` holding a `Key`, measured by `Key`.
+  Whether it should exist at all is a question for this read.
+- **The cautionary path** — `LayoutHitTester.hitTestCautionaryKeyEdit`,
+  `KeySignatureRenderer.renderKeyChange`, and the layout reservation that pairs
+  with them.
+- **`KeyChangeDialog` / `KeyChangeEditor` / `KeyChangeAction`** and how a key edit
+  reaches the model.
+
+### Phase C — the items this pass already surfaced, if they survive B
+
+These came out of the enum conversion incidentally. Phase B may dissolve, absorb
+or reframe any of them, so they are addressed last and only if still standing.
 
 1. **`Line`/`Song` key resolution.** `Line.getRunningKey()` calls
    `RuntimeError.exit()` at `Line.java:346` — a model getter that terminates the
