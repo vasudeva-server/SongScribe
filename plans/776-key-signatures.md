@@ -1013,7 +1013,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 
 - `AccidentalRestatements.confirm(Component, Line, List<EditedNote>)` says _"an edit whose removals span two lines does not exist, because a removal is always something one selection or one click does."_ A key change is that edit. It takes a line range, and the restatement prompt it raises is **one dialog covering the whole range**, not one per line — a prompt per line for a single click is the worse failure of the two.
   
-- `AccidentalReconciliation.reconcileModification(Line, List<IntendedChange>)` and its `RestatementRemoval` overload are per-line. Give them a range form. The `RestatementRemoval` overload's existing note — that it is _"also the entry point for a line the edit does not otherwise touch"_ — is the seam the range form generalizes; read it before changing anything, because it already anticipates this shape.
+- `AccidentalReconciliation.reconcileModification(Line, List<IntendedChange>)` and its `RestatementRemoval` overload are per-line. Give them a range form. The `RestatementRemoval` overload's existing note — that it is _"also the entry point for a line the edit does not otherwise touch"_ — is what the range form generalizes; read it before changing anything, because it already anticipates this shape.
   
 - Prefer widening the existing methods over adding parallel range-taking siblings. Two entry points for one operation drift, and the per-line call becomes a range of one.
   
@@ -1072,11 +1072,11 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 - Write `InsertionPointMode`'s contract before moving any code. State what a client is entitled to: it will be called back with an index its own predicate accepted, or told the user cancelled, **exactly once** — never both, never twice, never neither.
   
 
-4. The index predicate is the seam that makes this phase worth doing. Paste's current rule stays exactly as it is; the key-signature client (Phase 12c) supplies a different one. Do not fold either rule into the mode.
+4. The index predicate is what makes this phase worth doing: paste's current rule stays exactly as it is; the key-signature client (Phase 12c) supplies a different one. Do not fold either rule into the mode.
   
 5. `LineComponent` (`:678`, `:741`) and `ScoreInputHandler` (`:411`) dispatch to paste mode by name. Route them through the mode instead, so a second client needs no further edits to either file. `jet_brains_find_referencing_symbols` on `PasteModeManager`'s members gives the full set — work from that rather than from the three line numbers above.
   
-6. Paste behavior must be unchanged. There is no new promise here and no old one withdrawn; this is a seam being cut. Run the existing paste tests before and after and confirm the same set passes — if a paste test needs editing to stay green, the refactor changed behavior and the change is the defect, not the test.
+6. Paste behavior must be unchanged. There is no new promise here and no old one withdrawn; this is a refactor, not a behavior change. Run the existing paste tests before and after and confirm the same set passes — if a paste test needs editing to stay green, the refactor changed behavior and the change is the defect, not the test.
   
 
 - One exception is expected and is not a behavior change: `PasteModeManagerTest.lineStub` stubs `line.getKeyAccidentalCount()`, which Phase 3 turns into a deprecated delegate. Retarget the stub; do not delete the test.

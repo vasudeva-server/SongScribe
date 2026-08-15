@@ -3,7 +3,7 @@
  * the document on their behalf, so that they do not.
  *
  * <p><strong>No type in this package's public signatures is a Swing type.</strong> That is the
- * mechanical test the dialog seam is held to, and it can be applied without judgment: a signature
+ * mechanical test the dialog interface is held to, and it can be applied without judgment: a signature
  * naming a {@code JComponent}, a {@code JTextField} or any other widget means logic that is still
  * entangled with the UI and has not finished moving here.
  *

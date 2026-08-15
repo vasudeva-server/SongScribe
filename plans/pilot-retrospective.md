@@ -353,9 +353,9 @@ suite green at 7,532 passed / 1 skipped, up 5 from 7,527.
 
   **Corrected after this section was first written:** `ui/dialog` alone is not the
   second data point D10 needs. Its deletions come from the **restructure** (D2/D4 —
-  the record-in/record-out seam), not from a contract pass, because the pass cannot
+  the record-in/record-out interface), not from a contract pass, because the pass cannot
   run there first: `SongSettingsDialog.isValidData()` returns a boolean *and* pops a
-  modal, so there is no back-end API to contract until the seam extracts one, and
+  modal, so there is no back-end API to contract until the dialog interface extracts one, and
   under D2 the dialog's own three steps are wiring, classified `none`. So
   `ui/dialog` measures what architectural correction buys — worth knowing, since it
   is where the 1.54× ratio came from — and says nothing about what a contract pass

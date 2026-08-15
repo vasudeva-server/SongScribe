@@ -61,7 +61,7 @@ import songscribe.layout.LineSpacing;
  * neighbours
  * can therefore have overlapping bounds even though their ink does not overlap — which is why
  * {@link StaffPanel#isOptimizedDrawingEnabled} reports {@code false}.
- * This class is the seam where staff spaces become view pixels: everything above is computed
+ * This class converts between staff spaces and view pixels: everything above is computed
  * in {@code Ss}, then converted once per child through the view zoom.
  */
 public class StaffLinesLayout implements LayoutManager2 {

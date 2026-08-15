@@ -117,7 +117,7 @@ Its trigger is ergonomic ("needs heavy setup") where §2.7's is conceptual. Its 
 
 Worse, `:225` instructs authors to add a package-private getter/setter to production for any private field a test needs — while the `check` skill's own Testability agent is instructed to report exactly that as a defect:
 
-> **Test-only surface** — production API that exists solely because a test needed it, which is the design admitting the seam is in the wrong place. (`agents-tests.md:89`)
+> **Test-only surface** — production API that exists solely because a test needed it, which is the design admitting the test hook is in the wrong place. (`agents-tests.md:89`)
 
 **The guide currently instructs authors to create the precise defect the review skill is instructed to find.** That contradiction exists today, independent of this proposal. §2.8 resolves it in the review skill's favor.
 
@@ -177,7 +177,7 @@ Run `jet_brains_find_referencing_symbols` on a member; if every reference resolv
 ## 5. The dialog policy
 **Position:** no unit tests for dialogs unless they have significant internal functionality — and where they do, the response is to make that functionality testable _outside_ the UI with no part of the UI mocked, packaging dialog inputs into a record if that is what it takes.
 
-This codebase is already half-shaped for it. `SongSettingsDialog.commitMetadata()` gathers widget values, builds a `SongMetadata` record, and hands it to the domain via `postWithModification`. That is the shape — it already exists. What is missing is that the _decisions_ still live on the UI side of the seam.
+This codebase is already half-shaped for it. `SongSettingsDialog.commitMetadata()` gathers widget values, builds a `SongMetadata` record, and hands it to the domain via `postWithModification`. That is the shape — it already exists. What is missing is that the _decisions_ still live on the UI side of the dialog interface.
 ### 5.1 Two concrete defects in `SongSettingsDialog`
 `isValidData()` **fuses validation with presentation.** It computes `lyricsFit(...)` and then calls `OptionDialogs.showErrorMessage(contentPanel, …)` inline. Because the method both decides and displays, nothing can call it without a live `contentPanel` — which is exactly why the tests mock UI. Validation should return a result and the dialog should present it. `lyricsFit(song, currentFont, newFont, lineWidthSs)` underneath is already pure and is the real contract worth testing.
 
@@ -198,7 +198,7 @@ A name-based sweep of `src/main` finds **31 members across 14 files**. That is o
 | `SongSettingsDialog.getLineWidthFieldForTest()` | dies with the dialog policy |
 | `FontDialog.java:37` | a widened **field**, commented "Widened to package-private for testing (FontDialogTest accesses it directly)" — the exact corollary being banned |
 | `LyricEditor.setFocusedForTesting` / `setSuppressDismissAdjustmentForTesting` | test-only state mutators |
-| `MessageCenter.setPublicationErrorProbeForTesting` / `setSubscriptionProbeForTesting` | seams in the wrong form |
+| `MessageCenter.setPublicationErrorProbeForTesting` / `setSubscriptionProbeForTesting` | test hooks in the wrong form |
 | `RuntimeError.setExitHandlerForTesting` / `resetAlertShownForTesting` | an exit handler is a strategy belonging in a constructor or `initialize()` parameter |
 
 The probes and the exit handler become legitimate once injected the way production injects them.
@@ -246,7 +246,7 @@ This is the difference between a documentation change and a multi-week project.
 | Option | Consequence |
 |---|---|
 | **Docs only** | New guides govern new and modified tests; the existing suite stays and decays. Cheapest, but the suite keeps costing what it costs and continues to model the old regime to anyone reading it. |
-| **Docs + the `ui/dialog` sweep** | Rewrite the guides, then apply them to `ui/dialog` first: write contracts, restructure the validate/apply seam, delete the wiring tests. Bounded, and it is the area named. **Recommended.** |
+| **Docs + the `ui/dialog` sweep** | Rewrite the guides, then apply them to `ui/dialog` first: write contracts, restructure the validate/apply interface, delete the wiring tests. Bounded, and it is the area named. **Recommended.** |
 | **Docs + full package-by-package audit** | Every package gets contracts written, then its tests re-derived. Months, and better decided after seeing how the dialog sweep goes. |
 
 {==**Decision:**==}{>>I don't care if it takes a week to properly document all non-trivial methods and rewrite the tests accordingly — and throw out the ones that don't fit in the new policy. There is enormous tech debt that is becoming a major drag on development and leading to repeated coding errors.
@@ -262,8 +262,8 @@ Otherwise, a separate set of dialog e2e tests along the line you suggested is fi
 Do `coverage.sh` and `mutation-test.sh` stay as tools invoked deliberately while leaving `check`'s automatic phases (recommended), or come out entirely?
 
 {==**Decision:**==}{>>Yes. Only invoked deliberately.<<}{id="c8" by="user" at="2026-08-11T17:04:29.728Z"}
-### D4. `StandardDialog` validation seam
-Does `StandardDialog` grow a formal `ValidationResult`-returning hook so every dialog inherits the seam, or does each dialog implement it ad hoc? The base-class hook is the sounder option — otherwise the boundary is a convention that erodes — but it changes `BaseDialog` / `StandardDialog` (1,275 lines) and every dialog overriding `isValidData()`.
+### D4. `StandardDialog` validation interface
+Does `StandardDialog` grow a formal `ValidationResult`-returning hook so every dialog inherits it, or does each dialog implement it ad hoc? The base-class hook is the sounder option — otherwise the boundary is a convention that erodes — but it changes `BaseDialog` / `StandardDialog` (1,275 lines) and every dialog overriding `isValidData()`.
 
 {==**Decision:**==}{>>Yes, explore if ValidationResult or something similar will work.<<}{id="c9" by="user" at="2026-08-11T17:04:53.774Z"}
 ### D5. The ~11 lifecycle hooks

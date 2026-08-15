@@ -694,7 +694,7 @@ Carried over from `specs/65-clipboard.md`:
 - **Mid-line key changes.** No longer out of scope: they are their own subsystem,
   documented in [key-signatures.md](key-signatures.md), and they reuse this
   document's §5 insertion-point mode to pick the spot. What is stated here is only
-  the seam — the resolver (`StaffElement.findEffectiveAccidental`) reaches a
+  the interface between the two — the resolver (`StaffElement.findEffectiveAccidental`) reaches a
   mid-line key through `keyInEffectAt`, and a key-signature placement is a second
   `InsertionPointMode.Client` beside `PasteModeManager`.
 - **#11 (ABC import).** Separate. Listed only as a future call site of
@@ -704,7 +704,7 @@ Carried over from `specs/65-clipboard.md`:
   while SongScribe does. Both apply to default-directive files, so #11 is a
   materialization call site by default.
 - **Line-reset revisited.** Kept as house convention. The private backward-scan
-  traversal seam in `StaffElement` (added for #675, the resolver's scope) is
+  traversal boundary in `StaffElement` (added for #675, the resolver's scope) is
   where it would change if this is ever revisited.
 - **The `xOffset` dual meaning.** The field is documented and exported as a
   nudge but serves as an absolute-position store for the insert/delete/paste

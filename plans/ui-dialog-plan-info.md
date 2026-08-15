@@ -1,8 +1,8 @@
-`plans/ui-dialog-seam.md` is written, uncommitted. 11 phases.
+`plans/ui-dialog-interface.md` is written, uncommitted. 11 phases.
 
 ## How it's shaped
 
-**Phase 1 prototypes on `KeyChangeDialog`, not `FontDialog`.** The plan's canonical "small example" is `FontDialog`, but the inventory shows it's pure wiring with zero domain reach — it can't exercise a validate/apply seam. `KeyChangeDialog` is 98 lines and exhibits the whole problem: `getData()` reaches `requireScoreView()` and `getSong().getLine(...)`, `setData()` posts via `postWithModification`. Phase 1 ends at a **checkpoint** — eleven classes get rewritten against that shape, so it's agreed before rollout starts.
+**Phase 1 prototypes on `KeyChangeDialog`, not `FontDialog`.** The plan's canonical "small example" is `FontDialog`, but the inventory shows it's pure wiring with zero domain reach — it can't exercise a validate/apply interface. `KeyChangeDialog` is 98 lines and exhibits the whole problem: `getData()` reaches `requireScoreView()` and `getSong().getLine(...)`, `setData()` posts via `postWithModification`. Phase 1 ends at a **checkpoint** — eleven classes get rewritten against that shape, so it's agreed before rollout starts.
 
 **I resolved one open design question in the plan** rather than leaving it to be discovered. §5.2 states the free function as `apply(Song, Input)` — but if the dialog calls that, the dialog needs the `Song`, which defeats the decoupling. The resolution: the free function keeps that shape, and the **caller that opens the dialog** binds the song, handing the dialog a back end that already holds it. Both statements stay true and no domain type reaches the dialog. It's flagged as a task, not buried.
 

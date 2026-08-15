@@ -40,7 +40,7 @@ numbered phase in this document:
 
 | Track | Lives in | What the next session does with it |
 |---|---|---|
-| `ui/dialog` seam (D2, D4) | `plans/ui-dialog-seam.md` | Execute it, or review it if it has not been reviewed yet. It is the **last row the D10 freeze covers** — nothing outside the rollout resumes until it is done. |
+| `ui/dialog` interface (D2, D4) | `plans/ui-dialog-interface.md` | Execute it, or review it if it has not been reviewed yet. It is the **last row the D10 freeze covers** — nothing outside the rollout resumes until it is done. |
 | `engraving` contract pass | `plans/design-pass/engraving.md` | When its record is filled in, compare it against [`pilot-retrospective.md`](./pilot-retrospective.md) §1 and write the comparison into that retrospective as a second measurement. |
 
 **Why both, and what each one answers.** They measure different things and the
@@ -75,7 +75,7 @@ only what is written here.
 | D1 | **Full audit.** Every nontrivial method gets a documented contract; tests rewritten or discarded accordingly. Duration is not the constraint. |
 | D2 | Dialog unit tests go; the front-end/back-end restructuring stays. The back end must be completely UI-independent and unit-testable. A separate dialog e2e set confirms wiring only, run when a dialog is created or gains a feature. |
 | D3 | `coverage.sh` and `mutation-test.sh` stay, invoked deliberately, out of `check`'s automatic phases. **Refined by Phase 13:** they are not peers. Coverage is a *required* closing step of every package phase (per-area procedure step 7); mutation stays opportunistic. Neither returns to `check`. |
-| D4 | Design a decoupling seam for `StandardDialog` — see the dialog phase. |
+| D4 | Design the dialog interface for `StandardDialog` — see the dialog phase. |
 | D5 | The ~11 lifecycle hooks become proper singleton teardown (discussion doc §6.3). |
 | D6 | Per-area order: write API contracts → write the testing-approach Javadoc → modify, rewrite or discard tests. |
 | D7 | **Language-neutral principles live in `~/.claude/rules/development.md`** (global). Only language- and project-specific mechanics stay local. |
@@ -117,7 +117,7 @@ Three principles that must land in the global rules:
 ## Splitting principle
 
 Opus decides; Sonnet applies. A phase goes to Opus when it must **choose** —
-what a contract promises, what an axis of review covers, how a seam is shaped.
+what a contract promises, what an axis of review covers, how a boundary is shaped.
 It goes to Sonnet when the choice is already recorded in this plan or in the
 discussion doc and the work is to carry it out: editing named files to a stated
 end, renaming through `jetbrains_rename`, enumerating symbols, triaging tests
@@ -399,7 +399,7 @@ tier-3 statement in `docs/lifecycle.md` and the bus-specific instance in
 
 `ScoreView` disposal and the converter leak are **out of Phase 9 by decision**
 (§5.4): the converters are to be redesigned and rewritten and are not in use
-until then, so the leak is unobserved and the seam's shape is unknown. The
+until then, so the leak is unobserved and the shape of the needed test hook is unknown. The
 requirement is recorded against the rewrite instead.
 
 Discussion doc §6.3 lists ~11 members that exist only because singletons hold
@@ -634,7 +634,7 @@ further. `ui/dialog` is the next row.
 
 **Order settled by Phase 13: `ui/dialog` is next, and it is the last row the D10
 freeze covers.** It gets its own plan document — the architectural track below is a
-seam design plus a prototype plus a rollout across 10,010 LOC, which is more than a
+dialog-interface design plus a prototype plus a rollout across 10,010 LOC, which is more than a
 row in a table. Everything after it is contingent on the D10 re-decision that
 `ui/dialog`'s numbers will inform, so the rest of this table stays unexpanded: writing
 task lists for rows that may not run is writing against a decision nobody has made.
@@ -681,7 +681,7 @@ in both directions: a record passed **in**, so it never reaches for `Song`,
 or method reference implementing a small interface passed in, which the dialog
 calls to validate and to save. The dialog then knows nothing about the domain —
 a widget shell over `Input → Output` plus a callback, with the back end
-unit-testable and no UI type in any signature. Design the seam, prototype on one
+unit-testable and no UI type in any signature. Design the dialog interface, prototype on one
 dialog before committing `BaseDialog`/`StandardDialog` (1,275 lines), prove it on
 `SongSettingsDialog` (split `isValidData()`'s decision from its presentation;
 delete `getLineWidthFieldForTest()`), roll out, contract-and-test the back ends,
@@ -729,7 +729,7 @@ Applied in every package phase. D6 is steps 2–3. One commit per step (D11).
 **Help:** the foundations phase (one agent per package), Phase 10's sweep, and
 step 1 inventory anywhere.
 
-**Do not help:** `dom`, and the dialog seam design. A subagent guessing at a
+**Do not help:** `dom`, and the dialog-interface design. A subagent guessing at a
 music-notation promise produces confident, plausible, wrong Javadoc — worse than
 none, because everything downstream then tests against it.
 

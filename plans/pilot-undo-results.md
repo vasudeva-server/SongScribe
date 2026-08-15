@@ -124,7 +124,7 @@ traced to one of two outcomes — never to a manufactured test:
   no-op ("no-op when no document is open") had zero coverage; nothing in any of the ten
   classes ever called `undo()`/`redo()` on an empty stack or with no document mocked.
   Added to `UndoControllerSavePointTest`, which already builds the
-  `MainFrame`/`ScoreView` mocking seam these cases need — matching what
+  `MainFrame`/`ScoreView` mocking setup these cases need — matching what
   `UndoControllerTest`'s own "Not covered here" note already pointed at, now made real
   instead of aspirational. The `documentWasSaved` case is asserted by absence of an
   exception rather than by the document's modified flag, because `Song` itself also

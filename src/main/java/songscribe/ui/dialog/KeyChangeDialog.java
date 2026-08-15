@@ -207,10 +207,10 @@ public class KeyChangeDialog extends StandardDialog {
     }
 
     /**
-     * The OK lifecycle, wired to the pre-seam {@link #isValidData()} / {@link #setData()} pair
+     * The OK lifecycle, wired to the pre-interface {@link #isValidData()} / {@link #setData()} pair
      * this class still carries.
      *
-     * <p><strong>Temporary.</strong> This dialog has not been migrated to the back-end seam in
+     * <p><strong>Temporary.</strong> This dialog has not been migrated to the dialog interface described in
      * {@code .claude/guides/dialogs.md} — it still holds a {@link Line} and reaches through it
      * to the document, which that guide forbids. Phase 2 of {@code plans/776-design-pass.md}
      * rewrites it to take a bound input and a back end; this method exists only so the branch

@@ -40,7 +40,7 @@ import songscribe.ui.component.MainFrame;
  * <p><strong>Deciding and telling the user are separate.</strong> {@link #validate} answers and
  * displays nothing; this class does the displaying, for every dialog, through
  * {@link OptionDialogs}. A dialog that shows its own validation alert has fused the two again and
- * is the defect this seam removes — see {@link DialogBackEnd#validate}.
+ * is the defect the dialog interface removes — see {@link DialogBackEnd#validate}.
  *
  * <p>A dialog whose OK commits nothing extends {@link StandardDialog} directly. There is nothing
  * for it to gather, so there is no value for this class's promises to be about.

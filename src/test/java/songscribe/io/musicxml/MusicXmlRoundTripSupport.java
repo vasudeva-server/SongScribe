@@ -156,11 +156,6 @@ final class MusicXmlRoundTripSupport {
             closeTag(MusicXmlTags.SCORE_PARTWISE) + '\n';
     }
 
-    // The Song-only overloads default to DocumentFonts.defaultFonts() so the
-    // Phase 1–6 tests that predate fonts plumbing compile and run unchanged; the
-    // font-aware overloads carry the DocumentFonts through the write/read seam and
-    // surface it back via SongLoadResult.Success.
-
     static String writeToString(Song song) throws Exception {
         return writeToString(song, DocumentFonts.defaultFonts());
     }

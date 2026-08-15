@@ -27,7 +27,7 @@ import java.util.List;
  *
  * <p>It exists so that code deciding <em>what</em> to tell the user can do so without producing
  * text. Resolving is a locale concern and belongs to whoever displays the message; a back end
- * that resolved would be making that decision on the domain side of the dialog seam. The
+ * that resolved would be making that decision on the domain side of the dialog interface. The
  * presenter passes {@link #key()} and {@link #args()} to
  * {@link songscribe.ui.OptionDialogs}, which owns the resolution rule — a value is a
  * {@code MessageFormat} pattern only when read through the varargs {@code Strings.get}, so an

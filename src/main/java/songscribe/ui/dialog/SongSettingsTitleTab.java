@@ -344,7 +344,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     private void updateTitlePreview() {
-        // Normalize through the same seam the commit uses so the preview shows
+        // Normalize through the same path the commit uses so the preview shows
         // the typographic substitution (and trimming) the score will render.
         titlePreview.setPreview(new BaseTitleComponent.Preview(
             Song.numberedTitle(numberField.getText(), SongMetadata.normalizeTitle(titleField.getText())),

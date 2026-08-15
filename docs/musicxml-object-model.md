@@ -422,7 +422,7 @@ hand-edited credit corrupts the model. Every credit routes into exactly one of t
 
 ---
 
-## The `MusicXmlSerializer.ParsedDocument` seam
+## `MusicXmlSerializer.ParsedDocument`
 
 `MusicXmlSerializer.unmarshal` returns `ParsedDocument(score, rootElement, version)`, not a bare
 `ScorePartwise` — because two facts about a document are not recoverable from the graph at all:

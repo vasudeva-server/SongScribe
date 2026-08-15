@@ -50,13 +50,15 @@ import songscribe.ui.dialog.backend.TempoChangeBackEnd;
  * {@code editXxxOnSelection} methods resolve the element from the score's current selection.
  * Both end at the same bound dialog.
  *
- * <p>It is a class rather than a private method on {@code LineComponent} so the mapping can be
- * tested without Swing, and so the routing in {@code mouseClicked} has a static to observe — the
- * call to {@link #edit} is that gesture's only observable effect.
+ * <p>It is a class rather than a private method on {@code LineComponent} because it holds real
+ * routing — the attachment-kind switch and the two ways in above — and both gestures need it. It
+ * is <em>not</em> a class so that a test has a static to observe; that was the reason its first
+ * version gave, and a production class shaped for a test is what
+ * {@code plans/test-only-surface.md} bans everywhere else.
  */
-public final class AttachmentEditor {
+public final class AttachmentDialogController {
 
-    private AttachmentEditor() {}
+    private AttachmentDialogController() {}
 
     /**
      * Opens the dialog that edits {@code attachment}, bound to its owner element.
@@ -104,7 +106,7 @@ public final class AttachmentEditor {
      * @param mainFrame the window the dialog parents itself to
      */
     public static void editAnnotationOnSelection(MainFrame mainFrame) {
-        openOnSelection(mainFrame, AttachmentEditor::annotationDialog);
+        openOnSelection(mainFrame, AttachmentDialogController::annotationDialog);
     }
 
     /**
@@ -114,7 +116,7 @@ public final class AttachmentEditor {
      * @param mainFrame the window the dialog parents itself to
      */
     public static void editBeatChangeOnSelection(MainFrame mainFrame) {
-        openOnSelection(mainFrame, AttachmentEditor::beatChangeDialog);
+        openOnSelection(mainFrame, AttachmentDialogController::beatChangeDialog);
     }
 
     /**
@@ -124,7 +126,7 @@ public final class AttachmentEditor {
      * @param mainFrame the window the dialog parents itself to
      */
     public static void editTempoChangeOnSelection(MainFrame mainFrame) {
-        openOnSelection(mainFrame, AttachmentEditor::tempoChangeDialog);
+        openOnSelection(mainFrame, AttachmentDialogController::tempoChangeDialog);
     }
 
     /**

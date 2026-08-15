@@ -1,13 +1,26 @@
-# ui/dialog — Decoupling Seam (D2, D4)
+# ui/dialog — The Dialog Interface (D2, D4)
 
 Executes the `ui/dialog` row of [`contract-driven-rollout.md`](./contract-driven-rollout.md).
 It is the **last row the D10 freeze covers**; nothing outside the rollout resumes until
 it is done.
 
+## Two terms
+
+- **The dialog framework** — the whole of `songscribe.ui.dialog`: `BaseDialog`'s
+  lifecycle and geometry, `StandardDialog`'s OK/Cancel, `CommitDialog<I>`, `Tab`,
+  `DialogCategory` and the blocking counter. Named the way `docs/messages.md` and
+  `docs/mutations.md` name theirs.
+- **The dialog interface** — how data passes into and out of a dialog: a record in,
+  a record out, and a `DialogBackEnd` supplied already bound to the document state it
+  acts on. This is what the track exists to establish.
+
+When a sentence means the Java `interface` type rather than the concept, it names
+`DialogBackEnd` outright.
+
 This is an architectural track, not a contract pass. `/contract-pass ui.dialog` must
 **not** be run against the package as it stands: `SongSettingsDialog.isValidData()`
 returns a boolean *and* pops a modal, so there is no back-end API to contract until the
-seam extracts one, and writing a contract for the fused method would document the defect
+dialog interface extracts one, and writing a contract for the fused method would document the defect
 instead of removing it.
 
 ## The target
@@ -25,7 +38,7 @@ nothing about the domain.
 **One dialog is not commit-on-OK and gets no back end at all.** `PreferencesDialog` is the
 only non-modal `BaseDialog`; it has no OK or Cancel and applies each edit the moment it is
 made. It has no input/modify/output cycle to put a record boundary across, so forcing one
-onto it would invent machinery to model a cycle that does not exist. Its seam is
+onto it would invent machinery to model a cycle that does not exist. Its interface to the rest of the app is
 `PrefsDidChangeNotification`: the dialog reads and writes `Prefs` and knows nothing else,
 and every other subsystem reacts to the notification `Prefs` posts. That satisfies this
 section's rule as written — `Prefs` is a global store in `songscribe.prefs`, not `Song`,
@@ -60,7 +73,7 @@ three subclasses (`AnnotationDialog`, `BeatChangeDialog`, `TempoChangeDialog`),
 `KeyChangeDialog`, `ExportMidiDialog`, `ExportPDFDialog`, `PreferencesDialog`,
 `ResolutionDialog`, `SongSettingsDialog`, and four `SongSettings*Tab` classes.
 
-Seven take `MainFrame` for **window parenting only** and need no seam: `AboutDialog`,
+Seven take `MainFrame` for **window parenting only** and need no back end: `AboutDialog`,
 `WhatsNewDialog`, `DoNotShowMessage`, `ProgressBarDialog`, `FontDialog`,
 `ReportBugDialog`, `FontSettingRow`. The entire `fontchooser/` subpackage (17 files) has
 zero domain reach.
@@ -72,10 +85,10 @@ such in `.agents/guides/dialogs.md`. Do not convert either.
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [Design the Seam and Prove It on the AttachmentDialog Family](#-phase-1-design-the-seam-and-prove-it-on-the-attachmentdialog-family) | ✅ Complete | — |
-| 2 | [Commit the Seam to BaseDialog and StandardDialog](#-phase-2-commit-the-seam-to-basedialog-and-standarddialog) | ✅ Complete | — |
+| 1 | [Design the Dialog Interface and Prove It on the AttachmentDialog Family](#-phase-1-design-the-dialog-interface-and-prove-it-on-the-attachmentdialog-family) | ✅ Complete | — |
+| 2 | [Commit the Dialog Interface to BaseDialog and StandardDialog](#-phase-2-commit-the-dialog-interface-to-basedialog-and-standarddialog) | ✅ Complete | — |
 | 3 | [SongSettingsDialog and Its Tabs](#-phase-3-songsettingsdialog-and-its-tabs) | ✅ Complete | — |
-| 4 | [KeySignatureChangeDialog](#-phase-4-keysignaturechangedialog) | ⏸️ Blocked by external | — |
+| 4 | [KeyChangeDialog](#-phase-4-keychangedialog) | ⏳ Pending | — |
 | 5 | [Export, Preferences and Resolution](#-phase-5-export-preferences-and-resolution) | ⏳ Pending | — |
 | 6 | [Parent-Window-Only Dialogs](#-phase-6-parent-window-only-dialogs) | ⏳ Pending | — |
 | 7 | [Back-End Contracts and Their Tests](#-phase-7-back-end-contracts-and-their-tests) | ⏸️ Blocked by 3, 5 | — |
@@ -86,12 +99,12 @@ such in `.agents/guides/dialogs.md`. Do not convert either.
 
 ---
 
-## ✅ Phase 1: Design the Seam and Prove It on the AttachmentDialog Family
+## ✅ Phase 1: Design the Dialog Interface and Prove It on the AttachmentDialog Family
 
 **Status:** Complete  <br>
 **BlockedBy:** —  <br>
-**Files:** src/main/java/songscribe/ui/dialog/ValidationResult.java, src/main/java/songscribe/ui/dialog/ValidationFailure.java, src/main/java/songscribe/ui/dialog/DialogBackEnd.java, src/main/java/songscribe/ui/dialog/AttachmentDialog.java, src/main/java/songscribe/ui/dialog/BeatChangeDialog.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/dialog/AnnotationDialog.java, src/main/java/songscribe/ui/dialog/AttachmentEditor.java, src/test/java/songscribe/ui/dialog/BeatChangeDialogTest.java  <br>
-**Recommended model/effort:** Opus, high — this decides the shape every other phase applies; a wrong seam here is paid for by every class that follows.
+**Files:** src/main/java/songscribe/ui/dialog/ValidationResult.java, src/main/java/songscribe/ui/dialog/ValidationFailure.java, src/main/java/songscribe/ui/dialog/DialogBackEnd.java, src/main/java/songscribe/ui/dialog/AttachmentDialog.java, src/main/java/songscribe/ui/dialog/BeatChangeDialog.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/dialog/AnnotationDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialogController.java, src/test/java/songscribe/ui/dialog/BeatChangeDialogTest.java  <br>
+**Recommended model/effort:** Opus, high — this decides the shape every other phase applies; a wrong shape here is paid for by every class that follows.
 
 **The prototype is the `AttachmentDialog` family, worked `BeatChangeDialog` first.**
 `AttachmentDialog` (155 lines, extends `StandardDialog`) defines the template — abstract
@@ -108,7 +121,7 @@ this phase must end green.
 
 **Prove it on `BeatChangeDialog` first.** It is the self-contained leaf — two
 `JComboBox<Duration>` and nothing else — where `TempoChangeDialog` delegates to a
-`TempoSection` collaborator that would muddy the first pass. It also demonstrates the seam
+`TempoSection` collaborator that would muddy the first pass. It also demonstrates the dialog interface
 paying for itself: `applyChange` guards `if (duration == null || beat == null) { return; }`,
 a silent no-op on OK that exists only because `getSelectedItem()` is nullable. An input
 record carrying non-null `Duration`s deletes the guard rather than relocating it.
@@ -125,7 +138,7 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
    `BaseDialog` lifecycle, `Tab`, `DialogCategory`, the OK lifecycle
    `isValidData()` → `setData()` → `repaintScore()` → close).
 2. Read `src/main/java/songscribe/ui/OptionDialogs.java` — it is how failures reach the
-   user today and is the presentation side the seam separates out. Note that it lives in
+   user today and is the presentation side the dialog interface separates out. Note that it lives in
    `songscribe.ui`, not `songscribe.ui.dialog`.
 3. **Write the contracts for the three new types before implementing any of them.**
    Method Javadoc with preconditions, postconditions, `@throws`, boundary semantics,
@@ -136,7 +149,7 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
      and what an empty failure list means.
    - `ValidationFailure` — one failure. It must carry a `Strings` **key plus format
      arguments**, not resolved text: resolving in the back end would put a locale
-     concern on the domain side of the seam, and `SongSettingsDialog` today needs both a
+     concern on the domain side of the dialog interface, and `SongSettingsDialog` today needs both a
      title (`Strings.ALERT_TITLE_LINES_DO_NOT_FIT`) and a message
      (`Strings.ALERT_FONT_CHANGE_INVALID`). Read `.agents/guides/strings.md` before
      choosing the representation.
@@ -169,14 +182,14 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
    components means decomposing further, and a mode-selecting boolean is an enum. Note
    that `duration` and `beat` are two adjacent `Duration`s a call site could transpose —
    that is the rule's own example, so they need a record rather than a parameter pair.
-9. Rewrite `BeatChangeDialog` against the seam — it receives an input record and a
+9. Rewrite `BeatChangeDialog` against the dialog interface — it receives an input record and a
    `DialogBackEnd`, gathers widgets into the output record, and calls validate then apply.
    Verify by inspection that no `songscribe.dom` type, `Song`, `ScoreView` or
    `MainFrame`-derived model access remains in the class other than window parenting.
    Then apply the same shape to `TempoChangeDialog` and `AnnotationDialog`; their
    add-vs-update branching in `applyChange` moves to free functions with no Swing type in
    the signature, contract written before the body moves.
-10. `AttachmentEditor` is a static entry point (`edit(MainFrame, Attachment, Line)`) and is
+10. `AttachmentDialogController` is a static entry point (`edit(MainFrame, Attachment, Line)`) and is
     the natural place for the caller-side binding task 4 describes. Update it to construct
     the bound `DialogBackEnd` rather than letting the dialog reach.
 11. Update `BeatChangeDialogTest` (211 lines) to the new shape. Before writing each test
@@ -188,7 +201,7 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
     pre-empt that triage.
 12. Run `./scripts/compile.sh` (must print SUCCESS) and
     `./scripts/test.sh BeatChangeDialogTest` (must be green).
-13. **Checkpoint — stop and present the seam to the user before any rollout.** Show the
+13. **Checkpoint — stop and present the dialog interface to the user before any rollout.** Show the
     three types' contracts, `BeatChangeDialog`'s before/after, the template's new
     contracts, and the signature test applied to every extracted function. Do not start
     Phase 2 until the shape is agreed: the rest of the inventory is about to be rewritten
@@ -196,7 +209,7 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
 
 ---
 
-## ✅ Phase 2: Commit the Seam to BaseDialog and StandardDialog
+## ✅ Phase 2: Commit the Dialog Interface to BaseDialog and StandardDialog
 
 **Status:** Complete  <br>
 **BlockedBy:** —  <br>
@@ -207,7 +220,7 @@ wrong contract — the worst outcome the rules name. It is Phase 4.
 
 **The lifecycle split in two classes rather than one.** `StandardDialog` keeps OK/Cancel and
 gains one hook, `commitOnOk()` → whether the dialog may close, defaulting to committing nothing.
-The new `CommitDialog<I>` owns the seam: `gather()` once, `validate(I)`, present, `commit(I)`,
+The new `CommitDialog<I>` owns the dialog interface: `gather()` once, `validate(I)`, present, `commit(I)`,
 with `commitOnOk()` final so no dialog can reorder the three or let them see different values.
 A generic `StandardDialog<I>` was rejected because the two dialogs whose OK commits nothing
 (`WhatsNewDialog`, `ReportBugDialog`) would have needed a placeholder type argument to say so.
@@ -268,7 +281,7 @@ main compiles.
 
 0. **Thread the gathered values through the OK lifecycle** (agreed at the Phase 1 checkpoint).
    Today OK runs `isValidData()` then `setData()` with no value passed between them, so a dialog
-   using the seam has to gather twice — `AttachmentDialog` calls `gatherChange()` in each. Gather
+   using the dialog interface has to gather twice — `AttachmentDialog` calls `gatherChange()` in each. Gather
    once and hand the same values to validation and to the commit, so the two cannot see different
    values and the second read cannot be forgotten. State in the contract that the values validated
    are the values applied; that is the promise the current shape cannot make.
@@ -295,7 +308,7 @@ main compiles.
 4. Update `BaseDialog.Tab`'s `isValidData` contract, or remove it, per the Phase 1
    design — a tab that no longer presents errors may not need the hook at all.
 5. Do **not** change `BaseDialog`'s blocking-dialog counter, tab selection or geometry
-   logic. Those are real logic but are not part of this seam; leave them for the contract
+   logic. Those are real logic but are not part of the dialog interface; leave them for the contract
    pass that follows this track.
 6. Run `./scripts/compile.sh`. It will fail in the classes Phases 3–5 own if you
    took the removal route — record the exact failing call sites in the commit message as
@@ -365,7 +378,7 @@ names `cm` or `inches`.
    `titlePreview.setSong(song)` existed so `lineWidthPx()` could read
    `song.getLineWidthSs()` as a wrap constraint; the text always came from `setPreviewText`.
    `setPreviewText(String)` is now `setPreview(@Nullable Preview)`, where
-   `Preview(String text, double wrapWidthSs)` supplies both — completing a preview seam whose
+   `Preview(String text, double wrapWidthSs)` supplies both — completing a preview boundary whose
    class doc already claimed previews needed no song. The `song == null` early return in
    `render()` went with it; `textToRenderOrNull()` already answered that question, and it
    answers it after the background fill rather than before.
@@ -454,7 +467,7 @@ Nothing was repaired, per task 6.
      enabled, derived from year validity and month selection.
 3. Define the input and output records. `commitMetadata()` already builds a
    `SongMetadata` and hands it to the domain via `postWithModification` — that is the
-   shape the seam wants and it already exists; extend it rather than inventing a parallel
+   shape the dialog interface wants and it already exists; extend it rather than inventing a parallel
    one. `commitFonts()` is the same move for `DocumentFonts`.
 4. State the cross-tab validation ordering in the new contract. Today `isValidData()`
    relies on `super.isValidData()` running the Music tab's line-width validation first so
@@ -469,45 +482,142 @@ Nothing was repaired, per task 6.
 
 ---
 
-## ⏸️ Phase 4: KeySignatureChangeDialog
+## ⏳ Phase 4: KeyChangeDialog
 
-**Status:** Blocked by external  <br>
-**BlockedBy:** the owner's crash fix and enablement rules  <br>
-**Files:** src/main/java/songscribe/ui/dialog/KeySignatureChangeDialog.java, src/test/java/songscribe/ui/dialog/KeySignatureChangeDialogTest.java  <br>
-**Recommended model/effort:** Opus, medium — 98 lines applying a decided shape, but against behavior that changed after this plan was written.
+**Status:** Pending — unblocked, re-scoped against the tree as it stands  <br>
+**BlockedBy:** —  <br>
+**Files:** src/main/java/songscribe/ui/dialog/KeyChangeDialog.java, src/main/java/songscribe/ui/dialog/KeyChangeDialogController.java, src/main/java/songscribe/ui/dialog/backend/, src/main/java/songscribe/ui/component/score/LineComponent.java, src/main/java/songscribe/ui/action/KeyChangeAction.java  <br>
+**Recommended model/effort:** Opus, high — 449 lines, two commit routes that need two back ends, and a modal confirm sitting inside the commit path that the dialog interface's rules do not currently cover.
 
-This was the original Phase 1 prototype. It is not, because the dialog **currently crashes
-and is gaining rules about when it is enabled**. A contract written against behavior that
-does not exist yet is the failure mode the rules name explicitly: confident, plausible and
-wrong, with every test downstream derived from it.
+### Why this section was rewritten
+
+The external gate is gone: the crash fix landed, and the enablement rule the phase was
+waiting on is `3c144d4a` — the combo opens on the key already in effect and OK stays
+disabled until the notator picks a different one.
+
+**Three things this section said are no longer true of the tree**, and the plan is corrected
+rather than followed as written:
+
+- The class is `KeyChangeDialog`, not `KeySignatureChangeDialog`. There is no
+  `KeySignatureChangeDialogTest`, and `KeyChangeDialogTest` no longer exists either — the
+  `ui/dialog` suite was removed before the `keys` design pass, so **there is nothing to
+  update and everything to propose**.
+- The reach it describes has moved. `getData()` no longer calls `requireScoreView()`; it
+  reaches through `line.getSong()`. The commit no longer calls `postWithModification` — it
+  goes through `ScoreViewController.changeLineKey` or `insertKeySignature`, reached via a
+  private `requireScoreView()` the class carries with a Javadoc calling itself "temporary,
+  and a deliberate rule violation".
+- One back end is not enough. See below.
+
+### What the phase found before starting
+
+**`KeyChangeDialogController` has zero callers.** Both openers construct the dialog directly —
+`LineComponent.openKeySignatureDialog` (`LineComponent.java:986`) and
+`KeyChangeAction.insertionPointChosen` (`KeyChangeAction.java:149`) — while
+`KeyChangeDialogController`'s own Javadoc claims two callers and cites `AttachmentDialogController`'s reasoning
+for existing. It is the class this phase builds on, and it is currently dead code
+describing a wiring that was never made.
+
+**The two routes differ in four places, not one.** `isMidLineInsertion()` is branched on in
+`getData`, `currentChoiceFor`, `isValidData` and `setData`:
+
+| | Line's own key | Mid-line key signature |
+|---|---|---|
+| Fit check | `KeyEditFitCalculator.lineKeyChangeFits` | `KeyEditFitCalculator.keySignatureFits` |
+| Refusal message | `ERROR_LINE_FULL_KEY_CHANGE` | `ERROR_LINE_FULL_ELEMENT` + `ElementType.KEY_CHANGE.categoryName()` |
+| Commit | `ScoreViewController.changeLineKey(line, key, label)` | `ScoreViewController.insertKeySignature(line, index, key)` |
+| Inherit offered | on every line but the first | never |
+
+Four differences across one interface is two implementations of it, not one with a flag.
+
+**A modal confirm sits inside the commit path.** Both controller methods raise
+`AccidentalRestatements.confirm` before opening their modification bracket, and both return
+`false` when the notator cancels there. `DialogBackEnd.apply` returns `void` and the guide's
+governing rule is that the back end decides while the dialog presents. This is not a
+violation to fix here: the restatement prompt belongs to every pitch-moving edit, not to
+this dialog, and it is raised by the controller for an inserted barline just as much. But
+**the rule as written does not cover it**, and that is a finding this phase owes the track —
+see task 8.
+
+### The shape to implement
+
+**`KeyChangeDialog extends CommitDialog<KeyChoice>`**, holding a `DialogBackEnd<KeyChoice>`
+and a display record. It keeps the combo, the renderer, the inherit entry and the
+OK-disabled-on-no-change rule. It gives up `Line`, `ScoreView`, `ScoreViewController`,
+`KeyEditFitCalculator` and `OptionDialogs`.
+
+**Out — `KeyChoice`, sealed.** `KeyChoice.Establish(Key key)` and `KeyChoice.Inherit`. Sealed
+rather than a record with a `@Nullable Key`, because `chosenKey`/`requireChosenKey` and the
+`RuntimeError.exit` behind them exist only to re-discover which case the combo entry was;
+an exhaustive switch answers it once. The mid-line back end still refuses `Inherit`, but as
+one switch arm rather than a null check three frames from the entry that produced it.
+
+**In — the display record.** What the combo needs and nothing else: the entry to open on
+(a `KeyChoice`) and whether the inherit entry is offered at all. Both are facts the controller
+already knows.
+
+**Two back ends in `songscribe.ui.dialog.backend`,** both `DialogBackEnd<KeyChoice>`:
+`LineKeyBackEnd` and `KeySignatureBackEnd`. Each owns one column of the table above.
+`DialogOp` and `opLabel` go to `LineKeyBackEnd` — the undo-step name is a property of the
+commit, and the mid-line route names its own.
+
+**`KeyChangeDialogController` mediates between the model and the dialog,** revived rather than deleted. It is the one place
+that reads `insertionIndex`, so it is the one place that decides which of the two routes
+this is, resolves the opening `KeyChoice`, decides whether inherit is offered, builds the
+right back end, and constructs the dialog. `LINE_OWN_KEY_INDEX` moves here with that
+decision. Both openers route through it, which is the wiring its Javadoc already claims.
+
+**This unblocks the `keys` pass, group C5.** `currentChoiceFor` is the only caller relying
+on `Line.keyAt`'s inclusive bound, and it relies on it to serve edit-this-signature and
+insert-one-here without telling them apart. Once the controller resolves the opening key as a
+value, `keyAt` can become exclusive. See `plans/design-pass/keys.md`, group C item 5.
 
 ### Tasks
 
-1. **Do not start until the crash fix and the enablement rules have landed.** If they have
-   not, say so and stop; do not infer the intended behavior from the broken code.
-2. Read the enablement rules as they were actually implemented, and treat them as part of
-   the contract this phase writes — when the dialog may open is a precondition, not a
-   caller's concern.
-3. Apply the Phase 1 shape. `getData()` calls `requireScoreView()`,
-   `score.getSong().getLine(...)` and `score.getSong().indexOfLine(...)`; `setData()`
-   calls `requireScoreView()` and `score.getSong().postWithModification(...)`. All of it
-   moves behind the back end, with the caller binding the song.
-4. Define `KeySignatureChangeInput` as a record carrying exactly what the dialog gathers.
-   Apply the signature rules: more than four components or two transposable same-typed
-   components means decomposing further, and a mode-selecting boolean is an enum.
-5. Move the extracted validate/apply logic to a free function whose signature contains no
-   Swing type, and write that function's contract before moving the body into it.
-6. Update `KeyChangeDialogTest` (182 lines, 5 tests) to the new shape, adding the
-   enablement rules' cases. Before writing each test method, check whether it will sit
-   beside a sibling exercising the same method the same way with only the data differing —
-   if so, both are rows in one `record` case table driven by `@ParameterizedTest`.
-7. Run `./scripts/compile.sh` (SUCCESS) and
-   `./scripts/test.sh KeySignatureChangeDialogTest` (green).
+1. Read `.claude/guides/dialogs.md`, `DialogBackEnd`, `AttachmentDialogController` and
+   `backend/AttachmentTarget` — the worked example of a per-gesture dialog whose input
+   arrives at construction. Read `docs/key-signatures.md` and `docs/mutations.md` before
+   touching either commit route.
+2. **Write the contracts before moving any body**: `KeyChoice`, the display record, both
+   back ends' `validate` and `apply`, and `KeyChangeDialogController`'s entry points. Apply the
+   signature rules — more than four components or two transposable same-typed components
+   means decomposing further, and a mode-selecting boolean is an enum.
+3. **Bind what the back ends need without naming a Swing type.** They need the line, the
+   insertion index, the controller and the lyric render metrics; the last two are reached
+   today through `requireScoreView()`. `SongSettingsTarget` — an interface `ScoreView`
+   implements — is the precedent for supplying them without a `JComponent` in the
+   signature. **Decide this at the checkpoint**; it is the one part of the shape not
+   settled by an existing example.
+4. Turn the two refusals into `ValidationResult`s. Each becomes a `ValidationFailure`
+   carrying `ALERT_TITLE_LINE_TOO_FULL` and its own `LocalizedMessage` — the mid-line one
+   with `ElementType.KEY_CHANGE.categoryName()` as its argument, unresolved, per
+   `ValidationFailure`'s contract. `CommitDialog.showFailure` presents. The comment
+   explaining why the line-key message deliberately does not say "this line" moves with the
+   message it is about.
+5. `runningKeyAfterChange` moves to `LineKeyBackEnd`: it reads the previous line to answer
+   what the line would run in under the inherit choice, which is document state.
+6. Delete from `KeyChangeDialog`: `requireScoreView`, `requireController`, `requireInput`,
+   `commitOnOk`, `isValidData`, `setData`, `chosenKey`, `requireChosenKey`,
+   `runningKeyAfterChange`, `opLabel`, `KeyChangeInput` and `isMidLineInsertion`. What
+   remains is the combo, the renderer, `gather()` and the no-change rule.
+7. Route `LineComponent.openKeySignatureDialog` and `KeyChangeAction.insertionPointChosen`
+   through `KeyChangeDialogController`. Neither may construct `KeyChangeDialog` after this phase.
+8. **Record the restatement-prompt finding for Phase 10.** `apply` can raise a modal confirm
+   and can decline to commit, and the guide's rule says the back end displays nothing.
+   Either the rule gains a stated exception for a prompt the domain owns, or `apply` gains
+   a return value. Do not settle it here; state it, and say which dialogs it could ever
+   apply to.
+9. **Propose the test list and wait.** No suite exists for this dialog or these back ends.
+   The list goes to the user before anything is written — the fit refusals, the inherit
+   resolution, the two commit routes' undo-step naming, and the controller's route choice are
+   the candidate contracts. Do not derive tests from the dialog's gather-validate-apply
+   wiring; per this track that is classified none.
+10. Run `./scripts/compile.sh` (SUCCESS). The app has not been run at any point in the
+    `keys` pass, so **nothing in this phase is verified on screen** until Phase 11.
 
-**Phase 7 does not wait on this phase.** Its external gate is outside the track's control,
-and blocking the contract-and-test phase on it would stall Phases 8–11 behind work nobody
-here owns. If this phase runs after Phase 7, it carries its own contracts and tests, and
-its numbers are folded into the Phase 8 report rather than reported separately.
+**Phase 7 does not wait on this phase.** If this phase runs after Phase 7, it carries its
+own contracts and tests, and its numbers are folded into the Phase 8 report rather than
+reported separately.
 
 ---
 
@@ -532,7 +642,7 @@ its numbers are folded into the Phase 8 report rather than reported separately.
    Write each function's contract before moving its body. Its `getData()` also reads
    `song.getUnderLyrics()`, `getTranslatedLyrics()` and `getTitle()` — those become input
    record fields.
-4. **`PreferencesDialog` (879 lines) gets no input record and no back end. Its seam is
+4. **`PreferencesDialog` (879 lines) gets no input record and no back end. Its interface to the rest of the app is
    `PrefsDidChangeNotification`.** It is the only non-modal `BaseDialog`
    (`BaseDialog(…, false, EXCLUSIVE)`) — no OK, no Cancel, no `setData`, each edit applied
    the moment it is made. There is no input/modify/output cycle to put a record boundary
@@ -575,7 +685,7 @@ its numbers are folded into the Phase 8 report rather than reported separately.
      the inline sequence construction in `ScaleAction.play()` (`PreferencesDialog.java`
      ~802–835: program change, tempo event, note-on/note-off pairs across `SCALE`). All
      three have no Swing type in the signature; write each contract before moving the
-     body. This is independent of the seam question and matches what task 1 does with
+     body. This is independent of the dialog interface question and matches what task 1 does with
      `PlaybackController.buildSequence`.
    - **State the no-revert semantics in the class contract.** Closing the window keeps
      every change and there is nothing to undo — a real promise, currently implied only by
@@ -599,7 +709,7 @@ its numbers are folded into the Phase 8 report rather than reported separately.
    `ui/playback`/`MidiController` phase. Do **not** implement another track's design here.
    Confirm both entries still name it, note in the commit message that
    `PreferencesDialog` finishes this track still holding the registry, and leave it.
-   The seam does not depend on the move: the statics are the dialog's own, not reach
+   The dialog interface does not depend on the move: the statics are the dialog's own, not reach
    inherited from `BaseDialog`, so they do not fail the mechanical test.
 6. `PaperSizeStep` (390 lines, extends `Step`, not a dialog) — extract the unit
    conversion (mm/in/px) in `setValues`/`getValueInPixels`/`end` and the
@@ -616,7 +726,7 @@ its numbers are folded into the Phase 8 report rather than reported separately.
 **Status:** Pending  <br>
 **BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/WhatsNewDialog.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/ReportBugDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java  <br>
-**Recommended model/effort:** Sonnet, low — these need no seam; the phase exists to confirm that and to kill one known defect.
+**Recommended model/effort:** Sonnet, low — these need no back end; the phase exists to confirm that and to kill one known defect.
 
 These seven take `MainFrame` for window parenting only and have zero `getSong()` /
 `getScoreView()` / `songscribe.dom` reach. They need no input record and no back end.
@@ -796,7 +906,7 @@ rather than leaving the guide lying for eight phases. Read what is there before 
 
 ### Tasks
 
-1. Add the seam rule as the guide's governing statement:
+1. Add the dialog interface rule as the guide's governing statement:
    > `StandardDialog`'s lifecycle moves values across a record boundary and makes no
    > decisions. Validation and application are free functions whose signatures contain
    > **no Swing types**: `validate(Input) → ValidationResult` and `apply(Song, Input)`.
@@ -846,7 +956,7 @@ field, or shows a validation message that reads wrong. Eleven dialogs were rewri
 2. Give the user a checklist covering, for each rewritten dialog: it opens, geometry and
    tab selection are as before, OK commits, Cancel discards, and a deliberately invalid
    input produces the right message.
-3. Include the cases the seam most likely broke: `SongSettingsDialog`'s cross-tab
+3. Include the cases the dialog interface most likely broke: `SongSettingsDialog`'s cross-tab
    lyrics-fit failure (the message that used to come from `isValidData` now comes from
    `StandardDialog`), the Add-vs-Modify button label on each of the three attachment
    dialogs, and `SongSettingsDialog.show(Section)` opening the right tab with the right
@@ -879,7 +989,7 @@ field, or shows a validation message that reads wrong. Eleven dialogs were rewri
    it is assigned to the `ui/playback`/`MidiController` phase and Phase 5 task 5 leaves it
    deliberately. Report it as outstanding rather than as done.
 7. `PreferencesDialog` contains no `getScoreView()` call and `syncPlaybackPrefs()` is gone
-   from it. It still uses `Prefs` and `PrefsKey` by design — that is its seam, not a
+   from it. It still uses `Prefs` and `PrefsKey` by design — that is its interface to the rest of the app, not a
    violation of item 5.
 8. Report for D10: main and test LOC before and after, test methods before and after, and
    the four triage counts. Per `plans/pilot-retrospective.md`, these measure what

@@ -36,7 +36,7 @@ int    elementCount;       // count — no suffix
 | `fontDescentSs(font)`   | AWT descent → `Ss`            | `Ss` |
 | `getScaleTransform()`   | `AffineTransform` scaling `Ss → Px` | `AffineTransform` |
 
-AWT font metrics are always in pixels. Convert them with the `font*Ss` / `text*Ss` helpers — do **not** hand-roll `pxToSs(lm.getAscent())`. (Some existing call sites still do; prefer the helper in new code.) These helpers are a **typed seam**: unwrap the returned `Ss` with `.value()` at the call site rather than threading the typed value further into plain-`double` layout math.
+AWT font metrics are always in pixels. Convert them with the `font*Ss` / `text*Ss` helpers — do **not** hand-roll `pxToSs(lm.getAscent())`. (Some existing call sites still do; prefer the helper in new code.) These helpers are a **typed converter**: unwrap the returned `Ss` with `.value()` at the call site rather than threading the typed value further into plain-`double` layout math.
 
 ##### Zoom is per-view, not part of `ScaleContext`
 
@@ -73,7 +73,7 @@ Hold and compute spatial values in `Ss`. Convert to `Px` only when (a) producing
 - **Positions** (coordinates) — round to nearest: `(int) Math.round(scale.ssToPx(xSs))`, or use `ssToRoundedPx`.
 
 ```java
-// LineComponent.getPreferredSize — sizes, ceil (via the ViewPx seam)
+// LineComponent.getPreferredSize — sizes, ceil (via ViewPx conversion)
 return new Dimension(
     toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
     toViewPx(new Ss(metrics.totalLineHeightSs())).ceilPx());

@@ -90,9 +90,9 @@ machinery instead of asserting through the class's public contract.
 - **`AppearanceManager.setLafOperations(LafOperations)`**
   (`AppearanceManager.java:128`) — package-private static setter, doc: "Used
   by tests to inject mocks." Only reference: `AppearanceManagerTest.setUp`. A
-  raw setter swapping the static `lafOps` field for a mock; the seam belongs on
-  a constructor/factory path, not a package-private back door on a static
-  utility class.
+  raw setter swapping the static `lafOps` field for a mock; the injection point
+  belongs on a constructor/factory path, not a package-private back door on a
+  static utility class.
 
 ### `ui/action`
 
@@ -230,7 +230,7 @@ see §E).
   counterpart to `init()`.
 - **`SMuFLMetadata.getAdvanceWidth`/`getAdvanceWidthOrZero`, 2-arg overloads**
   (`:111`, `:129`) — production calls each exactly once, always with the
-  singleton's own map; own doc comments admit the seam exists "so a test can
+  singleton's own map; own doc comments admit the overload exists "so a test can
   exercise the null-return case with a caller-supplied map... the null branch
   is otherwise unreachable." Only non-singleton-map callers are
   `SMuFLMetadataTest`. Contrast with `requireMapValue` (§H) — that one is
@@ -256,7 +256,7 @@ see §E).
   public method whose only callers are `HairpinSelectionTest` (e2e) and
   `HairpinRendererTest` (unit). Production hairpin selection does **not** go
   through this method — it goes through `HitRegionBuilder.addHairpins`, a
-  different geometry computation. Not a raw seam like the others in this
+  different geometry computation. Not a raw test hook like the others in this
   section — a fully-formed method the real app never calls, kept alive only
   by tests exercising a code path production doesn't run. Needs a decision:
   reconcile the two hit-testing mechanisms, or remove the method and its
@@ -348,7 +348,7 @@ tests reach for a raw reset hook instead.
   cluster.
 - **`MyFontUtils.resetFontCache()`** (`util`) — `public`, doc: "Clears the lazy
   font cache so tests can install fonts before the first load." A real,
-  exercised reset seam (4 call sites across 3 packages) for a lazily-populated,
+  exercised reset hook (4 call sites across 3 packages) for a lazily-populated,
   never-invalidated cache with no production reload path — the pre-Phase-9
   `UndoController.resetForTest` shape, just already `public` rather than
   package-private.
@@ -396,7 +396,7 @@ on a rename.
   MBassador wraps its registered error handler in `catch(Throwable)` and
   swallows what it throws, so `MessageCenter.post()` can never observe
   `handlePublicationError`'s behavior end-to-end — reflection is currently the
-  only way to invoke it directly. Worth a real seam (e.g. package-private
+  only way to invoke it directly. Worth a real access point (e.g. package-private
   visibility with a documented contract) rather than reflection.
 
 No other reflection hits were found in any of the 13 sweeps (`dom`, `io`,

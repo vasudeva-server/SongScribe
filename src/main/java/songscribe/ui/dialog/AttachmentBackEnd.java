@@ -26,13 +26,13 @@ import org.jspecify.annotations.Nullable;
  * a change to it, and how to take it away.
  *
  * <p>Two additions to {@link DialogBackEnd}, each because an attachment dialog has something the
- * base seam does not model. {@link #remove()} is a third commit path — the Remove button, which
+ * base interface does not model. {@link #remove()} is a third commit path — the Remove button, which
  * neither gathers nor validates. {@link #existingChange()} is a domain fact the dialog needs
  * <em>before</em> the user does anything, because it decides what the controls start at, whether
  * Remove is offered at all, and whether OK says Add or Modify.
  *
  * <p>Implementations live in {@code songscribe.ui.dialog.backend} and are bound to their element
- * at construction; {@link AttachmentEditor} is the only thing that builds one.
+ * at construction; {@link AttachmentDialogController} is the only thing that builds one.
  *
  * @param <C> the attachment's value type — the change the dialog shows, gathers and commits.
  *            A value, not the attachment node that holds it: an attachment belongs to the

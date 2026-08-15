@@ -49,7 +49,7 @@ import org.xml.sax.SAXException;
 import songscribe.io.SafeXmlParser;
 
 /**
- * The single JAXB seam between a {@link ScorePartwise} object graph and MusicXML
+ * Converts between a {@link ScorePartwise} object graph and MusicXML
  * text. Everything above it works on objects; everything below it is XML.
  *
  * <p><b>Why not {@code org.audiveris.proxymusic.util.Marshalling}.</b> ProxyMusic's

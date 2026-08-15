@@ -119,7 +119,7 @@ public final class LineWidthRules {
      *
      * <p>The unit's own label is carried as a nested {@link LocalizedMessage} rather than as
      * text, because resolving it here would make this a locale decision taken on the domain
-     * side of the seam.
+     * side of the dialog interface.
      */
     private static ValidationFailure failure(String messageKey, LineWidthEntry entry) {
         var unit = entry.unit();

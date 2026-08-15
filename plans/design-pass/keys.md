@@ -170,7 +170,7 @@ and it does not have to happen in one pass or before anything else:
 - **The cautionary path** — `LayoutHitTester.hitTestCautionaryKeyEdit`,
   `KeySignatureRenderer.renderKeyChange`, and the layout reservation that pairs
   with them.
-- **`KeyChangeDialog` / `KeyChangeEditor` / `KeyChangeAction`** and how a key edit
+- **`KeyChangeDialog` / `KeyChangeDialogController` / `KeyChangeAction`** and how a key edit
   reaches the model.
 
 ### Group C — items this pass surfaced along the way
@@ -271,6 +271,18 @@ starting it, not a reason to hold it back.
    bound index or inserting a new one there. Today that question is answered
    implicitly by `Line.keyAt`'s inclusive bound, which item 5 wants to remove —
    so the back end has to state it, and `KeyChangeInput` is where.
+   **The plan is `plans/ui-dialog-interface.md` Phase 4**, rewritten against the tree
+   as it stands: two back ends rather than one, `KeyChangeDialogController` revived as the
+   binder, and the modal restatement prompt inside `apply` recorded as a finding
+   the track's own rules do not cover. Do not write a second plan here.
+   **One thing above is unsettled and the rewrite deliberately did not settle
+   it.** Opening on the resolved key for a line that inherits makes
+   `InheritChoice` a *different* entry from the one the combo opened on, so
+   picking it enables OK and commits `changeLineKey(line, null, …)` on a line
+   whose key is already null — a no-op with an undo step, which is what
+   `3c144d4a` exists to prevent. Either the opening entry stays `Inherit` for an
+   inheriting line, or the no-op rule stops being "differs from the opened entry"
+   and becomes "differs from the line's own key". Decide before Phase 4 task 2.
 5. **The doubled backward walk in accidental resolution.** *Read done, gated on
    the user, nothing implemented.* The read changed what this item is: most of
    the optimization is already in the tree, and what remains is a defect in

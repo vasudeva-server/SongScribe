@@ -38,7 +38,7 @@ package songscribe.ui.dialog;
  * this interface removes. The resolution is that the <em>caller that opens the dialog</em> binds
  * the document state and hands over a back end that already holds it: the free function keeps its
  * shape and the dialog still sees no document type.
- * {@link songscribe.ui.dialog.AttachmentEditor} is the worked example.
+ * {@link AttachmentDialogController} is the worked example.
  *
  * <p><strong>Not every dialog has one.</strong> A dialog with no OK button has no
  * gather-validate-apply cycle to put a boundary across. {@code PreferencesDialog} applies each

@@ -21,7 +21,7 @@ What the dialog needs arrives as values and leaves as values:
 - **a record out** — what the controls now say, gathered on OK;
 - **a back end** — a `DialogBackEnd<I>` supplied already bound to the document state it acts on. The dialog calls `validate(I)` and `apply(I)` and knows nothing else. `AttachmentBackEnd` extends it for dialogs that also offer Remove; `SongSettingsBackEnd` for the one that also reads.
 
-**Whoever opens the dialog does the binding.** The free functions behind a back end are written domain-object-first, so they read and test as domain operations; a dialog calling one directly would need the `Song`, which is the coupling the back end removes. `AttachmentEditor` is the worked example — it resolves the element and line, builds the back end around them, and hands the dialog something that already holds them. Implementations live in `songscribe.ui.dialog.backend`.
+**Whoever opens the dialog does the binding.** The free functions behind a back end are written domain-object-first, so they read and test as domain operations; a dialog calling one directly would need the `Song`, which is the coupling the back end removes. `AttachmentDialogController` is the worked example — it resolves the element and line, builds the back end around them, and hands the dialog something that already holds them. Implementations live in `songscribe.ui.dialog.backend`.
 
 **The mechanical test, applied to every back-end signature: it contains no Swing type.** `validate(BeatChange)` and `apply(Tempo)` pass; anything naming a `JComponent`, a `JTextField` or a `Font`-carrying widget fails, and means logic that has not finished moving out of the dialog. A reviewer applies it without judgment.
 

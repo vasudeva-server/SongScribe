@@ -49,7 +49,7 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.dialog.AttachmentEditor;
+import songscribe.ui.dialog.AttachmentDialogController;
 import songscribe.ui.dialog.KeyChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
@@ -911,7 +911,7 @@ public class LineComponent extends ScoreComponent
      * The press already selected the attachment, so this is only the second half of the
      * gesture. Unlike {@link #editLyricOnDoubleClickedElement} there is no active-editor
      * condition: a lyric editor open elsewhere on the line must not block editing an
-     * attachment. A fermata or a dynamic has no dialog, so {@link AttachmentEditor#edit}
+     * attachment. A fermata or a dynamic has no dialog, so {@link AttachmentDialogController#edit}
      * answers false for those and the attachment is simply left selected.
      * <p>
      * Answering false is safe even when the click really did land on an attachment.
@@ -924,7 +924,7 @@ public class LineComponent extends ScoreComponent
             return false;
         }
 
-        return AttachmentEditor.edit(MainFrame.getInstance(), attachment, line);
+        return AttachmentDialogController.edit(MainFrame.getInstance(), attachment, line);
     }
 
     /**

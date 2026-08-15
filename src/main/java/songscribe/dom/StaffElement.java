@@ -825,7 +825,7 @@ public class StaffElement extends LineElement implements Cloneable {
      * Returns the position the backward accidental scan visits before {@code index}, or −1 when
      * the scan is exhausted.
      *
-     * <p>This is the single seam controlling how far back {@link #findEffectiveAccidental} looks.
+     * <p>This is the single point controlling how far back {@link #findEffectiveAccidental} looks.
      * Today it yields this line's positions from {@code index - 1} down to 0, because accidentals
      * reset at the end of a line by house convention — the repertoire is largely meterless, and
      * metered music here closes a row with a barline, so the row boundary and the measure

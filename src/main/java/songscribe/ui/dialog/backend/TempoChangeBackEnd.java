@@ -36,7 +36,7 @@ import songscribe.message.notification.SongDidChangeNotification;
  * as a beat change does; every write here goes through {@link Song#withBeatDefiningEditOn} for
  * the same reason.
  *
- * <p>The value crossing the seam is a {@link Tempo}, not the {@link TempoChangeAttachment} that
+ * <p>The value crossing the dialog interface is a {@link Tempo}, not the {@link TempoChangeAttachment} that
  * holds it: the attachment is a node in the document graph and the dialog has no business
  * holding one.
  *

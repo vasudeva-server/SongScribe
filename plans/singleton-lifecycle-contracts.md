@@ -379,7 +379,7 @@ and leak its subscribers. **That justification is withdrawn: the converters are 
 be completely redesigned and rewritten, and are not in use until then.** Wiring
 disposal into them would be wiring into code about to be deleted.
 
-The stronger reason not to build the seam now is that the rewrite decides its
+The stronger reason not to build this now is that the rewrite decides its
 shape. A headless converter arguably should not construct a Swing `ScoreView` at
 all; if the rewrite drops it from the conversion path, a `ScoreView.dispose()`
 written today would have no owner ever — permanent test-only surface, the exact

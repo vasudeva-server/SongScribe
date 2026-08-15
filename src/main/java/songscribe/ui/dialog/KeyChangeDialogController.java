@@ -24,21 +24,22 @@ import songscribe.ui.component.MainFrame;
 /**
  * Opens the key signature dialog on a line's own key or on a key signature inside a line.
  *
- * <p>This is a class rather than a private method on either caller for the reason
- * {@link AttachmentEditor} gives: the double-click gesture in {@code LineComponent.mouseClicked}
- * needs a static to observe, because opening the dialog is that gesture's only observable effect.
- * It also has two callers — the gesture and {@code KeyChangeAction}'s placement — so
- * constructing the dialog here keeps that two-step in one place.
+ * <p><strong>Nothing calls this today.</strong> Both openers —
+ * {@code LineComponent.openKeySignatureDialog} and {@code KeyChangeAction.insertionPointChosen} —
+ * construct {@link KeyChangeDialog} themselves, so the routing this class describes was never
+ * wired. Phase 4 of {@code plans/ui-dialog-interface.md} is what gives it a body: resolving the
+ * route, the opening key and the back end is the mediation between the model and the dialog that
+ * the dialog interface forbids the dialog from doing itself.
  */
-public final class KeyChangeEditor {
+public final class KeyChangeDialogController {
 
-    private KeyChangeEditor() {
+    private KeyChangeDialogController() {
     }
 
     /**
      * Opens the key signature dialog bound to {@code line} at {@code insertionIndex}.
      *
-     * <p>Unlike {@link AttachmentEditor#edit} there is no "nothing to edit" answer and so no
+     * <p>Unlike {@link AttachmentDialogController#edit} there is no "nothing to edit" answer and so no
      * return value: every line has a key, and a caller that reached here has already resolved a
      * target — a hit target under the pointer, or an index the insertion predicate accepted.
      *

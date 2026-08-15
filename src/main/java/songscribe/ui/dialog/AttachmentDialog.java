@@ -38,11 +38,11 @@ import songscribe.ui.component.MainFrame;
  * {@link #gather()} reads one back out. Which element is being edited, whether an
  * attachment is already there, what the undo step is called and how the write is bracketed all
  * belong to the back end, which arrives already bound to its element — see
- * {@link AttachmentEditor}, the only thing that binds one.
+ * {@link AttachmentDialogController}, the only thing that binds one.
  *
  * <p><strong>Lifecycle.</strong> The back end is fixed for the life of the dialog, so a dialog
  * instance edits exactly one element. Opening one for a different element means constructing
- * another, which is what {@link AttachmentEditor} does on every gesture.
+ * another, which is what {@link AttachmentDialogController} does on every gesture.
  *
  * @param <C> the attachment's value type — a value the dialog can display and build, never a node
  *            of the document graph
