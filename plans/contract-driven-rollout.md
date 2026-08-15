@@ -73,7 +73,7 @@ only what is written here.
 | # | Decision |
 |---|---|
 | D1 | **Full audit.** Every nontrivial method gets a documented contract; tests rewritten or discarded accordingly. Duration is not the constraint. |
-| D2 | Dialog unit tests go; the front-end/back-end restructuring stays. The back end must be completely UI-independent and unit-testable. A separate dialog e2e set confirms wiring only, run when a dialog is created or gains a feature. |
+| D2 | Dialog unit tests go; the restructuring that decouples a dialog from the domain stays. The half that decides and writes must be completely UI-independent and unit-testable, and **it is the controller that gets tested**. A dialog's populate-gather-ops path is wiring — it either works or it does not, which manual verification makes apparent immediately — so there is **no dialog e2e set**. See `plans/ui-dialog-interface.md`. |
 | D3 | `coverage.sh` and `mutation-test.sh` stay, invoked deliberately, out of `check`'s automatic phases. **Refined by Phase 13:** they are not peers. Coverage is a *required* closing step of every package phase (per-area procedure step 7); mutation stays opportunistic. Neither returns to `check`. |
 | D4 | Design the dialog interface for `StandardDialog` — see the dialog phase. |
 | D5 | The ~11 lifecycle hooks become proper singleton teardown (discussion doc §6.3). |
@@ -675,18 +675,19 @@ straight through, per direction given 2026-08-11:
   Foundations packages that don't touch that proceed as planned, one agent per
   package.
 
-**`ui/dialog` scope (D2, D4).** An architectural track. The dialog is decoupled
-in both directions: a record passed **in**, so it never reaches for `Song`,
-`MainFrame` or the score; a record gathered **out** of the widgets; and a lambda
-or method reference implementing a small interface passed in, which the dialog
-calls to validate and to save. The dialog then knows nothing about the domain —
-a widget shell over `Input → Output` plus a callback, with the back end
-unit-testable and no UI type in any signature. Design the dialog interface, prototype on one
-dialog before committing `BaseDialog`/`StandardDialog` (1,275 lines), prove it on
-`SongSettingsDialog` (split `isValidData()`'s decision from its presentation;
-delete `getLineWidthFieldForTest()`), roll out, contract-and-test the back ends,
-delete the front-end tests, add the thin e2e wiring set, then write `dialogs.md`
-from what the design turned out to be.
+**`ui/dialog` scope (D2, D4).** An architectural track, owned in full by
+`plans/ui-dialog-interface.md` — read the shape and the task list there, not here.
+The dialog is decoupled in both directions: a record **in**, so it never reaches
+for `Song`, `MainFrame` or the score; a record gathered **out** of the widgets;
+and **a `DialogOps` record of four method references — read, validate, commit,
+remove.** Function references rather than an interface, because an interface is
+still an object a dialog can call other things on. The dialog knows nothing
+about the domain and holds nothing it could ask for more: a widget shell over
+`Input → Output` plus four callbacks.
+
+Behind them is a **controller**, which may legitimately hold the `MainFrame`,
+the `ScoreView` and the document, and which is unit-testable without a window.
+It is what carries every decision and every write in the package.
 
 ---
 
