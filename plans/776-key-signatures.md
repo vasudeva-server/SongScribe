@@ -1396,6 +1396,8 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
 **BlockedBy:** 14  
 **Files:** —  
 **Recommended model/effort:** Sonnet, low — drives the app and reports; no design decisions.
+
+**Run this together with `plans/ui-dialog-interface.md` Phase 10, not before it.** That track rewrites `KeyChangeDialog` and its openers, and its task 4 covers the four key-change gestures and the key combo. Two separate runs over the same gestures would exercise the dialog as it is on the way out.
 ### Tasks
 1. **Ask the user for permission before running the app.** `./scripts/run.sh` must never be executed without it.
   
@@ -1406,11 +1408,11 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
   
 - Double-clicking the cautionary at the end of a line opens the dialog for the **next** line's key.
   
-- Double-clicking a mid-line key signature's accidentals opens the dialog for that element.
+- Double-clicking a mid-line key signature's accidentals opens the dialog on that element's key, and OK then adds a **second** key signature in front of it rather than changing it. That is `plans/design-pass/keys.md` group C item 6 — a known live defect, so this item is expected to fail and its failure is not a defect in this plan.
   
 - A cautionary key signature appears at the end of the preceding line, with naturals only on a sharps↔flats change.
   
-- Setting a line back to "inherit" removes its key and the cautionary.
+- Setting a line to the key it already inherits removes its key and the cautionary. There is no "inherit" entry in the combo — `plans/ui-dialog-interface.md` Phase 5 deletes it, because whether a line holds its own key or inherits one is an internal representation the notator never sees, and `Line.setKey` already normalizes a key equal to the inherited one back to null.
   
 - Changing a line's key with two inheriting lines after it keeps every note's sounding pitch on all three, adding explicit accidentals where needed, and asks about restatements **once** rather than once per line.
   

@@ -353,7 +353,8 @@ already follow a barline, and an existing signature always does. The dialog neve
 signature's own index it returns that signature's key and the combo opens on it.
 **Nothing in the program can change an existing mid-line key signature's key**;
 `KeyChangeElement.setKey` has no caller outside its own class. Fixing it needs a third
-commit route that does not exist — Phase 9 task 5 states what that route costs.
+commit route that does not exist — `plans/design-pass/keys.md` group C item 6 carries
+what that route costs.
 
 ### This unblocks `keys` group C5
 
@@ -589,21 +590,12 @@ confirms it.
    (line 481) is **not**, and its cited second caller `ExportMidiDialog` no longer
    exists.
 4. Update `plans/design-pass/keys.md` group C4 to done and C5 to unblocked.
-5. **Open an issue or plan for the duplicate mid-line key signature** — gesture 3, the ⚠
-   in Phase 5. It is the one live defect this track knowingly leaves standing, and it
-   silently damages documents. What it needs, roughly parallel to `insertKeySignature`
-   and, after Phase 5 task 6, alongside it on `KeyChangeDialogController`:
-   - `changeKeySignature(Line, int elementIndex, Key)` — reconcile the accidentals the
-     key move affects, raise the one restatement prompt, change the element's key in
-     place inside one modification bracket, and **re-space the line**, because the new
-     signature may be wider or narrower than the old one;
-   - a `KeyEditFitCalculator.keySignatureChangeFits(…)` variant. The existing
-     `keySignatureFits` measures a line with a column *added*, which is the wrong
-     measurement for a swap;
-   - a third route on the controller, and a third entry point, since only the caller can
-     tell an existing signature from a new one.
-
-   Call it ~200 lines of new domain code, none of it a variant of what Phase 5 wrote.
+5. **Confirm the duplicate mid-line key signature is recorded** — gesture 3, the ⚠ in
+   Phase 5. It is the one live defect this track knowingly leaves standing and it
+   silently damages documents, so check rather than assume. It is
+   `plans/design-pass/keys.md` group C item 6, which carries the defect, the three
+   pieces the fix needs and its ~200 lines of domain work. Check that item still matches
+   what Phase 5 actually built; do not restate it here.
 6. Confirm D2 and the `ui/dialog` scope paragraph in
    `plans/contract-driven-rollout.md` still match what the track produced.
 7. `dialogs.md` is a **guide** — it states conventions, not promises. Anything that

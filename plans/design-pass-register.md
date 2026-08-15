@@ -102,7 +102,7 @@ the error this file exists to avoid.
 | 20 | Selection | `ui/selection` | ⏳ | |
 | 21 | Clipboard | `ui/clipboard` | ⏳ | |
 | 22 | Edit modes | `ui/edit` | ⏳ | |
-| 23 | Dialogs | `ui/dialog`, `ui/dialog/backend`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — was blocked on `dialog-redesign`, which has landed. |
+| 23 | Dialogs | `ui/dialog`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — takes the package as `plans/ui-dialog-interface.md` leaves it. That track deletes `ui/dialog/backend`, so this pass never sees it. |
 | 24 | Actions | `ui/action` | ⏳ | *(undecomposed)* — 60 files. |
 | 25 | Score components | `ui/component`, `ui/component/score`, `ui/component/toolbar` | ⏳ | *(undecomposed)* |
 | 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
@@ -162,4 +162,7 @@ in the code rather than the log — `BaseDialog` exposes `getMainFrame()` and
 `getData()` with no `getScoreView()`/`requireScoreView()`, and no legacy export
 dialog remains in `ui/dialog/`.
 
-Pass 23 and pass 0's `KeyChangeDialog` item are therefore both open.
+Pass 23 and pass 0's `KeyChangeDialog` item are therefore both open. Neither is
+this regime's to start: `plans/ui-dialog-interface.md` owns `ui/dialog`, and its
+Phase 5 owns the `KeyChangeDialog` item, which the pass 0 record carries as group
+C item 4. Pass 23 begins on the package that track leaves behind.

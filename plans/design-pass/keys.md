@@ -103,6 +103,9 @@ must not be reported as done:
 - The **key combo's new fifths ordering** and its glyphs have not been seen on
   screen. The compiler cannot check that `KeyCellRenderer`'s Private Use Area
   codepoints are the right glyphs, only that they are valid characters.
+  `plans/ui-dialog-interface.md` Phase 10 task 4 is where this gets looked at,
+  along with all four key-change gestures. Do not schedule a second manual run
+  for it.
 - **`MusicXmlCorpusGenerator`'s four updated call sites** compile but have not
   been run; `scripts/generate-corpus.sh` cannot verify itself because its gate,
   `MusicXmlCorpusLosslessnessTest`, is archived until pass 16.
@@ -170,12 +173,18 @@ and it does not have to happen in one pass or before anything else:
 - **The cautionary path** — `LayoutHitTester.hitTestCautionaryKeyEdit`,
   `KeySignatureRenderer.renderKeyChange`, and the layout reservation that pairs
   with them.
-- **`KeyChangeDialog` / `KeyChangeDialogController` / `KeyChangeAction`** and how a key edit
-  reaches the model.
+- **How a key edit reaches the model** — but not the routing, which group C item
+  4 settles: after it, all four gestures resolve on `KeyChangeDialogController`
+  and `changeLineKey`/`insertKeySignature` sit there rather than on
+  `ScoreViewController`. What is left for this read is what those two methods
+  *do* — the fit calculation, the accidental reconciliation, the restatement
+  prompt and the implicit barline — and whether two commit routes plus item 6's
+  third one are the right decomposition.
 
 ### Group C — items this pass surfaced along the way
 
-These came out of the enum conversion incidentally. Group B's read may still
+These came out of the enum conversion incidentally, except where an item names
+another source. Group B's read may still
 dissolve or reframe any of them, which is a reason to re-read an item before
 starting it, not a reason to hold it back.
 
@@ -244,8 +253,11 @@ starting it, not a reason to hold it back.
    true.
 2. **Root A — a position in a line is a type, not a `(Line, int)` pair.**
    `Line.keyAt`, `Line.getElement`, `KeyChangeElement.needsBarlineBefore`,
-   `InsertionPointMode.Client`, `LayoutResult.findInsertionIndex`,
-   `KeyChangeDialog.KeyChangeInput`.
+   `InsertionPointMode.Client`, `LayoutResult.findInsertionIndex`, and
+   `KeyChangeDialogController`'s mid-line entry point, which carries the line,
+   the index and whether that index names an existing signature. (Item 4 deletes
+   `KeyChangeDialog.KeyChangeInput`, which is where this pair used to sit; the
+   pair does not go away, it moves onto the controller.)
    **Open question, decide with the user:** whether it extends or displaces
    `ElementLocation`, which already exists as `(int lineIndex, int elementIndex)`
    bound to no `Song`, with a `matches(int, int)` whose arguments transpose
@@ -255,17 +267,21 @@ starting it, not a reason to hold it back.
    `KeySignatureRenderer.renderKeyChange` each build the run twice — once for the
    list, once inside `Key.widthSsFrom`. Introduced when `totalWidthSs(List)` was
    removed; negligible cost, real duplication.
-4. **`KeyChangeDialog` to the back-end pattern.** **Owned by
-   `plans/ui-dialog-interface.md` Phase 4 — read it there, not here.** That
-   section carries the shape, the open decisions and the task list, rewritten
-   against the tree as it stands. Nothing about this item is restated in this
-   file, because two copies drift and this one already had.
+4. **`KeyChangeDialog` onto a controller and `DialogOps`.** **Owned by
+   `plans/ui-dialog-interface.md` Phase 5 — read it there, not here.** That
+   section carries the shape and the task list, written against the tree as it
+   stands. Nothing about this item is restated in this file, because two copies
+   drift and this one already had.
 
-   The only thing this file adds: **item 5 waits on this one.** Whatever replaces
-   `currentChoiceFor` has to answer, for a mid-line binding, whether it is
-   editing the key signature at the bound index or inserting a new one there —
-   the question `Line.keyAt`'s inclusive bound answers implicitly today and item
-   5 wants to remove.
+   Two things this file adds. **Item 5 waits on this one, and Phase 5 answers
+   what item 5 was waiting to learn:** the controller resolves the opening key as
+   a value before the dialog exists, reading the clicked `KeyChangeElement`'s own
+   key directly for a mid-line binding rather than asking `Line.keyAt` at the
+   bound index. `currentChoiceFor` goes, and the inclusive bound loses its last
+   caller.
+
+   **Item 6 is the defect Phase 5 leaves standing**, and Phase 5's ⚠ is where the
+   evidence for it is.
 5. **The doubled backward walk in accidental resolution.** *Read done, gated on
    the user, nothing implemented.* The read changed what this item is: most of
    the optimization is already in the tree, and what remains is a defect in
@@ -309,15 +325,21 @@ starting it, not a reason to hold it back.
    proves the line holds no key change. A local `escaped` boolean gates the
    `getRunningKey()` shortcut.
 
-   **Blocked on C4 at one point.** `KeyChangeDialog.currentChoiceFor` is the only
-   caller relying on the inclusive bound, and it relies on it to serve
-   edit-this-signature and insert-one-here *without telling them apart*. `op`
-   cannot stand in: `showFor` derives it from `line.getKey() != null`, which is
-   about the line's own key. Under an exclusive bound the dialog must ask the
-   line whether a `KeyChangeElement` sits at the bound index — the dialog
-   reaching into the model to recover what its caller already knew. Since C4
-   deletes this method, the decision belongs there and this item should land
-   after it.
+   **Blocked on C4.** `KeyChangeDialog.currentChoiceFor` is the only caller
+   relying on the inclusive bound, and it relies on it to serve
+   edit-this-signature and insert-one-here *without telling them apart*. Nothing
+   the dialog holds can stand in — `showFor` derives `op` from
+   `line.getKey() != null`, which is about the line's own key — so under an
+   exclusive bound the dialog would have to ask the line whether a
+   `KeyChangeElement` sits at the bound index, reaching into the model to recover
+   what its caller already knew. C4 removes the question rather than answering
+   it: the controller takes a separate entry point per gesture, because only the
+   caller can tell an existing signature from a new one, and hands the dialog a
+   `Key`. Start this item once C4 has landed; `keyAt` then has no caller wanting
+   the inclusive bound.
+
+   **This item does not fix item 6.** `keyAt`'s bound decides what the dialog
+   opens on; `insertKeySignature` decides what OK writes.
 
    **Also found:** `LyricRun.getElement` is contracted as `/** The element at
    {@code index}. */` with no range, no `@return` and no `@throws`. `Line`'s
@@ -325,6 +347,35 @@ starting it, not a reason to hold it back.
    inheritance from the field's type rather than by promise. Any caller guarding
    `elementCount()` is guessing. Fix alongside `keyAt`'s contract; the two are
    read together.
+6. **Nothing can change an existing mid-line key signature's key.** Surfaced by
+   the `ui/dialog` read, not by the enum conversion. Double-clicking a mid-line
+   key signature opens the dialog on that signature's own key and then *inserts a
+   second signature in front of it*. The score reads `♯♯♯ ♭♭`; the second
+   signature has the last word, so the music from there on stays in the old key
+   and the edit reads as clutter that did nothing. No stray barline appears —
+   `insertKeySignature` adds one only where the position does not already follow
+   a barline, and an existing signature always does. `KeyChangeElement.setKey`
+   has no caller outside its own class.
+
+   It silently damages documents, so it is a fix rather than a cleanup. It needs
+   a third commit route, which is why item 4 cannot absorb it:
+
+   - `changeKeySignature(Line, int elementIndex, Key)` on
+     `KeyChangeDialogController`, alongside `changeLineKey` and
+     `insertKeySignature` once item 4 has moved them there. It reconciles the
+     accidentals the key move affects, raises the one restatement prompt, changes
+     the element's key in place inside one modification bracket, and **re-spaces
+     the line**, because the new signature may be wider or narrower than the old.
+   - a `KeyEditFitCalculator.keySignatureChangeFits(…)` variant. The existing
+     `keySignatureFits` measures a line with a column *added*, which is the wrong
+     measurement for a swap.
+   - a third controller entry point, since only the caller can tell an existing
+     signature from a new one.
+
+   Call it ~200 lines of new domain code, none of it a variant of what item 4
+   writes. Item 5 does not fix it, and no test covers it — what guards the
+   current behaviour is `insertKeySignature`'s contract, which states that it
+   inserts.
 
 ## Commits
 
