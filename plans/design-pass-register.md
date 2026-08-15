@@ -102,7 +102,7 @@ the error this file exists to avoid.
 | 20 | Selection | `ui/selection` | ⏳ | |
 | 21 | Clipboard | `ui/clipboard` | ⏳ | |
 | 22 | Edit modes | `ui/edit` | ⏳ | |
-| 23 | Dialogs | `ui/dialog`, `ui/dialog/backend`, `ui/dialog/fontchooser` | ⛔ | *(undecomposed)* — blocked, see *Blockers*. |
+| 23 | Dialogs | `ui/dialog`, `ui/dialog/backend`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — was blocked on `dialog-redesign`, which has landed. |
 | 24 | Actions | `ui/action` | ⏳ | *(undecomposed)* — 60 files. |
 | 25 | Score components | `ui/component`, `ui/component/score`, `ui/component/toolbar` | ⏳ | *(undecomposed)* |
 | 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
@@ -115,82 +115,18 @@ Legend: ⏳ not started · 🔄 in progress · ✅ complete · ⛔ blocked
 
 ## In flight
 
-Pass 0 — the key system — on branch `776-key-signature`, last commit `2ea1c471`.
+**Pass 0 — the key system**, on branch `776-key-signature`, last commit
+`24febe64`. Its record is `plans/design-pass/keys.md`: what has been decided,
+what each decision rests on, what is left in what order, and the two things no
+mechanism has verified. Start there, not here.
+
 There is no test suite to run (see *The order, and why*), and a passing compile
 proves integration rather than correctness.
 
-**Done: `Key` is a closed enum, and `KeyType` is gone.** Not merely a record
-turned into an enum — the pass found that `Key`'s identity is *one signed
-number*, its position on the circle of fifths, so the `(KeyType, count)` pair had
-no reason to exist. A two-argument lookup would have deleted the record's guards
-and re-added them in a factory; a one-argument one has no inconsistent pair to
-reject. `KeyType`'s ten consumers were each a two-way branch on the sign.
-
-Constants are named by accidental count, in fifths order —
-`SEVEN_FLATS … ONE_FLAT, NO_ACCIDENTALS, ONE_SHARP … SEVEN_SHARPS` — so
-`ordinal()` tracks the value and the key combo reads in circle-of-fifths order,
-the change one place the user sees. `DEFAULT` survives as the single alias,
-because it states a policy rather than a signature.
-
-What fell out, all of it recorded in `docs/key-signatures.md`:
-
-- **`KeyMapping` dissolved.** Its stated reason to exist was owning the sign
-  convention in one place; the convention is now `Key.fifths()`. `toFifths`
-  became an accessor call and `toKey` became `Key.ofFifths` plus the reader's own
-  range check. `midi` no longer depends on `io/musicxml`.
-- **`songscribe.io.LegacyKeyType`** now owns the three `.mssw` `<keytype>` names
-  and converts both ways. They were persisted `dom` enum constant names: renaming
-  one would have stopped old files loading, with nothing in the build to catch
-  it.
-- **`Key.altersPitchClass` lost its `keyType.ordinal() - 1` table indexing** and
-  the comment warning that reordering `KeyType` would silently corrupt it.
-- **`Key.signatureHeightSs()`** joins `signatureWidthSs()`, so `KeySignature` no
-  longer reaches for the glyph itself and header and cautionary cannot disagree
-  on height either.
-
-Behaviour deliberately changed, both in the legacy read path:
-
-- **`LineIO` and `SongIO` disagreed about the same corrupt pair** — `(NONE, 3)`
-  and `(FLATS, 0)`. `SongIO` normalized both to C major; `LineIO` refused the
-  load. Now both normalize, which is what the pair always sounded and drew as,
-  and refusing it in a read-only migration path was the wrong half of the
-  disagreement.
-- **`SongIO.endElement10` parsed `<keys>` with a bare `Integer.parseInt`**, so a
-  corrupt v1.0 count threw `NumberFormatException` out of the SAX handler instead
-  of becoming a `ParseError`. It now goes through `parseIntOrThrow` like every
-  other scalar, which cost `getSong()` a `throws SAXException` that `SongLoader`
-  already catches.
-
-**Then, in order, the rest of pass 0.** All of it is key-system work, so none of
-it defers to a later pass — the key system reaches into `Line`, `Song`, `layout`
-and `io/musicxml`, and leaving any of it behind is tech debt that outlives the
-reason it was understood.
-
-1. **`Line`/`Song` key resolution.** `Line.getRunningKey()` calls
-   `RuntimeError.exit()` at `Line.java:346` — a model getter that terminates the
-   application. Agreed replacement: `Line.ownKey` as the only key state; `Song`
-   owning resolution in an `IdentityHashMap<Line, Key>` rebuilt wholesale rather
-   than patched; `Song.runningKeyAt(line)` as the total query; `Line.keyAt`
-   staying put and bottoming out there; `detach()` materialising the running key
-   so a detached line answers for itself. Deletes `inheritedKey`, both its
-   accessors, `propagateInheritedKeysFrom`, `rebuildInheritedKeysAfterParsing`
-   and the exit. `LineKeyChange` keeps its shape.
-   **`docs/key-signatures.md` is rewritten in the same change** — its "There is
-   no song-wide key" and "The inheritance chain and its stopping rule" sections,
-   and the ASCII table, all describe `inheritedKey` and go with it.
-2. **Root A — a position in a line is a type, not a `(Line, int)` pair.**
-   `Line.keyAt`, `Line.getElement`, `KeyChangeElement.needsBarlineBefore`,
-   `InsertionPointMode.Client`, `LayoutResult.findInsertionIndex`,
-   `KeyChangeDialog.KeyChangeInput`. Undecided: whether it extends or displaces
-   `ElementLocation`, which already exists as `(int lineIndex, int elementIndex)`
-   bound to no `Song`, with a `matches(int, int)` whose arguments transpose
-   silently. `ElementLocation`'s own consumers are hover highlighting, so that
-   half of the question reaches pass 4 (durations and element types).
-3. **The doubled accidental run.** `LayoutHitTester.hitTestCautionaryKeyEdit` and
-   `KeySignatureRenderer.renderKeyChange` each build the run twice — once for the
-   list, once inside `Key.widthSsFrom`. Introduced when `totalWidthSs(List)` was
-   removed; negligible cost, real duplication.
-4. **`KeyChangeDialog` to the back-end pattern** — blocked, see *Blockers*.
+Done so far: `Key` is a 15-constant enum identified by its position on the circle
+of fifths, `KeyType` and `KeyMapping` are deleted, and `songscribe.io`
+`LegacyKeyType` owns the `.mssw` tag pair. Four items remain, the first of which
+replaces a `RuntimeError.exit()` in a model getter.
 
 Passes 5, 6 and 12 then cover what is left of the elements, `Line` and `Song`:
 everything that is not key state.
@@ -205,19 +141,20 @@ the reason for it is still in hand.
 - **→ Pass 30.** `strings.properties` has `dialog.song.settings.year` above
   `dialog.converter.converting`, breaking the within-group alphabetical order the
   strings guide requires.
+- **→ Pass 23.** `ui/dialog/ResolutionDialog.form` is orphaned: no
+  `ResolutionDialog` exists in Java anywhere in `src`, and the 9KB GUI-designer
+  file was last touched by `6c849acd`, the pre-2.0 legacy import. Dead through
+  the entire rewrite.
 
 ## Blockers
 
-**Pass 23 (dialogs) blocks on `dialog-redesign` landing on `develop`.**
-`BaseDialog` lost `getScoreView()` and `requireScoreView()` there before five
-dialogs were migrated off them, and another session is deleting three legacy
-export dialogs with their actions and menu entries and migrating
-`PreferencesDialog`. Reviewing dialogs here first means doing it twice, against a
-`BaseDialog` that is about to change.
+**None.**
 
-Order: `dialog-redesign` lands on `develop`, this branch rebases onto it
-(`/update-branch`), then pass 23 runs. **Expect one conflict, in `CLAUDE.md`:**
-keep this branch's *Key signatures* required-reading row and take the `.claude/`
-paths, which both sides now agree on. `d67f064a` will not drop out silently
-despite already being on `develop`, because develop's copy of that row was
-removed when it was cherry-picked.
+`dialog-redesign` landed on `develop` and this branch already carries it: the
+merge at `c91c9604` brought in `develop`'s tip `a558c9f7`, so no rebase is owed
+and the `CLAUDE.md` conflict this section used to predict never arises. Verified
+in the code rather than the log — `BaseDialog` exposes `getMainFrame()` and
+`getData()` with no `getScoreView()`/`requireScoreView()`, and no legacy export
+dialog remains in `ui/dialog/`.
+
+Pass 23 and pass 0's `KeyChangeDialog` item are therefore both open.
