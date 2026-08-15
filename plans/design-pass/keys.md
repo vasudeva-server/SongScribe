@@ -255,34 +255,17 @@ starting it, not a reason to hold it back.
    `KeySignatureRenderer.renderKeyChange` each build the run twice — once for the
    list, once inside `Key.widthSsFrom`. Introduced when `totalWidthSs(List)` was
    removed; negligible cost, real duplication.
-4. **`KeyChangeDialog` to the back-end pattern.** Unblocked — `dialog-redesign`
-   has landed and this branch carries it, so `DialogBackEnd` and
-   `AttachmentBackEnd` are in their final shape to migrate against.
-   **When editing a line's key, the input always carries the resolved key** — the
-   key the line is actually in — not the line's own key. Today
-   `currentChoiceFor` returns `InheritChoice.INSTANCE` for a line that has no key
-   of its own; after the rework it is the resolved key in every case.
-   The owned-versus-inherited distinction does not need to reach the dialog. What
-   it was protecting against, committing a no-op, is already handled by
-   `3c144d4a`: OK stays disabled until the selection differs from the entry the
-   combo opened on.
-   **Item 5 waits on this one.** Whatever replaces `currentChoiceFor` has to
-   answer, for a mid-line binding, whether it is editing the key signature at the
-   bound index or inserting a new one there. Today that question is answered
-   implicitly by `Line.keyAt`'s inclusive bound, which item 5 wants to remove —
-   so the back end has to state it, and `KeyChangeInput` is where.
-   **The plan is `plans/ui-dialog-interface.md` Phase 4**, rewritten against the tree
-   as it stands: two back ends rather than one, `KeyChangeDialogController` revived as the
-   binder, and the modal restatement prompt inside `apply` recorded as a finding
-   the track's own rules do not cover. Do not write a second plan here.
-   **One thing above is unsettled and the rewrite deliberately did not settle
-   it.** Opening on the resolved key for a line that inherits makes
-   `InheritChoice` a *different* entry from the one the combo opened on, so
-   picking it enables OK and commits `changeLineKey(line, null, …)` on a line
-   whose key is already null — a no-op with an undo step, which is what
-   `3c144d4a` exists to prevent. Either the opening entry stays `Inherit` for an
-   inheriting line, or the no-op rule stops being "differs from the opened entry"
-   and becomes "differs from the line's own key". Decide before Phase 4 task 2.
+4. **`KeyChangeDialog` to the back-end pattern.** **Owned by
+   `plans/ui-dialog-interface.md` Phase 4 — read it there, not here.** That
+   section carries the shape, the open decisions and the task list, rewritten
+   against the tree as it stands. Nothing about this item is restated in this
+   file, because two copies drift and this one already had.
+
+   The only thing this file adds: **item 5 waits on this one.** Whatever replaces
+   `currentChoiceFor` has to answer, for a mid-line binding, whether it is
+   editing the key signature at the bound index or inserting a new one there —
+   the question `Line.keyAt`'s inclusive bound answers implicitly today and item
+   5 wants to remove.
 5. **The doubled backward walk in accidental resolution.** *Read done, gated on
    the user, nothing implemented.* The read changed what this item is: most of
    the optimization is already in the tree, and what remains is a defect in
