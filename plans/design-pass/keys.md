@@ -266,26 +266,70 @@ starting it, not a reason to hold it back.
    it was protecting against, committing a no-op, is already handled by
    `3c144d4a`: OK stays disabled until the selection differs from the entry the
    combo opened on.
-5. **The doubled backward walk in accidental resolution.** *Was blocked on item
-   1, which changed what `getRunningKey()` bottoms out in. Now unblocked.*
-   `StaffElement.findEffectiveAccidental` scans back from the note; on the
-   fallback it calls `Line.keyAt`, which scans back over the same elements again
-   looking for a `KeyChangeElement`. The second walk is redundant in the common
-   case: a key change *is* a barrier, so a scan that exhausted the line without
-   stopping has proved there is none.
-   - **Exhausted with no tie escape → return `getRunningKey()` directly.** Drops
-     the second walk entirely, no new API.
-   - **Barline barrier → the key search can resume at the barrier's index.**
-     Needs a new `Line` query ("nearest key change at or before this index"), so
-     it is an addition, not a deletion.
-   - **A tie escape must still use `keyAt`.** The escape jumps the cursor from
-     the barrier to the anchor, so positions strictly between them are never
-     visited and a `KeyChangeElement` can hide in the gap.
-   **Verify before relying on the equivalence:** `keyAt`'s bound is inclusive, so
-   it can return a key change sitting *at* the index, which the accidental scan
-   never inspects. Unreachable when the index is the note's own, but
-   `findEffectiveAccidental` also takes a projected insertion index from
-   `AccidentalReconciliation`.
+   **Item 5 waits on this one.** Whatever replaces `currentChoiceFor` has to
+   answer, for a mid-line binding, whether it is editing the key signature at the
+   bound index or inserting a new one there. Today that question is answered
+   implicitly by `Line.keyAt`'s inclusive bound, which item 5 wants to remove —
+   so the back end has to state it, and `KeyChangeInput` is where.
+5. **The doubled backward walk in accidental resolution.** *Read done, gated on
+   the user, nothing implemented.* The read changed what this item is: most of
+   the optimization is already in the tree, and what remains is a defect in
+   `Line.keyAt`'s bound rather than a duplicated walk.
+
+   **Already done, not by this item.** The barrier-is-a-`KeyChangeElement` case
+   short-circuits today — `StaffElement.findEffectiveAccidental` reads the key
+   off the barrier instead of asking `keyAt`. Two of the item's three bullets
+   were written as though it did not.
+
+   **The real finding: `keyAt`'s inclusive bound is the wrong shape.** `keyAt(i)`
+   answers "the key in effect at `i`, counting a key signature sitting *on* `i`".
+   Of its five callers, four want the key in effect *before* `i`, and three write
+   `i - 1` to get it — `KeyChangeElement.previousKey`,
+   `KeyEditFitCalculator.appendInsertedColumns`, `MeasureBuilder.buildLine`. The
+   fourth, `StaffElement.keyInEffectAt`, passes `index` raw.
+
+   **That fourth one is a live bug.** On the status-bar preview path the index is
+   an *insertion* index posted by `PreviewElementManager.trackMouse`, so hovering
+   at the position of a mid-line key change reports the previewed note's
+   accidental from the key it is about to precede rather than the key it would be
+   in. (The earlier note here blamed a projected index from
+   `AccidentalReconciliation`; that resolver has its own scan and never calls
+   `findEffectiveAccidental` with anything but an element's own index. The
+   preview path is the one that does.)
+
+   **Proposed, not yet decided — make `keyAt` exclusive:** *the key in effect
+   immediately before `elementIndex`*. Domain stays `0..elementCount()`.
+   `keyAt(0)` is `getRunningKey()` by definition rather than by appeal to the
+   position invariant. Three `- 1`s disappear, `keyInEffectAt` becomes correct
+   unchanged, and the exhausted-scan shortcut becomes provably equivalent instead
+   of carrying a caveat.
+
+   **The new `Line` query is not needed.** With an exclusive bound,
+   `keyAt(scanIndex)` equals `keyAt(index)` on the barline-barrier path, because
+   the scan has already proved no key change lies between them. Resolve at
+   `scanIndex`; add nothing.
+
+   **The tie escape still needs `keyAt`, behind a flag.** After an escape the
+   span `(anchorIndex, scanIndex)` is never visited, so exhaustion no longer
+   proves the line holds no key change. A local `escaped` boolean gates the
+   `getRunningKey()` shortcut.
+
+   **Blocked on C4 at one point.** `KeyChangeDialog.currentChoiceFor` is the only
+   caller relying on the inclusive bound, and it relies on it to serve
+   edit-this-signature and insert-one-here *without telling them apart*. `op`
+   cannot stand in: `showFor` derives it from `line.getKey() != null`, which is
+   about the line's own key. Under an exclusive bound the dialog must ask the
+   line whether a `KeyChangeElement` sits at the bound index — the dialog
+   reaching into the model to recover what its caller already knew. Since C4
+   deletes this method, the decision belongs there and this item should land
+   after it.
+
+   **Also found:** `LyricRun.getElement` is contracted as `/** The element at
+   {@code index}. */` with no range, no `@return` and no `@throws`. `Line`'s
+   implementation is a bare `elements.get(index)`, so out-of-bounds throws by
+   inheritance from the field's type rather than by promise. Any caller guarding
+   `elementCount()` is guessing. Fix alongside `keyAt`'s contract; the two are
+   read together.
 
 ## Commits
 
