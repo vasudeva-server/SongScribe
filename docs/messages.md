@@ -1,4 +1,4 @@
-## Message System
+## Message Framework
 
 MBassador event bus wrapped by `MessageCenter`. API:
 

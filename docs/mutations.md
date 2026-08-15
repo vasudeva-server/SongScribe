@@ -1,4 +1,4 @@
-## Undo/Mutation System
+## Undo/Mutation Framework
 
 Structural changes to `Song` become typed `Mutation` records, batched into one
 `SongDidChangeNotification`. All types in `songscribe.message.mutation`. `Mutation` is

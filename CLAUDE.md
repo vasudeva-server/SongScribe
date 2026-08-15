@@ -36,8 +36,8 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](docs/lyrics.md).
 - **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](docs/unit-conversion.md).
 - **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](docs/zoom.md).
-- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](docs/messages.md).
-- **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation System](docs/mutations.md).
+- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message Framework](docs/messages.md).
+- **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation Framework](docs/mutations.md).
 - **Key signatures** — line keys and inheritance, mid-line key changes, cautionary rendering, or the cancellation policy: [Key Signatures](docs/key-signatures.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.claude/guides/option-dialogs.md).
 - **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), **or a dialog back end** (`DialogBackEnd`, `AttachmentBackEnd`, anything in `ui/dialog/backend/`): [Dialogs](.claude/guides/dialogs.md). It states what a dialog may and may not touch, which is the rule a back end exists to keep.
