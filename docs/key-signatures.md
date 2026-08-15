@@ -5,6 +5,27 @@ the ones that span more than one class, so no method's Javadoc can own them.
 Method Javadoc links here rather than restating any of it; a paraphrase is a
 second copy, and the second copy is the one that goes stale.
 
+## Naming: key versus signature
+
+**A `Key` is the key. A key signature is what gets drawn from it.** The notator
+does not think of changing the signature; they think of changing the key, and the
+signature follows. Every name in this feature is chosen against that rule, and it
+applies to user-facing strings as much as to code:
+
+- **`Key`, `KeyChange…`** — the value, and anything that establishes or edits it.
+  `KeyChangeElement` is the mid-line change, `KeyChangeDialog` and
+  `KeyChangeAction` edit a key, `KeyMapping` converts one to and from MusicXML
+  fifths, `KeyDisplay` names one for the user. On screen the notator reads
+  "Key Change", never "Key Signature Change".
+- **`KeySignature…`** — only what is rendered. `KeySignature` is the header's
+  positioned layout box; `KeySignatureRenderer` paints it. Nothing else may take
+  the name.
+
+The tell that a name is wrong is that it describes the value or the edit while
+using "signature", or describes glyphs on a staff while using "key". Where the
+words genuinely describe drawn accidentals — "· 5 flats" in a key's display name
+— "signature" stays correct.
+
 ## There is no song-wide key
 
 `Song` does not carry a key. Every line has one: either its own (`Line.getKey()`
