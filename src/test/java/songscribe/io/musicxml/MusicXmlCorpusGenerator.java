@@ -55,7 +55,6 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Key;
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -109,11 +108,6 @@ public class MusicXmlCorpusGenerator {
     private static final int PER_NOTE_BPM    = 90;
     private static final int HIDDEN_BPM      = 100;
     private static final int DESCRIBED_BPM   = 138;
-
-    // -- Key accidental counts --
-    private static final int THREE_SHARPS = 3;
-    private static final int TWO_FLATS    = 2;
-    private static final int ONE_SHARP    = 1;
 
     // -- Tuplet grades --
     private static final int TRIPLET    = 3;
@@ -491,7 +485,7 @@ public class MusicXmlCorpusGenerator {
                 perNote.addAttachment(new TempoChangeAttachment(perNote, perNoteTempo));
             },
             line -> {
-                line.setKey(new Key(KeyType.SHARPS, THREE_SHARPS));
+                line.setKey(Key.THREE_SHARPS);
 
                 var described = crotchet();
                 line.addElement(described);
@@ -502,14 +496,14 @@ public class MusicXmlCorpusGenerator {
                 modulated.addAttachment(new BeatChangeAttachment(modulated, metricModulation));
             },
             line -> {
-                line.setKey(new Key(KeyType.NONE, 0));
+                line.setKey(Key.NO_ACCIDENTALS);
 
                 var hidden = crotchet();
                 line.addElement(hidden);
                 hidden.addAttachment(new TempoChangeAttachment(hidden, hiddenTempo));
             },
             line -> {
-                line.setKey(new Key(KeyType.FLATS, TWO_FLATS));
+                line.setKey(Key.TWO_FLATS);
                 line.addElement(crotchet());
             }
         );
@@ -656,7 +650,7 @@ public class MusicXmlCorpusGenerator {
                     annotation("dolce", Component.CENTER_ALIGNMENT, Annotation.Placement.ABOVE, ANNOTATION_ABOVE_Y_SS)));
             },
             line -> {
-                line.setKey(new Key(KeyType.SHARPS, ONE_SHARP));
+                line.setKey(Key.ONE_SHARP);
 
                 var note = crotchet();
                 note.setStaffPosition(F4);

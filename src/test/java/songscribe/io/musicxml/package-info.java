@@ -1,4 +1,4 @@
 @NullMarked
-package songscribe.ui.component.score;
+package songscribe.io.musicxml;
 
 import org.jspecify.annotations.NullMarked;

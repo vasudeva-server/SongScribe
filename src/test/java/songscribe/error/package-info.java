@@ -1,4 +1,4 @@
 @NullMarked
-package songscribe.ui.selection;
+package songscribe.error;
 
 import org.jspecify.annotations.NullMarked;

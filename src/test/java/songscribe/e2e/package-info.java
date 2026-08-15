@@ -1,4 +1,4 @@
 @NullMarked
-package songscribe.resources;
+package songscribe.e2e;
 
 import org.jspecify.annotations.NullMarked;
