@@ -20,6 +20,7 @@
 package songscribe.ui.dialog;
 
 import java.awt.Component;
+import java.util.Objects;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JList;
@@ -48,9 +49,16 @@ import songscribe.util.UIUtils;
  * the previous line.
  *
  * <p>Line 0 can never inherit — there is nothing before it — and neither can a key signature
- * standing in the middle of a line, which exists precisely to name a key. The combo opens with
- * nothing selected regardless of the line's current key, so committing is always a deliberate
- * choice rather than a pre-selected no-op.
+ * standing in the middle of a line, which exists precisely to name a key.
+ *
+ * <p><b>The combo opens on the key already in effect where the change is bound, and OK stays
+ * disabled until the notator picks a different one.</b> Showing the current key is what makes the
+ * dialog readable as an edit rather than a blank form — the notator can see what they are changing
+ * from — and disabling OK on that entry is what keeps a no-op from being committed, which is
+ * otherwise exactly what an opening selection would invite. Which entry counts as current follows
+ * the binding: a line's own key, the inherit entry when the line has none, or — for a key
+ * signature in the middle of a line, whether it already exists or is about to be inserted — the
+ * key {@link Line#keyAt} reports at that index.
  *
  * <p><b>Which of the two changes this is comes from the bound index</b>, and it decides both
  * halves of the commit: which fit check refuses the edit, and which
@@ -107,12 +115,19 @@ public class KeyChangeDialog extends StandardDialog {
 
     @Nullable KeyChangeInput input = null;
 
+    /**
+     * The combo entry standing for the key already in effect where this change is bound — a
+     * {@link Key}, or {@link InheritChoice#INSTANCE} on a line that has no key of its own. It is
+     * what the combo opens on and the one entry OK refuses, so choosing it is choosing nothing.
+     */
+    @Nullable Object currentChoice = null;
+
     public KeyChangeDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE));
 
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyChoiceRenderer());
-        keysCombo.addItemListener(_ -> okButton.setEnabled(keysCombo.getSelectedIndex() != -1));
+        keysCombo.addItemListener(_ -> okButton.setEnabled(isChangeFromCurrent()));
         UIUtils.forceLightModeCombo(keysCombo);
 
         okButton.setEnabled(false);
@@ -155,35 +170,49 @@ public class KeyChangeDialog extends StandardDialog {
             model.addElement(InheritChoice.INSTANCE);
         }
 
+        // Set before the model, because installing it selects its first entry and fires the
+        // listener that reads this field.
+        currentChoice = currentChoiceFor(currentInput);
         keysCombo.setModel(model);
-        keysCombo.setSelectedIndex(-1);
+        keysCombo.setSelectedItem(currentChoice);
         okButton.setEnabled(false);
 
         return true;
     }
 
     /**
-     * Refuses a key change that will not fit, and takes no other view of the notator's choice.
+     * The entry the combo opens on: the key already in effect where this change is bound.
      *
-     * <p>Which check runs follows the bound index: a line's own key is measured with
-     * {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole inheritance chain the
-     * change re-keys and the cautionary it creates on the line before it; a mid-line key signature
-     * is measured with {@link KeyEditFitCalculator#keySignatureFits}, which additionally holds the
-     * column the signature occupies and the barline {@link ScoreViewController#insertKeySignature}
-     * inserts alongside it. Neither is a partial query and neither half is available on its own.
+     * <p>For a key signature in the middle of a line that is what {@link Line#keyAt} reports at the
+     * bound index, which answers both cases the mid-line route has without telling them apart — the
+     * index of an existing key signature is inclusive, so the query returns that signature's own
+     * key, while an index with no signature on it returns the key running there. For a line's own
+     * key it is the line's {@link Line#getKey}, or the inherit entry when the line has none, which
+     * is the distinction {@code keyAt} deliberately erases and this dialog needs kept: those two
+     * name the same sounding key but are different edits.
      *
-     * <p>A refusal leaves the dialog open on the choice that was refused, so a narrower signature
-     * can be chosen without starting the operation again, and leaves the model untouched: nothing
-     * is written and nothing is asked, which is why this runs before {@link #setData}'s commit
-     * rather than inside it.
-     *
-     * <p>The line's own key is measured as the key the line will <em>run</em> in, which for the
-     * inherit choice is the key the line before it leaves off in rather than a choice of the
-     * notator's — what has to fit is the layout the edit produces.
-     *
-     * @return {@code true} when the chosen change fits, or when nothing is chosen and
-     *         {@link #setData} would commit nothing
+     * @param input the binding this dialog was shown for
+     * @return a {@link Key}, or {@link InheritChoice#INSTANCE}; never null
      */
+    private static Object currentChoiceFor(KeyChangeInput input) {
+        var line = input.line();
+
+        if (input.isMidLineInsertion()) {
+            return line.keyAt(input.insertionIndex());
+        }
+
+        var ownKey = line.getKey();
+        return ownKey != null ? ownKey : InheritChoice.INSTANCE;
+    }
+
+    /**
+     * @return {@code true} when the combo names something other than the key already in effect,
+     *         which is the whole condition for OK being offered at all
+     */
+    private boolean isChangeFromCurrent() {
+        return !Objects.equals(keysCombo.getSelectedItem(), currentChoice);
+    }
+
     /**
      * The OK lifecycle, wired to the pre-seam {@link #isValidData()} / {@link #setData()} pair
      * this class still carries.
@@ -226,13 +255,32 @@ public class KeyChangeDialog extends StandardDialog {
         return scoreView;
     }
 
+    /**
+     * Refuses a key change that will not fit, and takes no other view of the notator's choice.
+     *
+     * <p>Which check runs follows the bound index: a line's own key is measured with
+     * {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole inheritance chain the
+     * change re-keys and the cautionary it creates on the line before it; a mid-line key signature
+     * is measured with {@link KeyEditFitCalculator#keySignatureFits}, which additionally holds the
+     * column the signature occupies and the barline {@link ScoreViewController#insertKeySignature}
+     * inserts alongside it. Neither is a partial query and neither half is available on its own.
+     *
+     * <p>A refusal leaves the dialog open on the choice that was refused, so a narrower signature
+     * can be chosen without starting the operation again, and leaves the model untouched: nothing
+     * is written and nothing is asked, which is why this runs before {@link #setData}'s commit
+     * rather than inside it.
+     *
+     * <p>The line's own key is measured as the key the line will <em>run</em> in, which for the
+     * inherit choice is the key the line before it leaves off in rather than a choice of the
+     * notator's — what has to fit is the layout the edit produces.
+     *
+     * <p>The combo always names something, so there is no "nothing chosen" case to pass through:
+     * the one choice that would commit nothing is the current key, and OK is disabled on it.
+     *
+     * @return {@code true} when the chosen change fits
+     */
     private boolean isValidData() {
         var selectedIndex = keysCombo.getSelectedIndex();
-
-        if (selectedIndex == -1) {
-            return true;
-        }
-
         var currentInput = requireInput();
         var line = currentInput.line();
         var lyricRenderMetrics = requireScoreView().getLyricRenderMetrics();
@@ -283,11 +331,6 @@ public class KeyChangeDialog extends StandardDialog {
      */
     private void setData() {
         var selectedIndex = keysCombo.getSelectedIndex();
-
-        if (selectedIndex == -1) {
-            return;
-        }
-
         var currentInput = requireInput();
         var line = currentInput.line();
         var controller = requireController();
@@ -384,8 +427,8 @@ public class KeyChangeDialog extends StandardDialog {
 
     /**
      * Renders a {@link Key} exactly as {@link KeyCellRenderer} does, and the one entry
-     * {@link KeyCellRenderer} cannot represent — {@link InheritChoice}, and the transient "no
-     * selection yet" state the combo opens in — as a plain label.
+     * {@link KeyCellRenderer} cannot represent — {@link InheritChoice} — as a plain label. A null
+     * value renders blank, which the combo asks for only while its model is still empty.
      */
     private static final class KeyChoiceRenderer implements ListCellRenderer<Object> {
 
