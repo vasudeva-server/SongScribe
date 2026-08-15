@@ -20,7 +20,9 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
@@ -77,6 +79,11 @@ import songscribe.util.StringUtils;
  * is what maintains both — see {@link #applyChange} for the editing path and
  * {@link #rebuildInheritedKeysAfterParsing()} for the loading one — which is why the rule is
  * stated here rather than on {@link Line}, which can only state what one line promises.
+ *
+ * <p>The inherited half lives here too, in {@link #inheritedKeys}, for the same reason: what a line
+ * inherits is a fact about where it sits in this list, so the class that owns the list is the one
+ * that can keep it true. {@link #runningKeyAt} is the query, and it is total — nothing about the
+ * key chain can be broken badly enough to have no answer.
  */
 public final class Song implements Disposable {
 
@@ -222,6 +229,20 @@ public final class Song implements Disposable {
 
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
+
+    /**
+     * The key in effect at the end of the line before each line — what that line inherits when it
+     * establishes no key of its own. A line with no entry inherits nothing: line 0, and any line
+     * that is not in {@link #lines}.
+     *
+     * <p>Keyed by identity because {@link Line} inherits {@code equals} from {@code Object} and two
+     * distinct lines must never collide, however alike their contents.
+     *
+     * <p>This is state, not a cache: there is no invalidate-and-recompute path. Every mutation that
+     * can move a key drives {@link #maintainKeyInvariant} instead, which patches the entries the
+     * change actually reaches rather than rebuilding the whole map.
+     */
+    private final Map<Line, Key> inheritedKeys = new IdentityHashMap<>();
 
     // The verse the song is currently showing. A song's verses are the languages its lyrics are
     // written in, not stanzas to stack, so exactly one of them is laid out, painted and edited at
@@ -1333,7 +1354,49 @@ public final class Song implements Disposable {
         }
 
         var firstLine = lines.getFirst();
-        return firstLine.getKey() != null ? firstLine.getKey() : firstLine.getInheritedKey();
+        var ownKey = firstLine.getKey();
+        return ownKey != null ? ownKey : inheritedKeys.get(firstLine);
+    }
+
+    /**
+     * Returns the key in effect at the <em>start</em> of {@code line}: its own key where it
+     * establishes one, and otherwise the key in effect at the end of the line before it.
+     *
+     * <p>Total, and deliberately so — this is what {@link Line#getRunningKey()} bottoms out in, and
+     * a model getter has no business terminating the application. A line that establishes no key
+     * and inherits none is in {@link Key#DEFAULT}: that is the key a document naming no key
+     * anywhere is in, not a stand-in for a broken invariant. It is reachable while a reader is
+     * part-way through a load, and for a line that is not one of this song's lines.
+     *
+     * @param line the line to resolve, which need not be one of this song's lines
+     * @return the key in effect at the start of {@code line}; never null
+     */
+    public Key runningKeyAt(Line line) {
+        var ownKey = line.getKey();
+
+        if (ownKey != null) {
+            return ownKey;
+        }
+
+        var inherited = inheritedKeys.get(line);
+        return inherited != null ? inherited : Key.DEFAULT;
+    }
+
+    /**
+     * Returns the key {@code line} inherits — the key in effect at the end of the line before it —
+     * regardless of whether the line establishes a key of its own and so overrides it.
+     *
+     * <p>Distinct from {@link #runningKeyAt} in exactly the case that matters to
+     * {@link Line#setKey}'s no-op normalization: a line asking whether the key it is being given is
+     * the one it would inherit anyway needs the inherited value, not its own.
+     *
+     * @param line the line to ask about
+     * @return the key {@code line} inherits, or null when nothing precedes it — line 0, a line not
+     *         in this song, or any line while a load is still in progress
+     */
+    @Nullable
+    Key inheritedKeyOf(Line line) {
+        return inheritedKeys.get(line);
     }
 
     /**
@@ -1355,6 +1418,11 @@ public final class Song implements Disposable {
                 propagateInheritedKeysFrom(insertion.lineIndex());
             }
             case LineDeletion deletion -> {
+                // A line out of the song inherits from nothing, so it must not go on answering
+                // with what it inherited while it was in one. Dropping the entry also bounds the
+                // line's lifetime: LineDeletion holds the line for undo, and without this the map
+                // would keep it reachable for the song's whole life after that record is gone.
+                inheritedKeys.remove(deletion.deletedLine());
                 repairLineZeroKey(startingKeyBefore);
                 propagateInheritedKeysFrom(deletion.lineIndex());
             }
@@ -1402,11 +1470,11 @@ public final class Song implements Disposable {
      * song itself started in.
      *
      * <p>Recorded as a {@link LineKeyChange} in the same batch, so undo puts the line back to
-     * inheriting rather than leaving it silently pinned to the key it was repaired with.
+     * inheriting rather than leaving it silently keyed to the value it was repaired with.
      *
      * <p>Skipped while mutation tracking is suspended. A file reader adds its lines one at a time,
      * so line 0 is briefly the only line and the key it will end up in is not yet known; guessing
-     * one here would pin a key the document never had, and the key would stand, because
+     * one here would establish a key the document never had, and it would stand, because
      * {@link #rebuildInheritedKeysAfterParsing()} leaves a line that already has one alone.
      */
     private void repairLineZeroKey(@Nullable Key startingKeyBefore) {
@@ -1417,11 +1485,11 @@ public final class Song implements Disposable {
         var firstLine = lines.getFirst();
 
         if (firstLine.getKey() != null) {
-            firstLine.setInheritedKey(null);
+            inheritedKeys.remove(firstLine);
             return;
         }
 
-        var inherited = firstLine.getInheritedKey();
+        var inherited = inheritedKeys.get(firstLine);
         Key materialized;
 
         if (inherited != null) {
@@ -1433,7 +1501,7 @@ public final class Song implements Disposable {
         }
 
         // Cleared first so setKey's no-op normalization cannot collapse the repair back to null.
-        firstLine.setInheritedKey(null);
+        inheritedKeys.remove(firstLine);
         firstLine.setKey(materialized);
     }
 
@@ -1458,7 +1526,7 @@ public final class Song implements Disposable {
         // Line 0 inherits nothing, so propagation always starts at line 1 or later.
         for (var lineIndex = Math.max(firstAffectedLineIndex, 1); lineIndex < lines.size(); lineIndex++) {
             var line = lines.get(lineIndex);
-            line.setInheritedKey(lines.get(lineIndex - 1).keyAtEndOfLine());
+            inheritedKeys.put(line, lines.get(lineIndex - 1).keyAtEndOfLine());
 
             if (line.getKey() != null) {
                 return;
@@ -1481,19 +1549,23 @@ public final class Song implements Disposable {
      * anywhere, not the route by which a stated one arrives.
      */
     public void rebuildInheritedKeysAfterParsing() {
+        // Emptied rather than overwritten: Song.loadFrom replaces the line list wholesale, without
+        // a LineDeletion per line, so entries for the lines it discarded have nothing else to take
+        // them out and would keep those lines reachable for the rest of the song's life.
+        inheritedKeys.clear();
+
         if (lines.isEmpty()) {
             return;
         }
 
         var firstLine = lines.getFirst();
-        firstLine.setInheritedKey(null);
 
         if (firstLine.getKey() == null) {
             firstLine.setKey(Key.DEFAULT);
         }
 
         for (var lineIndex = 1; lineIndex < lines.size(); lineIndex++) {
-            lines.get(lineIndex).setInheritedKey(lines.get(lineIndex - 1).keyAtEndOfLine());
+            inheritedKeys.put(lines.get(lineIndex), lines.get(lineIndex - 1).keyAtEndOfLine());
         }
     }
 

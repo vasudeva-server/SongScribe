@@ -28,10 +28,10 @@ words genuinely describe drawn accidentals — "· 5 flats" in a key's display n
 ## There is no song-wide key
 
 `Song` does not carry a key. Every line has one: either its own (`Line.getKey()`
-non-null) or the key in effect at the end of the previous line
-(`Line.getInheritedKey()`). Line 0 always establishes its own key — there is
-nothing before it to inherit from. This is the key invariant, and `Song`
-maintains it, not the caller: every mutation that can move a key — a line's own
+non-null) or the key in effect at the end of the previous line. Line 0 always
+establishes its own key — there is nothing before it to inherit from. This is
+the key invariant, and `Song` maintains it, not the caller: every mutation that
+can move a key — a line's own
 key changing, a mid-line key signature being added, removed or edited, or a line
 insertion or deletion that shifts what a later line inherits — is brought back
 into line by `Song.applyChange` immediately after the mutator runs, undo and
@@ -55,36 +55,53 @@ Two derived queries save a caller from re-deriving the edge cases:
 `Line.keyAtEndOfLine()` is the key in effect after the line's last element — the
 key the next line inherits.
 
+## Where the inherited key is stored
+
+A line's *own* key is on the line. What it *inherits* is not: `Song` holds it, in
+an `IdentityHashMap<Line, Key>` keyed by line identity, because what a line
+inherits is a fact about where it sits in the line list rather than about the
+line. `Song.runningKeyAt(line)` is the query, and `Line.getRunningKey()` is the
+per-line delegate that bottoms out in it.
+
+`runningKeyAt` is **total**. A line that establishes no key and inherits none —
+one not in the song, or any line while a reader is part-way through a load — is
+in `Key.DEFAULT`, which is the key a document naming no key anywhere is in, not a
+stand-in for a broken invariant. Nothing about the key chain can be broken badly
+enough to leave a caller without an answer.
+
+A line removed from the song loses its entry, so it cannot go on reporting what
+it inherited from a position it no longer occupies.
+
 ## The inheritance chain and its stopping rule
 
 `Song` keeps every line's inherited key up to date by walking forward from the
 line a mutation touched and stopping the moment it reaches a line that
 establishes a key of its own: that line's running key cannot have moved, so
 nothing past it can either. A line holding a *mid-line* change but no key of its
-own does not stop the walk — its own running key can still move, because it has
-nothing pinning it — even though the mid-line change itself, being an absolute
+own does not stop the walk — its own running key can still move, because it is
+not keyed — even though the mid-line change itself, being an absolute
 key rather than a transposition, keeps drawing the same accidentals regardless.
 
 ```
                  line 0      line 1      line 2                   line 3      line 4      line 5
 own key:         C           —           —                        —           D           —
 mid-line change:                         → G (after a barline)
-inheritedKey:    —           C           C                        G           G           D
+inherited:       —           C           C                        G           G           D
 runs (start):    C           C           C                        G           D           D
 runs (end):      C           C           G                        G           D           D
 ```
 
-None of lines 1–3 establishes a key of its own, so the walk that re-derives `inheritedKey`
-after an edit passes through all three — line 2 included, whose mid-line change is a
+None of lines 1–3 establishes a key of its own, so the walk that re-derives the inherited
+keys after an edit passes through all three — line 2 included, whose mid-line change is a
 separate representation from its (null) own key and does not by itself stop anything. The
-walk stops *after* line 4: line 4's `inheritedKey` field is still brought up to date (`G`,
-from line 3's end) before the check, but because line 4 has a key of its own, that field is
-never consulted — `getRunningKey()` reads the own key first — and the walk returns without
+walk stops *after* line 4: line 4's entry is still brought up to date (`G`, from line 3's
+end) before the check, but because line 4 has a key of its own, that entry is never
+consulted — `getRunningKey()` reads the own key first — and the walk returns without
 touching line 5, which needs nothing re-derived: its inherited key was already correct.
 
 This single rule — *forward to the first line with its own key* — governs four
 subsystems that never call each other and would otherwise each have had to
-restate it: `inheritedKey` propagation above, accidental-reconciliation reach
+restate it: inherited-key propagation above, accidental-reconciliation reach
 (below), cautionary derivation (below), and where a MusicXML `<key>` gets
 written (below). This document states it once; the picture is the one copy all
 four can point at.
@@ -94,10 +111,10 @@ four can point at.
 `Line.setKey` normalizes: when the key passed in equals the key the line would
 inherit anyway, the line's own key is set to `null` instead of to that value.
 "This line restates the key it already had" is deliberately not representable.
-Every line's header draws its running key either way, so a pinned-but-equal key
+Every line's header draws its running key either way, so a keyed-but-equal line
 would be invisible in rendering while silently blocking inheritance: an upstream
-edit meant to reach every line downstream would stop at the pinned line instead,
-with nothing on screen to explain why.
+edit meant to reach every line downstream would stop at that line instead, with
+nothing on screen to explain why.
 
 ## A mid-line key change is always preceded by a barline
 

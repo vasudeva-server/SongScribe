@@ -485,7 +485,7 @@ public final class AccidentalReconciliation {
      * in the key it will then run in, followed by every line that inherits from it.
      *
      * <p>A change to a line's own key moves the key it leaves off in only when it holds no mid-line
-     * {@link KeyChangeElement}; one that does pins its end key, so the change reaches no further
+     * {@link KeyChangeElement}; one that does fixes its end key, so the change reaches no further
      * than that mid-line change does. That is why the tail is derived here rather than asked of the
      * caller — but an edit that <em>adds or removes</em> a mid-line key signature moves the end key
      * in a way only that edit knows, and calls {@link #linesInheriting} with it directly.
@@ -546,7 +546,7 @@ public final class AccidentalReconciliation {
 
             reached.add(ModifiedLine.reKeyed(nextLine, runningKey));
 
-            // A mid-line change on that line pins the key it leaves off in, so the change stops
+            // A mid-line change on that line fixes the key it leaves off in, so the change stops
             // propagating there even though the line itself was re-keyed.
             var lastKeyChangeKey = nextLine.lastKeyChangeKey();
 

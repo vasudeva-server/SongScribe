@@ -35,7 +35,6 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.error.RuntimeError;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.CrescendoAddition;
@@ -71,6 +70,11 @@ import songscribe.message.mutation.TupletRemoval;
  * subject to the same rule for the same reason: nothing precedes it, so it must carry its own key
  * before anything asks what key it is in.
  *
+ * <p>What a line <em>inherits</em> is not held here. {@link Song} owns it, keyed by line, because
+ * it is a fact about a line's position in the song rather than about the line — see
+ * {@link Song#runningKeyAt}. A line therefore cannot carry a stale inherited key out of the song
+ * it was removed from.
+ *
  * <p><b>Pairing rule.</b> Some elements cannot outlive their partner: a paired grace note goes
  * with its host, a breath mark with the element it hangs off, and a key signature with the
  * barline it sits behind. A range that names one half of such a pair therefore widens to cover
@@ -102,17 +106,6 @@ public class Line implements LyricRun, SpanLookup {
      * See the key invariant in this class's Javadoc.
      */
     private @Nullable Key key = null;
-
-    /**
-     * The key in effect at the end of the previous line — null on line 0 and on a line that
-     * belongs to no song, non-null on every other line of a song.
-     * <p>
-     * This is state, not a cache: there is no invalidate-and-recompute path, and every mutation
-     * that can change it drives {@link Song}'s propagation instead. It exists so that
-     * {@link #getRunningKey()}, which runs once per note during accidental resolution, is a field
-     * read rather than a walk back to line 0.
-     */
-    private @Nullable Key inheritedKey = null;
 
     private final List<StaffElement> elements = new ArrayList<>();
 
@@ -295,7 +288,7 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p><b>A no-op change normalizes to null.</b> When {@code key} equals the key this line would
      * inherit, the line's own key is set to null instead, because a line holds a key only where
-     * one actually changes. Pinning a line to the key it already inherits looks identical — every
+     * one actually changes. Keying a line to the value it already inherits looks identical — every
      * header draws its key either way — but it stops inheritance there, so a later change upstream
      * would silently fail to reach this line or anything past it.
      *
@@ -308,7 +301,7 @@ public class Line implements LyricRun, SpanLookup {
      *                               suspended tracking
      */
     public void setKey(@Nullable Key key) {
-        var normalized = key != null && key.equals(inheritedKey) ? null : key;
+        var normalized = key != null && key.equals(song.inheritedKeyOf(this)) ? null : key;
 
         if (Objects.equals(this.key, normalized)) {
             return;
@@ -326,29 +319,15 @@ public class Line implements LyricRun, SpanLookup {
      * when it has one, and otherwise the key in effect at the end of the previous line, which
      * accounts for any mid-line key signature that line carried.
      *
-     * <p>Equals {@link #getKey()} whenever that is non-null.
+     * <p>Equals {@link #getKey()} whenever that is non-null. Where it is null the answer comes from
+     * {@link Song#runningKeyAt}, which is total — a line that establishes no key and has nothing to
+     * inherit from is in {@link Key#DEFAULT}, the key a document that names none is in.
      *
      * @return the key in effect at the start of this line; never null
-     * @throws songscribe.error.RuntimeError if this line establishes no key and has nothing to
-     *                                       inherit from, which the key invariant in this class's
-     *                                       Javadoc forbids
      */
     public Key getRunningKey() {
         var ownKey = key;
-
-        if (ownKey != null) {
-            return ownKey;
-        }
-
-        var inherited = inheritedKey;
-
-        if (inherited == null) {
-            throw RuntimeError.exit(
-                "line establishes no key and inherits none; the key invariant has been broken"
-            );
-        }
-
-        return inherited;
+        return ownKey != null ? ownKey : song.runningKeyAt(this);
     }
 
     /**
@@ -509,26 +488,6 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         return song.getLine(lineIndex + 1).getRunningKey();
-    }
-
-    /**
-     * @return the key in effect at the end of the previous line, or null when nothing precedes
-     *         this line
-     */
-    @Nullable
-    Key getInheritedKey() {
-        return inheritedKey;
-    }
-
-    /**
-     * Records the key in effect at the end of the previous line. Derived state, written only by
-     * {@link Song}'s propagation and never recorded as a mutation — see the field's own note.
-     *
-     * @param inheritedKey the key in effect at the end of the previous line, or null when nothing
-     *                     precedes this line
-     */
-    void setInheritedKey(@Nullable Key inheritedKey) {
-        this.inheritedKey = inheritedKey;
     }
 
     // ========================================================================

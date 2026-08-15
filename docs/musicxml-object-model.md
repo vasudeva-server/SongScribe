@@ -157,7 +157,7 @@ has to reconstruct.
 | cautionary at end of a system | nothing — rendering only | re-derived from the next line's key |
 
 A line that inherits its key emits no `<key>`, and the reader leaves it inheriting rather than
-pinning it to a carried-forward value. Pinning would round-trip identically and would then stop a
+keying it to a carried-forward value. Keying it would round-trip identically and would then stop a
 later edit to an earlier line's key from propagating past it;
 `Song.rebuildInheritedKeysAfterParsing` settles the inheritance once the walk is done.
 

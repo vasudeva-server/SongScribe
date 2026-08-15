@@ -14,13 +14,16 @@ the per-step commit discipline begins with the remaining work.
 record marked steps 1 and 2 complete; they were not. The types it names were
 reached by following `Key`'s call sites during the enum conversion, which is not
 an inventory, and the unrepresentable-states step was credited to the whole
-system on the strength of one type. Read *Remaining work* as the real state:
-three phases, none of them started.
+system on the strength of one type. Read *Remaining work* as the real state.
+
+The steps below are the regime's checklist, not a running order. They are worked
+in whatever order the session's target needs, and several are open at once —
+which is why most of them sit at 🔄 rather than moving one at a time.
 
 | Step | Status | Notes |
 |---|---|---|
 | 1 Inventory | ⏳ | **Never run.** The types below were reached through `Key`, not enumerated by a read of the key system. |
-| 2 Unrepresentable states | 🔄 | `Key` only. `Line`'s nullable key state and `KeyChangeElement.previousKey()`'s three cases are this step's subject and are untouched. |
+| 2 Unrepresentable states | 🔄 | `Key`, and `Line`/`Song` key resolution (group C item 1). `KeyChangeElement.previousKey()`'s three cases are still this step's subject and untouched. |
 | 3 Extraction | 🔄 | Done where the enum work reached: `KeyMapping` dissolved, `LegacyKeyType` extracted, `signatureHeightSs()` pulled into `Key`. Not swept. |
 | 4 Contracts | 🔄 | `Key` and `LegacyKeyType` done. Everything else outstanding. |
 | 5 Test triage | ⏳ | No suite exists (see the register). Proposal owed before anything is written. |
@@ -74,6 +77,13 @@ One line per proposal that went to a checkpoint, and what was decided.
   `Key`.** Not the same range twice: `FLATS × -3` is `+3`, a valid key, so
   `ofFifths` cannot see the error. Count-is-a-magnitude is a format fact; the
   magnitude's limit is a domain fact.
+- **The song's opening key stays on line 0; `Song` holds no key.** Proposed and
+  rejected: a non-null `Song.startingKey` seeding resolution. The argument for it
+  was making resolution total by construction, but that is reachable with the key
+  on line 0 by answering `Key.DEFAULT` when nothing declares one, so the move
+  bought nothing and cost seven call sites. **`Line.inheritedKey` still goes**,
+  replaced by an `IdentityHashMap<Line, Key>` on `Song`: that half of the item
+  was never about where the opening key lives. Implemented — group C item 1.
 - **Both legacy readers normalize `(NONE, n)` and `(FLATS, 0)` to C major.**
   `LineIO` used to refuse the load while `SongIO` normalized. Refusing a file the
   old program opened is wrong for a read-only migration path.
@@ -111,25 +121,48 @@ noted in passing and left alone.
 
 ## Remaining work
 
-**The pass has barely started.** `Key` itself is settled; the rest of the key
-system has not been read. Three phases, in this order:
+`Key` itself is settled; most of the rest of the key system has not been read.
 
-### Phase A — bugs the user names
+**This is a work list, not a sequence.** The groups below sort the work by where
+it came from, not by when to do it — redesign and bug fixes interleave, and a
+session takes whatever is in front of it. Where one item genuinely cannot start
+until another lands, the item says so and names what blocks it; those are the
+only orderings that hold. Everything else is open, and finding that one item
+reframes another is the normal outcome of doing the work, not a planning failure.
 
-The user has bugs in hand that no read would find, because they are behaviour
-watched going wrong rather than shape visible in the code. **Ask for them at the
-start of the session and fix those first.** They are not listed here because
-they have not been named yet; record each one here as it is named, with what it
-turned out to be.
+**Ask the user what they want to look at when a session starts.** Their bugs are
+behaviour watched going wrong rather than shape visible in the code, so no amount
+of reading surfaces them.
 
-### Phase B — the architectural review of the key framework
+### Group A — bugs the user names
 
-This is step 1 and step 2 done properly, over the whole system rather than over
-`Key`. It has not been done. Known starting points, not a complete list — the
-point of the read is to find what is not on it:
+Record each one here as it is named, with what it turned out to be.
 
-- **`Line`'s key state.** `getKey()` is nullable, `getRunningKey()` exits the
-  application, `inheritedKey` is a cached second copy of a derivable fact.
+1. **Cautionary key changes at the end of a line render incorrectly.** A real
+   bug, seen by the user. Two symptoms:
+   - **The leading barline is missing.** A cautionary should be preceded by a
+     barline, as a mid-line key change is — see *A mid-line key change is always
+     preceded by a barline* in `docs/key-signatures.md`.
+   - **The spacing is wrong.**
+   Whether these are one fault or two is unknown: an unreserved barline would
+   also throw off the run's width, so the spacing may be a consequence rather
+   than a separate defect.
+   The path is `LayoutHitTester.hitTestCautionaryKeyEdit`,
+   `KeySignatureRenderer.renderKeyChange`, and the layout reservation that pairs
+   with them — the same three the group B cautionary bullet names, so whichever
+   is done first covers the other.
+   Related: group C item 3, the doubled accidental run, sits in two of those
+   three files.
+
+### Group B — the architectural review of the key framework
+
+Steps 1 and 2 done over the whole system rather than over `Key`. Known starting
+points, not a complete list — the point of the read is to find what is not on it,
+and it does not have to happen in one pass or before anything else:
+
+- ~~**`Line`'s key state.**~~ Settled by group C item 1: `getRunningKey()` no
+  longer exits, and `inheritedKey` is gone. `getKey()` is still nullable, which
+  is the representation the design keeps deliberately.
 - **`KeyChangeElement.previousKey()`** resolves through three cases, one of which
   is a null parent line falling back to `NO_ACCIDENTALS`.
 - **`KeySignature`** is a layout box in `dom` holding a `Key`, measured by `Key`.
@@ -140,25 +173,75 @@ point of the read is to find what is not on it:
 - **`KeyChangeDialog` / `KeyChangeEditor` / `KeyChangeAction`** and how a key edit
   reaches the model.
 
-### Phase C — the items this pass already surfaced, if they survive B
+### Group C — items this pass surfaced along the way
 
-These came out of the enum conversion incidentally. Phase B may dissolve, absorb
-or reframe any of them, so they are addressed last and only if still standing.
+These came out of the enum conversion incidentally. Group B's read may still
+dissolve or reframe any of them, which is a reason to re-read an item before
+starting it, not a reason to hold it back.
 
-1. **`Line`/`Song` key resolution.** `Line.getRunningKey()` calls
-   `RuntimeError.exit()` at `Line.java:346` — a model getter that terminates the
-   application. Agreed replacement: `Line.ownKey` as the only key state; `Song`
-   owning resolution in an `IdentityHashMap<Line, Key>` rebuilt wholesale rather
-   than patched; `Song.runningKeyAt(line)` as the total query; `Line.keyAt`
-   staying put and bottoming out there; `detach()` materialising the running key
-   so a detached line answers for itself. Deletes `inheritedKey`, both its
-   accessors, `propagateInheritedKeysFrom`, `rebuildInheritedKeysAfterParsing`
-   and the exit. `LineKeyChange` keeps its shape.
-   **`docs/key-signatures.md` is rewritten in the same change** — its "There is
-   no song-wide key" and "The inheritance chain and its stopping rule" sections,
-   and the ASCII table, all describe `inheritedKey` and go with it.
-   **Ask whether this needs an architecture gate before starting**: it moves
-   resolution across a seam and changes what `detach()` promises.
+1. ✅ **`Line`/`Song` key resolution.** *Done.* `Line.getRunningKey()` called
+   `RuntimeError.exit()` — a model getter that terminated the application. It was
+   reachable only when line 0 established no key, which the class invariant
+   forbids; the getter had nothing to return and so killed the process.
+
+   Implemented as described below. Not verified: there is no test suite, and the
+   app has not been run.
+
+   An earlier version of this item moved the song's opening key onto
+   `Song.startingKey` and left line 0 inheriting like any other line, to make
+   resolution total *by construction* rather than by invariant. **That was
+   dropped.** The exit and the where-does-the-key-live question turned out to be
+   independent: resolution can be made total with the key still on line 0, by
+   answering `Key.DEFAULT` when no line declares one — which is not masking a
+   broken invariant but the real answer for a document that names no key, and is
+   already what `rebuildInheritedKeysAfterParsing` does. Moving the key to `Song`
+   would have rewritten working machinery (`repairLineZeroKey`,
+   `getStartingKey`) for no behavioural gain, at the cost of seven call sites
+   that write a line's key and two live bugs it would have introduced — MIDI
+   export stops emitting the opening key signature, and `KeyChangeDialog` opens
+   the first line's key as an *add* rather than an *edit*.
+
+   **State.** Line 0 owns its key, as it does today. `Line.key`, `@Nullable`, is
+   the only per-line key state: non-null means the line establishes its own key,
+   null means it inherits. `Song` holds no key of its own;
+   `Song.getStartingKey()` stays the query it already is.
+
+   **Resolution.** `Song` owns an `IdentityHashMap<Line, Key>` holding the
+   resolved key **at each line's start**, replacing `Line.inheritedKey`. Patched
+   incrementally: a mutation walks forward from the line it touched and stops at
+   the first line whose own key is non-null, since that line's entry cannot have
+   moved and so nothing past it can either. `Song.runningKeyAt(line)` is the
+   total query, answering `Key.DEFAULT` when nothing declares a key rather than
+   exiting. `Line.getRunningKey()` stays as the per-line delegate — eight callers
+   read it as a line property — and `Line.keyAt` bottoms out there.
+
+   The map costs a hash lookup where the field cost a field read. That is noise:
+   the caller is `StaffElement.findEffectiveAccidental`'s fallback, which reaches
+   it through `keyAt`'s own backward scan over the line, so the path is already
+   an O(n) walk per note.
+
+   **Line 0.** `repairLineZeroKey` stays and keeps its current behaviour: a line
+   inserted at the top takes the key the song was already in, so the song sounds
+   identical across the insert. Confirmed explicitly — `Key.DEFAULT` there would
+   silently transpose the whole song.
+
+   **Deleted** `inheritedKey`, both its accessors, and the exit.
+   `propagateInheritedKeysFrom` and `rebuildInheritedKeysAfterParsing` survive in
+   shape, rewritten to fill the map instead of per-line fields. `LineKeyChange`
+   kept its shape, and `KeyChangeDialog`, `LineIO`, `MeasureMapper`, `SongIO` and
+   `LineTrackBuilder` were untouched.
+
+   **Two reachability leaks found and fixed while wiring it up.** A deleted
+   line's entry is dropped in `maintainKeyInvariant`, so a line out of the song
+   cannot report what it inherited from a position it no longer occupies, and the
+   map cannot outlive the line's `LineDeletion` record.
+   `rebuildInheritedKeysAfterParsing` clears the map first, because
+   `Song.loadFrom` replaces the line list with a bare `lines.clear()` and nothing
+   else would have removed the discarded lines' entries.
+
+   **`docs/key-signatures.md` updated** with a "Where the inherited key is
+   stored" section; the stopping rule and "There is no song-wide key" both stay
+   true.
 2. **Root A — a position in a line is a type, not a `(Line, int)` pair.**
    `Line.keyAt`, `Line.getElement`, `KeyChangeElement.needsBarlineBefore`,
    `InsertionPointMode.Client`, `LayoutResult.findInsertionIndex`,
@@ -167,7 +250,7 @@ or reframe any of them, so they are addressed last and only if still standing.
    `ElementLocation`, which already exists as `(int lineIndex, int elementIndex)`
    bound to no `Song`, with a `matches(int, int)` whose arguments transpose
    silently. `ElementLocation`'s own consumers are hover highlighting, so that
-   half reaches pass 4. Item 1 may settle it, since `Line.keyAt` is on both lists.
+   half reaches pass 4.
 3. **The doubled accidental run.** `LayoutHitTester.hitTestCautionaryKeyEdit` and
    `KeySignatureRenderer.renderKeyChange` each build the run twice — once for the
    list, once inside `Key.widthSsFrom`. Introduced when `totalWidthSs(List)` was
@@ -175,6 +258,34 @@ or reframe any of them, so they are addressed last and only if still standing.
 4. **`KeyChangeDialog` to the back-end pattern.** Unblocked — `dialog-redesign`
    has landed and this branch carries it, so `DialogBackEnd` and
    `AttachmentBackEnd` are in their final shape to migrate against.
+   **When editing a line's key, the input always carries the resolved key** — the
+   key the line is actually in — not the line's own key. Today
+   `currentChoiceFor` returns `InheritChoice.INSTANCE` for a line that has no key
+   of its own; after the rework it is the resolved key in every case.
+   The owned-versus-inherited distinction does not need to reach the dialog. What
+   it was protecting against, committing a no-op, is already handled by
+   `3c144d4a`: OK stays disabled until the selection differs from the entry the
+   combo opened on.
+5. **The doubled backward walk in accidental resolution.** *Was blocked on item
+   1, which changed what `getRunningKey()` bottoms out in. Now unblocked.*
+   `StaffElement.findEffectiveAccidental` scans back from the note; on the
+   fallback it calls `Line.keyAt`, which scans back over the same elements again
+   looking for a `KeyChangeElement`. The second walk is redundant in the common
+   case: a key change *is* a barrier, so a scan that exhausted the line without
+   stopping has proved there is none.
+   - **Exhausted with no tie escape → return `getRunningKey()` directly.** Drops
+     the second walk entirely, no new API.
+   - **Barline barrier → the key search can resume at the barrier's index.**
+     Needs a new `Line` query ("nearest key change at or before this index"), so
+     it is an addition, not a deletion.
+   - **A tie escape must still use `keyAt`.** The escape jumps the cursor from
+     the barrier to the anchor, so positions strictly between them are never
+     visited and a `KeyChangeElement` can hide in the gap.
+   **Verify before relying on the equivalence:** `keyAt`'s bound is inclusive, so
+   it can return a key change sitting *at* the index, which the accidental scan
+   never inspects. Unreachable when the index is the note's own, but
+   `findEffectiveAccidental` also takes a projected insertion index from
+   `AccidentalReconciliation`.
 
 ## Commits
 

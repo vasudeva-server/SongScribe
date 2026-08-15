@@ -322,7 +322,7 @@ final class MeasureMapper {
      *
      * <p>The new line establishes no key of its own. A MusicXML key persists until restated, and
      * that is what {@link Line}'s inheritance already means, so a line the file gave no
-     * {@code <key>} is left inheriting rather than pinned to a carried-forward value. Pinning it
+     * {@code <key>} is left inheriting rather than keyed to a carried-forward value. Keying it
      * would look identical and round-trip, and would then stop a later edit to an earlier line's
      * key from reaching it.
      */

@@ -91,7 +91,7 @@ contract:
   `Song.applyChange` is also where the key invariant is restored — the key each line
   inherits, and line 0 establishing one — because every mutation that can move a key
   routes through it, replay included. Its line-0 repair emits its own `LineKeyChange` into
-  the same batch, so undo does not leave a line silently pinned; the inherited keys
+  the same batch, so undo does not leave a line silently keyed; the inherited keys
   themselves are derived and are re-derived rather than recorded.
 
 Canonical direct-`applyChange` example — `PitchShifter.commitPitchShift` (uses the
