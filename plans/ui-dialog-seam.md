@@ -57,7 +57,7 @@ Removing the reach means removing them, not just not calling them.
 
 Eleven classes reach past window-parenting into the model: `AttachmentDialog` and its
 three subclasses (`AnnotationDialog`, `BeatChangeDialog`, `TempoChangeDialog`),
-`KeySignatureChangeDialog`, `ExportMidiDialog`, `ExportPDFDialog`, `PreferencesDialog`,
+`KeyChangeDialog`, `ExportMidiDialog`, `ExportPDFDialog`, `PreferencesDialog`,
 `ResolutionDialog`, `SongSettingsDialog`, and four `SongSettings*Tab` classes.
 
 Seven take `MainFrame` for **window parenting only** and need no seam: `AboutDialog`,
@@ -113,7 +113,7 @@ paying for itself: `applyChange` guards `if (duration == null || beat == null) {
 a silent no-op on OK that exists only because `getSelectedItem()` is nullable. An input
 record carrying non-null `Duration`s deletes the guard rather than relocating it.
 
-**Not `KeySignatureChangeDialog`,** which was the original prototype. It currently crashes
+**Not `KeyChangeDialog`,** which was the original prototype. It currently crashes
 and is about to gain enablement rules, so its behavior is changing underneath. Writing a
 contract against behavior that does not exist yet would produce a confident, plausible,
 wrong contract — the worst outcome the rules name. It is Phase 4.
@@ -251,7 +251,7 @@ its only caller being a test is a finding to revisit, not something this track s
 | 3 | `SongSettingsAttributionTab` | 5 | 108, 254, 434, 530, 547 |
 | 3 | `SongSettingsTitleTab` | 4 | 378, 379, 418, 425 |
 | 3 | `SongSettingsFontTab` | 1 | 177 |
-| 4 | `KeySignatureChangeDialog` | 3 | 71, 81, 89 |
+| 4 | `KeyChangeDialog` | 3 | 71, 81, 89 |
 | 5 | `ExportMidiDialog` | 4 | 65, 68, 84 (×2) |
 | 5 | `ExportPDFDialog` | 2 | 39, 51 |
 | 5 | `ResolutionDialog` | 2 | 95, 128 |
@@ -387,7 +387,7 @@ subset of Phase 2's list that Phase 3 did not own:
 
 | Phase | Class | Errors | Lines |
 |---|---|--:|---|
-| 4 | `KeySignatureChangeDialog` | 3 | 71, 81, 89 |
+| 4 | `KeyChangeDialog` | 3 | 71, 81, 89 |
 | 5 | `ExportMidiDialog` | 4 | 65, 68, 84 (×2) |
 | 5 | `ExportPDFDialog` | 2 | 39, 51 |
 | 5 | `ResolutionDialog` | 2 | 95, 128 |
@@ -497,7 +497,7 @@ wrong, with every test downstream derived from it.
    components means decomposing further, and a mode-selecting boolean is an enum.
 5. Move the extracted validate/apply logic to a free function whose signature contains no
    Swing type, and write that function's contract before moving the body into it.
-6. Update `KeySignatureChangeDialogTest` (182 lines, 5 tests) to the new shape, adding the
+6. Update `KeyChangeDialogTest` (182 lines, 5 tests) to the new shape, adding the
    enablement rules' cases. Before writing each test method, check whether it will sit
    beside a sibling exercising the same method the same way with only the data differing —
    if so, both are rows in one `record` case table driven by `@ParameterizedTest`.

@@ -77,7 +77,7 @@ public enum ElementType {
     // Key signatures. Deliberately placed after the barlines and before the IO aliases: the
     // three ordinal-range predicates — isNote(), isRest() and isBarLine() — all end before
     // this point, so none of them picks it up.
-    KEY_SIGNATURE("Key signature", 0, 0),
+    KEY_CHANGE("Key signature", 0, 0),
 
     // IO aliases
     SEMIBREVEREST(ElementType.SEMIBREVE_REST),
@@ -212,15 +212,15 @@ public enum ElementType {
     /**
      * Builds the shared instance {@link #getInstance()} hands out and {@link #newInstance()} clones.
      * <p>
-     * The instance's Java class matches the type: a key signature is a {@link KeySignatureElement},
+     * The instance's Java class matches the type: a key signature is a {@link KeyChangeElement},
      * so a caller that reaches an element through the type registry gets one it can ask for a key,
      * and a {@code newInstance()} clone is an element the document can hold. It starts in C major —
      * the key that draws nothing — because a default instance states no key of its own and a
      * caller that means a particular key sets it.
      */
     private StaffElement createDefaultInstance() {
-        if (this == KEY_SIGNATURE) {
-            return new KeySignatureElement(new Key(KeyType.NONE, 0));
+        if (this == KEY_CHANGE) {
+            return new KeyChangeElement(new Key(KeyType.NONE, 0));
         }
 
         if (isRest() || isNonDuration()) {
@@ -443,7 +443,7 @@ public enum ElementType {
     }
 
     public boolean isNonDuration() {
-        return isBarLine() || isRepeat() || isBreathMark() || this == KEY_SIGNATURE;
+        return isBarLine() || isRepeat() || isBreathMark() || this == KEY_CHANGE;
     }
 
     /**
@@ -464,7 +464,7 @@ public enum ElementType {
      * staff position inherits, but it does not close a measure, bound an ending or pick a glyph.
      */
     public boolean cancelsAccidentals() {
-        return isBarLine() || isRepeat() || this == KEY_SIGNATURE;
+        return isBarLine() || isRepeat() || this == KEY_CHANGE;
     }
 
     public boolean isGraceNote() {
@@ -496,7 +496,7 @@ public enum ElementType {
      * signature selected together with its barline still leaves the action enabled.
      */
     public boolean canCarryAnnotation() {
-        return !isBreathMark() && this != KEY_SIGNATURE;
+        return !isBreathMark() && this != KEY_CHANGE;
     }
 
     /**
@@ -524,8 +524,8 @@ public enum ElementType {
             return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK);
         }
 
-        if (this == KEY_SIGNATURE) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_KEY_SIGNATURE);
+        if (this == KEY_CHANGE) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE);
         }
 
         throw new IllegalStateException("No category name for element type " + this);
@@ -542,13 +542,13 @@ public enum ElementType {
      * musical content, so it must not help a selection reach the minimum an ending needs;
      * and a key change must not move where an ending anchors, which is what being skipped
      * delivers — the backward walk for the preceding element passes over it and reaches the
-     * barline that {@link KeySignatureElement}'s position invariant guarantees behind it, so
+     * barline that {@link KeyChangeElement}'s position invariant guarantees behind it, so
      * the bracket lands exactly where it would have had the key change not been there.
      *
      * @return {@code true} for grace notes, breath marks and key signatures
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == BREATH_MARK || this == KEY_SIGNATURE;
+        return isGraceNote() || this == BREATH_MARK || this == KEY_CHANGE;
     }
 
     /**
@@ -833,14 +833,14 @@ public enum ElementType {
     }
 
     /**
-     * Sets {@code KEY_SIGNATURE}'s bounds to the degenerate case: the narrowest key signature
+     * Sets {@code KEY_CHANGE}'s bounds to the degenerate case: the narrowest key signature
      * that draws anything, a single accidental, spanning the staff vertically the way a
      * barline does.
      * <p>
      * Every other type in this enum has one width, so the constant is the whole answer. A key
      * signature does not: its width depends on the {@link Key} it carries and on the key it
      * cancels, neither of which the enum constant knows. The real width comes from the element
-     * instance ({@code KeySignatureElement.getContentWidthSs()}); what is set here is only the
+     * instance ({@code KeyChangeElement.getContentWidthSs()}); what is set here is only the
      * floor, so that a caller reasoning from the type alone never over-reserves and
      * {@code validateElementBounds} still has something positive to check.
      */
@@ -850,7 +850,7 @@ public enum ElementType {
             StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_SHARP)
         );
 
-        KEY_SIGNATURE.setSymmetricBounds(
+        KEY_CHANGE.setSymmetricBounds(
             narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HEIGHT_SS / 2);
     }
 

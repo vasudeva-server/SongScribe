@@ -179,7 +179,7 @@ re-derive which line or element the rect stands for:
   overflowing line gives it (see `LayoutResult#overflowsStaffWidth`), so the
   target follows the glyphs rather than the staff margin.
 - **A mid-line key signature's own rendered accidentals** double-click to
-  edit that `KeySignatureElement` directly — an ordinary column, hit-tested
+  edit that `KeyChangeElement` directly — an ordinary column, hit-tested
   the same way any other element's column is.
 
 These are edit targets, not selection targets: the single-press-selects-

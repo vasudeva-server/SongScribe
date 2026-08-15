@@ -758,7 +758,7 @@ public class StaffElement extends LineElement implements Cloneable {
      *       {@link ElementType#cancelsAccidentals()} is true — and stops there, falling back to
      *       the key signature. That method is shared with the projected-layout resolver in
      *       {@code AccidentalReconciliation}, so both agree on what cancels. When the barrier is
-     *       itself a {@link KeySignatureElement}, its key <em>is</em> the key in effect at
+     *       itself a {@link KeyChangeElement}, its key <em>is</em> the key in effect at
      *       {@code index}: a key signature is a barrier, so no later one can sit between the two
      *       or the scan would have stopped at that one first. Reading it off the barrier is what
      *       lets this path — which runs per note, per layout pass and per {@link #getPitch()} —
@@ -795,7 +795,7 @@ public class StaffElement extends LineElement implements Cloneable {
                     var anchor = tieAnchorBefore(targetLine, tieEndElement, scanIndex);
 
                     if (anchor == null) {
-                        if (element instanceof KeySignatureElement keySignature) {
+                        if (element instanceof KeyChangeElement keySignature) {
                             return keyAccidentalFor(keySignature.getKey(), staffPosition);
                         }
 

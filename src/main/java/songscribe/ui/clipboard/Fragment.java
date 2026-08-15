@@ -28,12 +28,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.DetachedLyricRun;
-import songscribe.dom.ElementType;
-import songscribe.dom.Line;
-import songscribe.dom.LyricRun;
-import songscribe.dom.Span;
-import songscribe.dom.StaffElement;
+import songscribe.dom.*;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
@@ -97,14 +92,14 @@ public record Fragment(
      *
      * <p>The captured range is first widened at both ends — past a trailing breath mark or a key
      * signature standing behind a barline ({@link Line#effectiveEnd}), and back over the barline
-     * in front of a key signature ({@link Line#beginIncludingKeySignatureBarline}) — and then
+     * in front of a key signature ({@link Line#beginIncludingKeyChangeBarline}) — and then
      * trimmed of an orphan paired grace note at the tail. When the entire range is that one
      * orphan grace note ({@code begin == end}), the trim drops it entirely and
      * capture returns an empty {@code Fragment}.
      *
      * <p><b>Widening the head is what keeps a pasted key signature legal.</b> A key signature is
      * never the first element on a line and always follows a barline or a repeat
-     * ({@link songscribe.dom.KeySignatureElement}'s position invariant); capturing one without the
+     * ({@link KeyChangeElement}'s position invariant); capturing one without the
      * barline in front of it would put a fragment on the clipboard that violates that invariant
      * wherever it lands. The deletion side already takes both, so a cut that widened only its
      * deletion would also disagree with its own copy. A captured {@code FINAL_DOUBLE_BARLINE}
@@ -133,7 +128,7 @@ public record Fragment(
         // not do. A grace note cannot outlive its host, so a capture starting at a host leaves it
         // behind; a key signature cannot exist without its barline, so a capture starting at one
         // takes the barline too.
-        var effectiveBegin = line.beginIncludingKeySignatureBarline(begin);
+        var effectiveBegin = line.beginIncludingKeyChangeBarline(begin);
         var effectiveEnd = line.effectiveEnd(end);
 
         // The host of a paired grace note sits at the very next index, which lies

@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
@@ -307,7 +307,7 @@ public class ElementColumnBuilder {
             // A key signature is the one non-note type whose width is not a property of the type:
             // what it draws depends on the key it establishes and the key it cancels, so it comes
             // from the element. Every other non-note element reports exactly its type's width.
-            return element instanceof KeySignatureElement keySignature
+            return element instanceof KeyChangeElement keySignature
                 ? keySignature.getContentWidthSs()
                 : type.getElementWidthSs();
         }

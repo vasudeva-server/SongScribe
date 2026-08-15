@@ -33,7 +33,7 @@ import songscribe.dom.Line;
  * the values {@link Line#setKey} settled on after its no-op normalization, not the raw argument
  * it was handed, so replaying either one reproduces the recorded state exactly.
  *
- * <p>A mid-line key change is a {@code KeySignatureElement} and is recorded as an ordinary
+ * <p>A mid-line key change is a {@code KeyChangeElement} and is recorded as an ordinary
  * element mutation instead; this record covers only the line's own key.
  *
  * @param line   the line whose key changed

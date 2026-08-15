@@ -153,7 +153,7 @@ has to reconstruct.
 | Model | Written into | Read back as |
 |---|---|---|
 | `Line.getKey()` non-null | that line's first measure | `Line.setKey` on the line the measure opens |
-| `KeySignatureElement` | the measure its preceding barline opened | a `KeySignatureElement` at the current position |
+| `KeyChangeElement` | the measure its preceding barline opened | a `KeyChangeElement` at the current position |
 | cautionary at end of a system | nothing — rendering only | re-derived from the next line's key |
 
 A line that inherits its key emits no `<key>`, and the reader leaves it inheriting rather than
@@ -167,7 +167,7 @@ restating "when the key type differs", so the two cannot drift — and every Son
 major, so `<mode>` carries no information the model could store. Both are emitted because
 [output is for everyone](#only-songscribe-documents-are-read).
 
-`KeySignatureElement`'s position invariant (always immediately after a barline or repeat) is
+`KeyChangeElement`'s position invariant (always immediately after a barline or repeat) is
 **enforced on read**, with `DocumentValidation.corrupt`. It is the one entry point that takes
 input from a file; the editing UI and the deletion pairing maintain the invariant rather than
 re-checking it, so a mid-measure `<key>` with no barline before it would otherwise load

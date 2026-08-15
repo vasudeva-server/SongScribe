@@ -1392,7 +1392,7 @@ public final class Song implements Disposable {
     }
 
     private static boolean changesKey(StaffElement element) {
-        return element.getType() == ElementType.KEY_SIGNATURE;
+        return element.getType() == ElementType.KEY_CHANGE;
     }
 
     /**

@@ -20,8 +20,26 @@
 
 package songscribe.dom;
 
+import songscribe.smufl.SMuFLGlyph;
+
 public enum KeyType {
     NONE,
     FLATS,
     SHARPS,
+    ;
+
+    /**
+     * Returns the glyph a key signature of this type is drawn with.
+     *
+     * @return the flat or sharp glyph
+     * @throws IllegalStateException if this is {@link #NONE}, which draws no accidental and so has
+     *                               no glyph
+     */
+    public SMuFLGlyph glyph() {
+        return switch (this) {
+            case FLATS -> SMuFLGlyph.ACCIDENTAL_FLAT;
+            case SHARPS -> SMuFLGlyph.ACCIDENTAL_SHARP;
+            case NONE -> throw new IllegalStateException("NONE draws no accidental");
+        };
+    }
 }

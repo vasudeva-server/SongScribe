@@ -28,14 +28,14 @@ import songscribe.smufl.SMuFLMetadata;
  * <p>
  * This is a transient layout object rather than part of the document model: layout builds one
  * per line from the line's running key and the renderer paints it. A line's own key lives on
- * {@link Line}, and a change part-way through a line lives in a {@link KeySignatureElement}.
+ * {@link Line}, and a change part-way through a line lives in a {@link KeyChangeElement}.
  * <p>
  * The KeySignature is positioned absolutely after the clef and does not contribute
  * to Staff's bounds. It has its own margin for spacing to the first note.
  * <p>
- * Its measurements are {@link KeyChange}'s measurements of the same run of accidentals the
- * renderer draws, so the header and a cautionary key change at the end of a line can never
- * disagree about how wide one signature is.
+ * Its measurements are {@link Key#signatureWidthSs()}'s — the same run of accidentals the renderer
+ * draws, reached by the same call — so the header and a cautionary key change at the end of a line
+ * can never disagree about how wide one signature is.
  */
 public class KeySignature extends LineElement {
 
@@ -63,20 +63,7 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentWidthSs() {
-        return widthSs(key);
-    }
-
-    /**
-     * Returns how wide a header key signature for {@code key} is, in staff-space units.
-     * <p>
-     * The answer is {@link KeyChange}'s, so a signature in the header and the same signature
-     * drawn as a cautionary at the end of the previous line cannot drift apart in width.
-     *
-     * @param key the key to measure
-     * @return the width in staff spaces; zero for {@link KeyType#NONE}, and never negative
-     */
-    public static double widthSs(Key key) {
-        return KeyChange.totalWidthSs(KeyChange.signatureAccidentals(key));
+        return key.signatureWidthSs();
     }
 
     @Override
@@ -96,7 +83,7 @@ public class KeySignature extends LineElement {
             return 0;
         }
 
-        return SMuFLMetadata.requireBBox(KeyChange.accidentalGlyph(key.keyType())).height();
+        return SMuFLMetadata.requireBBox(key.keyType().glyph()).height();
     }
 
     @Override

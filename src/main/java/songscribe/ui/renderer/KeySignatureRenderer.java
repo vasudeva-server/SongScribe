@@ -28,10 +28,9 @@ import module java.desktop;
 import java.util.List;
 
 import songscribe.dom.Key;
-import songscribe.dom.KeyChange;
 import songscribe.dom.KeySignature;
 import songscribe.engraving.Staff;
-import songscribe.layout.ElementColumn;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.layout.LayoutResult;
 import songscribe.util.GraphicsState;
 
@@ -43,8 +42,8 @@ import songscribe.util.GraphicsState;
  * in the order they appear (FCGDAEB for sharps, BEADGCF for flats).
  * <p>
  * <b>What</b> is drawn — which accidentals, in which order, at which staff positions, and
- * how wide the run is — belongs to {@link KeyChange}, in {@code songscribe.dom}, because
- * layout and MusicXML need the same answers. This class only paints what it is given.
+ * how wide the run is — belongs to {@link Key}, in {@code songscribe.dom}, because layout and
+ * MusicXML need the same answers. This class only paints what it is given.
  */
 public final class KeySignatureRenderer implements ElementRenderer<KeySignature> {
 
@@ -75,7 +74,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         KeySignature element,
         Graphics2D g2
     ) {
-        drawRun(g2, KeyChange.signatureAccidentals(element.getKey()), element.getXSs(), invariants);
+        drawRun(g2, element.getKey().signatureAccidentals(), element.getXSs(), invariants);
     }
 
     // ==========================================================================
@@ -86,14 +85,14 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
      * Renders the cautionary key change at the end of a staff line — the warning to the
      * performer that the next line starts in a different key.
      * <p>
-     * Which accidentals are drawn is {@link KeyChange#accidentals}' answer, not this
+     * Which accidentals are drawn is {@link Key#accidentalsFrom}'s answer, not this
      * method's; nothing is drawn when {@code previous} and {@code next} are the same key.
      * <p>
      * <b>Where</b> the run sits depends on whether the line's content fits the staff:
      * <ul>
      *   <li>On a line that fits, the run is right-aligned to {@code lineWidthSs} less
-     *       {@link KeyChange#RIGHT_MARGIN_SS}. Layout reserves that span, so the run clears
-     *       the music it follows.</li>
+     *       {@link StaffHeaderMetrics#CAUTIONARY_RIGHT_MARGIN_SS}. Layout reserves that span, so
+     *       the run clears the music it follows.</li>
      *   <li>On a line whose {@link LayoutResult#overflowsStaffWidth() content overflows}, the
      *       margin is already behind the last element and pinning to it would drop the run on
      *       top of the music. The run instead starts one line rest past the rightmost element
@@ -118,13 +117,13 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         double lineWidthSs,
         LineInvariants invariants
     ) {
-        var accidentals = KeyChange.accidentals(previous, next);
+        var accidentals = next.accidentalsFrom(previous);
 
         if (accidentals.isEmpty()) {
             return;
         }
 
-        var widthSs = KeyChange.totalWidthSs(accidentals);
+        var widthSs = next.widthSsFrom(previous);
         var layoutResult = invariants.getLayoutResult();
         double xPosSs;
 
@@ -132,7 +131,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
             xPosSs = layoutResult.contentRightEdgeSs()
                 + invariants.getSong().getDefaultRestLengthSs();
         } else {
-            xPosSs = lineWidthSs - KeyChange.RIGHT_MARGIN_SS - widthSs;
+            xPosSs = lineWidthSs - StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS - widthSs;
         }
 
         drawRun(g2, accidentals, xPosSs, invariants);
@@ -141,7 +140,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
     /** Paints an already laid-out run of accidentals starting at {@code xPosSs}. */
     private static void drawRun(
         Graphics2D g2,
-        List<KeyChange.DrawnAccidental> accidentals,
+        List<Key.DrawnAccidental> accidentals,
         double xPosSs,
         LineInvariants invariants
     ) {
@@ -162,7 +161,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
 
                 penXSs += accidental.leadingGapSs();
                 g2.drawString(accidental.glyph().asString(), (float) penXSs, (float) y);
-                penXSs += KeyChange.advanceSs(accidentals, i);
+                penXSs += accidental.advanceSs();
             }
         }
     }

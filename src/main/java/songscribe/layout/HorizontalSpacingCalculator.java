@@ -28,16 +28,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.Hairpin;
-import songscribe.dom.Key;
-import songscribe.dom.KeyChange;
-import songscribe.dom.KeySignature;
-import songscribe.dom.KeyType;
-import songscribe.dom.Line;
-import songscribe.dom.Lyric;
-import songscribe.dom.Span;
-import songscribe.dom.StaffElement;
+import songscribe.dom.*;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.util.LogUtils;
@@ -145,7 +136,7 @@ public final class HorizontalSpacingCalculator {
      * @return X position in staff-space units where the first note should be placed
      */
     public static double calculateFirstElementXSs(Key key) {
-        if (KeySignature.widthSs(key) == 0) {
+        if (key.signatureWidthSs() == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS
                 + Math.max(SMuFLConstants.G_CLEF_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
         }
@@ -189,7 +180,7 @@ public final class HorizontalSpacingCalculator {
      * @return X position in staff-space units of the header's right edge
      */
     public static double calculateHeaderRightEdgeSs(Key key) {
-        var keySignatureWidthSs = KeySignature.widthSs(key);
+        var keySignatureWidthSs = key.signatureWidthSs();
 
         if (keySignatureWidthSs == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_WIDTH_SS;
@@ -223,13 +214,13 @@ public final class HorizontalSpacingCalculator {
      * either column holds. That is the promise a caller relies on at the floor — not the number
      * itself, which is whatever the pair's extents make it.
      *
-     * <p>A mid-line {@link songscribe.dom.KeySignatureElement} is an ordinary column here and gets
+     * <p>A mid-line {@link KeyChangeElement} is an ordinary column here and gets
      * the same promise on both sides. Its position invariant fixes what those sides are: a barline
      * or repeat before it, and (except at the end of a line) a note after it. So the barline's ink
      * clears the first accidental by {@link #MIN_COLUMN_GAP_SS}, and the last accidental clears the
      * following note's leftmost ink — its accidental when it has one — by the same. The key
      * signature's contribution is its <em>drawn</em> width, the accidentals
-     * {@code KeyChange} lays out for the change it makes, so a wider change pushes the note further
+     * {@code Key#accidentalsFrom} lays out for the change it makes, so a wider change pushes the note further
      * rather than letting it overlap the naturals.
      *
      * @param prevColumn Previous column
@@ -539,7 +530,8 @@ public final class HorizontalSpacingCalculator {
      *
      * <p>A cautionary key signature is drawn in that same trailing space when the next line begins
      * in a different key, so the gap widens to hold it: the reservation is the larger of the line
-     * rest and the cautionary's width plus {@link KeyChange#RIGHT_MARGIN_SS}. It is a maximum
+     * rest and the cautionary's width plus
+     * {@link StaffHeaderMetrics#CAUTIONARY_RIGHT_MARGIN_SS}. It is a maximum
      * rather than a sum because the two occupy the same run — the cautionary is drawn <em>into</em>
      * the trailing gap, not after it. The two clauses never both bind: only the song's last line
      * carries the auto-maintained terminal, and only a line with a line after it leads into a
@@ -569,7 +561,7 @@ public final class HorizontalSpacingCalculator {
      * plus the margin it keeps from the staff's right edge — or zero when no cautionary is drawn
      * there.
      *
-     * <p>What is drawn is {@link KeyChange}'s answer for the pair of keys, never a second reading
+     * <p>What is drawn is {@link Key#accidentalsFrom}'s answer for the pair of keys, never a second reading
      * of the cancellation policy, so the space reserved here and the accidentals
      * {@code KeySignatureRenderer} paints cannot disagree. Zero covers both "no next line" and
      * "the next line is in the same key" — the margin is part of the cautionary's run, so a line
@@ -582,7 +574,8 @@ public final class HorizontalSpacingCalculator {
             return 0.0;
         }
 
-        return KeyChange.widthSs(keys.keyAtEndOfLine(), nextRunningKey) + KeyChange.RIGHT_MARGIN_SS;
+        return nextRunningKey.widthSsFrom(keys.keyAtEndOfLine())
+            + StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS;
     }
 
     /**

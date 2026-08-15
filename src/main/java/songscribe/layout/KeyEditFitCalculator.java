@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 
@@ -107,7 +107,7 @@ public final class KeyEditFitCalculator {
      * {@code key} is inserted into {@code line} at {@code insertionIndex}.
      * <p>
      * The barline the editor inserts when the chosen position has none is part of the measurement,
-     * because it is part of the edit: {@link KeySignatureElement}'s position invariant puts a key
+     * because it is part of the edit: {@link KeyChangeElement}'s position invariant puts a key
      * signature immediately after a barline or repeat, and the editor keeps it there by inserting a
      * {@link ElementType#SINGLE_BARLINE} rather than by refusing the position. A check that left
      * that barline out would accept an edit that then overflows by exactly its width.
@@ -257,7 +257,7 @@ public final class KeyEditFitCalculator {
     /** Whether {@code line} already holds a key signature at or after {@code fromIndex}. */
     private static boolean holdsKeySignatureFrom(Line line, int fromIndex) {
         for (var index = fromIndex; index < line.elementCount(); index++) {
-            if (line.getElement(index) instanceof KeySignatureElement) {
+            if (line.getElement(index) instanceof KeyChangeElement) {
                 return true;
             }
         }
@@ -302,11 +302,11 @@ public final class KeyEditFitCalculator {
 
         var activeVerse = line.getSong().getActiveVerse();
 
-        if (KeySignatureElement.needsBarlineBefore(line, insertionIndex)) {
+        if (KeyChangeElement.needsBarlineBefore(line, insertionIndex)) {
             columns.add(columnBuilder.buildDetachedColumn(ElementType.SINGLE_BARLINE.newInstance(), activeVerse));
         }
 
         columns.add(columnBuilder.buildDetachedColumn(
-            KeySignatureElement.forMeasurement(key, line.keyAt(insertionIndex - 1)), activeVerse));
+            KeyChangeElement.forMeasurement(key, line.keyAt(insertionIndex - 1)), activeVerse));
     }
 }

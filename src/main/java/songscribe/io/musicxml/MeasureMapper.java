@@ -51,7 +51,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -79,12 +79,12 @@ import songscribe.io.DocumentValidation;
  *
  * <p><b>Where a {@code <key>} lands</b> is decided by the measure it sits in: the measure that
  * opened the current line establishes that line's own {@link Line#setKey key}, and any other
- * measure appends a {@link KeySignatureElement} at the current position. Nothing carries a
+ * measure appends a {@link KeyChangeElement} at the current position. Nothing carries a
  * running key forward — a line the file gave no {@code <key>} inherits, which is what
  * {@code Song.rebuildInheritedKeysAfterParsing} settles once the walk is done.
  *
  * <p><b>Two children of {@code <key>} are deliberately not read.</b> {@code <cancel>} is derived
- * from the key change itself by {@code songscribe.dom.KeyChange}, so a document renders under this
+ * from the key change itself by {@code songscribe.dom.Key#accidentalsFrom}, so a document renders under this
  * program's cancellation policy rather than under whichever one wrote it; {@code <mode>} is never
  * read because no SongScribe key has a mode and only this program's own files reach a mapper.
  *
@@ -348,7 +348,7 @@ final class MeasureMapper {
         }
 
         // <cancel> is deliberately not read. Which accidentals a key change cancels is derived
-        // from the change itself by songscribe.dom.KeyChange, so a document is rendered under
+        // from the change itself by songscribe.dom.Key.accidentalsFrom, so a document is rendered under
         // this program's cancellation policy rather than under whichever one wrote the file.
         // <mode> is likewise not read: no SongScribe key has a mode, and only files this program
         // wrote get past the provenance gate, so an incoming <mode> is always the "major" this
@@ -363,7 +363,7 @@ final class MeasureMapper {
      * key measure 1 names is the first line's key exactly as any later one is its own line's.
      *
      * <p>A {@code <key>} in any other measure is a mid-line change and appends a
-     * {@link KeySignatureElement} at the current position, so only the notes <em>after</em> it are
+     * {@link KeyChangeElement} at the current position, so only the notes <em>after</em> it are
      * re-spelled. Applying it to the whole line instead is what made a document with a mid-system
      * key change load wrong.
      *
@@ -380,7 +380,7 @@ final class MeasureMapper {
             return;
         }
 
-        var key = KeySignatureMapping.toKey(fifths);
+        var key = KeyMapping.toKey(fifths);
 
         if (measureIndex == lineStartMeasureIndex) {
             line.setKey(key);
@@ -388,11 +388,11 @@ final class MeasureMapper {
         }
 
         requireKeySignaturePosition(line);
-        line.addElement(new KeySignatureElement(key));
+        line.addElement(new KeyChangeElement(key));
     }
 
     /**
-     * Enforces {@link KeySignatureElement}'s position invariant on the way in.
+     * Enforces {@link KeyChangeElement}'s position invariant on the way in.
      *
      * <p>The writer opens the measure a mid-line key change sits in with that change's barline, so
      * a mid-measure {@code <key>} with no barline before it describes a model this program cannot

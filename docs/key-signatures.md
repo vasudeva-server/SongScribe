@@ -20,10 +20,10 @@ redo replay included. See `docs/mutations.md`.
 ## Two representations, one query
 
 A key change at a line boundary is the line's own `Key`. A key change in the
-middle of a line is a `KeySignatureElement` sitting in the line's element list.
+middle of a line is a `KeyChangeElement` sitting in the line's element list.
 These are two different pieces of storage, and nothing outside `Line` needs to
 know that: every consumer asks `Line.keyAt(int elementIndex)`, which returns the
-line's own key overridden by the last `KeySignatureElement` at or before that
+line's own key overridden by the last `KeyChangeElement` at or before that
 index. The bound is inclusive — a key signature at `elementIndex` is already in
 effect there — and the domain runs `0..elementCount()` inclusive, so a caller
 can ask what key an element about to be appended would land in.
@@ -81,9 +81,9 @@ with nothing on screen to explain why.
 
 ## A mid-line key change is always preceded by a barline
 
-A `KeySignatureElement` is never the element at index 0 of a line, and is always
+A `KeyChangeElement` is never the element at index 0 of a line, and is always
 immediately preceded by an element whose `ElementType.isBarLine()` or
-`isRepeat()` is true — `KeySignatureElement`'s position invariant. The user is
+`isRepeat()` is true — `KeyChangeElement`'s position invariant. The user is
 not restricted to positions that already satisfy it: inserting a key signature
 elsewhere inserts a `SINGLE_BARLINE` immediately before it, as part of the same
 edit, and the two are deleted together. Every path that can create a mid-line
@@ -93,7 +93,7 @@ document whose mid-measure `<key>` has no barline before it.
 
 ## A key change cancels and propagates accidentals
 
-`ElementType.cancelsAccidentals()` is true for `KEY_SIGNATURE` alongside every
+`ElementType.cancelsAccidentals()` is true for `KEY_CHANGE` alongside every
 barline and repeat: a later note at the same staff position inherits nothing
 across a key change and falls back to the key signature instead, exactly as it
 would across a barline.
@@ -122,7 +122,7 @@ it edits the *next* line's key, which is the change it depicts.
 A line that fits reserves a trailing span for its cautionary:
 `HorizontalSpacingCalculator.trailingReservationSs` widens the line's trailing
 gap to the larger of the ordinary line rest and the cautionary's drawn width
-plus `KeyChange.RIGHT_MARGIN_SS`, so the cautionary is right-aligned to the line
+plus `StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS`, so the cautionary is right-aligned to the line
 width less that margin. On a line that already overflows, that margin sits
 behind the last element rather than at the true line end, so drawing there would
 collide with the music; the cautionary instead starts one line rest past the
@@ -135,9 +135,9 @@ margin whenever the two diverge.
 
 ## The cancellation policy
 
-`KeyChange.accidentals(previous, next)` draws cancelling naturals ahead of the
-new signature exactly when `previous` had accidentals of its own *and* `next`
-uses a different accidental type — sharps to flats, flats to sharps, or either
+`Key.accidentalsFrom(sourceKey)` draws cancelling naturals
+ahead of the new signature exactly when `sourceKey` had accidentals of its own *and*
+`targetKey` uses a different accidental type — sharps to flats, flats to sharps, or either
 down to no accidentals. Two cases draw the new signature alone, uncancelled:
 widening or narrowing within the same type (two more sharps, one fewer flat),
 and starting from a key with no accidentals to begin with — there is nothing
@@ -187,7 +187,7 @@ from the two keys itself rather than trusting what a writer claimed.
 
 `MidiEventFactory.addKeySignatureEvent` emits a `FF 59` key-signature meta-event
 at tick 0 and at every key change: `sf` is the signed fifths count from
-`KeySignatureMapping.toFifths`, and `mi` (mode) is always the constant for major.
+`KeyMapping.toFifths`, and `mi` (mode) is always the constant for major.
 
 ## Every key is major, and mode is not modelled
 

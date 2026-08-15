@@ -159,7 +159,7 @@ see §E).
   `BeatChangeDialogTest`, including a null-model edge case.
 - **`KeySignatureChangeDialog.keysCombo`, `keysSpinner`,
   `indexOfSelectedElementLabel`** — read/written directly by
-  `KeySignatureChangeDialogTest`.
+  `KeyChangeDialogTest`.
 - **`TempoChangeDialog.tempoSection`** — `TempoChangeDialogTest` calls methods
   on it directly instead of going through `populateControls`/`applyChange`.
 - **`DoNotShowMessage.dontShowCheck`** — set directly by `DoNotShowMessageTest`.

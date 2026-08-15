@@ -36,7 +36,7 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AttachmentEditor;
-import songscribe.ui.dialog.KeySignatureChangeDialog;
+import songscribe.ui.dialog.KeyChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -946,7 +946,7 @@ public class LineComponent extends ScoreComponent
         var headerTarget = layoutResult.hitTestHeaderKeyEdit(mouseXSs, line);
 
         if (headerTarget != null) {
-            openKeySignatureDialog(headerTarget, KeySignatureChangeDialog.LINE_OWN_KEY_INDEX);
+            openKeySignatureDialog(headerTarget, KeyChangeDialog.LINE_OWN_KEY_INDEX);
             return true;
         }
 
@@ -960,7 +960,7 @@ public class LineComponent extends ScoreComponent
         var cautionaryTarget = layoutResult.hitTestCautionaryKeyEdit(mouseXSs, line);
 
         if (cautionaryTarget != null) {
-            openKeySignatureDialog(cautionaryTarget, KeySignatureChangeDialog.LINE_OWN_KEY_INDEX);
+            openKeySignatureDialog(cautionaryTarget, KeyChangeDialog.LINE_OWN_KEY_INDEX);
             return true;
         }
 
@@ -972,10 +972,10 @@ public class LineComponent extends ScoreComponent
      *
      * @param line the line whose key is being added, edited or written into
      * @param insertionIndex the element index the change is anchored to;
-     *     {@link KeySignatureChangeDialog#LINE_OWN_KEY_INDEX} for the line's own key
+     *     {@link KeyChangeDialog#LINE_OWN_KEY_INDEX} for the line's own key
      */
     private void openKeySignatureDialog(Line line, int insertionIndex) {
-        new KeySignatureChangeDialog(MainFrame.getInstance()).showFor(line, insertionIndex);
+        new KeyChangeDialog(MainFrame.getInstance()).showFor(line, insertionIndex);
     }
 
     @Override

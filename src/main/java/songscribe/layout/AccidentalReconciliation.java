@@ -31,7 +31,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Key;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.Song;
@@ -276,7 +276,7 @@ public final class AccidentalReconciliation {
      *                   line the modification re-keys without touching a note on it
      * @param runningKey The key in effect at the <em>start</em> of {@code line} once the
      *                   modification commits. Equal to {@link Line#getRunningKey()} unless this
-     *                   modification moves it. A mid-line {@link KeySignatureElement} still
+     *                   modification moves it. A mid-line {@link KeyChangeElement} still
      *                   overrides it from its own index forward, exactly as it does on the
      *                   committed line
      */
@@ -485,7 +485,7 @@ public final class AccidentalReconciliation {
      * in the key it will then run in, followed by every line that inherits from it.
      *
      * <p>A change to a line's own key moves the key it leaves off in only when it holds no mid-line
-     * {@link KeySignatureElement}; one that does pins its end key, so the change reaches no further
+     * {@link KeyChangeElement}; one that does pins its end key, so the change reaches no further
      * than that mid-line change does. That is why the tail is derived here rather than asked of the
      * caller — but an edit that <em>adds or removes</em> a mid-line key signature moves the end key
      * in a way only that edit knows, and calls {@link #linesInheriting} with it directly.
@@ -521,7 +521,7 @@ public final class AccidentalReconciliation {
      *                       its own reconciliation is the caller's, and takes a different shape for
      *                       an inserted key signature than for a change to the line's own key
      * @param keyAtEndOfLine The key {@code line} will leave off in once the change commits: its
-     *                       last mid-line {@link KeySignatureElement}'s key when it holds one, and
+     *                       last mid-line {@link KeyChangeElement}'s key when it holds one, and
      *                       its new running key when it does not
      * @return One {@link ModifiedLine} per reached line, in song order; empty when the change
      *         moves nothing downstream or when {@code line} is not in its song
@@ -548,10 +548,10 @@ public final class AccidentalReconciliation {
 
             // A mid-line change on that line pins the key it leaves off in, so the change stops
             // propagating there even though the line itself was re-keyed.
-            var lastKeySignatureKey = nextLine.lastKeySignatureKey();
+            var lastKeyChangeKey = nextLine.lastKeyChangeKey();
 
-            if (lastKeySignatureKey != null) {
-                runningKey = lastKeySignatureKey;
+            if (lastKeyChangeKey != null) {
+                runningKey = lastKeyChangeKey;
             }
         }
 
@@ -959,7 +959,7 @@ public final class AccidentalReconciliation {
 
     /**
      * Returns the key in effect at {@code position} in the projected sequence: the key of the last
-     * {@link KeySignatureElement} at or before it, and otherwise the key the line will run in.
+     * {@link KeyChangeElement} at or before it, and otherwise the key the line will run in.
      *
      * <p>The mirror of {@link Line#keyAt} over a projection rather than over the live element
      * list, and it has to be — the projection is what the line will hold once the mutation
@@ -974,7 +974,7 @@ public final class AccidentalReconciliation {
         var sequence = projection.elements();
 
         for (var scanPosition = position; scanPosition >= 0; scanPosition--) {
-            if (sequence.get(scanPosition).element instanceof KeySignatureElement keySignature) {
+            if (sequence.get(scanPosition).element instanceof KeyChangeElement keySignature) {
                 return keySignature.getKey();
             }
         }

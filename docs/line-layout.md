@@ -77,13 +77,13 @@ Each element's position depends on the cumulative skyline of everything stacked 
 
 ### Example 1a: Mid-line key signature
 
-**Scenario**: A key change written into the middle of a line (`KeySignatureElement`)
+**Scenario**: A key change written into the middle of a line (`KeyChangeElement`)
 
-A key signature is not only a header fixture. A `KeySignatureElement` is an ordinary element in the line's element list and is placed by the same spring chain as every other column, subject to its position invariant: never at index 0, always immediately after a barline or repeat.
+A key signature is not only a header fixture. A `KeyChangeElement` is an ordinary element in the line's element list and is placed by the same spring chain as every other column, subject to its position invariant: never at index 0, always immediately after a barline or repeat.
 
 **Rules**:
 
-1. **Width**: the column's right extent is the change's *drawn* width — the accidentals `KeyChange` lays out between the key in effect immediately before the element and the element's own key — not a per-type constant. A change that cancels the previous signature is wider than one that does not, and the spacing reflects that.
+1. **Width**: the column's right extent is the change's *drawn* width — the accidentals `Key.accidentalsFrom` lays out between the key in effect immediately before the element and the element's own key — not a per-type constant. A change that cancels the previous signature is wider than one that does not, and the spacing reflects that.
 2. **Minimum spacing**: `HorizontalSpacingCalculator.calculateMinimumColumnSpacingSs` gives it the same promise it gives every column — `MIN_COLUMN_GAP_SS` of clear space between facing ink on each side. The barline before it clears the first accidental by that gap; the last accidental clears the following note's leftmost ink (its accidental when it has one) by the same.
 
 ```
@@ -95,7 +95,7 @@ A key signature is not only a header fixture. A `KeySignatureElement` is an ordi
 
 **Scenario**: The next line begins in a different key
 
-**Rule**: A cautionary key signature is drawn in the trailing space at the end of the line, warning the performer what the next line starts in. Layout reserves room for it in `HorizontalSpacingCalculator.trailingReservationSs`: the trailing gap past the last column becomes the larger of the line rest and the cautionary's width plus `KeyChange.RIGHT_MARGIN_SS`. The larger, not the sum — the cautionary is drawn *into* the trailing gap, not after it.
+**Rule**: A cautionary key signature is drawn in the trailing space at the end of the line, warning the performer what the next line starts in. Layout reserves room for it in `HorizontalSpacingCalculator.trailingReservationSs`: the trailing gap past the last column becomes the larger of the line rest and the cautionary's width plus `StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS`. The larger, not the sum — the cautionary is drawn *into* the trailing gap, not after it.
 
 The keys compared are the **running** keys on each side of the boundary: `Line.keyAtEndOfLine()` (which accounts for a mid-line change) against `Line.nextLineRunningKey()`. A null answer from the latter — the song's last line — means there is nothing to warn about, so nothing is drawn and nothing is reserved.
 

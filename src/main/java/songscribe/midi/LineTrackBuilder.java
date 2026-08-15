@@ -25,7 +25,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -244,8 +244,8 @@ public class LineTrackBuilder {
             var element = line.getElement(i);
 
             // Emit a key signature event where this line establishes its own key (index 0,
-            // per KeySignatureElement's position invariant a mid-line change can never land
-            // there) and at every mid-line KeySignatureElement. This runs once per call, so
+            // per KeyChangeElement's position invariant a mid-line change can never land
+            // there) and at every mid-line KeyChangeElement. This runs once per call, so
             // a replayed repeat passage re-emits the event exactly where it re-emits the notes.
             if (i == 0) {
                 var lineKey = line.getKey();
@@ -253,9 +253,9 @@ public class LineTrackBuilder {
                 if (lineKey != null) {
                     MidiEventFactory.addKeySignatureEvent(track, ticks, lineKey);
                 }
-            } else if (element.getType() == ElementType.KEY_SIGNATURE) {
+            } else if (element.getType() == ElementType.KEY_CHANGE) {
                 MidiEventFactory.addKeySignatureEvent(
-                    track, ticks, ((KeySignatureElement) element).getKey());
+                    track, ticks, ((KeyChangeElement) element).getKey());
             }
 
             // Add tempo change if present

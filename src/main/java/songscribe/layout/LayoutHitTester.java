@@ -26,11 +26,12 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.KeyChange;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.layout.LayoutResult.LyricHit;
 
 /**
@@ -110,7 +111,7 @@ public final class LayoutHitTester {
      * it edits that line's key where the change is visible, rather than reopening {@code line}'s
      * own key a second time. This returns {@code null}, and nothing is drawn to click on, when
      * {@code line} is the song's last line or the two lines' running keys agree —
-     * {@link KeyChange#accidentals} answers an empty run in both cases.
+     * {@link Key#widthSsFrom} answers zero in both cases.
      * <p>
      * The rect tested is the one rendering draws, including its
      * {@link LayoutResult#overflowsStaffWidth() overflow} placement: on a line whose content
@@ -129,17 +130,16 @@ public final class LayoutHitTester {
             return null;
         }
 
-        var accidentals = KeyChange.accidentals(line.keyAtEndOfLine(), nextKey);
+        var widthSs = nextKey.widthSsFrom(line.keyAtEndOfLine());
 
-        if (accidentals.isEmpty()) {
+        if (widthSs == 0) {
             return null;
         }
 
-        var widthSs = KeyChange.totalWidthSs(accidentals);
         var song = line.getSong();
         var startXSs = layoutResult.overflowsStaffWidth()
             ? layoutResult.contentRightEdgeSs() + song.getDefaultRestLengthSs()
-            : song.getLineWidthSs() - KeyChange.RIGHT_MARGIN_SS - widthSs;
+            : song.getLineWidthSs() - StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS - widthSs;
 
         if (mouseXSs < startXSs || mouseXSs > startXSs + widthSs) {
             return null;
@@ -149,7 +149,7 @@ public final class LayoutHitTester {
     }
 
     /**
-     * Returns the {@link KeySignatureElement} at {@code mouseXSs} on {@code line} — the rect
+     * Returns the {@link KeyChangeElement} at {@code mouseXSs} on {@code line} — the rect
      * bounded by that element's own rendered accidentals is the mid-line double-click target for
      * editing it.
      * <p>
@@ -159,10 +159,10 @@ public final class LayoutHitTester {
      *
      * @param mouseXSs mouse X coordinate, in staff-space units
      * @param line     the line to search
-     * @return the {@link KeySignatureElement} at that position, or {@code null} when
+     * @return the {@link KeyChangeElement} at that position, or {@code null} when
      *         {@code mouseXSs} does not fall within a mid-line key signature's column
      */
-    public @Nullable KeySignatureElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
+    public @Nullable KeyChangeElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
         var index = findElementAtXSs(mouseXSs, line, ColumnSpan.FULL_INK);
 
         if (index < 0) {
@@ -170,7 +170,7 @@ public final class LayoutHitTester {
         }
 
         var element = line.getElement(index);
-        return element instanceof KeySignatureElement keySignature ? keySignature : null;
+        return element instanceof KeyChangeElement keySignature ? keySignature : null;
     }
 
     // ==========================================================================

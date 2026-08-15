@@ -35,7 +35,7 @@ import songscribe.engraving.Staff;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.KeySignature;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
@@ -683,7 +683,7 @@ public final class LayoutResult {
     /**
      * Delegates to {@link LayoutHitTester#hitTestMidLineKeyEdit}.
      */
-    public @Nullable KeySignatureElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
+    public @Nullable KeyChangeElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
         return hitTester.hitTestMidLineKeyEdit(mouseXSs, line);
     }
 

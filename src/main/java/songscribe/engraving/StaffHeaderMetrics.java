@@ -44,7 +44,7 @@ import songscribe.smufl.SMuFLMetadata;
  * item and looks the gap up under the <em>right</em> item's name, so the entry to port is the
  * one for the order the two parts actually appear in. Only one order arises here — a
  * cancellation always precedes the key signature it makes way for, never follows it, per the
- * policy on {@code songscribe.dom.KeyChange} — so only that direction is ported.
+ * policy on {@code songscribe.dom.Key#accidentalsFrom} — so only that direction is ported.
  */
 public final class StaffHeaderMetrics {
 
@@ -62,6 +62,13 @@ public final class StaffHeaderMetrics {
      * {@code extra-space} of {@value}.
      */
     public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
+
+    /**
+     * Gap between the last drawn accidental of a cautionary key change and the right edge of the
+     * staff line it sits at the end of. Not a LilyPond port — this program's own margin, {@value}
+     * staff spaces, being 5px at 8 px/ss.
+     */
+    public static final double CAUTIONARY_RIGHT_MARGIN_SS = 0.625;
 
     /**
      * Gap from the key signature's right edge to the first note.

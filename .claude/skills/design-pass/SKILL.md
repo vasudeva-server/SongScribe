@@ -42,7 +42,7 @@ at the test step in volume means the earlier steps were skipped.**
 ## Step 0: Resolve, check, resume
 
 `$ARGUMENTS` is a **package or a single class**, dotted, with the `songscribe.`
-prefix implicit — `undo`, `ui.selection`, `dom.Key`, `KeySignatureChangeDialog`.
+prefix implicit — `undo`, `ui.selection`, `dom.Key`, `KeyChangeDialog`.
 **With no argument, ask what to examine rather than guessing.**
 
 Resolve which kind it is from the last segment: an initial capital is a class,

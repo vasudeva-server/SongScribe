@@ -176,7 +176,7 @@ public final class Actions {
     public static TempoChangeAction TEMPO_CHANGE_ACTION;
     public static BeatChangeAction BEAT_CHANGE_ACTION;
     public static AnnotationAction ANNOTATION_ACTION;
-    public static KeySignatureChangeAction KEY_SIGNATURE_CHANGE_ACTION;
+    public static KeyChangeAction KEY_CHANGE_ACTION;
 
     public static List<UIAction> STAFF_ANNOTATION_ACTIONS;
     public static FermataAction FERMATA_ACTION;
@@ -348,12 +348,12 @@ public final class Actions {
         TEMPO_CHANGE_ACTION = TempoChangeAction.createAction(mainFrame);
         BEAT_CHANGE_ACTION = BeatChangeAction.createAction(mainFrame);
         ANNOTATION_ACTION = AnnotationAction.createAction(mainFrame);
-        KEY_SIGNATURE_CHANGE_ACTION = KeySignatureChangeAction.createAction(mainFrame);
+        KEY_CHANGE_ACTION = KeyChangeAction.createAction(mainFrame);
         STAFF_ANNOTATION_ACTIONS = List.of(
             TEMPO_CHANGE_ACTION,
             BEAT_CHANGE_ACTION,
             ANNOTATION_ACTION,
-            KEY_SIGNATURE_CHANGE_ACTION
+            KEY_CHANGE_ACTION
         );
 
         FERMATA_ACTION = FermataAction.createAction(mainFrame);

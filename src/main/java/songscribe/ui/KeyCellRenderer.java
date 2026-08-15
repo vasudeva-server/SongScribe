@@ -122,7 +122,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
                 maxGlyphWidth = Math.max(maxGlyphWidth, visualBounds.getWidth());
                 maxGlyphHeight = Math.max(maxGlyphHeight, visualBounds.getHeight());
 
-                var attributed = KeySignatureDisplay.getDisplayName(key);
+                var attributed = KeyDisplay.getDisplayName(key);
                 var textLayout = new TextLayout(
                     attributed.getIterator(),
                     GraphicUtils.SCREEN_FRC

@@ -85,7 +85,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
-import songscribe.dom.KeySignatureElement;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
@@ -97,7 +97,6 @@ import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EditResult;
 import songscribe.ui.EndingConfirms;
-import songscribe.ui.KeySignatureConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
@@ -746,12 +745,6 @@ public final class ScoreViewController {
             return;
         }
 
-        // Same terms for the barline / key-signature pair this cut may reach beyond the
-        // selection: asked before the clipboard is written, so declining changes nothing.
-        if (!KeySignatureConfirms.confirmPairedDeletion(score, line, begin, end)) {
-            return;
-        }
-
         // Asked before the bracket opens, and before the clipboard is written: cancelling must
         // leave both the clipboard and the score untouched, exactly as declining the ending
         // confirm above does.
@@ -863,12 +856,6 @@ public final class ScoreViewController {
                 if (!EndingConfirms.confirmInvalidation(score)) {
                     return;
                 }
-            }
-
-            // Asked before anything is mutated, like the ending confirm above: this delete may
-            // reach a barline or a key signature the user did not select.
-            if (!KeySignatureConfirms.confirmPairedDeletion(score, line, begin, end)) {
-                return;
             }
 
             var decision = confirmDeletionRestatements(line, begin, end);
@@ -1203,7 +1190,7 @@ public final class ScoreViewController {
      * of it the {@link ElementType#SINGLE_BARLINE} the chosen position needs when it does not
      * already follow a barline or repeat.
      *
-     * <p><b>The barline is what keeps {@link KeySignatureElement}'s position invariant true
+     * <p><b>The barline is what keeps {@link KeyChangeElement}'s position invariant true
      * without restricting where the user may click.</b> A position that already follows a barline
      * or a repeat takes the key signature alone; every other position takes two elements, barline
      * first. Either way they enter inside <b>one</b> modification bracket, so a single undo takes
@@ -1226,33 +1213,33 @@ public final class ScoreViewController {
      *
      * @param line the line the key change is written into
      * @param insertionIndex the index the key signature lands at — at least
-     *                       {@link Line#FIRST_LEGAL_KEY_SIGNATURE_INDEX}, since a key signature is
+     *                       {@link Line#FIRST_LEGAL_KEY_CHANGE_INDEX}, since a key signature is
      *                       never the first element on a line, and at most
      *                       {@link Line#effectiveElementCount()}
      * @param key the key taking effect from that position on
      * @return true when the change was committed; false when the notator cancelled at the
      *         restatement prompt, in which case nothing was mutated and no undo step exists
      * @throws IndexOutOfBoundsException if {@code insertionIndex} is below
-     *                                   {@link Line#FIRST_LEGAL_KEY_SIGNATURE_INDEX} or above
+     *                                   {@link Line#FIRST_LEGAL_KEY_CHANGE_INDEX} or above
      *                                   {@link Line#effectiveElementCount()}
      */
     public boolean insertKeySignature(Line line, int insertionIndex, Key key) {
-        if (insertionIndex < Line.FIRST_LEGAL_KEY_SIGNATURE_INDEX
+        if (insertionIndex < Line.FIRST_LEGAL_KEY_CHANGE_INDEX
             || insertionIndex > line.effectiveElementCount()) {
 
             throw new IndexOutOfBoundsException(
                 "key signature insertion index " + insertionIndex + " out of bounds ["
-                    + Line.FIRST_LEGAL_KEY_SIGNATURE_INDEX + ", "
+                    + Line.FIRST_LEGAL_KEY_CHANGE_INDEX + ", "
                     + line.effectiveElementCount() + ']');
         }
 
         var inserted = new ArrayList<StaffElement>();
 
-        if (KeySignatureElement.needsBarlineBefore(line, insertionIndex)) {
+        if (KeyChangeElement.needsBarlineBefore(line, insertionIndex)) {
             inserted.add(ElementType.SINGLE_BARLINE.newInstance());
         }
 
-        inserted.add(new KeySignatureElement(key));
+        inserted.add(new KeyChangeElement(key));
 
         // The head: the host line reconciled as an insertion, so the projection holds the new key
         // signature and every note after it resolves against the key it establishes. Empty prior
@@ -1355,9 +1342,8 @@ public final class ScoreViewController {
      * Deletes the element range {@code begin} through {@code end} on {@code line} — widened to
      * {@link Line#effectiveRange}, so an element paired with one the caller named goes with it —
      * naming the resulting undo step {@code label}. Confirmation-free: callers are
-     * responsible for any ending-invalidation confirm, for the paired barline / key-signature
-     * confirm ({@link KeySignatureConfirms#confirmPairedDeletion}), and for clearing the
-     * selection before calling this.
+     * responsible for any ending-invalidation confirm and for clearing the selection before
+     * calling this.
      * <p>
      * When invoked as the outermost modification (delete), {@code label} names the
      * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
@@ -1802,12 +1788,6 @@ public final class ScoreViewController {
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
         // the score, the selection, and the clipboard untouched.
         if (!confirmEndingInvalidatedByDeletion(line, deleteRange.begin(), deleteRange.end())) {
-            return;
-        }
-
-        // And it can reach a barline or a key signature the user did not select, for the same
-        // reason and on the same terms as Delete and Cut.
-        if (!KeySignatureConfirms.confirmPairedDeletion(score, line, range.begin(), range.end())) {
             return;
         }
 

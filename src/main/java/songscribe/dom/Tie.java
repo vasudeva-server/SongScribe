@@ -90,7 +90,7 @@ public class Tie extends Span {
     public static boolean isLegalSeparator(ElementType type) {
         return type.isNonDuration()
             && type != ElementType.FINAL_DOUBLE_BARLINE
-            && type != ElementType.KEY_SIGNATURE;
+            && type != ElementType.KEY_CHANGE;
     }
 
     /**

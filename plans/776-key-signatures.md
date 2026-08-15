@@ -141,7 +141,7 @@ and `Line.keyExists(int pitchType)` which indexes it as `FLAT_SHARP_ORDINAL[keyT
   
 3. **Amend `KeyTest`'s hand-written domain size.** `KeyTest.java:84`'s `.hasSize(15)` and the two `15`s in its class Javadoc (lines 40 and 44) are the domain's cardinality copied by hand — see **Conventions**. Derive from `1 + (2 * Key.MAX_ACCIDENTAL_COUNT)` and reword the Javadoc so it names the derivation rather than a number.
   
-4. **Write the key change policy as `public final class songscribe.dom.KeyChange`, in `dom`.** This is where it belongs and where it stays: it is a pure function of two `Key`s, `songscribe.dom` imports `songscribe.ui.*` in zero places today and `songscribe.layout` imports `songscribe.ui.renderer` in zero places, and its three consumers are `KeySignatureElement` (`dom`, task 8), `HorizontalSpacingCalculator` (`layout`, Phase 6), the cautionary renderer (`ui.renderer`, Phase 5) and the MusicXML writer (`io.musicxml`, Phase 7). Placing it in the renderer would invert both layers at once. `songscribe.dom.KeySignature` already computes key-signature width and glyphs in `dom`, so the metrics are reachable from here.
+4. **Write the key change policy as `public final class songscribe.dom.KeyChange`, in `dom`.** This is where it belongs and where it stays: it is a pure function of two `Key`s, `songscribe.dom` imports `songscribe.ui.*` in zero places today and `songscribe.layout` imports `songscribe.ui.renderer` in zero places, and its three consumers are `KeyChangeElement` (`dom`, task 8), `HorizontalSpacingCalculator` (`layout`, Phase 6), the cautionary renderer (`ui.renderer`, Phase 5) and the MusicXML writer (`io.musicxml`, Phase 7). Placing it in the renderer would invert both layers at once. `songscribe.dom.KeySignature` already computes key-signature width and glyphs in `dom`, so the metrics are reachable from here.
   
 5. **The cancellation policy is settled and confirmed by the domain owner. Do not re-derive it.** Given a previous key and a new key:
   
@@ -171,7 +171,7 @@ public static final double RIGHT_MARGIN_SS = …
   
 - `widthSs` is the laid-out width including inter-glyph gaps and the cancellation/new-key separation. `KeySignatureRenderer.totalWidthSs(List<DrawnAccidental>)` and its `advanceSs` helper are exactly that arithmetic and move here as its body.
   
-- **Contract `widthSs` as returning 0 when `previous.equals(next)`**, and `accidentals` as returning an empty list in the same case.
+- **Contract `widthSs` as returning 0 when `previous.equals(next)`**, and `resolveAccidentalsFrom` as returning an empty list in the same case.
   
 - Because naturals now **always** come first, three things in the renderer's current implementation become unreachable and are deleted rather than moved: the `startingOffsets` array (always 0), the `isNaturals` array (always `{true, false}`), and the reverse-gap handling in `advanceSs` / `collectAccidentals` that exists only for naturals-second.
   
@@ -211,7 +211,7 @@ ordinal() >= SINGLE_BARLINE.ordinal() && ordinal() <= FINAL_DOUBLE_BARLINE.ordin
 
 - It holds one `Key` (from Phase 1), non-null, and reports `ElementType.KEY_SIGNATURE` from `getType()`.
   
-- Class-level invariant, stated on the class: a `KeySignatureElement` is never the element at index 0 of a line, and is always immediately preceded by an element whose `ElementType.isBarLine()` or `isRepeat()` is true. It is enforced at all three entry points — the editing UI (Phase 12), the deletion pairing (Phase 9), and the MusicXML reader (Phase 7 task 8a) — and the class states the invariant that those rely on. The insert flow does not _restrict_ the user to positions after a barline — it **inserts a** `SINGLE_BARLINE` **when the chosen position lacks one**, which is how the invariant is kept (Phase 12).
+- Class-level invariant, stated on the class: a `KeyChangeElement` is never the element at index 0 of a line, and is always immediately preceded by an element whose `ElementType.isBarLine()` or `isRepeat()` is true. It is enforced at all three entry points — the editing UI (Phase 12), the deletion pairing (Phase 9), and the MusicXML reader (Phase 7 task 8a) — and the class states the invariant that those rely on. The insert flow does not _restrict_ the user to positions after a barline — it **inserts a** `SINGLE_BARLINE` **when the chosen position lacks one**, which is how the invariant is kept (Phase 12).
   
 - `getContentWidthSs()` returns the drawn width of the key's accidentals: `KeyChange.widthSs(previousKey, thisKey)` from task 6. There is no interim implementation and no second copy of the arithmetic — that is why the policy lands in this phase rather than Phase 5.
   
@@ -266,16 +266,16 @@ ordinal() >= SINGLE_BARLINE.ordinal() && ordinal() <= FINAL_DOUBLE_BARLINE.ordin
 
 - **`setKey` normalizes a no-op to null.** When the argument equals the key this line would inherit, the line's own key is set to **null** instead. A line holds a key only where one actually changes. Without this, a user who picks the key a line already inherits pins that line — visually identical (every header draws its key either way, Phase 12 task 3), but it now stops inheritance propagation, so a later change upstream silently fails to reach it or anything past it. State the rule in `setKey`'s contract; Phase 8's `.mssw` normalization becomes an instance of it rather than its own clause, and Phase 12 needs no guard of its own.
   
-4. Add `public Key getRunningKey()` — the key actually in effect at the **start** of this line: this line's own `Key` when it has one, otherwise the key in effect at the end of the previous line, which accounts for any `KeySignatureElement` that changed it mid-line. Contract it as: never null; equals `getKey()` when `getKey()` is non-null. The contract states the resolved key the caller is entitled to and says nothing about how it is stored.
+4. Add `public Key getRunningKey()` — the key actually in effect at the **start** of this line: this line's own `Key` when it has one, otherwise the key in effect at the end of the previous line, which accounts for any `KeyChangeElement` that changed it mid-line. Contract it as: never null; equals `getKey()` when `getKey()` is non-null. The contract states the resolved key the caller is entitled to and says nothing about how it is stored.
   
 
 - It is called per note during accidental resolution, so a walk to line 0 on every call is not acceptable. **Maintain a** `private @Nullable Key inheritedKey` **on** `Line`, propagated forward, so the resolution is a field read and never a walk. This is state, not a cache — no invalidate-and-recompute path exists, and every mutation that could change it updates it.
   
   - Meaning of the field: the key in effect **at the end of the previous line**. It is null on line 0 and non-null on every other line. `getRunningKey()` is then `key != null ? key : requireInheritedKey()`.
     
-  - Propagation runs when the key at the end of some line changes: setting or clearing a line's own `Key`, inserting/removing/editing a `KeySignatureElement`, and inserting or removing a line. Walk forward from the affected line assigning `inheritedKey`, and **stop after the first line that has its own non-null key** — that line's running key is unchanged, so nothing past it can move. A song with a key on every line therefore costs one step.
+  - Propagation runs when the key at the end of some line changes: setting or clearing a line's own `Key`, inserting/removing/editing a `KeyChangeElement`, and inserting or removing a line. Walk forward from the affected line assigning `inheritedKey`, and **stop after the first line that has its own non-null key** — that line's running key is unchanged, so nothing past it can move. A song with a key on every line therefore costs one step.
     
-  - **There is exactly one hook, and it is `Song.applyChange(Mutation, Runnable)`.** Do not scatter propagation calls across the mutators. `Line` has seven element mutators that can carry a `KeySignatureElement` — `addElement` (both overloads), `setElement`, `modifyElement` (both overloads), `removeElement`, `removeRange` — and every one of them routes through `Line.applyChange` → `Song.applyChange`, as do `Song.addLine`, `Song.removeLine` and `setKey`. Hooking the mutators individually is ten sites, each independently forgettable, and each omission is silently wrong pitches with no error and no visual cue. Hooking `Song.applyChange` is one site, and it covers **undo and redo for free**, because replay goes through the same records.
+  - **There is exactly one hook, and it is `Song.applyChange(Mutation, Runnable)`.** Do not scatter propagation calls across the mutators. `Line` has seven element mutators that can carry a `KeyChangeElement` — `addElement` (both overloads), `setElement`, `modifyElement` (both overloads), `removeElement`, `removeRange` — and every one of them routes through `Line.applyChange` → `Song.applyChange`, as do `Song.addLine`, `Song.removeLine` and `setKey`. Hooking the mutators individually is ten sites, each independently forgettable, and each omission is silently wrong pitches with no error and no visual cue. Hooking `Song.applyChange` is one site, and it covers **undo and redo for free**, because replay goes through the same records.
     
   - After the mutator runs, switch on the mutation type and propagate for: `LineKeyChange`; any element insertion, deletion, replacement or range deletion whose affected elements include a `KEY_SIGNATURE`; `LineInsertion`; `LineDeletion`. Enumerate those cases explicitly rather than propagating unconditionally — an ordinary note edit must not walk the line list.
     
@@ -286,9 +286,9 @@ ordinal() >= SINGLE_BARLINE.ordinal() && ordinal() <= FINAL_DOUBLE_BARLINE.ordin
   - State the invariant on `Song`, which is what maintains it: _for every line other than line 0,_ `inheritedKey` _equals the previous line's key at its last element, and line 0's own key is non-null._ Test it as an invariant over a set of edits rather than pinning expected values — that assertion is what would catch a missed propagation case. **Write it once as a shared test helper** (`assertKeyPropagationInvariant(song)`) and call it after every edit in every key-touching test table, not only the edits task 12 lists. A helper called from one table is a helper that only guards one table.
     
 
-4a. **Add `KeySignatureElement.getContentWidthSs()`, which Phase 2 could not.** It is `KeyChange.widthSs(line.keyAt(index - 1), getKey())`, where `line` is `getParentLine()` and `index` is `line.getElementIndex(this)` — and `keyAt` is task 5, below, which is why the override waits for this phase. Phase 2 wrote the element, its `Key`, its class invariant and the policy; only the previous-key lookup was missing, and the alternatives were a backward scan inside the element that this task would delete (a temporary duplicate) or pulling `keyAt` into Phase 2 ahead of the `inheritedKey` machinery it rests on. Contract the width as the drawn width of the change this element makes, and state that it is zero when the element re-states the key already in effect. Test it in `KeySignatureElementTest` against the class invariant: a key signature at index 0 has no previous element, which the invariant forbids, so no case needs to define a width there.
+4a. **Add `KeySignatureElement.getContentWidthSs()`, which Phase 2 could not.** It is `KeyChange.widthSs(line.keyAt(index - 1), getKey())`, where `line` is `getParentLine()` and `index` is `line.getElementIndex(this)` — and `keyAt` is task 5, below, which is why the override waits for this phase. Phase 2 wrote the element, its `Key`, its class invariant and the policy; only the previous-key lookup was missing, and the alternatives were a backward scan inside the element that this task would delete (a temporary duplicate) or pulling `keyAt` into Phase 2 ahead of the `inheritedKey` machinery it rests on. Contract the width as the drawn width of the change this element makes, and state that it is zero when the element re-states the key already in effect. Test it in `KeyChangeElementTest` against the class invariant: a key signature at index 0 has no previous element, which the invariant forbids, so no case needs to define a width there.
 
-5. Add `public Key keyAt(int elementIndex)` — the key in effect at the given element index within this line: `getRunningKey()`, overridden by the last `KeySignatureElement` at or before `elementIndex`. Contract the boundary explicitly: a `KeySignatureElement` **at** `elementIndex` is in effect at that index (inclusive), and `keyAt(0)` always equals `getRunningKey()` because index 0 can never hold a `KeySignatureElement`.
+5. Add `public Key keyAt(int elementIndex)` — the key in effect at the given element index within this line: `getRunningKey()`, overridden by the last `KeyChangeElement` at or before `elementIndex`. Contract the boundary explicitly: a `KeyChangeElement` **at** `elementIndex` is in effect at that index (inclusive), and `keyAt(0)` always equals `getRunningKey()` because index 0 can never hold a `KeyChangeElement`.
   
 6. Delete `Line.keyExists(int pitchType)` and `Line.FLAT_SHARP_ORDINAL`. Phase 1 moved that logic to `Key.altersPitchClass(int pitchIndex)`. Every caller resolves a `Key` first, then asks it.
   
@@ -304,7 +304,7 @@ It returns `Accidental.FLAT` when the key is `FLATS` and alters that staff posit
 8. Rewrite `StaffElement.keyInEffectAt(Line targetLine, int index)` to actually honour `index`: `return keyAccidentalFor(targetLine.keyAt(index), staffPosition)`. Its current Javadoc says "Today a line carries exactly one key signature, so `index` is unused" and points forward to an issue number — replace all of it with the real contract, and write no issue reference in its place (see **Conventions**).
   
 
-- **Take the key from the barrier when the barrier is the answer.** `findEffectiveAccidental` has two fallback sites. At the second (the scan ran out of elements) `keyAt(index)` is needed. At the first — the scan stopped at a `cancelsAccidentals()` element at `scanIndex` — **when that element is a `KeySignatureElement`, its key *is* the key in effect at `index`**: no later key signature can sit between `scanIndex` and `index`, or the backward scan would have reached that one first. Use it directly. Passing `index` back to `keyAt` there throws away the position the scan just found and walks the same elements a second time, per note, on a path that runs per layout pass, per `getPitch()` (MIDI export, playback, the status-bar readout) and per projected element in `AccidentalReconciliation`. The barline-barrier case still needs `keyAt`.
+- **Take the key from the barrier when the barrier is the answer.** `findEffectiveAccidental` has two fallback sites. At the second (the scan ran out of elements) `keyAt(index)` is needed. At the first — the scan stopped at a `cancelsAccidentals()` element at `scanIndex` — **when that element is a `KeyChangeElement`, its key *is* the key in effect at `index`**: no later key signature can sit between `scanIndex` and `index`, or the backward scan would have reached that one first. Use it directly. Passing `index` back to `keyAt` there throws away the position the scan just found and walks the same elements a second time, per note, on a path that runs per layout pass, per `getPitch()` (MIDI export, playback, the status-bar readout) and per projected element in `AccidentalReconciliation`. The barline-barrier case still needs `keyAt`.
   
 - State that reasoning in `findEffectiveAccidental`'s contract — the "no later key signature can intervene" step is what makes the shortcut correct, and a reader without it will see an inconsistency between the two fallback sites.
   
@@ -323,15 +323,15 @@ It returns `Accidental.FLAT` when the key is `FLATS` and alters that staff posit
   
 - A line with a null key returns the previous line's running key; a chain of several null-keyed lines all return the same one.
   
-- `keyAt(0)` equals `getRunningKey()` on a line holding a mid-line `KeySignatureElement`.
+- `keyAt(0)` equals `getRunningKey()` on a line holding a mid-line `KeyChangeElement`.
   
-- `keyAt(i)` for `i` at, just before, and just after a `KeySignatureElement`'s index — the inclusive boundary.
+- `keyAt(i)` for `i` at, just before, and just after a `KeyChangeElement`'s index — the inclusive boundary.
   
-- A `KeySignatureElement` on line N changes what line N+1's `getRunningKey()` returns.
+- A `KeyChangeElement` on line N changes what line N+1's `getRunningKey()` returns.
   
 - `setKey` with the key the line already inherits leaves `getKey()` null — the no-op normalization from task 3.
   
-- The propagation invariant holds after each of: setting a line's key, clearing it, inserting a line, removing a line, and adding a mid-line `KeySignatureElement`. Assert `assertKeyPropagationInvariant(song)` across every line of the song after each edit — one property, applied to a table of edits.
+- The propagation invariant holds after each of: setting a line's key, clearing it, inserting a line, removing a line, and adding a mid-line `KeyChangeElement`. Assert `assertKeyPropagationInvariant(song)` across every line of the song after each edit — one property, applied to a table of edits.
   
 
 13. **Test undo and redo of a key change.** Task 10 rewrites the mutation record this phase depends on, and the propagation hook of task 4 lives in `Song.applyChange`, which replay routes through — so undo is the single case that proves the propagation survives replay. Nothing else in the plan covers it, and the failure mode is wrong pitches on every downstream line with no error.
@@ -339,7 +339,7 @@ It returns `Accidental.FLAT` when the key is `FLATS` and alters that staff posit
 
 - Undo of a line-key change restores the old key **and** satisfies `assertKeyPropagationInvariant`; redo re-applies both.
   
-- Undo of a mid-line `KeySignatureElement` insertion satisfies the invariant.
+- Undo of a mid-line `KeyChangeElement` insertion satisfies the invariant.
   
 
 14. **Test the line-0 boundary**, which task 4's repair creates:
@@ -380,13 +380,13 @@ It returns `Accidental.FLAT` when the key is `FLATS` and alters that staff posit
 >   `<key>` cannot disagree. `applyFifths`'s measure-1 branch now sets the first line's key like any
 >   other, because there is no song default left to seed. Phase 7's mid-line emission and its
 >   `<cancel>` work are untouched.
-> - **`KeySignatureChangeDialog`** (Phase 12) commits through `line.setKey` inside a modification
+> - **`KeyChangeDialog`** (Phase 12) commits through `line.setKey` inside a modification
 >   bracket instead of posting the deleted notification. Phase 12 still rewrites the dialog whole.
 > - **`UndoController.metadataOpNameKey`** lost its two key cases with the enum constants.
 > - Test files beyond the three listed: `SongIsEmptyTest`, `SongLoadingTest`, `SongSetterMutationTest`,
 >   `SongIOTest`, `LineIOTest`, `MutationRecordsTest`, `MutationLabelTest`,
 >   `MutationReplayerRoundTripTest`, `MusicXmlBarlineRoundTripTest`, `MusicXmlKeyRoundTripTest`,
->   `MusicXmlDocumentRoundTripTest`, `KeySignatureChangeDialogTest`.
+>   `MusicXmlDocumentRoundTripTest`, `KeyChangeDialogTest`.
 >
 > `KeySignatureRendererTest`'s two cancellation-policy cases still fail, as Phase 2 task 13 states.
 > Phase 5 owns them.
@@ -541,7 +541,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 >   would have been the worse choice.
 > - Tests beyond the two listed: `HorizontalSpacingCalculatorSpringTest` (the cautionary
 >   reservation table and the mid-line key signature's width and both gaps),
->   `KeySignatureElementTest` (the width contract's three sources, consolidated into one table),
+>   `KeyChangeElementTest` (the width contract's three sources, consolidated into one table),
 >   `LineMutationTest` (`nextLineRunningKey`, both null cases included).
 > - `docs/line-layout.md` Example 1 was rewritten and Examples 1a (mid-line key signature), 1b
 >   (cautionary) and 1c (what a key change costs, and where it is checked) added; the stale
@@ -574,7 +574,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 >   triple, which is both smaller and the only shape that cannot drift.
 > - **`ElementType.KEY_SIGNATURE.getInstance()` returned a plain `StructuralElement`**, so an element
 >   reached through the type registry had no `Key` to ask for and a `newInstance()` clone could not
->   be added to a line. `createDefaultInstance` now builds a `KeySignatureElement` in C major — the
+>   be added to a line. `createDefaultInstance` now builds a `KeyChangeElement` in C major — the
 >   key that draws nothing — and `ElementTypeTest` drives the assertion from `values()`.
 > - Tests changed for the above: `KeyEditFitCalculatorTest` (rewritten around the four costs, each
 >   isolated in a fixture where it is the only one and each pinned by bisection),
@@ -602,7 +602,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
   - `cautionaryFitsSs(Line previousLine, Key next)` — whether `previousLine` still solves feasibly once its trailing reservation is widened for a cautionary to `next`. This is the check for changing a line's key when that line previously inherited.
     
-  - `keySignatureFitsSs(Line line, int insertionIndex, Key key)` — whether `line` still solves feasibly with a `KeySignatureElement` for `key` spliced in at `insertionIndex`. **When the element at** `insertionIndex - 1` **is not a barline or repeat, the width of the** `SINGLE_BARLINE` **that Phase 12c inserts alongside it is part of this measurement**, because that barline is part of the edit; a check that omitted it would accept an edit that then overflows.
+  - `keySignatureFitsSs(Line line, int insertionIndex, Key key)` — whether `line` still solves feasibly with a `KeyChangeElement` for `key` spliced in at `insertionIndex`. **When the element at** `insertionIndex - 1` **is not a barline or repeat, the width of the** `SINGLE_BARLINE` **that Phase 12c inserts alongside it is part of this measurement**, because that barline is part of the edit; a check that omitted it would accept an edit that then overflows.
     
 - Both must go through the same `solveChain` / `InsertionSpacingCalculator` splice the committed layout uses, so a pre-check verdict and the resulting layout can never disagree. `HorizontalSpacingCalculator.java:422` already states that property for the existing pre-check; these two inherit it and their contracts say so.
   
@@ -617,7 +617,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 6. ~~Update `LayoutEngine.createHeaderElements` (around `LayoutEngine.java:1429-1433`). It currently does `var rawKeyType = line.getKeyType(); var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;` — that null-coalescing is exactly the two-unset-states defect this work removes. It becomes `line.getRunningKey()`, which is never null.~~ **Done in Phase 5**, for the same reason — the `KeySignature` constructor now takes a `Key`.
   
-7. **Contract the minimum column spacing on both sides of a mid-line `KeySignatureElement`, then test it.** They are ordinary elements in the line's element list, so the spring chain places them like any other column — but "verify the gap is sane" states no promise and yields no test, so state the promise: given the invariant that a key signature always follows a barline or repeat and (except at the end of a line) precedes a note, `calculateMinimumColumnSpacingSs` returns a named minimum for the barline→key-signature pair and for the key-signature→note pair. Give each a value **and** say what the caller is entitled to at it. Add the two cases to `HorizontalSpacingCalculatorTest` under task 8.
+7. **Contract the minimum column spacing on both sides of a mid-line `KeyChangeElement`, then test it.** They are ordinary elements in the line's element list, so the spring chain places them like any other column — but "verify the gap is sane" states no promise and yields no test, so state the promise: given the invariant that a key signature always follows a barline or repeat and (except at the end of a line) precedes a note, `calculateMinimumColumnSpacingSs` returns a named minimum for the barline→key-signature pair and for the key-signature→note pair. Give each a value **and** say what the caller is entitled to at it. Add the two cases to `HorizontalSpacingCalculatorTest` under task 8.
   
 8. **Update `docs/line-layout.md`.** Its "First note on a line, with or without key signature" rule at line 64 and the `[Clef][KeySig] ---> 3.5 ss ---> [First Note]` figure at line 69 now resolve through the line's *running* key rather than a per-line field, and a key signature can now appear mid-line as well as in the header. Fix both, in this phase — the phase that invalidates a doc section updates it (see **Conventions**).
   
@@ -632,7 +632,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 - It is unchanged on the last line.
   
-- The minimum column spacing on each side of a mid-line `KeySignatureElement` (task 7) — one case per side.
+- The minimum column spacing on each side of a mid-line `KeyChangeElement` (task 7) — one case per side.
   
 - Before writing each test method, check whether it will sit beside a same-shape sibling; if so, both are rows in one parameterized table.
   
@@ -663,7 +663,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 >
 > - **Task 4's write-side assertion was not written, on the domain owner's call.** A mid-line key
 >   signature not preceded by a barline is impossible: the editing UI maintains the invariant, and
->   `KeySignatureElement`'s class doc already states that MusicXML writing *reads* it rather than
+>   `KeyChangeElement`'s class doc already states that MusicXML writing *reads* it rather than
 >   re-checking it. `DocumentValidation.corrupt` returns a checked `SAXException` and the whole
 >   write path declares none — `SongFileWriter.write` (×4), `MusicXmlWriter.writeSong` (×2),
 >   `ScorePartwiseBuilder.build`, `MeasureBuilder.buildLine` — so the task confused the two
@@ -705,12 +705,12 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 - A cautionary key signature at the end of a system is **rendering only** and is never written. Multiple sources confirm it should not be represented in MusicXML.
   
-- Therefore: a `Line` with a non-null `getKey()` emits `<key>` into that line's **first** measure. A mid-line `KeySignatureElement` emits `<key>` into the measure it opens — the measure that the preceding barline started.
+- Therefore: a `Line` with a non-null `getKey()` emits `<key>` into that line's **first** measure. A mid-line `KeyChangeElement` emits `<key>` into the measure it opens — the measure that the preceding barline started.
   
 
 3. ~~Rewrite `MeasureBuilder.effectiveKeyFifths(Song, Line)`.~~ **Deleted rather than rewritten.** Its song-default fallback went with the song-wide key in Phase 4, which left it a one-line wrapper over `line.getRunningKey()`; `ScoreState` now holds a `Key`, so the line-boundary emission compares `line.getRunningKey()` against `state.runningKey` directly and nothing encodes fifths until the `<key>` is built. `startingKeyFifths` went the same way, in favour of `song.getStartingKey()`.
   
-4. Add mid-line emission to `MeasureBuilder.buildLine`'s element loop. `KEY_SIGNATURE` is neither a barline nor a note, so it currently falls into the `appendElementContent` branch. Give it its own branch that emits `<key>` into the current measure's `<attributes>` and advances the running key. The invariant from Phase 2 — a `KeySignatureElement` is always immediately preceded by a barline — means the current measure was just opened by that barline, so the `<attributes>` lands at the head of the measure where it belongs. ~~Assert that invariant rather than assuming it, and fail the save with `DocumentValidation.corrupt` if it does not hold.~~ **Not done, and not to be done — see the note at the top of this phase.** The write side reads the invariant; task 7a's read-side check is the one that enforces it.
+4. Add mid-line emission to `MeasureBuilder.buildLine`'s element loop. `KEY_SIGNATURE` is neither a barline nor a note, so it currently falls into the `appendElementContent` branch. Give it its own branch that emits `<key>` into the current measure's `<attributes>` and advances the running key. The invariant from Phase 2 — a `KeyChangeElement` is always immediately preceded by a barline — means the current measure was just opened by that barline, so the `<attributes>` lands at the head of the measure where it belongs. ~~Assert that invariant rather than assuming it, and fail the save with `DocumentValidation.corrupt` if it does not hold.~~ **Not done, and not to be done — see the note at the top of this phase.** The write side reads the invariant; task 7a's read-side check is the one that enforces it.
   
 5. Emit `<cancel>` by **asking the policy**, never by restating it. `docs/musicxml-4.0-schema/attributes.mod:81-93` defines it: the cancel value is the signed-fifths value of the **cancelled** key, and it carries an optional location attribute.
   
@@ -726,18 +726,18 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 
 - `<key>` in a measure that **starts a line** (the measure carrying `<print new-system="yes"/>`, which `MeasureBuilder` writes on every line-starting measure) sets that line's `Key` via `Line.setKey`.
   
-- `<key>` in any other measure appends a `KeySignatureElement` at the current position in the current line.
+- `<key>` in any other measure appends a `KeyChangeElement` at the current position in the current line.
   
 - Delete `applyFifthsToLine` or reduce it to `line.setKey(...)`.
   
 
-7a. **Assert `KeySignatureElement`'s class invariant on read, not only on write.** Task 4 fails the *save* with `DocumentValidation.corrupt` when a mid-line key signature is not immediately preceded by a barline or repeat. The read path currently has no equivalent, and it is the one that takes input from a file: a `<key>` in a measure the reader did not open with a barline element produces a `KeySignatureElement` that Phase 2's class invariant, Phase 9's deletion pairing and Phase 12c's index predicate all assume cannot exist. **There is no test, no error handling, and no visible symptom** — the model is simply invariant-violating until a later delete behaves wrongly. Before appending, assert the preceding element satisfies `isBarLine() || isRepeat()` and call `DocumentValidation.corrupt` when it does not. Test both sides: a well-formed mid-measure `<key>` loads, and one whose measure lacks its opening barline fails as corrupt.
+7a. **Assert `KeyChangeElement`'s class invariant on read, not only on write.** Task 4 fails the *save* with `DocumentValidation.corrupt` when a mid-line key signature is not immediately preceded by a barline or repeat. The read path currently has no equivalent, and it is the one that takes input from a file: a `<key>` in a measure the reader did not open with a barline element produces a `KeyChangeElement` that Phase 2's class invariant, Phase 9's deletion pairing and Phase 12c's index predicate all assume cannot exist. **There is no test, no error handling, and no visible symptom** — the model is simply invariant-violating until a later delete behaves wrongly. Before appending, assert the preceding element satisfies `isBarLine() || isRepeat()` and call `DocumentValidation.corrupt` when it does not. Test both sides: a well-formed mid-measure `<key>` loads, and one whose measure lacks its opening barline fails as corrupt.
 
 8. **Fix the live corruption bug this replaces.** `applyFifths` currently calls `applyFifthsToLine(currentLine, fifths)` for _any_ non-first `<key>`, which sets the whole line's key and retroactively re-spells every note earlier in that line. Any MusicXML file with a mid-system key change loads wrong today, silently. Add a round-trip test that would have caught it: a four-measure line with a key change in measure 3, asserting the notes in measures 1–2 keep their original spelling.
   
 9. Bound `KeySignatureMapping.accidentalCount(int fifths)`. It is `Math.abs(fifths)` with no range check, so `<fifths>12</fifths>` produced `keys = 12` and then an `ArrayIndexOutOfBoundsException` in the old `Line.keyExists`, thrown per note during pitch resolution. **Fail with a corrupt-document error** rather than clamping: call `DocumentValidation.corrupt` (`src/main/java/songscribe/io/DocumentValidation.java`) when `|fifths| > Key.MAX_ACCIDENTAL_COUNT`. Contract the valid range in `@param` and the failure in `@throws`.
   
-10. Have `KeySignatureMapping` map to and from `Key` rather than `(KeyType, int)`: `toFifths(Key)` and `toKey(int fifths)`, replacing `toFifths(KeyType, int)` / `keyType(int)` / `accidentalCount(int)`.
+10. Have `KeyMapping` map to and from `Key` rather than `(KeyType, int)`: `toFifths(Key)` and `toKey(int fifths)`, replacing `toFifths(KeyType, int)` / `keyType(int)` / `accidentalCount(int)`.
 
 - **`toKey(int)` already exists** — Phase 3 added it because `keyType(0)` returns `FLATS`, which with a count of 0 is exactly what `Key`'s constructor rejects, so the reader could not build a key at all without it. `keyType` and `accidentalCount` survive only for `applyFifths`'s song-default branch, which task 7 removes; this task deletes them with it and adds `toFifths(Key)`.
   
@@ -806,7 +806,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
   
 - Reuse `KeySignatureMapping.toFifths(Key)` (Phase 7 task 10) rather than recomputing the fifths — that mapping is already the one MusicXML export uses, and two copies would drift.
   
-- Emit one event at tick 0 for the first line's running key, and one at the tick of every key change thereafter. `songscribe.midi.LineTrackBuilder` walks each line's elements with a running tick and is where a mid-line `KeySignatureElement`'s tick is known; the line-boundary case emits at the first tick of the line whose `getKey()` is non-null.
+- Emit one event at tick 0 for the first line's running key, and one at the tick of every key change thereafter. `songscribe.midi.LineTrackBuilder` walks each line's elements with a running tick and is where a mid-line `KeyChangeElement`'s tick is known; the line-boundary case emits at the first tick of the line whose `getKey()` is non-null.
   
 - `MidiSequenceBuilder.buildSequenceWithRepeats` replays lines out of order for repeats. A key signature event must be emitted wherever its line is replayed, not once per line in document order, or a repeated passage plays under the wrong key event. Verify which track the events belong on — tempo events establish the existing convention.
   
@@ -878,7 +878,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 **Files:** src/main/java/songscribe/dom/Line.java, src/main/java/songscribe/dom/ElementType.java, src/main/java/songscribe/ui/selection/Selection.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/selection/SelectionCoordinator.java, src/main/java/songscribe/ui/component/score/LineRenderer.java, src/test/java/songscribe/dom/LineQueryTest.java, src/test/java/songscribe/dom/ElementTypeTest.java  
 **Recommended model/effort:** Opus, medium — every decision this phase needs is now written down, including task 6a's, so what is left is the selection-expansion routing: `Selection.Range.contains` is on a sealed interface and is asked per element index during painting, and widening it is the one step whose shape is not dictated below. **Do not split this phase** — the confirm of task 6 would be Sonnet work, but it writes `ScoreViewController.java`, which the dashboard already serializes across 9, 10b, 11, 12c and 12d, so a split buys nothing.
 ### Tasks
-1. A `KeySignatureElement` (`songscribe.dom.KeySignatureElement`, `ElementType.KEY_SIGNATURE`) is always immediately preceded by a barline or repeat element, and can never sit at index 0 of a line. The invariant holds because Phase 12c's insert flow adds a `SINGLE_BARLINE` when the chosen position lacks one; nothing here has to police it, only preserve it under deletion. **Deleting the barline must delete the key signature with it**, and selecting either must show both as selected so the user sees what will go.
+1. A `KeyChangeElement` (`songscribe.dom.KeySignatureElement`, `ElementType.KEY_SIGNATURE`) is always immediately preceded by a barline or repeat element, and can never sit at index 0 of a line. The invariant holds because Phase 12c's insert flow adds a `SINGLE_BARLINE` when the chosen position lacks one; nothing here has to police it, only preserve it under deletion. **Deleting the barline must delete the key signature with it**, and selecting either must show both as selected so the user sees what will go.
   
 2. This also makes index 0 unreachable by deletion: reaching index 0 requires deleting the barline in front, which now takes the key signature too. No separate index-0 check is needed. State that reasoning in the pairing method's contract so a later reader does not add a redundant guard.
   
@@ -1001,7 +1001,7 @@ Add `KEY_SIGNATURE` to `ElementTypeTest`'s `isNonContentElement` membership tabl
 
 - Setting, changing or clearing a line's own `Key` (the header and cautionary edits).
   
-- Inserting, editing or removing a mid-line `KeySignatureElement`.
+- Inserting, editing or removing a mid-line `KeyChangeElement`.
   
 
 Both preserve the pitch the user did not change — the same promise `AccidentalReconciliation.reconcile(InsertionRegion)` already keeps when a barline is inserted. Notes whose sounding pitch would move get an explicit accidental; notation the change makes redundant is cleared.
@@ -1037,7 +1037,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 - One confirm dialog is raised for a multi-line key change, not one per line.
   
-- A mid-line `KeySignatureElement` insert reconciles from its index forward, not from the start of its line.
+- A mid-line `KeyChangeElement` insert reconciles from its index forward, not from the start of its line.
   
 - A key change that alters no pitch class any note uses produces no changes and raises no dialog — the common case must not be made to pay for this.
   
@@ -1115,10 +1115,10 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 - `BaseDialog.DialogOp { ADD, EDIT, REMOVE }` and `KeyCellRenderer` come from **Phase 16**. Use them; do not create, rename or restyle either.
   
-4. Rewrite `KeySignatureChangeDialog`. It currently reads `line.getKeyType()` and `line.getKeyAccidentalCount()` into a combo and a spinner (`KeySignatureChangeDialog.java:75-76`). It becomes a single combo over `Key.allSignatures()` plus an explicit "inherit" choice for lines other than line 0 — line 0 cannot inherit and must not offer it. **The combo uses** `KeyCellRenderer` from Phase 16, so a key is picked here exactly as it was picked in song settings: glyph plus display name, not a type combo and a count spinner. Do not write a second renderer, and do not restyle this one.
+4. Rewrite `KeyChangeDialog`. It currently reads `line.getKeyType()` and `line.getKeyAccidentalCount()` into a combo and a spinner (`KeySignatureChangeDialog.java:75-76`). It becomes a single combo over `Key.allSignatures()` plus an explicit "inherit" choice for lines other than line 0 — line 0 cannot inherit and must not offer it. **The combo uses** `KeyCellRenderer` from Phase 16, so a key is picked here exactly as it was picked in song settings: glyph plus display name, not a type combo and a count spinner. Do not write a second renderer, and do not restyle this one.
   
 
-- **The dialog opens with no selection, and OK is disabled until the user picks something.** It does **not** pre-select the key already in effect. Pre-selecting it makes the default commit a no-op key change, and a no-op mid-line `KeySignatureElement` is invisible — nothing drawn changes — while still being a `cancelsAccidentals()` barrier that re-spells every note after it, and still dragging Phase 12b's auto-inserted barline into the score. A blank combo makes every commit a deliberate choice.
+- **The dialog opens with no selection, and OK is disabled until the user picks something.** It does **not** pre-select the key already in effect. Pre-selecting it makes the default commit a no-op key change, and a no-op mid-line `KeyChangeElement` is invisible — nothing drawn changes — while still being a `cancelsAccidentals()` barrier that re-spells every note after it, and still dragging Phase 12b's auto-inserted barline into the score. A blank combo makes every commit a deliberate choice.
   
 - The line's current key is not otherwise hidden from the user: it is drawn in the header, and Phase 3's `setKey` collapses a chosen key that equals the inherited one back to null, so picking "the same key" cannot pin a line by accident.
   
@@ -1174,7 +1174,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 - **The cautionary at the end of a line** edits the **next** line's key. It renders a change that lives on the following line, and clicking it edits that change where the user sees it.
   
-- **The rect bounded by a mid-line key's rendered accidentals** edits that `KeySignatureElement`.
+- **The rect bounded by a mid-line key's rendered accidentals** edits that `KeyChangeElement`.
   
 
 3. Every line's header is selectable, including line 0 and lines that merely restate an inherited key. Uniform selectability is deliberate: headers are visually identical whether or not they represent a change, so making only some clickable would vary selectability invisibly.
@@ -1182,7 +1182,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
 4. Update `LayoutHitTester` so all three rects in task 2 are hit targets. `HorizontalSpacingCalculator.isWithinHeaderXSs(double, Line)` already bounds the header region and now resolves through the line's running key. The cautionary's rect is the one `KeySignatureRenderer` draws — including the overflow-relative position Phase 5 gives it, so the target follows the glyphs rather than the margin.
   
 
-- Contract each target by **what it resolves to**, not by where it sits: the header resolves to its own line, the cautionary to the **next** line, a mid-line rect to its `KeySignatureElement`. That is the promise Phases 12c and 12d are written against, and a hit test that returns a rect without saying what it identifies leaves them to re-derive it.
+- Contract each target by **what it resolves to**, not by where it sits: the header resolves to its own line, the cautionary to the **next** line, a mid-line rect to its `KeyChangeElement`. That is the promise Phases 12c and 12d are written against, and a hit test that returns a rect without saying what it identifies leaves them to re-derive it.
   
 
 5. **Update `docs/selection.md`.** Line 117 describes the header as "the clef and key signature, and a press there selects the …" — this phase makes that header a double-click edit target, and adds two more (the cautionary, and a mid-line key signature's accidental rect). State all three and how they relate to the press-to-select behavior the section already documents. The phase that invalidates a doc section updates it (see **Conventions**), and it is this phase that creates all three targets.
@@ -1196,7 +1196,7 @@ Both preserve the pitch the user did not change — the same promise `Accidental
   
 - On a line where `overflowsStaffWidth()` is true, the cautionary's target sits off the solved chain's end rather than at the margin. Phase 5 moved the glyphs; this asserts the target moved with them.
   
-- A point inside a mid-line key signature's accidental rect resolves to that `KeySignatureElement`.
+- A point inside a mid-line key signature's accidental rect resolves to that `KeyChangeElement`.
   
 
 7. Run `./scripts/compile.sh` and `./scripts/test.sh LayoutHitTesterTest`. Both must report SUCCESS / green.
@@ -1232,7 +1232,7 @@ Once the user picks an index, show the dialog. Contract the predicate as its own
   
 3a. ~~Give `KEY_SIGNATURE` a case in `ElementType.categoryName()`.~~ **Done in Phase 12a**, because Phase 12d's alert message goes through it and would throw instead of alerting. If `categoryName()` still throws for `KEY_SIGNATURE` when this phase starts, Phase 12a did not run and this phase is not ready.
 
-4. Update `KeySignatureChangeAction`'s flags. #53 records that `Flag.DISABLE_WHEN_BAR_SELECTED` can be removed. Keep `DISABLE_WHEN_PLAYING`, `DISABLE_WHEN_EDITING_TEXT`, `DISABLE_IN_GRACE_MODE` and `OPENS_DIALOG`. The action no longer needs a position guard — invoking it enters the insertion-point mode, and the predicate of task 2 is what excludes the illegal indices.
+4. Update `KeyChangeAction`'s flags. #53 records that `Flag.DISABLE_WHEN_BAR_SELECTED` can be removed. Keep `DISABLE_WHEN_PLAYING`, `DISABLE_WHEN_EDITING_TEXT`, `DISABLE_IN_GRACE_MODE` and `OPENS_DIALOG`. The action no longer needs a position guard — invoking it enters the insertion-point mode, and the predicate of task 2 is what excludes the illegal indices.
   
 5. Write tests for what this phase adds. **The dialog's own cases are Phase 12a's** and **the hit targets are Phase 12b's** — do not restate either.
   
@@ -1311,7 +1311,7 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
 
 - **There is no song-wide key.** Each line has a key or inherits the one in effect at the end of the previous line. Line 0 always has one.
   
-- **Two representations, one query.** A key change at a line boundary is the line's own `Key`; a mid-line change is a `KeySignatureElement` in the element list. Both resolve through `Line.keyAt(int)`, which is what every consumer asks.
+- **Two representations, one query.** A key change at a line boundary is the line's own `Key`; a mid-line change is a `KeyChangeElement` in the element list. Both resolve through `Line.keyAt(int)`, which is what every consumer asks.
   
 - **A mid-line key change is always preceded by a barline** and never sits at index 0. The user is not restricted to positions that already have one: adding a key signature elsewhere inserts a `SINGLE_BARLINE` before it, as part of the same modification. The barline and the key signature are deleted together.
   
@@ -1374,7 +1374,7 @@ Both alerts are `JOptionPane`-based — read `.claude/guides/option-dialogs.md` 
 2. Write `KeyResolutionTest` for the properties no single phase owns:
   
 
-- **Accidental resolution respects a mid-line key change.** A note after a mid-line `KeySignatureElement` resolves against the new key; an identical note before it resolves against the old one. This is the promise `StaffElement.keyInEffectAt(Line, int)` makes and the reason it takes an index.
+- **Accidental resolution respects a mid-line key change.** A note after a mid-line `KeyChangeElement` resolves against the new key; an identical note before it resolves against the old one. This is the promise `StaffElement.keyInEffectAt(Line, int)` makes and the reason it takes an index.
   
 - **A key change cancels accidentals like a barline.** An explicit accidental before a key change does not carry across it to a later note at the same staff position.
   
