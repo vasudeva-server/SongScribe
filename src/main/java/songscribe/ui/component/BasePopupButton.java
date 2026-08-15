@@ -20,12 +20,18 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-
+import java.awt.Container;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.util.List;
 import java.util.Objects;
+import javax.swing.AbstractButton;
+import javax.swing.JPopupMenu;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 
 import org.jspecify.annotations.Nullable;
+
 import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MenuWillOpenNotification;

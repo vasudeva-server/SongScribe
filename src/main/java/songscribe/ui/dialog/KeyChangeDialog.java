@@ -19,7 +19,11 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.Component;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JComboBox;
+import javax.swing.JList;
+import javax.swing.ListCellRenderer;
 
 import org.jspecify.annotations.Nullable;
 

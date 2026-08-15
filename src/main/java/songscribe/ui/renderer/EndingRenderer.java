@@ -20,22 +20,24 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-
-import module java.desktop;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.geom.Point2D;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Line;
 import songscribe.dom.Ending;
+import songscribe.dom.Line;
+import songscribe.engraving.LineThickness;
 import songscribe.hit.HitTarget;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
-import songscribe.engraving.LineThickness;
 import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
  * Renders first and second ending brackets.

@@ -20,24 +20,27 @@
 
 package songscribe.ui.playback;
 
+import java.awt.EventQueue;
 import java.util.concurrent.TimeUnit;
-
-import module java.desktop;
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.Sequencer;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
-import songscribe.ui.component.MainFrame;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
 import songscribe.midi.PlaybackSettings;
-import songscribe.dom.Song;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.ElementSelection;

@@ -20,10 +20,22 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.MediaTracker;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.WindowConstants;
 
-import songscribe.Strings;
 import songscribe.Constants;
+import songscribe.Strings;
 import songscribe.util.GraphicUtils;
 
 public final class StartFrame {

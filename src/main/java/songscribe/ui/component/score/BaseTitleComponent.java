@@ -20,8 +20,11 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;

@@ -22,9 +22,8 @@ package songscribe.ui.component.score;
 
 import java.awt.event.MouseEvent;
 
-import org.jspecify.annotations.Nullable;
-
 import com.formdev.flatlaf.util.SystemInfo;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.platform.mac.MacCursor;
 import songscribe.util.Debounce;

@@ -20,13 +20,13 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.ui.Mode;
 import songscribe.ui.component.MainFrame;
-import songscribe.message.notification.ModeDidChangeNotification;
 
 public final class ModeAction extends SelectableUIAction {
 

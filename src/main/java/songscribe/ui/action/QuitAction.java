@@ -20,7 +20,9 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 import com.formdev.flatlaf.util.SystemInfo;
 

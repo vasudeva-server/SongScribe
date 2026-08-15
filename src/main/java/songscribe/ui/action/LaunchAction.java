@@ -20,11 +20,12 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

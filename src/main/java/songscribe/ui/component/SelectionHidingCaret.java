@@ -19,7 +19,9 @@
  */
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Graphics;
+import java.awt.Rectangle;
+import javax.swing.text.DefaultCaret;
 
 /**
  * Caret that hides itself whenever its text component has a non-empty selection,

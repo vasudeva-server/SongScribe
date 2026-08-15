@@ -20,7 +20,10 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.LayoutManager2;
 
 import org.jspecify.annotations.Nullable;
 

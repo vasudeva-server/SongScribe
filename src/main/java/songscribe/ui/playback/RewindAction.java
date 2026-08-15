@@ -19,7 +19,8 @@
  */
 package songscribe.ui.playback;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;

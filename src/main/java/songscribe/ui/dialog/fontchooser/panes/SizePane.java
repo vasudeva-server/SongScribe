@@ -20,7 +20,21 @@
 
 package songscribe.ui.dialog.fontchooser.panes;
 
-import module java.desktop;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.ListSelectionModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.SwingConstants;
+import javax.swing.event.ListSelectionListener;
+import javax.swing.plaf.UIResource;
 
 import songscribe.ui.component.InputUtils;
 

@@ -20,30 +20,53 @@
 
 package songscribe.e2e;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
-
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
-
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.RenderingHints;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
-
-import org.assertj.swing.exception.UnexpectedException;
-import org.jspecify.annotations.Nullable;
+import javax.swing.AbstractButton;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JWindow;
+import javax.swing.MenuElement;
+import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.SAXParserFactory;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
-import org.assertj.swing.exception.ComponentLookupException;
 import org.assertj.swing.core.Robot;
 import org.assertj.swing.edt.FailOnThreadViolationRepaintManager;
 import org.assertj.swing.edt.GuiActionRunner;
+import org.assertj.swing.exception.ComponentLookupException;
+import org.assertj.swing.exception.UnexpectedException;
 import org.assertj.swing.fixture.FrameFixture;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -53,22 +76,29 @@ import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
-import songscribe.dom.Song;
+import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.PageModel;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.BasePopupButton;
 import songscribe.ui.component.MainFrame;
-import songscribe.layout.ElementHitGeometry;
 import songscribe.ui.component.ScoreView;
-import songscribe.dom.ScaleContext;
 import songscribe.util.UIUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
+
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * Base class for E2E interaction tests using AssertJ Swing.

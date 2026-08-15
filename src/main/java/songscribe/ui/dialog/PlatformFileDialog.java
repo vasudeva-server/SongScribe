@@ -19,13 +19,11 @@
  */
 package songscribe.ui.dialog;
 
+import java.awt.Window;
 import java.io.File;
 
 import com.formdev.flatlaf.util.SystemFileChooser;
-
 import org.jspecify.annotations.Nullable;
-
-import java.awt.Window;
 
 import songscribe.util.ExtensionFileFilter;
 

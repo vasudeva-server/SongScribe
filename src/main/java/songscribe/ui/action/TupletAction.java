@@ -20,8 +20,7 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -29,9 +28,9 @@ import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleTupletCommand;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.util.StringUtils;

@@ -20,7 +20,10 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import javax.swing.Action;
+import javax.swing.JButton;
 
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.toolbar.Toolbar;

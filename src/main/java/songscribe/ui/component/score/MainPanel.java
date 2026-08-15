@@ -20,14 +20,18 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-
-import songscribe.error.RuntimeError;
+import java.awt.Dimension;
+import java.awt.Point;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Song;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
+import songscribe.error.RuntimeError;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 

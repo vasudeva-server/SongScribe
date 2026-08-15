@@ -20,18 +20,19 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 
-import module java.desktop;
-
-import songscribe.shape.AccentShape;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.NoteAttachedStacker;
+import songscribe.shape.AccentShape;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
  * Renders articulation markings on notes (staccato, accent).

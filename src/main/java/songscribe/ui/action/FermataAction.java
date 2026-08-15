@@ -20,14 +20,13 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 import java.util.EnumSet;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.StaffElement;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.StaffElement;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
 public final class FermataAction extends NoteOnlyAction {

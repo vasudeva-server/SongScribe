@@ -20,8 +20,9 @@
 
 package songscribe.ui.dialog.fontchooser.listeners;
 
-import module java.desktop;
-
+import java.awt.Font;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import songscribe.ui.dialog.fontchooser.FontContainer;
 

@@ -20,7 +20,7 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
 
 import songscribe.ui.component.MainFrame;
 import songscribe.undo.UndoController;

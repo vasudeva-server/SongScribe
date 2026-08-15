@@ -28,11 +28,17 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.dom.*;
-import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
+import songscribe.dom.KeyChangeElement;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.Span;
+import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.util.LogUtils;
-
 
 /**
  * Calculates horizontal X positions for note columns following Gould/Ross engraving principles.

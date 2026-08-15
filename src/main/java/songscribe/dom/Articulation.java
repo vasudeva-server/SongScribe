@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import module java.desktop;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.shape.AccentShape;

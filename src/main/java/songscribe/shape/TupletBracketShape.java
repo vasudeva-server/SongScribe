@@ -20,7 +20,7 @@
 
 package songscribe.shape;
 
-import module java.desktop;
+import java.awt.geom.Point2D;
 
 /**
  * The two arms of a tuplet bracket, split by the central number gap. The left arm runs down the

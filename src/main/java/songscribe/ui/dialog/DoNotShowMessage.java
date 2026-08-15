@@ -19,7 +19,10 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import javax.swing.JCheckBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;

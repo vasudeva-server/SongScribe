@@ -19,10 +19,19 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
-
+import java.awt.Component;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 

@@ -20,7 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import javax.swing.JComponent;
 
 /**
  * A container that hosts {@link LineOverlayComponent}s as free-floating, absolute-bounds

@@ -20,9 +20,16 @@
 
 package songscribe.ui.dialog.fontchooser.panes;
 
-import module java.desktop;
-
+import java.awt.Dimension;
+import java.awt.Font;
 import java.util.Objects;
+import javax.swing.DefaultListModel;
+import javax.swing.JList;
+import javax.swing.JScrollPane;
+import javax.swing.ListSelectionModel;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionListener;
 
 import org.jspecify.annotations.Nullable;
 

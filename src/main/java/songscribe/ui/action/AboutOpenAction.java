@@ -20,13 +20,13 @@
 
 package songscribe.ui.action;
 
-import static songscribe.util.StringUtils.toKebabCase;
-
-import module java.desktop;
+import java.awt.event.ActionEvent;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AboutDialog;
+
+import static songscribe.util.StringUtils.toKebabCase;
 
 /**
  * Opens the About window.

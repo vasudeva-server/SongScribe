@@ -30,19 +30,19 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.engraving.Staff;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementModification;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.AccidentalRestatements;
-import songscribe.engraving.Staff;
 import songscribe.ui.playback.PlayThread;
 
 /**

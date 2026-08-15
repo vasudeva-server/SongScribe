@@ -20,7 +20,9 @@
 
 package songscribe.dom;
 
-import module java.desktop;
+import java.awt.Font;
+import java.awt.font.TextLayout;
+import java.awt.geom.AffineTransform;
 
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;

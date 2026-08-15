@@ -20,24 +20,25 @@
 
 package songscribe.dom;
 
-import static songscribe.midi.MidiSequenceBuilder.PPQ;
-
-import module java.desktop;
-
+import java.awt.GraphicsEnvironment;
+import java.awt.event.KeyEvent;
 import java.util.Map;
+import javax.swing.KeyStroke;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.smufl.BBox;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.error.RuntimeError;
+import songscribe.smufl.BBox;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.error.RuntimeError;
 import songscribe.util.UIUtils;
+
+import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
 public enum ElementType {
     // Notes

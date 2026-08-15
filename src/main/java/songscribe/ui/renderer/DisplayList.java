@@ -20,8 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
-
+import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.font.GlyphVector;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;

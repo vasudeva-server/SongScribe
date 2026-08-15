@@ -26,9 +26,9 @@ import java.util.Map;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.layout.LayoutResultBuilder;
-import songscribe.layout.ElementColumn;
 import songscribe.engraving.Staff;
+import songscribe.layout.ElementColumn;
+import songscribe.layout.LayoutResultBuilder;
 
 /**
  * Shared context passed to all stacking delegates.

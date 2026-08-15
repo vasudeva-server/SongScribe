@@ -20,8 +20,8 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
+import java.awt.Font;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;

@@ -20,20 +20,17 @@
 
 package songscribe.ui.action;
 
-import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
-import static songscribe.ui.action.UIAction.Flag;
-
-import module java.desktop;
-
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
-
-import org.jspecify.annotations.Nullable;
+import javax.swing.KeyStroke;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +46,9 @@ import songscribe.ui.dialog.SongSettingsDialog;
 import songscribe.ui.dialog.backend.ScoreSongSettingsBackEnd;
 import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
+
+import static songscribe.ui.action.UIAction.Flag;
+import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 /**
  * This class serves as a repository for global action-related constants and action groups.

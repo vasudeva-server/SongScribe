@@ -19,15 +19,25 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.Component;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JSpinner;
+import javax.swing.SpinnerModel;
+import javax.swing.SpinnerNumberModel;
 
-import songscribe.util.UIUtils;
 import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
 import songscribe.ui.component.InputUtils;
+import songscribe.util.UIUtils;
 
 /**
  * A reusable panel containing the standard tempo controls:

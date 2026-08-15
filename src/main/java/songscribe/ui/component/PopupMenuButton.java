@@ -20,9 +20,12 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-
 import java.util.List;
+import javax.swing.Action;
+import javax.swing.ButtonGroup;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenuItem;
+import javax.swing.JRadioButtonMenuItem;
 
 import org.jspecify.annotations.Nullable;
 

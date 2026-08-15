@@ -20,15 +20,15 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
 import java.util.EnumSet;
+import javax.swing.Action;
+import javax.swing.KeyStroke;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
+import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Articulation;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 

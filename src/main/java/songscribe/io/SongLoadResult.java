@@ -19,15 +19,16 @@
  */
 package songscribe.io;
 
-import songscribe.dom.Song;
-import songscribe.dom.TupletLoadPass;
-import songscribe.font.DocumentFonts;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
+
+import songscribe.dom.Song;
+import songscribe.dom.TupletLoadPass;
+import songscribe.font.DocumentFonts;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
 

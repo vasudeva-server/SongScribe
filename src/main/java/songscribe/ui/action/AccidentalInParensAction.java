@@ -23,8 +23,8 @@ package songscribe.ui.action;
 import java.util.EnumSet;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
 // Widens: the parentheses are drawn around the accidental, inside the note's column.

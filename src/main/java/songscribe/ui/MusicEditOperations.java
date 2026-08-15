@@ -20,8 +20,6 @@
 
 package songscribe.ui;
 
-import module java.desktop;
-
 import java.util.ArrayDeque;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -30,17 +28,16 @@ import java.util.TreeSet;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.Beam;
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.Song;
-import songscribe.dom.ElementType;
-import songscribe.dom.EndingValidationResult;
-import songscribe.dom.Line;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
-import songscribe.dom.Hairpin;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
+import songscribe.dom.EndingValidationResult;
+import songscribe.dom.Hairpin;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
@@ -48,6 +45,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.SelectionCoordinator;

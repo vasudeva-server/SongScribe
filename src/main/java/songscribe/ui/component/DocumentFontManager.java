@@ -20,7 +20,7 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 

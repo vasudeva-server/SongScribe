@@ -20,15 +20,16 @@
 
 package songscribe.ui;
 
-import module java.desktop;
+import java.awt.Component;
+import javax.swing.JOptionPane;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Ending;
 
 /**
  * Utility class for showing confirmation dialogs before ending-invalidating mutations,

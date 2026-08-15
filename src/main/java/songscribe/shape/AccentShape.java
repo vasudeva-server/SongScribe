@@ -20,7 +20,9 @@
 
 package songscribe.shape;
 
-import module java.desktop;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
+import java.awt.geom.Path2D;
 
 /**
  * The accent (">") marking, converted from accent.svg. Local coordinates: origin at the glyph's

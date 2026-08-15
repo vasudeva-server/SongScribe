@@ -19,14 +19,15 @@
  */
 package songscribe.ui.playback;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
 import songscribe.message.Message;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 public final class PlayStopAction extends SequencerAction {
 

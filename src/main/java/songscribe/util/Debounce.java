@@ -20,7 +20,7 @@
 
 package songscribe.util;
 
-import module java.desktop;
+import javax.swing.Timer;
 
 /**
  * A deadline that every {@link #trigger()} pushes further out, running its action on the EDT once

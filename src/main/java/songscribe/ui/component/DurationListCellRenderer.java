@@ -19,7 +19,14 @@
  */
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.font.FontRenderContext;
+import javax.swing.JComboBox;
+import javax.swing.JList;
+import javax.swing.ListCellRenderer;
 
 import org.jspecify.annotations.Nullable;
 

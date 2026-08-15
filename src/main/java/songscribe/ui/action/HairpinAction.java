@@ -20,7 +20,8 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import javax.swing.Action;
 
 import songscribe.Strings;
 import songscribe.dom.Hairpin;

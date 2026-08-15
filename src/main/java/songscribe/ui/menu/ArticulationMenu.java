@@ -19,7 +19,8 @@
  */
 package songscribe.ui.menu;
 
-import module java.desktop;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
 
 import songscribe.Strings;
 import songscribe.ui.action.Actions;

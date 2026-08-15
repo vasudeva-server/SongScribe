@@ -21,22 +21,20 @@
 package songscribe.ui.edit;
 
 import net.engio.mbassy.listener.Handler;
-
 import org.jspecify.annotations.Nullable;
 
-import songscribe.error.RuntimeError;
+import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.Actions;
-import songscribe.ui.clipboard.ClipboardManager;
-import songscribe.dom.Articulation;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;

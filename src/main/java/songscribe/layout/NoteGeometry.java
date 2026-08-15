@@ -8,14 +8,14 @@ import java.util.function.BinaryOperator;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AccidentalBounds;
-import songscribe.dom.StaffElement.Accidental;
-import songscribe.engraving.LineThickness;
-import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.smufl.BBox;
+import songscribe.dom.StaffElement.Accidental;
+import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
+import songscribe.error.RuntimeError;
+import songscribe.smufl.BBox;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;

@@ -20,9 +20,9 @@
 
 package songscribe.message.mutation;
 
+import songscribe.dom.Crescendo;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
-import songscribe.dom.Crescendo;
 
 /**
  * Mutation recording the removal of a crescendo hairpin from a line.

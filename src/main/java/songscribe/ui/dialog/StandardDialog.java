@@ -19,7 +19,13 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.KeyboardFocusManager;
+import javax.swing.InputVerifier;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;

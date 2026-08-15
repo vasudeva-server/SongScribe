@@ -20,8 +20,6 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -37,7 +35,6 @@ import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-
 
 /**
  * Builds {@link ElementColumn} instances from a Line's elements.

@@ -20,7 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Font;
 
 /**
  * Component that renders the main under-lyrics section.

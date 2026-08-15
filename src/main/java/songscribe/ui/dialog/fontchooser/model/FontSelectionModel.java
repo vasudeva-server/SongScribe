@@ -19,7 +19,8 @@
  */
 package songscribe.ui.dialog.fontchooser.model;
 
-import module java.desktop;
+import java.awt.Font;
+import javax.swing.event.ChangeListener;
 
 /**
  * A model that supports selecting a {@code Font}.

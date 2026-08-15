@@ -20,8 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
-
+import java.awt.Graphics2D;
 
 import songscribe.dom.LineElement;
 

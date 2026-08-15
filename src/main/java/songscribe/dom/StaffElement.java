@@ -23,10 +23,11 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import songscribe.error.RuntimeError;
-import songscribe.smufl.SMuFLGlyph;
 
 import org.jspecify.annotations.Nullable;
+
+import songscribe.error.RuntimeError;
+import songscribe.smufl.SMuFLGlyph;
 
 public class StaffElement extends LineElement implements Cloneable {
 

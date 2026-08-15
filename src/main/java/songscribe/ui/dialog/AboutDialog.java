@@ -19,15 +19,29 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.AWTEvent;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-
 import java.util.Set;
-
-import org.jspecify.annotations.Nullable;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.UIManager;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
@@ -40,6 +54,8 @@ import songscribe.ui.component.SplashWindow;
 import songscribe.util.DesktopUtils;
 import songscribe.util.UIUtils;
 import songscribe.util.Utils;
+
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * The splash artwork shown on demand, with the web and acknowledgement links added below it.

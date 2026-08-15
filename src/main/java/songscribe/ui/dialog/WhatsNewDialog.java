@@ -19,9 +19,13 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
-
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Dimension;
 import java.io.IOException;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextPane;
 
 import songscribe.Strings;
 import songscribe.Version;

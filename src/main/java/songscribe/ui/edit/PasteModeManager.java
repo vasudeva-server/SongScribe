@@ -23,7 +23,6 @@ package songscribe.ui.edit;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
-
 import javax.swing.JLayeredPane;
 
 import org.jspecify.annotations.Nullable;
@@ -33,7 +32,6 @@ import songscribe.dom.Line;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.PasteOverlay;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.ScoreViewController;
 import songscribe.undo.UndoController;
 
 /**

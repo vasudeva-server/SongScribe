@@ -25,12 +25,10 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import com.formdev.flatlaf.util.SystemInfo;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.jspecify.annotations.Nullable;
-
-import com.formdev.flatlaf.util.SystemInfo;
 
 import songscribe.ui.platform.mac.ObjC;
 

@@ -20,9 +20,10 @@
 
 package songscribe.ui.dialog.fontchooser.panes;
 
-import module java.desktop;
-
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.util.Locale;
+import javax.swing.JTextField;
 
 import songscribe.ui.dialog.fontchooser.model.FamilyListModel;
 

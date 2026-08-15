@@ -20,10 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.STROKE;
-
-import module java.desktop;
+import java.awt.BasicStroke;
+import java.awt.Graphics2D;
+import java.awt.geom.Line2D;
 
 import org.jspecify.annotations.Nullable;
 
@@ -31,11 +30,14 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.engraving.LineThickness;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
-import songscribe.engraving.LineThickness;
 import songscribe.shape.HairpinShape;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
 
 /**
  * Renders crescendo and diminuendo hairpins.

@@ -20,11 +20,13 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
+import java.awt.Font;
+import java.awt.font.TextLayout;
+import java.awt.geom.Rectangle2D;
 import java.text.BreakIterator;
 import java.util.HashMap;
 import java.util.Map;
+import javax.swing.JTextField;
 
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;

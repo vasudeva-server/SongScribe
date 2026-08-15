@@ -20,19 +20,19 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-
+import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
-import songscribe.error.RuntimeError;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Song;
-import songscribe.ui.ViewScale;
-import songscribe.ui.component.ScoreView;
+import songscribe.error.RuntimeError;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.ViewScale;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Panel containing all staff lines of a song.

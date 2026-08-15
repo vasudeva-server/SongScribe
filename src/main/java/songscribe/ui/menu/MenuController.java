@@ -20,26 +20,26 @@
 
 package songscribe.ui.menu;
 
-import module java.desktop;
-
+import java.awt.GraphicsEnvironment;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.swing.JMenu;
+import javax.swing.JMenuBar;
+import javax.swing.JMenuItem;
 
 import com.formdev.flatlaf.util.SystemInfo;
 import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import songscribe.error.RuntimeError;
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.RecentDocumentsDidChangeNotification;
 import songscribe.prefs.RecentDocumentsManager;

@@ -20,7 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 

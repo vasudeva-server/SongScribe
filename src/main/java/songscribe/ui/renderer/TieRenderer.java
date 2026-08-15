@@ -20,22 +20,23 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.STROKE;
-import static songscribe.util.GraphicsState.Property.TRANSFORM;
-
-import module java.desktop;
-
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.SpanBound;
+import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.SpanBound;
-import songscribe.dom.Tie;
 import songscribe.shape.BezierBow;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders tie arcs between two notes of the same pitch.

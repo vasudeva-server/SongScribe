@@ -20,7 +20,7 @@
 
 package songscribe.shape;
 
-import module java.desktop;
+import java.awt.geom.Line2D;
 
 /**
  * The two straight segments of a dynamics hairpin. A crescendo opens from a narrow tip on the left

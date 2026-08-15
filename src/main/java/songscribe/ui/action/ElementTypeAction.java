@@ -20,18 +20,20 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.ui.component.MainFrame;
-import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
+import songscribe.ui.component.MainFrame;
 
 public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
 

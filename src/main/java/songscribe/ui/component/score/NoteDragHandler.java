@@ -20,8 +20,6 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -31,13 +29,13 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.ViewPx;
+import songscribe.engraving.Staff;
+import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.Mode;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.dom.ViewPx;
-import songscribe.engraving.Staff;
-import songscribe.hit.HitTarget;
 import songscribe.ui.playback.MidiController;
 
 /**

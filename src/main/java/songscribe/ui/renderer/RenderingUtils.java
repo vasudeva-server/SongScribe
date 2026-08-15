@@ -20,11 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
 import java.util.List;
 import java.util.function.DoubleConsumer;
 
@@ -33,18 +32,20 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.Staff;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.ui.component.ScoreView;
-import songscribe.engraving.LineThickness;
-import songscribe.layout.NoteGeometry;
-
-import songscribe.engraving.Staff;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
  * Stateless rendering utilities shared by element renderers.

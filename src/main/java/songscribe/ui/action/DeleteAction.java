@@ -20,7 +20,8 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.KeyEvent;
+import javax.swing.KeyStroke;
 
 import songscribe.Strings;
 import songscribe.hit.HitTarget;

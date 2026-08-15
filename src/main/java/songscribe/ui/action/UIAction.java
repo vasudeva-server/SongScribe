@@ -20,36 +20,38 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 import java.util.Arrays;
 import java.util.EnumSet;
-
-import org.jspecify.annotations.Nullable;
+import javax.swing.AbstractAction;
+import javax.swing.Icon;
+import javax.swing.JRootPane;
+import javax.swing.KeyStroke;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.BarWasSelectedNotification;
-import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.message.notification.DurationWasSelectedNotification;
-import songscribe.message.notification.GraceModeStateDidChangeNotification;
-import songscribe.message.notification.ModeDidChangeNotification;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.InsertionPointModeDidChangeNotification;
-import songscribe.message.notification.PlaybackStateDidChangeNotification;
-import songscribe.message.notification.RestModeDidChangeNotification;
-import songscribe.message.notification.TextEditingDidChangeNotification;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.notification.BarWasSelectedNotification;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
+import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.DurationWasSelectedNotification;
+import songscribe.message.notification.GraceModeStateDidChangeNotification;
+import songscribe.message.notification.InsertionPointModeDidChangeNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.message.notification.RestModeDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
@@ -57,8 +59,8 @@ import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.playback.MidiController;
-import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.undo.UndoController;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;

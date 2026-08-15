@@ -19,7 +19,12 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 

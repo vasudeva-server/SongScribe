@@ -19,7 +19,12 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.Component;
+import java.awt.Insets;
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
 
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;

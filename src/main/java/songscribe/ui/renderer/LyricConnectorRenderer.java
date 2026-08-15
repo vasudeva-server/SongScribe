@@ -20,12 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-import static songscribe.util.GraphicsState.Property.STROKE;
-
-import module java.desktop;
-
+import java.awt.BasicStroke;
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.font.GlyphVector;
+import java.awt.geom.Line2D;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,6 +33,10 @@ import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.STROKE;
 
 /**
  * Renders line-level lyric connectors (syllable hyphens and melisma extenders).

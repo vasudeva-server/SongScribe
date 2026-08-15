@@ -20,13 +20,13 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
@@ -36,9 +36,9 @@ import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleFallCommand;
 import songscribe.message.command.ToggleGlissandoCommand;
 import songscribe.message.command.ToggleTieCommand;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
 

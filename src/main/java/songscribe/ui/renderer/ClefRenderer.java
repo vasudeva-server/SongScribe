@@ -20,11 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
+import java.awt.Graphics2D;
 
-
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.dom.Clef;
+import songscribe.smufl.SMuFLGlyph;
 
 /**
  * Renders the treble clef at the start of a staff line.

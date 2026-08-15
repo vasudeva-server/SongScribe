@@ -26,24 +26,23 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.BeatChange;
+import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.Articulation;
-import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.FermataAttachment;
 import songscribe.dom.TempoChangeAttachment;
 
 public final class StaffElementIO {

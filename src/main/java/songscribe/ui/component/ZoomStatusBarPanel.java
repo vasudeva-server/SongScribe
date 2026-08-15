@@ -20,10 +20,18 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import javax.swing.Action;
+import javax.swing.JButton;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
+import javax.swing.JSlider;
 
 import com.formdev.flatlaf.FlatClientProperties;
-
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;

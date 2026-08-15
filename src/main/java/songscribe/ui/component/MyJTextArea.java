@@ -19,8 +19,8 @@
  */
 package songscribe.ui.component;
 
-import module java.desktop;
-
+import java.awt.event.KeyEvent;
+import javax.swing.JTextArea;
 
 public class MyJTextArea extends JTextArea {
 

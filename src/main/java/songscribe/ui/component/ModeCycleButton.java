@@ -20,21 +20,21 @@
 
 package songscribe.ui.component;
 
-import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
-import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
-
 import javax.swing.DefaultButtonModel;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
-import songscribe.ui.action.ModeAction;
-import songscribe.ui.edit.GraceModeManager;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
-import songscribe.ui.playback.PlaybackController;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
+import songscribe.ui.action.ModeAction;
+import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.UIUtils;
+
+import static songscribe.ui.action.Actions.CYCLE_MODE_ACTION;
+import static songscribe.ui.action.Actions.MODE_ACTION_GROUP;
 
 /**
  * A button that cycles between Edit Mode and Select Mode on each click,

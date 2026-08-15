@@ -1,7 +1,7 @@
 package songscribe.ui;
 
-import module java.desktop;
-
+import javax.swing.LookAndFeel;
+import javax.swing.UnsupportedLookAndFeelException;
 
 /**
  * Abstraction over static FlatLaf operations to enable test mocking.

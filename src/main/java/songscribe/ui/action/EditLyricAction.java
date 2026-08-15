@@ -20,15 +20,16 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
-import static java.awt.event.KeyEvent.*;
+import java.awt.event.ActionEvent;
 
 import songscribe.Strings;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+
+import static java.awt.event.KeyEvent.META_DOWN_MASK;
+import static java.awt.event.KeyEvent.VK_L;
 
 public final class EditLyricAction extends UIAction {
 

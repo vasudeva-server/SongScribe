@@ -19,7 +19,7 @@
  */
 package songscribe.dom;
 
-import module java.desktop;
+import java.awt.Component;
 
 /**
  * A piece of text placed above or below a note — {@code dolce}, {@code cresc.}, {@code Fine}.

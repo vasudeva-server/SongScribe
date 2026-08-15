@@ -20,20 +20,6 @@
 
 package songscribe.io.musicxml;
 
-import static songscribe.dom.StaffElementFactory.breathMark;
-import static songscribe.dom.StaffElementFactory.crotchet;
-import static songscribe.dom.StaffElementFactory.doubleBarline;
-import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
-import static songscribe.dom.StaffElementFactory.graceQuaver;
-import static songscribe.dom.StaffElementFactory.minim;
-import static songscribe.dom.StaffElementFactory.repeatLeft;
-import static songscribe.dom.StaffElementFactory.repeatLeftRight;
-import static songscribe.dom.StaffElementFactory.repeatRight;
-import static songscribe.dom.StaffElementFactory.singleBarline;
-import static songscribe.io.musicxml.MusicXmlRoundTripSupport.C4_STAFF_POSITION;
-import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
-import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
-
 import java.awt.Component;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -45,14 +31,15 @@ import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
@@ -68,7 +55,20 @@ import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.SongIO;
-import songscribe.dom.Ending;
+
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.C4_STAFF_POSITION;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
 
 /**
  * One-shot generator for the synthetic half of the MusicXML losslessness corpus.

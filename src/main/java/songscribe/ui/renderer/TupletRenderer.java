@@ -20,20 +20,19 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-
-import module java.desktop;
-
+import java.awt.Graphics2D;
 import java.util.function.DoubleUnaryOperator;
 
 import songscribe.dom.Line;
-import songscribe.layout.LayoutResult;
-import songscribe.engraving.LineThickness;
 import songscribe.dom.Tuplet;
+import songscribe.engraving.LineThickness;
 import songscribe.hit.HitTarget;
+import songscribe.layout.LayoutResult;
 import songscribe.shape.TupletBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
  * Renders tuplet brackets with numbers using staff-space coordinates

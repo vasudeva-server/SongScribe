@@ -24,11 +24,11 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.message.Message;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.Mutation;
-import songscribe.dom.Song;
-import songscribe.dom.Line;
 
 /**
  * Posted when one or more mutations have been applied to the song.

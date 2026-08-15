@@ -20,7 +20,10 @@
 
 package songscribe.smufl;
 
-import module java.desktop;
+import java.awt.Font;
+import java.awt.Shape;
+import java.awt.font.FontRenderContext;
+import java.awt.geom.AffineTransform;
 
 import songscribe.util.MyFontUtils;
 

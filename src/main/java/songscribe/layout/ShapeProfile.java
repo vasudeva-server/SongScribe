@@ -20,8 +20,9 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
+import java.awt.Shape;
+import java.awt.geom.PathIterator;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;

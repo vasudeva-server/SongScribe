@@ -19,7 +19,9 @@
 */
 package songscribe.ui.component;
 
-import module java.desktop;
+import javax.swing.InputVerifier;
+import javax.swing.JComponent;
+import javax.swing.text.JTextComponent;
 
 /**
  * An {@link InputVerifier} for a field that may not be left blank. Emptying the field puts back

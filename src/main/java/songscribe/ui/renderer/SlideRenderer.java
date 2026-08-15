@@ -20,9 +20,9 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-
-import module java.desktop;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
@@ -37,6 +37,8 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
  * Draws the two {@link StaffElement.Slide} subtypes attached to a note: a connecting

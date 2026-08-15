@@ -20,17 +20,24 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-// Disambiguates from javax.print.attribute.AttributeSet (also in java.desktop)
-import javax.swing.text.AttributeSet;
-import javax.swing.text.Document;
-
 import java.text.ParseException;
 import java.util.regex.Pattern;
+import javax.swing.JComponent;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.text.AbstractDocument;
+import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.DefaultFormatter;
+import javax.swing.text.DefaultFormatterFactory;
+import javax.swing.text.Document;
+import javax.swing.text.DocumentFilter;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.util.UIUtils;
+
+// Disambiguates from javax.print.attribute.AttributeSet (also in java.desktop)
 
 public final class InputUtils {
 

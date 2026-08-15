@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import songscribe.smufl.SMuFLMetadata;
-
 /**
  * The key signature (sharps or flats) drawn at the start of a staff line, as a positioned
  * layout box.

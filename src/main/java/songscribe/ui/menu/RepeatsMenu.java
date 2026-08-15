@@ -19,11 +19,12 @@
  */
 package songscribe.ui.menu;
 
-import static songscribe.ui.action.Actions.REPEAT_ACTIONS;
-
-import module java.desktop;
+import javax.swing.JMenu;
+import javax.swing.JRadioButtonMenuItem;
 
 import songscribe.Strings;
+
+import static songscribe.ui.action.Actions.REPEAT_ACTIONS;
 
 public class RepeatsMenu extends JMenu {
 

@@ -20,11 +20,12 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Dimension;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
 
-
-import songscribe.dom.Song;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 
 /**
  * Thin wrapper panel that hosts a single {@link LineComponent}.

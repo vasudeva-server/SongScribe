@@ -20,10 +20,18 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.RenderingHints;
+import javax.swing.BorderFactory;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import net.engio.mbassy.listener.Handler;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;

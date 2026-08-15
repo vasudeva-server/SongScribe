@@ -20,15 +20,14 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
+import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.notification.ClipboardDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
 
 public class PasteboardAction extends UIAction {

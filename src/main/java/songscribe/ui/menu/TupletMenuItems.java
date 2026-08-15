@@ -19,7 +19,11 @@
  */
 package songscribe.ui.menu;
 
-import module java.desktop;
+import java.awt.Container;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
+import javax.swing.JRadioButtonMenuItem;
 
 import songscribe.Strings;
 import songscribe.ui.action.Actions;

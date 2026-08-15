@@ -20,11 +20,14 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
+import songscribe.util.GraphicsState;
 
 /**
  * Abstract base for lyrics components that render centered multi-line text.

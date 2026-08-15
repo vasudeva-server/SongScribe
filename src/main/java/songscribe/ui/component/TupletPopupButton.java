@@ -20,20 +20,19 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import javax.swing.event.PopupMenuEvent;
 
 import net.engio.mbassy.listener.Handler;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
-import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
-import songscribe.ui.menu.TupletMenuItems;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
+import songscribe.ui.menu.TupletMenuItems;
 
 public class TupletPopupButton extends PopupMenuButton {
 

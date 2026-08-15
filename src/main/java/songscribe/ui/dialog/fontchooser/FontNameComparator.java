@@ -20,11 +20,9 @@
 
 package songscribe.ui.dialog.fontchooser;
 
-import module java.desktop;
-
+import java.awt.Font;
 import java.io.Serializable;
 import java.util.Comparator;
-
 
 public class FontNameComparator implements Comparator<Font>, Serializable {
 

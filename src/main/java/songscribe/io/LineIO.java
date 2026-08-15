@@ -32,14 +32,13 @@ import org.xml.sax.SAXException;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
-import songscribe.dom.Key;
+import songscribe.dom.Ending;
 import songscribe.dom.Line;
-import songscribe.dom.Span;
 import songscribe.dom.Song;
+import songscribe.dom.Span;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.dom.Ending;
 
 public final class LineIO {
 

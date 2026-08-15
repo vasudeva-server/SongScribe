@@ -24,18 +24,18 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.layout.MetronomeContent;
-import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Direction;
-import songscribe.layout.LayoutResultBuilder;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.CollisionRegion;
-import songscribe.layout.LayoutResult;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
-import songscribe.layout.StaffExtents;
-import songscribe.engraving.Staff;
+import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.engraving.LineThickness;
+import songscribe.engraving.Staff;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
+import songscribe.layout.MetronomeContent;
+import songscribe.layout.StaffExtents;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Shared static helpers used by all stacking delegates.

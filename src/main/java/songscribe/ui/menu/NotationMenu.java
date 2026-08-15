@@ -19,8 +19,18 @@
  */
 package songscribe.ui.menu;
 
-import static songscribe.ui.action.Actions.HAIRPIN_CRESCENDO_ACTION;
-import static songscribe.ui.action.Actions.HAIRPIN_DIMINUENDO_ACTION;
+import javax.swing.JCheckBoxMenuItem;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
+import javax.swing.JRadioButtonMenuItem;
+import javax.swing.MenuElement;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
+
+import songscribe.Strings;
+import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
+
 import static songscribe.ui.action.Actions.AUTO_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
@@ -29,6 +39,8 @@ import static songscribe.ui.action.Actions.FALL_ACTION;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.GLISSANDO_ACTION;
+import static songscribe.ui.action.Actions.HAIRPIN_CRESCENDO_ACTION;
+import static songscribe.ui.action.Actions.HAIRPIN_DIMINUENDO_ACTION;
 import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
 import static songscribe.ui.action.Actions.REST_ACTION;
 import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
@@ -36,12 +48,6 @@ import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TIE_ACTION;
 import static songscribe.ui.action.Actions.TOGGLE_TUPLET_ACTIONS;
 import static songscribe.ui.action.Actions.TRILL_ACTION;
-
-import module java.desktop;
-
-import songscribe.Strings;
-import songscribe.ui.action.UIAction;
-import songscribe.ui.component.MainFrame;
 
 public class NotationMenu extends JMenu {
 

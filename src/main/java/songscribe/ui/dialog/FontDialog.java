@@ -19,7 +19,8 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 

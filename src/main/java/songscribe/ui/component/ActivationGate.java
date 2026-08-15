@@ -20,9 +20,10 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
@@ -30,6 +31,8 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.util.Debounce;
+
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * Suppresses the mouse click that brings the application window to the foreground.

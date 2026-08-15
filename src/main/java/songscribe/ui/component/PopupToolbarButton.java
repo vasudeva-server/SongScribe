@@ -20,9 +20,11 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-
+import java.awt.Container;
 import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.JPopupMenu;
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 

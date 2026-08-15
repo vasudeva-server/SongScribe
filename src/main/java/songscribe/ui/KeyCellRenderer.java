@@ -19,10 +19,19 @@
  */
 package songscribe.ui;
 
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.font.GlyphVector;
+import java.awt.font.TextLayout;
+import java.awt.geom.Rectangle2D;
 import java.util.EnumMap;
 import java.util.Map;
+import javax.swing.JList;
+import javax.swing.ListCellRenderer;
 
 import songscribe.dom.Key;
 import songscribe.error.RuntimeError;

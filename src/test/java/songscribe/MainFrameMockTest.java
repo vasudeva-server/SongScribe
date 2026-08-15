@@ -25,9 +25,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockedStatic;
 
 import songscribe.ui.action.Actions;
-import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.action.MockEnvHelper;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.playback.PlaybackController;
 
 import static org.mockito.Mockito.mockStatic;
 

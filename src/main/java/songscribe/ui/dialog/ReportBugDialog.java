@@ -19,9 +19,12 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
-
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.io.File;
+import javax.swing.JButton;
+import javax.swing.JEditorPane;
+import javax.swing.JOptionPane;
 
 import org.jspecify.annotations.Nullable;
 
@@ -29,8 +32,8 @@ import songscribe.Strings;
 import songscribe.Version;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.OptionDialogs;
-import songscribe.util.DesktopUtils;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.DesktopUtils;
 import songscribe.util.Utils;
 
 public class ReportBugDialog extends StandardDialog {

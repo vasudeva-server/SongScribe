@@ -19,25 +19,46 @@
  */
 package songscribe.uiconverter;
 
-import module java.desktop;
-
+import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.Locale;
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTable;
+import javax.swing.JTextField;
+import javax.swing.border.TitledBorder;
+import javax.swing.plaf.FontUIResource;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.text.StyleContext;
 
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import org.jspecify.annotations.Nullable;
 
-import songscribe.Strings;
 import songscribe.FileExtensions;
-import songscribe.ui.OptionDialogs;
 import songscribe.SongScribe;
+import songscribe.Strings;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
-
-import org.jspecify.annotations.Nullable;
 
 @SuppressWarnings("NonStaticInitializer")
 public class UIConverter extends JFrame {

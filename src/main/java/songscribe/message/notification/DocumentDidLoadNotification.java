@@ -20,8 +20,8 @@
 
 package songscribe.message.notification;
 
-import songscribe.message.Message;
 import songscribe.dom.Song;
+import songscribe.message.Message;
 
 /**
  * Posted when a document is loaded (File &gt; Open, File &gt; New).

@@ -22,10 +22,6 @@ package songscribe.ui.action;
 
 import javax.swing.JRootPane;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
-import static org.mockito.Mockito.when;
-
 import org.mockito.MockedStatic;
 
 import songscribe.dom.Song;
@@ -35,6 +31,10 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.SelectionCoordinator;
+
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Shared test helper for setting up a mock MainFrame environment

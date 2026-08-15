@@ -20,23 +20,25 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-import static songscribe.util.GraphicsState.Property.TRANSFORM;
-
-import module java.desktop;
-
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.geom.Point2D;
+import java.awt.geom.RoundRectangle2D;
 import java.util.EnumMap;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.hit.HitTarget;
-import songscribe.smufl.SMuFLGlyph;
 import songscribe.engraving.LineThickness;
+import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders notes (head, stem, flags, dots, accidentals, ledger lines).

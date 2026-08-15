@@ -20,11 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-
-import module java.desktop;
-
+import java.awt.Graphics2D;
 import java.util.List;
 
 import songscribe.dom.Key;
@@ -33,6 +29,9 @@ import songscribe.engraving.Staff;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.layout.LayoutResult;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
  * Renders key signatures (sharps or flats) at the start of a staff line, and the

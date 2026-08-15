@@ -27,17 +27,17 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
+import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
-import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
-import songscribe.dom.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 
 /**

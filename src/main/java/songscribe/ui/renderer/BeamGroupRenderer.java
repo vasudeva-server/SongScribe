@@ -20,25 +20,29 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.CLIP;
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.STROKE;
-
-import module java.desktop;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.geom.Path2D;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
-import songscribe.hit.HitTarget;
-import songscribe.layout.BeamMath;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
-import songscribe.dom.LineElement;
+import songscribe.engraving.Staff;
+import songscribe.hit.HitTarget;
+import songscribe.layout.BeamMath;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
-import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.CLIP;
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
 
 /**
  * Renders beam bars connecting beamed notes.

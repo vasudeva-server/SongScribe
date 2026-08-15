@@ -27,8 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.SongScribe;
-import songscribe.export.PageLayoutData;
 import songscribe.export.PDFExporter;
+import songscribe.export.PageLayoutData;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.FileUtils;
 

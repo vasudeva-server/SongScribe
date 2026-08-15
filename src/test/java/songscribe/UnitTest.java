@@ -26,21 +26,18 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
-
 import javax.swing.UIManager;
 import javax.xml.parsers.SAXParserFactory;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
-import songscribe.font.DocumentFonts;
-import songscribe.io.SongIO;
-import songscribe.io.SongLoadResult;
-import songscribe.io.SongLoader;
-import songscribe.io.musicxml.MusicXmlReader;
-import songscribe.message.MessageCenterTestHelper;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ElementType;
@@ -48,16 +45,16 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
+import songscribe.error.RuntimeErrorTestHelper;
+import songscribe.font.DocumentFonts;
+import songscribe.io.SongIO;
+import songscribe.io.SongLoadResult;
+import songscribe.io.SongLoader;
+import songscribe.io.musicxml.MusicXmlReader;
+import songscribe.message.MessageCenterTestHelper;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.undo.UndoController;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.xml.sax.SAXException;
-
-import songscribe.error.RuntimeErrorTestHelper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.AdditionalAnswers.answerVoid;

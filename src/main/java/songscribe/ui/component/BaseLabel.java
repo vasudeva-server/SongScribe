@@ -19,7 +19,9 @@
  */
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Graphics;
+import javax.swing.JLabel;
+import javax.swing.JList;
 
 /**
  * Base JLabel for custom combo box / list cell renderers. Handles

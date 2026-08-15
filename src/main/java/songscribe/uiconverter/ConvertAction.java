@@ -19,16 +19,21 @@
  */
 package songscribe.uiconverter;
 
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.zip.ZipOutputStream;
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MidiSystem;
+import javax.swing.AbstractAction;
+import javax.swing.JTextField;
 
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.export.ExportOptions;
 import songscribe.io.SongIO;
 import songscribe.ui.OptionDialogs;
@@ -36,7 +41,6 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.dialog.ProgressBarDialog;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.error.RuntimeError;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicUtils;
 

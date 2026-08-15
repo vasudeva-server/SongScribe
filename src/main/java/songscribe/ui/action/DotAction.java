@@ -20,15 +20,14 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.KeyEvent;
 import java.util.EnumSet;
 
-import songscribe.Strings;
 import org.jspecify.annotations.Nullable;
 
-import songscribe.message.mutation.ElementField;
+import songscribe.Strings;
 import songscribe.dom.StaffElement;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
 // Widens: each dot is drawn to the right of the notehead, inside the note's column.

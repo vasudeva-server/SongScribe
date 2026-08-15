@@ -20,8 +20,8 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
+import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -31,16 +31,16 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Attachment;
-import songscribe.engraving.Staff;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
-import songscribe.dom.KeySignature;
 import songscribe.dom.KeyChangeElement;
+import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.engraving.Staff;
 import songscribe.hit.HitRegistry;
 
 /**

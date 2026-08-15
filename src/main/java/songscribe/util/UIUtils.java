@@ -20,37 +20,72 @@
 
 package songscribe.util;
 
-import module java.desktop;
-
-// java.desktop exports both java.awt.event.MouseEvent and org.w3c.dom.events.MouseEvent,
-// so the module import above leaves the simple name ambiguous. A single-type import wins
-// over it and resolves the name for the whole file.
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.GraphicsEnvironment;
+import java.awt.Insets;
+import java.awt.KeyboardFocusManager;
+import java.awt.MouseInfo;
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.awt.Toolkit;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeEvent;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
+import javax.swing.Action;
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import javax.swing.JRootPane;
+import javax.swing.KeyStroke;
+import javax.swing.ListCellRenderer;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.Border;
+import javax.swing.text.JTextComponent;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.extras.FlatInspector;
 import com.formdev.flatlaf.extras.FlatUIDefaultsInspector;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.font.SourceSans3Font;
 import songscribe.ui.AppearanceManager;
-import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-
-import songscribe.font.SourceSans3Font;
-import songscribe.ui.renderer.RenderingUtils;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.renderer.RenderingUtils;
+
+// java.desktop exports both java.awt.event.MouseEvent and org.w3c.dom.events.MouseEvent,
+// so the module import above leaves the simple name ambiguous. A single-type import wins
+// over it and resolves the name for the whole file.
 
 @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
 public final class UIUtils {

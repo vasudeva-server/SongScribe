@@ -20,7 +20,9 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Point;
+import java.awt.Window;
+import java.awt.event.MouseWheelEvent;
 
 import org.jspecify.annotations.Nullable;
 

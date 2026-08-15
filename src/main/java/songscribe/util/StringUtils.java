@@ -20,15 +20,13 @@
 
 package songscribe.util;
 
-import module java.desktop;
-
+import java.awt.FontMetrics;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 
 public final class StringUtils {
 

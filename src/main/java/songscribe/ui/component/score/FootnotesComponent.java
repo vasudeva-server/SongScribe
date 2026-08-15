@@ -20,11 +20,13 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.util.GraphicsState;
 import songscribe.util.GraphicUtils;
+import songscribe.util.GraphicsState;
 
 /**
  * Component that renders footnotes.

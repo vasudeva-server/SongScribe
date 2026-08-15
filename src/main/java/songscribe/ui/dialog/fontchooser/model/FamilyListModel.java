@@ -20,16 +20,15 @@
 
 package songscribe.ui.dialog.fontchooser.model;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
-import songscribe.error.RuntimeError;
+import javax.swing.AbstractListModel;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
 import songscribe.ui.dialog.fontchooser.FontFamilies;
 
 public class FamilyListModel extends AbstractListModel<String> {

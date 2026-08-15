@@ -20,32 +20,34 @@
 
 package songscribe.ui.edit;
 
-import module java.desktop;
-import static songscribe.message.MessageCenter.post;
-
+import java.awt.Point;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementInsertion;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
-import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
-import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.ui.component.score.LineComponent;
 import songscribe.layout.ElementColumnBuilder;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.InsertionSpacingCalculator;
-import songscribe.dom.ScaleContext;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
+import songscribe.ui.OptionDialogs;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
+import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.selection.SelectionCoordinator;
+
+import static songscribe.message.MessageCenter.post;
 
 /**
  * Manages the grace note pairing state machine.

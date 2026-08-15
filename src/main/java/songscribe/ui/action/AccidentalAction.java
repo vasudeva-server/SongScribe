@@ -20,15 +20,16 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.util.EnumSet;
 
 import songscribe.Strings;
+import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.mutation.ElementField;
-import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;

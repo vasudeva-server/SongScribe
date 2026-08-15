@@ -20,11 +20,10 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
-import org.jspecify.annotations.Nullable;
+import java.awt.event.ActionEvent;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Line;

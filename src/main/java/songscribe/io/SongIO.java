@@ -34,20 +34,20 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.Strings;
-import songscribe.message.SongData;
-import songscribe.font.DocumentFonts;
-import songscribe.font.DocumentFontsHolder;
-import songscribe.dom.Song;
-import songscribe.dom.Song.LyricsSource;
+import songscribe.dom.AttributionFormatter;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
+import songscribe.dom.Song.LyricsSource;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
-import songscribe.dom.AttributionFormatter;
+import songscribe.dom.TempoChangeAttachment;
+import songscribe.font.DocumentFonts;
+import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
-import songscribe.dom.ScaleContext;
-import songscribe.dom.StaffElement;
-import songscribe.dom.TempoChangeAttachment;
+import songscribe.message.SongData;
 import songscribe.util.DateUtils;
 
 public final class SongIO {

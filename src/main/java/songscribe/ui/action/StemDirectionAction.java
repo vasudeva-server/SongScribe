@@ -20,8 +20,7 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
-
+import java.awt.event.ActionEvent;
 import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;

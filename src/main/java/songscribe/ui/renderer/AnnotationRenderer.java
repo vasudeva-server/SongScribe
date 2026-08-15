@@ -20,17 +20,16 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
+import java.awt.Graphics2D;
 
-import module java.desktop;
-
-
-import songscribe.dom.StaffElement;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
  * Renders text annotations attached to notes.

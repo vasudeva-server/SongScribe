@@ -20,8 +20,7 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
@@ -33,16 +32,18 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.ui.OptionDialogs;
-import songscribe.ui.Mode;
 import songscribe.layout.ColumnSpan;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
+import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
+
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.

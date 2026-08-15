@@ -20,12 +20,6 @@
 
 package songscribe.io.musicxml;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.io.XmlFixtures.closeTag;
-import static songscribe.io.XmlFixtures.element;
-import static songscribe.io.XmlFixtures.emptyTag;
-import static songscribe.io.XmlFixtures.openTag;
-
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -38,9 +32,9 @@ import org.xml.sax.InputSource;
 
 import songscribe.Constants;
 import songscribe.dom.Line;
-import songscribe.dom.Span;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.Span;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
@@ -48,6 +42,12 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.io.SongFileWriter;
 import songscribe.io.SongLoadResult;
 import songscribe.layout.LineLayoutProvider;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.io.XmlFixtures.closeTag;
+import static songscribe.io.XmlFixtures.element;
+import static songscribe.io.XmlFixtures.emptyTag;
+import static songscribe.io.XmlFixtures.openTag;
 
 /**
  * Shared plumbing for the MusicXML test classes: the write/read cycle, song

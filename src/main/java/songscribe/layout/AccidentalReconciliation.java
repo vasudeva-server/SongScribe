@@ -33,8 +33,8 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
-import songscribe.dom.Span;
 import songscribe.dom.Song;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 

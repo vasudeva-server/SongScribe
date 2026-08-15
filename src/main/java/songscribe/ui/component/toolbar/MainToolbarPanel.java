@@ -20,10 +20,16 @@
 
 package songscribe.ui.component.toolbar;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.FlowLayout;
+import java.awt.Insets;
+import javax.swing.Box;
+import javax.swing.JPanel;
+import javax.swing.JToolBar;
+import javax.swing.UIManager;
 
-import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ModeCycleButton;
+import songscribe.ui.component.StaffAnnotationPopupButton;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 
 /**

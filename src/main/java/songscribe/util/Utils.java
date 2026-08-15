@@ -20,13 +20,13 @@
 
 package songscribe.util;
 
-import module java.desktop;
-
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Calendar;
 import java.util.stream.IntStream;
-
+import javax.swing.KeyStroke;
 
 import com.formdev.flatlaf.util.SystemInfo;
 

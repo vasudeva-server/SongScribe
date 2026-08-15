@@ -20,10 +20,10 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
+import java.awt.Graphics2D;
 
-import songscribe.dom.StaffElement;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.StaffElement;
 
 /**
  * Renders beat change indicators (note = note format).

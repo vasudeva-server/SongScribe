@@ -20,22 +20,25 @@
 
 package songscribe.midi;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.ShortMessage;
+import javax.sound.midi.Track;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Song;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.Tempo;
-import songscribe.dom.Ending;
 import songscribe.ui.playback.MidiMetaMessageTypes;
-
 
 /**
  * Coordinates MIDI sequence building for a song.

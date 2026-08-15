@@ -19,9 +19,12 @@
  */
 package songscribe.ui.dialog.fontchooser.model;
 
-import module java.desktop;
-
+import java.awt.Font;
 import java.util.Objects;
+import javax.swing.UIManager;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.EventListenerList;
 
 import org.jspecify.annotations.Nullable;
 

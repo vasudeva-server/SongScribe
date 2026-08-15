@@ -19,7 +19,17 @@
  */
 package songscribe.ui.dialog.fontchooser;
 
-import module java.desktop;
+import java.awt.BorderLayout;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import javax.swing.BoxLayout;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.UIManager;
+import javax.swing.event.ChangeListener;
+import javax.swing.event.ListSelectionListener;
 
 import com.uber.nullaway.annotations.Initializer;
 

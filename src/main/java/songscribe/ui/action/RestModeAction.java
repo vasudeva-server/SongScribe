@@ -20,13 +20,14 @@
 
 package songscribe.ui.action;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
 import songscribe.dom.StaffElement;
-import songscribe.ui.component.MainFrame;
+import songscribe.message.MessageCenter;
 import songscribe.message.notification.RestModeDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
 

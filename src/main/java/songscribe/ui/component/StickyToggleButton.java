@@ -20,7 +20,10 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import javax.swing.JToggleButton;
 
 import songscribe.ui.action.SelectableUIAction;
 import songscribe.ui.component.toolbar.Toolbar;

@@ -19,11 +19,12 @@
  */
 package songscribe.uiconverter;
 
-import module java.desktop;
+import java.awt.event.ActionEvent;
+import javax.swing.AbstractAction;
 
 import songscribe.Strings;
-import songscribe.util.ExtensionFileFilter;
 import songscribe.ui.dialog.PlatformFileDialog;
+import songscribe.util.ExtensionFileFilter;
 
 public class ChooseDirectoryAction extends AbstractAction {
 

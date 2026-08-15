@@ -20,35 +20,33 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-
 import java.awt.event.MouseEvent;
-
-import org.jspecify.annotations.Nullable;
+import javax.swing.SwingUtilities;
 
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.dom.Song;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
+import songscribe.engraving.Staff;
 import songscribe.layout.ColumnSpan;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.Mode;
-import songscribe.ui.edit.EditModeManager;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
-import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.InsertionPointModeDidChangeNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
-import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
+import songscribe.ui.Mode;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
 
 /**

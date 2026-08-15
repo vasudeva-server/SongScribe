@@ -20,7 +20,8 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import javax.swing.Action;
+import javax.swing.JToggleButton;
 
 import org.jspecify.annotations.Nullable;
 

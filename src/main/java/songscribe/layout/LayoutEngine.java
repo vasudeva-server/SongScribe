@@ -20,8 +20,6 @@
 
 package songscribe.layout;
 
-import module java.desktop;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,21 +32,20 @@ import org.slf4j.LoggerFactory;
 import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
-import songscribe.dom.KeySignature;
-import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.ElementType;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.engraving.Staff;
+import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
+import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn.TieColumns;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 import songscribe.shape.BezierBow;
 import songscribe.util.LogUtils;
-
 
 /**
  * Orchestrates the complete layout pipeline for a staff line.

@@ -19,7 +19,10 @@
  */
 package songscribe.midi;
 
-import module java.desktop;
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.Track;
 
 import songscribe.dom.Key;
 import songscribe.dom.Tempo;

@@ -20,7 +20,11 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.awt.event.KeyEvent;
+import javax.swing.JTextField;
+import javax.swing.text.JTextComponent;
 
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;

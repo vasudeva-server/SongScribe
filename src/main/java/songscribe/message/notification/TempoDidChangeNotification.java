@@ -20,11 +20,10 @@
 
 package songscribe.message.notification;
 
-import songscribe.message.Message;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Duration;
+import songscribe.message.Message;
 
 public class TempoDidChangeNotification extends Message {
 

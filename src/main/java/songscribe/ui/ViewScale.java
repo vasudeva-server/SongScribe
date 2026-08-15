@@ -20,7 +20,7 @@
 
 package songscribe.ui;
 
-import module java.desktop;
+import java.awt.Font;
 
 import songscribe.dom.DocPx;
 import songscribe.dom.ScaleContext;

@@ -20,9 +20,8 @@
 
 package songscribe.message.notification;
 
-
-import songscribe.message.Message;
 import songscribe.dom.ElementType;
+import songscribe.message.Message;
 
 public class ElementTypeWasSelectedNotification extends Message {
 

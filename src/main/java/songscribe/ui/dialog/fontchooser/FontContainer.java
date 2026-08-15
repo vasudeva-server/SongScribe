@@ -20,7 +20,7 @@
 
 package songscribe.ui.dialog.fontchooser;
 
-import module java.desktop;
+import java.awt.Font;
 
 import songscribe.ui.dialog.fontchooser.panes.StyleEntry;
 

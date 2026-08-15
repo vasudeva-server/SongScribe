@@ -22,19 +22,19 @@ package songscribe.layout.stacking;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.LayoutResultBuilder;
-import songscribe.layout.ElementColumn;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.layout.MetronomeContent;
 import songscribe.dom.ScaleContext;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.layout.StaffExtents;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.ElementColumn;
+import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.LayoutResultBuilder;
+import songscribe.layout.MetronomeContent;
+import songscribe.layout.StaffExtents;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;

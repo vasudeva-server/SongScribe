@@ -19,12 +19,13 @@
  */
 package songscribe.ui.menu;
 
-import static songscribe.ui.action.Actions.BARLINE_ACTIONS;
-import static songscribe.ui.action.Actions.FINAL_DOUBLE_BARLINE_ACTION;
-
-import module java.desktop;
+import javax.swing.JMenu;
+import javax.swing.JRadioButtonMenuItem;
 
 import songscribe.Strings;
+
+import static songscribe.ui.action.Actions.BARLINE_ACTIONS;
+import static songscribe.ui.action.Actions.FINAL_DOUBLE_BARLINE_ACTION;
 
 /**
  * The barline palette. The final double barline trails the drawable barlines because it is not

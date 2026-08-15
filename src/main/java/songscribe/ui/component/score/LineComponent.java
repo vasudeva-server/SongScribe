@@ -20,14 +20,27 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
-// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
+import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.*;
+import songscribe.dom.Attribution;
+import songscribe.dom.Line;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.Ss;
+import songscribe.dom.StaffElement;
+import songscribe.engraving.Staff;
+import songscribe.error.RuntimeError;
+import songscribe.hit.HitTarget;
+import songscribe.layout.LayoutEngine;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
@@ -35,23 +48,19 @@ import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.AttachmentEditor;
 import songscribe.ui.dialog.KeyChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
-import songscribe.hit.HitTarget;
-import songscribe.ui.component.ScoreView;
-import songscribe.layout.LayoutEngine;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.LyricRenderMetrics;
-import songscribe.engraving.Staff;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
 import songscribe.util.UIUtils;
-import songscribe.ui.playback.PlaybackController;
-import songscribe.error.RuntimeError;
+
+// Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 
 /**
  * Component that renders a single staff line with its musical content.

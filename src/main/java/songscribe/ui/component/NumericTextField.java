@@ -20,7 +20,8 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import javax.swing.InputVerifier;
+import javax.swing.JComponent;
 
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;

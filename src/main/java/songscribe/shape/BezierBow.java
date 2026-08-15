@@ -20,7 +20,9 @@
 
 package songscribe.shape;
 
-import module java.desktop;
+import java.awt.Shape;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Path2D;
 
 /**
  * LilyPond's {@code bezier-bow.cc} single-curve bow shape: the arc-height/indent math shared by

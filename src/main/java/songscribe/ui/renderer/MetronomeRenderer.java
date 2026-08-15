@@ -20,17 +20,19 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.Graphics2D;
 
-import module java.desktop;
-
+import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.MetronomeContent;
-import songscribe.dom.MetronomeAttachment;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
  * Abstract base renderer for metronome-style markings (tempo and beat change).

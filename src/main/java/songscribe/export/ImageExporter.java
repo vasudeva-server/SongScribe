@@ -19,8 +19,9 @@
  */
 package songscribe.export;
 
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
 
 import songscribe.ui.component.MyBorder;
 import songscribe.ui.component.ScoreView;

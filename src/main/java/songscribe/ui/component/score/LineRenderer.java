@@ -20,54 +20,56 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.geom.RoundRectangle2D;
 
-
-import songscribe.error.RuntimeError;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Beam;
+import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Ss;
+import songscribe.dom.StaffElement;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
+import songscribe.engraving.LineThickness;
+import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
-import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Beam;
-import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.FermataAttachment;
-import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
-import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
 import songscribe.ui.renderer.DynamicMarkingRenderer;
-import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.FermataRenderer;
-import songscribe.ui.renderer.SlideRenderer;
-import songscribe.util.GraphicsState;
+import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.renderer.LyricConnectorRenderer;
 import songscribe.ui.renderer.LyricTextRenderer;
 import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.RenderingUtils;
+import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.renderer.SongTempoMarkRenderer;
 import songscribe.ui.renderer.TempoChangeRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
 import songscribe.ui.renderer.TupletRenderer;
 import songscribe.util.GraphicUtils;
+import songscribe.util.GraphicsState;
 
 /**
  * Handles all rendering for a single staff line.

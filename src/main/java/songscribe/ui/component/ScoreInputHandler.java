@@ -20,18 +20,36 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-
+import java.awt.Container;
+import java.awt.event.ActionEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
+import javax.swing.AbstractAction;
+import javax.swing.Action;
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.DeselectCommand;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleFallOnLastInsertionCommand;
+import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
+import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -42,11 +60,6 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.message.command.DeselectCommand;
-import songscribe.message.command.ToggleBeamWithPreviousCommand;
-import songscribe.message.command.ToggleFallOnLastInsertionCommand;
-import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
-import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.util.UIUtils;
 
 /**

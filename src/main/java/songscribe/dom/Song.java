@@ -25,16 +25,15 @@ import java.util.Objects;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
 
-import org.jspecify.annotations.Nullable;
-
 import net.engio.mbassy.listener.Handler;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.io.SongIO;
 import songscribe.lifecycle.Disposable;
-import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.SongData;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
@@ -50,9 +49,9 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.message.notification.TupletsWereRemovedNotification;

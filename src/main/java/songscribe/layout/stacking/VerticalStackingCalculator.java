@@ -24,22 +24,22 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Attribution;
-import songscribe.dom.LineElement;
-import songscribe.font.DocumentFontsHolder;
-import songscribe.dom.Line;
-import songscribe.dom.SongTempoMark;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.layout.ElementColumn;
+import songscribe.dom.Attribution;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.LayoutResultBuilder;
-import songscribe.layout.StaffExtents;
-import songscribe.engraving.Staff;
+import songscribe.dom.Line;
+import songscribe.dom.LineElement;
+import songscribe.dom.SongTempoMark;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.engraving.Staff;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.ElementColumn;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.StaffExtents;
 
 /**
  * Orchestrates the vertical layout pipeline for a staff line.

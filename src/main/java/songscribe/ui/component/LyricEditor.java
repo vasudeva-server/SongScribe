@@ -20,41 +20,66 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
-
+import java.awt.AWTEvent;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.KeyboardFocusManager;
+import java.awt.Shape;
+import java.awt.Toolkit;
+import java.awt.event.AWTEventListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
+import java.awt.event.InputMethodEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicTextFieldUI;
+import javax.swing.plaf.basic.BasicTextUI;
+import javax.swing.text.AbstractDocument;
 import javax.swing.text.AttributeSet;
+import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
+import javax.swing.text.DocumentFilter;
 import javax.swing.text.Element;
+import javax.swing.text.FieldView;
+import javax.swing.text.PlainDocument;
+import javax.swing.text.View;
 
+import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.Strings;
-import songscribe.error.RuntimeError;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.TextEditingDidChangeNotification;
-import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.LyricRun;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
+import songscribe.error.RuntimeError;
+import songscribe.layout.InsetsSs;
+import songscribe.layout.LyricEditFitCalculator;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.undo.OpNames;
-import songscribe.layout.InsetsSs;
-import songscribe.layout.LyricEditFitCalculator;
 import songscribe.util.LogUtils;
 import songscribe.util.UIUtils;
 

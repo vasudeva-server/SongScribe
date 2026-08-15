@@ -21,9 +21,9 @@
 package songscribe.midi;
 
 import songscribe.dom.ArticulationType;
-import songscribe.dom.Song;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.Song;
 
 /**
  * Pre-computed MIDI velocity map for a song. Velocities are derived

@@ -20,30 +20,30 @@
 
 package songscribe.ui.renderer;
 
-import module java.desktop;
-
+import java.awt.Color;
+import java.awt.Font;
 import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.font.DocumentFontsHolder;
-import songscribe.font.FontKey;
-import songscribe.hit.HitTarget;
-import songscribe.dom.Lyric;
-import songscribe.dom.Song;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.error.RuntimeError;
+import songscribe.font.DocumentFontsHolder;
+import songscribe.font.FontKey;
+import songscribe.hit.HitTarget;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.LyricRenderMetrics;
-import songscribe.dom.ScaleContext;
-import songscribe.error.RuntimeError;
 
 /**
  * Immutable per-line rendering state, built once per {@code LineRenderer.render()} call.

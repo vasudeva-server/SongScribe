@@ -26,14 +26,9 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
-import net.engio.mbassy.listener.Handler;
-
-import songscribe.message.Message;
-import songscribe.message.MessageCenter;
-import songscribe.message.mutation.LineDeletion;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Song;
@@ -41,6 +36,10 @@ import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
 import songscribe.lifecycle.Disposable;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.mutation.LineDeletion;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Mode;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;

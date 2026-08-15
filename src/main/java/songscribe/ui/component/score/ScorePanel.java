@@ -20,7 +20,14 @@
 
 package songscribe.ui.component.score;
 
-import module java.desktop;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridBagLayout;
+import java.awt.Rectangle;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
+import javax.swing.Scrollable;
+import javax.swing.SwingConstants;
 
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;

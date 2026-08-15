@@ -19,15 +19,18 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
-
-import com.formdev.flatlaf.FlatClientProperties;
+import java.awt.Component;
+import java.awt.FlowLayout;
+import javax.swing.BorderFactory;
+import javax.swing.InputVerifier;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 import songscribe.Strings;
 import songscribe.dom.Duration;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Tempo;
-import songscribe.error.RuntimeError;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;

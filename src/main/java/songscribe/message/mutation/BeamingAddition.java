@@ -20,9 +20,9 @@
 
 package songscribe.message.mutation;
 
+import songscribe.dom.Beam;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
-import songscribe.dom.Beam;
 
 /**
  * Mutation recording the addition of a beam span to a line.

@@ -20,9 +20,21 @@
 
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import javax.swing.BorderFactory;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
+import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.FlatClientProperties;
+
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;

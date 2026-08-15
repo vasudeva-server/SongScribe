@@ -23,10 +23,10 @@ package songscribe.ui.action;
 import java.util.EnumSet;
 
 import songscribe.Strings;
-import songscribe.message.mutation.ElementField;
-import songscribe.dom.StaffElement;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.StaffElement;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
 public final class DynamicMarkingAction extends NoteOnlyAction {

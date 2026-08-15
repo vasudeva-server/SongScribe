@@ -22,24 +22,24 @@ package songscribe.layout.stacking;
 
 import java.util.Map;
 
-import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Direction;
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.FermataAttachment;
+import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElement.Direction;
+import songscribe.dom.Trill;
+import songscribe.engraving.Staff;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
-import songscribe.dom.FermataAttachment;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.engraving.Staff;
-import songscribe.dom.Trill;
-
-import org.jspecify.annotations.Nullable;
 
 import static songscribe.layout.stacking.StackingUtils.stackStaccato;
 

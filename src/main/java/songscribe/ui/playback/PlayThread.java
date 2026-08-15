@@ -19,7 +19,8 @@
  */
 package songscribe.ui.playback;
 
-import module java.desktop;
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.ShortMessage;
 
 import org.jspecify.annotations.Nullable;
 

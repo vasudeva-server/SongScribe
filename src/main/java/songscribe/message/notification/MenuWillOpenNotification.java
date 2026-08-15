@@ -20,7 +20,7 @@
 
 package songscribe.message.notification;
 
-import module java.desktop;
+import javax.swing.JComponent;
 
 import songscribe.message.Message;
 

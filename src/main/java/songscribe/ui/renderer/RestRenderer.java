@@ -20,11 +20,7 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.FONT;
-import static songscribe.util.GraphicsState.Property.TRANSFORM;
-
-import module java.desktop;
-
+import java.awt.Graphics2D;
 import java.util.EnumMap;
 
 import org.jspecify.annotations.Nullable;
@@ -32,10 +28,13 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
-import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
+
+import static songscribe.util.GraphicsState.Property.FONT;
+import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
  * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).

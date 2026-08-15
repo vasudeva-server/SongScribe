@@ -19,7 +19,11 @@
  */
 package songscribe.ui.dialog;
 
-import module java.desktop;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 
 import songscribe.Strings;
 import songscribe.ui.component.NumericTextField;

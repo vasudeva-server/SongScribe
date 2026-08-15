@@ -19,7 +19,8 @@
  */
 package songscribe.ui.component;
 
-import module java.desktop;
+import java.awt.event.KeyEvent;
+import javax.swing.JTextField;
 
 import org.jspecify.annotations.Nullable;
 

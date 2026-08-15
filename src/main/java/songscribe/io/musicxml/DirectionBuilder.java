@@ -28,7 +28,6 @@ import org.audiveris.proxymusic.DirectionType;
 import org.audiveris.proxymusic.Empty;
 import org.audiveris.proxymusic.LeftCenterRight;
 import org.audiveris.proxymusic.Metronome;
-import org.audiveris.proxymusic.MetronomeNote;
 import org.audiveris.proxymusic.ObjectFactory;
 import org.audiveris.proxymusic.Wedge;
 import org.audiveris.proxymusic.WedgeType;

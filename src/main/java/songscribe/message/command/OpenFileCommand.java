@@ -20,10 +20,9 @@
 
 package songscribe.message.command;
 
-import songscribe.message.Message;
-
 import java.io.File;
 
+import songscribe.message.Message;
 
 public class OpenFileCommand extends Message {
 

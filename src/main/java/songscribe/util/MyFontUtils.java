@@ -19,8 +19,13 @@
  */
 package songscribe.util;
 
-import module java.desktop;
-
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.GraphicsEnvironment;
+import java.awt.font.TextAttribute;
+import java.awt.geom.AffineTransform;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,12 +34,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.swing.JLabel;
+import javax.swing.UIManager;
 
+import com.formdev.flatlaf.util.FontUtils;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.formdev.flatlaf.util.FontUtils;
 import songscribe.error.RuntimeError;
 import songscribe.font.SourceSans3Font;
 
