@@ -33,9 +33,9 @@ import songscribe.smufl.SMuFLMetadata;
  * The KeySignature is positioned absolutely after the clef and does not contribute
  * to Staff's bounds. It has its own margin for spacing to the first note.
  * <p>
- * Its measurements are {@link Key#signatureWidthSs()}'s — the same run of accidentals the renderer
- * draws, reached by the same call — so the header and a cautionary key change at the end of a line
- * can never disagree about how wide one signature is.
+ * Its measurements are {@link Key#signatureWidthSs()}'s and {@link Key#signatureHeightSs()}'s —
+ * the same run of accidentals the renderer draws, reached by the same calls — so the header and a
+ * cautionary key change at the end of a line can never disagree about how large one signature is.
  */
 public class KeySignature extends LineElement {
 
@@ -45,7 +45,7 @@ public class KeySignature extends LineElement {
     /**
      * Creates a header key signature for the given key.
      *
-     * @param key the key to draw; a key of {@link KeyType#NONE} draws nothing and measures
+     * @param key the key to draw; {@link Key#NO_ACCIDENTALS} draws nothing and measures
      *            zero in both dimensions
      */
     public KeySignature(Key key) {
@@ -72,18 +72,16 @@ public class KeySignature extends LineElement {
     }
 
     /**
-     * Returns the content height in staff-space units — the bbox height of the active
-     * accidental glyph. Kerning and inter-glyph vertical variation are out of scope.
+     * Returns the content height in staff-space units.
      *
-     * @return the height in staff spaces; zero for {@link KeyType#NONE}, which draws nothing
+     * @return {@link Key#signatureHeightSs()}, so the header cannot disagree with a cautionary
+     *         rendering of the same signature about how tall it is, exactly as
+     *         {@link #getContentWidthSs()} keeps the two agreeing on width; zero for
+     *         {@link Key#NO_ACCIDENTALS}, which draws nothing
      */
     @Override
     public double getContentHeightSs() {
-        if (key.keyType() == KeyType.NONE) {
-            return 0;
-        }
-
-        return SMuFLMetadata.requireBBox(key.keyType().glyph()).height();
+        return key.signatureHeightSs();
     }
 
     @Override

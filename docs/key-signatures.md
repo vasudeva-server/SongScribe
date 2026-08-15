@@ -14,9 +14,8 @@ applies to user-facing strings as much as to code:
 
 - **`Key`, `KeyChange…`** — the value, and anything that establishes or edits it.
   `KeyChangeElement` is the mid-line change, `KeyChangeDialog` and
-  `KeyChangeAction` edit a key, `KeyMapping` converts one to and from MusicXML
-  fifths, `KeyDisplay` names one for the user. On screen the notator reads
-  "Key Change", never "Key Signature Change".
+  `KeyChangeAction` edit a key, `KeyDisplay` names one for the user. On screen the
+  notator reads "Key Change", never "Key Signature Change".
 - **`KeySignature…`** — only what is rendered. `KeySignature` is the header's
   positioned layout box; `KeySignatureRenderer` paints it. Nothing else may take
   the name.
@@ -207,13 +206,39 @@ from the two keys itself rather than trusting what a writer claimed.
 ## MIDI
 
 `MidiEventFactory.addKeySignatureEvent` emits a `FF 59` key-signature meta-event
-at tick 0 and at every key change: `sf` is the signed fifths count from
-`KeyMapping.toFifths`, and `mi` (mode) is always the constant for major.
+at tick 0 and at every key change: `sf` is `Key.fifths()`, and `mi` (mode) is
+always the constant for major.
+
+## A key is one signed number
+
+`Key` is an enum of fifteen constants, each identified by its position on the
+circle of fifths: negative for a flat key, positive for a sharp key, zero for
+`NO_ACCIDENTALS`. There is no accidental-type component. The type and the count
+are one value, so no pair has to be held consistent and no key outside the
+fifteen is expressible — an eight-sharp key cannot be written down, rather than
+being rejected at run time.
+
+MusicXML's `<fifths>` and MIDI's `sf` byte are the same encoding, which is why it
+is a domain fact rather than either format's: both writers read `Key.fifths()`
+off the key instead of deriving it, and the MusicXML reader turns one back into a
+key with `Key.ofFifths`.
+
+The constants are named for what they hold — `ONE_FLAT`, `FIVE_FLATS`,
+`THREE_SHARPS` — never for a tonic. Tonic naming is display, and belongs to
+`KeyDisplay` and its `FLAT_TONICS` / `SHARP_TONICS` tables. Prose may still say
+"C major" where it explains what a value means musically; that is explanation,
+not identity. `Key.DEFAULT` is the one alias, because "the key a song starts in"
+is a policy and must not read as "five flats specifically".
+
+The legacy `.mssw` format is the one place a key is still a pair, in its
+`<keytype>` and `<keys>` tags. `songscribe.io.LegacyKeyType` owns those three
+names and the conversion both ways, so the format's vocabulary stays in the
+reader: when the domain owned the names, renaming a constant would have stopped
+old files loading with nothing in the build to catch it.
 
 ## Every key is major, and mode is not modelled
 
-`Key` is a signature — a `KeyType` and an accidental count — with no mode
-component; `KeyType` itself only distinguishes sharps, flats, and none. MusicXML's
+`Key` has no mode component. MusicXML's
 `<key>` element accepts a `<mode>` child, so the writer emits `major` for the
 benefit of software that reads our output, but the reader ignores it on the way
 in: the provenance gate means no minor or modal key can enter in the first place

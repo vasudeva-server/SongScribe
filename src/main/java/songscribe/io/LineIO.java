@@ -33,7 +33,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Key;
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.Song;
@@ -77,7 +76,7 @@ public final class LineIO {
 
         if (key != null) {
             XML.writeValue(pw, XML_KEYS, Integer.toString(key.accidentalCount()));
-            XML.writeValue(pw, XML_KEYTYPE, key.keyType().name());
+            XML.writeValue(pw, XML_KEYTYPE, LegacyKeyType.forKey(key).name());
         }
 
         if (line.getElementSpacingRatio() != 1f) {
@@ -240,7 +239,7 @@ public final class LineIO {
         // The <keys> and <keytype> tags arrive as two separate elements, and neither half is a
         // key on its own, so they are held until </line> and turned into one Key there.
         private int parsedKeyAccidentalCount = 0;
-        private @Nullable KeyType parsedKeyType = null;
+        private @Nullable LegacyKeyType parsedKeyType = null;
 
         public LineReader(Song song) {
             this.song = song;
@@ -252,10 +251,9 @@ public final class LineIO {
          * describe, if it carried any. A line with neither tag establishes no key of its own and
          * inherits the one already in effect.
          *
-         * <p>The two halves are only a key together, so {@link Key} is what judges the pair: a
-         * combination it rejects is a corrupt document rather than something to interpret. Its
-         * range check also covers an out-of-range accidental count — {@code Key} is the sole
-         * authority on the domain, so this method does not duplicate that check.
+         * <p>The two halves are only a key together, so {@link LegacyKeyType#keyFor} is what judges
+         * the pair, for both this reader and the song-level one — including which unrepresentable
+         * combinations mean C major and which are corrupt.
          *
          * <p>The established key always applies from the start of the line: {@code .mssw} has no
          * representation for a mid-line key change, so this reader never produces one.
@@ -275,14 +273,8 @@ public final class LineIO {
                 return;
             }
 
-            var keyType = parsedType != null ? parsedType : KeyType.NONE;
-
-            try {
-                line.setKey(new Key(keyType, accidentalCount));
-            } catch (IllegalArgumentException e) {
-                throw DocumentValidation.corrupt(
-                    LOG, "Corrupt document: invalid key signature: {} with {} accidentals", keyType, accidentalCount);
-            }
+            var keyType = parsedType != null ? parsedType : LegacyKeyType.NONE;
+            line.setKey(keyType.keyFor(LOG, accidentalCount));
         }
 
         private void resetLegacyOffsets() {
@@ -603,13 +595,7 @@ public final class LineIO {
 
                     switch (lastTag) {
                         case XML_KEYS -> parsedKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
-                        case XML_KEYTYPE -> {
-                            try {
-                                parsedKeyType = KeyType.valueOf(str);
-                            } catch (IllegalArgumentException e) {
-                                throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
-                            }
-                        }
+                        case XML_KEYTYPE -> parsedKeyType = LegacyKeyType.parse(LOG, str);
                         case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(DocumentValidation.parseFloatOrThrow(LOG, XML_NOTE_DIST_CHANGE, str));
                         case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
                         case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);

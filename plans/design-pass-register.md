@@ -34,6 +34,27 @@ Two consequences worth stating once:
   removed wholesale (tag `pre-test-reset`, archive worktree
   `../SongScribe-tests-archive`); tests come back only where the design cannot
   carry the promise, proposed before they are written.
+
+  **What stays in `src/test` is the base classes and only what they need.**
+  `UnitTest`, `E2ETest` and `MainFrameMockTest`, plus the four helpers they
+  import — `dom/StaffElementFactory`, `error/RuntimeErrorTestHelper`,
+  `message/MessageCenterTestHelper`, `ui/action/MockEnvHelper` — which cannot
+  move up beside the bases because they reach package-private internals of the
+  packages they sit in. Separately, `io/musicxml/MusicXmlCorpusGenerator` and its
+  two supports (`MusicXmlRoundTripSupport`, `io/XmlFixtures`) stay because they
+  are the `generateCorpus` build tool (`build.gradle.kts:258`,
+  `scripts/generate-corpus.sh`), not tests. Everything else — 13 per-package
+  support classes, and 19 `package-info.java` files left carrying `@NullMarked`
+  for packages with no code — went to the archive. Every remaining package has a
+  `package-info.java`; `error`, `message` and `io/musicxml` had never had one, so
+  NullAway was not enforcing non-null defaults over their helpers until now.
+
+  **Restore by role, never by filename.** The reset in `2ea1c471` deleted every
+  `*Test.java`, and all three base classes are named that way, so it took them
+  along with the 486 real tests and left their dependants behind uncompilable.
+  Note also that `scripts/generate-corpus.sh` verifies through
+  `MusicXmlCorpusLosslessnessTest`, which is archived: the script's generate half
+  works, its verify half does not, until pass 16 rebuilds that test.
 - **Docs are corrected inside the pass that invalidates them**, never in a
   trailing phase. A doc left wrong while the code moves is how it got wrong.
 
@@ -58,7 +79,7 @@ the error this file exists to avoid.
 
 | # | System | Where | Status | Notes |
 |---|---|---|---|---|
-| 0 | **Keys** | `dom`: `Key`, `KeyType`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io/musicxml`, `ui` | 🔄 | Branch `776-key-signature`. **Settles key state wherever it lives, including in `Song` and `Line` — a pass fixes what it reaches, it does not hand its own findings forward.** |
+| 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | 🔄 | Branch `776-key-signature`. **Settles key state wherever it lives, including in `Song` and `Line` — a pass fixes what it reaches, it does not hand its own findings forward.** |
 | 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` | ⏳ | `docs/unit-conversion.md`, `docs/zoom.md`. Leaf; nothing in the model depends on more than these. |
 | 2 | Glyph registry | `smufl` | ⏳ | Leaf. |
 | 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
@@ -98,33 +119,47 @@ Pass 0 — the key system — on branch `776-key-signature`, last commit `2ea1c4
 There is no test suite to run (see *The order, and why*), and a passing compile
 proves integration rather than correctness.
 
-**Next: `Key` becomes a closed enum.** Decided, not started. It is a record whose
-domain is exactly 15 values, enumerated twice — once in the compact
-constructor's two guards and once in `buildAllSignatures()`. As an enum an
-8-sharp key is unwriteable rather than rejected, both guards delete, and
-`allSignatures()` becomes a view over `values()` in declaration order.
-`keyType()` and `accidentalCount()` stay as accessors, so no call site changes
-shape.
+**Done: `Key` is a closed enum, and `KeyType` is gone.** Not merely a record
+turned into an enum — the pass found that `Key`'s identity is *one signed
+number*, its position on the circle of fifths, so the `(KeyType, count)` pair had
+no reason to exist. A two-argument lookup would have deleted the record's guards
+and re-added them in a factory; a one-argument one has no inconsistent pair to
+reject. `KeyType`'s ten consumers were each a two-way branch on the sign.
 
-**The constants are named by accidental count** — decided:
+Constants are named by accidental count, in fifths order —
+`SEVEN_FLATS … ONE_FLAT, NO_ACCIDENTALS, ONE_SHARP … SEVEN_SHARPS` — so
+`ordinal()` tracks the value and the key combo reads in circle-of-fifths order,
+the change one place the user sees. `DEFAULT` survives as the single alias,
+because it states a policy rather than a signature.
 
-```
-NO_ACCIDENTALS
-ONE_FLAT … SEVEN_FLATS
-ONE_SHARP … SEVEN_SHARPS
-```
+What fell out, all of it recorded in `docs/key-signatures.md`:
 
-with `DEFAULT` becoming `FIVE_FLATS`, and the `C_MAJOR` constant added in
-`2ea1c471` renamed to `NO_ACCIDENTALS`.
+- **`KeyMapping` dissolved.** Its stated reason to exist was owning the sign
+  convention in one place; the convention is now `Key.fifths()`. `toFifths`
+  became an accessor call and `toKey` became `Key.ofFifths` plus the reader's own
+  range check. `midi` no longer depends on `io/musicxml`.
+- **`songscribe.io.LegacyKeyType`** now owns the three `.mssw` `<keytype>` names
+  and converts both ways. They were persisted `dom` enum constant names: renaming
+  one would have stopped old files loading, with nothing in the build to catch
+  it.
+- **`Key.altersPitchClass` lost its `keyType.ordinal() - 1` table indexing** and
+  the comment warning that reordering `KeyType` would silently corrupt it.
+- **`Key.signatureHeightSs()`** joins `signatureWidthSs()`, so `KeySignature` no
+  longer reaches for the glyph itself and header and cautionary cannot disagree
+  on height either.
 
-This is the naming rule in `docs/key-signatures.md` applied, not an exception to
-it. The record's own components are `keyType` and `accidentalCount`; there is no
-mode and no tonic in the type, so "five flats" *is* the value's identity, stated
-exactly as the type defines it. A tonic name like `D_FLAT_MAJOR` would put a
-display interpretation on a domain constant, and tonic naming already belongs to
-`KeyDisplay`, which owns the `FLAT_TONICS` / `SHARP_TONICS` tables. Prose may
-still say "C major" where it explains what a value means musically — that is
-explanation, not identity.
+Behaviour deliberately changed, both in the legacy read path:
+
+- **`LineIO` and `SongIO` disagreed about the same corrupt pair** — `(NONE, 3)`
+  and `(FLATS, 0)`. `SongIO` normalized both to C major; `LineIO` refused the
+  load. Now both normalize, which is what the pair always sounded and drew as,
+  and refusing it in a read-only migration path was the wrong half of the
+  disagreement.
+- **`SongIO.endElement10` parsed `<keys>` with a bare `Integer.parseInt`**, so a
+  corrupt v1.0 count threw `NumberFormatException` out of the SAX handler instead
+  of becoming a `ParseError`. It now goes through `parseIntOrThrow` like every
+  other scalar, which cost `getSong()` a `throws SAXException` that `SongLoader`
+  already catches.
 
 **Then, in order, the rest of pass 0.** All of it is key-system work, so none of
 it defers to a later pass — the key system reaches into `Line`, `Song`, `layout`
@@ -170,8 +205,6 @@ the reason for it is still in hand.
 - **→ Pass 30.** `strings.properties` has `dialog.song.settings.year` above
   `dialog.converter.converting`, breaking the within-group alphabetical order the
   strings guide requires.
-- **→ Test rebuild.** `ui/dialog/SongSettingsDialogFixture` survived the reset as
-  infrastructure but all three of its consumers are gone. Kept, not justified.
 
 ## Blockers
 

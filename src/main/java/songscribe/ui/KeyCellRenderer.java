@@ -21,11 +21,10 @@ package songscribe.ui;
 
 import module java.desktop;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 
 import songscribe.dom.Key;
-import songscribe.dom.KeyType;
 import songscribe.error.RuntimeError;
 import songscribe.ui.component.BaseLabel;
 import songscribe.util.GraphicUtils;
@@ -43,26 +42,38 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
         .deriveFont(FONT_SIZE_PT);
 
     // MusescoreIcon font glyph per key.
+    //
+    // Written as escapes, not as the characters themselves: these are Private Use Area
+    // codepoints that render as tofu or nothing outside the MusescoreIcon font, so an editor,
+    // terminal or diff shows a literal here as an invisible or broken glyph. The escape is the
+    // only form that stays readable and greppable everywhere.
     private static final Map<Key, String> GLYPHS;
 
     static {
-        var glyphs = new HashMap<Key, String>();
-        glyphs.put(new Key(KeyType.NONE, 0), "");
+        var glyphs = new EnumMap<Key, String>(Key.class);
+        glyphs.put(Key.NO_ACCIDENTALS, "\uF377");
 
+        // 1..7 flats
         var flatGlyphs = new String[]{
-            "", "", "", "", "", "", ""
+            "\uF37F", "\uF380", "\uF381", "\uF382", "\uF383", "\uF384", "\uF385"
         };
 
-        for (var i = 0; i < Key.MAX_ACCIDENTAL_COUNT; i++) {
-            glyphs.put(new Key(KeyType.FLATS, i + 1), flatGlyphs[i]);
-        }
-
+        // 1..7 sharps
         var sharpGlyphs = new String[]{
-            "", "", "", "", "", "", ""
+            "\uF378", "\uF379", "\uF37A", "\uF37B", "\uF37C", "\uF37D", "\uF37E"
         };
 
-        for (var i = 0; i < Key.MAX_ACCIDENTAL_COUNT; i++) {
-            glyphs.put(new Key(KeyType.SHARPS, i + 1), sharpGlyphs[i]);
+        // Both arrays are indexed by accidental count, so every key but NO_ACCIDENTALS — already
+        // placed above — reads its glyph off the array its sign selects. Iterating the keys rather
+        // than the counts means a key with no glyph is caught here, at class load, instead of as a
+        // null cell during a render.
+        for (var key : Key.allSignatures()) {
+            if (key == Key.NO_ACCIDENTALS) {
+                continue;
+            }
+
+            var accidentalGlyphs = key.isFlatKey() ? flatGlyphs : sharpGlyphs;
+            glyphs.put(key, accidentalGlyphs[key.accidentalCount() - 1]);
         }
 
         GLYPHS = Map.copyOf(glyphs);
@@ -101,7 +112,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
         private static final Map<Key, CellCache> CELL_CACHE;
 
         static {
-            var cache = new HashMap<Key, CellCache>();
+            var cache = new EnumMap<Key, CellCache>(Key.class);
 
             var maxGlyphWidth = 0.0;
             var maxGlyphHeight = 0.0;

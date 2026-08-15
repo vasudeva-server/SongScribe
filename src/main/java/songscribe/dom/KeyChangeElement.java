@@ -161,7 +161,7 @@ public class KeyChangeElement extends StructuralElement {
         var line = getParentLine();
 
         if (line == null) {
-            return Key.C_MAJOR;
+            return Key.NO_ACCIDENTALS;
         }
 
         return line.keyAt(line.getElementIndex(this) - 1);

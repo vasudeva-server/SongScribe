@@ -459,12 +459,12 @@ final class MeasureBuilder {
                 // <cancel>'s value is the signed fifths of the key being cancelled, not of the
                 // new one.
                 var cancel = factory.createCancel();
-                cancel.setValue(BigInteger.valueOf(KeyMapping.toFifths(previousKey)));
+                cancel.setValue(BigInteger.valueOf(previousKey.fifths()));
                 key.setCancel(cancel);
             }
         }
 
-        key.setFifths(BigInteger.valueOf(KeyMapping.toFifths(newKey)));
+        key.setFifths(BigInteger.valueOf(newKey.fifths()));
 
         // Written on every <key> and never read back: nothing in the model stores a mode, and
         // only SongScribe-authored files get past the provenance gate, so an incoming <mode> is

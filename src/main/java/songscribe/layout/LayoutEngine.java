@@ -37,7 +37,6 @@ import songscribe.dom.Clef;
 import songscribe.dom.KeySignature;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeyType;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;

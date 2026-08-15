@@ -22,7 +22,6 @@ package songscribe.undo;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;

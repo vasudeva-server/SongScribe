@@ -132,7 +132,7 @@ public final class HorizontalSpacingCalculator {
      * {@link StaffHeaderMetrics#CLEF_FIRST_NOTE_SPAN_SS} on the span from the clef's <em>left</em>
      * edge, which the clef alone does not fill.
      *
-     * @param key the key the header draws; {@link KeyType#NONE} draws no key signature
+     * @param key the key the header draws; {@link Key#NO_ACCIDENTALS} draws no key signature
      * @return X position in staff-space units where the first note should be placed
      */
     public static double calculateFirstElementXSs(Key key) {
@@ -165,7 +165,7 @@ public final class HorizontalSpacingCalculator {
      */
     public static double calculateHeaderRightEdgeSs(@Nullable Line line) {
         if (line == null) {
-            return calculateHeaderRightEdgeSs(new Key(KeyType.NONE, 0));
+            return calculateHeaderRightEdgeSs(Key.NO_ACCIDENTALS);
         }
 
         return calculateHeaderRightEdgeSs(line.getRunningKey());
@@ -175,7 +175,7 @@ public final class HorizontalSpacingCalculator {
      * Returns the X position of the right edge of the staff header
      * (clef + optional key signature), in staff-space units.
      *
-     * @param key the key the header draws; {@link KeyType#NONE} draws no key signature, so
+     * @param key the key the header draws; {@link Key#NO_ACCIDENTALS} draws no key signature, so
      *            the header ends at the clef's right edge
      * @return X position in staff-space units of the header's right edge
      */

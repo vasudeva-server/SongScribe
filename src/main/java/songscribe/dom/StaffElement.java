@@ -687,9 +687,7 @@ public class StaffElement extends LineElement implements Cloneable {
             return null;
         }
 
-        return (key.keyType() == KeyType.FLATS)
-            ? Accidental.FLAT
-            : Accidental.SHARP;
+        return key.isFlatKey() ? Accidental.FLAT : Accidental.SHARP;
     }
 
     /*

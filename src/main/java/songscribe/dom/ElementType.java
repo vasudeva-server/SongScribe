@@ -220,7 +220,7 @@ public enum ElementType {
      */
     private StaffElement createDefaultInstance() {
         if (this == KEY_CHANGE) {
-            return new KeyChangeElement(new Key(KeyType.NONE, 0));
+            return new KeyChangeElement(Key.NO_ACCIDENTALS);
         }
 
         if (isRest() || isNonDuration()) {

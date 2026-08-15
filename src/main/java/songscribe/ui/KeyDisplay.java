@@ -25,7 +25,6 @@ import java.util.Map;
 
 import songscribe.Strings;
 import songscribe.dom.Key;
-import songscribe.dom.KeyType;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.util.MyFontUtils;
@@ -38,13 +37,15 @@ public final class KeyDisplay {
     private static final char FLAT_GLYPH = SMuFLGlyph.CSYM_ACCIDENTAL_FLAT.codepoint();
     private static final char SHARP_GLYPH = SMuFLGlyph.CSYM_ACCIDENTAL_SHARP.codepoint();
 
+    // Both are indexed by accidental count. Index 0 is C in either, so NO_ACCIDENTALS — which is
+    // neither flat nor sharp — is named correctly whichever table a caller reaches for.
     static final String[] FLAT_TONICS = {
         "C", "F", "B" + FLAT_GLYPH, "E" + FLAT_GLYPH,
         "A" + FLAT_GLYPH, "D" + FLAT_GLYPH, "G" + FLAT_GLYPH, "C" + FLAT_GLYPH,
     };
 
     static final String[] SHARP_TONICS = {
-        "", "G", "D", "A", "E", "B", "F" + SHARP_GLYPH, "C" + SHARP_GLYPH,
+        "C", "G", "D", "A", "E", "B", "F" + SHARP_GLYPH, "C" + SHARP_GLYPH,
     };
 
     static final int MIN_FLAT_COUNT_WITH_ACCIDENTAL = 2;
@@ -61,10 +62,8 @@ public final class KeyDisplay {
      *         music font and the rest in the UI label font
      */
     public static AttributedString getDisplayName(Key key) {
-        var keyType = key.keyType();
-        var count = key.accidentalCount();
-        var tonic = tonicFor(keyType, count);
-        var suffix = suffixFor(keyType, count);
+        var tonic = tonicFor(key);
+        var suffix = suffixFor(key);
         var full = tonic + suffix;
         var attributed = new AttributedString(full);
 
@@ -75,7 +74,7 @@ public final class KeyDisplay {
         var labelFont = MyFontUtils.getUIFont("Label.font");
         attributed.addAttribute(FONT, labelFont);
 
-        if (tonicHasAccidental(keyType, count)) {
+        if (tonicHasAccidental(key)) {
             var glyphIndex = tonic.length() - 1;
             var glyphFont = RenderingUtils.getMusicFont().deriveFont(labelFont.getSize2D());
             var tracking = LETTER_GLYPH_GAP_PX / labelFont.getSize2D();
@@ -87,26 +86,29 @@ public final class KeyDisplay {
         return attributed;
     }
 
-    private static String tonicFor(KeyType keyType, int count) {
-        return keyType == KeyType.SHARPS ? SHARP_TONICS[count] : FLAT_TONICS[count];
+    private static String tonicFor(Key key) {
+        var tonics = key.isFlatKey() ? FLAT_TONICS : SHARP_TONICS;
+        return tonics[key.accidentalCount()];
     }
 
-    private static String suffixFor(KeyType keyType, int count) {
-        if (keyType == KeyType.NONE || count == 0) {
+    private static String suffixFor(Key key) {
+        if (key == Key.NO_ACCIDENTALS) {
             return "";
         }
 
-        var template = keyType == KeyType.FLATS
+        var template = key.isFlatKey()
             ? Strings.MUSIC_KEY_DISPLAY_FLATS
             : Strings.MUSIC_KEY_DISPLAY_SHARPS;
-        return ' ' + Strings.get(template, count);
+        return ' ' + Strings.get(template, key.accidentalCount());
     }
 
-    private static boolean tonicHasAccidental(KeyType keyType, int count) {
-        if (keyType == KeyType.FLATS) {
+    private static boolean tonicHasAccidental(Key key) {
+        var count = key.accidentalCount();
+
+        if (key.isFlatKey()) {
             return count >= MIN_FLAT_COUNT_WITH_ACCIDENTAL;
         }
 
-        return keyType == KeyType.SHARPS && count >= MIN_SHARP_COUNT_WITH_ACCIDENTAL;
+        return count >= MIN_SHARP_COUNT_WITH_ACCIDENTAL;
     }
 }

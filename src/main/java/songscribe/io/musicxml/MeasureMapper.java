@@ -51,6 +51,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -380,7 +381,18 @@ final class MeasureMapper {
             return;
         }
 
-        var key = KeyMapping.toKey(fifths);
+        // Converted, not clamped: clamping would load a document as a song silently in the wrong
+        // key, and the count reaches Key.altersPitchClass, which is indexed per note during pitch
+        // resolution. Key owns the range; this turns its refusal into a corrupt-document error.
+        Key key;
+
+        try {
+            key = Key.ofFifths(fifths);
+        } catch (IllegalArgumentException e) {
+            throw DocumentValidation.corrupt(
+                LOG, "Corrupt document: <fifths> out of range: {}, maximum magnitude {}",
+                fifths, Key.MAX_ACCIDENTAL_COUNT);
+        }
 
         if (measureIndex == lineStartMeasureIndex) {
             line.setKey(key);

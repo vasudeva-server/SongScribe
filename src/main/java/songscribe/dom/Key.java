@@ -25,115 +25,151 @@ import java.util.List;
 
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
- * A key signature: a {@link KeyType} and how many accidentals it carries.
+ * A key signature, identified by its position on the circle of fifths: negative for a flat key,
+ * positive for a sharp key, zero for no accidentals.
  *
- * <p>The domain is exactly {@code (NONE, 0)}, {@code (FLATS, 1..}
- * {@value #MAX_ACCIDENTAL_COUNT}{@code )}, and {@code (SHARPS, 1..}
- * {@value #MAX_ACCIDENTAL_COUNT}{@code )} — see {@link #allSignatures()}.
- * {@code keyType} is {@link KeyType#NONE} if and only if {@code accidentalCount}
- * is 0; {@code (NONE, 0)} is C major, a real key rather than an "unset" marker,
- * and {@code keyType} is never null.
+ * <p>The signed count <em>is</em> the key. It carries the accidental type and how many there are
+ * in one value, so there is no pair to hold consistent and no combination outside the fifteen
+ * declared here — an eight-sharp key is unwriteable rather than rejected at run time. The
+ * constants run in fifths order, so {@link #values()} is the order a key list shows the user and
+ * {@link #ordinal()} tracks {@link #fifths()}.
  *
- * <p>There is no mode. Every key this program represents is major: MusicXML's
- * {@code <key>} carries an optional {@code <mode>} child, and the writer emits
- * {@code major} for it, but nothing in this record stores one, because this
- * program reads only MusicXML it wrote itself (see "Only SongScribe documents
- * are read" in {@code docs/musicxml-object-model.md}), so no minor or modal key
- * can ever enter the model.
+ * <p>Two independent formats already speak this encoding: MusicXML's {@code <fifths>} and MIDI's
+ * {@code FF 59} {@code sf} byte. It is the circle-of-fifths position, a fact about keys rather
+ * than about either file format, which is why it lives here and both writers read it off a key
+ * instead of deriving it.
  *
- * @param keyType         the kind of accidental this key carries; never null
- * @param accidentalCount the number of accidentals, {@code 0..}
- *                        {@value #MAX_ACCIDENTAL_COUNT}
+ * <p>There is no mode. Every key this program represents is major: MusicXML's {@code <key>}
+ * carries an optional {@code <mode>} child, and the writer emits {@code major} for it, but nothing
+ * here stores one, because this program reads only MusicXML it wrote itself (see "Only SongScribe
+ * documents are read" in {@code docs/musicxml-object-model.md}), so no minor or modal key can ever
+ * enter the model.
  */
-public record Key(KeyType keyType, int accidentalCount) {
+public enum Key {
+    SEVEN_FLATS(-7),
+    SIX_FLATS(-6),
+    FIVE_FLATS(-5),
+    FOUR_FLATS(-4),
+    THREE_FLATS(-3),
+    TWO_FLATS(-2),
+    ONE_FLAT(-1),
+
+    /**
+     * C major. A real key, not an "unset" marker, and the key a signature is understood to be
+     * drawn <em>from</em> when nothing states what precedes it.
+     */
+    NO_ACCIDENTALS(0),
+
+    ONE_SHARP(1),
+    TWO_SHARPS(2),
+    THREE_SHARPS(3),
+    FOUR_SHARPS(4),
+    FIVE_SHARPS(5),
+    SIX_SHARPS(6),
+    SEVEN_SHARPS(7),
+    ;
 
     /** Maximum number of accidentals in any standard key signature. */
     public static final int MAX_ACCIDENTAL_COUNT = 7;
 
     /**
-     * The key a new song's line 0 starts in: 5 flats.
+     * The key a new song's line 0 starts in, and the key assumed for a document that names none.
+     *
+     * <p>Named separately from the value it holds because it states a policy rather than a
+     * signature: a call site that means "whatever a song starts in" must not read as one that
+     * means five flats specifically.
      */
-    public static final Key DEFAULT = new Key(KeyType.FLATS, 5);
-
-    /**
-     * C major — no accidentals. A real key, not an "unset" marker, and the key a signature is
-     * understood to be drawn <em>from</em> when nothing states what precedes it.
-     */
-    public static final Key C_MAJOR = new Key(KeyType.NONE, 0);
+    public static final Key DEFAULT = FIVE_FLATS;
 
     // FLATS order: B E A D G C F; SHARPS order: F C G D A E B.
-    // Indexed as [keyType.ordinal() - 1][i]: valid only because KeyType.NONE
-    // is ordinal 0, so FLATS (1) and SHARPS (2) land at rows 0 and 1. Reordering
-    // KeyType silently corrupts this table.
-    private static final int[][] FLAT_SHARP_ORDINAL = {
-        {0, 3, 6, 2, 5, 1, 4},
-        {4, 1, 5, 2, 6, 3, 0},
-    };
+    private static final int[] FLAT_PITCH_INDICES = {0, 3, 6, 2, 5, 1, 4};
+    private static final int[] SHARP_PITCH_INDICES = {4, 1, 5, 2, 6, 3, 0};
 
     // Staff positions for accidentals, relative to the middle line (0 = B4), in accidental
     // order. Flats: B E A D G C F. Sharps: F C G D A E B.
     private static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
     private static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 
-    /**
-     * @param keyType         the kind of accidental this key carries; never null
-     * @param accidentalCount the number of accidentals, {@code 0..}
-     *                        {@value #MAX_ACCIDENTAL_COUNT}
-     * @throws IllegalArgumentException if {@code keyType == KeyType.NONE} and
-     *                                  {@code accidentalCount != 0}, if
-     *                                  {@code keyType != KeyType.NONE} and
-     *                                  {@code accidentalCount == 0}, or if
-     *                                  {@code accidentalCount} is outside
-     *                                  {@code 0..}{@value #MAX_ACCIDENTAL_COUNT}
-     */
-    public Key {
-        if (accidentalCount < 0 || accidentalCount > MAX_ACCIDENTAL_COUNT) {
-            throw new IllegalArgumentException(
-                "accidentalCount must be 0.." + MAX_ACCIDENTAL_COUNT + ", got " + accidentalCount
-            );
-        }
+    private static final List<Key> ALL_SIGNATURES = List.of(values());
 
-        if ((keyType == KeyType.NONE) != (accidentalCount == 0)) {
-            throw new IllegalArgumentException(
-                "keyType == NONE iff accidentalCount == 0, got " + keyType + " with count " + accidentalCount
-            );
-        }
+    private final int fifths;
+    private final int accidentalCount;
+
+    Key(int fifths) {
+        this.fifths = fifths;
+        accidentalCount = Math.abs(fifths);
     }
 
-    private static final List<Key> ALL_SIGNATURES = buildAllSignatures();
+    /**
+     * Returns the key at the given position on the circle of fifths.
+     *
+     * <p>The range is this type's to state, so it is enforced here rather than at each reader
+     * that decodes a document. A caller reading untrusted input catches and converts, which is
+     * what a document boundary is for: see {@code MeasureMapper.applyFifths} for MusicXML's
+     * {@code <fifths>} and {@code LegacyKeyType.keyFor} for {@code .mssw}'s tag pair.
+     *
+     * @param fifths the position: flats negative, sharps positive, zero for no accidentals, with
+     *               a magnitude of at most {@value #MAX_ACCIDENTAL_COUNT}
+     * @return the key at that position; never null
+     * @throws IllegalArgumentException if {@code |fifths|} exceeds
+     *                                  {@value #MAX_ACCIDENTAL_COUNT}, which no key signature
+     *                                  this program can represent ever does
+     */
+    public static Key ofFifths(int fifths) {
+        if (Math.abs(fifths) > MAX_ACCIDENTAL_COUNT) {
+            throw new IllegalArgumentException(
+                "fifths must be -" + MAX_ACCIDENTAL_COUNT + ".." + MAX_ACCIDENTAL_COUNT
+                    + ", got " + fifths
+            );
+        }
+
+        return ALL_SIGNATURES.get(fifths + MAX_ACCIDENTAL_COUNT);
+    }
 
     /**
-     * Returns every valid key signature, exactly once.
+     * Returns every key signature, exactly once, in fifths order.
      *
-     * <p>The same immutable list is returned on every call, so a caller that holds
-     * it — a combo model or a cell renderer's entry list — pays for it once and may
-     * keep the reference rather than copying it. Attempting to modify it throws
-     * {@link UnsupportedOperationException}.
+     * <p>The same immutable list is returned on every call, so a caller that holds it — a combo
+     * model or a cell renderer's entry list — pays for it once and may keep the reference rather
+     * than copying it. Preferred over {@link #values()}, which allocates a fresh array per call.
      *
-     * @return every valid {@link Key}, in a stable order: {@code (NONE, 0)} first,
-     *         then {@code FLATS} with 1..{@value #MAX_ACCIDENTAL_COUNT}
-     *         accidentals, then {@code SHARPS} with 1..
-     *         {@value #MAX_ACCIDENTAL_COUNT} accidentals
+     * @return every {@link Key}, from {@link #SEVEN_FLATS} to {@link #SEVEN_SHARPS}; immutable
      */
     public static List<Key> allSignatures() {
         return ALL_SIGNATURES;
     }
 
-    private static List<Key> buildAllSignatures() {
-        var keys = new ArrayList<Key>(2 * MAX_ACCIDENTAL_COUNT + 1);
-        keys.add(new Key(KeyType.NONE, 0));
+    /**
+     * Returns this key's position on the circle of fifths.
+     *
+     * @return the signed count: negative for a flat key, positive for a sharp key, zero for
+     *         {@link #NO_ACCIDENTALS}, with a magnitude of at most
+     *         {@value #MAX_ACCIDENTAL_COUNT}
+     */
+    public int fifths() {
+        return fifths;
+    }
 
-        for (var count = 1; count <= MAX_ACCIDENTAL_COUNT; count++) {
-            keys.add(new Key(KeyType.FLATS, count));
-        }
+    /**
+     * Returns how many accidentals this key's signature draws.
+     *
+     * @return {@link #fifths()}'s magnitude: {@code 0..}{@value #MAX_ACCIDENTAL_COUNT}
+     */
+    public int accidentalCount() {
+        return accidentalCount;
+    }
 
-        for (var count = 1; count <= MAX_ACCIDENTAL_COUNT; count++) {
-            keys.add(new Key(KeyType.SHARPS, count));
-        }
-
-        return List.copyOf(keys);
+    /**
+     * Returns whether this key's accidentals are flats.
+     *
+     * @return {@code true} for a flat key; {@code false} for a sharp key and for
+     *         {@link #NO_ACCIDENTALS}, which draws neither
+     */
+    public boolean isFlatKey() {
+        return fifths < 0;
     }
 
     /**
@@ -142,17 +178,14 @@ public record Key(KeyType keyType, int accidentalCount) {
      * @param pitchIndex the pitch class: 0 for B, 1 for C, 2 for D, 3 for E,
      *                   4 for F, 5 for G, 6 for A
      * @return {@code true} when this key's accidentals include {@code pitchIndex};
-     *         always {@code false} for {@code (NONE, 0)}
+     *         always {@code false} for {@link #NO_ACCIDENTALS}
      */
     public boolean altersPitchClass(int pitchIndex) {
-        if (keyType == KeyType.NONE) {
-            return false;
-        }
-
-        var ordinals = FLAT_SHARP_ORDINAL[keyType.ordinal() - 1];
+        // NO_ACCIDENTALS needs no guard: its count is zero, so this loop never runs.
+        var pitchIndices = isFlatKey() ? FLAT_PITCH_INDICES : SHARP_PITCH_INDICES;
 
         for (var i = 0; i < accidentalCount; i++) {
-            if (ordinals[i] == pitchIndex) {
+            if (pitchIndices[i] == pitchIndex) {
                 return true;
             }
         }
@@ -183,7 +216,7 @@ public record Key(KeyType keyType, int accidentalCount) {
      * <ul>
      *   <li><b>Same type, any change of count</b> — no naturals; this signature alone, which is
      *       understood to supersede the previous one.</li>
-     *   <li><b>Different type</b>, including to or from {@link KeyType#NONE} — cancellation
+     *   <li><b>Different type</b>, including to or from {@link #NO_ACCIDENTALS} — cancellation
      *       naturals for the <em>entire</em> previous signature, then this signature.</li>
      * </ul>
      *
@@ -201,22 +234,24 @@ public record Key(KeyType keyType, int accidentalCount) {
      * the list opens with a natural.
      *
      * @param sourceKey the key in effect before the change
-     * @return the accidentals to draw, in drawing order; empty when {@code sourceKey} equals this
-     *         key, since a key that does not change draws nothing. The returned list is immutable.
+     * @return the accidentals to draw, in drawing order; empty when {@code sourceKey} is this key,
+     *         since a key that does not change draws nothing. The returned list is immutable.
      */
     public List<DrawnAccidental> accidentalsFrom(Key sourceKey) {
-        if (equals(sourceKey)) {
+        if (sourceKey == this) {
             return List.of();
         }
 
         var accidentals = new ArrayList<DrawnAccidental>();
 
-        if (sourceKey.keyType != keyType && sourceKey.keyType != KeyType.NONE) {
+        // A type change is a change of sign. NO_ACCIDENTALS has nothing to cancel, so it is only
+        // ever the target of a cancellation, never its source.
+        if (sourceKey != NO_ACCIDENTALS && Integer.signum(sourceKey.fifths) != Integer.signum(fifths)) {
             accidentals.addAll(groupOf(sourceKey, SMuFLGlyph.ACCIDENTAL_NATURAL, accidentals.size()));
         }
 
-        if (keyType != KeyType.NONE) {
-            accidentals.addAll(groupOf(this, keyType.glyph(), accidentals.size()));
+        if (this != NO_ACCIDENTALS) {
+            accidentals.addAll(groupOf(this, accidentalGlyph(), accidentals.size()));
         }
 
         return withAdvances(accidentals);
@@ -224,13 +259,14 @@ public record Key(KeyType keyType, int accidentalCount) {
 
     /**
      * Returns the accidentals this key draws for itself, with no cancellation — what a staff
-     * header shows. Equivalent to {@link #accidentalsFrom} with {@link #C_MAJOR} as the source.
+     * header shows. Equivalent to {@link #accidentalsFrom} with {@link #NO_ACCIDENTALS} as the
+     * source.
      *
      * @return its accidentals in fifths order, each with a zero leading gap; empty for
-     *         {@link KeyType#NONE}. The returned list is immutable.
+     *         {@link #NO_ACCIDENTALS}. The returned list is immutable.
      */
     public List<DrawnAccidental> signatureAccidentals() {
-        return accidentalsFrom(C_MAJOR);
+        return accidentalsFrom(NO_ACCIDENTALS);
     }
 
     /**
@@ -239,7 +275,7 @@ public record Key(KeyType keyType, int accidentalCount) {
      * {@link StaffHeaderMetrics#CAUTIONARY_RIGHT_MARGIN_SS}, which is the caller's to add.
      *
      * @param sourceKey the key in effect before the change
-     * @return the laid-out width in staff spaces; zero when {@code sourceKey} equals this key, and
+     * @return the laid-out width in staff spaces; zero when {@code sourceKey} is this key, and
      *         never negative
      */
     public double widthSsFrom(Key sourceKey) {
@@ -255,14 +291,42 @@ public record Key(KeyType keyType, int accidentalCount) {
     /**
      * Returns how wide this key's own signature is — what a staff header reserves for it.
      *
-     * <p>The answer is {@link #widthSsFrom}'s for a change out of {@link #C_MAJOR}, so a signature
-     * in the header and the same signature drawn as a cautionary at the end of the previous line
-     * cannot drift apart in width.
+     * <p>The answer is {@link #widthSsFrom}'s for a change out of {@link #NO_ACCIDENTALS}, so a
+     * signature in the header and the same signature drawn as a cautionary at the end of the
+     * previous line cannot drift apart in width.
      *
-     * @return the width in staff spaces; zero for {@link KeyType#NONE}, and never negative
+     * @return the width in staff spaces; zero for {@link #NO_ACCIDENTALS}, and never negative
      */
     public double signatureWidthSs() {
-        return widthSsFrom(C_MAJOR);
+        return widthSsFrom(NO_ACCIDENTALS);
+    }
+
+    /**
+     * Returns how tall this key's own signature is — the ink height of the accidental it draws.
+     *
+     * <p>Kerning and inter-glyph vertical variation are out of scope: every accidental in a
+     * signature is the same glyph, so one glyph's height answers for the run. It is here rather
+     * than on the header element for the reason {@link #signatureWidthSs()} is, so that a
+     * signature drawn anywhere measures the same.
+     *
+     * @return the height in staff spaces; zero for {@link #NO_ACCIDENTALS}, which draws nothing
+     */
+    public double signatureHeightSs() {
+        if (this == NO_ACCIDENTALS) {
+            return 0;
+        }
+
+        return SMuFLMetadata.requireBBox(accidentalGlyph()).height();
+    }
+
+    /**
+     * Returns the glyph this key's signature is drawn with.
+     *
+     * <p>Private and undefined for {@link #NO_ACCIDENTALS}, which draws no accidental; every
+     * caller here has already excluded it.
+     */
+    private SMuFLGlyph accidentalGlyph() {
+        return isFlatKey() ? SMuFLGlyph.ACCIDENTAL_FLAT : SMuFLGlyph.ACCIDENTAL_SHARP;
     }
 
     /**
@@ -277,7 +341,7 @@ public record Key(KeyType keyType, int accidentalCount) {
      * advance depends on the accidental after it, which the following group has not appended yet.
      */
     private static List<DrawnAccidental> groupOf(Key key, SMuFLGlyph glyph, int precedingCount) {
-        var staffPositions = key.keyType == KeyType.FLATS ? FLAT_STAFF_POSITIONS : SHARP_STAFF_POSITIONS;
+        var staffPositions = key.isFlatKey() ? FLAT_STAFF_POSITIONS : SHARP_STAFF_POSITIONS;
         var groupGapSs = precedingCount == 0 ? 0 : StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS;
         var group = new ArrayList<DrawnAccidental>(key.accidentalCount);
 

@@ -40,7 +40,6 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.Key;
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.dom.AttributionFormatter;
@@ -293,8 +292,13 @@ public final class SongIO {
         private String invalidLyricsDate = null;
         // The song-level key an old file carried, held as its two tags until they can be
         // judged together. Only line 0 consumes it — see applyDocumentKeyToFirstLine.
+        //
+        // Each tag overwrites its own half, so a file carrying only one of them keeps the default
+        // for the other: <keys>3</keys> with no <keytype> has always meant three flats. The halves
+        // therefore default separately, both derived from the one default key so they cannot
+        // drift apart from it.
         private int documentKeyAccidentalCount = Key.DEFAULT.accidentalCount();
-        private KeyType documentKeyType = Key.DEFAULT.keyType();
+        private LegacyKeyType documentKeyType = LegacyKeyType.forKey(Key.DEFAULT);
         private double attributionUserYOffsetSs = 0;
         private double rowHeightAdjustmentSs = 0;
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
@@ -305,20 +309,16 @@ public final class SongIO {
         /**
          * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
          *
-         * <p>The two tags are an unconstrained pair, so combinations no key signature can have are
-         * representable in a {@code .mssw} file and do occur: a named accidental type with a count
-         * of 0, which alters no pitch and draws no accidental, and — from a corrupt file — a type
-         * of {@link KeyType#NONE} with a count. Both mean C major, which is what the pair always
-         * sounded and drew as, so both normalize to it here rather than failing the load.
+         * <p>{@link LegacyKeyType#keyFor} judges the pair, for this reader and the per-line one
+         * alike — including which unrepresentable combinations mean C major and which are corrupt.
+         * Before it existed the two readers disagreed, this one normalizing a pair that
+         * {@code LineIO} refused to load.
          *
-         * @return the document-level key, normalized to a valid key signature
+         * @return the document-level key
+         * @throws SAXException if the pair is not a key signature at all
          */
-        private Key documentKey() {
-            if (documentKeyType == KeyType.NONE || documentKeyAccidentalCount == 0) {
-                return new Key(KeyType.NONE, 0);
-            }
-
-            return new Key(documentKeyType, documentKeyAccidentalCount);
+        private Key documentKey() throws SAXException {
+            return documentKeyType.keyFor(LOG, documentKeyAccidentalCount);
         }
 
         /**
@@ -331,8 +331,9 @@ public final class SongIO {
          * later keyless line genuinely inherits.
          *
          * @param lines the parsed lines, in document order
+         * @throws SAXException if the document-level key tags are not a key signature
          */
-        private void applyDocumentKeyToFirstLine(List<Line> lines) {
+        private void applyDocumentKeyToFirstLine(List<Line> lines) throws SAXException {
             if (lines.isEmpty()) {
                 return;
             }
@@ -592,9 +593,8 @@ public final class SongIO {
 
                     switch (lastTag) {
                         case XML_KEYS -> documentKeyAccidentalCount =
-                            Integer.parseInt(str);
-                        case XML_KEYTYPE -> documentKeyType =
-                            KeyType.valueOf(str);
+                            DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
+                        case XML_KEYTYPE -> documentKeyType = LegacyKeyType.parse(LOG, str);
                         case XML_NUMBER -> number = str;
                         case XML_TITLE -> title =
                             str.isEmpty() ? "Untitled" : str;
@@ -660,13 +660,7 @@ public final class SongIO {
                     switch (lastTag) {
                         case XML_KEYS ->
                             documentKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
-                        case XML_KEYTYPE -> {
-                            try {
-                                documentKeyType = KeyType.valueOf(str);
-                            } catch (IllegalArgumentException e) {
-                                throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown key type: '{}'", str);
-                            }
-                        }
+                        case XML_KEYTYPE -> documentKeyType = LegacyKeyType.parse(LOG, str);
                         case XML_NUMBER -> number = str;
                         case XML_TITLE -> title =
                             str.isEmpty() ? "Untitled" : str;
@@ -779,7 +773,7 @@ public final class SongIO {
                 || (lineReader != null && lineReader.sawLegacyAccidental());
         }
 
-        public Song getSong() {
+        public Song getSong() throws SAXException {
             // For legacy files that predate the discrete attribution tags, derive
             // composer/lyricist (and, for v1.0 only, date/place) from the blob.
             if (isLegacyAttributionFile()) {

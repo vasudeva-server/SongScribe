@@ -23,7 +23,6 @@ import module java.desktop;
 
 import songscribe.dom.Key;
 import songscribe.dom.Tempo;
-import songscribe.io.musicxml.KeyMapping;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 /**
@@ -87,7 +86,7 @@ public final class MidiEventFactory {
         keySignatureMessage.setMessage(
             MidiMetaMessageTypes.KEY_SIGNATURE,
             new byte[]{
-                (byte) KeyMapping.toFifths(key),
+                (byte) key.fifths(),
                 MAJOR_MODE,
             },
             KEY_SIGNATURE_MESSAGE_LENGTH
