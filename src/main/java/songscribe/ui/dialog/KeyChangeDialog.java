@@ -52,13 +52,8 @@ import songscribe.util.UIUtils;
  * standing in the middle of a line, which exists precisely to name a key.
  *
  * <p><b>The combo opens on the key already in effect where the change is bound, and OK stays
- * disabled until the notator picks a different one.</b> Showing the current key is what makes the
- * dialog readable as an edit rather than a blank form — the notator can see what they are changing
- * from — and disabling OK on that entry is what keeps a no-op from being committed, which is
- * otherwise exactly what an opening selection would invite. Which entry counts as current follows
- * the binding: a line's own key, the inherit entry when the line has none, or — for a key
- * signature in the middle of a line, whether it already exists or is about to be inserted — the
- * key {@link Line#keyAt} reports at that index.
+ * disabled until the notator picks a different one</b>, so this dialog commits a change or
+ * nothing.
  *
  * <p><b>Which of the two changes this is comes from the bound index</b>, and it decides both
  * halves of the commit: which fit check refuses the edit, and which
@@ -187,9 +182,7 @@ public class KeyChangeDialog extends StandardDialog {
      * bound index, which answers both cases the mid-line route has without telling them apart — the
      * index of an existing key signature is inclusive, so the query returns that signature's own
      * key, while an index with no signature on it returns the key running there. For a line's own
-     * key it is the line's {@link Line#getKey}, or the inherit entry when the line has none, which
-     * is the distinction {@code keyAt} deliberately erases and this dialog needs kept: those two
-     * name the same sounding key but are different edits.
+     * key it is the line's {@link Line#getKey}, or the inherit entry when the line has none.
      *
      * @param input the binding this dialog was shown for
      * @return a {@link Key}, or {@link InheritChoice#INSTANCE}; never null
