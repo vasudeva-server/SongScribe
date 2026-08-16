@@ -503,30 +503,51 @@ public enum ElementType {
     /**
      * Returns a lowercase, user-facing category name for this element type, suitable for
      * substitution into a message such as "There isn’t enough room on this line for this {0}."
+     *
+     * <p>Resolved text, for a caller that is about to display it. A caller that must name the
+     * category <em>without</em> producing text — one stating what is wrong and leaving the wording
+     * to whoever shows it — asks {@link #categoryNameKey()} instead.
+     *
+     * @return the category name, resolved for display
+     * @throws IllegalStateException if this type has no category name
      */
     public String categoryName() {
+        return Strings.get(categoryNameKey());
+    }
+
+    /**
+     * The {@link Strings} key of this element type's category name, unresolved.
+     *
+     * <p>Every type answering a name here answers the same name through {@link #categoryName()};
+     * the two never disagree, because that method resolves this one. Which types have a name at
+     * all is stated there.
+     *
+     * @return a {@link Strings} constant naming this type's category
+     * @throws IllegalStateException if this type has no category name
+     */
+    public String categoryNameKey() {
         if (isNote()) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_NOTE);
+            return Strings.LABEL_ELEMENT_CATEGORY_NOTE;
         }
 
         if (isBarLine()) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BARLINE);
+            return Strings.LABEL_ELEMENT_CATEGORY_BARLINE;
         }
 
         if (isRest()) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_REST);
+            return Strings.LABEL_ELEMENT_CATEGORY_REST;
         }
 
         if (isRepeat()) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_REPEAT);
+            return Strings.LABEL_ELEMENT_CATEGORY_REPEAT;
         }
 
         if (isBreathMark()) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK);
+            return Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK;
         }
 
         if (this == KEY_CHANGE) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE);
+            return Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE;
         }
 
         throw new IllegalStateException("No category name for element type " + this);

@@ -99,7 +99,6 @@ import songscribe.ui.action.SaveAction;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
-import songscribe.ui.dialog.WhatsNewDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.MenuController;
 import songscribe.ui.playback.MidiController;
@@ -384,7 +383,6 @@ public class MainFrame extends JFrame implements Printable {
         LOG.info("Application UI ready");
         requireScoreView().requestFocusInWindow();
 
-        maybeShowWhatsNew();
         pendingStartupAction.run();
     }
 
@@ -413,25 +411,6 @@ public class MainFrame extends JFrame implements Printable {
             setSize(bounds.width, bounds.height - 1);
             setSize(bounds.width, bounds.height);
         });
-    }
-
-    /**
-     * Shows the What's New dialog if the user has not seen it for the current version
-     * and the release notes file exists.
-     */
-    private void maybeShowWhatsNew() {
-        if (
-            !Version.PUBLIC_VERSION.equals(
-                Prefs.getString(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION)
-            ) &&
-                new File(WhatsNewDialog.WHATS_NEW_FILE).exists()
-        ) {
-            Prefs.put(
-                PrefsKey.LAST_SEEN_WHATS_NEW_VERSION,
-                Version.PUBLIC_VERSION
-            );
-            new WhatsNewDialog(this).setVisible(true);
-        }
     }
 
     /**

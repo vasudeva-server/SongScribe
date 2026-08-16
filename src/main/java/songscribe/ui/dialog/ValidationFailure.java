@@ -20,10 +20,10 @@
 package songscribe.ui.dialog;
 
 /**
- * One reason a {@link DialogBackEnd} refused the values a dialog gathered, in the form the user
+ * One reason a {@link DialogController} refused the values a dialog gathered, in the form the user
  * will eventually see it: an alert title and an alert message.
  *
- * <p>Both are carried unresolved, so the back end states what is wrong without producing text —
+ * <p>Both are carried unresolved, so the controller states what is wrong without producing text —
  * see {@link LocalizedMessage} for why that separation matters. The title and the message are
  * both required because the alerts this replaces already carry both: a failing font change in
  * the song settings shows {@code alert.title.lines.do.not.fit} over

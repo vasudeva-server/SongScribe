@@ -34,16 +34,16 @@ import static songscribe.util.StringUtils.toKebabCase;
  * <p>Not a {@link DialogOpenAction}: that caches one {@code BaseDialog} instance and reopens
  * it, whereas {@link AboutDialog} disposes itself on dismissal and is built fresh each time.
  */
-public class AboutOpenAction extends UIAction implements UIAction.AppMenuAction {
+public final class AboutOpenAction extends UIAction implements UIAction.AppMenuAction {
 
     private static final String NATIVE_MENU_TITLE = "About";
 
-    public AboutOpenAction(MainFrame mainFrame) {
-        this(mainFrame, Strings.get(Strings.ACTION_ABOUT));
+    public static AboutOpenAction createAction(MainFrame mainFrame) {
+        return new AboutOpenAction(mainFrame, Strings.get(Strings.ACTION_ABOUT));
     }
 
-    // The action command is derived from the name, so the name has to be computed
-    // before super() rather than inline in the public constructor.
+    // The action command is derived from the name, so the name is computed by the
+    // factory rather than inline in the super() call.
     private AboutOpenAction(MainFrame mainFrame, String name) {
         super(mainFrame, name, toKebabCase(name), Flag.OPENS_DIALOG);
     }

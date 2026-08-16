@@ -175,7 +175,7 @@ and it does not have to happen in one pass or before anything else:
   with them.
 - **How a key edit reaches the model** — but not the routing, which group C item
   4 settles: after it, all four gestures resolve on `KeyChangeDialogController`
-  and `changeLineKey`/`insertKeySignature` sit there rather than on
+  and `changeLineKey`/`insertKeyChange` sit there rather than on
   `ScoreViewController`. What is left for this read is what those two methods
   *do* — the fit calculation, the accidental reconciliation, the restatement
   prompt and the implicit barline — and whether two commit routes plus item 6's
@@ -339,7 +339,7 @@ starting it, not a reason to hold it back.
    the inclusive bound.
 
    **This item does not fix item 6.** `keyAt`'s bound decides what the dialog
-   opens on; `insertKeySignature` decides what OK writes.
+   opens on; `insertKeyChange` decides what OK writes.
 
    **Also found:** `LyricRun.getElement` is contracted as `/** The element at
    {@code index}. */` with no range, no `@return` and no `@throws`. `Line`'s
@@ -353,28 +353,28 @@ starting it, not a reason to hold it back.
    second signature in front of it*. The score reads `♯♯♯ ♭♭`; the second
    signature has the last word, so the music from there on stays in the old key
    and the edit reads as clutter that did nothing. No stray barline appears —
-   `insertKeySignature` adds one only where the position does not already follow
+   `insertKeyChange` adds one only where the position does not already follow
    a barline, and an existing signature always does. `KeyChangeElement.setKey`
    has no caller outside its own class.
 
    It silently damages documents, so it is a fix rather than a cleanup. It needs
    a third commit route, which is why item 4 cannot absorb it:
 
-   - `changeKeySignature(Line, int elementIndex, Key)` on
+   - `changeMidLineKey(Line, int elementIndex, Key)` on
      `KeyChangeDialogController`, alongside `changeLineKey` and
-     `insertKeySignature` once item 4 has moved them there. It reconciles the
+     `insertKeyChange`, which item 4 moved there. It reconciles the
      accidentals the key move affects, raises the one restatement prompt, changes
      the element's key in place inside one modification bracket, and **re-spaces
      the line**, because the new signature may be wider or narrower than the old.
-   - a `KeyEditFitCalculator.keySignatureChangeFits(…)` variant. The existing
-     `keySignatureFits` measures a line with a column *added*, which is the wrong
+   - a `KeyEditFitCalculator.midLineKeyChangeSwapFits(…)` variant. The existing
+     `midLineKeyChangeFits` measures a line with a column *added*, which is the wrong
      measurement for a swap.
-   - a third controller entry point, since only the caller can tell an existing
-     signature from a new one.
+   - `KeyChangeDialogController.editKeyChange`, item 4's entry point for this
+     gesture, routed to the new commit instead of to `insertKeyChange`.
 
    Call it ~200 lines of new domain code, none of it a variant of what item 4
    writes. Item 5 does not fix it, and no test covers it — what guards the
-   current behaviour is `insertKeySignature`'s contract, which states that it
+   current behaviour is `insertKeyChange`'s contract, which states that it
    inserts.
 
 ## Commits

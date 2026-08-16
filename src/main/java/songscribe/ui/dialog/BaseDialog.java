@@ -276,13 +276,6 @@ public abstract class BaseDialog {
         registerTab(tab);
     }
 
-    /**
-     * The undo op the current commit performs, so each subclass can name itself
-     * (e.g. {@code Add Tempo Change} / {@code Change Tempo Change} /
-     * {@code Remove Tempo Change}).
-     */
-    protected enum DialogOp { ADD, EDIT, REMOVE }
-
     /** Where a show should land: which tab to select, and what to put the caret in. */
     private record ShowRequest(int tabIndex, @Nullable JComponent focus) {}
 
@@ -844,7 +837,7 @@ public abstract class BaseDialog {
      * <p><strong>Window parenting only.</strong> It is not a route to the score: a dialog may not
      * query or modify state outside itself, and reaching the document through here is that rule
      * broken in a longer spelling. What a dialog needs from the document arrives as values, and
-     * what it writes goes through a {@link DialogBackEnd} — see {@code .agents/guides/dialogs.md}.
+     * what it writes goes through its {@link DialogOps} — see {@code .claude/guides/dialogs.md}.
      *
      * @return the application window, for parenting a window or an alert
      */
@@ -900,7 +893,7 @@ public abstract class BaseDialog {
      * Both of those are the dialog's, because both are about the values as a whole — a rule that
      * spans tabs cannot be checked from inside one of them, and a commit split across tabs is
      * several undo steps where the user made one edit. A tab therefore contributes what its
-     * controls say to the dialog's gathered values and stops there; see {@link CommitDialog}.
+     * controls say to the dialog's gathered values and stops there; see {@link StandardDialog}.
      */
     @SuppressWarnings("NoopMethodInAbstractClass")
     protected abstract class Tab extends JPanel {

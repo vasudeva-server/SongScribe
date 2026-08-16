@@ -2,41 +2,134 @@
 
 `BaseDialog` (abstract) — does NOT extend `JDialog`. Creates a fresh `JDialog` on each `setVisible(true)`, disposes on `setVisible(false)`. Geometry persists per-class via static map + `Prefs` (survives restarts).
 
-`StandardDialog` extends `BaseDialog` — adds **OK/Cancel** only (no Apply). OK verifies the focused field, runs `commitOnOk()`, and closes only if both accept.
+`StandardDialog<I, O>` extends `BaseDialog` — adds **OK/Cancel** (no Apply), plus **Remove** when its operations offer one. Always modal.
 
-`CommitDialog<I>` extends `StandardDialog` — for a dialog whose OK commits values read from its controls. It gathers once and hands the same values to `validate` and `commit`, and presents any failure itself.
+### The rule
 
-### What a dialog may touch
+**A dialog is a widget shell over `I → O`. It has no collaborator it can query.**
 
-**A dialog may not query or modify state outside itself. It is free to use the domain's static knowledge.**
+The mechanical test, applied to every dialog class without judgment:
 
-That line, not a package line, is where the boundary runs. A `songscribe.dom` import in a dialog is fine when it names knowledge and wrong when it names the document:
+> **A dialog's constructor takes `MainFrame`, a `DialogOps`, and presentation constants — nothing
+> else. No dialog field names `Song`, `Line`, `StaffElement`, `ScoreView` or a controller.**
+
+A dialog is still free to use the domain's *static knowledge*. That line, not a package line, is where the boundary runs: a `songscribe.dom` import is fine when it names knowledge and wrong when it names the document.
 
 - **Knowledge — allowed.** Enums (`Duration`, `Annotation.Placement`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score.
 - **State — forbidden.** `Song`, `Line`, `StaffElement`, `ScoreView`, and reaching through `MainFrame` for any of them. `getMainFrame()` is for **window parenting only**.
 
-What the dialog needs arrives as values and leaves as values:
+Under this rule a dialog's own steps — populate, gather, call the ops — are wiring and carry no tests of their own. **What carries tests is the controller.**
 
-- **a record in** — what to show. A dialog constructed per gesture takes it at construction (`AttachmentDialog`). A dialog reached through a cached `DialogOpenAction` outlives every document, so it asks its back end for the record on **each opening** instead — `SongSettingsBackEnd.read()`, called from `getData()`;
-- **a record out** — what the controls now say, gathered on OK;
-- **a back end** — a `DialogBackEnd<I>` supplied already bound to the document state it acts on. The dialog calls `validate(I)` and `apply(I)` and knows nothing else. `AttachmentBackEnd` extends it for dialogs that also offer Remove; `SongSettingsBackEnd` for the one that also reads.
+### `DialogOps` and `DialogController`
 
-**Whoever opens the dialog does the binding.** The free functions behind a back end are written domain-object-first, so they read and test as domain operations; a dialog calling one directly would need the `Song`, which is the coupling the back end removes. `AttachmentDialogController` is the worked example — it resolves the element and line, builds the back end around them, and hands the dialog something that already holds them. Implementations live in `songscribe.ui.dialog.backend`.
+Three pieces cross the boundary:
 
-**The mechanical test, applied to every back-end signature: it contains no Swing type.** `validate(BeatChange)` and `apply(Tempo)` pass; anything naming a `JComponent`, a `JTextField` or a `Font`-carrying widget fails, and means logic that has not finished moving out of the dialog. A reviewer applies it without judgment.
+- **a record in** — `I`, what to show, asked on **each opening**;
+- **a record out** — `O`, what the controls now say, gathered on OK;
+- **a `DialogOps<I, O>`** — four function references: `read`, `validate`, `commit`, `remove`.
 
-Under this rule a dialog's own three steps — gather, call validate, call apply — are wiring and carry no tests of their own.
+```java
+record DialogOps<I, O>(
+    Supplier<I>                    read,
+    Function<O, ValidationResult>  validate,
+    Consumer<O>                    commit,
+    @Nullable Runnable             remove     // null = this dialog offers no Remove
+)
+```
+
+**Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. Four references expose four calls and can never expose a fifth.
+
+The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the four operations need. **The dialog never sees it.**
+
+```java
+abstract class DialogController<I, O> {
+    protected DialogController(MainFrame mainFrame)
+
+    // The access dialogs gave up. Legitimate here.
+    protected final MainFrame        getMainFrame()
+    protected final ScoreView        requireScoreView()
+    protected final Song             getSong()
+    protected final void             withModification(String label, Runnable mutator)
+
+    protected abstract I                read()
+    protected          ValidationResult validate(O values)   // default: accepts everything
+    protected abstract void             commit(O values)
+    protected          @Nullable Runnable removal()          // default: null
+
+    public final DialogOps<I, O> ops()      // final: no subclass hands over a partial bundle
+}
+```
+
+**Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog four references that already hold them.
+
+**A controller bound to a gesture is constructed per gesture.** `removal()` is asked once, when `ops()` assembles the bundle, and decides whether a Remove button is *built* — not merely whether it is enabled. A controller serving a dialog reached from a cached action holds only the `MainFrame` and resolves the document in `read()`.
+
+**There is one input shape, not two.** Every dialog asks `read` on each opening; none takes its input at construction. A dialog that appears to need no input is one whose constructor is smuggling its input in — if `I` wants to be `Void`, look at the constructor.
+
+### BaseDialog API surface
+
+Constructors: `(mainFrame, title)`, `(mainFrame, title, isModal)`, `(mainFrame, title, isModal, DialogCategory)`.
+
+Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
+
+Accessors: `getMainFrame()` — window parenting only.
+
+There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
+
+Static helpers:
+- `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
+- `addLabelToBox(box, text, gapHeight)`
+- `addSeparator(container)` / `addLargeSeparator(container)` — add a component-gap spacer strut. Orientation follows the container's layout (X-axis `BoxLayout` → horizontal strut; Y-axis box or a `Tab`'s `GridBagLayout` → vertical), and the container's own `add` applies any constraints. Use within a `TitledSection`.
+- `addSectionSeparator(container)` — the larger `DIALOG_SECTION_GAP` vertical strut for spacing between stacked sections of a `Tab`. Pass `this` from the `Tab`.
+
+Spacing comes from FlatLaf props / per-component struts.
+
+Overridable hooks:
+- `getDefaultButton()` → null
+- `isResizable()` → false
+- `getExtraWidth()` / `getExtraHeight()` → 0
+- `isClosable()` → true (false blocks Esc/X/Cmd-W)
+- `getWindow()` → current JDialog (override for parent of nested dialogs from bg thread)
+- `getContentPaddingKey()` → FlatLaf key for content padding (Insets)
+- `hasButtons()` → true if dialog renders a button row
+- `getData()` → calls `tab.getData()` on each registered tab. Return false to cancel showing. Call `super` when overriding. **Final in `StandardDialog`** — see below. (Resetting the tabbed pane to index 0 happens separately in `setVisible()`, not here.)
+
+### StandardDialog&lt;I, O&gt;
+
+Constructors: `(mainFrame, title, ops)`, `(mainFrame, title, ops, DialogCategory)`. **There is no `isModal` parameter.** Cancel promises nothing happened, and that promise is worth something only if nothing could have happened meanwhile. A window that applies each edit as it is made extends `BaseDialog` directly — `PreferencesDialog` is the one such window.
+
+```
+show    →  populate(ops.read().get())
+OK      →  gather() → ops.validate() → ops.commit()   [commit only if valid]
+Remove  →  ops.remove().run()                          [button built iff non-null]
+Cancel  →  nothing
+```
+
+**A subclass writes only `populate(I)` and `gather() → O`.** There are no `validate` / `commit` hooks to override; the dialog is not the thing that validates or commits. `getData()` and the OK path are both closed:
+
+- `getData()` is **final** — it runs the registered tabs, then reads and calls `populate`. Reading what to show is not a decision a dialog makes for itself. A tab may still cancel the show by returning false from its own `getData()`, in which case `populate` is not reached.
+- OK's three steps are private. **The values validated are the values committed**: the controls are read exactly once and that one value goes to both. Nothing is committed when validation refuses; the dialog stays up with its controls untouched.
+
+Only the **first** failure is shown — stacking modal alerts is worse than under-reporting, and `ValidationResult` promises presentation order.
+
+`showFailure(ValidationFailure)` is that presentation, exposed so a control that checks a rule **before** OK — a field's `InputVerifier`, a focus listener — reports it the same way. Such a control asks the same function the controller's `validate` will, so the two routes cannot tell the user different things about one mistake. A `LocalizedMessage` argument that is itself a `LocalizedMessage` is resolved here, which is how a failure names a user-facing word — a unit abbreviation — without the controller having resolved it.
+
+**Remove is a framework affordance**, not an attachment one: any dialog whose controller answers a non-null `removal()` gets the button, positioned left of Cancel, running the removal and closing. A dialog never builds one itself.
+
+`modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
+
+Nothing here repaints the score. A commit that writes the document does so inside a modification bracket, and the bracket's `SongDidChangeNotification` is what re-lays out and repaints ([mutations](../../docs/mutations.md)).
 
 ### DialogCategory (constructor arg, default OPERATIONAL)
 
-- `INFORMATIONAL` — never blocked (About, Help, WhatsNew).
+- `INFORMATIONAL` — never blocked (About, progress, suppressible messages).
 - `EXCLUSIVE` — modifies global state (Preferences, SongSettings).
 - `OPERATIONAL` — scoped state or task.
 
 Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
 
 Category precedent (pick by analogy):
-- INFORMATIONAL — `HelpDialog`, `WhatsNewDialog`, `HTMLDialog`, `ProgressBarDialog`, `ReportBugDialog`, `DoNotShowMessage`
+- INFORMATIONAL — `ProgressBarDialog`, `DoNotShowMessage`
 - EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
 - OPERATIONAL — the default; everything else
 
@@ -61,56 +154,6 @@ explaining why; don't "fix" either back into `BaseDialog`.
   `ActivationGate.armForOverlay()` while up so the dismissing click is swallowed rather than
   also landing on the score.
 
-### BaseDialog API surface
-
-Constructors: `(title)`, `(title, isModal)`, `(title, isModal, DialogCategory)`.
-
-Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
-
-Accessors: `getMainFrame()` — window parenting only.
-
-There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are gone; a dialog takes what it needs as values and writes through a back end. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
-
-Static helpers:
-- `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
-- `addLabelToBox(box, text, gapHeight)`
-- `addSeparator(container)` / `addLargeSeparator(container)` — add a component-gap spacer strut. Orientation follows the container's layout (X-axis `BoxLayout` → horizontal strut; Y-axis box or a `Tab`'s `GridBagLayout` → vertical), and the container's own `add` applies any constraints. Use within a `TitledSection`.
-- `addSectionSeparator(container)` — the larger `DIALOG_SECTION_GAP` vertical strut for spacing between stacked sections of a `Tab`. Pass `this` from the `Tab`.
-
-Spacing comes from FlatLaf props / per-component struts.
-
-Overridable hooks:
-- `getDefaultButton()` → null
-- `isResizable()` → false
-- `getExtraWidth()` / `getExtraHeight()` → 0
-- `isClosable()` → true (false blocks Esc/X/Cmd-W)
-- `getWindow()` → current JDialog (override for parent of nested dialogs from bg thread)
-- `getContentPaddingKey()` → FlatLaf key for content padding (Insets)
-- `hasButtons()` → true if dialog renders a button row
-- `getData()` → calls `tab.getData()` on each registered tab. Return false to cancel showing. Call `super` when overriding. (Resetting the tabbed pane to index 0 happens separately in `setVisible()`, not here.)
-
-### StandardDialog
-
-OK click lifecycle: focused field's `InputVerifier` → `commitOnOk()` → if both accept, close.
-
-Override hook: `commitOnOk()` → whether the dialog may close. Default commits nothing and returns true, which is the whole of OK for a dialog that gathers no values. A dialog that commits values does not override it — it extends `CommitDialog<I>`, where it is final.
-
-Nothing here repaints the score. A commit that writes the document does so inside a modification bracket, and the bracket's `SongDidChangeNotification` is what re-lays out and repaints ([mutations](../docs/mutations.md)).
-
-### CommitDialog&lt;I&gt;
-
-OK reads the controls once and hands that one value to `validate` then `commit`, so **the values validated are the values committed** and nothing is committed when validation refuses.
-
-Override hooks: `gather()` → `I` (read-only, total over every reachable control state), `validate(I)` → `ValidationResult` (decides, displays nothing; defaults to accepting everything), `commit(I)` (called only with values `validate` accepted).
-
-`CommitDialog` presents failures itself, via `OptionDialogs` — **only the first**, since `ValidationResult` promises presentation order and stacking modal alerts is worse than under-reporting. A dialog that shows its own validation alert has re-fused deciding with displaying.
-
-`showFailure(ValidationFailure)` is that presentation, exposed so a control that checks a rule **before** OK — a field's `InputVerifier`, a focus listener — reports it the same way. Such a control asks the same free function the back end will (`LineWidthRules.validate` is the worked example) and hands the failure here, so the two routes cannot tell the user different things about one mistake. A `LocalizedMessage` argument that is itself a `LocalizedMessage` is resolved here, which is how a failure names a user-facing word — a unit abbreviation — without the back end having resolved it.
-
-`modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
-
-Canonical small example: `FontDialog` — adds content to `contentPanel`, overrides `getData()` with a `super` call and `gather()`/`commit()` for the chosen font, overrides `isResizable()`/`getExtraWidth()`/`getExtraHeight()`/`modifyButtonPanel()`.
-
 ### Tab (BaseDialog inner class)
 
 `extends JPanel` with GridBagLayout, top/left-aligned, horizontal fill default. Subclass constructor MUST end with `build()`.
@@ -121,7 +164,9 @@ Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`,
 
 **A tab populates and displays; it does not commit and it does not validate.** Both belong to the dialog, because both are about the gathered values as a whole: a rule spanning tabs cannot be checked from inside one of them, and a commit split across tabs is several undo steps for one edit. A tab contributes what its controls say and stops there.
 
-A tab in a record-boundary dialog takes its values as a parameter rather than reaching for them: `populate(Input)` in, a typed getter or a slice record out (`SongSettingsMusicTab.populate`/`gather`). `Tab.getData()` stays the generic hook for tabs that need no input.
+A tab in a record-boundary dialog takes its values as a parameter rather than reaching for them: `populate(Input)` in, a typed getter or a slice record out (`SongSettingsMusicTab.populate`/`gather`), both driven from the dialog's own `populate(I)` / `gather()`. `Tab.getData()` stays the generic hook for tabs that need no input.
+
+A tab whose control checks a rule as the user types asks the **same function the controller's `validate` asks**, handed to it as a function reference. Two callers of one function, never two copies of one rule.
 
 `getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
 
@@ -152,7 +197,9 @@ Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
 ### Opening
 
 ```java
-new DialogOpenAction<>(actionName, MyDialog.class)
+new DialogOpenAction<>(mainFrame, actionName, frame -> new MyDialog(frame, new MyController(frame).ops()))
 ```
 
-Reflection-instantiates via no-arg ctor, lazy, cached per action.
+The factory is a `Function<MainFrame, T>`, so the dialog's constructor arguments are checked at compile time. The dialog is built lazily on first use and cached per action, which is why `read` is asked on each opening rather than at construction.
+
+A dialog opened per gesture is constructed at the gesture instead, by the controller that resolved what it edits — `AttachmentDialogController.edit` is the pattern.

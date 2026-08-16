@@ -26,7 +26,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.KeyChangeDialog;
+import songscribe.ui.dialog.KeyChangeDialogController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 
@@ -147,7 +147,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      */
     @Override
     public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
-        new KeyChangeDialog(getMainFrame()).showFor(line, index);
+        KeyChangeDialogController.addKeyChange(getMainFrame(), line, index);
         return InsertionPointMode.Placement.COMPLETED;
     }
 

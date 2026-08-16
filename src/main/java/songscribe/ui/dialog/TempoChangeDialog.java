@@ -42,8 +42,8 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
         "tempochanges", "tempos"
     );
 
-    public TempoChangeDialog(MainFrame mainFrame, AttachmentBackEnd<Tempo> backEnd) {
-        super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), backEnd);
+    public TempoChangeDialog(MainFrame mainFrame, DialogOps<@Nullable Tempo, Tempo> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), ops);
         contentPanel.add(BorderLayout.CENTER, tempoSection);
     }
 

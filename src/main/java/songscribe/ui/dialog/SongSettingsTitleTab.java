@@ -415,7 +415,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         var fonts = input.fonts();
 
         lyricsText = input.lyrics().text();
-        previewWrapWidthSs = input.music().lineWidthSs();
+        previewWrapWidthSs = input.lineWidthSs();
 
         FontSettingRow.applyFont(
             fonts.getFont(FontKey.TITLE),

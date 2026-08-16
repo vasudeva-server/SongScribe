@@ -35,16 +35,16 @@ import songscribe.ui.component.MainFrame;
  * and fonts.
  *
  * <p>It holds no song and no score. What it shows arrives as a {@link SongSettingsInput} and
- * what OK commits leaves as a {@link SongSettingsOutput}; everything in between is controls.
- * Its {@link SongSettingsBackEnd} does the reading and the writing, and decides what may be
- * committed.
+ * what OK commits leaves as a {@link SongSettingsOutput}; everything in between is controls. The
+ * {@link DialogOps} it is constructed with does the reading and the writing, and decides what may
+ * be committed.
  *
  * <p><strong>Two of its records span tabs, which is why they are assembled here.</strong> The
  * metadata is split between the Title and Attribution tabs and the fonts across three tabs, so
  * neither can be built from inside one of them — and a commit split across tabs would be
  * several undo steps for one press of OK.
  */
-public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
+public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSettingsOutput> {
 
     /**
      * What a caller wants to edit, for those that need the dialog opened somewhere
@@ -61,8 +61,6 @@ public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
         FONT,
     }
 
-    private final SongSettingsBackEnd backEnd;
-
     private final SongSettingsFontTab fontTab = new SongSettingsFontTab(this);
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
     private final SongSettingsAttributionTab attributionTab =
@@ -73,17 +71,16 @@ public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
     private final SongSettingsMusicTab musicTab;
 
     // What this opening is showing, kept because the commit needs the two font roles no tab
-    // edits — Bangla and footnote — carried through untouched. Read only between getData()
+    // edits — Bangla and footnote — carried through untouched. Read only between populate()
     // and the window closing, which is the only span in which it means anything.
     private @Nullable SongSettingsInput input = null;
 
     /**
      * @param mainFrame the window this dialog parents itself to
-     * @param backEnd   the domain half, bound to whatever document is open
+     * @param ops       what this dialog may ask of the document, supplied by whoever opened it
      */
-    public SongSettingsDialog(MainFrame mainFrame, SongSettingsBackEnd backEnd) {
-        super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
-        this.backEnd = backEnd;
+    public SongSettingsDialog(MainFrame mainFrame, DialogOps<SongSettingsInput, SongSettingsOutput> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), ops, DialogCategory.EXCLUSIVE);
 
         var tabbedContent = createTabbedContent();
         addTab(textTab);
@@ -94,8 +91,8 @@ public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
 
         contentPanel.add(BorderLayout.CENTER, tabbedContent);
 
-        // Let Cancel bypass the range-validating fields' InputVerifiers so the
-        // user can always dismiss the dialog without first fixing the value.
+        // Let Cancel bypass the title field's NonEmptyGuard so the user can always dismiss the
+        // dialog without first supplying a title.
         cancelButton.setVerifyInputWhenFocusTarget(false);
     }
 
@@ -121,52 +118,24 @@ public class SongSettingsDialog extends CommitDialog<SongSettingsOutput> {
     }
 
     /**
-     * Reads the document once and hands the same values to every tab.
+     * Hands the same values to every tab, and keeps them for {@link #gather()}.
      *
-     * <p>Once per opening, so a dialog reopened on a different song shows that song — this one
-     * is reached through a cached menu action and outlives many documents.
-     *
-     * @return always {@code true}; there is no state in which this dialog declines to open
+     * <p>Tab order matters in one place: the Title tab is populated first because the Attribution
+     * tab's preview reads the title and number out of it while building the attribution block.
      */
     @Override
-    protected boolean getData() {
-        if (!super.getData()) {
-            return false;
-        }
+    protected void populate(SongSettingsInput values) {
+        input = values;
 
-        var opened = backEnd.read();
-        input = opened;
-
-        // The Title tab first: the Attribution tab's preview reads the title and number out
-        // of it while building the attribution block.
-        textTab.populate(opened);
-        attributionTab.populate(opened);
-        musicTab.populate(opened);
-        fontTab.populate(opened);
-
-        return true;
+        textTab.populate(values);
+        attributionTab.populate(values);
+        musicTab.populate(values);
+        fontTab.populate(values);
     }
 
     @Override
     protected SongSettingsOutput gather() {
         return new SongSettingsOutput(gatherMetadata(), gatherFonts(), musicTab.gather());
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>What may be committed is a judgment about the document — whether the lines still fit,
-     * whether the width is one the page supports — so it is the back end's, made against the
-     * song this dialog cannot see.
-     */
-    @Override
-    protected ValidationResult validate(SongSettingsOutput values) {
-        return backEnd.validate(values);
-    }
-
-    @Override
-    protected void commit(SongSettingsOutput values) {
-        backEnd.apply(values);
     }
 
     /**

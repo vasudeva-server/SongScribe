@@ -130,7 +130,7 @@ public final class KeyEditFitCalculator {
      * @throws IndexOutOfBoundsException if {@code insertionIndex} is below 1 or above
      *                                   {@link Line#effectiveElementCount()}
      */
-    public static boolean keySignatureFits(
+    public static boolean midLineKeyChangeFits(
         Line line, int insertionIndex, Key key, LyricRenderMetrics lyricRenderMetrics) {
 
         if (insertionIndex < 1 || insertionIndex > line.effectiveElementCount()) {

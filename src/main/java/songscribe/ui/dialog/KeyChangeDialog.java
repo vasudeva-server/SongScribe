@@ -19,183 +19,94 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.Component;
 import java.util.Objects;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.ElementType;
 import songscribe.dom.Key;
-import songscribe.dom.Line;
 import songscribe.error.RuntimeError;
-import songscribe.layout.KeyEditFitCalculator;
 import songscribe.ui.KeyCellRenderer;
-import songscribe.ui.OptionDialogs;
-import songscribe.ui.component.BaseLabel;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.ScoreViewController;
 import songscribe.util.UIUtils;
 
 /**
- * Names the key a change establishes, whether that change is the one at the start of a line or
- * one written into the middle of it: a combo over every valid {@link Key} plus, for a line's own
- * key on every line but the first, an explicit choice to inherit the key in effect at the end of
- * the previous line.
+ * Names the key a change establishes: one combo over the fifteen key signatures, opened on the key
+ * already in effect where the change is bound.
  *
- * <p>Line 0 can never inherit — there is nothing before it — and neither can a key signature
- * standing in the middle of a line, which exists precisely to name a key.
+ * <p><b>OK stays disabled until the notator picks a different key</b>, so this dialog commits a
+ * change or nothing. The entry it opens on is the one entry OK refuses; choosing it is choosing
+ * nothing, which is what Cancel is for.
  *
- * <p><b>The combo opens on the key already in effect where the change is bound, and OK stays
- * disabled until the notator picks a different one</b>, so this dialog commits a change or
- * nothing.
+ * <p><b>It cannot tell the four key-editing gestures apart, and does not need to.</b> A line's own
+ * key and a key signature standing in the middle of a line are one {@link Key} in and one
+ * {@link Key} out either way. Which line, which position, whether the change fits and which route
+ * writes it all belong to {@link KeyChangeDialogController}, the only thing that opens this window.
  *
- * <p><b>Which of the two changes this is comes from the bound index</b>, and it decides both
- * halves of the commit: which fit check refuses the edit, and which
- * {@link ScoreViewController} entry point writes it. See {@link KeyChangeInput}.
- *
- * <p><b>An edit that cannot be drawn is refused before it is written.</b> A key change claims
- * horizontal space on every line it re-keys, not only the one it is made on, and
- * {@link KeyEditFitCalculator} measures all of them; when the answer is no, the notator is told
- * and the dialog stays open on the choice they made, so a narrower signature can be picked
- * instead. The check runs before anything asks about accidental restatements, so a change that is
- * going to be refused never raises a prompt about accidentals it will never apply.
+ * <p>There is no entry meaning "inherit the previous line's key". Whether a line holds a key of its
+ * own or inherits one is storage — {@link songscribe.dom.Line#setKey} normalizes a key equal to the
+ * inherited one back to inheritance on its own — and the notator sees only a key signature on the
+ * score, never the distinction.
  */
-public class KeyChangeDialog extends StandardDialog {
+public class KeyChangeDialog extends StandardDialog<Key, Key> {
 
     /**
-     * The {@code insertionIndex} that binds this dialog to a line's <em>own</em> key — the one the
-     * header draws and a cautionary warns of — rather than to a key signature standing in the
-     * middle of the line.
-     *
-     * <p>Named because a bare 0 at a call site reads as "the first element" when it means the
-     * opposite: no element at all. {@link KeyChangeElement}'s position invariant forbids a key
-     * signature at index 0, which is what leaves the value free to carry this meaning.
+     * Fixed at construction: the fifteen key signatures are the whole domain and never vary by
+     * gesture, so the model outlives any one opening and {@link #populate} only chooses within it.
      */
-    public static final int LINE_OWN_KEY_INDEX = 0;
+    private final JComboBox<Key> keysCombo = new JComboBox<>(Key.allSignatures().toArray(Key[]::new));
 
     /**
-     * What this dialog is bound to: which line, the element index the change is anchored to,
-     * and whether the caller is establishing a new key or editing one that already exists.
-     *
-     * @param line the line whose key this dialog adds or edits
-     * @param insertionIndex the element index the key change is anchored to.
-     *                       <b>{@link #LINE_OWN_KEY_INDEX} is the line's own key</b> — what the
-     *                       header draws and what a cautionary at the end of the line before it
-     *                       warns of; every other index is a key signature written into the
-     *                       middle of the line at that position
-     * @param op whether this is adding a key where the line previously inherited one, or
-     *           editing a key the line already has
+     * The key the combo opened on, which is what OK is measured against. Null only before the first
+     * {@link #populate}, which happens before the window is ever on screen.
      */
-    record KeyChangeInput(Line line, int insertionIndex, DialogOp op) {
+    private @Nullable Key keyInEffect = null;
 
-        /**
-         * Whether this dialog is bound to a key signature standing in the middle of the line
-         * rather than to the line's own key. The two are refused by different fit checks and
-         * commit by different routes, and this is the one thing that tells them apart.
-         *
-         * @return {@code true} when the bound index names a position inside the line
-         */
-        boolean isMidLineInsertion() {
-            return insertionIndex != LINE_OWN_KEY_INDEX;
-        }
-    }
-
-    final JComboBox<Object> keysCombo = new JComboBox<>();
-
-    @Nullable KeyChangeInput input = null;
-
-    /**
-     * The combo entry standing for the key already in effect where this change is bound — a
-     * {@link Key}, or {@link InheritChoice#INSTANCE} on a line that has no key of its own. It is
-     * what the combo opens on and the one entry OK refuses, so choosing it is choosing nothing.
-     */
-    @Nullable Object currentChoice = null;
-
-    public KeyChangeDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE));
+    public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE), ops);
 
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
-        keysCombo.setRenderer(new KeyChoiceRenderer());
+        keysCombo.setRenderer(new KeyCellRenderer());
         keysCombo.addItemListener(_ -> okButton.setEnabled(isChangeFromCurrent()));
         UIUtils.forceLightModeCombo(keysCombo);
-
         okButton.setEnabled(false);
     }
 
     /**
-     * Shows this dialog bound to {@code line}, ready to add or edit the key established at the
-     * start of it, or — at any index but 0 — to write a key signature into the middle of it.
+     * {@inheritDoc}
      *
-     * <p>Whether the dialog names the commit "Add" or "Change" is derived from {@code line}'s
-     * current state — {@link DialogOp#EDIT} when it already has its own key, otherwise
-     * {@link DialogOp#ADD} — rather than asked of the caller, so a caller outside this package
-     * never needs to name the protected {@link DialogOp} type.
+     * <p>Selecting the key in effect fires the item listener, which reads what OK is measured
+     * against — so that is recorded first. OK is disabled afterwards regardless, because a combo
+     * already showing that key fires nothing at all.
      *
-     * @param line the line whose key this dialog adds or edits
-     * @param insertionIndex the element index the key change is anchored to, 0 for the line's own
-     *                       key — see {@link KeyChangeInput}
+     * @param values the key in effect where the change is bound
      */
-    public void showFor(Line line, int insertionIndex) {
-        var op = line.getKey() != null ? DialogOp.EDIT : DialogOp.ADD;
-        input = new KeyChangeInput(line, insertionIndex, op);
-        setVisible(true);
-    }
-
     @Override
-    protected boolean getData() {
-        var currentInput = requireInput();
-        var line = currentInput.line();
-        var song = line.getSong();
-        var lineIndex = song.indexOfLine(line);
-        var model = new DefaultComboBoxModel<>();
-
-        for (var key : Key.allSignatures()) {
-            model.addElement(key);
-        }
-
-        // Only a line's own key can be inherited, and only from a line before it. A key signature
-        // standing in the middle of a line is a change; "no change here" is what Cancel means.
-        if (!currentInput.isMidLineInsertion() && lineIndex != 0) {
-            model.addElement(InheritChoice.INSTANCE);
-        }
-
-        // Set before the model, because installing it selects its first entry and fires the
-        // listener that reads this field.
-        currentChoice = currentChoiceFor(currentInput);
-        keysCombo.setModel(model);
-        keysCombo.setSelectedItem(currentChoice);
+    protected void populate(Key values) {
+        keyInEffect = values;
+        keysCombo.setSelectedItem(values);
         okButton.setEnabled(false);
-
-        return true;
     }
 
     /**
-     * The entry the combo opens on: the key already in effect where this change is bound.
+     * {@inheritDoc}
      *
-     * <p>For a key signature in the middle of a line that is what {@link Line#keyAt} reports at the
-     * bound index, which answers both cases the mid-line route has without telling them apart — the
-     * index of an existing key signature is inclusive, so the query returns that signature's own
-     * key, while an index with no signature on it returns the key running there. For a line's own
-     * key it is the line's {@link Line#getKey}, or the inherit entry when the line has none.
+     * <p>The combo is built over the whole of {@link Key#allSignatures()}, so its model is never
+     * empty and a non-empty combo always carries a selection. The guard is there to satisfy
+     * the compiler, the call to RuntimeError.exit is theoretically unreachable.
      *
-     * @param input the binding this dialog was shown for
-     * @return a {@link Key}, or {@link InheritChoice#INSTANCE}; never null
+     * @return the key the notator chose
      */
-    private static Object currentChoiceFor(KeyChangeInput input) {
-        var line = input.line();
+    @Override
+    protected Key gather() {
+        var key = (Key) keysCombo.getSelectedItem();
 
-        if (input.isMidLineInsertion()) {
-            return line.keyAt(input.insertionIndex());
+        if (key == null) {
+            throw RuntimeError.exit("the key combo has no selection");
         }
 
-        var ownKey = line.getKey();
-        return ownKey != null ? ownKey : InheritChoice.INSTANCE;
+        return key;
     }
 
     /**
@@ -203,247 +114,6 @@ public class KeyChangeDialog extends StandardDialog {
      *         which is the whole condition for OK being offered at all
      */
     private boolean isChangeFromCurrent() {
-        return !Objects.equals(keysCombo.getSelectedItem(), currentChoice);
-    }
-
-    /**
-     * The OK lifecycle, wired to the pre-interface {@link #isValidData()} / {@link #setData()} pair
-     * this class still carries.
-     *
-     * <p><strong>Temporary.</strong> This dialog has not been migrated to the dialog interface described in
-     * {@code .claude/guides/dialogs.md} — it still holds a {@link Line} and reaches through it
-     * to the document, which that guide forbids. Phase 2 of {@code plans/776-design-pass.md}
-     * rewrites it to take a bound input and a back end; this method exists only so the branch
-     * builds until then.
-     *
-     * @return {@code true} when the change was committed and the dialog may close
-     */
-    @Override
-    protected boolean commitOnOk() {
-        if (!isValidData()) {
-            return false;
-        }
-
-        setData();
-        return true;
-    }
-
-    /**
-     * Reaches the score view through {@link #getMainFrame()}.
-     *
-     * <p><strong>Temporary, and a deliberate rule violation.</strong>
-     * {@code .claude/guides/dialogs.md} calls reaching the document through
-     * {@code getMainFrame()} "the same rule broken in a longer spelling". It stands only until
-     * Phase 2 replaces it with a back end.
-     *
-     * @return the score view; never null while a dialog the notator opened is up
-     */
-    private ScoreView requireScoreView() {
-        var scoreView = getMainFrame().getScoreView();
-
-        if (scoreView == null) {
-            throw RuntimeError.exit("KeyChangeDialog shown with no score view");
-        }
-
-        return scoreView;
-    }
-
-    /**
-     * Refuses a key change that will not fit, and takes no other view of the notator's choice.
-     *
-     * <p>Which check runs follows the bound index: a line's own key is measured with
-     * {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole inheritance chain the
-     * change re-keys and the cautionary it creates on the line before it; a mid-line key signature
-     * is measured with {@link KeyEditFitCalculator#keySignatureFits}, which additionally holds the
-     * column the signature occupies and the barline {@link ScoreViewController#insertKeySignature}
-     * inserts alongside it. Neither is a partial query and neither half is available on its own.
-     *
-     * <p>A refusal leaves the dialog open on the choice that was refused, so a narrower signature
-     * can be chosen without starting the operation again, and leaves the model untouched: nothing
-     * is written and nothing is asked, which is why this runs before {@link #setData}'s commit
-     * rather than inside it.
-     *
-     * <p>The line's own key is measured as the key the line will <em>run</em> in, which for the
-     * inherit choice is the key the line before it leaves off in rather than a choice of the
-     * notator's — what has to fit is the layout the edit produces.
-     *
-     * <p>The combo always names something, so there is no "nothing chosen" case to pass through:
-     * the one choice that would commit nothing is the current key, and OK is disabled on it.
-     *
-     * @return {@code true} when the chosen change fits
-     */
-    private boolean isValidData() {
-        var selectedIndex = keysCombo.getSelectedIndex();
-        var currentInput = requireInput();
-        var line = currentInput.line();
-        var lyricRenderMetrics = requireScoreView().getLyricRenderMetrics();
-        boolean fits;
-
-        if (currentInput.isMidLineInsertion()) {
-            fits = KeyEditFitCalculator.keySignatureFits(
-                line, currentInput.insertionIndex(), requireChosenKey(selectedIndex), lyricRenderMetrics);
-
-            if (!fits) {
-                // A mid-line signature occupies a column on this line, so "this line" is accurate.
-                OptionDialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.ALERT_TITLE_LINE_TOO_FULL,
-                    Strings.ERROR_LINE_FULL_ELEMENT,
-                    ElementType.KEY_CHANGE.categoryName()
-                );
-            }
-        } else {
-            fits = KeyEditFitCalculator.lineKeyChangeFits(
-                line, runningKeyAfterChange(line, chosenKey(selectedIndex)), lyricRenderMetrics);
-
-            if (!fits) {
-                // Deliberately does not say "this line". A line-key change is refused for a line
-                // the notator did not click: the cautionary it creates at the end of the previous
-                // one, or the header of any line down the inheritance chain that it re-keys.
-                // Naming the clicked line would send them to look at the wrong place.
-                OptionDialogs.showErrorMessage(
-                    contentPanel,
-                    Strings.ALERT_TITLE_LINE_TOO_FULL,
-                    Strings.ERROR_LINE_FULL_KEY_CHANGE
-                );
-            }
-        }
-
-        return fits;
-    }
-
-    /**
-     * Commits the chosen change through {@link ScoreViewController}, which is the route every
-     * pitch-moving edit takes: a key change moves pitches, so it owes the same accidental
-     * reconciliation and the same restatement prompt as an inserted barline, and going through the
-     * controller is what gets it both. Nothing is written here.
-     *
-     * <p>Cancelling at that prompt abandons the change and closes the dialog, the same reading a
-     * declined confirm gets on every other edit: it is a decision about the change, not about
-     * whether the notator is still choosing one.
-     */
-    private void setData() {
-        var selectedIndex = keysCombo.getSelectedIndex();
-        var currentInput = requireInput();
-        var line = currentInput.line();
-        var controller = requireController();
-
-        if (currentInput.isMidLineInsertion()) {
-            controller.insertKeySignature(
-                line, currentInput.insertionIndex(), requireChosenKey(selectedIndex));
-        } else {
-            controller.changeLineKey(line, chosenKey(selectedIndex), opLabel(currentInput.op()));
-        }
-    }
-
-    /**
-     * @param selectedIndex an index into the combo's model
-     * @return the key that entry names, or null for the inherit choice — the one entry in the
-     *         combo that is not a {@link Key}
-     */
-    private @Nullable Key chosenKey(int selectedIndex) {
-        return keysCombo.getItemAt(selectedIndex) instanceof Key key ? key : null;
-    }
-
-    /**
-     * The same, for the mid-line route, where the inherit choice is not offered and a key signature
-     * that names no key is not a thing that can be written.
-     *
-     * @param selectedIndex an index into the combo's model
-     * @return the key that entry names
-     */
-    private Key requireChosenKey(int selectedIndex) {
-        var key = chosenKey(selectedIndex);
-
-        if (key == null) {
-            throw RuntimeError.exit(
-                "a mid-line key signature cannot inherit, so the combo must not offer that choice");
-        }
-
-        return key;
-    }
-
-    /**
-     * The key {@code line} would run in once {@code key} is committed as its own key: {@code key}
-     * itself, or — for the inherit choice — the key the line before it leaves off in, which is
-     * what the line would then inherit. The inherit choice is offered only on a line that has one
-     * before it.
-     *
-     * @param line the line whose own key is being set
-     * @param key the chosen key, or null for the inherit choice
-     * @return the key {@code line} runs in afterwards, which is what has to fit
-     */
-    private static Key runningKeyAfterChange(Line line, @Nullable Key key) {
-        if (key != null) {
-            return key;
-        }
-
-        var song = line.getSong();
-        return song.getLine(song.indexOfLine(line) - 1).keyAtEndOfLine();
-    }
-
-    /**
-     * @return the controller every commit goes through; a dialog the notator opened always has
-     *         one, so its absence is corrupted application state rather than a case to degrade for
-     */
-    private ScoreViewController requireController() {
-        var controller = requireScoreView().getController();
-
-        if (controller == null) {
-            throw RuntimeError.exit("KeyChangeDialog committed with no score view controller");
-        }
-
-        return controller;
-    }
-
-    private KeyChangeInput requireInput() {
-        var currentInput = input;
-
-        if (currentInput == null) {
-            throw RuntimeError.exit("KeyChangeDialog shown without a bound line; call showFor first");
-        }
-
-        return currentInput;
-    }
-
-    private String opLabel(DialogOp op) {
-        return Strings.get(switch (op) {
-            case ADD -> Strings.ACTION_EDIT_OP_ADD_KEY;
-            case EDIT -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
-            case REMOVE -> throw new IllegalArgumentException(
-                "KeyChangeDialog never derives DialogOp.REMOVE");
-        });
-    }
-
-    /** The combo entry meaning "no key of its own; inherit the previous line's." */
-    private enum InheritChoice { INSTANCE }
-
-    /**
-     * Renders a {@link Key} exactly as {@link KeyCellRenderer} does, and the one entry
-     * {@link KeyCellRenderer} cannot represent — {@link InheritChoice} — as a plain label. A null
-     * value renders blank, which the combo asks for only while its model is still empty.
-     */
-    private static final class KeyChoiceRenderer implements ListCellRenderer<Object> {
-
-        private final KeyCellRenderer keyCellRenderer = new KeyCellRenderer();
-
-        @Override
-        public Component getListCellRendererComponent(
-            JList<?> list,
-            @Nullable Object value,
-            int index,
-            boolean isSelected,
-            boolean cellHasFocus
-        ) {
-            if (value instanceof Key key) {
-                @SuppressWarnings("unchecked") // this list holds only Key and InheritChoice entries
-                var keyList = (JList<Key>) list;
-                return keyCellRenderer.getListCellRendererComponent(
-                    keyList, key, index, isSelected, cellHasFocus);
-            }
-
-            var text = value == InheritChoice.INSTANCE ? Strings.get(Strings.LABEL_KEY_INHERIT) : "";
-            return new BaseLabel(text, list, index, isSelected);
-        }
+        return !Objects.equals(keysCombo.getSelectedItem(), keyInEffect);
     }
 }

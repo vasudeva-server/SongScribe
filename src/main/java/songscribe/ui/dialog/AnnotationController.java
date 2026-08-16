@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.dialog.backend;
+package songscribe.ui.dialog;
 
 import org.jspecify.annotations.Nullable;
 
@@ -27,22 +27,23 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 /**
- * Reads and writes the annotation on one element, for {@code AnnotationDialog}.
+ * Reads and writes the annotation on one element, for {@link AnnotationDialog}.
  *
  * <p>Unlike the beat and tempo changes, an annotation is purely a piece of text placed against
  * the staff: it redefines nothing about the music, so nothing here goes through a beat-defining
  * chokepoint.
  *
- * <p>Nothing is refused, so {@link songscribe.ui.dialog.DialogBackEnd#validate} keeps its default.
- * Blank text would be the one candidate, and no {@link Annotation} can carry it — the type refuses
- * it at construction, so an unusable one cannot reach here to be rejected.
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default. Blank text would
+ * be the one candidate, and no {@link Annotation} can carry it — the type refuses it at
+ * construction, so an unusable one cannot reach here to be rejected.
  */
-public final class AnnotationBackEnd extends AttachmentBackEndBase<Annotation> {
+public final class AnnotationController extends AttachmentDialogController<Annotation> {
 
-    public AnnotationBackEnd(AttachmentTarget target) {
-        super(target);
+    public AnnotationController(MainFrame mainFrame, AttachmentTarget target) {
+        super(mainFrame, target);
     }
 
     @Override
@@ -60,7 +61,7 @@ public final class AnnotationBackEnd extends AttachmentBackEndBase<Annotation> {
     }
 
     @Override
-    public @Nullable Annotation existingChange() {
+    protected @Nullable Annotation read() {
         var attachment = element().findAttachment(AnnotationAttachment.class);
 
         return attachment != null ? attachment.getAnnotation() : null;
@@ -72,11 +73,11 @@ public final class AnnotationBackEnd extends AttachmentBackEndBase<Annotation> {
      * <p>The element ends up carrying exactly {@code change}, replacing any annotation already
      * there, and exactly one {@link SongDidChangeNotification} is posted.
      *
-     * <p>Removal is {@link #remove()}'s job and never this one's. There is no blank-text case to
+     * <p>Removal is {@link #removal()}'s job and never this one's. There is no blank-text case to
      * read as a deletion request, because {@link Annotation} has no blank state to be in.
      */
     @Override
-    public void apply(Annotation change) {
+    protected void commit(Annotation change) {
         var element = element();
         var existing = element.findAttachment(AnnotationAttachment.class);
 

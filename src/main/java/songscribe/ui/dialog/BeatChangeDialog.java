@@ -61,8 +61,8 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     final JComboBox<Duration> beatCombo =
         DurationListCellRenderer.createCombo(Duration.values());
 
-    public BeatChangeDialog(MainFrame mainFrame, AttachmentBackEnd<BeatChange> backEnd) {
-        super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), backEnd);
+    public BeatChangeDialog(MainFrame mainFrame, DialogOps<@Nullable BeatChange, BeatChange> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), ops);
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));

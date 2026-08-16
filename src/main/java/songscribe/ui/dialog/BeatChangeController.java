@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.dialog.backend;
+package songscribe.ui.dialog;
 
 import org.jspecify.annotations.Nullable;
 
@@ -28,22 +28,23 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Song;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 /**
- * Reads and writes the beat change on one element, for {@code BeatChangeDialog}.
+ * Reads and writes the beat change on one element, for {@link BeatChangeDialog}.
  *
  * <p>A beat change redefines the beat from its element onwards, so every write here goes through
  * {@link Song#withBeatDefiningEditOn} — the chokepoint that reports any tuplets the new beat
  * forces out.
  *
- * <p>Nothing is refused, so {@link songscribe.ui.dialog.DialogBackEnd#validate} keeps its default:
- * both of a {@link BeatChange}'s durations come from {@link songscribe.dom.Duration}, and there is
- * no pair of note values the dialog can offer that this could sensibly reject.
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: both of a
+ * {@link BeatChange}'s durations come from {@link songscribe.dom.Duration}, and there is no pair
+ * of note values the dialog can offer that this could sensibly reject.
  */
-public final class BeatChangeBackEnd extends AttachmentBackEndBase<BeatChange> {
+public final class BeatChangeController extends AttachmentDialogController<BeatChange> {
 
-    public BeatChangeBackEnd(AttachmentTarget target) {
-        super(target);
+    public BeatChangeController(MainFrame mainFrame, AttachmentTarget target) {
+        super(mainFrame, target);
     }
 
     @Override
@@ -61,7 +62,7 @@ public final class BeatChangeBackEnd extends AttachmentBackEndBase<BeatChange> {
     }
 
     @Override
-    public @Nullable BeatChange existingChange() {
+    protected @Nullable BeatChange read() {
         var attachment = element().findAttachment(BeatChangeAttachment.class);
 
         return attachment != null ? attachment.getBeatChange() : null;
@@ -75,7 +76,7 @@ public final class BeatChangeBackEnd extends AttachmentBackEndBase<BeatChange> {
      * one {@link SongDidChangeNotification} is posted.
      */
     @Override
-    public void apply(BeatChange change) {
+    protected void commit(BeatChange change) {
         var element = element();
         var existing = element.findAttachment(BeatChangeAttachment.class);
 

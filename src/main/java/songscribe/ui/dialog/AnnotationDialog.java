@@ -69,8 +69,8 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
     private final NonEmptyGuard blankGuard;
 
-    public AnnotationDialog(MainFrame mainFrame, AttachmentBackEnd<Annotation> backEnd) {
-        super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), backEnd);
+    public AnnotationDialog(MainFrame mainFrame, DialogOps<@Nullable Annotation, Annotation> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), ops);
 
         annotationCombo.setEditable(true);
         UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);

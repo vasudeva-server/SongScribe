@@ -19,9 +19,6 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.BorderLayout;
-import javax.swing.JButton;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
@@ -32,47 +29,30 @@ import songscribe.ui.component.MainFrame;
  * a beat change, an annotation.
  *
  * <p>A widget shell over a value. It shows the change the element already carries, gathers what
- * the controls now say, and hands that to its {@link AttachmentBackEnd}; it never looks at the
- * document to find out what it is editing, and never writes to it. Everything a subclass
- * implements is therefore about controls: {@link #populateControls} puts a value into them and
- * {@link #gather()} reads one back out. Which element is being edited, whether an
+ * the controls now say, and hands both to the {@link DialogOps} it was constructed with; it never
+ * looks at the document to find out what it is editing, and never writes to it. Everything a
+ * subclass implements is therefore about controls: {@link #populateControls} puts a value into
+ * them and {@link #gather()} reads one back out. Which element is being edited, whether an
  * attachment is already there, what the undo step is called and how the write is bracketed all
- * belong to the back end, which arrives already bound to its element — see
+ * belong to the controller on the other end of {@code ops} — see
  * {@link AttachmentDialogController}, the only thing that binds one.
  *
- * <p><strong>Lifecycle.</strong> The back end is fixed for the life of the dialog, so a dialog
+ * <p><strong>Lifecycle.</strong> The controller is fixed for the life of the dialog, so a dialog
  * instance edits exactly one element. Opening one for a different element means constructing
  * another, which is what {@link AttachmentDialogController} does on every gesture.
  *
  * @param <C> the attachment's value type — a value the dialog can display and build, never a node
  *            of the document graph
  */
-public abstract class AttachmentDialog<C> extends CommitDialog<C> {
-
-    protected final JButton removeButton;
-    private final AttachmentBackEnd<C> backEnd;
+public abstract class AttachmentDialog<C> extends StandardDialog<@Nullable C, C> {
 
     /**
      * @param mainFrame the window this dialog parents itself to
      * @param title     the window title
-     * @param backEnd   the domain half, already bound to the element being edited
+     * @param ops       the controller's four operations, already bound to the element being edited
      */
-    protected AttachmentDialog(MainFrame mainFrame, String title, AttachmentBackEnd<C> backEnd) {
-        super(mainFrame, title);
-        this.backEnd = backEnd;
-
-        removeButton = new JButton(Strings.get(Strings.LABEL_BUTTON_REMOVE));
-        removeButton.addActionListener(_ -> {
-            backEnd.remove();
-            setVisible(false);
-        });
-    }
-
-    @Override
-    protected Object modifyButtonPanel() {
-        buttonPanel.add(removeButton, 0);
-        removeButton.setVisible(false);
-        return BorderLayout.SOUTH;
+    protected AttachmentDialog(MainFrame mainFrame, String title, DialogOps<@Nullable C, C> ops) {
+        super(mainFrame, title, ops);
     }
 
     /**
@@ -81,7 +61,7 @@ public abstract class AttachmentDialog<C> extends CommitDialog<C> {
      *
      * <p>Called once per opening, before the window appears. An implementation writes to controls
      * and does nothing else — in particular it does not decide what the buttons say, which
-     * {@link #getData()} owns for the whole family.
+     * {@link #populate} owns for the whole family.
      *
      * @param existingChange the change the element already carries, or {@code null} when it
      *                       carries none and the dialog is being opened to add one
@@ -89,48 +69,19 @@ public abstract class AttachmentDialog<C> extends CommitDialog<C> {
     protected abstract void populateControls(@Nullable C existingChange);
 
     /**
-     * Populates the controls from the back end and labels the buttons for what OK will do.
+     * {@inheritDoc}
      *
-     * <p>Whether an attachment already exists is a domain fact and comes from
-     * {@link AttachmentBackEnd#existingChange()}; what to call the button because of it is a
-     * presentation decision and is made here. OK reads <em>Add</em> when there is nothing there
-     * yet and <em>Modify</em> when there is, and Remove is offered only in the second case — which
-     * is what keeps {@link AttachmentBackEnd#remove()} off the path where it would record a step
-     * that removes nothing.
-     *
-     * @return always {@code true}; there is no state in which this dialog declines to open, as its
-     *         element was resolved before it was constructed
+     * <p>Whether an attachment already exists is a domain fact, answered by {@link DialogOps#read()};
+     * what to call the button because of it is a presentation decision and is made here. OK reads
+     * <em>Add</em> when there is nothing there yet and <em>Modify</em> when there is. Whether
+     * Remove appears at all was already decided when this dialog's {@link DialogOps} was
+     * assembled — see {@link StandardDialog}.
      */
     @Override
-    protected boolean getData() {
-        var existingChange = backEnd.existingChange();
+    protected final void populate(@Nullable C existingChange) {
         var adding = existingChange == null;
 
-        removeButton.setVisible(!adding);
         okButton.setText(Strings.get(adding ? Strings.LABEL_BUTTON_ADD : Strings.LABEL_BUTTON_MODIFY));
         populateControls(existingChange);
-
-        return true;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Whether an attachment may be added or changed is the back end's judgment, made against the
-     * element it is bound to.
-     */
-    @Override
-    protected ValidationResult validate(C change) {
-        return backEnd.validate(change);
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Committed as one undoable step, whichever of Add and Modify OK is performing.
-     */
-    @Override
-    protected void commit(C change) {
-        backEnd.apply(change);
     }
 }

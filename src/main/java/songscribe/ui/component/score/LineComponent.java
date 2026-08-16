@@ -50,7 +50,7 @@ import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.AttachmentDialogController;
-import songscribe.ui.dialog.KeyChangeDialog;
+import songscribe.ui.dialog.KeyChangeDialogController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -952,39 +952,29 @@ public class LineComponent extends ScoreComponent
 
         var layoutResult = ready.layoutResult();
         var mouseXSs = selectionHandler.layoutXSs(e.getPoint());
+        var mainFrame = MainFrame.getInstance();
         var headerTarget = layoutResult.hitTestHeaderKeyEdit(mouseXSs, line);
 
         if (headerTarget != null) {
-            openKeySignatureDialog(headerTarget, KeyChangeDialog.LINE_OWN_KEY_INDEX);
+            KeyChangeDialogController.editLineKey(mainFrame, headerTarget);
             return true;
         }
 
         var midLineKeySignature = layoutResult.hitTestMidLineKeyEdit(mouseXSs, line);
 
         if (midLineKeySignature != null) {
-            openKeySignatureDialog(line, line.getElementIndex(midLineKeySignature));
+            KeyChangeDialogController.editKeyChange(mainFrame, line, midLineKeySignature);
             return true;
         }
 
         var cautionaryTarget = layoutResult.hitTestCautionaryKeyEdit(mouseXSs, line);
 
         if (cautionaryTarget != null) {
-            openKeySignatureDialog(cautionaryTarget, KeyChangeDialog.LINE_OWN_KEY_INDEX);
+            KeyChangeDialogController.editLineKey(mainFrame, cautionaryTarget);
             return true;
         }
 
         return false;
-    }
-
-    /**
-     * Opens the key signature dialog bound to {@code line} at {@code insertionIndex}.
-     *
-     * @param line the line whose key is being added, edited or written into
-     * @param insertionIndex the element index the change is anchored to;
-     *     {@link KeyChangeDialog#LINE_OWN_KEY_INDEX} for the line's own key
-     */
-    private void openKeySignatureDialog(Line line, int insertionIndex) {
-        new KeyChangeDialog(MainFrame.getInstance()).showFor(line, insertionIndex);
     }
 
     @Override

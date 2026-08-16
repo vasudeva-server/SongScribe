@@ -99,7 +99,6 @@ import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.dialog.MigrationWindow;
-import songscribe.ui.dialog.backend.SongSettingsTarget;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.platform.mac.PinchZoomGesture;
@@ -135,8 +134,7 @@ public final class ScoreView
     LineLayoutProvider,
     OverlayHost,
     RenderContext,
-    ScoreActions,
-    SongSettingsTarget {
+    ScoreActions {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
 
@@ -1129,7 +1127,6 @@ public final class ScoreView
      * to re-lay out the page. Pixels are still where this ends up, but only inside
      * {@link #layoutPage}, at the Swing boundary that actually needs an int.
      */
-    @Override
     public void updatePageLayout(double lineWidthSs) {
         getSong().setLineWidthSs(lineWidthSs);
         // layoutPage expects view px, so fold in the current zoom. Skipping this left the page

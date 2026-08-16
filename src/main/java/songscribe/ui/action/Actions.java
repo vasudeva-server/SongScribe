@@ -42,8 +42,6 @@ import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.SongSettingsDialog;
-import songscribe.ui.dialog.backend.ScoreSongSettingsBackEnd;
 import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
 
@@ -182,7 +180,7 @@ public final class Actions {
     public static FermataAction FERMATA_ACTION;
 
     public static PreferencesOpenAction PREFERENCES_ACTION;
-    public static DialogOpenAction<SongSettingsDialog> SONG_SETTINGS_ACTION;
+    public static SongSettingsOpenAction SONG_SETTINGS_ACTION;
     public static AboutOpenAction ABOUT_ACTION;
 
     public static PrintAction PRINT_ACTION;
@@ -358,20 +356,8 @@ public final class Actions {
 
         FERMATA_ACTION = FermataAction.createAction(mainFrame);
         PREFERENCES_ACTION = new PreferencesOpenAction(mainFrame);
-        SONG_SETTINGS_ACTION = new DialogOpenAction<>(
-            mainFrame,
-            Strings.get(Strings.ACTION_SONG_SETTINGS),
-            KeyEvent.VK_G,
-            MENU_SHORTCUT_MASK,
-            // Whoever opens the dialog binds its back end, so the dialog itself never reaches
-            // for the score. Lazily, inside the factory: this runs at startup, and the score
-            // view does not exist until the first document is up.
-            frame -> new SongSettingsDialog(
-                frame, new ScoreSongSettingsBackEnd(frame.requireScoreView())
-            ),
-            Flag.DISABLE_WHEN_PLAYING
-        );
-        ABOUT_ACTION = new AboutOpenAction(mainFrame);
+        SONG_SETTINGS_ACTION = SongSettingsOpenAction.createAction(mainFrame);
+        ABOUT_ACTION = AboutOpenAction.createAction(mainFrame);
         PRINT_ACTION = PrintAction.createAction(mainFrame);
         QUIT_ACTION = QuitAction.createAction(mainFrame);
 

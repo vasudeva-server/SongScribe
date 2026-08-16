@@ -20,30 +20,36 @@
 package songscribe.ui.dialog;
 
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Tempo;
 import songscribe.font.DocumentFonts;
 
 /**
  * Everything {@code SongSettingsDialog} shows, as values: the whole of what the dialog knows
  * about the document it is editing.
  *
- * <p>Read once per opening, by {@link SongSettingsBackEnd#read()}, and treated as a snapshot
+ * <p>Read once per opening, by {@link DialogOps#read()}, and treated as a snapshot
  * from then on. The dialog is modal, so nothing can change the document underneath it, and
  * nothing here is re-read while it is up.
  *
- * <p>{@link SongSettingsOutput} is the answering half. The two are not the same shape: this
- * one carries what the document holds, that one what the controls say, and the line width in
- * particular is a stored number here and unvalidated text there.
+ * <p>{@link SongSettingsOutput} is the answering half, and carries the same three things the
+ * dialog can edit. The fourth component here is the lyrics context, which the dialog reads to
+ * build its previews and never writes back.
  *
- * @param metadata the song's descriptive metadata, split across the Title and Attribution tabs
- * @param fonts    the document's fonts. The dialog edits six of the eight roles and copies the
- *                 rest through, which is why the whole holder arrives rather than six fonts
- * @param music    the Music tab's three settings
- * @param lyrics   what the Title and Attribution tabs need to know about the lyrics, which
- *                 this dialog does not edit
+ * @param metadata     the song's descriptive metadata, split across the Title and Attribution tabs
+ * @param fonts        the document's fonts. The dialog edits six of the eight roles and copies the
+ *                     rest through, which is why the whole holder arrives rather than six fonts
+ * @param tempo        the song's tempo — a copy, so editing the Music tab's controls cannot reach
+ *                     the document's own mutable {@link Tempo}
+ * @param lineWidthSs  the stored line width, in staff spaces, which the Title tab's previews wrap
+ *                     at so they break where the score does. Read and never written back — the
+ *                     width belongs to page setup, and there is no control for it here
+ * @param lyrics       what the Title and Attribution tabs need to know about the lyrics, which
+ *                     this dialog does not edit
  */
 public record SongSettingsInput(
     SongMetadata metadata,
     DocumentFonts fonts,
-    MusicSettings music,
+    Tempo tempo,
+    double lineWidthSs,
     LyricsContext lyrics
 ) {}

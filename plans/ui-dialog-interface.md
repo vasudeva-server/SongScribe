@@ -73,21 +73,20 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 
 **Do not touch these; they are correct as they stand.** `ValidationResult`,
 `ValidationFailure`, `LocalizedMessage` and its nested-argument rule;
-`SongSettingsInput`, `SongSettingsOutput`, `MusicSettings`, `LyricsContext`,
-`LineWidthEntry`, `MusicChoices`, `WordsDate`; and `BaseDialog`'s lack of any route to
-the score.
+`SongSettingsInput`, `SongSettingsOutput`, `LyricsContext`, `WordsDate`; and
+`BaseDialog`'s lack of any route to the score.
 
 ## Status Dashboard
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [The Controller Framework](#-phase-1-the-controller-framework) | ⏳ Pending | — |
-| 2 | [Delete the Legacy Dialogs](#-phase-2-delete-the-legacy-dialogs) | ⏳ Pending | — |
-| 3 | [The Attachment Family](#-phase-3-the-attachment-family) | ⏸️ Blocked by 1 | — |
-| 4 | [SongSettingsDialog and Its Tabs](#-phase-4-songsettingsdialog-and-its-tabs) | ⏸️ Blocked by 1 | — |
-| 5 | [KeyChangeDialog](#-phase-5-keychangedialog) | ⏸️ Blocked by 1 | — |
-| 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ⏸️ Blocked by 1 | — |
-| 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ⏸️ Blocked by 1 | — |
+| 1 | [The Controller Framework](#-phase-1-the-controller-framework) | ✅ Done | — |
+| 2 | [Delete the Legacy Dialogs](#-phase-2-delete-the-legacy-dialogs) | ✅ Done | — |
+| 3 | [The Attachment Family](#-phase-3-the-attachment-family) | ✅ Done | — |
+| 4 | [SongSettingsDialog and Its Tabs](#-phase-4-songsettingsdialog-and-its-tabs) | ✅ Done | — |
+| 5 | [KeyChangeDialog](#-phase-5-keychangedialog) | ✅ Done | — |
+| 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ⏳ Pending | — |
+| 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ⏳ Pending | — |
 | 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ⏸️ Blocked by 3, 4, 5, 6, 7 | — |
 | 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏸️ Blocked by 8 | — |
 | 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9 | — |
@@ -107,9 +106,9 @@ stage it* in `~/.claude/rules/development.md`. Snapshot each phase with
 
 ---
 
-## ⏳ Phase 1: The Controller Framework
+## ✅ Phase 1: The Controller Framework
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
 **Files:** src/main/java/songscribe/ui/dialog/DialogOps.java, src/main/java/songscribe/ui/dialog/DialogController.java, src/main/java/songscribe/ui/dialog/StandardDialog.java, src/main/java/songscribe/ui/dialog/CommitDialog.java, src/main/java/songscribe/ui/dialog/BaseDialog.java, src/main/java/songscribe/ui/dialog/DialogBackEnd.java, src/main/java/songscribe/ui/dialog/AttachmentBackEnd.java, src/main/java/songscribe/ui/dialog/SongSettingsBackEnd.java, .claude/guides/dialogs.md  <br>
 **Recommended model/effort:** Opus, high — this decides the shape every other phase applies; a wrong shape here is paid for by every class that follows.
@@ -144,8 +143,9 @@ abstract class DialogController<I, O> {
     protected abstract void             commit(O values)
     protected          @Nullable Runnable removal()          // default: null
 
-    /** Assembled once here so no subclass wires it by hand. */
-    protected final DialogOps<I, O> ops() {
+    /** Assembled once here so no subclass wires it by hand. Public: openers are not all
+     *  in ui.dialog — Actions registers the cached menu actions from ui.action. */
+    public final DialogOps<I, O> ops() {
         return new DialogOps<>(this::read, this::validate, this::commit, removal());
     }
 }
@@ -210,32 +210,27 @@ look at the constructor.
 
 ---
 
-## ⏳ Phase 2: Delete the Legacy Dialogs
+## ✅ Phase 2: Delete the Legacy Dialogs
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
-**Files:** src/main/java/songscribe/ui/dialog/WhatsNewDialog.java, src/main/java/songscribe/ui/dialog/ReportBugDialog.java, src/main/java/songscribe/ui/component/MainFrame.java  <br>
+**Files:** src/main/java/songscribe/ui/dialog/WhatsNewDialog.java, src/main/java/songscribe/ui/dialog/ReportBugDialog.java, src/main/java/songscribe/ui/component/MainFrame.java, src/main/resources/songscribe/strings.properties  <br>
 **Recommended model/effort:** Sonnet, low — two deletions and one caller.
 
-Independent of Phase 1 and can run before it.
+`ReportBugDialog`, `WhatsNewDialog` and `MainFrame.maybeShowWhatsNew()` are gone, together
+with the seven `dialog.bug.report.*` / `dialog.whats.new.title` / `error.email.open.report`
+keys, which the dead-key audit refuses once nothing references them.
 
-### Tasks
-
-1. **Delete `ReportBugDialog`.** It has no production caller.
-2. **Delete `WhatsNewDialog` and `MainFrame.maybeShowWhatsNew()`
-   (`MainFrame.java:422–435`).** That method is the dialog's only caller — it compares
-   `PrefsKey.LAST_SEEN_WHATS_NEW_VERSION` against `Version.PUBLIC_VERSION` and shows the
-   release notes once per version — so it goes with the dialog rather than being left
-   calling nothing.
-3. **Keep `PrefsKey.LAST_SEEN_WHATS_NEW_VERSION` and the `help/release-notes-*.html`
-   resource**, for a replacement to use. If the dead-key audit objects to a pref nothing
-   reads, report it rather than deleting the key.
+**`PrefsKey.LAST_SEEN_WHATS_NEW_VERSION` stays**, for a replacement to use; nothing reads it
+today. **There are no `help/release-notes-*.html` resources** — they went in
+`694058b4 chore: remove legacy help, tutorial, tips`, before this track — so a replacement
+writes its own release notes rather than finding them in the tree.
 
 ---
 
-## ⏸️ Phase 3: The Attachment Family
+## ✅ Phase 3: The Attachment Family
 
-**Status:** Blocked by 1  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1  <br>
 **Files:** src/main/java/songscribe/ui/dialog/AttachmentDialog.java, src/main/java/songscribe/ui/dialog/BeatChangeDialog.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/dialog/AnnotationDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialogController.java, src/main/java/songscribe/ui/dialog/AttachmentTarget.java, src/main/java/songscribe/ui/dialog/backend/  <br>
 **Recommended model/effort:** Sonnet, medium — a mechanical re-homing of code whose shape is already right.
@@ -265,164 +260,135 @@ logic in the wrong container.
 
 ---
 
-## ⏸️ Phase 4: SongSettingsDialog and Its Tabs
+## ✅ Phase 4: SongSettingsDialog and Its Tabs
 
-**Status:** Blocked by 1  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1  <br>
-**Files:** src/main/java/songscribe/ui/dialog/SongSettingsDialog.java, src/main/java/songscribe/ui/dialog/SongSettingsController.java, src/main/java/songscribe/ui/dialog/SongSettingsMusicTab.java, src/main/java/songscribe/ui/dialog/SongSettingsTitleTab.java, src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java, src/main/java/songscribe/ui/dialog/SongSettingsFontTab.java, src/main/java/songscribe/ui/dialog/backend/  <br>
+**Files:** src/main/java/songscribe/ui/dialog/SongSettingsDialog.java, src/main/java/songscribe/ui/dialog/SongSettingsController.java, src/main/java/songscribe/ui/dialog/SongSettingsMusicTab.java, src/main/java/songscribe/ui/dialog/SongSettingsTitleTab.java, src/main/java/songscribe/ui/dialog/SongSettingsInput.java, src/main/java/songscribe/ui/dialog/SongSettingsOutput.java, src/main/java/songscribe/ui/dialog/DialogController.java, src/main/java/songscribe/ui/component/ScoreView.java, src/main/java/songscribe/ui/action/Actions.java, src/main/java/songscribe/ui/dialog/backend/  <br>
 **Recommended model/effort:** Opus, high — the largest controller in the track, and the one place where a decided relocation could quietly turn into a redesign.
 
-`SongSettingsDialog` becomes `StandardDialog<SongSettingsInput, SongSettingsOutput>`.
-`ScoreSongSettingsBackEnd` becomes `SongSettingsController`.
+`SongSettingsDialog` is `StandardDialog<SongSettingsInput, SongSettingsOutput>`.
+`ScoreSongSettingsBackEnd` is `SongSettingsController`.
 
-### The rules classes are absorbed, not relocated
+### The line width is not edited here
 
-All three move onto `SongSettingsController`:
+The Music tab carries a tempo and nothing else. The line width belongs to page setup
+(`specs/184b-page-setup.md`), so `LineWidthRules`, `LineWidthEntry`, `MusicChoices` and
+`MusicSettings` do not exist, and neither do the five string keys they used. **Until page
+setup is built there is no UI that writes `Song.lineWidthSs`** — `ScoreView.updatePageLayout`
+survives, called only on open and on `setSong` to re-lay out at the stored width.
 
-| Class | What it holds | Becomes |
-|---|---|---|
-| `LineWidthRules` (137 LOC) | `validate(LineWidthEntry) → ValidationResult` parses the typed text and range-checks it against `PageModel.MIN/MAX_LINE_WIDTH_INCHES`; `resolveSs(Song, LineWidthEntry)` answers the width to store, returning the song's existing width untouched when the field was never edited | methods on the controller |
-| `SongSettingsRules` (127 LOC) | `lyricsFit(Song, LyricsFontChange, double)` — whether every line that fits today still fits under a candidate lyrics font and width; `applyMusicSettings(Song, Tempo)` — posts `TempoDidChangeNotification` inside a bracket, and nothing when unchanged | methods on the controller |
-| `LyricsFontChange` (39 LOC) | two adjacent `Font`s the signature rules forbid passing loose | a nested record on the controller |
+`SongSettingsInput` still carries `lineWidthSs`: the Title tab's previews wrap at it so they
+break where the score does. It is read and never written back.
 
-**`SongSettingsMusicTab`'s `InputVerifier` is the wrinkle.** It calls
-`LineWidthRules.validate` today so the field's own focus check and OK cannot disagree.
-That property must survive: the controller exposes `validateLineWidth(LineWidthEntry)`
-publicly, the tab asks it, and the controller's own `validate` asks the same method.
-**Two callers of one function, not two copies of one rule.**
+### What the controller holds
 
-### Tasks
+| Was | Is |
+|---|---|
+| `SongSettingsRules.lyricsFit(Song, LyricsFontChange, double)` | `SongSettingsController.lyricsFit(Song, LyricsFontChange)`, private static — both fonts measured at the song's stored width, which this dialog cannot change |
+| `SongSettingsRules.applyMusicSettings(Song, Tempo)` | `applyTempo(Song, Tempo)`, private static — posts `TempoDidChangeNotification` inside the commit's bracket, and nothing when unchanged |
+| `LyricsFontChange` | a private nested record on the controller |
+| `SongSettingsTarget` | gone; the controller reaches the view through `DialogController.requireScoreView()` |
 
-1. Read `docs/mutations.md` before touching the commit. The one-bracket property is a
-   stated invariant, not an implementation detail.
-2. Write `SongSettingsController`'s contracts before moving any body. The cross-tab
-   validation ordering is a real precondition and must stay stated: the line width is
-   settled first, because the fit check needs a width to measure against and a width
-   that does not parse has none.
-3. Move the three classes' bodies onto the controller. Delete `SongSettingsTarget` — the
-   controller holds the `ScoreView` directly.
-4. Re-point `SongSettingsMusicTab`'s verifier at the controller.
-5. `SongSettingsDialog.show(Section)` and the tab/focus mapping are untouched.
-6. Delete the now-empty `songscribe/ui/dialog/backend/` package.
-7. Apply the mechanical test to the dialog and all five tab classes.
+`DialogController.ops()` is **public**, not protected: `Actions` opens this dialog from
+`songscribe.ui.action`, and Phase 3's openers were the only ones inside `ui.dialog`.
+
+### Newly dead, left standing
+
+`Utils.roundToTwoDecimalPlaces`, `InputUtils.addDecimalFilter` (both overloads) and its
+`DecimalDocumentFilter` lost their only caller with the line-width field. Page setup is the
+natural next caller of all three.
 
 ---
 
-## ⏸️ Phase 5: KeyChangeDialog
+## ✅ Phase 5: KeyChangeDialog
 
-**Status:** Blocked by 1  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1  <br>
-**Files:** src/main/java/songscribe/ui/dialog/KeyChangeDialog.java, src/main/java/songscribe/ui/dialog/KeyChangeDialogController.java, src/main/java/songscribe/ui/component/score/LineComponent.java, src/main/java/songscribe/ui/action/KeyChangeAction.java, src/main/java/songscribe/ui/component/ScoreViewController.java  <br>
+**Files:** src/main/java/songscribe/ui/dialog/KeyChangeDialog.java, src/main/java/songscribe/ui/dialog/KeyChangeDialogController.java, src/main/java/songscribe/dom/ElementType.java, src/main/java/songscribe/ui/component/score/LineComponent.java, src/main/java/songscribe/ui/action/KeyChangeAction.java, src/main/java/songscribe/ui/component/ScoreViewController.java  <br>
 **Recommended model/effort:** Opus, high — four gestures resolving to two commit routes, and it is what unblocks the `keys` pass.
 
 ### The dialog
 
 **`KeyChangeDialog extends StandardDialog<Key, Key>`.** Non-null both ways. `I` is the
 key in effect where the change is bound: what the combo opens on, and the one entry OK
-refuses. `O` is the key the notator picked.
+refuses. `O` is the key the notator picked. The whole of it is a `JComboBox<Key>` over
+`Key.allSignatures()`, `KeyCellRenderer`, `populate(Key)`, `gather() → Key`, and the
+listener that enables OK when the selection differs.
 
-**The inherit entry is deleted.** `InheritChoice`, `KeyChoiceRenderer` and
-`Strings.LABEL_KEY_INHERIT` all go. Whether a line holds its own key or inherits one is
-an internal representation the notator never sees — all they see is a key signature on
-the score. `Line.setKey` already normalizes a key equal to the inherited one back to
-null, so nothing in the model needs the distinction spelled at the UI either.
-
-What remains of the dialog: a `JComboBox<Key>`, `KeyCellRenderer`, `populate(Key)`,
-`gather() → Key`, and the listener that enables OK when the selection differs.
+**There is no inherit entry.** `InheritChoice`, `KeyChoiceRenderer` and
+`Strings.LABEL_KEY_INHERIT` do not exist. Whether a line holds its own key or inherits one
+is an internal representation the notator never sees — all they see is a key signature on
+the score — and `Line.setKey` normalizes a key equal to the inherited one back to null, so
+nothing in the model needs the distinction spelled at the UI either.
 
 ### The controller resolves the gesture
 
-**Four gestures, resolved by `KeyChangeDialogController`, which is the only thing that
-reads the insertion index.** The class is currently dead code whose Javadoc claims two
-callers it does not have; this phase gives it a body and both openers route through it.
+**Four gestures, three entry points on `KeyChangeDialogController`, which is the only
+thing that reads the insertion index.** Each caller hands over what it already holds, so
+none states its binding twice and none constructs the dialog.
 
-| # | Gesture | Opening `Key` | Commit |
-|---|---|---|---|
-| 1 | header double-click (`LineComponent.java:957`) | `line.getKey()`, else the running key | `changeLineKey` |
-| 2 | cautionary double-click (`LineComponent.java:971`) | same, on the **next** line | `changeLineKey` |
-| 3 | mid-line signature double-click (`LineComponent.java:964`) | the clicked `KeyChangeElement`'s own key, read directly | `insertKeySignature` ⚠ |
-| 4 | `KeyChangeAction.insertionPointChosen` | `line.keyAt(index)` | `insertKeySignature` |
+| # | Gesture | Entry point | Opening `Key` | Commit |
+|---|---|---|---|---|
+| 1 | header double-click | `editLineKey(frame, line)` | `line.getRunningKey()` | `changeLineKey` |
+| 2 | cautionary double-click | `editLineKey(frame, nextLine)` | same, on the **next** line | `changeLineKey` |
+| 3 | mid-line signature double-click | `editKeyChange(frame, line, signature)` | the clicked `KeyChangeElement`'s own key, read off the element | `insertKeyChange` ⚠ |
+| 4 | `KeyChangeAction.insertionPointChosen` | `addKeyChange(frame, line, index)` | `line.keyAt(index)` | `insertKeyChange` |
+
+Inside, a private `Binding` enum — `LINE_KEY`, `EXISTING_SIGNATURE`, `NEW_POSITION` —
+carries which entry point built the controller. `read()` switches on all three;
+`validate` and `commit` branch on line-key against mid-line, which is where the fit
+function, the refusal message and the commit method vary together.
+`changeLineKey` and `insertKeyChange` are private methods of this class:
+`ScoreViewController` declares neither, and `AccidentalRestatements.confirm` is parented
+on `getMainFrame()`. Both are `void` — the boolean saying "the notator cancelled at the
+restatement prompt" had no reader once `commit` returned void; what it said is in their
+contracts (see Phase 9 task 3).
 
 **⚠ Gesture 3 is a live bug this phase does not fix.** Double-clicking a mid-line key
 signature *inserts a second one in front of the one that was clicked* instead of changing
 it. The score reads `♯♯♯ ♭♭`, and since the second signature has the last word the music
 from there on is still in the old key — the edit appears to do nothing but add clutter. No
-stray barline appears: `insertKeySignature` adds one only where the position does not
+stray barline appears: `insertKeyChange` adds one only where the position does not
 already follow a barline, and an existing signature always does. The dialog nevertheless
-*looks* like an editor because `Line.keyAt` is inclusive, so asked at the clicked
-signature's own index it returns that signature's key and the combo opens on it.
+*looks* like an editor because the controller opens it on the clicked signature's own key.
 **Nothing in the program can change an existing mid-line key signature's key**;
 `KeyChangeElement.setKey` has no caller outside its own class. Fixing it needs a third
 commit route that does not exist — `plans/design-pass/keys.md` group C item 6 carries
-what that route costs.
+what that route costs, and `editKeyChange` is the entry point it attaches to.
 
 ### This unblocks `keys` group C5
 
-`KeyChangeDialog.currentChoiceFor` is the only caller relying on `Line.keyAt`'s
-**inclusive** bound, and it relies on it to serve gestures 3 and 4 without telling them
-apart. Once the controller resolves the opening key as a value — reading the clicked
-element directly for gesture 3 — the dialog calls `keyAt` nowhere and `keyAt` can become
-exclusive. See `plans/design-pass/keys.md`, group C item 5.
+No caller relies on `Line.keyAt`'s **inclusive** bound any more. `keyAt` is asked at one
+place in this package — gesture 4's opening key, at a position the insertion predicate has
+already refused to place beside a key signature, so the two bounds agree there. Gesture 3
+reads the element. See `plans/design-pass/keys.md`, group C item 5.
 
 **Do not expect C5 to fix gesture 3.** `keyAt`'s bound decides what the combo shows;
-`insertKeySignature` decides what OK writes. C5 touches only the first.
+`insertKeyChange` decides what OK writes. C5 touches only the first.
 
-### Tasks
+### The refusals
 
-1. Read `docs/key-signatures.md` and `docs/mutations.md` before touching either commit
-   route.
-2. Write the contracts for `KeyChangeDialogController`'s entry points and its
-   `read`/`validate`/`commit` before moving any body.
-3. Two entry points on the controller, because only the caller can tell gestures 3 and 4
-   apart: one for a line's own key, one for a mid-line signature carrying the index and
-   whether it names an existing element. `LINE_OWN_KEY_INDEX` moves here.
-4. **One controller with a `Route` enum, not two controllers.** The routes share the
-   line, the metrics, the alert title and the whole gather-and-hand-over path, and
-   differ in three places: which fit function runs, which message key the refusal
-   carries, and which commit method is called. If that turns out uglier than two
-   classes, say so and split.
-5. Turn the two refusals into `ValidationResult`s. Each is a `ValidationFailure`
-   carrying `ALERT_TITLE_LINE_TOO_FULL` and its own `LocalizedMessage` — the mid-line
-   one with `ElementType.KEY_CHANGE.categoryName()` as an unresolved argument.
-   `StandardDialog.showFailure` presents. **The comment explaining why the line-key
-   message deliberately does not say "this line" moves with the message it is about.**
-6. **Move `changeLineKey` and `insertKeySignature` off `ScoreViewController` onto
-   `KeyChangeDialogController`.** They are two ~130-line domain methods with **exactly
-   one caller each — `KeyChangeDialog.setData`** (`KeyChangeDialog.java:331` and `:334`),
-   sitting on a 70-method view controller for no reason but that the dialog could reach
-   it. The controller is that caller, holds the `MainFrame` and `ScoreView` they need,
-   and already owns the fit check and the route choice.
-   `AccidentalRestatements.confirm` takes `@Nullable Component parent`, which
-   `DialogController.getMainFrame()` supplies, so nothing pins them where they are. Their
-   contracts move with them — `insertKeySignature`'s statement of what it does and does
-   not do is what guards gesture 3.
-7. **Tighten `changeLineKey(Line, @Nullable Key, String)` to a non-null `Key`.** With the
-   inherit entry gone the dialog always names a key, which makes dead both its
-   `IllegalArgumentException` guard for a null key on line 0 and its
-   `key != null ? key : previous.keyAtEndOfLine()` branch. `runningKeyAfterChange` goes
-   with them: the chosen key *is* the running key.
-8. Delete from `KeyChangeDialog`: `requireScoreView`, `requireController`,
-   `requireInput`, `commitOnOk`, `isValidData`, `setData`, `chosenKey`,
-   `requireChosenKey`, `runningKeyAfterChange`, `opLabel`, `KeyChangeInput`,
-   `isMidLineInsertion`, `currentChoiceFor`, `InheritChoice` and `KeyChoiceRenderer`.
-9. Route `LineComponent.openKeySignatureDialog` and
-   `KeyChangeAction.insertionPointChosen` through the controller. Neither may construct
-   `KeyChangeDialog` after this phase.
-10. Delete the two Javadoc comments in `KeyChangeDialog` citing "Phase 2 of
-    `plans/776-design-pass.md`" — they describe scaffolding this phase removes.
-11. **Hand the restatement-prompt rule gap to Phase 9 task 2.** Both commit routes raise
-    `AccidentalRestatements.confirm` before opening their bracket and return `false` when
-    the notator cancels, but `commit` returns `void` and the framework's rule is that the
-    domain side displays nothing. This is not a violation to fix here — the prompt
-    belongs to every pitch-moving edit, and an inserted barline raises it with no dialog
-    involved — but the rule does not describe it. Behaviour is unchanged either way:
-    cancelling the prompt abandons the change and closes the dialog, as it does today.
+Both are a `ValidationFailure` under `ALERT_TITLE_LINE_TOO_FULL`, presented by
+`StandardDialog.showFailure`. The mid-line one names the category through a **nested**
+`LocalizedMessage` built from `ElementType.KEY_CHANGE.categoryNameKey()`, which this phase
+added beside `categoryName()` — the latter resolves through it, so its other two callers
+are unchanged and the controller states what is wrong without producing text.
+
+### Handed to Phase 9
+
+**The restatement-prompt rule gap.** Both commit routes raise
+`AccidentalRestatements.confirm` before opening their bracket, but the framework's rule is
+that the domain side displays nothing. It is not a violation to fix here — the prompt
+belongs to every pitch-moving edit, and an inserted barline raises it with no dialog
+involved — but the rule does not describe it. Behaviour is unchanged: cancelling the prompt
+abandons the change and closes the dialog, as it did before.
 
 ---
 
-## ⏸️ Phase 6: PreferencesDialog
+## ⏳ Phase 6: PreferencesDialog
 
-**Status:** Blocked by 1  <br>
+**Status:** Pending  <br>
 **BlockedBy:** 1  <br>
 **Files:** src/main/java/songscribe/ui/dialog/PreferencesDialog.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/layout/PageModel.java  <br>
 **Recommended model/effort:** Sonnet, medium — 899 lines, no controller to build, but a real notification gap to close.
@@ -453,21 +419,27 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 4. **Leave `AppearanceManager.switchTheme` as the appearance write.** It writes
    `PrefsKey.APPEARANCE` itself and rolls the write back when `applyTheme` fails, so it
    owns the pref rather than bypassing `Prefs`.
-5. **Remove the duplicated page-size encoding.** The listener hardcodes
+5. **`PrefsKey.METRIC` is now write-only.** The units radio writes it and reads it back to
+   set its own initial state; nothing else consumes it, because the line-width field that
+   displayed inches or centimetres is gone (Phase 4). `LengthUnit` has no production caller
+   either. Report it — the radio currently changes nothing the user can see, and page setup
+   (`specs/184b-page-setup.md`) is what makes it mean something again. **Do not delete the
+   key or the enum**, and say so rather than leaving the dead-key audit to raise it.
+6. **Remove the duplicated page-size encoding.** The listener hardcodes
    `a4Radio.isSelected() ? "a4" : "letter"` while the read side goes through
    `PageModel.getSize()`, which parses the same two strings. Give `PageModel.Size` a
    `key()` and have the listener write `size.key()`; `Appearance.key()` is the pattern.
-6. **The audition stays in the dialog.** Playing a note on instrument select and playing
+7. **The audition stays in the dialog.** Playing a note on instrument select and playing
    the scale are the dialog's own knowledge of its affordance. Both
    `PlaybackController.stop()` calls stay too.
-7. Extract `programToIndex`, `volumeToSliderIndex` and `buildScaleSequence(int program)`
+8. Extract `programToIndex`, `volumeToSliderIndex` and `buildScaleSequence(int program)`
    from the inline sequence construction in `ScaleAction.play()`. Contract before body.
-8. **State the no-revert semantics in the class contract.** Closing the window keeps
+9. **State the no-revert semantics in the class contract.** Closing the window keeps
    every change and there is nothing to undo. State also that the dialog does not
    subscribe to `PrefsDidChangeNotification`, so a `resetAll` from elsewhere while it is
    open leaves its widgets stale — true today, a stated limitation rather than an
    unexamined one.
-9. **Record, do not perform, the instrument-registry move.** The static
+10. **Record, do not perform, the instrument-registry move.** The static
    `instrumentStrings` / `instrumentPrograms` / `instrumentsLoaded` cache and its
    accessors are a MIDI service living on a dialog. The move is already designed in
    `plans/singleton-lifecycle-contracts.md` §6 and assigned in
@@ -478,9 +450,9 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 
 ---
 
-## ⏸️ Phase 7: The Remaining Dialogs
+## ⏳ Phase 7: The Remaining Dialogs
 
-**Status:** Blocked by 1  <br>
+**Status:** Pending  <br>
 **BlockedBy:** 1  <br>
 **Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java  <br>
 **Recommended model/effort:** Sonnet, low — two small controllers and a confirmation sweep.
@@ -538,15 +510,18 @@ confirms it.
    `.claude/skills/contract-pass/reference/classification.md`. Parsing, range
    validation, unit conversion and index mapping are mechanical. `lyricsFit`,
    `canonicalKeySelectionFrom` (0 accidentals canonicalizing to FLATS is a
-   music-notation judgment), and `applyMusicSettings`'s notification decision are
-   domain. **Batch the domain ones into one checkpoint and present them for confirmation
+   music-notation judgment), and `applyTempo`'s notification decision are
+   domain. **`lyricsFit` and `applyTempo` are private on `SongSettingsController`.**
+   Widening either to test it directly is a decision to take here, against the
+   no-test-only-surface rule — the alternative is reaching them through `validate` and
+   `commit`, which needs a `MainFrame`. **Batch the domain ones into one checkpoint and present them for confirmation
    before writing tests against them** — a confident, plausible, wrong contract is worse
    than none, because every test downstream is derived from it.
 3. **Propose the test list and wait.** No test exists for any of this. The list goes to
    the user before anything is written. Candidate contracts: the two key-change fit
-   refusals, the key controller's route choice, line-width parsing and range validation,
-   `lyricsFit`'s asymmetric measurement and its already-overflowing exemption, the
-   attachment controllers' one-bracket guarantee and undo-step naming, and
+   refusals, the key controller's route choice, `lyricsFit`'s already-overflowing
+   exemption and its unchanged-font short circuit, `applyTempo`'s post-only-when-changed
+   decision, the attachment controllers' one-bracket guarantee and undo-step naming, and
    `programToIndex` / `volumeToSliderIndex`.
 4. **Do not derive tests from a dialog's populate-gather-ops wiring.** Per this track
    that is classified none, and nothing else covers it either — Phase 10's manual pass
@@ -554,7 +529,7 @@ confirms it.
    - **No test for key-change gesture 3.** Its commit route is known wrong — see the ⚠ in
      Phase 5 — and a test over it would either assert the defect or assert something so
      weak it proves nothing. Pinning a known defect is not one of the three kinds *The
-     testing floor* allows. What guards it is `insertKeySignature`'s contract, which
+     testing floor* allows. What guards it is `insertKeyChange`'s contract, which
      states that it inserts.
 5. Write the testing-approach Javadoc on each new test class, stating which equivalence
    classes, boundaries and invariants it exercises — as the contract's clauses, not as a
@@ -580,25 +555,34 @@ confirms it.
 ### Tasks
 
 1. Check `dialogs.md`, which Phase 1 rewrote, against what Phases 2–7 actually produced.
-2. **Settle the restatement-prompt rule** Phase 5 task 11 hands over. Either the rule
+   One item is known: the `Tab` section says a tab whose control checks a rule as the user
+   types asks the same function the controller's `validate` asks, handed to it as a
+   function reference. **No tab does this any more** — the line-width verifier was the only
+   one, and the title field's `NonEmptyGuard` is a UI-only rule the controller never sees.
+   Either state the convention as one nothing currently exercises, or drop it.
+2. **Update `specs/184b-page-setup.md`.** Its Current State section describes a line-width
+   field in `SongSettingsDialog` that is gone, and its Removed list carries work Phase 4
+   already did. State what page setup still has to build: it is now the *only* route to
+   `Song.lineWidthSs`, not a replacement for an existing one.
+3. **Settle the restatement-prompt rule** Phase 5 hands over. Either the rule
    gains a stated exception for a prompt the domain owns, as against a validation
    message the dialog owns, or `commit` gains a return value meaning "the commit did not
    happen". Say which dialogs it could ever apply to; today it is `KeyChangeDialog`
    alone.
-3. Update `plans/test-only-surface.md` — `SongSettingsDialog.getLineWidthFieldForTest()`
+4. Update `plans/test-only-surface.md` — `SongSettingsDialog.getLineWidthFieldForTest()`
    and `FontDialog.java:37` are resolved; `PreferencesDialog.resetInstrumentsForTesting`
    (line 481) is **not**, and its cited second caller `ExportMidiDialog` no longer
    exists.
-4. Update `plans/design-pass/keys.md` group C4 to done and C5 to unblocked.
-5. **Confirm the duplicate mid-line key signature is recorded** — gesture 3, the ⚠ in
+5. Update `plans/design-pass/keys.md` group C4 to done and C5 to unblocked.
+6. **Confirm the duplicate mid-line key signature is recorded** — gesture 3, the ⚠ in
    Phase 5. It is the one live defect this track knowingly leaves standing and it
    silently damages documents, so check rather than assume. It is
    `plans/design-pass/keys.md` group C item 6, which carries the defect, the three
    pieces the fix needs and its ~200 lines of domain work. Check that item still matches
    what Phase 5 actually built; do not restate it here.
-6. Confirm D2 and the `ui/dialog` scope paragraph in
+7. Confirm D2 and the `ui/dialog` scope paragraph in
    `plans/contract-driven-rollout.md` still match what the track produced.
-7. `dialogs.md` is a **guide** — it states conventions, not promises. Anything that
+8. `dialogs.md` is a **guide** — it states conventions, not promises. Anything that
    turned out to be a system invariant spanning subsystems goes in `docs/` instead.
 
 ---
@@ -661,5 +645,5 @@ the wrong size, focuses the wrong field, or shows a validation message that read
 9. **Two things are knowingly left undone and must be reported as such:** the duplicate
    mid-line key signature on gesture 3, and the restatement-prompt rule gap if Phase 9
    defers it.
-10. `ScoreViewController` no longer declares `changeLineKey` or `insertKeySignature`;
-    both are on `KeyChangeDialogController`.
+10. `ScoreViewController` declares neither key-change commit route; both are private
+    on `KeyChangeDialogController`, as `changeLineKey` and `insertKeyChange`.

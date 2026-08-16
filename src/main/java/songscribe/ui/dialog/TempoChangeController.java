@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.dialog.backend;
+package songscribe.ui.dialog;
 
 import org.jspecify.annotations.Nullable;
 
@@ -28,26 +28,27 @@ import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.component.MainFrame;
 
 /**
- * Reads and writes the tempo change on one element, for {@code TempoChangeDialog}.
+ * Reads and writes the tempo change on one element, for {@link TempoChangeDialog}.
  *
  * <p>A tempo change carries the beat, so it redefines the beat from its element onwards exactly
  * as a beat change does; every write here goes through {@link Song#withBeatDefiningEditOn} for
  * the same reason.
  *
- * <p>The value crossing the dialog interface is a {@link Tempo}, not the {@link TempoChangeAttachment} that
- * holds it: the attachment is a node in the document graph and the dialog has no business
- * holding one.
+ * <p>The value crossing the dialog interface is a {@link Tempo}, not the
+ * {@link TempoChangeAttachment} that holds it: the attachment is a node in the document graph and
+ * the dialog has no business holding one.
  *
- * <p>Nothing is refused, so {@link songscribe.ui.dialog.DialogBackEnd#validate} keeps its default:
- * the beats-per-minute comes from a bounded spinner and the note value from a fixed list, so every
+ * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: the
+ * beats-per-minute comes from a bounded spinner and the note value from a fixed list, so every
  * {@link Tempo} the dialog can assemble is one the score can hold.
  */
-public final class TempoChangeBackEnd extends AttachmentBackEndBase<Tempo> {
+public final class TempoChangeController extends AttachmentDialogController<Tempo> {
 
-    public TempoChangeBackEnd(AttachmentTarget target) {
-        super(target);
+    public TempoChangeController(MainFrame mainFrame, AttachmentTarget target) {
+        super(mainFrame, target);
     }
 
     @Override
@@ -65,7 +66,7 @@ public final class TempoChangeBackEnd extends AttachmentBackEndBase<Tempo> {
     }
 
     @Override
-    public @Nullable Tempo existingChange() {
+    protected @Nullable Tempo read() {
         var attachment = element().findAttachment(TempoChangeAttachment.class);
 
         return attachment != null ? attachment.getTempo() : null;
@@ -79,7 +80,7 @@ public final class TempoChangeBackEnd extends AttachmentBackEndBase<Tempo> {
      * one {@link SongDidChangeNotification} is posted.
      */
     @Override
-    public void apply(Tempo change) {
+    protected void commit(Tempo change) {
         var element = element();
         var existing = element.findAttachment(TempoChangeAttachment.class);
 

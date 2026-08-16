@@ -20,6 +20,7 @@
 package songscribe.ui.dialog;
 
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Tempo;
 import songscribe.font.DocumentFonts;
 
 /**
@@ -27,10 +28,10 @@ import songscribe.font.DocumentFonts;
  * {@link SongSettingsInput}.
  *
  * <p><strong>Producible from any state the controls can reach.</strong> Every component here
- * exists whatever the user has done, including leaving the line-width field empty or
- * unparseable: {@link MusicChoices#lineWidth()} carries that text rather than refusing to
- * produce a value. Whether the values may be committed is
- * {@link SongSettingsBackEnd#validate}'s question.
+ * exists whatever the user has done: the metadata fields accept any text, and the tempo comes
+ * from a note-value combo, a bounded spinner, a description combo and a checkbox, so every state
+ * they can reach is a tempo. Whether the values may be committed is
+ * {@link DialogOps#validate()}'s question.
  *
  * <p>The two records that span tabs are assembled by the dialog, because no tab holds all of
  * either: the title, number and subtitle come from the Title tab and the rest of the metadata
@@ -41,10 +42,11 @@ import songscribe.font.DocumentFonts;
  * @param metadata the metadata the Title and Attribution tabs together describe
  * @param fonts    the document's fonts with the six edited roles replaced, the other two
  *                 carried through from {@link SongSettingsInput#fonts()}
- * @param music    what the Music tab's controls say
+ * @param tempo    the tempo the Music tab's controls describe, built fresh from them and owned by
+ *                 nobody else
  */
 public record SongSettingsOutput(
     SongMetadata metadata,
     DocumentFonts fonts,
-    MusicChoices music
+    Tempo tempo
 ) {}

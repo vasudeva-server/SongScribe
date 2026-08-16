@@ -22,8 +22,8 @@ package songscribe.ui.dialog;
 import java.util.List;
 
 /**
- * What {@link DialogBackEnd#validate} answers: whether the values a dialog gathered may be
- * applied, and if not, why not.
+ * What {@link DialogController#validate} answers: whether the values a dialog gathered may be
+ * committed, and if not, why not.
  *
  * <p><strong>Validity is the absence of failures, not a separate flag.</strong> There is no state
  * in which a result claims to be valid while naming reasons it is not, because {@link #isValid()}
@@ -32,8 +32,8 @@ import java.util.List;
  * something to read. An empty failure list means the input is acceptable — it never means
  * "rejected, reason unknown".
  *
- * <p>The failures keep the order the back end reported them in, and that is the order a presenter
- * shows them in; a back end that has a most-important failure puts it first. Instances are
+ * <p>The failures keep the order the controller reported them in, and that is the order a presenter
+ * shows them in; a controller that has a most-important failure puts it first. Instances are
  * immutable: {@link #failures()} answers an unmodifiable list unaffected by later changes to the
  * list the constructor was given.
  *
@@ -47,7 +47,7 @@ public record ValidationResult(List<ValidationFailure> failures) {
     }
 
     /**
-     * The outcome for input a back end accepts, and the answer from a back end with nothing to
+     * The outcome for input a controller accepts, and the answer from a controller with nothing to
      * reject.
      *
      * @return a result carrying no failures
