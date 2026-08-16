@@ -87,8 +87,8 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 | 5 | [KeyChangeDialog](#-phase-5-keychangedialog) | ✅ Done | — |
 | 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ✅ Done | — |
 | 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ✅ Done | — |
-| 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ⏳ Pending | — |
-| 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏸️ Blocked by 8 | — |
+| 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ✅ Done | — |
+| 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏳ Pending | — |
 | 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9 | — |
 
 **There is no e2e phase.** A dialog's populate-gather-ops path either works or it does
@@ -509,11 +509,11 @@ type and letting an intermediate class wrap it.
 
 ---
 
-## ⏳ Phase 8: Controller Contracts and Their Tests
+## ✅ Phase 8: Controller Contracts and Their Tests
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
-**Files:** src/test/java/songscribe/ui/dialog/  <br>
+**Files:** src/main/java/songscribe/util/Copyable.java, src/main/java/songscribe/ui/dialog/, src/main/java/songscribe/dom/, src/main/java/songscribe/ui/component/TickSlider.java, .claude/guides/dialogs.md, .claude/guides/testing-common.md  <br>
 **Recommended model/effort:** Opus, high — deciding what each controller promises is contract judgment, and several are music-notation judgments that must be confirmed rather than decided.
 
 **The controllers are the subject, and the only subject.** They hold every decision and
@@ -564,12 +564,77 @@ confirms it.
    "enumerated in full" in the Javadoc.
 8. Run `./scripts/compile.sh` (SUCCESS) and `./scripts/test.sh` (green).
 
+### What this phase produced
+
+**Two design fixes, and no surviving tests.**
+
+The contract audit found the track's central promise false in two places.
+`DialogController.read()` promised that what a dialog is shown "holds no live handle" on
+the document, and `AnnotationController` and `TempoChangeController` both handed over the
+attachment's own mutable value — no live defect, because neither dialog mutated what it
+was given, but nothing stopped the next edit from doing so.
+
+The fix is structural rather than two `.copy()` calls: **`songscribe.util.Copyable<T>`, with
+`I extends @Nullable Copyable<I>` bounding `DialogOps`, `DialogController`,
+`StandardDialog`, `AttachmentDialog` and `AttachmentDialogController`, and the copy
+performed once in `DialogController.ops()`.** `read()` now reads and hands over what it
+holds. `Annotation`, `Tempo`, `BeatChange`, `Key` and `SongSettingsInput` implement it;
+`FontChoice` and `MessageText` wrap the two JDK-typed inputs, which cannot. The rule and
+its NullAway wrinkle are in `.claude/guides/dialogs.md`.
+
+Second fix: `PreferencesDialog.volumeToSliderIndex` duplicated `TickSlider.setSnappedValue`'s
+nearest-stop loop. Extracted as **`TickSlider.nearestStopIndex`**, which also retired the
+`// exposed for testing` widening on `VALID_VOLUME_STOPS` — both it and `volumeToSliderIndex`
+are private now.
+
+**Nine tests were written, run green, and deleted in the same change.** Per
+*One-time is the default* in `.claude/guides/testing-common.md`, which this phase added:
+the contract is the durable artifact, and a test is written again if and when the contract
+or the implementation changes. What they confirmed, once:
+
+| Subject | Confirmed |
+|---|---|
+| all three attachment controllers | one commit posts exactly one `SongDidChangeNotification`, including the two that nest `Song.withBeatDefiningEditOn`; the undo step is named Add / Change / Remove per the document's state; a second commit replaces the attachment rather than adding one beside it; `ops().remove()` is null exactly when there is nothing to remove |
+| `SongSettingsController` | the lyrics-font rule across all three of its classes, including that an already-overflowing line never refuses; the tempo is announced only when it changed |
+| `AttachmentTarget` | `elementIndex()` moves with an insertion ahead of the element; the constructor refuses an element the line does not hold and `forElement` answers null for the same cases |
+| `DialogController.ops()` | the input a dialog is shown is a copy — mutating it leaves the element's annotation, the element's tempo, and the song's tempo and fonts untouched |
+| `TickSlider.nearestStopIndex` | outside the range answers the nearer end, between two stops the nearer, an exact tie the lower position |
+
+**Writing them found a fixture trap worth recording: no fixture in
+`src/test/resources/fixtures/` carries syllables on notes.** The two lyric-width cases
+first passed against `insertion` and `overflowing-lines` while measuring nothing at all —
+widening a lyrics font over a document with no lyrics changes no line. They were rewritten
+to build syllables through `setLyricForVerse`, in a pair that asserts opposite verdicts
+under the same font change, so an arrangement that did not take fails one of them instead
+of passing both. Any future lyric-layout test needs its own syllables or a new fixture.
+
+**Not tested, and why.** `KeyChangeDialogController` is not constructible from a test: its
+constructor is private and each of its three entry points constructs the controller and
+opens a modal window in one call. Its own logic is route choice — a switch on a private
+enum and a branch on the same enum — and the algorithms it calls live in `layout/`.
+`PreferencesDialog.programToIndex` needs a MIDI synthesizer. `DoNotShowMessageController`
+is one `if` with no production caller.
+
+**Outstanding findings**, for Phase 9 to place:
+
+- `PreferencesDialog.programToIndex` returns `0` for an unknown program — an arbitrary
+  default that is also a legitimate answer (instrument 0), which *Guards* in
+  `~/.claude/guides/design.md` says must never be written. It is also `public` with one
+  caller, inside `PreferencesDialog`.
+- This plan's Phase 8 task 2 named `canonicalKeySelectionFrom`, which does not exist —
+  Phase 5 dropped the inherit entry, so nothing canonicalizes a key selection. Phase 6
+  task 8 named `buildScaleSequence(int program)` as an extraction; it exists, but as a
+  private method of `ScaleAction` rather than a class-level static.
+- `UnitTest.java:246` and `.claude/guides/testing-unit.md` both reference
+  `songscribe.ui.selection.ReflectionTestHelper`, and `.claude/guides/testing-common.md`
+  cites `ElementInsertionTest` and `OpNamesTest`. None of the three exists.
+
 ---
 
-## ⏸️ Phase 9: Documentation Consistency Pass
+## ⏳ Phase 9: Documentation Consistency Pass
 
-**Status:** Blocked by 8  <br>
-**BlockedBy:** 8  <br>
+**Status:** Pending  <br>
+**BlockedBy:** —  <br>
 **Files:** .claude/guides/dialogs.md, docs/key-signatures.md, plans/test-only-surface.md, plans/singleton-lifecycle-contracts.md, plans/design-pass/keys.md  <br>
 **Recommended model/effort:** Sonnet, medium — checking a written guide against what the work turned out to be.
 
@@ -650,7 +715,11 @@ the wrong size, focuses the wrong field, or shows a validation message that read
 ## Verification (whole plan)
 
 1. `./scripts/compile.sh` prints SUCCESS.
-2. `./scripts/test.sh` is green.
+2. `./scripts/test.sh` reports **`0 passed` and exits 1**, because the suite holds no
+   `@Test` methods. That is the pre-existing state — `src/test` held base classes and
+   helpers only before this track and still does — and Phase 8's tests were one-time,
+   deleted in the change that produced them. **This step cannot be read as coverage.** What
+   confirms the dialogs is Phase 10.
 3. **Every dialog's constructor takes `MainFrame`, a `DialogOps`, and presentation
    constants, and nothing else.** No dialog field names `Song`, `Line`, `StaffElement`,
    `ScoreView` or a controller. This is the mechanical acceptance test for the track.
