@@ -66,6 +66,12 @@ abstract class DialogController<I, O> {
 
 **There is one input shape, not two.** Every dialog asks `read` on each opening; none takes its input at construction. A dialog that appears to need no input is one whose constructor is smuggling its input in — if `I` wants to be `Void`, look at the constructor.
 
+### A nullable `I`, through a controller family
+
+`I extends @Nullable Object` on `DialogOps`, `DialogController` and `StandardDialog` is what lets a family like `AttachmentDialog<C> extends StandardDialog<@Nullable C, C>` exist — the input is absent when there's nothing to edit yet (Add), present when there is (Modify).
+
+**A subclass of a *generic controller family* names both type arguments itself; it never supplies one value type and lets an intermediate class wrap it in `@Nullable`.** `AttachmentDialogController<I extends @Nullable Object, O> extends DialogController<I, O>` is a straight pass-through for exactly this reason: NullAway does not compose a `@Nullable` wrap performed in one generic class's `extends` clause with a further type-argument substitution a concrete subclass performs one level down. `AttachmentDialogController<C> extends DialogController<@Nullable C, C>`, with `AnnotationController extends AttachmentDialogController<Annotation>`, type-checks the family's own file but fails at every call to `new AnnotationController(...).ops()`, which NullAway resolves to `DialogOps<Annotation, Annotation>` instead of `DialogOps<@Nullable Annotation, Annotation>` — a real false positive, not a real nullability gap, but one no amount of restating the wrap at the intermediate class fixes. `AnnotationController`, `BeatChangeController` and `TempoChangeController` each write `AttachmentDialogController<@Nullable Annotation, Annotation>` in full. Follow the same shape for the next generic controller family whose `I` is nullable.
+
 ### BaseDialog API surface
 
 Constructors: `(mainFrame, title)`, `(mainFrame, title, isModal)`, `(mainFrame, title, isModal, DialogCategory)`.

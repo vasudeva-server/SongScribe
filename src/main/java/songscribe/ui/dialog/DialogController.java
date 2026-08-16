@@ -43,10 +43,12 @@ import songscribe.ui.component.ScoreView;
  * action holds only the {@link MainFrame} and resolves the document in {@link #read()}, which is
  * asked afresh on every opening.
  *
- * @param <I> what the dialog shows, answered by {@link #read()}
+ * @param <I> what the dialog shows, answered by {@link #read()}. Its bound permits
+ *            {@code @Nullable} itself, for a family like {@code AttachmentDialogController} whose
+ *            input is absent on Add
  * @param <O> what the dialog's controls say on OK, passed to {@link #validate} and {@link #commit}
  */
-public abstract class DialogController<I, O> {
+public abstract class DialogController<I extends @Nullable Object, O> {
 
     private final MainFrame mainFrame;
 

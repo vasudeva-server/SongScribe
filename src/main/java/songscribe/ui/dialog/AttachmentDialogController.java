@@ -55,11 +55,13 @@ import songscribe.ui.component.MainFrame;
  * static to observe; that was the reason its first version gave, and a production class shaped for
  * a test is what {@code plans/test-only-surface.md} bans everywhere else.
  *
- * @param <C> the attachment's value type — the change a bound subclass reads, commits and removes.
- *            A value, not the attachment node that holds it: an attachment belongs to the document
- *            graph and never crosses to the dialog
+ * @param <I> what {@link #read()} answers — the attachment's value type, {@code @Nullable} because
+ *            an element may carry none yet, which is what an Add gesture opens on
+ * @param <O> what {@link #commit(Object)} writes — the same value type as {@code I}, but never
+ *            {@code null}: OK always gathers a concrete value from the controls
  */
-public abstract class AttachmentDialogController<C> extends DialogController<@Nullable C, C> {
+public abstract class AttachmentDialogController<I extends @Nullable Object, O>
+    extends DialogController<I, O> {
 
     /**
      * Which of the three commits is being performed, so each subclass can name the undo step with

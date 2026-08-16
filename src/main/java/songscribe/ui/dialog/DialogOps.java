@@ -44,7 +44,9 @@ import org.jspecify.annotations.Nullable;
  * controller whose answer depends on the document is constructed for the gesture it serves rather
  * than cached across gestures. See {@link DialogController#removal()}.
  *
- * @param <I>      what the dialog shows: values only, never a handle on the document
+ * @param <I>      what the dialog shows: values only, never a handle on the document. Its bound
+ *                 permits {@code @Nullable} itself, for a family like {@code AttachmentDialog}
+ *                 whose input is absent on Add
  * @param <O>      what the dialog's controls say on OK: values only, likewise
  * @param read     answers what to show, asked afresh on each opening rather than once at
  *                 construction, so a dialog reached from a cached action shows the document that
@@ -57,7 +59,7 @@ import org.jspecify.annotations.Nullable;
  *                 Remove — in which case no Remove button is built at all, so there is no state in
  *                 which one is on screen with nothing behind it
  */
-public record DialogOps<I, O>(
+public record DialogOps<I extends @Nullable Object, O>(
     Supplier<I> read,
     Function<O, ValidationResult> validate,
     Consumer<O> commit,

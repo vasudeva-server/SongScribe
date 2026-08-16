@@ -41,7 +41,7 @@ import songscribe.ui.component.MainFrame;
  * {@link BeatChange}'s durations come from {@link songscribe.dom.Duration}, and there is no pair
  * of note values the dialog can offer that this could sensibly reject.
  */
-public final class BeatChangeController extends AttachmentDialogController<BeatChange> {
+public final class BeatChangeController extends AttachmentDialogController<@Nullable BeatChange, BeatChange> {
 
     public BeatChangeController(MainFrame mainFrame, AttachmentTarget target) {
         super(mainFrame, target);

@@ -86,8 +86,8 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 | 4 | [SongSettingsDialog and Its Tabs](#-phase-4-songsettingsdialog-and-its-tabs) | ✅ Done | — |
 | 5 | [KeyChangeDialog](#-phase-5-keychangedialog) | ✅ Done | — |
 | 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ✅ Done | — |
-| 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ⏳ Pending | — |
-| 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ⏸️ Blocked by 3, 4, 5, 6, 7 | — |
+| 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ✅ Done | — |
+| 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ⏳ Pending | — |
 | 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏸️ Blocked by 8 | — |
 | 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9 | — |
 
@@ -450,12 +450,33 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 
 ---
 
-## ⏳ Phase 7: The Remaining Dialogs
+## ✅ Phase 7: The Remaining Dialogs
 
-**Status:** Pending  <br>
-**BlockedBy:** 1  <br>
-**Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java  <br>
+**Status:** Done  <br>
+**BlockedBy:** —  <br>
+**Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/FontDialogController.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/DoNotShowMessageController.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java, src/main/java/songscribe/ui/dialog/DialogOps.java, src/main/java/songscribe/ui/dialog/DialogController.java, src/main/java/songscribe/ui/dialog/StandardDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialogController.java, src/main/java/songscribe/ui/dialog/AnnotationController.java, src/main/java/songscribe/ui/dialog/BeatChangeController.java, src/main/java/songscribe/ui/dialog/TempoChangeController.java  <br>
 **Recommended model/effort:** Sonnet, low — two small controllers and a confirmation sweep.
+
+`FontDialog` is `StandardDialog<Font, Font>` with `FontDialogController`; `DoNotShowMessage` is
+`StandardDialog<String, Boolean>` with `DoNotShowMessageController`, its message text now `I`
+rather than a constructor argument. `DoNotShowMessage` has no production caller — kept as a
+facility for suppressible messages. `ProgressBarDialog`, `AboutDialog`, `MigrationWindow`,
+`FontSettingRow` and `fontchooser/` are unchanged.
+
+**`DialogOps<I, O>`, `DialogController<I, O>` and `StandardDialog<I, O>` declare
+`I extends @Nullable Object`.** Compiling this phase's own files first surfaced it: `I` carried
+the default non-null bound, so `AttachmentDialog<C> extends StandardDialog<@Nullable C, C>`
+(Phase 3) could not typecheck under NullAway. Widening `I`'s bound fixed the three attachment
+dialog classes, but not `AttachmentDialogController`'s own `.ops()` call sites — NullAway does
+not compose a `@Nullable` wrap performed in one generic class's `extends` clause with a further
+substitution a concrete subclass performs one level down, so `new AnnotationController(...).ops()`
+resolved to `DialogOps<Annotation, Annotation>` rather than `DialogOps<@Nullable Annotation,
+Annotation>`. `AttachmentDialogController<C> extends DialogController<@Nullable C, C>` is now
+`AttachmentDialogController<I extends @Nullable Object, O> extends DialogController<I, O>` — a
+straight pass-through — and `AnnotationController`, `BeatChangeController` and
+`TempoChangeController` each name both type arguments directly, e.g.
+`AttachmentDialogController<@Nullable Annotation, Annotation>`, rather than supplying one value
+type and letting an intermediate class wrap it.
 
 ### Tasks
 
@@ -488,10 +509,10 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 
 ---
 
-## ⏸️ Phase 8: Controller Contracts and Their Tests
+## ⏳ Phase 8: Controller Contracts and Their Tests
 
-**Status:** Blocked by 3, 4, 5, 6, 7  <br>
-**BlockedBy:** 3, 4, 5, 6, 7  <br>
+**Status:** Pending  <br>
+**BlockedBy:** —  <br>
 **Files:** src/test/java/songscribe/ui/dialog/  <br>
 **Recommended model/effort:** Opus, high — deciding what each controller promises is contract judgment, and several are music-notation judgments that must be confirmed rather than decided.
 

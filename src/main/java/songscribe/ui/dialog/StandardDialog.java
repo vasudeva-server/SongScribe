@@ -27,6 +27,8 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -70,10 +72,12 @@ import songscribe.util.UIUtils;
  * score — see {@code docs/mutations.md}. A commit that reaches the screen some other way arranges
  * that itself.
  *
- * @param <I> what to show, supplied by {@link DialogOps#read()} on each opening
+ * @param <I> what to show, supplied by {@link DialogOps#read()} on each opening. Its bound permits
+ *            {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input is
+ *            absent on Add
  * @param <O> what the controls say, gathered on OK. Values only — never a handle on the document
  */
-public abstract class StandardDialog<I, O> extends BaseDialog {
+public abstract class StandardDialog<I extends @Nullable Object, O> extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
         new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKey.DIALOG_BUTTON_HORIZONTAL_GAP), 0)

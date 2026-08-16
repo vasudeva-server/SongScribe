@@ -40,7 +40,7 @@ import songscribe.ui.component.MainFrame;
  * be the one candidate, and no {@link Annotation} can carry it — the type refuses it at
  * construction, so an unusable one cannot reach here to be rejected.
  */
-public final class AnnotationController extends AttachmentDialogController<Annotation> {
+public final class AnnotationController extends AttachmentDialogController<@Nullable Annotation, Annotation> {
 
     public AnnotationController(MainFrame mainFrame, AttachmentTarget target) {
         super(mainFrame, target);

@@ -31,17 +31,14 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.fontchooser.FontChooser;
 import songscribe.util.UIUtils;
 
-public class FontDialog extends CommitDialog<Font> {
+public class FontDialog extends StandardDialog<Font, Font> {
 
     private static final int EXTRA_PREVIEW_HEIGHT = 200;
 
-    // Widened to package-private for testing (FontDialogTest accesses it directly)
-    final FontChooser chooser = new FontChooser();
-    private Font selectedFont;
+    private final FontChooser chooser = new FontChooser();
 
-    public FontDialog(MainFrame mainFrame, Font initialFont) {
-        super(mainFrame, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE));
-        selectedFont = initialFont;
+    FontDialog(MainFrame mainFrame, DialogOps<Font, Font> ops) {
+        super(mainFrame, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), ops);
 
         // Padding applied here rather than via getContentPaddingKey() so the button
         // panel isn't indented by contentPanel's border insets, preventing extra side padding.
@@ -60,9 +57,10 @@ public class FontDialog extends CommitDialog<Font> {
     }
 
     public static Font showDialog(MainFrame mainFrame, Font initialFont) {
-        var dialog = new FontDialog(mainFrame, initialFont);
+        var controller = new FontDialogController(mainFrame, initialFont);
+        var dialog = new FontDialog(mainFrame, controller.ops());
         dialog.setVisible(true);
-        return dialog.selectedFont;
+        return controller.getSelectedFont();
     }
 
     @Override
@@ -81,33 +79,12 @@ public class FontDialog extends CommitDialog<Font> {
     }
 
     @Override
-    protected boolean getData() {
-        chooser.setSelectedFont(selectedFont);
-        return super.getData();
+    protected void populate(Font font) {
+        chooser.setSelectedFont(font);
     }
 
     @Override
     protected Font gather() {
         return chooser.getSelectedFont();
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * <p>The commit is to this dialog rather than to any document: the chosen font becomes what
-     * {@link #getSelectedFont()} answers, for whoever opened the dialog to read once it closes.
-     * Cancel leaves the font the dialog was constructed with.
-     */
-    @Override
-    protected void commit(Font font) {
-        selectedFont = font;
-    }
-
-    /**
-     * @return the font OK was pressed on, or the font this dialog was constructed with when it was
-     *         cancelled or is still open
-     */
-    public Font getSelectedFont() {
-        return selectedFont;
     }
 }

@@ -43,8 +43,9 @@ import songscribe.ui.component.MainFrame;
  * posts {@code PrefsDidChangeNotification} like any other. This dialog itself offers no way to
  * unsuppress a message — the checkbox only ever suppresses.
  */
-public class DoNotShowMessage extends CommitDialog<Boolean> {
+public class DoNotShowMessage extends StandardDialog<String, Boolean> {
 
+    private final JLabel messageLabel = new JLabel();
     final JCheckBox dontShowCheck = new JCheckBox(
         "Don’t show this message again."
     );
@@ -53,19 +54,19 @@ public class DoNotShowMessage extends CommitDialog<Boolean> {
     /**
      * @param mainFrame      the window this dialog parents itself to
      * @param title          the window title
-     * @param info           the message text
      * @param suppressionKey the boolean preference recording whether this message has already been
      *                       suppressed — read on every show, and the only thing OK ever writes
+     * @param ops            this dialog's operations, carrying the message text as {@code I}
      */
-    public DoNotShowMessage(
+    DoNotShowMessage(
         MainFrame mainFrame,
         String title,
-        String info,
-        PrefsKey suppressionKey
+        PrefsKey suppressionKey,
+        DialogOps<String, Boolean> ops
     ) {
-        super(mainFrame, title, true, DialogCategory.INFORMATIONAL);
+        super(mainFrame, title, ops, DialogCategory.INFORMATIONAL);
         this.suppressionKey = suppressionKey;
-        contentPanel.add(BorderLayout.NORTH, new JLabel(info));
+        contentPanel.add(BorderLayout.NORTH, messageLabel);
         contentPanel.add(BorderLayout.CENTER, dontShowCheck);
     }
 
@@ -94,21 +95,12 @@ public class DoNotShowMessage extends CommitDialog<Boolean> {
     }
 
     @Override
-    protected Boolean gather() {
-        return dontShowCheck.isSelected();
+    protected void populate(String message) {
+        messageLabel.setText(message);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * <p>Only ever writes {@code true}. Leaving the box clear means the message keeps appearing,
-     * which is what the preference already says, so there is nothing to write back — and writing it
-     * anyway would post a change notification for a preference that did not change.
-     */
     @Override
-    protected void commit(Boolean doNotShowAgain) {
-        if (doNotShowAgain) {
-            Prefs.put(suppressionKey, true);
-        }
+    protected Boolean gather() {
+        return dontShowCheck.isSelected();
     }
 }

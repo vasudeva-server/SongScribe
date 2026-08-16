@@ -45,7 +45,7 @@ import songscribe.ui.component.MainFrame;
  * beats-per-minute comes from a bounded spinner and the note value from a fixed list, so every
  * {@link Tempo} the dialog can assemble is one the score can hold.
  */
-public final class TempoChangeController extends AttachmentDialogController<Tempo> {
+public final class TempoChangeController extends AttachmentDialogController<@Nullable Tempo, Tempo> {
 
     public TempoChangeController(MainFrame mainFrame, AttachmentTarget target) {
         super(mainFrame, target);
