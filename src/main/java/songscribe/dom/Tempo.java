@@ -126,4 +126,27 @@ public class Tempo implements Copyable<Tempo> {
             && a.showTempo == b.showTempo;
     }
 
+    /**
+     * Whether two tempos — either of which may be null — define the same beat.
+     *
+     * <p>The beat is the tempo <em>type</em> alone. It is what beams group against and what a
+     * tuplet is measured in, so changing it revalidates the notation of the whole song. The BPM,
+     * the description and the show-tempo flag say how the tempo is displayed and leave the
+     * notation underneath untouched.
+     *
+     * <p>Asked by everything that would otherwise redo beat-dependent work for a tempo edit that
+     * only changed how the marking reads.
+     */
+    public static boolean haveSameBeat(@Nullable Tempo a, @Nullable Tempo b) {
+        if (a == b) {
+            return true;
+        }
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        return a.tempoType == b.tempoType;
+    }
+
 }

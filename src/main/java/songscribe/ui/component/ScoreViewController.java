@@ -23,6 +23,7 @@ package songscribe.ui.component;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import javax.swing.JComponent;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -48,6 +49,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalMaterializer;
@@ -80,6 +82,7 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
+import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.SpanMutation;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
@@ -105,6 +108,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.PasteSpanReconciliation;
+import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
@@ -503,19 +507,15 @@ public final class ScoreViewController {
             return;
         }
 
-        // Three mutually exclusive cases, checked in order: a full relayout invalidates every
-        // LinePanel's layout; a line insert or delete rebuilds the LinePanel list; and a
-        // line-scoped change invalidates only the LinePanels the change affects (one, or two
-        // for a span straddling a line boundary).
+        // Three mutually exclusive cases for the staff, checked widest first: a line insert or
+        // delete rebuilds the LinePanel list; a change that reaches every line invalidates every
+        // LinePanel's layout; and a line-scoped change invalidates only the LinePanels the change
+        // affects (one, or two for a span straddling a line boundary).
         //
-        // Font, metadata, and layout changes (e.g. a Song Settings commit) all
-        // require re-laying out every line, not just repainting: invalidating each
-        // line clears its cached LayoutResult so positions are recomputed.
-        if (hasFullRelayoutMutation(message)) {
-            for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
-                linePanel.getLineComponent().invalidateLayout();
-            }
-        } else if (message.hasMutationOf(LineInsertion.class) || message.hasMutationOf(LineDeletion.class)) {
+        // The rebuild is tested ahead of the every-line case because it subsumes it — it
+        // recreates every LinePanel, layout and all — while the reverse is not true, and a batch
+        // that changes fonts and inserts a line carries both.
+        if (message.hasMutationOf(LineInsertion.class) || message.hasMutationOf(LineDeletion.class)) {
             // StaffPanel.rebuildLayout() is the only add/remove primitive for LinePanels;
             // per-panel invalidation cannot add a panel for an inserted line or remove one
             // for a deleted line. Coarse (recreates every LinePanel) but correct for both
@@ -525,6 +525,10 @@ public final class ScoreViewController {
             // re-wire the scoreView into each (as document load does) so their next
             // performLayout() has a live scoreView and does not produce a null layout.
             score.setupLineComponentState();
+        } else if (invalidatesEveryLine(message)) {
+            for (var linePanel : mainPanel.getStaffPanel().getLinePanels()) {
+                linePanel.getLineComponent().invalidateLayout();
+            }
         } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
@@ -545,9 +549,19 @@ public final class ScoreViewController {
             }
         }
 
-        // Re-sync derived layout coordinates from the (now invalidated) components.
-        if (hasFullRelayoutMutation(message)) {
-            score.viewChanged();
+        // Additive, not a fourth case in the chain: a Song Settings commit carries metadata
+        // alongside fonts and tempo and can arrive in the same batch as a line-scoped mutation
+        // elsewhere in the song, where the chain above would invalidate that line and leave
+        // line 0 — which lays out the attribution and the tempo mark — holding its stale layout.
+        invalidateMetadataViews(message, mainPanel);
+
+        // Last, and after everything above has marked its components invalid: each of these can
+        // change the height of the page's content — a title that wraps to a second line, a
+        // larger title font, a taller attribution block — which moves every line below it and
+        // can outgrow the page itself. relayoutPage re-fits the canvas to it and validates
+        // synchronously, which also re-syncs the derived layout coordinates on the way out.
+        if (movesPageGeometry(message)) {
+            score.relayoutPage();
         }
 
         // Debounce repaints to batch multiple rapid changes
@@ -631,10 +645,48 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns whether the notification carries any mutation that requires a full
-     * song relayout (font / metadata / layout property changes).
+     * Returns whether the notification carries any mutation that changes how <em>every</em>
+     * line is laid out, and so costs the whole song a re-solve.
+     * <p>
+     * A font or layout-property change reaches every line by definition. A metadata change
+     * reaches every line only when it redefined the song's beat, which regroups beams and
+     * revalidates tuplets throughout. The rest of the metadata — the title, the number, the
+     * subtitle, the attribution, the footnotes, and a tempo edit that only changed how the
+     * marking reads — is drawn outside the staves or on line 0 alone, and is dealt with by
+     * {@link #invalidateMetadataViews} at the cost of the one line it belongs to.
      */
-    private static boolean hasFullRelayoutMutation(SongDidChangeNotification message) {
+    private static boolean invalidatesEveryLine(SongDidChangeNotification message) {
+        for (var mutation : message.getMutations()) {
+            if (mutation instanceof FontChange || mutation instanceof LayoutChange) {
+                return true;
+            }
+
+            if (mutation instanceof MetadataChange metadataChange && redefinesBeat(metadataChange)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns whether {@code change} is a tempo change that redefined the song's beat.
+     * <p>
+     * {@link MetadataField#TEMPO} is one coarse field covering both the tempo type — the beat —
+     * and how the tempo is displayed, so the field alone cannot answer this and the recorded
+     * values have to. The casts hold because {@link MetadataChange}'s constructor validates
+     * every value against {@link MetadataField#getExpectedType()}.
+     */
+    private static boolean redefinesBeat(MetadataChange change) {
+        return change.field() == MetadataField.TEMPO
+            && !Tempo.haveSameBeat((Tempo) change.oldValue(), (Tempo) change.newValue());
+    }
+
+    /**
+     * Returns whether the notification carries any mutation that can move something drawn
+     * outside a line, and so shifts the coordinates every line below it sits at.
+     */
+    private static boolean movesPageGeometry(SongDidChangeNotification message) {
         for (var mutation : message.getMutations()) {
             if (mutation instanceof FontChange
                 || mutation instanceof MetadataChange
@@ -644,6 +696,60 @@ public final class ScoreViewController {
         }
 
         return false;
+    }
+
+    /**
+     * Invalidates what the metadata in {@code message} is actually drawn by: the header and
+     * footer components that carry it, and line 0, the only line that lays out the attribution
+     * block and the tempo mark (see {@code LineComponent.performLayout}).
+     * <p>
+     * The header and footer components measure their text on every sizing pass, so they have no
+     * cache to clear — they only have to be marked invalid, so that the {@link
+     * ScoreView#relayoutPage} the caller ends on measures them afresh instead of being handed the
+     * size they had before the edit.
+     * <p>
+     * Runs whatever the staff branch above decided, since a batch can carry a metadata change
+     * beside a line-scoped one. Invalidating line 0 a second time when that branch already did
+     * costs nothing.
+     */
+    private static void invalidateMetadataViews(SongDidChangeNotification message, MainPanel mainPanel) {
+        var firstLineAffected = false;
+
+        for (var mutation : message.getMutations()) {
+            if (!(mutation instanceof MetadataChange metadataChange)) {
+                continue;
+            }
+
+            switch (metadataChange.field()) {
+                case ATTRIBUTION -> {
+                    firstLineAffected = true;
+                    invalidate(mainPanel.getTitleComponent());
+                    invalidate(mainPanel.getSubtitleComponent());
+                }
+
+                // Reached only for a tempo edit that left the beat alone; one that redefined it
+                // was answered by invalidatesEveryLine. Either way the marking is line 0's, so
+                // invalidating that line is all the marking itself needs.
+                case TEMPO -> firstLineAffected = true;
+
+                case FOOTNOTES -> invalidate(mainPanel.getFootnotesComponent());
+            }
+        }
+
+        if (firstLineAffected) {
+            var linePanels = mainPanel.getStaffPanel().getLinePanels();
+
+            // Empty while a document is being torn down or before its lines exist.
+            if (!linePanels.isEmpty()) {
+                linePanels.getFirst().getLineComponent().invalidateLayout();
+            }
+        }
+    }
+
+    /** Drops {@code component}'s cached size so the next layout pass measures it afresh. */
+    private static void invalidate(JComponent component) {
+        component.invalidate();
+        component.repaint();
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)

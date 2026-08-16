@@ -1678,16 +1678,26 @@ public final class Song implements Disposable {
 
         var oldTempo = currentTempo.copy();
 
+        // Only the tempo type is the song's beat. A BPM, description or show-tempo edit changes
+        // how the marking reads and nothing about the notation, so it must not drag the whole
+        // song through a tuplet revalidation — and must not be able to remove a tuplet.
+        var redefinesBeat = !Tempo.haveSameBeat(oldTempo, newTempo);
+
         // The update is applied a second time, to the live instance, on purpose. Assigning
         // newTempo would replace the instance, and applying it before the bracket would put
         // the write outside withBeatDefiningEdit, which must run the change itself in order
         // to invalidate tuplets against the new beat.
         withModification(() -> applyChange(
             new MetadataChange(MetadataField.TEMPO, oldTempo, newTempo),
-            // The tempo type is the song's beat, so this in-place update is a
-            // beat-defining write even though only a field of an existing Tempo changes.
-            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                () -> applyTempoUpdate(update, currentTempo))
+            () -> {
+                if (redefinesBeat) {
+                    withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
+                        () -> applyTempoUpdate(update, currentTempo));
+                    return;
+                }
+
+                applyTempoUpdate(update, currentTempo);
+            }
         ));
     }
 

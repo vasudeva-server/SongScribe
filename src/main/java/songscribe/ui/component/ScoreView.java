@@ -1129,10 +1129,31 @@ public final class ScoreView
      */
     public void updatePageLayout(double lineWidthSs) {
         getSong().setLineWidthSs(lineWidthSs);
+        relayoutPage();
+    }
+
+    /**
+     * Re-fits the page to the score's content at the current zoom and the song's stored line
+     * width, writing nothing to the model.
+     * <p>
+     * Call after anything changes the size of what the page holds — a title that gains a wrapped
+     * line, an attribution block that grows. The canvas is sized from {@code MainPanel}'s
+     * preferred height rather than by Swing, so content that grows past the page is only
+     * accommodated here; and {@link #layoutPage} validates synchronously, so the new sizes are
+     * realized by the time this returns rather than at some later point on the event queue.
+     * <p>
+     * The components whose size changed must be invalidated <em>before</em> this is called.
+     * {@code Container.invalidate} propagates upward only, so a still-valid child hands back its
+     * cached preferred size and the page would be re-fitted to the size it already had.
+     * <p>
+     * {@link #updatePageLayout} is the entry point for a change <em>of</em> the line width; it
+     * stores the width and then comes here.
+     */
+    public void relayoutPage() {
         // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
         // centered for the wrong width at any zoom other than 100% (content against the left
         // edge when zoomed out, clipped on the right when zoomed in).
-        layoutPage(viewScale.toViewPx(new Ss(lineWidthSs)).roundedPx());
+        layoutPage(viewScale.toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx());
     }
 
     /**
@@ -1340,9 +1361,9 @@ public final class ScoreView
         invalidateTree(this);
 
         // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
-        // layoutPage (not updatePageLayout) because zooming is a view-only change with no
+        // relayoutPage (not updatePageLayout) because zooming is a view-only change with no
         // business writing to the model at all — the width it lays out for is the model's own.
-        layoutPage(viewScale.toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx());
+        relayoutPage();
 
         // Force synchronous re-layout so the new (post-zoom) sizes are realized before
         // we read them below; plain revalidate() is async and would leave stale sizes.
