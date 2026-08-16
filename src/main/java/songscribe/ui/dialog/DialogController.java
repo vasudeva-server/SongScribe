@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Song;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.util.Copyable;
 
 /**
  * The other end of a {@link DialogOps}: everything one dialog's operations need the document for.
@@ -43,12 +44,13 @@ import songscribe.ui.component.ScoreView;
  * action holds only the {@link MainFrame} and resolves the document in {@link #read()}, which is
  * asked afresh on every opening.
  *
- * @param <I> what the dialog shows, answered by {@link #read()}. Its bound permits
+ * @param <I> what the dialog shows, answered by {@link #read()}. {@link Copyable}, because
+ *            {@link #ops()} copies it on the way out — see there. Its bound permits
  *            {@code @Nullable} itself, for a family like {@code AttachmentDialogController} whose
  *            input is absent on Add
  * @param <O> what the dialog's controls say on OK, passed to {@link #validate} and {@link #commit}
  */
-public abstract class DialogController<I extends @Nullable Object, O> {
+public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
 
     private final MainFrame mainFrame;
 
@@ -103,8 +105,11 @@ public abstract class DialogController<I extends @Nullable Object, O> {
      * Reads what the dialog should show.
      *
      * <p>Called once per opening, before the window appears, and never while it is up. Reads only:
-     * the document is left exactly as it was, and what comes back holds no live handle on it, so a
-     * dialog editing the returned value cannot reach the document through it.
+     * the document is left exactly as it was.
+     *
+     * <p><strong>It may return the document's own object.</strong> Keeping the dialog off it is
+     * {@link #ops()}'s job and is done for every controller at once, so an implementation here
+     * reads what it holds and copies nothing.
      *
      * @return the values to show, as the document now stands
      */
@@ -174,10 +179,30 @@ public abstract class DialogController<I extends @Nullable Object, O> {
      * the bundle out costs nothing, since it carries four function references and no route back to
      * the receiver behind them.
      *
-     * @return a bundle carrying exactly this controller's {@link #read()}, {@link #validate},
-     *         {@link #commit} and {@link #removal()}
+     * <p><strong>What the dialog is shown is a copy.</strong> {@link #read()} may answer the
+     * document's own object; what goes into the bundle is {@link Copyable#copy()} of it, so a
+     * dialog editing what it was given cannot reach the document through it. Doing it here rather
+     * than in each {@link #read()} is what makes it true of every dialog rather than of the ones
+     * whose author remembered — and the {@link Copyable} bound on {@code I} is what stops a type
+     * that cannot copy itself from being an input at all.
+     *
+     * @return a bundle carrying exactly this controller's {@link #read()} — copied — together with
+     *         its {@link #validate}, {@link #commit} and {@link #removal()}
      */
     public final DialogOps<I, O> ops() {
-        return new DialogOps<>(this::read, this::validate, this::commit, removal());
+        return new DialogOps<>(this::readCopy, this::validate, this::commit, removal());
+    }
+
+    /**
+     * @return {@link #read()}'s answer, copied; {@code null} where it answered null, which for the
+     *         attachment family is an element carrying no change yet
+     */
+    private I readCopy() {
+        var values = read();
+
+        // Returns values rather than the null literal: NullAway reads a bare type variable as
+        // non-null whatever its bound permits, so a literal null here is rejected while the same
+        // null travelling inside I is not. See the nullable-I section of .claude/guides/dialogs.md.
+        return values == null ? values : values.copy();
     }
 }

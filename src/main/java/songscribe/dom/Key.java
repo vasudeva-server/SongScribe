@@ -26,6 +26,7 @@ import java.util.List;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.util.Copyable;
 
 /**
  * A key signature, identified by its position on the circle of fifths: negative for a flat key,
@@ -48,7 +49,7 @@ import songscribe.smufl.SMuFLMetadata;
  * documents are read" in {@code docs/musicxml-object-model.md}), so no minor or modal key can ever
  * enter the model.
  */
-public enum Key {
+public enum Key implements Copyable<Key> {
     SEVEN_FLATS(-7),
     SIX_FLATS(-6),
     FIVE_FLATS(-5),
@@ -151,6 +152,17 @@ public enum Key {
      */
     public int fifths() {
         return fifths;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@code this}. A key is one of fifteen enum constants and has no state to separate,
+     *         so identity is what a copy of it means.
+     */
+    @Override
+    public Key copy() {
+        return this;
     }
 
     /**

@@ -33,6 +33,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.Copyable;
 
 /**
  * The controller family behind every {@link AttachmentDialog}, and the two gestures that open one.
@@ -60,7 +61,7 @@ import songscribe.ui.component.MainFrame;
  * @param <O> what {@link #commit(Object)} writes — the same value type as {@code I}, but never
  *            {@code null}: OK always gathers a concrete value from the controls
  */
-public abstract class AttachmentDialogController<I extends @Nullable Object, O>
+public abstract class AttachmentDialogController<I extends @Nullable Copyable<I>, O>
     extends DialogController<I, O> {
 
     /**

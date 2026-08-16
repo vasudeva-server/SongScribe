@@ -30,7 +30,7 @@ import songscribe.ui.component.MainFrame;
  *
  * <p>Constructed per gesture, by {@link FontDialog#showDialog}, and discarded with the dialog.
  */
-final class FontDialogController extends DialogController<Font, Font> {
+final class FontDialogController extends DialogController<FontChoice, Font> {
 
     private Font selectedFont;
 
@@ -40,8 +40,8 @@ final class FontDialogController extends DialogController<Font, Font> {
     }
 
     @Override
-    protected Font read() {
-        return selectedFont;
+    protected FontChoice read() {
+        return new FontChoice(selectedFont);
     }
 
     @Override

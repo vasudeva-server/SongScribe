@@ -31,19 +31,19 @@ import songscribe.ui.component.MainFrame;
  * <p>Constructed per gesture, by whoever wants a suppressible message shown, and discarded with
  * the dialog.
  */
-final class DoNotShowMessageController extends DialogController<String, Boolean> {
+final class DoNotShowMessageController extends DialogController<MessageText, Boolean> {
 
-    private final String message;
+    private final MessageText message;
     private final PrefsKey suppressionKey;
 
     DoNotShowMessageController(MainFrame mainFrame, String message, PrefsKey suppressionKey) {
         super(mainFrame);
-        this.message = message;
+        this.message = new MessageText(message);
         this.suppressionKey = suppressionKey;
     }
 
     @Override
-    protected String read() {
+    protected MessageText read() {
         return message;
     }
 

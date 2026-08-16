@@ -31,13 +31,13 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.fontchooser.FontChooser;
 import songscribe.util.UIUtils;
 
-public class FontDialog extends StandardDialog<Font, Font> {
+public class FontDialog extends StandardDialog<FontChoice, Font> {
 
     private static final int EXTRA_PREVIEW_HEIGHT = 200;
 
     private final FontChooser chooser = new FontChooser();
 
-    FontDialog(MainFrame mainFrame, DialogOps<Font, Font> ops) {
+    FontDialog(MainFrame mainFrame, DialogOps<FontChoice, Font> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_FONT_CHOOSER_TITLE), ops);
 
         // Padding applied here rather than via getContentPaddingKey() so the button
@@ -79,8 +79,8 @@ public class FontDialog extends StandardDialog<Font, Font> {
     }
 
     @Override
-    protected void populate(Font font) {
-        chooser.setSelectedFont(font);
+    protected void populate(FontChoice choice) {
+        chooser.setSelectedFont(choice.font());
     }
 
     @Override

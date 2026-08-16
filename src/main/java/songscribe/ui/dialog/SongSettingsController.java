@@ -78,10 +78,6 @@ public final class SongSettingsController extends DialogController<SongSettingsI
     /**
      * {@inheritDoc}
      *
-     * <p>The fonts and the tempo arrive as copies, so the dialog edits what it is given and the
-     * document does not change until OK. The metadata needs no copy — {@code SongMetadata} is a
-     * record of immutable values.
-     *
      * @return the open song's metadata, fonts, tempo, line width and lyrics context, as they now
      *         stand
      */
@@ -91,8 +87,8 @@ public final class SongSettingsController extends DialogController<SongSettingsI
 
         return new SongSettingsInput(
             song.getMetadata(),
-            new DocumentFonts(requireScoreView().getDocumentFonts()),
-            song.getTempo().copy(),
+            requireScoreView().getDocumentFonts(),
+            song.getTempo(),
             song.getLineWidthSs(),
             new LyricsContext(song.getLyricsText(), !song.getTranslatedLyrics().isEmpty())
         );

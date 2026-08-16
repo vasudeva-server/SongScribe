@@ -43,7 +43,7 @@ import songscribe.ui.component.MainFrame;
  * posts {@code PrefsDidChangeNotification} like any other. This dialog itself offers no way to
  * unsuppress a message — the checkbox only ever suppresses.
  */
-public class DoNotShowMessage extends StandardDialog<String, Boolean> {
+public class DoNotShowMessage extends StandardDialog<MessageText, Boolean> {
 
     private final JLabel messageLabel = new JLabel();
     final JCheckBox dontShowCheck = new JCheckBox(
@@ -62,7 +62,7 @@ public class DoNotShowMessage extends StandardDialog<String, Boolean> {
         MainFrame mainFrame,
         String title,
         PrefsKey suppressionKey,
-        DialogOps<String, Boolean> ops
+        DialogOps<MessageText, Boolean> ops
     ) {
         super(mainFrame, title, ops, DialogCategory.INFORMATIONAL);
         this.suppressionKey = suppressionKey;
@@ -95,8 +95,8 @@ public class DoNotShowMessage extends StandardDialog<String, Boolean> {
     }
 
     @Override
-    protected void populate(String message) {
-        messageLabel.setText(message);
+    protected void populate(MessageText message) {
+        messageLabel.setText(message.text());
     }
 
     @Override

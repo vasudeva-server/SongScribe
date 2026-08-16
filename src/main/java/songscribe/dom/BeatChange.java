@@ -19,7 +19,20 @@
  */
 package songscribe.dom;
 
-public record BeatChange(Duration duration, Duration beat) {
+import songscribe.util.Copyable;
+
+public record BeatChange(Duration duration, Duration beat) implements Copyable<BeatChange> {
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@code this}. Both components are {@link Duration} constants, so a beat change holds
+     *         no mutable state for a copy to separate.
+     */
+    @Override
+    public BeatChange copy() {
+        return this;
+    }
 
     /**
      * Translates a legacy beat-change enum name into the new record form. Called from the IO

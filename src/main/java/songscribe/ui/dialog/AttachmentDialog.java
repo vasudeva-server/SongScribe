@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.Copyable;
 
 /**
  * Base dialog for adding, changing or removing an attachment on a staff element — a tempo change,
@@ -42,9 +43,10 @@ import songscribe.ui.component.MainFrame;
  * another, which is what {@link AttachmentDialogController} does on every gesture.
  *
  * @param <C> the attachment's value type — a value the dialog can display and build, never a node
- *            of the document graph
+ *            of the document graph. {@link Copyable}, so what the dialog is shown is its own copy
+ *            rather than the attachment's own value; see {@link DialogController#ops()}
  */
-public abstract class AttachmentDialog<C> extends StandardDialog<@Nullable C, C> {
+public abstract class AttachmentDialog<C extends Copyable<C>> extends StandardDialog<@Nullable C, C> {
 
     /**
      * @param mainFrame the window this dialog parents itself to

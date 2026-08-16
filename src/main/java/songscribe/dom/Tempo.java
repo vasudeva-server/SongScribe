@@ -22,8 +22,9 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.midi.MidiSequenceBuilder;
+import songscribe.util.Copyable;
 
-public class Tempo {
+public class Tempo implements Copyable<Tempo> {
 
     // The default tempo produced by the no-arg constructor. Note that
     // DEFAULT_DESCRIPTION is persisted to MusicXML and read back verbatim, so it is
@@ -92,9 +93,12 @@ public class Tempo {
     }
 
     /**
-     * Returns a deep copy of this tempo, so a clone and its original hold independent state
+     * Returns a deep copy of this tempo, so a copy and its original hold independent state
      * even if a future mutator starts changing this tempo's fields in place.
+     *
+     * @return a tempo with the same values, sharing no state with this one
      */
+    @Override
     public Tempo copy() {
         return new Tempo(visibleTempo, tempoType, tempoDescription, showTempo);
     }

@@ -34,6 +34,7 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.Copyable;
 import songscribe.util.UIUtils;
 
 /**
@@ -72,12 +73,13 @@ import songscribe.util.UIUtils;
  * score — see {@code docs/mutations.md}. A commit that reaches the screen some other way arranges
  * that itself.
  *
- * @param <I> what to show, supplied by {@link DialogOps#read()} on each opening. Its bound permits
+ * @param <I> what to show, supplied by {@link DialogOps#read()} on each opening — already a copy,
+ *            so a subclass may edit it in place without reaching the document. Its bound permits
  *            {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input is
  *            absent on Add
  * @param <O> what the controls say, gathered on OK. Values only — never a handle on the document
  */
-public abstract class StandardDialog<I extends @Nullable Object, O> extends BaseDialog {
+public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
         new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKey.DIALOG_BUTTON_HORIZONTAL_GAP), 0)
@@ -205,7 +207,8 @@ public abstract class StandardDialog<I extends @Nullable Object, O> extends Base
      * decision made from {@code values} and belongs here rather than anywhere that can see the
      * document.
      *
-     * @param values what to show, as {@link DialogOps#read()} just answered it
+     * @param values what to show — a copy of what the document holds, belonging to this dialog, so
+     *               retaining or editing it reaches nothing outside the window
      */
     protected abstract void populate(I values);
 

@@ -21,6 +21,8 @@ package songscribe.dom;
 
 import java.awt.Component;
 
+import songscribe.util.Copyable;
+
 /**
  * A piece of text placed above or below a note — {@code dolce}, {@code cresc.}, {@code Fine}.
  *
@@ -31,7 +33,7 @@ import java.awt.Component;
  * {@link #getAnnotation()} as text worth rendering, and removing an annotation is a removal
  * rather than a blanking.
  */
-public class Annotation {
+public class Annotation implements Copyable<Annotation> {
 
     public enum Placement { ABOVE, BELOW }
 
@@ -116,7 +118,11 @@ public class Annotation {
     /**
      * Returns a deep copy of this annotation, so mutating the copy (e.g. dragging it to a
      * new vertical position) never affects the original.
+     *
+     * @return an annotation with the same text, alignment, placement and offset, sharing no state
+     *         with this one
      */
+    @Override
     public Annotation copy() {
         var copy = new Annotation(annotation, xAlignment);
         copy.placement = placement;

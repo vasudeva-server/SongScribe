@@ -25,6 +25,8 @@ import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.util.Copyable;
+
 /**
  * Everything a dialog may ask of the world outside itself.
  *
@@ -44,13 +46,16 @@ import org.jspecify.annotations.Nullable;
  * controller whose answer depends on the document is constructed for the gesture it serves rather
  * than cached across gestures. See {@link DialogController#removal()}.
  *
- * @param <I>      what the dialog shows: values only, never a handle on the document. Its bound
- *                 permits {@code @Nullable} itself, for a family like {@code AttachmentDialog}
- *                 whose input is absent on Add
- * @param <O>      what the dialog's controls say on OK: values only, likewise
+ * @param <I>      what the dialog shows. {@link Copyable}, because {@link DialogController#ops()}
+ *                 hands the dialog a copy rather than the document's own object — a type that has
+ *                 not said how it copies cannot be a dialog's input. Its bound permits
+ *                 {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input
+ *                 is absent on Add
+ * @param <O>      what the dialog's controls say on OK: values only, built by the dialog rather
+ *                 than taken from the document, so nothing has to be copied on the way back
  * @param read     answers what to show, asked afresh on each opening rather than once at
  *                 construction, so a dialog reached from a cached action shows the document that
- *                 is open now
+ *                 is open now. What it answers is already a copy
  * @param validate decides whether gathered values may be committed. Answers and displays nothing;
  *                 presenting the refusal is {@link StandardDialog}'s job
  * @param commit   writes the gathered values, and is reached only with values {@code validate}
@@ -59,7 +64,7 @@ import org.jspecify.annotations.Nullable;
  *                 Remove — in which case no Remove button is built at all, so there is no state in
  *                 which one is on screen with nothing behind it
  */
-public record DialogOps<I extends @Nullable Object, O>(
+public record DialogOps<I extends @Nullable Copyable<I>, O>(
     Supplier<I> read,
     Function<O, ValidationResult> validate,
     Consumer<O> commit,

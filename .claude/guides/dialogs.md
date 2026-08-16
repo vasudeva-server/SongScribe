@@ -15,7 +15,7 @@ The mechanical test, applied to every dialog class without judgment:
 
 A dialog is still free to use the domain's *static knowledge*. That line, not a package line, is where the boundary runs: a `songscribe.dom` import is fine when it names knowledge and wrong when it names the document.
 
-- **Knowledge — allowed.** Enums (`Duration`, `Annotation.Placement`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score.
+- **Knowledge — allowed.** Enums (`Duration`, `Annotation.Placement`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score. A mutable value type reaches a dialog as a copy — see [`I` is `Copyable`](#i-is-copyable-and-the-copy-happens-in-one-place).
 - **State — forbidden.** `Song`, `Line`, `StaffElement`, `ScoreView`, and reaching through `MainFrame` for any of them. `getMainFrame()` is for **window parenting only**.
 
 Under this rule a dialog's own steps — populate, gather, call the ops — are wiring and carry no tests of their own. **What carries tests is the controller.**
@@ -24,12 +24,12 @@ Under this rule a dialog's own steps — populate, gather, call the ops — are 
 
 Three pieces cross the boundary:
 
-- **a record in** — `I`, what to show, asked on **each opening**;
+- **a record in** — `I`, what to show, asked on **each opening**, and always a **copy**;
 - **a record out** — `O`, what the controls now say, gathered on OK;
 - **a `DialogOps<I, O>`** — four function references: `read`, `validate`, `commit`, `remove`.
 
 ```java
-record DialogOps<I, O>(
+record DialogOps<I extends @Nullable Copyable<I>, O>(
     Supplier<I>                    read,
     Function<O, ValidationResult>  validate,
     Consumer<O>                    commit,
@@ -37,12 +37,38 @@ record DialogOps<I, O>(
 )
 ```
 
+### `I` is `Copyable`, and the copy happens in one place
+
+**What a dialog is shown is never the document's own object.** `DialogController.ops()` calls
+`Copyable.copy()` on whatever `read()` answered before putting it in the bundle, so a dialog
+editing what it was given cannot reach the document through it. `read()` itself copies nothing —
+it reads what the controller holds and hands it over.
+
+Doing it in `ops()` rather than in each `read()` is the point: it is true of every dialog rather
+than of the ones whose author remembered. `AnnotationController` and `TempoChangeController` both
+handed out the document's own mutable object before the bound existed, and nothing failed, because
+no dialog happened to mutate what it was given.
+
+**The bound is what makes it total.** `I extends @Nullable Copyable<I>` means a type that has not
+said how it copies cannot be a dialog's input, and the compiler is what says so. Implementing
+`Copyable` is the claim that `copy()` is deep enough; an immutable type answers `this`, and that
+declaration is how it states it is immutable.
+
+**A JDK type cannot implement it, so it gets wrapped.** `FontChoice` wraps `java.awt.Font` for
+`FontDialog` and `MessageText` wraps `String` for `DoNotShowMessage`. Wrapping is the only way a
+type we do not own crosses this boundary — the alternative is an escape hatch, and an escape hatch
+is the whole rule again as a convention. Both wrappers are worth their keep for a second reason:
+`MessageText` says which of a dialog's several strings this one is.
+
+**`O` carries no bound.** It is built by `gather()` from the controls, so there is nothing of the
+document's in it to alias.
+
 **Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. Four references expose four calls and can never expose a fifth.
 
 The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the four operations need. **The dialog never sees it.**
 
 ```java
-abstract class DialogController<I, O> {
+abstract class DialogController<I extends @Nullable Copyable<I>, O> {
     protected DialogController(MainFrame mainFrame)
 
     // The access dialogs gave up. Legitimate here.
@@ -51,13 +77,13 @@ abstract class DialogController<I, O> {
     protected final Song             getSong()
     protected final void             withModification(String label, Runnable mutator)
 
-    protected abstract I                read()
+    protected abstract I                read()               // may answer the document's own object
     protected          ValidationResult validate(O values)   // default: accepts everything
     protected abstract void             commit(O values)
     protected          @Nullable Runnable removal()          // default: null
 
-    public final DialogOps<I, O> ops()      // final: no subclass hands over a partial bundle
-}
+    public final DialogOps<I, O> ops()      // final: no subclass hands over a partial bundle,
+}                                           // and the only place read()'s answer is copied
 ```
 
 **Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog four references that already hold them.
@@ -68,7 +94,9 @@ abstract class DialogController<I, O> {
 
 ### A nullable `I`, through a controller family
 
-`I extends @Nullable Object` on `DialogOps`, `DialogController` and `StandardDialog` is what lets a family like `AttachmentDialog<C> extends StandardDialog<@Nullable C, C>` exist — the input is absent when there's nothing to edit yet (Add), present when there is (Modify).
+`I extends @Nullable Copyable<I>` on `DialogOps`, `DialogController` and `StandardDialog` is what lets a family like `AttachmentDialog<C extends Copyable<C>> extends StandardDialog<@Nullable C, C>` exist — the input is absent when there's nothing to edit yet (Add), present when there is (Modify).
+
+**NullAway reads a bare type variable as non-null whatever its bound permits.** So `DialogController.ops()`'s copy step cannot be written as `values == null ? null : values.copy()` — the `null` literal is rejected against a return type of `I`. Written as `values == null ? values : values.copy()` it compiles and means the same thing, because the null then travels inside `I` rather than as a literal. Reach for the same shape anywhere a generic method has to pass a nullable type variable through unchanged; it is not a suppression and needs none.
 
 **A subclass of a *generic controller family* names both type arguments itself; it never supplies one value type and lets an intermediate class wrap it in `@Nullable`.** `AttachmentDialogController<I extends @Nullable Object, O> extends DialogController<I, O>` is a straight pass-through for exactly this reason: NullAway does not compose a `@Nullable` wrap performed in one generic class's `extends` clause with a further type-argument substitution a concrete subclass performs one level down. `AttachmentDialogController<C> extends DialogController<@Nullable C, C>`, with `AnnotationController extends AttachmentDialogController<Annotation>`, type-checks the family's own file but fails at every call to `new AnnotationController(...).ops()`, which NullAway resolves to `DialogOps<Annotation, Annotation>` instead of `DialogOps<@Nullable Annotation, Annotation>` — a real false positive, not a real nullability gap, but one no amount of restating the wrap at the intermediate class fixes. `AnnotationController`, `BeatChangeController` and `TempoChangeController` each write `AttachmentDialogController<@Nullable Annotation, Annotation>` in full. Follow the same shape for the next generic controller family whose `I` is nullable.
 
