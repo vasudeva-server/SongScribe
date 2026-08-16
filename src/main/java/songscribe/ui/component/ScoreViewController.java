@@ -472,15 +472,7 @@ public final class ScoreViewController {
         var key = message.getKey();
         var all = key == PrefsKey.ALL;
 
-        if (
-            all ||
-            key == PrefsKey.LOOP_PLAYBACK ||
-            key == PrefsKey.PLAY_WITH_REPEATS ||
-            key == PrefsKey.PLAY_INSERTED_NOTE ||
-            key == PrefsKey.PLAYBACK_NOTE_DURATION ||
-            key == PrefsKey.TEMPO_CHANGE_PERCENT ||
-            key == PrefsKey.INSTRUMENT
-        ) {
+        if (all || ScoreActions.PLAYBACK_SYNC_PREFS_KEYS.contains(key)) {
             scoreActions.syncPlaybackPrefs();
         }
 

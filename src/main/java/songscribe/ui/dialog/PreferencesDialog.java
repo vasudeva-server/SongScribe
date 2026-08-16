@@ -85,6 +85,13 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
+/**
+ * The non-modal preferences window. There is no OK/Cancel cycle and nothing to revert: each
+ * control writes its {@link Prefs} key the moment it changes, and closing the window keeps
+ * every change made while it was open. This dialog does not subscribe to {@link
+ * songscribe.prefs.PrefsDidChangeNotification} — a {@code resetAll()} triggered elsewhere
+ * while this dialog is open leaves its widgets showing stale values until it is reopened.
+ */
 public class PreferencesDialog extends BaseDialog {
 
     private static String[] instrumentStrings = new String[0];
@@ -149,6 +156,11 @@ public class PreferencesDialog extends BaseDialog {
         instrumentPrograms = pairs.stream().mapToInt(Map.Entry::getValue).toArray();
     }
 
+    /**
+     * @param program a MIDI program number
+     * @return the index of {@code program} in {@link #getInstrumentPrograms()}, or 0 if no
+     *     loaded instrument uses that program
+     */
     public static int programToIndex(int program) {
         ensureInstrumentsLoaded();
 
@@ -307,9 +319,8 @@ public class PreferencesDialog extends BaseDialog {
             var pageSizeListener = new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    Prefs.put(
-                        PrefsKey.PAGE_SIZE, a4Radio.isSelected() ? "a4" : "letter"
-                    );
+                    var size = a4Radio.isSelected() ? PageModel.Size.A4 : PageModel.Size.LETTER;
+                    Prefs.put(PrefsKey.PAGE_SIZE, size.key());
                 }
             };
 
@@ -821,41 +832,10 @@ public class PreferencesDialog extends BaseDialog {
                 }
 
                 try {
-                    var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ, 0);
-                    var track = sequence.createTrack();
                     var selectedIndex = instrumentList.getSelectedIndex();
                     var program = selectedIndex >= 0 ? instrumentPrograms[selectedIndex] : 0;
-                    var programChange = new ShortMessage();
-                    programChange.setMessage(
-                        ShortMessage.PROGRAM_CHANGE,
-                        program,
-                        0
-                    );
-                    track.add(new MidiEvent(programChange, 0));
-                    MidiEventFactory.addTempoEvent(track, 0, SCALE_TEMPO_BPM);
 
-                    var ticks = 0;
-
-                    for (var pitch : SCALE) {
-                        var down = new ShortMessage();
-                        down.setMessage(
-                            ShortMessage.NOTE_ON,
-                            pitch,
-                            SCALE_VELOCITY
-                        );
-                        track.add(new MidiEvent(down, ticks));
-
-                        ticks += MidiSequenceBuilder.PPQ / 2;
-                        var up = new ShortMessage();
-                        up.setMessage(
-                            ShortMessage.NOTE_OFF,
-                            pitch,
-                            0
-                        );
-                        track.add(new MidiEvent(up, ticks));
-                    }
-
-                    seq.setSequence(sequence);
+                    seq.setSequence(buildScaleSequence(program));
                     seq.setTickPosition(0);
 
                     setScalePlaying(true);
@@ -878,6 +858,51 @@ public class PreferencesDialog extends BaseDialog {
                         Strings.ERROR_SCALE_PLAY
                     );
                 }
+            }
+
+            /**
+             * Builds a one-track MIDI sequence that selects {@code program} and then plays
+             * {@link #SCALE} at {@value #SCALE_TEMPO_BPM} BPM, each note held for half a beat.
+             *
+             * @param program the MIDI program (instrument) to select before the scale plays
+             * @return a new, unplayed {@link Sequence} ready to hand to a {@link
+             *     javax.sound.midi.Sequencer}
+             * @throws InvalidMidiDataException if a MIDI event in the sequence is malformed
+             */
+            private static Sequence buildScaleSequence(int program) throws InvalidMidiDataException {
+                var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ, 0);
+                var track = sequence.createTrack();
+                var programChange = new ShortMessage();
+                programChange.setMessage(
+                    ShortMessage.PROGRAM_CHANGE,
+                    program,
+                    0
+                );
+                track.add(new MidiEvent(programChange, 0));
+                MidiEventFactory.addTempoEvent(track, 0, SCALE_TEMPO_BPM);
+
+                var ticks = 0;
+
+                for (var pitch : SCALE) {
+                    var down = new ShortMessage();
+                    down.setMessage(
+                        ShortMessage.NOTE_ON,
+                        pitch,
+                        SCALE_VELOCITY
+                    );
+                    track.add(new MidiEvent(down, ticks));
+
+                    ticks += MidiSequenceBuilder.PPQ / 2;
+                    var up = new ShortMessage();
+                    up.setMessage(
+                        ShortMessage.NOTE_OFF,
+                        pitch,
+                        0
+                    );
+                    track.add(new MidiEvent(up, ticks));
+                }
+
+                return sequence;
             }
 
             private void setScalePlaying(boolean scalePlaying) {

@@ -50,15 +50,17 @@ public final class PageModel {
 
     /** Physical page sizes. */
     public enum Size {
-        LETTER(8.5, 11.0),
-        A4(8.27, 11.69);
+        LETTER(8.5, 11.0, "letter"),
+        A4(8.27, 11.69, "a4");
 
         private final double widthInches;
         private final double heightInches;
+        private final String key;
 
-        Size(double widthInches, double heightInches) {
+        Size(double widthInches, double heightInches, String key) {
             this.widthInches = widthInches;
             this.heightInches = heightInches;
+            this.key = key;
         }
 
         public double widthInches() {
@@ -68,6 +70,11 @@ public final class PageModel {
         public double heightInches() {
             return heightInches;
         }
+
+        /** The {@link PrefsKey#PAGE_SIZE} string this size is stored under. */
+        public String key() {
+            return key;
+        }
     }
 
     private PageModel() {}
@@ -75,7 +82,14 @@ public final class PageModel {
     /** Returns the active page size from preferences. */
     public static Size getSize() {
         var value = Prefs.getString(PrefsKey.PAGE_SIZE);
-        return "a4".equalsIgnoreCase(value) ? Size.A4 : Size.LETTER;
+
+        for (var size : Size.values()) {
+            if (size.key.equalsIgnoreCase(value)) {
+                return size;
+            }
+        }
+
+        return Size.LETTER;
     }
 
     /** Full page width in document pixels (fixed document scale, independent of view zoom). */

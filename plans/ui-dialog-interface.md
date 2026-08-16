@@ -85,7 +85,7 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 | 3 | [The Attachment Family](#-phase-3-the-attachment-family) | ✅ Done | — |
 | 4 | [SongSettingsDialog and Its Tabs](#-phase-4-songsettingsdialog-and-its-tabs) | ✅ Done | — |
 | 5 | [KeyChangeDialog](#-phase-5-keychangedialog) | ✅ Done | — |
-| 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ⏳ Pending | — |
+| 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ✅ Done | — |
 | 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ⏳ Pending | — |
 | 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ⏸️ Blocked by 3, 4, 5, 6, 7 | — |
 | 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏸️ Blocked by 8 | — |
@@ -386,9 +386,9 @@ abandons the change and closes the dialog, as it did before.
 
 ---
 
-## ⏳ Phase 6: PreferencesDialog
+## ✅ Phase 6: PreferencesDialog
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** 1  <br>
 **Files:** src/main/java/songscribe/ui/dialog/PreferencesDialog.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/layout/PageModel.java  <br>
 **Recommended model/effort:** Sonnet, medium — 899 lines, no controller to build, but a real notification gap to close.

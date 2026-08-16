@@ -20,10 +20,13 @@
 
 package songscribe.ui.edit;
 
+import java.util.Set;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.prefs.PrefsKey;
 
 /**
  * Callback interface for ScoreView actions needed by EditModeManager.
@@ -33,6 +36,20 @@ import songscribe.dom.StaffElement;
  * Created as part of Phase 6 of the ScoreView Cleanup refactoring.
  */
 public interface ScoreActions {
+
+    /**
+     * The single authority for which preference keys {@link #syncPlaybackPrefs()} reads.
+     * A caller deciding whether a preference change warrants a sync checks membership here
+     * instead of keeping its own copy of the key list.
+     */
+    Set<PrefsKey> PLAYBACK_SYNC_PREFS_KEYS = Set.of(
+        PrefsKey.PLAY_INSERTED_NOTE,
+        PrefsKey.PLAY_WITH_REPEATS,
+        PrefsKey.INSTRUMENT,
+        PrefsKey.TEMPO_CHANGE_PERCENT,
+        PrefsKey.PLAYBACK_NOTE_DURATION,
+        PrefsKey.PLAYBACK_VOLUME
+    );
 
     /**
      * Clears the current selection.
@@ -60,7 +77,9 @@ public interface ScoreActions {
     void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
 
     /**
-     * Synchronizes playback-related preferences (loop, play-with-repeats).
+     * Synchronizes playback-related preferences. Reads exactly the keys named in
+     * {@link #PLAYBACK_SYNC_PREFS_KEYS} — a caller adding a key to that set must add the
+     * matching read here, and vice versa.
      */
     void syncPlaybackPrefs();
 
