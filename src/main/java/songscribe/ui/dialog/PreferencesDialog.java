@@ -98,9 +98,9 @@ public class PreferencesDialog extends BaseDialog {
     private static int[] instrumentPrograms = new int[0];
     private static boolean instrumentsLoaded = false;
 
-    // Volume snap stops shared by PlayTab.getData() and exposed for testing
-    static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
-    private static final int VOLUME_STOP_COUNT = VALID_VOLUME_STOPS.length;
+    // The volume values the slider's five stops stand for. Unevenly spaced, which is why the
+    // slider is built over stop indices instead and this maps between the two.
+    private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
 
     public PreferencesDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
@@ -184,24 +184,17 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     /**
-     * Nearest-stop snap: returns the index in {@link #VALID_VOLUME_STOPS} whose
-     * value is closest to {@code volume}. Ties are broken in favour of the
-     * lower-indexed (quieter) stop.
+     * The volume slider position a stored playback volume lands on.
+     *
+     * <p>The slider runs over stop indices rather than volumes, because {@link TickSlider} draws
+     * evenly spaced ticks and these five volumes are not evenly spaced. This is the mapping back.
+     *
+     * @param volume a stored playback volume, which need not be one of the five stop values
+     * @return the slider position, with a tie going to the quieter stop — see
+     *         {@link TickSlider#nearestStopIndex}
      */
-    static int volumeToSliderIndex(int volume) {
-        var closestIndex = 0;
-        var minDist = Math.abs(volume - VALID_VOLUME_STOPS[0]);
-
-        for (var i = 1; i < VOLUME_STOP_COUNT; i++) {
-            var dist = Math.abs(volume - VALID_VOLUME_STOPS[i]);
-
-            if (dist < minDist) {
-                minDist = dist;
-                closestIndex = i;
-            }
-        }
-
-        return closestIndex;
+    private static int volumeToSliderIndex(int volume) {
+        return TickSlider.nearestStopIndex(VALID_VOLUME_STOPS, volume);
     }
 
     /**

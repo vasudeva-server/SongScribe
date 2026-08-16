@@ -105,21 +105,46 @@ public abstract class TickSlider extends JSlider {
      * @param value the value to snap to the nearest stop
      */
     public void setSnappedValue(int value) {
-        var closest = stops[0];
-        var minDist = Math.abs(value - closest);
+        var closest = stops[nearestStopIndex(stops, value)];
+
+        // Update lastCommittedValue to prevent a spurious tickDidChange
+        // when the change listener fires from setValue.
+        lastCommittedValue = closest;
+        setValue(closest);
+    }
+
+    /**
+     * The position in {@code stops} of the stop nearest {@code value}.
+     *
+     * <p>Static and taking its stops as an argument, because a slider is not the only thing that
+     * has to answer this: a stored preference whose scale differs from the one the slider is built
+     * over is mapped to a stop index without a slider being involved. It is the same snap
+     * {@link #setSnappedValue} performs, which asks it too, so the rule below is stated once.
+     *
+     * <p>A value below the first stop or above the last answers that end's position, so the result
+     * is always a real index and no caller range-checks first.
+     *
+     * <p><strong>A tie goes to the lower position.</strong> A value exactly between two stops is
+     * an equally good answer either way, so what matters is that the choice is the same every
+     * time rather than which way it goes.
+     *
+     * @param stops the stop values, ascending and non-empty
+     * @param value the value to snap
+     * @return the position of the nearest stop, from 0 to {@code stops.length - 1}
+     */
+    public static int nearestStopIndex(int[] stops, int value) {
+        var closestIndex = 0;
+        var minDist = Math.abs(value - stops[0]);
 
         for (var i = 1; i < stops.length; i++) {
             var dist = Math.abs(value - stops[i]);
 
             if (dist < minDist) {
                 minDist = dist;
-                closest = stops[i];
+                closestIndex = i;
             }
         }
 
-        // Update lastCommittedValue to prevent a spurious tickDidChange
-        // when the change listener fires from setValue.
-        lastCommittedValue = closest;
-        setValue(closest);
+        return closestIndex;
     }
 }
