@@ -14,9 +14,9 @@ Move horizontal layout authority from line width to margins. Add a per-document 
 
 * * *
 ## Current State (after #184 lands)
-- `Song.lineWidthSs` is the canonical horizontal layout value, mutation-tracked via `LayoutField.LINE_WIDTH_SS`. The only user-facing writer is the Line Width section of `SongSettingsDialog`'s Music tab (`MusicTab`, lines 1500-1722: `lineWidthField`, `LineWidthVerifier` at 1693-1721, `validateLineWidthText` static helper at 298-314, `revertLineWidthField` at 1640-1653, `showLineWidthError` at 1668-1684), validated against `PageModel.MIN_LINE_WIDTH_INCHES = 5.0` / `MAX_LINE_WIDTH_INCHES = 7.77`, applied through `ScoreView.updatePageLayout(int)`.
+- `Song.lineWidthSs` is the canonical horizontal layout value, mutation-tracked via `LayoutField.LINE_WIDTH_SS`, applied through `ScoreView.updatePageLayout(int)`. **There is no UI that writes it.** `SongSettingsDialog`'s Music tab carries only a tempo section; the Line Width section this spec used to describe there is already gone (`ui-dialog-interface.md` Phase 4). This spec is now the *only* route to `Song.lineWidthSs`, not a replacement for an existing one.
 
-- `ScoreView.openFile` rejects files whose stored line width exceeds `MAX_LINE_WIDTH_INCHES` (`SongLoadResult.LineWidthTooLarge`).
+- `ScoreView.openFile` rejects files whose stored line width exceeds `PageModel.MAX_LINE_WIDTH_INCHES = 7.77` (`SongLoadResult.LineWidthTooLarge`), validated against `PageModel.MIN_LINE_WIDTH_INCHES = 5.0`.
 
 - `PageModel` is all-static, reads `PrefsKey.PAGE_SIZE` in `getSize()`, has fixed `VERTICAL_MARGIN_INCHES = 0.5`, and derives horizontal margins by centering the line width in `getHorizontalMarginPx(lineWidthPx)`.
 
@@ -164,7 +164,6 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 
 ### 8. Cleanup
 
-- `SongSettingsDialog` Music tab: the Line Width section is removed — `lineWidthField`, `unitLabel`, `LineWidthVerifier`, `validateLineWidth`/`validateLineWidthText`, `revertLineWidthField`, `showLineWidthError`, `createLineWidthSection`, `LINE_WIDTH_FIELD_COLUMNS`, and the now-dead string keys (`dialog.song.settings.section.line.width`, `error.line.width.*`, `alert.title.line.width.error`; `label.width` only if unreferenced elsewhere). The tab's `isValidData()` override drops its `validateLineWidth() >= 0` term.
 - `PaperSizeStep` is removed from `ExportPDFDialog` (and deleted along with its strings if nothing else references it). `PageLayoutData` drops the dead `mirrored` and `songsPerPage` fields; when PDF export is implemented it will read the document's page setup instead.
 - Stub exporters and their menu items are left untouched.
 
@@ -174,7 +173,6 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 - `LayoutField.LINE_WIDTH_SS` and its `MutationReplayer` case
 - `LayoutDidChangeNotification`'s `lineWidthSs` payload and `Song.layoutDidChange`'s branch for it
 - `PageModel.Size` (replaced by `PaperSize`), `MAX_LINE_WIDTH_INCHES`, `getHorizontalMarginPx`, pref-reading singleton behavior
-- `SongSettingsDialog` Line Width section + its strings
 - `PaperSizeStep` (from the export flow; deleted if unreferenced)
 - `PageLayoutData.mirrored`, `PageLayoutData.songsPerPage`
 - Legacy `<page-width> = line width` **write** semantics (read path kept for legacy files)

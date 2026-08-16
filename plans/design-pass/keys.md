@@ -267,8 +267,8 @@ starting it, not a reason to hold it back.
    `KeySignatureRenderer.renderKeyChange` each build the run twice — once for the
    list, once inside `Key.widthSsFrom`. Introduced when `totalWidthSs(List)` was
    removed; negligible cost, real duplication.
-4. **`KeyChangeDialog` onto a controller and `DialogOps`.** **Owned by
-   `plans/ui-dialog-interface.md` Phase 5 — read it there, not here.** That
+4. ✅ **`KeyChangeDialog` onto a controller and `DialogOps`.** *Done*, by
+   `plans/ui-dialog-interface.md` Phase 5 — read it there, not here. That
    section carries the shape and the task list, written against the tree as it
    stands. Nothing about this item is restated in this file, because two copies
    drift and this one already had.
@@ -325,18 +325,14 @@ starting it, not a reason to hold it back.
    proves the line holds no key change. A local `escaped` boolean gates the
    `getRunningKey()` shortcut.
 
-   **Blocked on C4.** `KeyChangeDialog.currentChoiceFor` is the only caller
-   relying on the inclusive bound, and it relies on it to serve
-   edit-this-signature and insert-one-here *without telling them apart*. Nothing
-   the dialog holds can stand in — `showFor` derives `op` from
-   `line.getKey() != null`, which is about the line's own key — so under an
-   exclusive bound the dialog would have to ask the line whether a
-   `KeyChangeElement` sits at the bound index, reaching into the model to recover
-   what its caller already knew. C4 removes the question rather than answering
-   it: the controller takes a separate entry point per gesture, because only the
-   caller can tell an existing signature from a new one, and hands the dialog a
-   `Key`. Start this item once C4 has landed; `keyAt` then has no caller wanting
-   the inclusive bound.
+   **Unblocked — C4 landed.** `KeyChangeDialog.currentChoiceFor` was the only
+   caller relying on the inclusive bound, and it relied on it to serve
+   edit-this-signature and insert-one-here *without telling them apart*.
+   `currentChoiceFor` no longer exists: `KeyChangeDialogController` now takes a
+   separate entry point per gesture (`editLineKey`/`editKeyChange`/`addKeyChange`),
+   because only the caller can tell an existing signature from a new one, and
+   hands the dialog a `Key` directly. `keyAt` now has no caller wanting the
+   inclusive bound, so this item can start.
 
    **This item does not fix item 6.** `keyAt`'s bound decides what the dialog
    opens on; `insertKeyChange` decides what OK writes.

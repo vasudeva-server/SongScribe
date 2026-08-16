@@ -86,6 +86,19 @@ abstract class DialogController<I extends @Nullable Copyable<I>, O> {
 }                                           // and the only place read()'s answer is copied
 ```
 
+**`commit` may itself ask a yes/no question before it opens its bracket.**
+`AccidentalRestatements.confirm` must run in an edit's decide phase, before any
+modification bracket opens — the same rule the ending confirms follow.
+`KeyChangeDialogController.changeLineKey`/`insertKeyChange` are two more
+callers of that rule, alongside `ScoreViewController`, `PitchShifter`,
+`PreviewElementInserter` and `SelectionActionApplier`. This is not the
+`validate`/`showFailure` presentation path — nothing was rejected, and no
+`ValidationFailure` is shown. It is a decide-phase question about a change
+already accepted as valid, and a cancelled answer means `commit` does nothing:
+the document stays untouched, and the dialog still closes exactly as an
+ordinary OK would, because `StandardDialog` sees the commit run to
+completion either way.
+
 **Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog four references that already hold them.
 
 **A controller bound to a gesture is constructed per gesture.** `removal()` is asked once, when `ops()` assembles the bundle, and decides whether a Remove button is *built* — not merely whether it is enabled. A controller serving a dialog reached from a cached action holds only the `MainFrame` and resolves the document in `read()`.
@@ -200,7 +213,7 @@ Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`,
 
 A tab in a record-boundary dialog takes its values as a parameter rather than reaching for them: `populate(Input)` in, a typed getter or a slice record out (`SongSettingsMusicTab.populate`/`gather`), both driven from the dialog's own `populate(I)` / `gather()`. `Tab.getData()` stays the generic hook for tabs that need no input.
 
-A tab whose control checks a rule as the user types asks the **same function the controller's `validate` asks**, handed to it as a function reference. Two callers of one function, never two copies of one rule.
+A tab whose live-typed check must match a clause of the controller's `validate` asks that **same function**, handed to it as a function reference — never a second copy of the rule. Nothing in the tree needs this today: `SongSettingsTitleTab`'s and `AnnotationDialog`'s `NonEmptyGuard`s are UI-only guards (never leave the field blank while typing) with no `validate` counterpart to duplicate.
 
 `getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
 

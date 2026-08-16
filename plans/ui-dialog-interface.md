@@ -88,8 +88,8 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 | 6 | [PreferencesDialog](#-phase-6-preferencesdialog) | ✅ Done | — |
 | 7 | [The Remaining Dialogs](#-phase-7-the-remaining-dialogs) | ✅ Done | — |
 | 8 | [Controller Contracts and Their Tests](#-phase-8-controller-contracts-and-their-tests) | ✅ Done | — |
-| 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ⏳ Pending | — |
-| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9 | — |
+| 9 | [Documentation Consistency Pass](#-phase-9-documentation-consistency-pass) | ✅ Done | — |
+| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏳ Pending (manual) | — |
 
 **There is no e2e phase.** A dialog's populate-gather-ops path either works or it does
 not, which one look at the running app settles; an e2e test over it is one-time at best,
@@ -615,9 +615,9 @@ is one `if` with no production caller.
 
 ---
 
-## ⏳ Phase 9: Documentation Consistency Pass
+## ✅ Phase 9: Documentation Consistency Pass
 
-**Status:** Pending  <br>
+**Status:** Done  <br>
 **BlockedBy:** —  <br>
 **Files:** .claude/guides/dialogs.md, docs/key-signatures.md, specs/184b-page-setup.md, plans/design-pass-register.md, plans/design-pass/keys.md  <br>
 **Recommended model/effort:** Sonnet, medium — checking a written guide against what the work turned out to be.
@@ -655,10 +655,10 @@ is one `if` with no production caller.
 
 ---
 
-## ⏸️ Phase 10: Manual UI Verification
+## ⏳ Phase 10: Manual UI Verification
 
-**Status:** Blocked by 9  <br>
-**BlockedBy:** 9  <br>
+**Status:** Pending (manual)  <br>
+**BlockedBy:** —  <br>
 **Files:** —  <br>
 **Recommended model/effort:** Sonnet, low — the agent prepares and reports; the user drives the app.
 
