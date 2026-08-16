@@ -61,7 +61,6 @@ BaseDialog ......................... window, geometry, blocking counter, tabs
     └── CommitDialog<I> ............ merged into StandardDialog by Phase 1
         ├── SongSettingsDialog ...... 230 LOC + 4 tabs + 2 rows + TempoSection
         ├── FontDialog .............. CommitDialog<Font>
-        ├── DoNotShowMessage ........ CommitDialog<Boolean>
         └── AttachmentDialog<C> ..... 136 LOC, + Remove button
             ├── BeatChangeDialog
             ├── TempoChangeDialog
@@ -163,9 +162,8 @@ Cancel  →  nothing
 `commit` hooks to delegate; the dialog calls the ops directly.
 
 **There is no `Void` input.** A dialog that appears to need none is one whose
-constructor is smuggling its input in — `DoNotShowMessage` takes its message text as a
-constructor argument today, and that text is its input. If `I` ever wants to be `Void`,
-look at the constructor.
+constructor is smuggling its input in. If `I` ever wants to be `Void`, look at the
+constructor.
 
 ### Tasks
 
@@ -454,14 +452,13 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 
 **Status:** Done  <br>
 **BlockedBy:** —  <br>
-**Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/FontDialogController.java, src/main/java/songscribe/ui/dialog/DoNotShowMessage.java, src/main/java/songscribe/ui/dialog/DoNotShowMessageController.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java, src/main/java/songscribe/ui/dialog/DialogOps.java, src/main/java/songscribe/ui/dialog/DialogController.java, src/main/java/songscribe/ui/dialog/StandardDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialogController.java, src/main/java/songscribe/ui/dialog/AnnotationController.java, src/main/java/songscribe/ui/dialog/BeatChangeController.java, src/main/java/songscribe/ui/dialog/TempoChangeController.java  <br>
+**Files:** src/main/java/songscribe/ui/dialog/FontDialog.java, src/main/java/songscribe/ui/dialog/FontDialogController.java, src/main/java/songscribe/ui/dialog/ProgressBarDialog.java, src/main/java/songscribe/ui/dialog/AboutDialog.java, src/main/java/songscribe/ui/dialog/FontSettingRow.java, src/main/java/songscribe/ui/dialog/DialogOps.java, src/main/java/songscribe/ui/dialog/DialogController.java, src/main/java/songscribe/ui/dialog/StandardDialog.java, src/main/java/songscribe/ui/dialog/AttachmentDialogController.java, src/main/java/songscribe/ui/dialog/AnnotationController.java, src/main/java/songscribe/ui/dialog/BeatChangeController.java, src/main/java/songscribe/ui/dialog/TempoChangeController.java  <br>
 **Recommended model/effort:** Sonnet, low — two small controllers and a confirmation sweep.
 
-`FontDialog` is `StandardDialog<Font, Font>` with `FontDialogController`; `DoNotShowMessage` is
-`StandardDialog<String, Boolean>` with `DoNotShowMessageController`, its message text now `I`
-rather than a constructor argument. `DoNotShowMessage` has no production caller — kept as a
-facility for suppressible messages. `ProgressBarDialog`, `AboutDialog`, `MigrationWindow`,
-`FontSettingRow` and `fontchooser/` are unchanged.
+`FontDialog` is `StandardDialog<Font, Font>` with `FontDialogController`. `DoNotShowMessage`,
+`DoNotShowMessageController` and `MessageText` do not exist — the dialog had no production
+caller and was deleted rather than kept as an unused facility. `ProgressBarDialog`,
+`AboutDialog`, `MigrationWindow`, `FontSettingRow` and `fontchooser/` are unchanged.
 
 **`DialogOps<I, O>`, `DialogController<I, O>` and `StandardDialog<I, O>` declare
 `I extends @Nullable Object`.** Compiling this phase's own files first surfaced it: `I` carried
@@ -487,13 +484,8 @@ type and letting an intermediate class wrap it.
 2. **Delete the widened field at `FontDialog.java:37`**, commented "Widened to
    package-private for testing". It is the exact corollary the no-test-only-surface
    rule bans. Nothing reads it now that the test suite is gone.
-3. **`DoNotShowMessage` becomes `StandardDialog<String, Boolean>` with a
-   `DoNotShowMessageController`** holding the `PrefsKey`. Its input is the message text,
-   which is a constructor argument today. Leave its `Prefs` routing alone — it reads
-   through `Prefs.getBoolean` and writes through `Prefs.put`, which is correct.
-   - **It has no production caller.** Keep it — it is a facility for suppressible
-     messages — and say so in the report, so the decision is visible rather than
-     assumed.
+3. **`DoNotShowMessage` has no production caller.** Delete it along with
+   `DoNotShowMessageController` and `MessageText`, its only supporting classes.
 4. **`ProgressBarDialog` gets no controller.** It has no button row. It gains one when
    it gains Cancel, and not before.
 5. Do **not** convert `AboutDialog` or `MigrationWindow` to `BaseDialog`. Both extend
@@ -577,8 +569,8 @@ The fix is structural rather than two `.copy()` calls: **`songscribe.util.Copyab
 `StandardDialog`, `AttachmentDialog` and `AttachmentDialogController`, and the copy
 performed once in `DialogController.ops()`.** `read()` now reads and hands over what it
 holds. `Annotation`, `Tempo`, `BeatChange`, `Key` and `SongSettingsInput` implement it;
-`FontChoice` and `MessageText` wrap the two JDK-typed inputs, which cannot. The rule and
-its NullAway wrinkle are in `.claude/guides/dialogs.md`.
+`FontChoice` wraps the JDK-typed input, which cannot. The rule and its NullAway wrinkle
+are in `.claude/guides/dialogs.md`.
 
 Second fix: `PreferencesDialog.volumeToSliderIndex` duplicated `TickSlider.setSnappedValue`'s
 nearest-stop loop. Extracted as **`TickSlider.nearestStopIndex`**, which also retired the
@@ -610,8 +602,7 @@ of passing both. Any future lyric-layout test needs its own syllables or a new f
 constructor is private and each of its three entry points constructs the controller and
 opens a modal window in one call. Its own logic is route choice — a switch on a private
 enum and a branch on the same enum — and the algorithms it calls live in `layout/`.
-`PreferencesDialog.programToIndex` needs a MIDI synthesizer. `DoNotShowMessageController`
-is one `if` with no production caller.
+`PreferencesDialog.programToIndex` needs a MIDI synthesizer.
 
 ---
 

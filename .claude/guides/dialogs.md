@@ -55,10 +55,10 @@ said how it copies cannot be a dialog's input, and the compiler is what says so.
 declaration is how it states it is immutable.
 
 **A JDK type cannot implement it, so it gets wrapped.** `FontChoice` wraps `java.awt.Font` for
-`FontDialog` and `MessageText` wraps `String` for `DoNotShowMessage`. Wrapping is the only way a
-type we do not own crosses this boundary — the alternative is an escape hatch, and an escape hatch
-is the whole rule again as a convention. Both wrappers are worth their keep for a second reason:
-`MessageText` says which of a dialog's several strings this one is.
+`FontDialog`. Wrapping is the only way a type we do not own crosses this boundary — the
+alternative is an escape hatch, and an escape hatch is the whole rule again as a convention. A
+wrapper is worth its keep for a second reason too: its name says which of a dialog's several
+strings or values this one is, where the JDK type alone would not.
 
 **`O` carries no bound.** It is built by `gather()` from the controls, so there is nothing of the
 document's in it to alias.
@@ -176,7 +176,7 @@ Nothing here repaints the score. A commit that writes the document does so insid
 Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
 
 Category precedent (pick by analogy):
-- INFORMATIONAL — `ProgressBarDialog`, `DoNotShowMessage`
+- INFORMATIONAL — `ProgressBarDialog`
 - EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
 - OPERATIONAL — the default; everything else
 
