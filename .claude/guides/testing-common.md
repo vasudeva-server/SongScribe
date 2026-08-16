@@ -19,6 +19,40 @@ one-time by definition — see *What a dialog may touch* in
 [dialogs.md](./dialogs.md), which already states that gather, validate and apply
 carry no tests of their own.
 
+### One-time is the default, and it is not optional
+
+Two rules, and they are the same rule from opposite ends. Neither is a judgment
+call.
+
+**Every test is one-time unless a specific argument makes it otherwise.**
+[design.md](/Users/aparajita/.claude/guides/design.md) says to propose one-time
+when the lifespan is unclear; here it is the starting position, not the
+tiebreaker. Write the test, run it green, **delete it in the same change**.
+Proposing a persistent test needs a reason naming the defect a future change
+would introduce and why nothing else would catch it, and it will usually still be
+refused. A test kept "because it might help later" is relevant less than 1% of
+the time and is carried every day in between.
+
+**Changing the contract or the implementation of non-UI code requires a new
+one-time test in that same change.** This is the obligation the first rule buys.
+The suite is not where correctness lives, so the moment of change is the only
+moment anything verifies the code against its contract — skip it and nothing ever
+does. It applies whether the change is a new method, a reworded promise, or a
+rewritten body, and it applies to a promise that looks too small to break.
+
+Non-UI means everything whose risk is logic, computation, state, data
+transformation or model mutation: `dom`, `layout`, `io`, controllers, mutation
+records, actions. UI is excluded because a window is verified by opening it —
+geometry, focus, tab selection and how a message reads are not things a test
+observes. A dialog's populate–gather–ops path is UI in this sense however much
+Java it contains.
+
+**The contract is the durable artifact.** It is what a future change is checked
+against, so a contract too vague to derive a test from is the finding — not a
+reason to keep the test around as the real specification. Amend the contract
+first, as *When the contract does not answer the question* below requires, then
+derive the case from the amended one.
+
 Then read exactly three things: the **contract** of the method under test, its
 **signature**, and the **public API of its declaring class** — other contracts on
 it, the class Javadoc, and any `docs/` document they link to.
