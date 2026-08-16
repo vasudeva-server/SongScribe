@@ -168,6 +168,13 @@ val addOpensArgs = listOf(
 
 fun Test.applyCommonTestConfig() {
     useJUnitPlatform()
+    // Gradle fails a test task that discovers nothing, on the assumption that an empty run means
+    // a broken configuration. Here it usually means the opposite: tests are one-time by default
+    // and are deleted in the change that produced them (see .claude/guides/testing-common.md), so
+    // src/test legitimately holds base classes and helpers and no @Test methods for long
+    // stretches. A run that discovers nothing still prints "Results: 0 passed", which is the
+    // signal a genuinely misconfigured run needs.
+    failOnNoDiscoveredTests = false
     // Always re-run when invoked — test.sh is interactive, stale-output skipping is not useful here.
     outputs.upToDateWhen { false }
     jvmArgs(addOpensArgs)

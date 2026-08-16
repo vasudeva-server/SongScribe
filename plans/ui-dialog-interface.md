@@ -715,11 +715,16 @@ the wrong size, focuses the wrong field, or shows a validation message that read
 ## Verification (whole plan)
 
 1. `./scripts/compile.sh` prints SUCCESS.
-2. `./scripts/test.sh` reports **`0 passed` and exits 1**, because the suite holds no
+2. `./scripts/test.sh` succeeds, reporting **`0 passed`**, because the suite holds no
    `@Test` methods. That is the pre-existing state — `src/test` held base classes and
    helpers only before this track and still does — and Phase 8's tests were one-time,
    deleted in the change that produced them. **This step cannot be read as coverage.** What
    confirms the dialogs is Phase 10.
+
+   Phase 8 set `failOnNoDiscoveredTests = false` in `build.gradle.kts` for this reason:
+   Gradle 9 fails a task that discovers nothing, treating it as a misconfiguration, which
+   is the wrong reading in a project where an empty suite is the normal resting state. A
+   failing test still fails the build.
 3. **Every dialog's constructor takes `MainFrame`, a `DialogOps`, and presentation
    constants, and nothing else.** No dialog field names `Song`, `Line`, `StaffElement`,
    `ScoreView` or a controller. This is the mechanical acceptance test for the track.
