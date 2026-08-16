@@ -292,33 +292,6 @@ if (restored == null) {
 That still compiles and is not worth churning through existing tests to replace, but
 new tests should use `assertThat(...).isNotNull()`.
 
-## ReflectionTestHelper
-
-`src/test/java/songscribe/ui/selection/ReflectionTestHelper.java` — creates `SelectionCoordinator` instances for testing without the full UI singleton graph.
-
-```java
-// Create coordinator with notes and actions
-var coordinator = ReflectionTestHelper.createCoordinator(
-    List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
-    List.of(FERMATA_ACTION)
-);
-
-// Selection helpers
-ReflectionTestHelper.selectRange(coordinator, 0, 2);
-ReflectionTestHelper.selectNote(coordinator, 0);
-ReflectionTestHelper.clearSelection(coordinator);
-```
-
-To enable `setModified()` verification, attach a mock Composition:
-
-```java
-var line = coordinator.getActiveSelection().getLine();
-line.setComposition(mock(Composition.class));
-
-// Later:
-verify(line.getComposition()).setModified(true);
-```
-
 ## Creating Test Action Instances
 
 ```java

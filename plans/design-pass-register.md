@@ -150,6 +150,38 @@ the reason for it is still in hand.
   `ResolutionDialog` exists in Java anywhere in `src`, and the 9KB GUI-designer
   file was last touched by `6c849acd`, the pre-2.0 legacy import. Dead through
   the entire rewrite.
+- **→ Pass 30.** `Prefs.resetAll()` has no production caller and is the only
+  producer of `PrefsKey.ALL`; delete both, and the `key == PrefsKey.ALL`
+  branches in `BaseDialog.GeometryResetSubscriber.prefsDidChange` and
+  `ScoreViewController.prefsDidChange` that exist only to catch it.
+  `removeObsoleteKeysForTest`/`removeSystemDefaultKeysFromStoreForTest`/
+  `writeTypedForTest`/`migrateForTest` and the unflagged `getRawStored`/
+  `putRawStored` are visibility relaxations over a load pipeline welded to
+  `Prefs`'s constructor — extract a `PrefsStore`, constructed from a path, that
+  the pipeline runs against, so a test can build one directly.
+- **→ Pass 30.** `RecentDocumentsManager.resetForTest`/`reloadForTest` are
+  test-only; `clear()` already covers teardown, and `reloadForTest`'s logic
+  (stored strings in, existing paths out) wants to be a static `readRecents`
+  function that `loadFromPrefs` calls, not a constructor step exposed for
+  replay.
+- **→ Pass 25.** `MainFrame.clearStartupErrorsForTest` and
+  `PreviewElementManager.resetOverlaysForTest` are test-only access onto
+  process-global static state (`STARTUP_ERRORS`; `PreviewOverlayRegistry`'s and
+  `PreviewCursorHider`'s statics). Extract a `StartupErrorQueue` that
+  `MainFrame` owns an instance of; move overlay ownership onto
+  `OverlayHost`/`ScoreView` so a discarded view takes its overlays with it.
+- **→ Pass 26, then Pass 23.** `PreferencesDialog`'s instrument cache
+  (`ensureInstrumentsLoaded`, `getInstrumentStrings`, `getInstrumentPrograms`,
+  `resetInstrumentsForTesting`) is the open synthesizer's state, living on a
+  dialog instead of on `MidiController` — move it there as `getInstruments():
+  List<Instrument>` over `record Instrument(String name, int program)`,
+  populated when the synthesizer opens and cleared when it closes;
+  `PreferencesDialog` becomes the caller. `programToIndex`'s `0` fallback for
+  an unrecognized program is an arbitrary default that is also a legitimate
+  index — a guard, not a value — worth fixing in the same move.
+  `MidiController.synthesizer` (`public static volatile`) and
+  `failForTesting` (`public static`, read by production) are test-only surface
+  on the same class.
 
 ## Blockers
 

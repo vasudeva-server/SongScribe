@@ -93,8 +93,7 @@ the domain itself — `@EnumSource`, `Type.values()`, a sealed hierarchy's
 permitted subclasses — so a new constant reaches the test on its own. Where a row
 needs a hand-built fixture, assert separately that the table's rows are exactly
 the domain. A hand-listed table goes on passing while the claim that it is
-complete quietly stops being true: `OpNamesTest` carried that sentence for three
-domains it did not enumerate, and only a coverage run found it. See
+complete quietly stops being true — only a coverage run catches the gap. See
 [Unit Test Guide](./testing-unit.md#asserting-that-a-table-is-exhaustive).
 
 Where the domain is a private taxonomy, no assertion can reach it, and widening
@@ -252,6 +251,5 @@ class that loads a fixture file once (in `@BeforeAll`) and whose tests mutate
 that shared fixture cumulatively — each test building on the state the previous
 one left behind — must not depend on that default order. Such a class pins
 execution order explicitly with `@TestClassOrder` / `@Order` (plus
-`@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class).
-`ElementInsertionTest.java` is the canonical example; its class header documents
-why each block runs where it does.
+`@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class),
+with its class header documenting why each block runs where it does.

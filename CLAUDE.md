@@ -20,7 +20,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Design Docs
 
-`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others) and, since Phase 7 of the contract-driven rollout, the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them (`unit-conversion.md`, `zoom.md`, `lyrics.md`, `messages.md`, `mutations.md`, and others). Guides in `.claude/guides/` tell you the conventions to follow within that hierarchy — how to write code here, not what the system promises. The two directories are siblings, not nested: `docs/` states promises, `.claude/guides/` states conventions. Check for a matching doc before a non-trivial change to one of these areas.
+`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others) and the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them (`unit-conversion.md`, `zoom.md`, `lyrics.md`, `messages.md`, `mutations.md`, and others). Guides in `.claude/guides/` tell you the conventions to follow within that hierarchy — how to write code here, not what the system promises. The two directories are siblings, not nested: `docs/` states promises, `.claude/guides/` states conventions. Check for a matching doc before a non-trivial change to one of these areas.
 
 ### Spawning Fresh Subagents
 

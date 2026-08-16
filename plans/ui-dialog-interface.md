@@ -1,8 +1,8 @@
 # ui/dialog — The Dialog Interface
 
-Executes the `ui/dialog` row of [`contract-driven-rollout.md`](./contract-driven-rollout.md).
-It is the **last row the D10 freeze covers**; nothing outside the rollout resumes until
-it is done.
+`ui/dialog`'s architectural decoupling: a dialog becomes a widget shell over
+`I → O` with no collaborator it can query. `plans/design-pass-register.md` row
+23 takes the package as this track leaves it.
 
 ## Two terms
 
@@ -95,8 +95,7 @@ not dialogs: PlatformFileDialog, FontSettingRow, the fontchooser/ subpackage
 not, which one look at the running app settles; an e2e test over it is one-time at best,
 and *The testing floor* in `~/.claude/guides/design.md` says a one-time test is deleted
 in the change that produced it. **What needs testing is the controller**, which Phase 8
-covers; the wiring is confirmed by Phase 10's manual pass. D2 in
-[`contract-driven-rollout.md`](./contract-driven-rollout.md) states the same.
+covers; the wiring is confirmed by Phase 10's manual pass.
 
 **The tree does not compile between Phase 1 and Phase 7.** That is deliberate: the
 framework change breaks every dialog at once and the compiler enumerates the work. Do
@@ -432,8 +431,11 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
 7. **The audition stays in the dialog.** Playing a note on instrument select and playing
    the scale are the dialog's own knowledge of its affordance. Both
    `PlaybackController.stop()` calls stay too.
-8. Extract `programToIndex`, `volumeToSliderIndex` and `buildScaleSequence(int program)`
-   from the inline sequence construction in `ScaleAction.play()`. Contract before body.
+8. `programToIndex` and `volumeToSliderIndex` are extracted from the inline sequence
+   construction in `ScaleAction.play()`, as `PreferencesDialog` statics with contracts
+   written first. `buildScaleSequence(int program)` stays a private method of
+   `ScaleAction` — nothing outside `ScaleAction.play()` calls it, so it gets no
+   class-level contract of its own.
 9. **State the no-revert semantics in the class contract.** Closing the window keeps
    every change and there is nothing to undo. State also that the dialog does not
    subscribe to `PrefsDidChangeNotification`, so a `resetAll` from elsewhere while it is
@@ -441,12 +443,10 @@ notification each write posts. Read `.claude/guides/prefs.md` first.
    unexamined one.
 10. **Record, do not perform, the instrument-registry move.** The static
    `instrumentStrings` / `instrumentPrograms` / `instrumentsLoaded` cache and its
-   accessors are a MIDI service living on a dialog. The move is already designed in
-   `plans/singleton-lifecycle-contracts.md` §6 and assigned in
-   `plans/test-only-surface.md:481` to the `ui/playback`/`MidiController` phase. Confirm
-   both entries still name it and leave it. **Note that `ExportMidiDialog`, which
-   `test-only-surface.md` cites as the second caller, no longer exists** — check whether
-   that changes the other plan's reasoning and report if it does.
+   accessors are a MIDI service living on a dialog. The move is carried forward
+   in `plans/design-pass-register.md`'s Carry-forward findings (Pass 26, then
+   Pass 23) — `ExportMidiDialog`, once cited as a second caller, no longer
+   exists.
 
 ---
 
@@ -485,9 +485,8 @@ type and letting an intermediate class wrap it.
    it. Today `FontDialog.getSelectedFont()` makes the window the holder of the result,
    which is the same coupling in the other direction.
 2. **Delete the widened field at `FontDialog.java:37`**, commented "Widened to
-   package-private for testing". It is the exact corollary the no-test-only-surface rule
-   bans and it is named in `plans/test-only-surface.md`. Nothing reads it now that the
-   test suite is gone.
+   package-private for testing". It is the exact corollary the no-test-only-surface
+   rule bans. Nothing reads it now that the test suite is gone.
 3. **`DoNotShowMessage` becomes `StandardDialog<String, Boolean>` with a
    `DoNotShowMessageController`** holding the `PrefsKey`. Its input is the message text,
    which is a constructor argument today. Leave its `Prefs` routing alone — it reads
@@ -528,11 +527,10 @@ confirms it.
    it.** A contract that merely restates the body it was extracted from describes the
    code and promises nothing.
 2. **Classify each contract as mechanical or domain** per
-   `.claude/skills/contract-pass/reference/classification.md`. Parsing, range
-   validation, unit conversion and index mapping are mechanical. `lyricsFit`,
-   `canonicalKeySelectionFrom` (0 accidentals canonicalizing to FLATS is a
-   music-notation judgment), and `applyTempo`'s notification decision are
-   domain. **`lyricsFit` and `applyTempo` are private on `SongSettingsController`.**
+   `.claude/skills/design-pass/reference/classification.md`. Parsing, range
+   validation, unit conversion and index mapping are mechanical. `lyricsFit`
+   and `applyTempo`'s notification decision are domain.
+   **`lyricsFit` and `applyTempo` are private on `SongSettingsController`.**
    Widening either to test it directly is a decision to take here, against the
    no-test-only-surface rule — the alternative is reaching them through `validate` and
    `commit`, which needs a `MainFrame`. **Batch the domain ones into one checkpoint and present them for confirmation
@@ -615,27 +613,13 @@ enum and a branch on the same enum — and the algorithms it calls live in `layo
 `PreferencesDialog.programToIndex` needs a MIDI synthesizer. `DoNotShowMessageController`
 is one `if` with no production caller.
 
-**Outstanding findings**, for Phase 9 to place:
-
-- `PreferencesDialog.programToIndex` returns `0` for an unknown program — an arbitrary
-  default that is also a legitimate answer (instrument 0), which *Guards* in
-  `~/.claude/guides/design.md` says must never be written. It is also `public` with one
-  caller, inside `PreferencesDialog`.
-- This plan's Phase 8 task 2 named `canonicalKeySelectionFrom`, which does not exist —
-  Phase 5 dropped the inherit entry, so nothing canonicalizes a key selection. Phase 6
-  task 8 named `buildScaleSequence(int program)` as an extraction; it exists, but as a
-  private method of `ScaleAction` rather than a class-level static.
-- `UnitTest.java:246` and `.claude/guides/testing-unit.md` both reference
-  `songscribe.ui.selection.ReflectionTestHelper`, and `.claude/guides/testing-common.md`
-  cites `ElementInsertionTest` and `OpNamesTest`. None of the three exists.
-
 ---
 
 ## ⏳ Phase 9: Documentation Consistency Pass
 
 **Status:** Pending  <br>
 **BlockedBy:** —  <br>
-**Files:** .claude/guides/dialogs.md, docs/key-signatures.md, plans/test-only-surface.md, plans/singleton-lifecycle-contracts.md, plans/design-pass/keys.md  <br>
+**Files:** .claude/guides/dialogs.md, docs/key-signatures.md, specs/184b-page-setup.md, plans/design-pass-register.md, plans/design-pass/keys.md  <br>
 **Recommended model/effort:** Sonnet, medium — checking a written guide against what the work turned out to be.
 
 ### Tasks
@@ -655,10 +639,10 @@ is one `if` with no production caller.
    message the dialog owns, or `commit` gains a return value meaning "the commit did not
    happen". Say which dialogs it could ever apply to; today it is `KeyChangeDialog`
    alone.
-4. Update `plans/test-only-surface.md` — `SongSettingsDialog.getLineWidthFieldForTest()`
-   and `FontDialog.java:37` are resolved; `PreferencesDialog.resetInstrumentsForTesting`
-   (line 481) is **not**, and its cited second caller `ExportMidiDialog` no longer
-   exists.
+4. `SongSettingsDialog.getLineWidthFieldForTest()` and `FontDialog.java:37`'s widened
+   field are both gone — confirm by inspection. `PreferencesDialog.resetInstrumentsForTesting`
+   is not resolved; it is carried forward in `plans/design-pass-register.md`'s
+   Carry-forward findings (Pass 26, then Pass 23), not owned by this track.
 5. Update `plans/design-pass/keys.md` group C4 to done and C5 to unblocked.
 6. **Confirm the duplicate mid-line key signature is recorded** — gesture 3, the ⚠ in
    Phase 5. It is the one live defect this track knowingly leaves standing and it
@@ -666,9 +650,7 @@ is one `if` with no production caller.
    `plans/design-pass/keys.md` group C item 6, which carries the defect, the three
    pieces the fix needs and its ~200 lines of domain work. Check that item still matches
    what Phase 5 actually built; do not restate it here.
-7. Confirm D2 and the `ui/dialog` scope paragraph in
-   `plans/contract-driven-rollout.md` still match what the track produced.
-8. `dialogs.md` is a **guide** — it states conventions, not promises. Anything that
+7. `dialogs.md` is a **guide** — it states conventions, not promises. Anything that
    turned out to be a system invariant spanning subsystems goes in `docs/` instead.
 
 ---
@@ -733,12 +715,11 @@ the wrong size, focuses the wrong field, or shows a validation message that read
 5. `BaseDialog` exposes no route to the score.
 6. `PreferencesDialog` contains no `getScoreView()` call and `syncPlaybackPrefs()` is
    gone from it. It still uses `Prefs` and `PrefsKey` by design.
-7. `plans/test-only-surface.md`'s two dialog-decoupling entries are resolved;
-   `resetInstrumentsForTesting` is reported as outstanding rather than as done.
-8. `contract-driven-rollout.md`'s D2 and `ui/dialog` scope paragraph still match what
-   the track produced.
-9. **Two things are knowingly left undone and must be reported as such:** the duplicate
+7. `SongSettingsDialog.getLineWidthFieldForTest()` and `FontDialog.java:37`'s widened
+   field are both gone; `PreferencesDialog.resetInstrumentsForTesting` is not resolved
+   and is carried forward in `plans/design-pass-register.md`, not owned by this track.
+8. **Two things are knowingly left undone and must be reported as such:** the duplicate
    mid-line key signature on gesture 3, and the restatement-prompt rule gap if Phase 9
    defers it.
-10. `ScoreViewController` declares neither key-change commit route; both are private
-    on `KeyChangeDialogController`, as `changeLineKey` and `insertKeyChange`.
+9. `ScoreViewController` declares neither key-change commit route; both are private
+   on `KeyChangeDialogController`, as `changeLineKey` and `insertKeyChange`.

@@ -206,8 +206,8 @@ Two traps, both here:
   A varying lambda does not disqualify a case; only a varying *assertion* does.
 - **Do not claim "enumerated in full" unless something fails when the domain
   grows.** Drive cases from `@EnumSource` / `values()` / a sealed hierarchy, or
-  assert that the table's rows are exactly the domain. `OpNamesTest` carried the
-  sentence for three domains it did not enumerate.
+  assert that the table's rows are exactly the domain — a hand-listed table can
+  carry that claim for domains it never actually checks.
 
 **Commit per test class or per coherent group.**
 
