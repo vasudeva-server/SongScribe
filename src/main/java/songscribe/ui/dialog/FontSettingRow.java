@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.lifecycle.Disposable;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.UIAction;
@@ -70,10 +71,32 @@ final class FontSettingRow {
     }
 
     /**
+     * An assembled row: the panel to add to a section, and the two actions behind its
+     * buttons, which subscribe themselves to the message bus and so have to be released
+     * when the dialog that owns the row closes.
+     * <p>
+     * The actions travel back with the panel rather than being reachable from it, because a
+     * caller that has to dig components out of a panel to release them is a caller that will
+     * forget: the row hands over exactly what it made and the owning tab holds the whole
+     * record until it disposes it.
+     */
+    record Row(JPanel panel, Disposable chooseAction, Disposable resetAction) implements Disposable {
+
+        /** Releases both of the row's actions. Idempotent, as {@link Disposable} requires. */
+        @Override
+        public void dispose() {
+            chooseAction.dispose();
+            resetAction.dispose();
+        }
+    }
+
+    /**
      * Builds a row whose leading label is the standard "Font" label, associated
      * with {@code fontDescription}.
+     *
+     * @return the assembled row, whose actions the caller owns and must dispose
      */
-    static JPanel create(
+    static Row create(
         MainFrame mainFrame,
         JLabel fontDescription,
         FontKey fontKey,
@@ -97,8 +120,9 @@ final class FontSettingRow {
      * @param fontDescription the stretchy description display in the middle column
      * @param currentFont     supplies the font that seeds the chooser
      * @param onFontChosen    notified with the font chosen (or reset to default)
+     * @return the assembled row, whose actions the caller owns and must dispose
      */
-    static JPanel create(
+    static Row create(
         MainFrame mainFrame,
         JLabel rowLabel,
         JLabel fontDescription,
@@ -129,11 +153,14 @@ final class FontSettingRow {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         row.add(fontDescription, constraints);
 
+        var chooseAction = new ChooseFontAction(mainFrame, fontDescription, currentFont, onFontChosen);
+        var resetAction = new ResetFontAction(mainFrame, fontKey, fontDescription, onFontChosen);
+
         var buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-        buttons.add(new JButton(new ChooseFontAction(mainFrame, fontDescription, currentFont, onFontChosen)));
+        buttons.add(new JButton(chooseAction));
         BaseDialog.addLargeSeparator(buttons);
-        buttons.add(new JButton(new ResetFontAction(mainFrame, fontKey, fontDescription, onFontChosen)));
+        buttons.add(new JButton(resetAction));
 
         constraints.gridx = 2;
         constraints.weightx = 0;
@@ -142,7 +169,7 @@ final class FontSettingRow {
         row.add(buttons, constraints);
 
         UIUtils.setFlexibleWidth(row);
-        return row;
+        return new Row(row, chooseAction, resetAction);
     }
 
     /**
@@ -168,7 +195,7 @@ final class FontSettingRow {
         onFontChosen.accept(font);
     }
 
-    private static Font defaultFont(FontKey fontKey) {
+    static Font defaultFont(FontKey fontKey) {
         if (systemDefaultFonts == null) {
             systemDefaultFonts = DocumentFonts.defaultFonts();
         }

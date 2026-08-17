@@ -1,6 +1,6 @@
 ## Dialogs (`songscribe.ui.dialog`)
 
-`BaseDialog` (abstract) — does NOT extend `JDialog`. Creates a fresh `JDialog` on each `setVisible(true)`, disposes on `setVisible(false)`. Geometry persists per-class via static map + `Prefs` (survives restarts).
+`BaseDialog` (abstract) — does NOT extend `JDialog`. Creates a fresh `JDialog` on each `setVisible(true)`, disposes on `setVisible(false)`. The `BaseDialog` itself is built per opening and disposed on close — an instance is spent once its window has gone away and is never shown again. Geometry persists per-class via static map + `Prefs` (survives restarts).
 
 `StandardDialog<I, O>` extends `BaseDialog` — adds **OK/Cancel** (no Apply), plus **Remove** when its operations offer one. Always modal.
 
@@ -115,11 +115,15 @@ completion either way.
 
 ### BaseDialog API surface
 
-Constructors: `(mainFrame, title)`, `(mainFrame, title, isModal)`, `(mainFrame, title, isModal, DialogCategory)`.
+Constructors: `(mainFrame, title)`, `(mainFrame, title, Modality)`, `(mainFrame, title, Modality, DialogCategory)`. The no-`Modality` form is `MODAL`.
+
+Every dialog is owned by the main frame, `MODELESS` ones included. Ownership is not a free choice: an unowned window carries no menu bar, so the menus disappear for as long as it is frontmost. The price is that AWT keeps an owned window above its owner for as long as it exists, so a modeless dialog — `PreferencesDialog` is the only one — cannot be pushed behind the score, and closing it is the only way to see what it covers. That is accepted; do not unown a dialog to fix it.
 
 Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
 
-Accessors: `getMainFrame()` — window parenting only.
+Accessors: `getMainFrame()` — window parenting only; `bindings()` — the dialog's own `Bindings`, disposed with it.
+
+Validity: `requireValid(condition)` adds a condition, `valid` is their conjunction. See [Validity](#validity-and-why-a-rule-belongs-in-front-of-ok).
 
 There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
 
@@ -143,14 +147,23 @@ Overridable hooks:
 
 ### StandardDialog&lt;I, O&gt;
 
-Constructors: `(mainFrame, title, ops)`, `(mainFrame, title, ops, DialogCategory)`. **There is no `isModal` parameter.** Cancel promises nothing happened, and that promise is worth something only if nothing could have happened meanwhile. A window that applies each edit as it is made extends `BaseDialog` directly — `PreferencesDialog` is the one such window.
+Constructors: `(mainFrame, title, ops)`, `(mainFrame, title, ops, DialogCategory)`. **There is no `Modality` parameter — a `StandardDialog` is always `MODAL`.** Cancel promises nothing happened, and that promise is worth something only if nothing could have happened meanwhile. A window that applies each edit as it is made extends `BaseDialog` directly — `PreferencesDialog` is the one such window.
 
 ```
 show    →  populate(ops.read().get())
 OK      →  gather() → ops.validate() → ops.commit()   [commit only if valid]
+           [OK is disabled entirely while requireValid conditions fail]
 Remove  →  ops.remove().run()                          [button built iff non-null]
 Cancel  →  nothing
 ```
+
+### Validity, and why a rule belongs in front of OK
+
+**A rule the user can break while typing is stated as a validity condition, not caught at OK.** `requireValid(ObservableValue<Boolean>)` — on `BaseDialog` and on `Tab` — adds a condition; `valid` is the conjunction of every condition added, and `StandardDialog` binds its OK button's enabled state to it. A dialog that adds none is always valid, so this costs nothing where there is no rule.
+
+Conditions are `computed` values over the properties they read, so they answer to a paste and a cut as readily as to typing, and the user sees the commit become unavailable at the moment they make it unavailable — rather than being told after pressing OK, with the commit already done.
+
+This does not make `ops.validate()` redundant, and the two do not overlap. A validity condition is a rule about **one control's own value**, live and local. `validate` is for a rule about the **gathered values as a whole** — one spanning tabs, or needing the document to answer, like the lyrics-font rule that has to know which lines fit today. A rule that a control can answer for itself does not go in `validate`: the values reaching `validate` cannot break it, and a check there would be a guard on an impossible condition.
 
 **A subclass writes only `populate(I)` and `gather() → O`.** There are no `validate` / `commit` hooks to override; the dialog is not the thing that validates or commits. `getData()` and the OK path are both closed:
 
@@ -207,17 +220,25 @@ explaining why; don't "fix" either back into `BaseDialog`.
 
 Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSectionSeparator(this)` (static on `BaseDialog`) adds the inter-section vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
 
-Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`, `tabWillHide()`.
+Inherited from the dialog, and the whole of what a tab reaches — **a tab does not hold its dialog**:
+- `bindings()` — the owning dialog's `Bindings`, which is where a tab declares its edges and effects; they are torn down with the dialog. See [bindings](bindings.md).
+- `getMainFrame()` — window parenting only, the same rule as on `BaseDialog`.
+- `repackToContent()` — re-packs the owning dialog when the tab's content changes height at runtime.
+- `requireValid(condition)` — adds a condition to the owning dialog's validity, which is what disables OK while the tab's own values cannot be committed.
+
+Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`, `tabWillHide()`, `dispose()`. A tab that owns a `Disposable` overrides `dispose()` to release it — a font row's `Choose`/`Reset` actions and any `UIAction` behind a button of the tab's own subscribe themselves to the message bus. A tab that owns none does not override it.
 
 **A tab populates and displays; it does not commit and it does not validate.** Both belong to the dialog, because both are about the gathered values as a whole: a rule spanning tabs cannot be checked from inside one of them, and a commit split across tabs is several undo steps for one edit. A tab contributes what its controls say and stops there.
 
 A tab in a record-boundary dialog takes its values as a parameter rather than reaching for them: `populate(Input)` in, a typed getter or a slice record out (`SongSettingsMusicTab.populate`/`gather`), both driven from the dialog's own `populate(I)` / `gather()`. `Tab.getData()` stays the generic hook for tabs that need no input.
 
-A tab whose live-typed check must match a clause of the controller's `validate` asks that **same function**, handed to it as a function reference — never a second copy of the rule. Nothing in the tree needs this today: `SongSettingsTitleTab`'s and `AnnotationDialog`'s `NonEmptyGuard`s are UI-only guards (never leave the field blank while typing) with no `validate` counterpart to duplicate.
+A tab whose live-typed check must match a clause of the controller's `validate` asks that **same function**, handed to it as a function reference — never a second copy of the rule. Such a check expresses itself as a binding declared on `bindings()`, reading that same named function, so the live answer and the answer on OK cannot tell the user different things about one mistake.
+
+A tab states a rule about one of its own controls with `requireValid` instead — see [Validity](#validity-and-why-a-rule-belongs-in-front-of-ok). `SongSettingsTitleTab` requires a non-blank title that way, so OK is unavailable while the field is empty. A field that must never be *left* blank is a `NonBlankTextField`, which carries its own guard and restores the previous text with an alert once focus leaves; the two are complementary, the condition speaking while the user types and the guard once they move on. `AnnotationDialog` guards a combo box's editor, which no field subclass can carry, so it installs a `NonBlankGuard` directly.
 
 `getInitialFocus()` → null — override to name the control that should hold the caret **whenever this tab appears**: when the dialog opens on it, and when the user switches to it in a window that is already up. A standing property of the tab, asked for afresh each time. For a control wanted on one particular open only, see [Opening on a chosen tab](#opening-on-a-chosen-tab) below.
 
-Registration: `addTab(tab)` (adds + registers) or `registerTab(tab)` (no pane). The `Tab` owns its own title now — pass it to `super(title)` (or `super(title, paddingKey)`) in the subclass constructor rather than supplying it at `addTab()` call sites.
+Registration: `addTab(tab)` (adds + registers) or `registerTab(tab)` (no pane). The `Tab` owns its own title — pass it to `super(title)` (or `super(title, paddingKey)`) in the subclass constructor rather than supplying it at `addTab()` call sites.
 
 ### Tabbed dialogs
 
@@ -247,6 +268,6 @@ Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
 new DialogOpenAction<>(mainFrame, actionName, frame -> new MyDialog(frame, new MyController(frame).ops()))
 ```
 
-The factory is a `Function<MainFrame, T>`, so the dialog's constructor arguments are checked at compile time. The dialog is built lazily on first use and cached per action, which is why `read` is asked on each opening rather than at construction.
+The factory is a `Function<MainFrame, T>`, so the dialog's constructor arguments are checked at compile time. A fresh dialog is built for every opening, and `read` is asked on each opening because a dialog takes no input at construction. Building per opening is what lets the dialog be disposed on close, so what it owns stops handling messages when its window goes away.
 
 A dialog opened per gesture is constructed at the gesture instead, by the controller that resolved what it edits — `AttachmentDialogController.edit` is the pattern.

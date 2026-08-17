@@ -33,6 +33,7 @@ import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.binding.Widgets;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.Copyable;
 import songscribe.util.UIUtils;
@@ -94,7 +95,7 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
     }
 
     protected StandardDialog(MainFrame mainFrame, String title, DialogOps<? extends I, ? super O> ops, DialogCategory category) {
-        super(mainFrame, title, true, category);
+        super(mainFrame, title, Modality.MODAL, category);
         this.ops = ops;
 
         okButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_OK));
@@ -106,6 +107,12 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
                 setVisible(false);
             }
         });
+
+        // OK is available exactly when the dialog's values may be committed, so a rule a
+        // tab states with requireValid is one the user sees the moment they break it —
+        // rather than one they are told about after pressing OK, with the commit already
+        // done. A dialog that states no rule is always valid and its OK never disables.
+        bindings().bind(Widgets.enabled(okButton), valid);
 
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));

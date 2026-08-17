@@ -70,12 +70,11 @@ public final class Prefs {
         Map.entry("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER),
         Map.entry("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION),
         Map.entry("instrument", PrefsKey.INSTRUMENT),
-        Map.entry("metric", PrefsKey.METRIC),
         Map.entry("firstrun", PrefsKey.FIRST_RUN)
     );
 
     private static final List<String> OBSOLETE_KEYS = List.of(
-        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", "stripShortA"
+        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", "metric", "stripShortA"
     );
 
     // Initialized last to ensure all static fields above are ready before the constructor runs.

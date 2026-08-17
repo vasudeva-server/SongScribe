@@ -839,9 +839,16 @@ public class MainFrame extends JFrame implements Printable {
         LOG.info("New song");
     }
 
+    /**
+     * Opens Preferences, the same way the menu action does.
+     * <p>
+     * Routed through the action rather than building a dialog here: Preferences is the one
+     * non-modal dialog, so its opener is what keeps a second window from appearing beside
+     * the one already up, and two entry points that did not share an opener could not keep
+     * that between them.
+     */
     public void handlePrefs() throws IllegalStateException {
-        var dialog = Actions.PREFERENCES_ACTION.getDialog();
-        dialog.setVisible(true);
+        Actions.PREFERENCES_ACTION.open();
     }
 
     private void installShutdownTasks() {

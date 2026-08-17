@@ -5,40 +5,65 @@
 floor*.** Read that first; most behavior earns no test. This guide is the
 mechanics for the ones that do.
 
-## Before writing a test
+## The suite carries nothing
+
+A test verifies a change and is then **moved to the vault**: a separate
+repository beside the `develop` working directory, at
+`../songscribe-test-vault`, mirroring `src/test/`. `PackageDependencyTest` is
+the only test that stays resident — it asserts an invariant over the whole
+source tree that any change at all can violate, so there is no one method it
+would be fetched back for.
+
+Two reasons, and neither is about the cost of writing tests:
+
+- **Code that is not being changed does not need re-testing.** The chance that
+  any particular piece of code is modified is remote. A suite re-verifies all of
+  it on every run to catch the fraction that changed, and is paid for in between.
+- **A passing suite says nothing about the quality of the architecture or the
+  code, and that is the paramount goal.** Green over a bad design reports
+  success.
+
+### Before writing a test
 
 **Propose the list first and wait for the user.** Every test — new, added to an
 existing class, or rewritten — goes into one table before any test code is
-written, giving its justification, **whether it is one-time or persistent**, and
-what design change would make it unnecessary. Proposed deletions go in the same
-table. Format and rationale: *Propose the tests before writing them* in
+written, giving its justification and what design change would make it
+unnecessary. Proposed deletions go in the same table. Format and rationale:
+*Propose the tests before writing them* in
 [design.md](/Users/aparajita/.claude/guides/design.md).
 
-A one-time test is deleted in the same change that produced it. Wiring checks are
-one-time by definition — see *What a dialog may touch* in
-[dialogs.md](./dialogs.md), which already states that gather, validate and apply
-carry no tests of their own.
+Wiring carries no tests at all — see *What a dialog may touch* in
+[dialogs.md](./dialogs.md), which states that gather, validate and apply carry
+none of their own.
 
-### One-time is the default, and it is not optional
+**Changing the contract or the implementation of non-UI code requires a test in
+that same change.** The suite is not where correctness lives, so the moment of
+change is the only moment anything verifies the code against its contract — skip
+it and nothing ever does. It applies whether the change is a new method, a
+reworded promise, or a rewritten body, and it applies to a promise that looks too
+small to break.
 
-Two rules, and they are the same rule from opposite ends. Neither is a judgment
-call.
+### Moving a test to the vault
 
-**Every test is one-time unless a specific argument makes it otherwise.**
-[design.md](/Users/aparajita/.claude/guides/design.md) says to propose one-time
-when the lifespan is unclear; here it is the starting position, not the
-tiebreaker. Write the test, run it green, **delete it in the same change**.
-Proposing a persistent test needs a reason naming the defect a future change
-would introduce and why nothing else would catch it, and it will usually still be
-refused. A test kept "because it might help later" is relevant less than 1% of
-the time and is carried every day in between.
+Once the test passes, move it — with every resource it created or modified — to
+the mirrored path in the vault, and take it out of `src/test/`. Commit it there:
+the vault is a repository, so a test's history is kept where the test is.
 
-**Changing the contract or the implementation of non-UI code requires a new
-one-time test in that same change.** This is the obligation the first rule buys.
-The suite is not where correctness lives, so the moment of change is the only
-moment anything verifies the code against its contract — skip it and nothing ever
-does. It applies whether the change is a new method, a reworded promise, or a
-rewritten body, and it applies to a promise that looks too small to break.
+### Fetching a test back
+
+**When only the implementation changed**, the contract still stands and so do
+the tests written against it. Find them by searching the vault for calls to the
+method, bring them back, and run them. They are expected to pass. A failure
+means either the contract is written poorly or the implementation is broken —
+never that the test is out of date, because the test was written to the
+contract and the contract has not moved.
+
+**When the contract changed**, a new test is written to the new contract and
+replaces the vaulted one. Every other vaulted test that calls the method was
+also written against the old contract: fetch each one and update it. Then check
+every caller of the method in the source — each caller's own contract or
+implementation may have to change to match, and each such change carries its own
+test obligation. A contract change ripples; an implementation change does not.
 
 Non-UI means everything whose risk is logic, computation, state, data
 transformation or model mutation: `dom`, `layout`, `io`, controllers, mutation
@@ -141,11 +166,14 @@ If everything that matters can be asserted with the singleton mocked, it is not
 an e2e case. E2E proves the wiring, one test per path. See
 [E2E Test Guide](./testing-e2e.md).
 
+An e2e test is vaulted like any other once it passes. Nothing stays resident on
+the grounds that it is expensive to reconstruct.
+
 **None** covers trivial accessors, pure data holders, display and layout wiring
 with no branching, framework behavior that cannot regress in our code, and pure
 rendering to a `Graphics2D` with no computed geometry to assert.
 
-## Triaging an existing test
+## Triaging a test fetched from the vault
 
 - **keep** — it asserts a contract case, at the right level, and can fail.
 - **rewrite** — the case is real but the test is wrong about it: wrong level, a

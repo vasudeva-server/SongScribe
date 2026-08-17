@@ -62,6 +62,15 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         "D.C. al fine (a tempo)"
     );
 
+    // The font rows own actions that subscribe themselves to the message bus, so this tab
+    // holds each row until dispose() releases it. Assigned by initContents(), which build()
+    // runs from the constructor — a UI builder NullAway cannot follow.
+    @SuppressWarnings("NullAway.Init")
+    private FontSettingRow.Row lyricsFontRow;
+
+    @SuppressWarnings("NullAway.Init")
+    private FontSettingRow.Row annotationFontRow;
+
     SongSettingsFontTab(SongSettingsDialog dialog) {
         dialog.super(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS),
@@ -89,9 +98,10 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         var lyricsSection = new BaseDialog.TitledSection(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
         );
-        lyricsSection.add(FontSettingRow.create(
+        lyricsFontRow = FontSettingRow.create(
             mainFrame, lyricsFontLabel, FontKey.LYRICS, lyricsFontPreview::getFont, lyricsFontPreview::setFont
-        ));
+        );
+        lyricsSection.add(lyricsFontRow.panel());
         BaseDialog.addLargeSeparator(lyricsSection);
         lyricsSection.add(SongSettingsLayout.createPreviewWrapper(lyricsFontPreview, previewPadding));
         UIUtils.setFlexibleWidth(lyricsSection);
@@ -102,13 +112,20 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         var annotationSection = new BaseDialog.TitledSection(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ANNOTATION)
         );
-        annotationSection.add(FontSettingRow.create(
+        annotationFontRow = FontSettingRow.create(
             mainFrame, annotationFontLabel, FontKey.ANNOTATION, annotationFontPreview::getFont, annotationFontPreview::setFont
-        ));
+        );
+        annotationSection.add(annotationFontRow.panel());
         BaseDialog.addLargeSeparator(annotationSection);
         annotationSection.add(SongSettingsLayout.createPreviewWrapper(annotationFontPreview, previewPadding));
         UIUtils.setFlexibleWidth(annotationSection);
         add(annotationSection);
+    }
+
+    @Override
+    protected void dispose() {
+        lyricsFontRow.dispose();
+        annotationFontRow.dispose();
     }
 
     /**

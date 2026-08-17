@@ -117,12 +117,23 @@ something nobody is using.
 Such a class implements `songscribe.lifecycle.Disposable` and its class Javadoc
 names, under a `Lifecycle` heading, who calls `dispose()`.
 
-The live case is the document model. Every document load replaces the `Song`
+One live case is the document model. Every document load replaces the `Song`
 installed in the `ScoreView`, and `ScoreView.setSong` disposes the outgoing one.
 A `Song` left subscribed keeps handling broadcast commands and posting undo
 steps against a document nobody has open.
 
-A second case is coming rather than present: a `ScoreView` built for one
+The other is dialogs. A `BaseDialog` is built for one opening and retired when
+it closes, so `setVisible(false)` disposes it: first every registered `Tab`,
+then the dialog's own `Bindings`. Tabs go first, so a tab's `dispose()` runs
+while its bound controls are still whole. A tab disposes the `UIAction`s its
+font rows built and any it built for a button of its own; each of those
+subscribed itself to the message bus in its constructor, and disposing them is
+what keeps a closed dialog's actions from handling messages for the rest of the
+run. Disposing the `Bindings` cancels every observation the dialog declared,
+which is what releases the dialog, its controls and everything its transforms
+and effects captured.
+
+A further case is coming rather than present: a `ScoreView` built for one
 conversion, with its controller, its `SelectionCoordinator` and that
 coordinator's `ActionReflector`, is finished with when the conversion is. The
 converters are being redesigned; whatever replaces them owes the disposal, and

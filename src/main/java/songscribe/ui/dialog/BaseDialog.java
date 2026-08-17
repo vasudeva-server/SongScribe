@@ -59,6 +59,7 @@ import net.engio.mbassy.listener.Handler;
 import org.intellij.lang.annotations.MagicConstant;
 import org.jspecify.annotations.Nullable;
 
+import songscribe.lifecycle.Disposable;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
@@ -66,16 +67,51 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.binding.Bindings;
+import songscribe.ui.binding.ObservableValue;
+import songscribe.ui.binding.ValueProperty;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
+import static songscribe.ui.binding.ObservableValue.computed;
+
 /**
  * The base class for all application dialogs, providing common layout
  * helpers, lifecycle management, and inner classes for tabbed content.
+ *
+ * <p><strong>An instance serves one opening.</strong> The opener builds a dialog, shows
+ * it, and drops it; the next opening builds a fresh one. The one piece of state that must
+ * outlive a close — the window's geometry — is held per class in {@link #SAVED_GEOMETRY},
+ * outside the instance, and {@link #getData()} reads what to show afresh every time, so
+ * there is nothing else a dialog is entitled to carry from one opening to the next.
+ *
+ * <p><strong>A non-modal dialog must not be built twice while one is up.</strong> A modal
+ * {@code setVisible(true)} blocks its caller, so a second opening cannot even begin; a
+ * non-modal one returns at once and its opener drops the reference, so nothing but the
+ * opener can keep a second window from appearing beside the first. The opener therefore
+ * keeps the dialog it built for as long as {@link #isShowing()} answers true and answers a
+ * repeat invocation with {@link #toFront()} instead of building — see
+ * {@link songscribe.ui.action.DialogOpenAction#open()}, which every entry point to a
+ * non-modal dialog goes through, {@code MainFrame.handlePrefs} included.
+ * {@code PreferencesDialog} is the only non-modal dialog today.
+ *
+ * <p><strong>Why a non-modal dialog stays reachable after its opener returns.</strong>
+ * {@link #setVisible} registers anonymous {@link WindowAdapter}s that capture
+ * {@code BaseDialog.this}, the {@link JDialog} holds those adapters, and AWT holds a
+ * showing window through its owner. That chain — not the opener's field — is what keeps a
+ * non-modal dialog alive while the user is looking at it. Removing those listeners without
+ * putting an equivalent reference in their place would make the dialog collectible mid-use,
+ * which is why the reason is written down here rather than left to be re-derived.
+ *
+ * <h2>Lifecycle</h2>
+ *
+ * <p>{@link #setVisible setVisible(false)} calls {@link #dispose()} — the OK/Cancel path
+ * and the title-bar close both funnel through it — as does a show abandoned before the
+ * window ever reached the screen. An instance is not reusable afterwards.
  */
-public abstract class BaseDialog {
+public abstract class BaseDialog implements Disposable {
 
     // Used by addLabeledField to determine where to place the label
     public enum LabelPosition {
@@ -94,10 +130,32 @@ public abstract class BaseDialog {
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
-    protected final boolean isModal;
+    protected final Modality modality;
     private final DialogCategory category;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
+    private final Bindings bindings = new Bindings();
+
+    // The conditions every one of which must hold for this dialog's values to be
+    // committable. Held as an immutable list inside a property, and replaced rather than
+    // added to, because that is what notifies: a condition contributed after `valid` is
+    // already bound has to reach the binding, and a mutated list would not.
+    private final ValueProperty<List<ObservableValue<Boolean>>> validityConditions =
+        new ValueProperty<>(List.of());
+
+    /**
+     * Whether every condition {@link #requireValid} was given currently holds — the
+     * dialog's own answer to whether its values may be committed.
+     *
+     * <p>A dialog that contributes no condition is always valid, so this changes nothing
+     * for one that has no rule to state.
+     *
+     * <p>The conjunction is a {@code computed}, so it depends on the conditions
+     * themselves as well as on the list of them: a condition that changes re-derives
+     * this, and so does one that is added.
+     */
+    protected final ObservableValue<Boolean> valid =
+        computed(() -> validityConditions.get().stream().allMatch(ObservableValue::get));
 
     /** The tab {@link #showTab} asked for, consumed by the next show. */
     private @Nullable Tab requestedTab = null;
@@ -119,6 +177,8 @@ public abstract class BaseDialog {
 
     private @Nullable Component savedFocusOwner;
 
+    private boolean disposed = false;
+
     @SuppressWarnings("NullAway.Init")
     private JDialog dialog;
 
@@ -128,21 +188,101 @@ public abstract class BaseDialog {
      * {@link #dialog} is deferred-init — null until the first {@code setVisible(true)} —
      * and code that populates tab content can run before that, so "is it showing" has to
      * answer false rather than throw for a dialog that was never built.
+     *
+     * @return {@code true} while the window is on screen, {@code false} before the first
+     *     show and after the close
      */
-    private boolean isShowing() {
+    public boolean isShowing() {
         //noinspection ConstantValue — deferred-init field, genuinely null before first show
         return dialog != null && dialog.isShowing();
     }
 
+    /**
+     * Brings this dialog's window to the front and asks for focus, which is how a repeat
+     * invocation of a non-modal dialog surfaces the window already up instead of building
+     * a second one beside it.
+     * <p>
+     * A no-op unless the dialog {@linkplain #isShowing() is showing}.
+     */
+    public void toFront() {
+        if (isShowing()) {
+            dialog.toFront();
+            dialog.requestFocus();
+        }
+    }
+
+    /**
+     * @return this dialog's {@link Bindings}, which every edge it declares belongs to and
+     *     which {@link #dispose()} cancels
+     */
+    protected final Bindings bindings() {
+        return bindings;
+    }
+
+    /**
+     * Adds a condition that must hold for this dialog's values to be committable.
+     *
+     * <p>Conditions accumulate and are conjoined: {@link #valid} is true when every one
+     * of them is, and a dialog that adds none is always valid. A
+     * {@link songscribe.ui.dialog.StandardDialog} disables its OK button while
+     * {@link #valid} is false, so a rule stated here is one the user sees the moment they
+     * break it rather than one they are told about after pressing OK.
+     *
+     * <p>Call it while building — from a {@link Tab}'s construction or the dialog's own —
+     * not in response to an edit. A condition is a value that answers over and over, not
+     * an answer.
+     *
+     * @param condition the condition to require, typically a {@code computed} over the
+     *     properties it reads; it is asked whenever anything it reads changes
+     * @effects replaces the held list of conditions with one carrying {@code condition},
+     *     which re-derives {@link #valid} and so anything bound to it
+     */
+    protected final void requireValid(ObservableValue<Boolean> condition) {
+        var conditions = new ArrayList<>(validityConditions.get());
+        conditions.add(condition);
+        validityConditions.set(List.copyOf(conditions));
+    }
+
+    /**
+     * Disposes every registered {@link Tab}, then this dialog's own {@link #bindings}, and
+     * marks this instance spent.
+     * <p>
+     * Tabs dispose first so a tab's own {@link Tab#dispose()} still runs with its bound
+     * controls intact, rather than after the edges backing them have already been torn down.
+     * <p>
+     * Idempotent: {@code setVisible(false)} is reachable both from the OK/Cancel path and
+     * from {@code windowClosing}, so a second call has to be a no-op rather than a second
+     * teardown.
+     * <p>
+     * {@code BaseDialog} unsubscribes nothing of its own. Its one subscriber,
+     * {@link #GEOMETRY_RESET_SUBSCRIBER}, is static and shared by every dialog of every
+     * class, so unsubscribing it here would silence geometry resets for the dialogs still
+     * to come.
+     */
+    @Override
+    public void dispose() {
+        if (disposed) {
+            return;
+        }
+
+        disposed = true;
+
+        for (var tab : tabs) {
+            tab.dispose();
+        }
+
+        bindings.dispose();
+    }
+
     protected BaseDialog(MainFrame mainFrame, String title) {
-        this(mainFrame, title, true);
+        this(mainFrame, title, Modality.MODAL);
     }
 
-    protected BaseDialog(MainFrame mainFrame, String title, boolean isModal) {
-        this(mainFrame, title, isModal, DialogCategory.OPERATIONAL);
+    protected BaseDialog(MainFrame mainFrame, String title, Modality modality) {
+        this(mainFrame, title, modality, DialogCategory.OPERATIONAL);
     }
 
-    protected BaseDialog(MainFrame mainFrame, String title, boolean isModal, DialogCategory category) {
+    protected BaseDialog(MainFrame mainFrame, String title, Modality modality, DialogCategory category) {
         // Subscribed here rather than in a static initializer: geometry can only be
         // saved once a dialog exists, so first-construction subscription loses nothing,
         // merely loading the class cannot register the handler, and a test teardown
@@ -152,7 +292,7 @@ public abstract class BaseDialog {
 
         this.mainFrame = mainFrame;
         dialogTitle = title;
-        this.isModal = isModal;
+        this.modality = modality;
         this.category = category;
     }
 
@@ -538,13 +678,30 @@ public abstract class BaseDialog {
         }
     }
 
+    /**
+     * Shows the dialog, or takes it down and disposes it.
+     * <p>
+     * <strong>An instance is not reusable after a close.</strong> {@code setVisible(false)}
+     * ends this dialog's life: it saves the geometry, disposes the window, and calls
+     * {@link #dispose()}. A later opening is a fresh instance, built by the opener.
+     * A show abandoned before the window reached the screen — {@link #getData()} answering
+     * false, or the window failing to appear — disposes the instance for the same reason.
+     *
+     * @param visible {@code true} to build the window and show it, {@code false} to close it
+     * @invariant the window is owned by the main frame whatever this dialog's
+     *     {@link Modality}, so it always sits above the score
+     */
     public void setVisible(boolean visible) {
         if (visible) {
             // Consumed before anything can abort the show, so a request that never reached
             // the screen cannot survive into a later open.
             var showRequest = consumeShowRequest();
 
-            dialog = new JDialog(mainFrame, dialogTitle, isModal);
+            // Owned even when modeless. An unowned window carries no menu bar, so the menus
+            // go away for as long as it is frontmost. The cost of ownership is that AWT keeps
+            // an owned window above its owner for as long as it exists, so a modeless dialog
+            // cannot be pushed behind the score — that is the lesser of the two.
+            dialog = new JDialog(mainFrame, dialogTitle, modality.isModal());
             dialog.setResizable(isResizable());
             dialog.addWindowListener(
                 new WindowAdapter() {
@@ -584,7 +741,10 @@ public abstract class BaseDialog {
             }
 
             if (!getData()) {
+                // The window never reached the screen, so the close path that would
+                // normally retire this instance is never reached — retire it here.
                 dialog.dispose();
+                dispose();
                 return;
             }
 
@@ -646,6 +806,7 @@ public abstract class BaseDialog {
                     decrementBlockingCount();
                 }
 
+                dispose();
                 throw e;
             }
         } else {
@@ -680,6 +841,10 @@ public abstract class BaseDialog {
                 if (category.isBlocking()) {
                     decrementBlockingCount();
                 }
+
+                // Last, so a handler reacting to DialogVisibilityDidChangeNotification(false)
+                // sees a fully torn-down window rather than one mid-teardown.
+                dispose();
             }
         }
     }
@@ -929,6 +1094,38 @@ public abstract class BaseDialog {
             return title;
         }
 
+        /**
+         * @return the owning dialog's {@link Bindings}
+         */
+        protected final Bindings bindings() {
+            return BaseDialog.this.bindings;
+        }
+
+        /**
+         * Adds a condition to the owning dialog's validity; see
+         * {@link BaseDialog#requireValid}.
+         *
+         * @param condition the condition this tab contributes
+         */
+        protected final void requireValid(ObservableValue<Boolean> condition) {
+            BaseDialog.this.requireValid(condition);
+        }
+
+        /**
+         * @return the owning dialog's {@link MainFrame}
+         */
+        protected final MainFrame getMainFrame() {
+            return BaseDialog.this.getMainFrame();
+        }
+
+        /**
+         * Re-packs the owning dialog to fit its current content; see
+         * {@link BaseDialog#repackToContent()}.
+         */
+        protected final void repackToContent() {
+            BaseDialog.this.repackToContent();
+        }
+
         protected void build() {
             initContents();
 
@@ -984,6 +1181,18 @@ public abstract class BaseDialog {
          * (e.g., stopping playback).
          */
         protected void tabWillHide() {}
+
+        /**
+         * Releases whatever this tab acquired that outlives it — today, always the
+         * message-bus subscription a {@link songscribe.ui.action.UIAction} the tab built
+         * makes in its own constructor. Called by {@link BaseDialog#dispose()} when the
+         * dialog closes; the tab is not used afterwards.
+         * <p>
+         * A tab that owns a {@link Disposable} overrides this; a tab that owns none does
+         * not. An empty override is indistinguishable from an absent one, which is exactly
+         * what {@link Disposable} says a no-op implementation costs.
+         */
+        protected void dispose() {}
 
         @Override
         public Component add(Component comp) {

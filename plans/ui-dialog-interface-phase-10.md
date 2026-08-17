@@ -22,16 +22,16 @@ defect in this track, not a new finding — record it, do not fix it inline.
 
 Cover every dialog in `ui.dialog`, not only the ones this track rewrote.
 
-| Dialog                  | Opens correctly | Geometry / tab selection as before | OK commits and the model changes | Cancel discards | Invalid input shows the right message | Result                                                                                 |
-|-------------------------|-----------------|------------------------------------|----------------------------------|-----------------|---------------------------------------|----------------------------------------------------------------------------------------|
-| `SongSettingsDialog`    | x               | x                                  | x                                | x               | x                                     | Changing the number takes a full second to update and undo, everything else is instant |
-| `FontDialog`            | x               | x                                  | x                                | x               | x                                     | OK                                                                                     |
-| `AnnotationDialog`      | x               | x                                  | x                                | x               |                                       | Crash if commit with empty text                                                        |
-| `BeatChangeDialog`      |                 |                                    |                                  |                 |                                       |                                                                                        |
-| `TempoChangeDialog`     |                 |                                    |                                  |                 |                                       |                                                                                        |
-| `KeyChangeDialog`       |                 |                                    |                                  |                 |                                       |                                                                                        |
-| `PreferencesDialog`\*\* |                 | n/a                                | n/a                              | n/a             |                                       |                                                                                        |
-| `ProgressBarDialog`\*\* |                 | n/a                                | n/a                              | n/a             | n/a                                   |                                                                                        |
+| Dialog                  | Opens correctly | Geometry / tab selection as before | OK commits and the model changes | Cancel discards | Invalid input shows the right message | Result |
+|-------------------------|-----------------|------------------------------------|----------------------------------|-----------------|---------------------------------------|--------|
+| `SongSettingsDialog`    | x               | x                                  | x                                | x               | x                                     | OK     |
+| `FontDialog`            | x               | x                                  | x                                | x               | x                                     | OK     |
+| `AnnotationDialog`      | x               | x                                  | x                                | x               |                                       | OK     |
+| `BeatChangeDialog`      |                 |                                    |                                  |                 |                                       |        |
+| `TempoChangeDialog`     |                 |                                    |                                  |                 |                                       |        |
+| `KeyChangeDialog`       |                 |                                    |                                  |                 |                                       |        |
+| `PreferencesDialog`\*\* |                 | n/a                                | n/a                              | n/a             |                                       |        |
+| `ProgressBarDialog`\*\* |                 | n/a                                | n/a                              | n/a             | n/a                                   |        |
 
 \* `PreferencesDialog` is non-modal with no OK/Cancel/button row (Phase 6);
 `ProgressBarDialog` has no button row either (Phase 7 task 4). Verify only

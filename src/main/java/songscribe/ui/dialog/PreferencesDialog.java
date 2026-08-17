@@ -70,6 +70,7 @@ import songscribe.midi.MidiSequenceBuilder;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.StartupAction;
+import songscribe.prefs.Units;
 import songscribe.ui.Appearance;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.FlatLafKey;
@@ -103,7 +104,7 @@ public class PreferencesDialog extends BaseDialog {
     private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
 
     public PreferencesDialog(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
+        super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), Modality.MODELESS, DialogCategory.EXCLUSIVE);
 
         var tabbedContent = createTabbedContent();
         addTab(new GeneralTab());
@@ -284,8 +285,16 @@ public class PreferencesDialog extends BaseDialog {
             (PageModel.getSize() == PageModel.Size.A4
                 ? a4Radio : letterRadio).setSelected(true);
 
-            (Prefs.getBoolean(PrefsKey.METRIC)
-                ? centimetersRadio : inchesRadio).setSelected(true);
+            var units = Units.INCHES;
+
+            try {
+                units = Units.valueOf(Prefs.getString(PrefsKey.UNITS));
+            } catch (IllegalArgumentException ignored) {}
+
+            (switch (units) {
+                case INCHES -> inchesRadio;
+                case CENTIMETERS -> centimetersRadio;
+            }).setSelected(true);
 
             (switch (AppearanceManager.getPreference()) {
                 case LIGHT -> lightRadio;
@@ -320,17 +329,16 @@ public class PreferencesDialog extends BaseDialog {
             letterRadio.addActionListener(pageSizeListener);
             a4Radio.addActionListener(pageSizeListener);
 
-            var metricListener = new ActionListener() {
+            var unitsListener = new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    Prefs.put(
-                        PrefsKey.METRIC, centimetersRadio.isSelected()
-                    );
+                    var units = centimetersRadio.isSelected() ? Units.CENTIMETERS : Units.INCHES;
+                    Prefs.put(PrefsKey.UNITS, units.name());
                 }
             };
 
-            inchesRadio.addActionListener(metricListener);
-            centimetersRadio.addActionListener(metricListener);
+            inchesRadio.addActionListener(unitsListener);
+            centimetersRadio.addActionListener(unitsListener);
 
             var appearanceListener = new ActionListener() {
                 @Override

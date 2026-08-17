@@ -103,9 +103,27 @@ public class NumericTextField extends MyJTextField {
      * blank field is always rejected here regardless of the optional flag.
      */
     public boolean hasValidValue() {
-        var text = getText().strip();
+        return isValidValue(getText());
+    }
 
-        return !text.isEmpty() && parsesInRange(text);
+    /**
+     * Returns {@code true} when {@code text} is a non-blank value within this field's
+     * inclusive {@code [min, max]} range. Like {@link #hasValidValue()}, blank text is
+     * always rejected regardless of the optional flag.
+     *
+     * <p>The range is this field's own; the text need not be the field's. A caller that
+     * holds the field's text as a bound property asks the question through this method
+     * rather than reading the control, so that a derivation records the property as a
+     * dependency.
+     *
+     * @param text the text to test against this field's range
+     * @return {@code true} when {@code text} strips to a non-empty string that parses
+     *     as an integer within {@code [min, max]}
+     */
+    public boolean isValidValue(String text) {
+        var stripped = text.strip();
+
+        return !stripped.isEmpty() && parsesInRange(stripped);
     }
 
     private boolean isValueInRange() {

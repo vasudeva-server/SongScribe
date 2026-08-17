@@ -181,19 +181,23 @@ a full worked example. This section is the Javadoc syntax for it.
   and what a reader scans for; a promise stated only in the body is a promise the
   caller does not see. Write the tag as the answer to *what do I get back?* —
   `@return the composed Edit-menu label`, `@return {@code true} when …` — and
-  keep what no tag can carry (boundary semantics, invariants, side effects) in
-  the body.
+  leave boundary semantics, invariants and side effects to the tags below.
 - **Postconditions** — what holds of the return value and of the receiver
   afterward — go in `@return`, in prose.
 - **`@throws`** names every exception type and the exact condition that
   produces it, one tag per type. A vague `@throws` ("if invalid") is not a
   contract clause a test can be derived from.
 - **Boundary semantics and result invariants** — inclusive/exclusive ranges,
-  empty input, zero, ties, "every result satisfies X" — have no dedicated tag;
-  state them in prose in the method's doc body.
-- **Side effects and relationships** — mutation, messages posted, threading
-  requirements, guard methods or inverses — state in prose, and link a related
-  method with `{@link}` rather than restating its contract.
+  empty input, zero, ties, "every result satisfies X" — go in `@invariant`, one
+  clause per tag. The tag repeats like `@param` and `@throws`.
+- **Side effects** — mutation, messages posted, files written, threading
+  requirements — go in `@effects`.
+- **Relationships** — guard methods, inverses, sibling methods that must agree —
+  link with `{@link}` rather than restating the other method's contract.
+
+`@invariant` and `@effects` are custom tags. Nothing in the build renders or
+validates Javadoc, and the IDE knows both through its additional-Javadoc-tags
+setting.
 - **Class and package invariants** go on the class or `package-info.java`
   Javadoc, in prose, not repeated on every method that relies on them.
 

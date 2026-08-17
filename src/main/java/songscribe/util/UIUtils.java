@@ -75,6 +75,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.error.RuntimeError;
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.FlatLafKey;
@@ -639,6 +640,29 @@ public final class UIUtils {
         }
 
         return new TaggedString(text, null);
+    }
+
+    /**
+     * The text component an editable combo box types into.
+     *
+     * <p><strong>This, not {@code getSelectedItem()}, is what an editable combo is showing.</strong>
+     * The selected item is a copy that the look and feel commits from the editor at moments of its
+     * own choosing — Enter, focus loss — so anything that writes to the editor afterwards, such as
+     * an {@link javax.swing.InputVerifier} restoring a rejected value, leaves the two disagreeing.
+     * The editor is never stale in the other direction either: choosing from the popup configures
+     * it. Read the editor and there is one value.
+     *
+     * @param combo an editable combo box
+     * @return the combo's editor component
+     * @throws RuntimeException, via {@link RuntimeError#exit}, if the look and feel's editor is not
+     *                           a text component, which no look and feel in use does
+     */
+    public static JTextComponent comboEditor(JComboBox<?> combo) {
+        if (combo.getEditor().getEditorComponent() instanceof JTextComponent editor) {
+            return editor;
+        }
+
+        throw RuntimeError.exit("combo box editor is not a text component");
     }
 
     public static void readComboValuesFromFile(

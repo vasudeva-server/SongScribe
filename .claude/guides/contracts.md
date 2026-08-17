@@ -12,10 +12,10 @@ nothing else; this guide is for the ones that earn more.
 | Summary | what the method does, in the caller's vocabulary | first sentence |
 | Preconditions | valid argument values and ranges, nullability, required receiver state | `@param`, prose |
 | Postconditions | what is true of the return value and of the receiver afterwards | `@return`, prose |
-| Boundary semantics | inclusive vs. exclusive, empty input, zero, negative, ties, equality | prose |
+| Boundary semantics | inclusive vs. exclusive, empty input, zero, negative, ties, equality | `@invariant` |
 | Errors | every exception type and the exact condition that produces it | `@throws` |
-| Result invariants | what holds of every result, whatever the input | prose |
-| Side effects | mutation, messages posted, files written, threading requirement | prose |
+| Result invariants | what holds of every result, whatever the input | `@invariant` |
+| Side effects | mutation, messages posted, files written, threading requirement | `@effects` |
 | Relationships | guard methods, inverses, round-trips, sibling methods that must agree | `{@link}` |
 
 Few methods have all eight. A method with none is trivial and needs no contract.
@@ -23,6 +23,15 @@ Few methods have all eight. A method with none is trivial and needs no contract.
 **`@return` is not optional.** Any method whose return type is not `void` carries
 the tag, whatever the summary sentence already says, because the tag is what the
 IDE shows at the call site. Only a method with no doc comment at all may omit it.
+
+**`@invariant` is singular and repeatable.** One clause per tag, the way `@param`
+and `@throws` repeat, so adding an invariant is a one-line diff rather than a
+rewrite of a paragraph, and so a reader can count the promises. `@effects`
+carries the whole of a method's effects.
+
+**Both tags are required on a contract a test is derived from**, because a clause
+buried in prose is a clause the test author reads past. Elsewhere they are
+adopted as contracts are touched; there is no retrofit pass.
 
 **What does not belong:** how it does it. The algorithm, the data structure, the
 iteration order unless the order is promised, the fact that it caches. A contract

@@ -7,7 +7,6 @@
   "instrument": 0,
   "lastSeenWhatsNewVersion": "",
   "loopPlayback": false,
-  "metric": false,
   "pageSize": "letter",
   "playInsertedNote": true,
   "playSelectedNote": true,
@@ -18,5 +17,6 @@
   "showTips": true,
   "startupAction": "DO_NOTHING",
   "tempoChangePercent": 100,
-  "tipIndex": 0
+  "tipIndex": 0,
+  "units": "INCHES"
 }

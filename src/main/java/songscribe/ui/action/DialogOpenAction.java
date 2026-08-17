@@ -32,15 +32,25 @@ import static songscribe.util.StringUtils.toKebabCase;
 /**
  * An action that opens a dialog.
  *
- * <p>The dialog is created lazily on first use via a {@code dialogFactory} function. The factory
- * accepts the {@link MainFrame} and returns a fresh dialog instance. Passing a constructor
+ * <p>A fresh dialog is built for every opening via a {@code dialogFactory} function. The factory
+ * accepts the {@link MainFrame} and returns a new dialog instance. Passing a constructor
  * reference ({@code MyDialog::new}) against a {@code (MainFrame)} constructor gives a
  * compiler-checked factory contract: the dialog class must expose a {@code (MainFrame)}
  * constructor, which is verified at compile time rather than at runtime via reflection.
+ *
+ * <p>Building per opening is what lets a dialog be disposed on close — an action, a listener
+ * or a tab that a dialog owns is released when the window goes away instead of handling
+ * messages for the rest of the run on behalf of a window nobody has open. See
+ * {@link BaseDialog}, which states both that rule and the one {@link #open()} keeps.
  */
 public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
-    private @Nullable T dialog = null;
+    /**
+     * The dialog this action built, held only for as long as it is on screen so a repeat
+     * invocation can surface it instead of building a second window. See {@link #open()}.
+     */
+    private @Nullable T openDialog = null;
+
     private final Function<? super MainFrame, ? extends T> dialogFactory;
 
     public DialogOpenAction(MainFrame mainFrame, String name, Function<? super MainFrame, ? extends T> dialogFactory, Flag... flags) {
@@ -62,14 +72,47 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        getDialog().setVisible(true);
+        open();
     }
 
-    public T getDialog() {
-        if (dialog == null) {
-            dialog = dialogFactory.apply(getMainFrame());
+    /**
+     * Shows this action's dialog, building it first — unless the dialog this action built
+     * last is still on screen, in which case it comes to the front and no second window is
+     * built.
+     * <p>
+     * That check is what makes this, rather than {@link #newDialog()}, the entry point every
+     * caller uses. A modal dialog cannot reach it twice, because its {@code setVisible(true)}
+     * blocks until it closes; a non-modal one returns at once, and without the check a second
+     * invocation would put a second window beside the first — {@code PreferencesDialog} is
+     * reached both from the menu action and from {@code MainFrame.handlePrefs()}.
+     */
+    public void open() {
+        var current = openDialog;
+
+        if (current != null && current.isShowing()) {
+            current.toFront();
+            return;
         }
 
-        return dialog;
+        var dialog = newDialog();
+        openDialog = dialog;
+        dialog.setVisible(true);
+
+        // A modal show returns only once the window is gone, and a show cancelled by getData()
+        // never put one up. Either way the dialog is spent, so let go of it rather than hold a
+        // disposed instance until the next opening.
+        if (!dialog.isShowing()) {
+            openDialog = null;
+        }
+    }
+
+    /**
+     * Builds a new dialog. The caller shows it and drops it: a dialog serves one opening and
+     * is disposed on close, so nothing may hold one past that.
+     *
+     * @return a dialog that has never been shown
+     */
+    public T newDialog() {
+        return dialogFactory.apply(getMainFrame());
     }
 }

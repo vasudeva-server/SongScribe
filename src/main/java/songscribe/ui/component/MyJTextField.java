@@ -24,6 +24,8 @@ import javax.swing.JTextField;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.ui.binding.BoundText;
+
 public class MyJTextField extends JTextField {
 
     protected final TextFocusDelegate focusDelegate;
@@ -49,6 +51,30 @@ public class MyJTextField extends JTextField {
     /** Hook for subclasses to provide a specialized focus delegate. */
     protected TextFocusDelegate createFocusDelegate() {
         return new TextFocusDelegate(this);
+    }
+
+    /**
+     * Writes {@code text} into this field, through the field's property view when it
+     * has one.
+     *
+     * <p>A property created over this field with commit timing observes focus loss,
+     * which a programmatic write does not cause, so writing the document directly
+     * would leave every value derived from the field stale until the user happened to
+     * click away. Routing the write into the property instead makes a stray write a
+     * correct one, so no call site has to know whether the field it is writing is
+     * bound.
+     *
+     * <p>The write reaches the document either way; see
+     * {@link BoundText#routed(javax.swing.text.JTextComponent, String)} for the cases
+     * in which it is written here.
+     *
+     * @param text the text to write, or {@code null} to empty the field
+     */
+    @Override
+    public void setText(@Nullable String text) {
+        if (!BoundText.routed(this, text)) {
+            super.setText(text);
+        }
     }
 
     @Override

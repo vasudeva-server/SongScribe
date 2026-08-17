@@ -34,8 +34,9 @@ import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
  * Opens the Song Settings dialog.
  *
  * <p>Whoever opens the dialog supplies its operations, so the dialog itself never reaches for the
- * score. The dialog is cached, so its {@link SongSettingsController} is constructed once and
- * resolves the open document on every reading rather than holding it.
+ * score. The dialog is built per opening, so a fresh {@link SongSettingsController} is constructed
+ * each time; it still resolves the open document on every reading rather than holding it, which is
+ * what keeps a dialog left showing across a document change correct.
  */
 public final class SongSettingsOpenAction extends DialogOpenAction<SongSettingsDialog> {
 

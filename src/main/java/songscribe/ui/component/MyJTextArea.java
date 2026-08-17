@@ -22,6 +22,10 @@ package songscribe.ui.component;
 import java.awt.event.KeyEvent;
 import javax.swing.JTextArea;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.ui.binding.BoundText;
+
 public class MyJTextArea extends JTextArea {
 
     private TextFocusDelegate delegate;
@@ -48,6 +52,30 @@ public class MyJTextArea extends JTextArea {
     /** Hook for subclasses (and tests) to provide a specialized focus delegate. */
     protected TextFocusDelegate createDelegate() {
         return new TextFocusDelegate(this);
+    }
+
+    /**
+     * Writes {@code text} into this area, through the area's property view when it
+     * has one.
+     *
+     * <p>A property created over this area with commit timing observes focus loss,
+     * which a programmatic write does not cause, so writing the document directly
+     * would leave every value derived from the area stale until the user happened to
+     * click away. Routing the write into the property instead makes a stray write a
+     * correct one, so no call site has to know whether the area it is writing is
+     * bound.
+     *
+     * <p>The write reaches the document either way; see
+     * {@link BoundText#routed(javax.swing.text.JTextComponent, String)} for the cases
+     * in which it is written here.
+     *
+     * @param text the text to write, or {@code null} to empty the area
+     */
+    @Override
+    public void setText(@Nullable String text) {
+        if (!BoundText.routed(this, text)) {
+            super.setText(text);
+        }
     }
 
     @Override

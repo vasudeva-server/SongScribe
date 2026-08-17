@@ -66,9 +66,9 @@ public abstract class BaseTitleComponent extends ScoreComponent {
      * unsaved text without holding the document.
      *
      * @param text        the text to draw; empty draws nothing and collapses the component
-     * @param wrapWidthSs the width the text may occupy before it wraps, in staff spaces
+     * @param wrapWidthSs the width the text may occupy before it wraps, as an {@link Ss}
      */
-    public record Preview(String text, double wrapWidthSs) {}
+    public record Preview(String text, Ss wrapWidthSs) {}
 
     /**
      * What to draw instead of the song, or {@code null} to draw the song.
@@ -111,8 +111,9 @@ public abstract class BaseTitleComponent extends ScoreComponent {
      * that swallows clicks aimed at the staff below it. The gesture reveals what is
      * already on the page; it is not the way to put something there.
      * <p>
-     * The dialog comes from {@code SONG_SETTINGS_ACTION} so the gesture and the menu item
-     * share the one cached instance. That field is populated by {@code Actions.initialize},
+     * The dialog is built by {@code SONG_SETTINGS_ACTION} so the gesture and the menu item
+     * build it the one way, and it is shown and dropped: a dialog serves one opening and is
+     * disposed on close. That action constant is populated by {@code Actions.initialize},
      * which has run before any score component is inside a visible {@code ScoreView}; it
      * is deliberately not null-guarded, so a startup-ordering regression fails loudly
      * rather than becoming a gesture that silently does nothing. The gesture's playback
@@ -124,7 +125,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return false;
         }
 
-        Actions.SONG_SETTINGS_ACTION.getDialog().show(editorSection());
+        Actions.SONG_SETTINGS_ACTION.newDialog().show(editorSection());
         return true;
     }
 
@@ -139,7 +140,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         var currentPreview = preview;
 
         if (currentPreview != null) {
-            return toViewPx(new Ss(currentPreview.wrapWidthSs())).roundedPx();
+            return toViewPx(currentPreview.wrapWidthSs()).roundedPx();
         }
 
         var theSong = song;

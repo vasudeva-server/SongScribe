@@ -20,6 +20,7 @@
 package songscribe.ui.dialog;
 
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
 import songscribe.font.DocumentFonts;
 import songscribe.util.Copyable;
@@ -40,9 +41,9 @@ import songscribe.util.Copyable;
  * @param fonts        the document's fonts. The dialog edits six of the eight roles and copies the
  *                     rest through, which is why the whole holder arrives rather than six fonts
  * @param tempo        the song's tempo
- * @param lineWidthSs  the stored line width, in staff spaces, which the Title tab's previews wrap
- *                     at so they break where the score does. Read and never written back — the
- *                     width belongs to page setup, and there is no control for it here
+ * @param lineWidthSs  the stored line width, as an {@link Ss}, which the Title tab's previews
+ *                     wrap at so they break where the score does. Read and never written back —
+ *                     the width belongs to page setup, and there is no control for it here
  * @param lyrics       what the Title and Attribution tabs need to know about the lyrics, which
  *                     this dialog does not edit
  */
@@ -50,7 +51,7 @@ public record SongSettingsInput(
     SongMetadata metadata,
     DocumentFonts fonts,
     Tempo tempo,
-    double lineWidthSs,
+    Ss lineWidthSs,
     LyricsContext lyrics
 ) implements Copyable<SongSettingsInput> {
 
@@ -59,7 +60,7 @@ public record SongSettingsInput(
      *
      * <p>{@link DocumentFonts} and {@link Tempo} are the two mutable components, so they are the
      * two that are rebuilt; the metadata and the lyrics context are records of immutable values and
-     * the width is a {@code double}.
+     * the width is an immutable {@link Ss}.
      *
      * @return an input whose fonts and tempo the document does not share, so the Fonts and Music
      *         tabs edit this dialog's own values until OK

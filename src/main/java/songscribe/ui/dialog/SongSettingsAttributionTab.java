@@ -49,7 +49,6 @@ import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
-import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -71,14 +70,15 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private static final int PLACE_FIELD_COLUMNS = 27;
     private static final int COMPOSER_FIELD_COLUMNS = 27;
 
-    private final SongSettingsDialog dialog;
-
     // The title tab owns the title/subtitle/number the preview's metadata record needs.
     private final SongSettingsTitleTab titleTab;
 
     // Place and date panel
     private final MyJTextField placeField = new MyJTextField(PLACE_FIELD_COLUMNS);
-    private final SongSettingsDateInputRow musicDate = new SongSettingsDateInputRow(this::refreshPreview);
+    // dialog.super(...) completes before any field initializer here runs, so the
+    // inherited bindings() already answers.
+    private final SongSettingsDateInputRow musicDate =
+        new SongSettingsDateInputRow(bindings(), this::refreshPreview);
 
     // Attribution panel
     private final MyJTextField composerField = new MyJTextField(COMPOSER_FIELD_COLUMNS);
@@ -88,16 +88,17 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private final JCheckBox differentDateCheckbox = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_DIFFERENT_DATE)
     );
-    private final SongSettingsDateInputRow wordsDate = new SongSettingsDateInputRow(this::refreshPreview);
+    private final SongSettingsDateInputRow wordsDate =
+        new SongSettingsDateInputRow(bindings(), this::refreshPreview);
     private final JPanel wordsDatePanel = new JPanel();
     private final JCheckBox unofficialTranslationCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_UNOFFICIAL_TRANSLATION)
     );
 
     // The unofficial-translation checkbox and the gap above it, as one thing that can be
-    // hidden. Always built and shown only for a song that has a translation: this dialog is
-    // reached through a cached action and outlives every document, so which song is open is
-    // not something its construction can decide.
+    // hidden. Always built and shown only for a song that has a translation: what a dialog
+    // shows arrives in populate, so which song is open is not something its construction
+    // can decide — building the row conditionally would mean reaching for the document.
     private final JPanel translationRow = new JPanel();
     private final JCheckBox arrangementCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_ARRANGEMENT)
@@ -113,6 +114,15 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private Font attributionFont;
     private Font subAttributionFont;
 
+    // Each font row owns two actions that subscribe themselves to the message bus, so this
+    // tab holds the rows until dispose() releases them. Assigned while the Fonts section is
+    // built, from initContents() — a UI builder NullAway cannot follow.
+    @SuppressWarnings("NullAway.Init")
+    private FontSettingRow.Row attributionFontRow;
+
+    @SuppressWarnings("NullAway.Init")
+    private FontSettingRow.Row subAttributionFontRow;
+
     // Whether the song carries a translation, which decides both whether the
     // unofficial-translation checkbox is shown at all and whether the preview renders the
     // translation credit. Set by populate on every opening.
@@ -120,7 +130,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
     SongSettingsAttributionTab(SongSettingsDialog dialog, SongSettingsTitleTab titleTab) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION));
-        this.dialog = dialog;
         this.titleTab = titleTab;
 
         sourceCombo.setEditable(false);
@@ -135,9 +144,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         // Placeholders so the font suppliers the chooser rows capture are never null before
         // the first populate; the document's own fonts replace them on every opening.
-        var defaults = DocumentFonts.defaultFonts();
-        attributionFont = defaults.getFont(FontKey.ATTRIBUTION);
-        subAttributionFont = defaults.getFont(FontKey.SUB_ATTRIBUTION);
+        attributionFont = FontSettingRow.defaultFont(FontKey.ATTRIBUTION);
+        subAttributionFont = FontSettingRow.defaultFont(FontKey.SUB_ATTRIBUTION);
 
         build();
     }
@@ -352,30 +360,38 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         var datePlaceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_DATE_PLACE));
         alignLabelWidths(wordsMusicLabel, datePlaceLabel);
 
-        var mainFrame = dialog.getMainFrame();
+        var mainFrame = getMainFrame();
 
-        section.add(FontSettingRow.create(
+        attributionFontRow = FontSettingRow.create(
             mainFrame,
             wordsMusicLabel,
             attributionFontLabel,
             FontKey.ATTRIBUTION,
             () -> attributionFont,
             this::applyAttributionFont
-        ));
+        );
+        section.add(attributionFontRow.panel());
 
         BaseDialog.addSeparator(section);
 
-        section.add(FontSettingRow.create(
+        subAttributionFontRow = FontSettingRow.create(
             mainFrame,
             datePlaceLabel,
             subAttributionFontLabel,
             FontKey.SUB_ATTRIBUTION,
             () -> subAttributionFont,
             this::applySubAttributionFont
-        ));
+        );
+        section.add(subAttributionFontRow.panel());
 
         UIUtils.setFlexibleWidth(section);
         return section;
+    }
+
+    @Override
+    protected void dispose() {
+        attributionFontRow.dispose();
+        subAttributionFontRow.dispose();
     }
 
     private void applyAttributionFont(Font font) {
@@ -440,7 +456,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         // attribution/sub-attribution font size. The dialog is packed to a
         // fixed height at show time, so a taller preview would be starved by
         // the tab's GridBagLayout. Re-pack so the window fits the new height.
-        dialog.repackToContent();
+        repackToContent();
     }
 
     // The words-date panel is visible exactly when the "different date"
@@ -582,7 +598,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         wordsDate.setValues(wordsYear, metadata.wordsMonth(), metadata.wordsDay());
         differentDateCheckbox.setSelected(!wordsYear.isEmpty());
         syncWordsDatePanel();
-        wordsDate.updateFieldStates();
 
         // Populate both font rows' description labels and, through them, refresh the preview
         // with the fonts just set.

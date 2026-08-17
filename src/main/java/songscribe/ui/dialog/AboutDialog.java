@@ -190,6 +190,7 @@ public final class AboutDialog extends JDialog {
         var focusManager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
         focusManager.removeKeyEventDispatcher(keyDismisser);
         Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickDismisser);
+        MessageCenter.unsubscribe(this);
         ActivationGate.disarmForOverlay();
 
         if (instance == this) {

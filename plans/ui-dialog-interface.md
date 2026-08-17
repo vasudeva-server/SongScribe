@@ -619,7 +619,7 @@ enum and a branch on the same enum — and the algorithms it calls live in `layo
    One item is known: the `Tab` section says a tab whose control checks a rule as the user
    types asks the same function the controller's `validate` asks, handed to it as a
    function reference. **No tab does this any more** — the line-width verifier was the only
-   one, and the title field's `NonEmptyGuard` is a UI-only rule the controller never sees.
+   one, and the title field's `NonBlankGuard` is a UI-only rule the controller never sees.
    Either state the convention as one nothing currently exercises, or drop it.
 2. **Update `specs/184b-page-setup.md`.** Its Current State section describes a line-width
    field in `SongSettingsDialog` that is gone, and its Removed list carries work Phase 4

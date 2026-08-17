@@ -21,13 +21,15 @@ int    elementCount;       // count — no suffix
 
 #### `ScaleContext` — `Ss` ↔ `Px`
 
-`ScaleContext.getInstance()` is the single source of truth; it holds the mutable `pixelsPerStaffSpace`.
+`ScaleContext` is the single source of truth for the document scale; it holds the mutable `pixelsPerStaffSpace`. Every member is static and the one instance is private, so a conversion is `ScaleContext.ssToPx(ss)` — there is no instance to obtain or to hold in a field.
 
 | Method                  | Direction        | Returns  |
 |-------------------------|------------------|----------|
 | `ssToPx(ss)`            | `Ss → Px`        | `double` |
 | `ssToRoundedPx(ss)`     | `Ss → Px`        | `int`    |
 | `pxToSs(px)`            | `Px → Ss`        | `double` |
+| `inchesToSs(inches)`    | inches `→ Ss`    | `double` |
+| `ssToInches(ss)`        | `Ss →` inches    | `double` |
 | `scaleFont(font)`       | px-sized font → ss-sized font | `Font` |
 | `textWidthSs(font, s)`  | AWT text advance → `Ss`       | `Ss` |
 | `textHeightSs(font)`    | AWT ascent+descent → `Ss`     | `Ss` |
@@ -55,7 +57,7 @@ transform, component sizes, mouse input, page sizing). See
 - `ssToSp(ss) → int` — `Ss → Sp` (rounds to nearest)
 
 ```java
-var deltaYSs = ScaleContext.getInstance().pxToSs(deltaYPx);
+var deltaYSs = ScaleContext.pxToSs(deltaYPx);
 var deltaSp  = StaffExtents.ssToSp(deltaYSs);   // NoteDragHandler.handleDrag
 ```
 
@@ -69,8 +71,8 @@ Hold and compute spatial values in `Ss`. Convert to `Px` only when (a) producing
 
 #### Rounding when crossing to `Px`
 
-- **Sizes** (widths, heights) — round up so content is never clipped: `(int) Math.ceil(scale.ssToPx(widthSs))`.
-- **Positions** (coordinates) — round to nearest: `(int) Math.round(scale.ssToPx(xSs))`, or use `ssToRoundedPx`.
+- **Sizes** (widths, heights) — round up so content is never clipped: `(int) Math.ceil(ScaleContext.ssToPx(widthSs))`.
+- **Positions** (coordinates) — round to nearest: `(int) Math.round(ScaleContext.ssToPx(xSs))`, or use `ssToRoundedPx`.
 
 ```java
 // LineComponent.getPreferredSize — sizes, ceil (via ViewPx conversion)
@@ -79,7 +81,7 @@ return new Dimension(
     toViewPx(new Ss(metrics.totalLineHeightSs())).ceilPx());
 
 // LineComponent.getMiddleLineYPx — position, round
-return (int) Math.round(ScaleContext.getInstance().ssToPx(getMiddleLineYSs()));
+return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
 ```
 
 ### Canonical pattern: paired `Ss` / `Px` accessors
@@ -92,7 +94,7 @@ public double getContentWidthSs() {
 }
 
 public double getContentWidthPx() {
-    return ScaleContext.getInstance().ssToPx(getContentWidthSs());
+    return ScaleContext.ssToPx(getContentWidthSs());
 }
 ```
 

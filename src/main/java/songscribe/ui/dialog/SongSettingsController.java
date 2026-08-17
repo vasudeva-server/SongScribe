@@ -23,6 +23,7 @@ import java.awt.Font;
 
 import songscribe.Strings;
 import songscribe.dom.Song;
+import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
@@ -89,7 +90,7 @@ public final class SongSettingsController extends DialogController<SongSettingsI
             song.getMetadata(),
             requireScoreView().getDocumentFonts(),
             song.getTempo(),
-            song.getLineWidthSs(),
+            new Ss(song.getLineWidthSs()),
             new LyricsContext(song.getLyricsText(), !song.getTranslatedLyrics().isEmpty())
         );
     }

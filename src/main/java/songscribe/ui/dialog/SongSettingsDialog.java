@@ -91,7 +91,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
 
         contentPanel.add(BorderLayout.CENTER, tabbedContent);
 
-        // Let Cancel bypass the title field's NonEmptyGuard so the user can always dismiss the
+        // Let Cancel bypass the title field's NonBlankGuard so the user can always dismiss the
         // dialog without first supplying a title.
         cancelButton.setVerifyInputWhenFocusTarget(false);
     }

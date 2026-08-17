@@ -35,7 +35,7 @@ public class ProgressBarDialog extends BaseDialog {
     private final JProgressBar progressBar = new JProgressBar();
 
     public ProgressBarDialog(MainFrame mainFrame, String label, int maximum) {
-        super(mainFrame, Strings.get(Strings.DIALOG_PROGRESS_TITLE), true, DialogCategory.INFORMATIONAL);
+        super(mainFrame, Strings.get(Strings.DIALOG_PROGRESS_TITLE), Modality.MODAL, DialogCategory.INFORMATIONAL);
 
         progressBar.setMaximum(maximum);
 

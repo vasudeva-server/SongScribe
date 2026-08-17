@@ -36,7 +36,6 @@ public enum PrefsKey {
     INSTRUMENT("instrument"),
     LAST_SEEN_WHATS_NEW_VERSION("lastSeenWhatsNewVersion"),
     LOOP_PLAYBACK("loopPlayback"),
-    METRIC("metric"),
     PAGE_SIZE("pageSize"),
     PLAY_INSERTED_NOTE("playInsertedNote"),
     PLAY_SELECTED_NOTE("playSelectedNote"),
@@ -47,7 +46,8 @@ public enum PrefsKey {
     SHOW_TIPS("showTips"),
     STARTUP_ACTION("startupAction"),
     TEMPO_CHANGE_PERCENT("tempoChangePercent"),
-    TIP_INDEX("tipIndex");
+    TIP_INDEX("tipIndex"),
+    UNITS("units");
 
     private final String key;
 

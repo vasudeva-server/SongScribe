@@ -29,17 +29,15 @@ import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-import javax.swing.text.JTextComponent;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Annotation;
-import songscribe.error.RuntimeError;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.NonEmptyGuard;
+import songscribe.ui.component.NonBlankGuard;
 import songscribe.util.UIUtils;
 
 /**
@@ -47,9 +45,14 @@ import songscribe.util.UIUtils;
  * element.
  *
  * <p><strong>The text is never blank.</strong> {@link Annotation} does not permit it, and the combo
- * is editable, so a {@link NonEmptyGuard} on its editor puts the previous text back as focus
- * leaves — turning what would be a rejected commit into an edit the user simply did not make.
- * Emptying the field is therefore not a way to delete an annotation; the Remove button is.
+ * is editable, so a {@link NonBlankGuard} on its editor answers a blank field with an alert and the
+ * previous text — as focus leaves, and again at {@link #gather} for an OK that commits before focus
+ * has moved. Emptying the field is therefore not a way to delete an annotation; the Remove button
+ * is.
+ *
+ * <p>The text is read from the combo's editor rather than its selected item, per
+ * {@link UIUtils#comboEditor}: the two disagree precisely when the guard has just restored a
+ * value the combo already committed.
  */
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
@@ -67,7 +70,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
     final JRadioButton belowRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
-    private final NonEmptyGuard blankGuard;
+    private final NonBlankGuard blankGuard;
 
     public AnnotationDialog(MainFrame mainFrame, DialogOps<@Nullable Annotation, Annotation> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), ops);
@@ -75,11 +78,8 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         annotationCombo.setEditable(true);
         UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
 
-        if (!(annotationCombo.getEditor().getEditorComponent() instanceof JTextComponent comboEditor)) {
-            throw RuntimeError.exit("annotation combo editor is not a text component");
-        }
-
-        blankGuard = new NonEmptyGuard(comboEditor, DEFAULT_ANNOTATION);
+        var comboEditor = UIUtils.comboEditor(annotationCombo);
+        blankGuard = new NonBlankGuard(comboEditor, DEFAULT_ANNOTATION);
         comboEditor.setInputVerifier(blankGuard);
 
         var alignmentGroup = new ButtonGroup();
@@ -161,30 +161,11 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     @Override
     protected Annotation gather() {
-        var annotation = new Annotation(annotationText(), selectedAlignment());
+        var annotation = new Annotation(blankGuard.text(), selectedAlignment());
         annotation.setPlacement(
             aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
 
         return annotation;
-    }
-
-    /**
-     * The text the editable combo is showing, which the class contract guarantees is not blank.
-     *
-     * <p>The guard states that invariant rather than defending against it: a blank or absent
-     * selection here means the combo was populated or emptied by some route that bypassed both
-     * {@link #populateControls} and the {@link NonEmptyGuard}, which nothing does.
-     *
-     * @return the annotation text, never blank
-     */
-    private String annotationText() {
-        var text = (String) annotationCombo.getSelectedItem();
-
-        if (text == null || text.isBlank()) {
-            throw RuntimeError.exit("annotation combo has no text");
-        }
-
-        return text;
     }
 
     /**
