@@ -27,7 +27,6 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.SongSettingsController;
 import songscribe.ui.dialog.SongSettingsDialog;
 
-import static songscribe.ui.action.UIAction.Flag;
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 /**

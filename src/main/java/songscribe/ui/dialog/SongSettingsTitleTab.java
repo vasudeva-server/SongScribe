@@ -37,9 +37,9 @@ import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 
 import songscribe.Strings;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.Ss;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;

@@ -25,7 +25,6 @@ import songscribe.Strings;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
-import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.layout.LyricEditFitCalculator;
 import songscribe.layout.LyricRenderMetrics;

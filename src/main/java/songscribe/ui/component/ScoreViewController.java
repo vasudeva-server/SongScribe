@@ -38,12 +38,9 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
-import songscribe.dom.Key;
-import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
@@ -555,14 +552,11 @@ public final class ScoreViewController {
         // line 0 — which lays out the attribution and the tempo mark — holding its stale layout.
         invalidateMetadataViews(message, mainPanel);
 
-        // Last, and after everything above has marked its components invalid: each of these can
-        // change the height of the page's content — a title that wraps to a second line, a
-        // larger title font, a taller attribution block — which moves every line below it and
-        // can outgrow the page itself. relayoutPage re-fits the canvas to it and validates
-        // synchronously, which also re-syncs the derived layout coordinates on the way out.
-        if (movesPageGeometry(message)) {
-            score.relayoutPage();
-        }
+        // Nothing re-fits the page here. Every branch above ends in a revalidate on the component
+        // whose size changed, and ScoreView.getPreferredSize derives the page height from its
+        // content, so the page follows on its own. A test of which mutations "move the page"
+        // would have to name every mutation that can change a line's height — which is all of
+        // them, as a key change that lifts an ending above a new accidental showed.
 
         // Debounce repaints to batch multiple rapid changes
         repaintDebounce.trigger();
@@ -680,22 +674,6 @@ public final class ScoreViewController {
     private static boolean redefinesBeat(MetadataChange change) {
         return change.field() == MetadataField.TEMPO
             && !Tempo.haveSameBeat((Tempo) change.oldValue(), (Tempo) change.newValue());
-    }
-
-    /**
-     * Returns whether the notification carries any mutation that can move something drawn
-     * outside a line, and so shifts the coordinates every line below it sits at.
-     */
-    private static boolean movesPageGeometry(SongDidChangeNotification message) {
-        for (var mutation : message.getMutations()) {
-            if (mutation instanceof FontChange
-                || mutation instanceof MetadataChange
-                || mutation instanceof LayoutChange) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

@@ -293,8 +293,10 @@ public class MainPanel extends JPanel {
         var textSize = textPanel.getPreferredSize();
         var footnotesSize = footnotesComponent.getPreferredSize();
 
+        // Every child, subtitle included: BoxLayout gives this panel's width to each child, so a
+        // child left out of this maximum is one the panel can be too narrow to hold.
         var width = Math.max(
-            titleSize.width,
+            Math.max(titleSize.width, subtitleSize.width),
             Math.max(scoreSize.width, Math.max(textSize.width, footnotesSize.width))
         );
         var height = titleSize.height + subtitleSize.height;

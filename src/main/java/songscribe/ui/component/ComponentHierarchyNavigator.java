@@ -20,8 +20,6 @@
 
 package songscribe.ui.component;
 
-import java.util.function.Consumer;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.ViewScale;
@@ -72,37 +70,6 @@ public final class ComponentHierarchyNavigator {
     }
 
     /**
-     * Returns the actual middle Y coordinate of a line in the ScoreView coordinate system.
-     */
-    public int getActualLineMiddleYPx(int lineIndex) {
-        var mainPanel = provider.getMainPanel();
-
-        if (mainPanel == null) {
-            return 0;
-        }
-
-        var staffPanel = mainPanel.getStaffPanel();
-        var linePanels = staffPanel.getLinePanels();
-
-        if (lineIndex < 0 || lineIndex >= linePanels.size()) {
-            return 0;
-        }
-
-        var linePanel = linePanels.get(lineIndex);
-        var lineComponent = linePanel.getLineComponent();
-
-        // Get the LineComponent's Y position in the ScoreView coordinate system
-        var linePanelY = linePanel.getY();
-        var staffPanelY = staffPanel.getY();
-        var mainPanelY = mainPanel.getY();
-        var lineComponentY = lineComponent.getY();
-        var componentMiddleLineYPx = lineComponent.getMiddleLineYPx();
-
-        // The middleLineY is relative to the LineComponent, so we need to add the offsets
-        return mainPanelY + staffPanelY + linePanelY + lineComponentY + componentMiddleLineYPx;
-    }
-
-    /**
      * Sets up the selection provider and scoreView reference for all line components.
      *
      * @param selectionProvider Function that checks if a note is selected
@@ -127,42 +94,4 @@ public final class ComponentHierarchyNavigator {
         }
     }
 
-    /**
-     * Updates the layout values from the component hierarchy.
-     * <p>
-     * This calculates middleLineY and rowHeight based on the actual component positions
-     * rather than a separate layout manager.
-     *
-     * @param layoutUpdater Consumer that receives [middleLineY, rowHeight]
-     */
-    public void updateLayoutFromComponents(Consumer<int[]> layoutUpdater) {
-        var mainPanel = provider.getMainPanel();
-
-        if (mainPanel == null) {
-            return;
-        }
-
-        var staffPanel = mainPanel.getStaffPanel();
-        var linePanels = staffPanel.getLinePanels();
-
-        if (linePanels.isEmpty()) {
-            return;
-        }
-
-        // middleLineYPx = first line's absolute middle Y
-        var middleLineYPx = getActualLineMiddleYPx(0);
-
-        // rowHeightPx = distance between consecutive line midpoints
-        int rowHeightPx;
-
-        if (linePanels.size() >= 2) {
-            rowHeightPx = getActualLineMiddleYPx(1) - getActualLineMiddleYPx(0);
-        } else {
-            var linePanel = linePanels.getFirst();
-            // With a single line there is no inter-line spacing to add.
-            rowHeightPx = linePanel.getLineComponent().getHeight();
-        }
-
-        layoutUpdater.accept(new int[]{middleLineYPx, rowHeightPx});
-    }
 }

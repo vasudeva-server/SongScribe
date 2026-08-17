@@ -60,7 +60,6 @@ import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
-import songscribe.engraving.Staff;
 import songscribe.error.RuntimeError;
 import songscribe.export.ExportOptions;
 import songscribe.export.ImageExporter;
@@ -191,14 +190,6 @@ public final class ScoreView
     //  on the advance of the clef.
     private int leadingKeysPosPx = 32;
 
-    // The vertical distance between the top of one staff line and the next.
-    // This can vary depending on what appears above and below the staff line,
-    // as well as vertical adjustments made by the user.
-    private int rowHeightPx = 0;
-
-    // The y position (from the top of the scorePanel) of the middle line (B) of the first staff
-    private int middleLineYPx = 0;
-
     // Coordinates selection state across lines
     private final SelectionCoordinator selectionCoordinator;
 
@@ -216,9 +207,6 @@ public final class ScoreView
     // Coordinates message handling
     @Nullable
     private ScoreViewController controller = null;
-
-    // Preferred size of the score panel
-    private final Dimension preferredSizePx = new Dimension();
 
     // Navigates the component hierarchy (null in headless mode)
     private final @Nullable ComponentHierarchyNavigator hierarchyNavigator;
@@ -291,7 +279,6 @@ public final class ScoreView
         documentFontManager.installFonts(DocumentFonts.defaultFonts());
 
         // Initialize UI components
-        initView();
         initScorePanel();
         initMainPanel();
 
@@ -448,10 +435,6 @@ public final class ScoreView
         return lineComponent.getLayoutResult();
     }
 
-    void initView() {
-        viewChanged();
-    }
-
     public boolean openFile(File file, boolean updateCurrentFile) {
         var result = SongFileLoader.load(file);
 
@@ -575,36 +558,6 @@ public final class ScoreView
         }
     }
 
-    public void viewChanged() {
-        // Syncs derived coordinates from current child positions without re-running the
-        // layout manager. Callers either own child positions manually (drag) or expect
-        // Swing to drive doLayout() separately via revalidate().
-        updateLayoutFromComponents();
-    }
-
-    /**
-     * Updates middleLineY and rowHeight from component hierarchy.
-     * <p>
-     * Derives layout coordinates from the actual positioned components
-     * rather than a separate layout manager.
-     */
-    private void updateLayoutFromComponents() {
-        if (hierarchyNavigator != null) {
-            hierarchyNavigator.updateLayoutFromComponents(layout -> {
-                middleLineYPx = layout[0];
-                rowHeightPx = layout[1];
-            });
-        }
-    }
-
-    @Override
-    public void doLayout() {
-        super.doLayout();
-        // Refresh derived layout coordinates after children have been positioned, so
-        // paintComponent can read them without recomputing on every paint pass.
-        updateLayoutFromComponents();
-    }
-
     public @Nullable JScrollPane getScoreScrollPane() {
         return scrollPane;
     }
@@ -668,13 +621,6 @@ public final class ScoreView
     @Override
     public boolean isOptimizedDrawingEnabled() {
         return false;
-    }
-
-    @Override
-    public int getNoteYPosPx(int staffPosition, int lineIndex) {
-        return (int) Math.round(middleLineYPx +
-            ScaleContext.ssToPx(Staff.spToSs(staffPosition)) +
-            (lineIndex * rowHeightPx));
     }
 
     @Nullable
@@ -964,7 +910,6 @@ public final class ScoreView
         setupLineComponentState();
 
         syncPlaybackPrefs();
-        viewChanged();
 
         // Notify all subscribers (LyricsPanel, ScoreViewController, UIActions, etc.)
         // that the song has been fully replaced. This must happen after all
@@ -1005,11 +950,12 @@ public final class ScoreView
         // round trip.
         var contentHeightViewPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
         var contentHeightDocPx = viewScale.toDocPx(new ViewPx(contentHeightViewPx));
-        var topMarginPx = PageModel.getTopMarginPx();
-        var bottomMarginPx = PageModel.getBottomMarginPx();
-        var minPageHeightDocPx = contentHeightDocPx.value() + topMarginPx.value() + bottomMarginPx.value();
-        var pageHeightDocPx = PageModel.getPageHeightPx();
-        return new DocPx(Math.max(pageHeightDocPx.value(), minPageHeightDocPx)).roundedPx();
+        return new DocPx(pageHeightForContent(
+            PageModel.getPageHeightPx().value(),
+            contentHeightDocPx.value(),
+            PageModel.getTopMarginPx().value(),
+            PageModel.getBottomMarginPx().value()
+        )).roundedPx();
     }
 
     /**
@@ -1095,23 +1041,6 @@ public final class ScoreView
         this.leadingKeysPosPx = leadingKeysPosPx;
     }
 
-    @Override
-    public int getRowHeightPx() {
-        return rowHeightPx;
-    }
-
-    public void setRowHeightPx(int rowHeightPx) {
-        this.rowHeightPx = rowHeightPx;
-    }
-
-    @Override
-    public int getMiddleLineYPx() {
-        return middleLineYPx;
-    }
-
-    public void setMiddleLineYPx(int middleLineYPx) {
-        this.middleLineYPx = middleLineYPx;
-    }
 
     public void setDragDisabled(boolean dragDisabled) {
         this.dragDisabled = dragDisabled;
@@ -1133,18 +1062,13 @@ public final class ScoreView
     }
 
     /**
-     * Re-fits the page to the score's content at the current zoom and the song's stored line
-     * width, writing nothing to the model.
+     * Re-centers the page for the current zoom and the song's stored line width, writing
+     * nothing to the model.
      * <p>
-     * Call after anything changes the size of what the page holds — a title that gains a wrapped
-     * line, an attribution block that grows. The canvas is sized from {@code MainPanel}'s
-     * preferred height rather than by Swing, so content that grows past the page is only
-     * accommodated here; and {@link #layoutPage} validates synchronously, so the new sizes are
-     * realized by the time this returns rather than at some later point on the event queue.
-     * <p>
-     * The components whose size changed must be invalidated <em>before</em> this is called.
-     * {@code Container.invalidate} propagates upward only, so a still-valid child hands back its
-     * cached preferred size and the page would be re-fitted to the size it already had.
+     * Only a change of the line width or the zoom needs this. Content that grows or shrinks
+     * needs nothing: {@link #getPreferredSize} derives the page height from the content on
+     * every ask, so the ordinary {@code revalidate} a changed component already fires re-fits
+     * the page.
      * <p>
      * {@link #updatePageLayout} is the entry point for a change <em>of</em> the line width; it
      * stores the width and then comes here.
@@ -1157,28 +1081,80 @@ public final class ScoreView
     }
 
     /**
-     * Re-sizes the page canvas and re-centers the content for {@code lineWidthPx}
-     * at the current zoom, <em>without</em> mutating the song's stored line width.
-     * {@link #updatePageLayout} writes the width to the model first and then calls
-     * this; the zoom handler calls it directly so a pure view change never records
-     * a document mutation or undo entry.
+     * The page canvas: a full page, or taller when the score's content outgrows one.
+     * <p>
+     * Derived on every ask rather than stored through {@code setPreferredSize}, because the
+     * content's height is not this view's to know about. A line gains an accidental that
+     * lifts an ending above it, a title wraps to a second line, an attribution block grows —
+     * each changes what the page must hold, and none of them is a thing this view can be told
+     * about without a list of change kinds that would have to name every mutation there is.
+     * The {@code revalidate} that the changed component itself fires reaches here and asks
+     * again, which is the whole mechanism.
+     *
+     * @return the page size in view pixels at the current zoom
+     * @invariant never shorter than a full page, and never shorter than the content plus the
+     *     top and bottom margins
+     */
+    @Override
+    public Dimension getPreferredSize() {
+        // Sizes round up via ceilPx() so content is never clipped at high zoom; margins round
+        // to nearest via roundedPx(), matching the border layoutPage sets from the same values.
+        var contentHeightPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
+
+        return new Dimension(
+            viewScale.toViewPx(PageModel.getPageWidthPx()).ceilPx(),
+            (int) pageHeightForContent(
+                viewScale.toViewPx(PageModel.getPageHeightPx()).ceilPx(),
+                contentHeightPx,
+                topMarginPx(),
+                bottomMarginPx()
+            )
+        );
+    }
+
+    /**
+     * The page policy both {@link #getPreferredSize} and {@link #getSheetHeightPx} answer with:
+     * a page never shrinks below a full page, and never crops its content.
+     * <p>
+     * Unit-agnostic on purpose — the two callers work in different spaces, view pixels and
+     * document pixels, and the policy is the same in both. Each converts before calling.
+     *
+     * @param pageHeight the full page height
+     * @param contentHeight the height of what the page holds, excluding margins
+     * @param topMargin the page's top margin
+     * @param bottomMargin the page's bottom margin
+     * @return the greater of {@code pageHeight} and the content plus both margins
+     */
+    private static double pageHeightForContent(
+        double pageHeight,
+        double contentHeight,
+        double topMargin,
+        double bottomMargin) {
+
+        return Math.max(pageHeight, contentHeight + topMargin + bottomMargin);
+    }
+
+    /** The page's top margin in view pixels at the current zoom. */
+    private int topMarginPx() {
+        return viewScale.toViewPx(PageModel.getTopMarginPx()).roundedPx();
+    }
+
+    /** The page's bottom margin in view pixels at the current zoom. */
+    private int bottomMarginPx() {
+        return viewScale.toViewPx(PageModel.getBottomMarginPx()).roundedPx();
+    }
+
+    /**
+     * Re-centers the content for {@code lineWidthPx} at the current zoom, <em>without</em>
+     * mutating the song's stored line width. {@link #updatePageLayout} writes the width to the
+     * model first and then calls this; the zoom handler calls it directly so a pure view change
+     * never records a document mutation or undo entry.
+     * <p>
+     * Sizing the canvas is not part of this — {@link #getPreferredSize} derives it.
      */
     private void layoutPage(int lineWidthPx) {
-        // PageModel returns document (100%-zoom) page dimensions; scale them through this
-        // view's ViewScale to size the page the same way zoom scales the staff content.
-        // Sizes (widths/heights) round up via ceilPx() so content is never clipped at high
-        // zoom; positions/margins round to nearest via roundedPx().
-        var pageWidthPx = viewScale.toViewPx(PageModel.getPageWidthPx()).ceilPx();
-        var pageHeightPx = viewScale.toViewPx(PageModel.getPageHeightPx()).ceilPx();
-        var topMarginPx = viewScale.toViewPx(PageModel.getTopMarginPx()).roundedPx();
-        var bottomMarginPx = viewScale.toViewPx(PageModel.getBottomMarginPx()).roundedPx();
-
-        var contentHeight = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
-        var minPageHeight = contentHeight + topMarginPx + bottomMarginPx;
-
-        preferredSizePx.width = pageWidthPx;
-        preferredSizePx.height = Math.max(pageHeightPx, minPageHeight);
-        setPreferredSize(preferredSizePx);
+        var topMarginPx = topMarginPx();
+        var bottomMarginPx = bottomMarginPx();
 
         // getHorizontalMarginPx operates in document space; convert lineWidthPx (view px) to
         // document px before the call, then convert the resulting margin back to view px.

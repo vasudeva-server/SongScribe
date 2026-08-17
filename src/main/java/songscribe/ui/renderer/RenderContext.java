@@ -51,25 +51,6 @@ public interface RenderContext {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the Y position of the middle staff line (B4) of the first staff.
-     */
-    int getMiddleLineYPx();
-
-    /**
-     * Returns the vertical distance between staff rows.
-     */
-    int getRowHeightPx();
-
-    /**
-     * Calculates the Y position for an element at the given staff position and line index.
-     *
-     * @param staffPosition The element's staff position relative to middle line (0 = B4)
-     * @param lineIndex     The staff line index (0-based)
-     * @return The Y coordinate in pixels
-     */
-    int getNoteYPosPx(int staffPosition, int lineIndex);
-
-    /**
      * Returns the X position where key signature accidentals are drawn.
      */
     int getLeadingKeysPosPx();

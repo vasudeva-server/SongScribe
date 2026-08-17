@@ -34,7 +34,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.Strings;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -45,7 +44,6 @@ import songscribe.ui.component.MainFrame;
 import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.action.UIAction.Flag;
 import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
 
 /**

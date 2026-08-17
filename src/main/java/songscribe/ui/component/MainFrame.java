@@ -67,7 +67,6 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.FileExtensions;
 import songscribe.Strings;
-import songscribe.Version;
 import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFonts;
