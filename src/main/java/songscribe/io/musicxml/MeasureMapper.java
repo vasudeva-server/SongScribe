@@ -756,6 +756,10 @@ final class MeasureMapper {
      * attribute: the writer emits {@code placement} only on annotation directions, so
      * its presence is the unambiguous discriminator, and a words-only direction without
      * it is a tempo description rather than a phantom annotation.
+     *
+     * @return the annotation the direction describes, or {@code null} when it carries none or
+     *         no text
+     * @log warning if the direction's words are blank
      */
     @Nullable
     private static Annotation annotationOf(Direction direction) {
@@ -769,9 +773,10 @@ final class MeasureMapper {
 
         var text = words.getValue();
 
-        // A direction whose words are blank is dropped rather than imported: an annotation may
-        // not carry blank text, and one that says nothing is not worth a placeholder.
+        // A direction whose words are blank is dropped rather than attached: an annotation with
+        // no text has nothing to draw.
         if (text == null || text.isBlank()) {
+            LOG.warn("Corrupt document: annotation with no text, dropping it");
             return null;
         }
 

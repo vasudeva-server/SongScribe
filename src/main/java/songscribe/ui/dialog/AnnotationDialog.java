@@ -25,7 +25,6 @@ import java.awt.FlowLayout;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -37,29 +36,29 @@ import songscribe.dom.Annotation;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.NonBlankGuard;
-import songscribe.util.UIUtils;
 
 /**
  * An editable text combo plus alignment and placement radios, for editing the annotation on an
  * element.
  *
- * <p><strong>The text is never blank.</strong> {@link Annotation} does not permit it, and the combo
- * is editable, so a {@link NonBlankGuard} on its editor answers a blank field with an alert and the
- * previous text — as focus leaves, and again at {@link #gather} for an OK that commits before focus
- * has moved. Emptying the field is therefore not a way to delete an annotation; the Remove button
- * is.
- *
- * <p>The text is read from the combo's editor rather than its selected item, per
- * {@link UIUtils#comboEditor}: the two disagree precisely when the guard has just restored a
- * value the combo already committed.
+ * <p><strong>The text is never blank.</strong> {@link Annotation} does not permit it. The combo
+ * offers a fixed list of non-blank annotations plus an {@code Other…} row whose prompt cannot
+ * commit a blank value, so blank text cannot be entered through it. Emptying a field is therefore
+ * not a way to delete an annotation; the Remove button is.
  */
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     static final String DEFAULT_ANNOTATION = "Fine";
     private static final String ANNOTATION_FILE = "annotations";
 
-    final JComboBox<String> annotationCombo = new JComboBox<>();
+    final OtherValueComboBox annotationCombo = new OtherValueComboBox(
+        new OtherValuePrompt(
+            Strings.get(Strings.DIALOG_ANNOTATION_TITLE),
+            Strings.get(Strings.LABEL_ANNOTATION_OTHER_PROMPT)
+        ),
+        OtherValueComboBox.EmptyChoice.WITHHELD,
+        ANNOTATION_FILE
+    );
     final JRadioButton leftRadio =
         new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
     final JRadioButton centerRadio =
@@ -70,17 +69,9 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
     final JRadioButton belowRadio =
         new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
-    private final NonBlankGuard blankGuard;
 
     public AnnotationDialog(MainFrame mainFrame, DialogOps<@Nullable Annotation, Annotation> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), ops);
-
-        annotationCombo.setEditable(true);
-        UIUtils.readComboValuesFromFile(annotationCombo, ANNOTATION_FILE);
-
-        var comboEditor = UIUtils.comboEditor(annotationCombo);
-        blankGuard = new NonBlankGuard(comboEditor, DEFAULT_ANNOTATION);
-        comboEditor.setInputVerifier(blankGuard);
 
         var alignmentGroup = new ButtonGroup();
         alignmentGroup.add(leftRadio);
@@ -140,7 +131,6 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
         var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
         annotationCombo.setSelectedItem(annotation.getAnnotation());
-        blankGuard.rememberCurrentText();
 
         var alignment = annotation.getXAlignment();
 
@@ -161,7 +151,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     @Override
     protected Annotation gather() {
-        var annotation = new Annotation(blankGuard.text(), selectedAlignment());
+        var annotation = new Annotation(annotationCombo.getValue(), selectedAlignment());
         annotation.setPlacement(
             aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
 

@@ -116,6 +116,7 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
 
         cancelButton = new JButton(Strings.get(Strings.DIALOG_BUTTON_CANCEL));
         cancelButton.addActionListener(_ -> setVisible(false));
+        dismissWithoutVerifying(cancelButton);
 
         buttonPanel.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_BUTTON_PANEL_PADDING));
         buttonPanel.add(cancelButton);
@@ -131,8 +132,30 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
                 remove.run();
                 setVisible(false);
             });
+            dismissWithoutVerifying(removeButton);
             buttonPanel.add(removeButton, 0);
         }
+    }
+
+    /**
+     * Exempts a button that dismisses the dialog without reading the controls from the focused
+     * field's {@link InputVerifier}.
+     *
+     * <p>Swing runs the verifier of the field being left before it hands focus to the button, in
+     * the middle of the mouse press. A verifier that only refuses focus would merely be pointless
+     * here; one that <strong>tells the user something</strong> — as {@code NonBlankGuard} does —
+     * puts a modal alert up inside that press, and the alert takes the release, so the button's
+     * action never runs. The user gets an alert about a value that is about to be discarded, and
+     * the dialog they were dismissing is still there.
+     *
+     * <p>So this is not an accommodation of one guard's alert: nothing a field says about its
+     * value is relevant to a path that never reads the value.
+     *
+     * @param button the button to exempt
+     * @effects stops the focused field's verifier from running when {@code button} takes focus
+     */
+    private static void dismissWithoutVerifying(JButton button) {
+        button.setVerifyInputWhenFocusTarget(false);
     }
 
     @Override

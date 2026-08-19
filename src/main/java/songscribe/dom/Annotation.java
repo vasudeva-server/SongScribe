@@ -21,19 +21,23 @@ package songscribe.dom;
 
 import java.awt.Component;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.util.Copyable;
 
 /**
  * A piece of text placed above or below a note — {@code dolce}, {@code cresc.}, {@code Fine}.
  *
- * <p><strong>Invariant: the text is never blank.</strong> An annotation with nothing to say has
- * nothing to draw and no reason to exist, so there is no state in which one is carrying empty
- * text — the constructors and {@link #setAnnotation} refuse it, and both readers drop such an
- * annotation rather than building one. Every caller may therefore treat
- * {@link #getAnnotation()} as text worth rendering, and removing an annotation is a removal
- * rather than a blanking.
+ * <p>Annotation text is expected to be non-blank. That is guaranteed by the UI, not by this
+ * class: the annotation combo offers only non-blank items, and its {@code Other…} prompt
+ * refuses a blank entry. This class does not enforce the expectation — it logs a warning if
+ * it is given blank text and stores it anyway. A blank annotation read from a file is dropped
+ * by the reader rather than attached, since it has nothing to draw.
  */
 public class Annotation implements Copyable<Annotation> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Annotation.class);
 
     public enum Placement { ABOVE, BELOW }
 
@@ -51,43 +55,34 @@ public class Annotation implements Copyable<Annotation> {
     private double userYOffsetSs = 0;
 
     /**
-     * @param annotation the text to display; must not be blank
-     * @throws IllegalArgumentException if {@code annotation} is blank
+     * @param annotation the text to display; expected to be non-blank
+     * @log warning if {@code annotation} is blank; the blank text is stored anyway
      */
     public Annotation(String annotation) {
         this(annotation, Component.LEFT_ALIGNMENT);
     }
 
     /**
-     * @param annotation the text to display; must not be blank
+     * @param annotation the text to display; expected to be non-blank
      * @param alignment  a {@code Component} horizontal alignment constant
-     * @throws IllegalArgumentException if {@code annotation} is blank
+     * @log warning if {@code annotation} is blank; the blank text is stored anyway
      */
     public Annotation(String annotation, float alignment) {
-        requireText(annotation);
+        warnIfBlank(annotation);
         this.annotation = annotation;
         xAlignment = alignment;
     }
 
     /**
-     * @return the text to display, never blank
+     * @return the text to display, whatever this annotation was given
      */
     public String getAnnotation() {
         return annotation;
     }
 
-    /**
-     * @param annotation the text to display; must not be blank
-     * @throws IllegalArgumentException if {@code annotation} is blank
-     */
-    public void setAnnotation(String annotation) {
-        requireText(annotation);
-        this.annotation = annotation;
-    }
-
-    private static void requireText(String annotation) {
+    private static void warnIfBlank(String annotation) {
         if (annotation.isBlank()) {
-            throw new IllegalArgumentException("annotation text must not be blank");
+            LOG.warn("Annotation text must not be blank");
         }
     }
 

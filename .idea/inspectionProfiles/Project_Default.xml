@@ -128,7 +128,7 @@
     <inspection_tool class="JavaPrintToLogpoint" enabled="false" level="DEBUGGER_SUGGESTION" enabled_by_default="false" />
     <inspection_tool class="JavadocBlankLines" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="JavadocDeclaration" enabled="true" level="WARNING" enabled_by_default="true">
-      <option name="ADDITIONAL_TAGS" value="invariant,effects" />
+      <option name="ADDITIONAL_TAGS" value="invariant,effects,log" />
     </inspection_tool>
     <inspection_tool class="JavadocReference" enabled="false" level="ERROR" enabled_by_default="false" />
     <inspection_tool class="JoinDeclarationAndAssignmentJava" enabled="true" level="WARNING" enabled_by_default="true" editorAttributes="WARNING_ATTRIBUTES" />

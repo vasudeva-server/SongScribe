@@ -22,42 +22,38 @@ package songscribe.ui.component;
 /**
  * A text field that may not be left blank, carrying its own {@link NonBlankGuard}.
  *
- * <p><strong>The field is never blank once focus has left it.</strong> Emptying it and
- * moving on beeps, says so, and puts back what was there. That promise is the field's
- * own, not something each caller installs, which is what keeps a rule about the value
- * from being one a caller can forget to apply.
+ * <p><strong>The field is never blank once focus has left it, unless it has never held a
+ * non-blank value.</strong> Emptying a field that has held a value and moving on beeps, says
+ * so, and puts back what was there. That promise is the field's own, not something each
+ * caller installs, which is what keeps a rule about the value from being one a caller can
+ * forget to apply.
  *
  * <p>The alert is deliberate rather than a silent restore: a field that refills itself
  * without a word reads as the application having eaten the keystroke, where the alert
  * names the rule and makes the returning value an answer.
  *
- * <p>The guard speaks only when focus leaves. A dialog that wants the user to see, while
- * they type, that a blank field cannot be committed contributes a validity condition over
- * the field's property — {@code requireValid(computed(() -> !text.get().isBlank()))} —
- * which follows the document and so answers to typing, cut and paste alike. The two are
- * complementary: the condition disables the commit while the field is blank, and the
- * guard is what makes the field non-blank again once the user moves on.
+ * <p>The guard speaks only when focus leaves, and it can only restore what it has already
+ * seen, so a field that has never held a non-blank value has nothing to fall back to but
+ * empty. A dialog that wants a blank field to be uncommittable contributes a validity
+ * condition over the field's property — {@code requireValid(computed(() ->
+ * !text.get().isBlank()))} — which follows the document and so answers to typing, cut and
+ * paste alike. The two are complementary: the condition is what makes a blank field
+ * uncommittable, and the guard is what restores a value once the user moves on.
  *
  * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored
- * value to be the one the user was looking at rather than the fallback.
+ * value to be the one the user was looking at rather than empty.
  */
 public class NonBlankTextField extends MyJTextField {
 
     private final NonBlankGuard guard;
 
     /**
-     * @param columns  the field's width in columns, as {@link javax.swing.JTextField}
-     *                 takes it
-     * @param fallback what to put back when the guard has seen no good value at all — the
-     *                 field was never populated, or was populated blank. Must not itself
-     *                 be blank
-     * @throws IllegalArgumentException if {@code fallback} is blank, which would let the
-     *                                  guard restore a blank value and so break the
-     *                                  class promise
+     * @param columns the field's width in columns, as {@link javax.swing.JTextField}
+     *                takes it
      */
-    public NonBlankTextField(int columns, String fallback) {
+    public NonBlankTextField(int columns) {
         super(columns);
-        guard = new NonBlankGuard(this, fallback);
+        guard = new NonBlankGuard(this);
         setInputVerifier(guard);
     }
 
@@ -66,7 +62,7 @@ public class NonBlankTextField extends MyJTextField {
      * {@link NonBlankGuard#rememberCurrentText()}.
      *
      * <p>Call it after populating the field. A programmatic write is indistinguishable
-     * from typing here, so without this the guard would restore the fallback where the
+     * from typing here, so without this the guard would restore empty where the
      * user expects what the dialog had just shown them.
      *
      * @effects replaces the text this field restores on a blank entry, unless the current

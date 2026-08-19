@@ -29,12 +29,15 @@ import songscribe.ui.OptionDialogs;
 /**
  * An {@link InputVerifier} for a field that may not be left blank. Emptying the field beeps, says
  * so, and puts back what was in it. Install it with
- * {@code field.setInputVerifier(new NonBlankGuard(field, fallback))}; the field may be a combo
- * box's editor as easily as a plain text field.
+ * {@code field.setInputVerifier(new NonBlankGuard(field))}; the field may be a combo box's editor
+ * as easily as a plain text field.
  *
- * <p><strong>The field is never blank once focus has left it, and never carries leading or
- * trailing whitespace.</strong> That is the whole promise, and it is what lets a commit path
- * downstream treat non-blank stripped text as a precondition rather than as a case to handle.
+ * <p><strong>The field is never blank once focus has left it, unless it has never held a
+ * non-blank value — and it never carries leading or trailing whitespace.</strong> A guard that has
+ * never seen a non-blank value has nothing to restore but empty, so what closes that gap is
+ * {@code requireValid} over the field's property: bound by the caller, it disables the commit
+ * while the field is blank, leaving the guard free to restore a value once the user moves on
+ * rather than to guarantee one exists.
  *
  * <p>Blank rather than empty is the test throughout: a field holding only spaces is a field the
  * user has left with no value in it, whatever the document length says. Text that survives the
@@ -47,7 +50,7 @@ import songscribe.ui.OptionDialogs;
  * user was trying to leave, and the restored value is already valid.
  *
  * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored value to
- * be the one the user was looking at rather than the fallback.
+ * be the one the user was looking at rather than empty.
  */
 public final class NonBlankGuard extends InputVerifier {
 
@@ -55,22 +58,11 @@ public final class NonBlankGuard extends InputVerifier {
     private String previousText;
 
     /**
-     * @param field    the text component to guard
-     * @param fallback what to put back when the guard has seen no good value at all — the field was
-     *                 never populated, or was populated blank. Must not itself be blank
-     * @throws IllegalArgumentException if {@code fallback} is blank, which would let the guard
-     *                                  restore a blank value and so break its own promise
+     * @param field the text component to guard
      */
-    public NonBlankGuard(JTextComponent field, String fallback) {
-        if (fallback.isBlank()) {
-            throw new IllegalArgumentException("fallback must not be blank");
-        }
-
+    public NonBlankGuard(JTextComponent field) {
         this.field = field;
-
-        // Stripped like any other remembered value: what this guard restores is held to the
-        // same promise wherever it came from.
-        previousText = fallback.strip();
+        previousText = "";
     }
 
     /**
@@ -96,29 +88,6 @@ public final class NonBlankGuard extends InputVerifier {
     }
 
     /**
-     * The field's text, or what this guard would put back if the field were left as it is.
-     *
-     * <p>For a commit path that must produce a value from the controls as they stand. The guard's
-     * promise holds only once focus has left the field, so a commit reached without a focus change
-     * would otherwise see the one blank the guard exists to prevent. This gives the same answer the
-     * guard would give, so a value is never invented and never missing.
-     *
-     * <p>Silent, and reads only: no alert and the field untouched, which is what lets a
-     * {@code gather}-style method call it. The user has already been told by whichever
-     * {@link #shouldYieldFocus} ran, or is about to be by the one that has not yet.
-     *
-     * @return the field's text, stripped, when it holds something other than whitespace;
-     *         otherwise the value the guard would restore
-     * @invariant the result is never blank and never carries leading or trailing whitespace,
-     *            whichever of the two it answers with
-     */
-    public String text() {
-        var text = field.getText();
-
-        return text.isBlank() ? previousText : text.strip();
-    }
-
-    /**
      * @return {@code true} when the field holds something other than whitespace
      */
     @Override
@@ -131,9 +100,13 @@ public final class NonBlankGuard extends InputVerifier {
      * value when it does not. Always yields.
      *
      * <p>Yielding either way is what keeps the guard from trapping the user: once the previous
-     * value is back the field is valid, so there is nothing to keep the caret for. It also means a
-     * Cancel button needs no {@code setVerifyInputWhenFocusTarget(false)} on this guard's account —
-     * a blank field can never be what stops a dialog being dismissed.
+     * value is back the field is valid, so there is nothing to keep the caret for.
+     *
+     * <p>Yielding is not on its own enough to keep a dismissing button clickable, though. The alert
+     * goes up inside the mouse press that moves focus to the button, and takes the release with it,
+     * so the button's action never runs — the user is told about a value that was about to be
+     * discarded, and the dialog stays up. What answers that is the button declining verification it
+     * has no use for: {@code StandardDialog} exempts Cancel and Remove.
      *
      * <p>Stripping happens here rather than at whatever later reads the field, so that what the
      * user is left looking at is what the value will be. A field whose text is already stripped is
@@ -141,7 +114,8 @@ public final class NonBlankGuard extends InputVerifier {
      *
      * @return always {@code true}
      * @effects replaces the field's text with its stripped form, or with the previous value when
-     *     the field is blank, in which case the user is alerted first
+     *     the field is blank, in which case the user is alerted first; that previous value is
+     *     empty until a non-blank value has been remembered
      */
     @Override
     public boolean shouldYieldFocus(JComponent source, JComponent target) {

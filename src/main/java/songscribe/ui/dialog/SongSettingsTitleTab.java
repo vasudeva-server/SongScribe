@@ -82,8 +82,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // over each one.
     private final NumericTextField numberField =
         new NumericTextField(NUMBER_FIELD_COLUMNS, SONG_NUMBER_MIN, SONG_NUMBER_MAX, true);
-    private final NonBlankTextField titleField =
-        new NonBlankTextField(TITLE_FIELD_COLUMNS, Strings.get(Strings.DOCUMENT_UNTITLED));
+    private final NonBlankTextField titleField = new NonBlankTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> number = Controls.text(numberField, Timing.WHILE_TYPING);
     private final Property<String> title =
         Controls.text(titleField, Timing.WHILE_TYPING, SongMetadata::normalizeTitle);

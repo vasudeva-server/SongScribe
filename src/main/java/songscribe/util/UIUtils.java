@@ -42,11 +42,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
-import java.io.BufferedReader;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import javax.swing.AbstractAction;
 import javax.swing.AbstractButton;
@@ -642,59 +637,4 @@ public final class UIUtils {
         return new TaggedString(text, null);
     }
 
-    /**
-     * The text component an editable combo box types into.
-     *
-     * <p><strong>This, not {@code getSelectedItem()}, is what an editable combo is showing.</strong>
-     * The selected item is a copy that the look and feel commits from the editor at moments of its
-     * own choosing — Enter, focus loss — so anything that writes to the editor afterwards, such as
-     * an {@link javax.swing.InputVerifier} restoring a rejected value, leaves the two disagreeing.
-     * The editor is never stale in the other direction either: choosing from the popup configures
-     * it. Read the editor and there is one value.
-     *
-     * @param combo an editable combo box
-     * @return the combo's editor component
-     * @throws RuntimeException, via {@link RuntimeError#exit}, if the look and feel's editor is not
-     *                           a text component, which no look and feel in use does
-     */
-    public static JTextComponent comboEditor(JComboBox<?> combo) {
-        if (combo.getEditor().getEditorComponent() instanceof JTextComponent editor) {
-            return editor;
-        }
-
-        throw RuntimeError.exit("combo box editor is not a text component");
-    }
-
-    public static void readComboValuesFromFile(
-        JComboBox<? super String> combo,
-        String file
-    ) {
-        try {
-            var inputStream =
-                UIUtils.class.getResourceAsStream("/conf/" + file);
-
-            if (inputStream == null) {
-                throw new FileNotFoundException("File not found: " + file);
-            }
-
-            try (
-                var reader = new BufferedReader(
-                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
-                )
-            ) {
-                var line = reader.readLine();
-
-                while (line != null) {
-                    combo.addItem(line);
-                    line = reader.readLine();
-                }
-            }
-        } catch (IOException e) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_FILE_ERROR,
-                Strings.ERROR_FILE_REINSTALL
-            );
-        }
-    }
 }

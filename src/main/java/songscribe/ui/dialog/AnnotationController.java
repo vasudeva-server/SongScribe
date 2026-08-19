@@ -37,8 +37,9 @@ import songscribe.ui.component.MainFrame;
  * chokepoint.
  *
  * <p>Nothing is refused, so {@link DialogController#validate} keeps its default. Blank text would
- * be the one candidate, and no {@link Annotation} can carry it — the type refuses it at
- * construction, so an unusable one cannot reach here to be rejected.
+ * be the one candidate, and nothing is refused here because the UI already guarantees it never
+ * arrives: the non-editable combo offers only non-blank items, and its {@code Other…} prompt
+ * refuses a blank entry before this controller ever sees the value.
  */
 public final class AnnotationController extends AttachmentDialogController<@Nullable Annotation, Annotation> {
 
@@ -74,7 +75,8 @@ public final class AnnotationController extends AttachmentDialogController<@Null
      * there, and exactly one {@link SongDidChangeNotification} is posted.
      *
      * <p>Removal is {@link #removal()}'s job and never this one's. There is no blank-text case to
-     * read as a deletion request, because {@link Annotation} has no blank state to be in.
+     * read as a deletion request, because the UI — the non-editable combo plus the {@code
+     * Other…} prompt — guarantees non-blank text before it ever reaches this controller.
      */
     @Override
     protected void commit(Annotation change) {

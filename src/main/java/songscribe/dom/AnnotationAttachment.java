@@ -36,26 +36,6 @@ public final class AnnotationAttachment extends Attachment {
     private Annotation annotation;
 
     /**
-     * Creates an annotation attachment with the specified text.
-     *
-     * @param text The annotation text
-     */
-    public AnnotationAttachment(String text) {
-        annotation = new Annotation(text);
-        setAlignment(Alignment.LEFT);
-    }
-
-    /**
-     * Creates an annotation attachment with the specified annotation data.
-     *
-     * @param annotation The annotation data
-     */
-    public AnnotationAttachment(Annotation annotation) {
-        this.annotation = annotation;
-        setAlignment(Alignment.LEFT);
-    }
-
-    /**
      * Creates an annotation attachment attached to a note.
      *
      * @param parent     The parent note
@@ -94,13 +74,6 @@ public final class AnnotationAttachment extends Attachment {
      */
     public String getText() {
         return annotation.getAnnotation();
-    }
-
-    /**
-     * Sets the annotation text.
-     */
-    public void setText(String text) {
-        annotation.setAnnotation(text);
     }
 
     /**

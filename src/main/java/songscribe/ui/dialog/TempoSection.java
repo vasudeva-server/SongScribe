@@ -31,13 +31,13 @@ import javax.swing.JSpinner;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 
+import songscribe.Strings;
 import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.DurationListCellRenderer;
 import songscribe.ui.component.InputUtils;
-import songscribe.util.UIUtils;
 
 /**
  * A reusable panel containing the standard tempo controls:
@@ -51,7 +51,7 @@ class TempoSection extends JPanel {
 
     private final JComboBox<Duration> tempoTypeCombo;
     private final SpinnerModel tempoSpinnerModel = new SpinnerNumberModel(120, 40, 220, 1);
-    private final JComboBox<String> tempoDescriptionCombo = new JComboBox<>();
+    private final OtherValueComboBox tempoDescriptionCombo;
     private final JCheckBox showOnlyDescriptionCheckBox;
 
     /**
@@ -64,11 +64,14 @@ class TempoSection extends JPanel {
 
         showOnlyDescriptionCheckBox = new JCheckBox(checkboxLabel);
 
-        tempoDescriptionCombo.setEditable(true);
-
-        for (var fileName : fileNames) {
-            UIUtils.readComboValuesFromFile(tempoDescriptionCombo, fileName);
-        }
+        tempoDescriptionCombo = new OtherValueComboBox(
+            new OtherValuePrompt(
+                Strings.get(Strings.DIALOG_TEMPO_TITLE),
+                Strings.get(Strings.LABEL_TEMPO_OTHER_PROMPT)
+            ),
+            OtherValueComboBox.EmptyChoice.OFFERED,
+            fileNames
+        );
 
         var spinner = new JSpinner(tempoSpinnerModel);
         InputUtils.addNumericFilter(spinner);
@@ -125,10 +128,10 @@ class TempoSection extends JPanel {
     }
 
     /**
-     * @return the description as typed or chosen, empty when the user left the field empty
+     * @return the description as chosen, empty when the user chose {@code (none)}
      */
     String getTempoDescription() {
-        return UIUtils.comboEditor(tempoDescriptionCombo).getText();
+        return tempoDescriptionCombo.getValue();
     }
 
     boolean isShowOnlyDescription() {
