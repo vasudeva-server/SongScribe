@@ -57,6 +57,35 @@ hook_input=$(cat)
 cmd=$(jq -r '.tool_input.command // ""' <<< "$hook_input")
 transcript=$(jq -r '.transcript_path // ""' <<< "$hook_input")
 
+# Drop the body of every quoted heredoc (`<<'EOF'`, `<<"EOF"`), keeping the line
+# that opens it. A quoted body is literal data this shell never executes, so a
+# command writing a document that happens to name a .java path would otherwise be
+# classified as a search over Java source. The opener stays because the real
+# command lives on it.
+strip_heredoc_bodies() {
+  local line out="" delimiter=""
+
+  while IFS= read -r line; do
+    if [[ -n "$delimiter" ]]; then
+      if [[ "$line" =~ ^[[:space:]]*"$delimiter"[[:space:]]*$ ]]; then
+        delimiter=""
+      fi
+
+      continue
+    fi
+
+    if [[ "$line" =~ \<\<-?[[:space:]]*[\'\"]([A-Za-z_][A-Za-z0-9_]*)[\'\"] ]]; then
+      delimiter="${BASH_REMATCH[1]}"
+    fi
+
+    out+="$line"$'\n'
+  done <<< "$1"
+
+  printf '%s' "$out"
+}
+
+cmd=$(strip_heredoc_bodies "$cmd")
+
 matches() {
   local pattern="$1"
   printf '%s' "$cmd" | grep -qE "$pattern"

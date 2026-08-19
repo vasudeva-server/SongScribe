@@ -7,9 +7,9 @@
 
 Three review passes ran over this commit: one on design, one on contracts and API
 shape, one on correctness and efficiency. There are no test files in the commit,
-so the test-conformance pass did not run. The plan document notes that seven tests
-for the dependency tracker were written and retired to the vault repository, which
-is why none appear here.
+so the test-conformance pass did not run. The seven tests the plan calls for live
+in `src/test/java/songscribe/ui/binding/BindingsTest.java`, which this commit does
+not touch.
 
 A note before the list. The framework itself is good work. The three-way split
 between a value you can read, a value you can write, and a value you can do both
@@ -607,10 +607,9 @@ Its class documentation says the row "exposes pure predicate methods so callers 
 unit-test the enable/reset logic without driving Swing," and `dayEnabled` adds
 "Pure: no side effects, safe to call from tests."
 
-Under this project's policy tests are retired to a separate vault repository after
-they pass, so I cannot tell from inside this worktree whether such a test exists. The
-finding stands either way: a contract that justifies a method's shape by naming a
-consumer is stating a rationale rather than a promise. Point the comment at the
+No test exercises those methods. The finding would stand even if one did: a contract
+that justifies a method's shape by naming a consumer is stating a rationale rather
+than a promise. Point the comment at the
 actual promise — `dayEnabled` is a total function of two values and consults nothing
 else — or drop the testability claim.
 
@@ -645,9 +644,8 @@ Three things came up while making the changes above.
 
 `Prefs` carried `getRawStored(PrefsKey)`, `getRawStored(String)`, `putRawStored`,
 `removeObsoleteKeysForTest`, `removeSystemDefaultKeysFromStoreForTest`,
-`writeTypedForTest` and `migrateForTest` — seven openings in production surface whose
-only callers live in the vault repository, so renaming one compiled here and broke
-there with no signal.
+`writeTypedForTest` and `migrateForTest` — seven openings in production surface that
+no production code called.
 
 They existed for one reason: the startup transformations were private methods on a
 singleton mutating its private store, and nothing could get a `Prefs` whose store it

@@ -42,6 +42,7 @@ import java.util.List;
  * implementor, and {@code docs/messages.md} for the rule that a constructor-side
  * subscription creates this obligation.
  */
+@FunctionalInterface
 public interface Disposable {
 
     /**

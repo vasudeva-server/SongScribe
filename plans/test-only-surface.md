@@ -10,19 +10,20 @@ production code on a test flag are all the same violation.
 `ui/dialog/AttachmentDialogController.java:55` cites this file as the rule it
 obeys.
 
-## The constraint that shapes every fix
+## What checks the work
 
-**The tests are in the vault repository and cannot be read from this worktree.**
-Three consequences, and they are the reason this work is not mechanical:
+Tests are resident in `src/test/`, so both halves of each fix are verifiable:
 
-- You cannot see what a member is used for. Infer the need from the member's
-  shape and from what the class does, and say in the commit what you inferred.
-- Renaming or deleting one compiles clean here and breaks the vault with no
-  signal. There is no build that catches it, so every removal is a deliberate
-  act, not a refactor the compiler will verify.
-- "Restructure so production supplies what the test needs" cannot be checked
-  against the test. Judge the new shape on whether it is a coherent unit with
-  its own contract, not on whether it is convenient to call from a test.
+- `jet_brains_find_referencing_symbols` on the member shows every caller,
+  production and test alike. A member with only test callers is the finding; a
+  member with none is dead either way.
+- `./scripts/compile.sh --test` catches a removal the tests still depend on.
+  Run it after each fix, and rewrite the affected test to the new shape in the
+  same change.
+
+Judge a restructured member on whether it is a coherent unit with its own
+contract, never on whether it is convenient to call from a test. A shape adopted
+because it suits an existing test is the original violation rearranged.
 
 ## Task 1: complete the inventory
 

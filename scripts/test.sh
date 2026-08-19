@@ -14,11 +14,14 @@
 #   ./scripts/test.sh 'MessageCenterTest$MessageToString'      # Nested class (single quotes prevent $ expansion)
 #   ./scripts/test.sh 'MessageCenterTest$MessageToString.method'
 #   ./scripts/test.sh SMuFLMetadataTest MessageCenterTest      # Multiple classes
-#   ./scripts/test.sh -Dtest=*Test                             # Class name pattern
 #
 # Targets are checked against src/test/java before Gradle runs: an unknown class,
-# an e2e class without the e2e prefix, a unit/e2e mix, or --debug outside e2e all
-# fail immediately with the command to use instead.
+# a pattern, an e2e class without the e2e prefix, a unit/e2e mix, or --debug
+# outside e2e all fail immediately with the command to use instead.
+#
+# There is deliberately no pattern form. A wildcard names an unbounded set of
+# classes, which is the whole suite wearing a filter, and it defeats the check
+# above because there is no one class to check it against. Name the classes.
 #
 # There is deliberately no form that runs both suites. e2e tests drive a real GUI,
 # are slow, and need explicit approval before they run, so nothing reaches them by
@@ -28,6 +31,12 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Same JDK as compile.sh and run.sh. The build pins a Java 25 toolchain, so this
+# does not decide what compiles the code — it decides which JVM the Gradle daemon
+# runs on, and a daemon differing from the one compile.sh warmed is a second
+# daemon rather than a shared one.
+source "$SCRIPT_DIR/set-java-home.sh"
 TEST_SRC_DIR="$PROJECT_DIR/src/test/java"
 E2E_SRC_DIR="$TEST_SRC_DIR/songscribe/e2e"
 
@@ -114,17 +123,13 @@ case "${1:-}" in
 esac
 
 for arg in "$@"; do
-  if [[ "$arg" == -Dtest=* ]]; then
-    TEST_FILTERS+=("--tests" "${arg#-Dtest=}")
-    continue
+  if [[ "$arg" == -Dtest=* || "$arg" == *[\*\?]* ]]; then
+    die "Patterns are not accepted as targets: $arg" \
+        "Name each test class. A pattern matches an unbounded set, so nothing here" \
+        "can classify it as unit or e2e or check that it names anything at all."
   fi
 
   TEST_FILTERS+=("--tests" "*${arg}")
-
-  # Wildcards can straddle both tasks, so they are left unclassified.
-  if [[ "$arg" == *[\*\?]* ]]; then
-    continue
-  fi
 
   case "$(classify_target "$arg")" in
     e2e)  E2E_TARGETS+=("$arg") ;;

@@ -420,7 +420,7 @@ This is the plan's **single compile gate**. Every earlier phase deliberately lef
 
 Read `.claude/guides/testing-common.md` and `.claude/guides/testing-unit.md` before writing any test. Derive every case from the **contract** of the method under test, its signature, and the public API of its declaring class — never from the body. A case learned from an implementation does not become a test until it is in the contract; put it in the contract first, as a visible change.
 
-The seven tests below pin the dependency tracker's re-collection and the per-edge re-entrancy rule — a real algorithm and an invariant spanning several calls, which are two of the three kinds on the testing floor. Write them, run them green, then move them to the vault as `.claude/guides/testing-common.md` requires. Do not propose additional tests. In particular do not test the `Controls` or `Widgets` adapters (wiring), `Transform` (a record of two functions), the cycle guard (a guard gets no test — a cyclic binding is a programming error, not a value a caller supplies), or either converted dialog (a populate–gather path is UI).
+The seven tests below pin the dependency tracker's re-collection and the per-edge re-entrancy rule — a real algorithm and an invariant spanning several calls, which are two of the three kinds on the testing floor. Write them in `BindingsTest` and run them green; they stay in `src/test/`. Do not propose additional tests. In particular do not test the `Controls` or `Widgets` adapters (wiring), `Transform` (a record of two functions), the cycle guard (a guard gets no test — a cyclic binding is a programming error, not a value a caller supplies), or either converted dialog (a populate–gather path is UI).
 ### Tasks
 1. Run `./scripts/compile.sh` and fix every error before writing a line of test code. Never use `./gradlew`, `gradle`, `javac` or `java -cp`.
   
@@ -456,7 +456,7 @@ The seven tests below pin the dependency tracker's re-collection and the per-edg
 **Files:** plans/ui-binding-framework.md  
 **Recommended model/effort:** Opus 5, high — the only check the two converted dialogs and the new dialog lifetime get
 
-No test covers a dialog's populate–gather path; a window is verified by opening it. **Ask the user for permission before running the app.** `./scripts/run.sh` is never executed without it. Record each result in the table below by editing this file.
+No test covers a dialog's populate–gather path; a window is verified by opening it. **Ask the user for permission before running the app.** `./scripts/run.sh` is never executed without it. Record each result in the table below by editing this file. The checks themselves live in `src/test/manual/songscribe/ui/dialog/`, numbered per file; the table below is the record of this run against them.
 ### Tasks
 1. Ask the user for permission to run the application, then launch it with `./scripts/run.sh`.
   
@@ -545,7 +545,7 @@ Read `~/.claude/guides/documents.md` before editing any of these. It governs wha
   
 8. Register `@invariant` and `@effects` in IntelliJ's additional-Javadoc-tags setting so the IDE does not flag them. No build change is needed: `build.gradle.kts` has no javadoc task, and javac does not validate Javadoc tags without doclint. Report to the user that this is a manual IDE step.
   
-9. Confirm that the seven binding tests have been moved to the vault, so nothing but `PackageDependencyTest` is left resident. Do not add a note about it to any guide beyond what `.claude/guides/testing-common.md` already states.
+9. Confirm the seven binding tests pass by name: `./scripts/test.sh BindingsTest`. Do not add a note about it to any guide beyond what `.claude/guides/testing-common.md` already states.
 
 * * *
 ## ✅ Phase 14: Defects found by the verification pass
@@ -556,7 +556,7 @@ Read `~/.claude/guides/documents.md` before editing any of these. It governs wha
 
 Phase 12 opened the two converted dialogs and found five defects. Each is fixed here rather than recorded, and each carries the contract stating the promise it establishes.
 ### Tasks
-1. `StringUtils.wrapText` wraps greedily and then drags words backwards until every line carries three, which pushes lines past `maxWidth` and, through `removeAll` over a sublist of the line being edited, drops repeated words. Replace it with balanced wrapping: the fewest lines the width allows — the count greedy already achieves — split to minimise total squared slack over every line including the last. State as invariants that no line is empty, that only a single over-wide word may exceed `maxWidth`, that the line count is the minimum, and that ties break toward the longer first line. Write the test, run it, and vault it.
+1. `StringUtils.wrapText` wraps greedily and then drags words backwards until every line carries three, which pushes lines past `maxWidth` and, through `removeAll` over a sublist of the line being edited, drops repeated words. Replace it with balanced wrapping: the fewest lines the width allows — the count greedy already achieves — split to minimise total squared slack over every line including the last. State as invariants that no line is empty, that only a single over-wide word may exceed `maxWidth`, that the line count is the minimum, and that ties break toward the longer first line. Write the test in `StringUtilsTest` and run it.
   
 2. The title preview collapses when a wrapped title first fits on one line: each preview sizes itself to its text, and the page-coloured row sized itself to the preview, so a one-line title reaches the full line width — wider than the dialog, which does not re-pack while the user types. Give `SongSettingsTitleTab` a `PreviewRow` whose width is the line width in unscaled pixels, bound to the same `wrapWidthSs` the previews wrap at, so the wrap happens at an edge the user can see. Pad each end by `DIALOG_COMPONENT_HORIZONTAL_GAP` **outside** that width, never by narrowing it — narrowing would wrap the preview earlier than the score does.
   

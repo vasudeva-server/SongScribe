@@ -5,14 +5,28 @@
 floor*.** Read that first; most behavior earns no test. This guide is the
 mechanics for the ones that do.
 
-## The suite carries nothing
+## What runs
 
-A test verifies a change and is then **moved to the vault**: a separate
-repository beside the `develop` working directory, at
-`../songscribe-test-vault`, mirroring `src/test/`. `PackageDependencyTest` is
-the only test that stays resident — it asserts an invariant over the whole
-source tree that any change at all can violate, so there is no one method it
-would be fetched back for.
+Tests live in `src/test/`, next to the code. **The suite is dormant.** A test
+run names the classes covering the code just written or changed, and nothing
+else:
+
+```bash
+./scripts/test.sh BindingsTest ObservableValueTest
+```
+
+To find them, run `jet_brains_find_referencing_symbols` on the members that
+changed and take the test classes out of the results — the same lookup that
+decides which tests need rewriting.
+
+**The whole suite runs only when the user asks for it, and only the user can
+start it.** `.claude/hooks/no-full-test-suite.sh` denies a bare
+`./scripts/test.sh`, a bare `unit` or `e2e`, more than four classes in one
+command, a loop driving the script, and Gradle's test tasks. There is no flag or
+sentinel that lifts it: the user runs the suite by typing `!./scripts/test.sh`,
+which the CLI executes directly and no hook sees. Ask for that rather than
+looking for a way around the hook. `scripts/test.sh` separately refuses pattern
+targets, so a wildcard cannot stand in for naming the classes.
 
 Two reasons, and neither is about the cost of writing tests:
 
@@ -21,7 +35,13 @@ Two reasons, and neither is about the cost of writing tests:
   it on every run to catch the fraction that changed, and is paid for in between.
 - **A passing suite says nothing about the quality of the architecture or the
   code, and that is the paramount goal.** Green over a bad design reports
-  success.
+  success. A pass count is never reported as evidence that the work is right.
+
+**Compile the test tree on every change** — `./scripts/compile.sh --test`. With
+the suite dormant this is the always-on check, and it is what catches a test
+still pinning something that has been deleted or renamed. It is not a preamble
+to testing: `./scripts/test.sh` builds both trees itself, so compiling before a test run
+does the same work twice.
 
 ### Before writing a test
 
@@ -32,9 +52,10 @@ unnecessary. Proposed deletions go in the same table. Format and rationale:
 *Propose the tests before writing them* in
 [design.md](/Users/aparajita/.claude/guides/design.md).
 
-Wiring carries no tests at all — see *What a dialog may touch* in
-[dialogs.md](./dialogs.md), which states that gather, validate and apply carry
-none of their own.
+Wiring carries no tests at all — see *The rule* in
+[dialogs.md](./dialogs.md#the-rule), which states that a dialog's own steps —
+populate, gather, call the ops — carry none of their own, and that what carries
+tests is the controller.
 
 **Changing the contract or the implementation of non-UI code requires a test in
 that same change.** The suite is not where correctness lives, so the moment of
@@ -43,34 +64,33 @@ it and nothing ever does. It applies whether the change is a new method, a
 reworded promise, or a rewritten body, and it applies to a promise that looks too
 small to break.
 
-### Moving a test to the vault
-
-Once the test passes, move it — with every resource it created or modified — to
-the mirrored path in the vault, and take it out of `src/test/`. Commit it there:
-the vault is a repository, so a test's history is kept where the test is.
-
-### Fetching a test back
-
-**When only the implementation changed**, the contract still stands and so do
-the tests written against it. Find them by searching the vault for calls to the
-method, bring them back, and run them. They are expected to pass. A failure
-means either the contract is written poorly or the implementation is broken —
-never that the test is out of date, because the test was written to the
-contract and the contract has not moved.
-
-**When the contract changed**, a new test is written to the new contract and
-replaces the vaulted one. Every other vaulted test that calls the method was
-also written against the old contract: fetch each one and update it. Then check
-every caller of the method in the source — each caller's own contract or
-implementation may have to change to match, and each such change carries its own
-test obligation. A contract change ripples; an implementation change does not.
-
 Non-UI means everything whose risk is logic, computation, state, data
 transformation or model mutation: `dom`, `layout`, `io`, controllers, mutation
 records, actions. UI is excluded because a window is verified by opening it —
 geometry, focus, tab selection and how a message reads are not things a test
 observes. A dialog's populate–gather–ops path is UI in this sense however much
 Java it contains.
+
+### When the code under a test changes
+
+Find the affected tests with `jet_brains_find_referencing_symbols` on the members
+that changed. What happens to them turns on which thing moved:
+
+**When only the implementation changed**, the contract still stands and so do the
+tests written against it. Run them; they are expected to pass. A failure means
+either the contract is written poorly or the implementation is broken — never
+that the test is out of date, because the test was written to the contract and
+the contract has not moved.
+
+**When the contract changed**, every test that calls the method was written
+against the old contract. Rewrite each one to the new contract rather than
+patching it until it compiles — a test that was edited into passing has stopped
+asserting anything anyone chose. Then check every caller of the method in the
+source: each caller's own contract or implementation may have to change to match,
+and each such change carries its own test obligation. A contract change ripples;
+an implementation change does not.
+
+### Deriving the case
 
 **The contract is the durable artifact.** It is what a future change is checked
 against, so a contract too vague to derive a test from is the finding — not a
@@ -142,9 +162,9 @@ asserting against mocks breaks on refactors and stays green on real regressions.
 A test needing extensive mocking to construct its subject is a
 constructor-injection finding, not a mocking problem.
 
-## Choosing the level: unit vs. e2e vs. none
+## Choosing the level: unit vs. e2e vs. manual vs. none
 
-A behavior that earns a test is tested at exactly one level.
+A behavior is verified in exactly one place.
 
 **Default: unit.** Faster, runs without approval, localizes failures. A behavior
 is unit-testable if its risk is logic, computation, state, data transformation,
@@ -166,14 +186,19 @@ If everything that matters can be asserted with the singleton mocked, it is not
 an e2e case. E2E proves the wiring, one test per path. See
 [E2E Test Guide](./testing-e2e.md).
 
-An e2e test is vaulted like any other once it passes. Nothing stays resident on
-the grounds that it is expensive to reconstruct.
+An e2e test lives beside the unit tests like any other and is run by name for
+the same reason — never as a suite, and never without the user's approval.
+
+**Manual** covers what only a person can observe — geometry, focus, tab selection,
+how a message reads, and a dialog's populate–gather–ops path. It becomes a numbered
+check in a checklist under `src/test/manual/`, never a test, and a behavior a check
+covers is not also tested. See [Manual Verification Guide](./testing-manual.md).
 
 **None** covers trivial accessors, pure data holders, display and layout wiring
 with no branching, framework behavior that cannot regress in our code, and pure
 rendering to a `Graphics2D` with no computed geometry to assert.
 
-## Triaging a test fetched from the vault
+## Triaging a test a change surfaced
 
 - **keep** — it asserts a contract case, at the right level, and can fail.
 - **rewrite** — the case is real but the test is wrong about it: wrong level, a
