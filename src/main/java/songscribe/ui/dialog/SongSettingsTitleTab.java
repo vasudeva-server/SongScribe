@@ -54,6 +54,7 @@ import songscribe.ui.binding.WritableValue;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonBlankTextField;
+import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.component.score.BaseTitleComponent;
 import songscribe.ui.component.score.SubtitleComponent;
@@ -61,7 +62,6 @@ import songscribe.ui.component.score.TitleComponent;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * The {@link SongSettingsDialog} Title tab: song number, title, and subtitle,
@@ -72,6 +72,10 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private static final int SONG_NUMBER_MIN = 1;
     private static final int SONG_NUMBER_MAX = 1000;
     private static final int NUMBER_FIELD_COLUMNS = 3;
+
+    // A song need not be numbered, so an empty field stands.
+    private static final NumericRange SONG_NUMBER_RANGE =
+        new NumericRange(SONG_NUMBER_MIN, SONG_NUMBER_MAX, NumericRange.Blank.ACCEPTED);
     private static final int TITLE_FIELD_COLUMNS = 47;
     private static final int TAKE_FIRST_WORDS_DEFAULT = 4;
     private static final int TAKE_FIRST_WORDS_MIN = 1;
@@ -81,7 +85,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // them; everything read or written after the build goes through the property
     // over each one.
     private final NumericTextField numberField =
-        new NumericTextField(NUMBER_FIELD_COLUMNS, SONG_NUMBER_MIN, SONG_NUMBER_MAX, true);
+        new NumericTextField(NUMBER_FIELD_COLUMNS, SONG_NUMBER_RANGE);
     private final NonBlankTextField titleField = new NonBlankTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> number = Controls.text(numberField, Timing.WHILE_TYPING);
     private final Property<String> title =
@@ -90,7 +94,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // The title-font chooser's description label. The title font is this tab's own
     // context — no Swing component holds it — so titleFont is where it lives, and
     // the label and the preview are both written from it.
-    private final JLabel titleFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel titleFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final SpinnerModel takeFirstWordsSpinnerModel =
         new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
 
@@ -103,7 +107,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> subtitle =
         Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeTitle);
-    private final JLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final SubtitleComponent subtitlePreview = new SubtitleComponent();
 
     // The page-colored rows the two previews sit in. Fields rather than locals in
@@ -155,7 +159,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // condition reads the property, which follows the document, so it answers to a
         // paste or a cut as readily as to typing — where titleField's own guard speaks
         // only once focus leaves.
-        requireValid(computed(() -> !title.get().isBlank()));
+        requireValid(bindings().computed(() -> !title.get().isBlank()));
 
         // Previews show the chosen font at its natural size: they are never given a
         // ScoreView, so getViewScale() resolves to ViewScale.IDENTITY (no zoom). Each
@@ -167,11 +171,11 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // raw would show straight quotes while the user types where the score renders curly
         // ones.
         var dialogBindings = bindings();
-        dialogBindings.bind(Widgets.preview(titlePreview), computed(() -> new BaseTitleComponent.Preview(
+        dialogBindings.bind(Widgets.preview(titlePreview), dialogBindings.computed(() -> new BaseTitleComponent.Preview(
             Song.numberedTitle(number.get(), SongMetadata.normalizeTitle(title.get())),
             wrapWidthSs.get()
         )));
-        dialogBindings.bind(Widgets.preview(subtitlePreview), computed(() -> new BaseTitleComponent.Preview(
+        dialogBindings.bind(Widgets.preview(subtitlePreview), dialogBindings.computed(() -> new BaseTitleComponent.Preview(
             SongMetadata.normalizeTitle(subtitle.get()),
             wrapWidthSs.get()
         )));
@@ -180,8 +184,8 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // non-empty. The dialog is packed to a fixed height at show time, so re-pack
         // when it crosses that line. Registering the effect after the binding keeps
         // the binding's settling write from re-packing a dialog that is not yet shown.
-        dialogBindings.bind(subtitleEmpty, computed(() -> SongMetadata.normalizeTitle(subtitle.get()).isEmpty()));
-        dialogBindings.onChange(subtitleEmpty, this::repackToContent);
+        dialogBindings.bind(subtitleEmpty, dialogBindings.computed(() -> SongMetadata.normalizeTitle(subtitle.get()).isEmpty()));
+        dialogBindings.onNotify(subtitleEmpty, this::repackToContent);
 
         // Both rows are as wide as the line the previews wrap at, so the wrap the user
         // sees is the wrap the page performs. Bound rather than set once, because the
@@ -331,10 +335,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
         titleFontRow = FontSettingRow.create(
             getMainFrame(),
-            titleFontLabel,
-            FontKey.TITLE,
-            titleFont::get,
-            titleFont::set
+            new FontSettingRow.Spec(titleFontLabel, FontKey.TITLE, titleFont::get, titleFont::set)
         );
         section.add(titleFontRow.panel());
 
@@ -359,10 +360,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         BaseDialog.addSeparator(section);
         subtitleFontRow = FontSettingRow.create(
             getMainFrame(),
-            subtitleFontLabel,
-            FontKey.SUBTITLE,
-            subtitleFont::get,
-            subtitleFont::set
+            new FontSettingRow.Spec(subtitleFontLabel, FontKey.SUBTITLE, subtitleFont::get, subtitleFont::set)
         );
         section.add(subtitleFontRow.panel());
 

@@ -35,7 +35,7 @@ package songscribe.ui.component;
  * <p>The guard speaks only when focus leaves, and it can only restore what it has already
  * seen, so a field that has never held a non-blank value has nothing to fall back to but
  * empty. A dialog that wants a blank field to be uncommittable contributes a validity
- * condition over the field's property — {@code requireValid(computed(() ->
+ * condition over the field's property — {@code requireValid(bindings().computed(() ->
  * !text.get().isBlank()))} — which follows the document and so answers to typing, cut and
  * paste alike. The two are complementary: the condition is what makes a blank field
  * uncommittable, and the guard is what restores a value once the user moves on.

@@ -79,25 +79,39 @@ public record SongMetadata(
     public SongMetadata {
         title = normalizeTitle(title);
         number = number.trim();
-        // place/composer/lyricist get trim + typographic substitution but no
-        // short-A stripping (that is reserved for title/subtitle/lyrics).
-        place = StringUtils.processText(place, false);
-        year = year.trim();
-        composer = Song.coercePerson(StringUtils.processText(composer, false));
-        lyricist = Song.coercePerson(StringUtils.processText(lyricist, false));
-        // month, day, lyricsSource, arrangement, unofficialTranslation: as-is
         // subtitle: normalized like the title (strip linefeeds, collapse spaces, trim)
         subtitle = normalizeTitle(subtitle);
-        wordsYear = wordsYear.trim();
-        // wordsMonth, wordsDay: as-is
+        // lyricsSource, unofficialTranslation: as-is
 
-        // A words-date equal to the composition date is redundant; the model
-        // must never hold that state, so collapse it to empty here.
-        if (wordsYear.equals(year) && wordsMonth == month && wordsDay == day) {
-            wordsYear = "";
-            wordsMonth = 0;
-            wordsDay = 0;
-        }
+        // The credit fields normalize themselves, including the collapse of a words-date
+        // that merely repeats the composition date. Built here rather than repeated, so
+        // the rules have one home and a metadata record and a bare attribution cannot
+        // disagree about what the same entry means.
+        var credits = new SongAttribution(
+            place, year, month, day, composer, lyricist, lyricsSource, arrangement, wordsYear, wordsMonth, wordsDay
+        );
+        place = credits.place();
+        year = credits.year();
+        composer = credits.composer();
+        lyricist = credits.lyricist();
+        wordsYear = credits.wordsYear();
+        wordsMonth = credits.wordsMonth();
+        wordsDay = credits.wordsDay();
+    }
+
+    /**
+     * Returns just the fields a credit block is built from.
+     *
+     * <p>{@link AttributionFormatter} takes this rather than the whole record, so the
+     * title, number and subtitle it never reads are not part of what a caller has to
+     * supply. Every field is already normalized, so building this re-normalizes nothing.
+     *
+     * @return this song's credits, place and dates
+     */
+    public SongAttribution attribution() {
+        return new SongAttribution(
+            place, year, month, day, composer, lyricist, lyricsSource, arrangement, wordsYear, wordsMonth, wordsDay
+        );
     }
 
     /**
@@ -111,19 +125,6 @@ public record SongMetadata(
             composer, lyricist, lyricsSource, arrangement, unofficialTranslation,
             subtitle, wordsYear, wordsMonth, wordsDay
         );
-    }
-
-    /**
-     * Returns the {@link Song.LyricsSource#LYRICIST} connector when the person is
-     * Sri Chinmoy, otherwise the {@code lyricsSource} connector. The connector is
-     * a function of the person, not the role.
-     */
-    public String connectorFor(String person) {
-        if (person.equals(Song.SRI_CHINMOY)) {
-            return Song.LyricsSource.LYRICIST.getConnector();
-        }
-
-        return lyricsSource.getConnector();
     }
 
     // -------------------------------------------------------------------------

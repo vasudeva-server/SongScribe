@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import songscribe.lifecycle.Disposable;
 import songscribe.ui.binding.Binding.InitialWrite;
@@ -33,14 +34,16 @@ import songscribe.ui.binding.Binding.InitialWrite;
  *
  * <p>Declaring an edge here is the alternative to wiring a listener by hand: the
  * framework observes the source, decides when the target has to be written, and
- * absorbs the notification its own write causes. Every edge and every effect
- * registered here is held until {@link #dispose}, which is the only way to release
- * them.
+ * absorbs the notification its own write causes. Every edge, every derivation and
+ * every effect registered here is held until {@link #dispose}, which is the only way
+ * to release them.
  *
- * <p><b>Every method settles what it registers immediately.</b> A binding evaluates
- * its source once at registration and writes its target, so a dialog is consistent
- * the moment it has finished declaring itself and never needs an initial
- * synchronization pass.
+ * <p><b>Every binding settles its target immediately.</b> A binding evaluates its
+ * source once at registration and writes its target, so a dialog is consistent the
+ * moment it has finished declaring itself and never needs an initial synchronization
+ * pass. <b>An effect registered with {@link #onNotify} does not run at
+ * registration</b>, and a {@link #computed} does not evaluate until something reads
+ * it; neither settles anything by itself.
  *
  * <h2>Lifecycle</h2>
  *
@@ -55,6 +58,51 @@ import songscribe.ui.binding.Binding.InitialWrite;
 public final class Bindings implements Disposable {
 
     private final List<Subscription> registered = new ArrayList<>();
+
+    /**
+     * Returns a value derived by running {@code body}, whose dependencies are
+     * discovered by running it.
+     *
+     * <p>Every {@link ObservableValue} read during a run of {@code body} becomes a
+     * dependency of the result for that run, and the set is re-collected on every
+     * evaluation. A body that reads a value only on some branches is therefore
+     * subscribed to that value only while those branches are the ones taken.
+     *
+     * <p>Evaluation is lazy: a dependency's notification marks the result stale and
+     * is passed on to the result's own observers at once, but {@code body} does not
+     * run again until the value is next read. An eager consumer — a {@link #bind}
+     * edge — reads on every notification and so behaves eagerly; an unbound
+     * derivation shared by two readers evaluates once per change rather than once
+     * per reader.
+     *
+     * <p>The result is an {@code ObservableValue} and not a {@link Property}, so it
+     * cannot be a bind target.
+     *
+     * <p><b>A derivation belongs to the {@code Bindings} that created it</b>, which
+     * is why this is a method here rather than a static factory. A derivation
+     * observes its dependencies, and those observations are what {@link #dispose}
+     * cancels. A derivation with no owner would keep its dependencies — and
+     * everything {@code body} captured — reachable for as long as those dependencies
+     * live, which for a value outliving the dialog is the rest of the session.
+     *
+     * @param <T> the derived value's type
+     * @param body the derivation; it must read only values and must not write any,
+     *     must be free of side effects, and must not read the value it defines
+     * @return the derived value
+     * @effects registers the derivation here, and the derivation holds an observation
+     *     on each of its current dependencies. An observation is released when its
+     *     dependency drops out of the set on a later run, and every remaining one is
+     *     released by {@link #dispose}.
+     * @invariant a read of the returned value is either the cached result of the last
+     *     run of {@code body} or the result of a run made during that read;
+     *     {@code body} never runs more than once per dependency change.
+     */
+    public <T> ObservableValue<T> computed(Supplier<T> body) {
+        var derived = new Computed<T>(body);
+        register(derived);
+
+        return derived;
+    }
 
     /**
      * Writes {@code source}'s value into {@code target}, now and on every later
@@ -89,7 +137,7 @@ public final class Bindings implements Disposable {
      * label, deriving an enabled state from a selection — rather than on
      * {@link ObservableValue}, which has no {@code map}. The transform runs on
      * every notification, and it does <b>not</b> run under the dependency tracker:
-     * only {@link ObservableValue#computed} discovers dependencies, so a transform
+     * only {@link #computed} discovers dependencies, so a transform
      * that reads some other observable value acquires no dependency on it and the
      * edge will not fire when that value changes. A value derived from more than
      * one source is a {@code computed}.
@@ -208,16 +256,18 @@ public final class Bindings implements Disposable {
      * {@code action} is <b>not</b> run at registration; it runs on notifications
      * only.
      *
-     * <p><b>Whether this fires on a real change or on every write is a property of
-     * the source, not of this method.</b> A {@link ValueProperty} notifies only when
+     * <p><b>This is named for notification rather than for change because a
+     * notification is not a change.</b> Whether it fires on a real change is a
+     * property of the source: a {@link ValueProperty} notifies only when
      * {@link WritableValue#set} is given a different value, so an effect on one runs
-     * on transitions. A {@code computed} notifies whenever any dependency notifies,
-     * whatever its body would now produce, so an effect on one runs far more often
-     * than the derived value changes. A caller that needs change-only semantics over
-     * a derivation binds a {@code ValueProperty} from the computed and calls this on
-     * the {@code ValueProperty}. Repacking a dialog when a subtitle appears or
-     * disappears is the worked example: the computed is the subtitle's visibility,
-     * and repacking on every keystroke that leaves it visible would fight the user.
+     * on transitions, while a {@link #computed} notifies whenever any dependency
+     * notifies, whatever its body would now produce, so an effect on one runs far
+     * more often than the derived value changes. A caller that needs change-only
+     * semantics over a derivation binds a {@code ValueProperty} from the derivation
+     * and calls this on the {@code ValueProperty}. Repacking a dialog when a subtitle
+     * appears or disappears is the worked example: the derivation is the subtitle's
+     * visibility, and repacking on every keystroke that leaves it visible would fight
+     * the user.
      *
      * @param source what to observe
      * @param action what to run on each notification; it may read any value and
@@ -225,12 +275,13 @@ public final class Bindings implements Disposable {
      *     {@code source} will run it again
      * @effects holds an observation on {@code source} until {@link #dispose}.
      */
-    public void onChange(ObservableValue<?> source, Runnable action) {
+    public void onNotify(ObservableValue<?> source, Runnable action) {
         register(source.observe(action));
     }
 
     /**
-     * Cancels every observation held by every binding and effect registered here.
+     * Cancels every observation held by every binding, derivation and effect
+     * registered here.
      *
      * <p>Idempotent: a second call cancels nothing because nothing is left
      * registered. The instance is not reusable afterwards — registering a new edge
@@ -238,8 +289,11 @@ public final class Bindings implements Disposable {
      * because the dialog that owned the disposal is gone.
      *
      * @effects releases every observation, dropping the framework's references to
-     *     the dialog's controls, transforms and effect actions. Nothing is written:
-     *     targets keep whatever value they last received.
+     *     the dialog's controls, transforms and effect actions — including the
+     *     observations each {@link #computed} holds on its own dependencies, which is
+     *     what stops a derivation reading a value that outlives the dialog from
+     *     keeping the dialog reachable. Nothing is written: targets keep whatever
+     *     value they last received.
      */
     @Override
     public void dispose() {

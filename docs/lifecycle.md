@@ -129,9 +129,13 @@ while its bound controls are still whole. A tab disposes the `UIAction`s its
 font rows built and any it built for a button of its own; each of those
 subscribed itself to the message bus in its constructor, and disposing them is
 what keeps a closed dialog's actions from handling messages for the rest of the
-run. Disposing the `Bindings` cancels every observation the dialog declared,
-which is what releases the dialog, its controls and everything its transforms
-and effects captured.
+run. Disposing the `Bindings` cancels every observation the dialog declared —
+its edges, its effects, and the observations each `computed` holds on its own
+dependencies — which is what releases the dialog, its controls and everything
+its transforms, derivations and effects captured. A `computed` is created
+through `Bindings` rather than as a free-standing value precisely so that last
+part has an owner: a derivation reading anything that outlives the dialog would
+otherwise keep the dialog reachable for the rest of the session.
 
 A further case is coming rather than present: a `ScoreView` built for one
 conversion, with its controller, its `SelectionCoordinator` and that

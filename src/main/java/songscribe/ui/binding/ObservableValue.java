@@ -19,8 +19,6 @@
  */
 package songscribe.ui.binding;
 
-import java.util.function.Supplier;
-
 /**
  * A value that can be read and observed, but not written — the source half of the
  * property graph.
@@ -37,7 +35,7 @@ import java.util.function.Supplier;
  * </table>
  *
  * <p>Something typed as this and not as {@code Property} can only ever be a bind
- * <i>source</i>. A {@link #computed} is exactly that case, and the type is what
+ * <i>source</i>. A {@link Bindings#computed} is exactly that case, and the type is what
  * stops a caller binding into a derivation whose next evaluation would overwrite
  * the write.
  *
@@ -45,7 +43,7 @@ import java.util.function.Supplier;
  * algebra. Single-source transformation is expressed at the bind site, by the
  * {@link Bindings#bind(WritableValue, ObservableValue, java.util.function.Function)}
  * overload that takes the function; a value derived from more than one source is a
- * {@link #computed}. A rule that a binding shares with a dialog's validation is a
+ * {@link Bindings#computed}. A rule that a binding shares with a dialog's validation is a
  * named domain function that both call — never a method here, because a rule that
  * lives inside the framework cannot be referenced by a controller.
  *
@@ -62,7 +60,7 @@ public interface ObservableValue<T> {
      *
      * <p>Reading is also how a dependency is declared: an implementation must call
      * {@code DependencyTracker.track(this)} before answering, so that a read
-     * happening inside a {@link #computed} body registers this value as one of that
+     * happening inside a {@link Bindings#computed} body registers this value as one of that
      * computed's dependencies for the run in progress. An implementation that skips
      * that call is invisible to every computed that reads it, and the computed then
      * never recomputes — with nothing reporting it.
@@ -77,62 +75,27 @@ public interface ObservableValue<T> {
     T get();
 
     /**
-     * Registers {@code onChange} to run whenever this value notifies, and returns
+     * Registers {@code onNotify} to run whenever this value notifies, and returns
      * the subscription that undoes the registration.
      *
-     * <p><b>Notification is not the same as a change.</b> What counts as a
-     * notification is each implementation's own promise: a {@link ValueProperty}
-     * notifies only when {@link WritableValue#set} is given a value that differs
-     * from the current one, while a {@code computed} notifies whenever one of its
-     * dependencies notifies, whether or not the body would produce a different
-     * result. A caller needing change-only semantics over a computed is described
-     * in {@link Bindings#onChange}.
+     * <p>What counts as a notification is each implementation's own promise, and it
+     * is not the same thing as a change: a {@link ValueProperty} notifies only when
+     * {@link WritableValue#set} is given a value that differs from the current one,
+     * while a {@link Bindings#computed} notifies whenever one of its dependencies
+     * notifies, whether or not the body would produce a different result. A caller
+     * needing change-only semantics over a derivation is described in
+     * {@link Bindings#onNotify}.
      *
-     * <p>{@code onChange} is passed nothing, because the new value is read from
+     * <p>{@code onNotify} is passed nothing, because the new value is read from
      * {@link #get} — that keeps the reading of a value in one place and lets an
      * action read several values rather than only the one that fired.
      *
-     * @param onChange the action to run on notification; it may read any value and
+     * @param onNotify the action to run on notification; it may read any value and
      *     may register or cancel observations, including its own
      * @return the subscription that ends this registration
-     * @effects retains {@code onChange} until the returned subscription is
-     *     cancelled. An uncancelled registration keeps {@code onChange} — and
+     * @effects retains {@code onNotify} until the returned subscription is
+     *     cancelled. An uncancelled registration keeps {@code onNotify} — and
      *     everything it captures — reachable for as long as this value is.
      */
-    Subscription observe(Runnable onChange);
-
-    /**
-     * Returns a value derived by running {@code body}, whose dependencies are
-     * discovered by running it.
-     *
-     * <p>Every {@code ObservableValue} read during a run of {@code body} becomes a
-     * dependency of the result for that run, and the set is re-collected on every
-     * evaluation. A body that reads a value only on some branches is therefore
-     * subscribed to that value only while those branches are the ones taken.
-     *
-     * <p>Evaluation is lazy: a dependency's notification marks the result stale and
-     * is passed on to the result's own observers at once, but {@code body} does not
-     * run again until the value is next read. An eager consumer — a
-     * {@link Bindings#bind} edge — reads on every notification and so behaves
-     * eagerly; an unbound computed shared by two readers evaluates once per change
-     * rather than once per reader.
-     *
-     * <p>The result is an {@code ObservableValue} and not a {@link Property}, so it
-     * cannot be a bind target.
-     *
-     * @param <T> the derived value's type
-     * @param body the derivation; it must read only values and must not write any,
-     *     must be free of side effects, and must not read the computed it defines
-     * @return the derived value
-     * @effects the returned value holds an observation on each of its current
-     *     dependencies. Those observations are released when a dependency drops out
-     *     of the set on a later run, and when the last consumer of the computed is
-     *     itself disposed.
-     * @invariant a read of the returned value is either the cached result of the
-     *     last run of {@code body} or the result of a run made during that read;
-     *     {@code body} never runs more than once per dependency change.
-     */
-    static <T> ObservableValue<T> computed(Supplier<T> body) {
-        return new Computed<>(body);
-    }
+    Subscription observe(Runnable onNotify);
 }

@@ -37,18 +37,18 @@ final class Observers {
     private final List<Runnable> observers = new ArrayList<>();
 
     /**
-     * Registers {@code onChange} and returns the subscription that removes it.
+     * Registers {@code onNotify} and returns the subscription that removes it.
      *
      * <p>The same {@code Runnable} may be registered more than once; each
      * registration is independent and each returned subscription removes exactly
      * one of them.
      *
-     * @param onChange the action to run on every notification
+     * @param onNotify the action to run on every notification
      * @return the subscription that removes this registration, idempotent per
      *     {@link Subscription#cancel}
      */
-    Subscription add(Runnable onChange) {
-        observers.add(onChange);
+    Subscription add(Runnable onNotify) {
+        observers.add(onNotify);
 
         return new Subscription() {
 
@@ -58,7 +58,7 @@ final class Observers {
             public void cancel() {
                 if (!cancelled) {
                     cancelled = true;
-                    observers.remove(onChange);
+                    observers.remove(onNotify);
                 }
             }
         };

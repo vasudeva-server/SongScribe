@@ -165,8 +165,11 @@ public final class Controls {
      * @return the two-way view; the value it answers after a focus loss is the
      *     normalized text, which is also what the field then shows
      * @effects registers listeners on {@code field}, never unregistered. On every
-     *     focus loss it may rewrite the field's text, which for
-     *     {@code WHILE_TYPING} fires the document route as well.
+     *     focus loss it may rewrite the field's text.
+     * @invariant one focus loss notifies at most once, whichever timing was asked
+     *     for and whether or not the normalizer changed the text. The rewrite is made
+     *     through the property's own write path, so a control this repository owns
+     *     does not also route it back as a second notification.
      */
     public static Property<String> text(JTextComponent field, Timing timing, UnaryOperator<String> normalizer) {
         return textProperty(field, timing, normalizer);
@@ -217,11 +220,11 @@ public final class Controls {
      * @return the two-way view over {@code getSelectedIndex} / {@code setSelectedIndex}.
      *     Its {@code get} answers {@code -1} when nothing is selected, which is Swing's
      *     own answer rather than a value this view invents, so an empty leading entry
-     *     meaning "not chosen" is the caller's convention and not this one's.
+     *     meaning "not chosen" is the caller's convention and not this one's. Its
+     *     {@code set} throws {@link IllegalArgumentException} when given an index that
+     *     is neither {@code -1} nor a position the combo holds.
      * @invariant a written index is the index read back, for any position the combo
      *     holds; {@code -1} clears the selection
-     * @throws IllegalArgumentException from {@code set}, when the index is neither
-     *     {@code -1} nor a position the combo holds
      * @effects registers an {@code ActionListener} on {@code combo}, never
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
@@ -443,11 +446,20 @@ public final class Controls {
                         // Writing text the field already holds would churn the
                         // document and notify for nothing.
                         if (!normalized.equals(field.getText())) {
-                            field.setText(normalized);
+                            // Through BoundText rather than the control, so a control
+                            // this repo owns does not route the write back into the
+                            // property and notify a second time for one focus loss.
+                            BoundText.write(field, normalized);
                         }
                     }
 
-                    property.notifyObservers();
+                    // The write above is its own notification for WHILE_TYPING, whose
+                    // document route carries it. ON_COMMIT observes focus loss, which
+                    // no write reaches, so this is the only notification there is —
+                    // and it is still owed when the normalizer changed nothing.
+                    if (timing == Timing.ON_COMMIT) {
+                        property.notifyObservers();
+                    }
                 }
             });
         }
@@ -567,8 +579,8 @@ public final class Controls {
         }
 
         @Override
-        public Subscription observe(Runnable onChange) {
-            return observers.add(onChange);
+        public Subscription observe(Runnable onNotify) {
+            return observers.add(onNotify);
         }
 
         /**

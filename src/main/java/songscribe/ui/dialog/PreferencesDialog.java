@@ -70,8 +70,8 @@ import songscribe.midi.MidiSequenceBuilder;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.StartupAction;
-import songscribe.prefs.Units;
 import songscribe.ui.Appearance;
+
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -83,6 +83,7 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.GraphicUtils;
+import songscribe.util.LengthUnit;
 import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
@@ -285,10 +286,10 @@ public class PreferencesDialog extends BaseDialog {
             (PageModel.getSize() == PageModel.Size.A4
                 ? a4Radio : letterRadio).setSelected(true);
 
-            var units = Units.INCHES;
+            var units = LengthUnit.INCHES;
 
             try {
-                units = Units.valueOf(Prefs.getString(PrefsKey.UNITS));
+                units = LengthUnit.valueOf(Prefs.getString(PrefsKey.UNITS));
             } catch (IllegalArgumentException ignored) {}
 
             (switch (units) {
@@ -332,7 +333,7 @@ public class PreferencesDialog extends BaseDialog {
             var unitsListener = new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    var units = centimetersRadio.isSelected() ? Units.CENTIMETERS : Units.INCHES;
+                    var units = centimetersRadio.isSelected() ? LengthUnit.CENTIMETERS : LengthUnit.INCHES;
                     Prefs.put(PrefsKey.UNITS, units.name());
                 }
             };

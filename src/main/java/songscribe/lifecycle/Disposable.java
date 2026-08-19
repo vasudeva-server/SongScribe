@@ -19,6 +19,8 @@
  */
 package songscribe.lifecycle;
 
+import java.util.List;
+
 /**
  * Implemented by a class that acquires something in its constructor which must be
  * released before the instance is discarded — today, always a message-bus
@@ -56,4 +58,37 @@ public interface Disposable {
      * implement this interface at all.
      */
     void dispose();
+
+    /**
+     * Returns one {@code Disposable} that disposes each of {@code parts}, in order.
+     *
+     * <p>For an owner holding several disposables that are always released together and
+     * never individually. Naming them separately in such an owner buys nothing and costs
+     * a pair of same-typed fields a construction site can transpose; one composite is the
+     * whole of what the owner has.
+     *
+     * @param parts the disposables to release together; disposed in the order given
+     * @return the composite
+     * @effects the returned instance disposes every part on its first {@link #dispose},
+     *     and nothing on any later call — so it is idempotent whether or not the parts
+     *     are.
+     */
+    static Disposable of(Disposable... parts) {
+        var owned = List.of(parts);
+
+        return new Disposable() {
+
+            private boolean disposed = false;
+
+            @Override
+            public void dispose() {
+                if (disposed) {
+                    return;
+                }
+
+                disposed = true;
+                owned.forEach(Disposable::dispose);
+            }
+        };
+    }
 }

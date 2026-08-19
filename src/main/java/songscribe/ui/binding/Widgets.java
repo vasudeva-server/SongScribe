@@ -129,7 +129,7 @@ public final class Widgets {
      *
      * <p>It takes no parameter beyond the component. A dialog that must react to the
      * preview's emptiness — repacking itself when a subtitle appears or disappears,
-     * for instance — does so with {@link Bindings#onChange} over its own
+     * for instance — does so with {@link Bindings#onNotify} over its own
      * {@link ValueProperty} of that emptiness, which notifies on the transition
      * rather than on every preview written.
      *

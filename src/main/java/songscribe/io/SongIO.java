@@ -188,7 +188,7 @@ public final class SongIO {
         }
 
         // Keep writing the computed blob for interop with older readers.
-        var attributionBlob = AttributionFormatter.text(c.getMetadata(), c.showTranslation());
+        var attributionBlob = AttributionFormatter.text(c.getMetadata().attribution(), c.showTranslation());
 
         if (!attributionBlob.isEmpty()) {
             XML.writeValue(pw, XML_INFO, attributionBlob);

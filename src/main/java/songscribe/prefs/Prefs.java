@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PrefsDidChangeNotification;
+import songscribe.util.LengthUnit;
 
 public final class Prefs {
 
@@ -55,27 +56,6 @@ public final class Prefs {
     private static final String SYSTEM_DEFAULTS_RESOURCE = "/conf/system-defaults.json";
     private static final File OLD_PROPS_FILE =
             new File(System.getProperty("user.home"), ".songscribe/props");
-
-    // Maps old flat-properties key names to PrefsKey values.
-    // Used only during one-time migration from ~/.songscribe/props.
-    private static final Map<String, PrefsKey> MIGRATION_MAP = Map.ofEntries(
-        Map.entry("playinsertingnote", PrefsKey.PLAY_INSERTED_NOTE),
-        Map.entry("playInsertingNote", PrefsKey.PLAY_INSERTED_NOTE),
-        Map.entry("withrepeat", PrefsKey.PLAY_WITH_REPEATS),
-        Map.entry("tipindex", PrefsKey.TIP_INDEX),
-        Map.entry("tempochange", PrefsKey.TEMPO_CHANGE_PERCENT),
-        Map.entry("dpi", PrefsKey.EXPORT_DPI),
-        Map.entry("showtip", PrefsKey.SHOW_TIPS),
-        Map.entry("playcontinuously", PrefsKey.LOOP_PLAYBACK),
-        Map.entry("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER),
-        Map.entry("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION),
-        Map.entry("instrument", PrefsKey.INSTRUMENT),
-        Map.entry("firstrun", PrefsKey.FIRST_RUN)
-    );
-
-    private static final List<String> OBSOLETE_KEYS = List.of(
-        "autoSaveAfterStripShortA", "colorizeNote", "defaultProfile", "metric", "stripShortA"
-    );
 
     // Initialized last to ensure all static fields above are ready before the constructor runs.
     private static final Prefs INSTANCE = new Prefs();
@@ -108,9 +88,13 @@ public final class Prefs {
         defaults.putAll(systemDefaults);
         systemDefaultKeys = Set.copyOf(systemDefaults.keySet());
         store = loadStore();
-        removeObsoleteKeys();
-        removeSystemDefaultKeysFromStore();
-        migrate();
+
+        // Everything a stored file needs on the way in, and the only place the order of
+        // those steps matters. Saved once here rather than by each step, so a startup
+        // that changes several things writes the file once.
+        if (new PrefsUpgrade(store, defaults, systemDefaultKeys).apply(OLD_PROPS_FILE)) {
+            saveQuietly();
+        }
     }
 
     private static Object getOrDefault(PrefsKey key) {
@@ -140,64 +124,6 @@ public final class Prefs {
 
     public static int getDefaultInt(SystemPrefsKey key) {
         return ((Number) INSTANCE.getDefault(key)).intValue();
-    }
-
-    /** Returns the raw value stored in the store for the given key, or {@code null} if absent.
-     *  Package-private for test use only — do not call from production code. */
-    static @Nullable Object getRawStored(PrefsKey key) {
-        return INSTANCE.store.get(key.key());
-    }
-
-    /**
-     * Returns the raw value stored for an arbitrary string key, or {@code null} if absent.
-     * Package-private for test use only — needed to verify that obsolete keys (which have
-     * no {@link PrefsKey} constant) were actually removed by {@link #removeObsoleteKeys()}.
-     * Do not call from production code.
-     */
-    static @Nullable Object getRawStored(String rawKey) {
-        return INSTANCE.store.get(rawKey);
-    }
-
-    /**
-     * Seeds an arbitrary string key/value directly into the raw store.
-     * Package-private for test use only — required to inject obsolete keys that have
-     * no {@link PrefsKey} enum constant and therefore cannot be written via any public API.
-     * Do not call from production code.
-     */
-    static void putRawStored(String rawKey, Object value) {
-        INSTANCE.store.put(rawKey, value);
-    }
-
-    /**
-     * Exposes {@link #removeObsoleteKeys()} for direct invocation in tests.
-     * Package-private for test use only — do not call from production code.
-     */
-    static void removeObsoleteKeysForTest() {
-        INSTANCE.removeObsoleteKeys();
-    }
-
-    /**
-     * Exposes {@link #removeSystemDefaultKeysFromStore()} for direct invocation in tests.
-     * Package-private for test use only — do not call from production code.
-     */
-    static void removeSystemDefaultKeysFromStoreForTest() {
-        INSTANCE.removeSystemDefaultKeysFromStore();
-    }
-
-    /**
-     * Exposes {@link #writeTyped(String, String, Object)} for direct invocation in tests.
-     * Package-private for test use only — do not call from production code.
-     */
-    static void writeTypedForTest(String key, String value, @Nullable Object defaultValue) {
-        INSTANCE.writeTyped(key, value, defaultValue);
-    }
-
-    /**
-     * Exposes the migration logic for a caller-supplied file in tests.
-     * Package-private for test use only — do not call from production code.
-     */
-    static void migrateForTest(File oldPropsFile) {
-        INSTANCE.migrateFromFile(oldPropsFile);
     }
 
     public static List<String> getStringList(PrefsKey key) {
@@ -282,28 +208,6 @@ public final class Prefs {
     public static void resetAll() {
         INSTANCE.store.clear();
         INSTANCE.save(PrefsKey.ALL);
-    }
-
-    private void removeObsoleteKeys() {
-        removeKeysFromStore(OBSOLETE_KEYS);
-    }
-
-    private void removeSystemDefaultKeysFromStore() {
-        removeKeysFromStore(systemDefaultKeys);
-    }
-
-    private void removeKeysFromStore(Iterable<String> keys) {
-        var removed = false;
-
-        for (var key : keys) {
-            if (store.remove(key) != null) {
-                removed = true;
-            }
-        }
-
-        if (removed) {
-            saveQuietly();
-        }
     }
 
     private static Path resolvePrefsFile() {
@@ -416,71 +320,4 @@ public final class Prefs {
         return value;
     }
 
-    private void migrate() {
-        migrateFromFile(OLD_PROPS_FILE);
-    }
-
-    private void migrateFromFile(File oldPropsFile) {
-        if (!oldPropsFile.exists()) {
-            return;
-        }
-
-        var oldProps = new Properties();
-
-        try (var reader = Files.newBufferedReader(oldPropsFile.toPath())) {
-            oldProps.load(reader);
-        } catch (IOException e) {
-            LOG.warn("Failed to load old props file for migration", e);
-            return;
-        }
-
-        for (var entry : MIGRATION_MAP.entrySet()) {
-            var oldKey = entry.getKey();
-            var newKey = entry.getValue();
-            var value = oldProps.getProperty(oldKey);
-
-            if (value != null) {
-                writeTyped(newKey.key(), value, defaults.get(newKey.key()));
-            }
-        }
-
-        // Scan for showwhatsnew* keys and record the highest version seen
-        String lastSeenVersion = null;
-
-        for (var oldKey : oldProps.stringPropertyNames()) {
-            if (oldKey.startsWith("showwhatsnew")) {
-                var version = oldKey.substring("showwhatsnew".length());
-
-                if (!version.isEmpty()) {
-                    if (lastSeenVersion == null || version.compareTo(lastSeenVersion) > 0) {
-                        lastSeenVersion = version;
-                    }
-                }
-            }
-        }
-
-        if (lastSeenVersion != null) {
-            store.put(PrefsKey.LAST_SEEN_WHATS_NEW_VERSION.key(), lastSeenVersion);
-        }
-
-        saveQuietly();
-
-        if (!oldPropsFile.delete()) {
-            LOG.warn("Failed to delete old props file: {}", oldPropsFile);
-        }
-    }
-
-    private void writeTyped(String key, String value, @Nullable Object defaultValue) {
-        if (defaultValue instanceof Boolean) {
-            store.put(key, Boolean.parseBoolean(value));
-        } else if (defaultValue instanceof Long) {
-            try {
-                store.put(key, Long.parseLong(value));
-            } catch (NumberFormatException e) {
-                LOG.warn("Invalid numeric value for key {}: {}", key, value);
-            }
-        } else {
-            store.put(key, value);
-        }
-    }
 }

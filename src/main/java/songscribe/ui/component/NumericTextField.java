@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package songscribe.ui.component;
 
 import javax.swing.InputVerifier;
@@ -26,130 +25,85 @@ import javax.swing.JComponent;
 import songscribe.Strings;
 import songscribe.ui.OptionDialogs;
 
+/**
+ * A text field that accepts digits and refuses to yield focus while what it holds is
+ * outside a {@link NumericRange}.
+ *
+ * <p>The field owns the presentation of the rule — the input filter, the focus
+ * verifier, the alert naming the bounds — and the {@link NumericRange} owns the rule
+ * itself, so a binding or a controller can ask the same question without holding the
+ * control. See {@link #isValidValue}.
+ */
 public class NumericTextField extends MyJTextField {
 
-    private int min;
-    private int max;
-    private boolean isOptional;
-
-    public NumericTextField() {
-        InputUtils.addNumericFilter(this);
-    }
-
-    public NumericTextField(boolean allowDecimal) {
-        InputUtils.addNumericFilter(this, allowDecimal);
-    }
-
-    public NumericTextField(int columns) {
-        this(columns, false);
-    }
-
-    public NumericTextField(int columns, boolean allowDecimal) {
-        super(columns);
-        InputUtils.addNumericFilter(this, allowDecimal);
-    }
+    private final NumericRange range;
 
     /**
-     * Creates a field that validates its value against an inclusive
-     * integer range when focus leaves it. A blank field is rejected.
-     */
-    public NumericTextField(int columns, int min, int max) {
-        this(columns, min, max, false);
-    }
-
-    /**
-     * Creates a field that validates its value against an inclusive
-     * integer range when focus leaves it.
+     * Creates a field accepting the values in {@code range}, with no limit on how many
+     * characters may be typed.
      *
-     * <p>Validation is enforced via an {@link InputVerifier}: while the
-     * value is out of range the field refuses to yield focus, so a button
-     * that triggers it (e.g. an OK button) will not fire. To let a button
-     * bypass validation (e.g. Cancel), call
+     * <p>Validation is enforced with an {@link InputVerifier}: while the value is
+     * unacceptable the field refuses to yield focus, so a button that triggers it — OK,
+     * say — will not fire. To let a button bypass validation, as Cancel must, call
      * {@code button.setVerifyInputWhenFocusTarget(false)}.
      *
-     * @param isOptional when {@code true}, a blank field is accepted and
-     *     range validation is skipped; when {@code false}, a blank field
-     *     is rejected
+     * @param columns the field's width, in the usual Swing column units
+     * @param range the values this field accepts, and whether it may be left empty
      */
-    public NumericTextField(int columns, int min, int max, boolean isOptional) {
-        this(columns, min, max, isOptional, InputUtils.NO_MAX_CHARS);
+    public NumericTextField(int columns, NumericRange range) {
+        this(columns, range, InputUtils.NO_MAX_CHARS);
     }
 
     /**
-     * Creates a field that validates its value against an inclusive integer
-     * range when focus leaves it and limits typed input to {@code maxChars}
-     * characters. Pass {@link InputUtils#NO_MAX_CHARS} for no length limit.
+     * Creates a field accepting the values in {@code range} and limiting typed input to
+     * {@code maxChars} characters.
      *
-     * @see #NumericTextField(int, int, int, boolean)
+     * @param columns the field's width, in the usual Swing column units
+     * @param range the values this field accepts, and whether it may be left empty
+     * @param maxChars the most characters that may be typed, or
+     *     {@link InputUtils#NO_MAX_CHARS} for no limit
+     * @effects installs an input filter and a focus verifier on this field.
      */
-    public NumericTextField(
-        int columns,
-        int min,
-        int max,
-        boolean isOptional,
-        int maxChars
-    ) {
+    public NumericTextField(int columns, NumericRange range, int maxChars) {
         super(columns);
         InputUtils.addNumericFilter(this, false, maxChars);
-        this.min = min;
-        this.max = max;
-        this.isOptional = isOptional;
+        this.range = range;
         setInputVerifier(new RangeVerifier());
     }
 
     /**
-     * Returns {@code true} when the field holds a non-blank value within the
-     * inclusive {@code [min, max]} range. Unlike the focus-yield verifier, a
-     * blank field is always rejected here regardless of the optional flag.
+     * Returns whether this field currently holds a value its range contains.
+     *
+     * <p>Stricter than the focus verifier: a blank field answers {@code false} here
+     * even when the range accepts blank entries, because blank names no value.
+     *
+     * @return {@code true} when this field's text names an integer within the range
      */
     public boolean hasValidValue() {
         return isValidValue(getText());
     }
 
     /**
-     * Returns {@code true} when {@code text} is a non-blank value within this field's
-     * inclusive {@code [min, max]} range. Like {@link #hasValidValue()}, blank text is
-     * always rejected regardless of the optional flag.
+     * Returns whether {@code text} names a value this field's range contains.
      *
-     * <p>The range is this field's own; the text need not be the field's. A caller that
-     * holds the field's text as a bound property asks the question through this method
-     * rather than reading the control, so that a derivation records the property as a
-     * dependency.
+     * <p>The range is this field's own; the text need not be. A caller holding the
+     * field's text as a bound property asks through this method rather than reading the
+     * control, so that a derivation records the property as its dependency rather than
+     * acquiring none.
      *
      * @param text the text to test against this field's range
-     * @return {@code true} when {@code text} strips to a non-empty string that parses
-     *     as an integer within {@code [min, max]}
+     * @return {@code true} when {@code text} strips to a non-empty string naming an
+     *     integer the range contains
      */
     public boolean isValidValue(String text) {
-        var stripped = text.strip();
-
-        return !stripped.isEmpty() && parsesInRange(stripped);
-    }
-
-    private boolean isValueInRange() {
-        var text = getText().strip();
-
-        if (text.isEmpty()) {
-            return isOptional;
-        }
-
-        return parsesInRange(text);
-    }
-
-    private boolean parsesInRange(String text) {
-        try {
-            var value = Integer.parseInt(text);
-            return value >= min && value <= max;
-        } catch (NumberFormatException e) {
-            return false;
-        }
+        return range.containsValue(text);
     }
 
     private class RangeVerifier extends InputVerifier {
 
         @Override
         public boolean verify(JComponent input) {
-            return isValueInRange();
+            return range.acceptsInput(getText());
         }
 
         @Override
@@ -163,8 +117,8 @@ public class NumericTextField extends MyJTextField {
                 NumericTextField.this,
                 Strings.ALERT_TITLE_NUMBER_OUT_OF_RANGE,
                 Strings.ALERT_NUMBER_OUT_OF_RANGE,
-                min,
-                max
+                range.min(),
+                range.max()
             );
             return false;
         }

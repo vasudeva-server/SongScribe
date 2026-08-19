@@ -83,56 +83,69 @@ final class FontSettingRow {
      * forget: the row hands over exactly what it made and the owning tab holds the whole
      * record until it disposes it.
      */
-    record Row(JPanel panel, Disposable chooseAction, Disposable resetAction) implements Disposable {
+    record Row(JPanel panel, Disposable actions) implements Disposable {
 
-        /** Releases both of the row's actions. Idempotent, as {@link Disposable} requires. */
+        /** Releases the row's actions. Idempotent, as {@link Disposable} requires. */
         @Override
         public void dispose() {
-            chooseAction.dispose();
-            resetAction.dispose();
+            actions.dispose();
         }
     }
 
     /**
-     * Builds a row whose leading label is the standard "Font" label, associated
-     * with {@code fontDescription}.
+     * What a tab has to supply for a font row, other than the frame the chooser opens over.
      *
-     * @return the assembled row, whose actions the caller owns and must dispose
+     * <p>A record rather than four more parameters: with the caption the count passes what a
+     * call site can be read against, and the description label's own type is what stops it
+     * being swapped with the caption.
+     *
+     * @param description the boxed label the font's description is displayed in, from
+     *     {@link #createFontDescriptionLabel()}
+     * @param fontKey the font this row sets, which is also the key Reset restores from
+     * @param currentFont supplies the font that seeds the chooser
+     * @param onFontChosen notified with the font chosen, or reset to default
      */
-    static Row create(
-        MainFrame mainFrame,
-        JLabel fontDescription,
+    record Spec(
+        DescriptionLabel description,
         FontKey fontKey,
         Supplier<? extends Font> currentFont,
         Consumer<? super Font> onFontChosen
-    ) {
-        return create(
-            mainFrame,
-            new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT)),
-            fontDescription,
-            fontKey,
-            currentFont,
-            onFontChosen
-        );
+    ) {}
+
+    /**
+     * The boxed label a font's description is displayed in.
+     *
+     * <p>Its own type rather than a plain {@link JLabel} so that it cannot be passed where a
+     * row's caption belongs. The two are both labels, adjacent, and mean opposite things:
+     * transposed, the caption would be boxed and the description would read "Font".
+     */
+    static final class DescriptionLabel extends JLabel {}
+
+    /**
+     * Builds a row captioned with the standard "Font" label.
+     *
+     * @param mainFrame the frame the font chooser opens over
+     * @param spec what this row displays and what choosing a font in it means
+     * @return the assembled row, whose actions the caller owns and must dispose
+     */
+    static Row create(MainFrame mainFrame, Spec spec) {
+        return create(mainFrame, new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT)), spec);
     }
 
     /**
-     * Builds a row with a caller-supplied leading label.
+     * Builds a row with a caller-supplied caption.
      *
-     * @param rowLabel        the leading label (column 0)
-     * @param fontDescription the stretchy description display in the middle column
-     * @param currentFont     supplies the font that seeds the chooser
-     * @param onFontChosen    notified with the font chosen (or reset to default)
+     * @param mainFrame the frame the font chooser opens over
+     * @param rowLabel the caption in column 0, for a row the standard "Font" label would
+     *     not describe
+     * @param spec what this row displays and what choosing a font in it means
      * @return the assembled row, whose actions the caller owns and must dispose
      */
-    static Row create(
-        MainFrame mainFrame,
-        JLabel rowLabel,
-        JLabel fontDescription,
-        FontKey fontKey,
-        Supplier<? extends Font> currentFont,
-        Consumer<? super Font> onFontChosen
-    ) {
+    static Row create(MainFrame mainFrame, JLabel rowLabel, Spec spec) {
+        var fontDescription = spec.description();
+        var fontKey = spec.fontKey();
+        var currentFont = spec.currentFont();
+        var onFontChosen = spec.onFontChosen();
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
         var row = new JPanel(new GridBagLayout());
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -172,15 +185,17 @@ final class FontSettingRow {
         row.add(buttons, constraints);
 
         UIUtils.setFlexibleWidth(row);
-        return new Row(row, chooseAction, resetAction);
+        return new Row(row, Disposable.of(chooseAction, resetAction));
     }
 
     /**
-     * Creates the boxed label used to display a font's description, matching
-     * the style the Fonts tab uses for its font-name labels.
+     * Creates the boxed label a font's description is displayed in, matching the style the
+     * Fonts tab uses for its font-name labels.
+     *
+     * @return the label, ready to be handed to a {@link Spec}
      */
-    static JLabel createFontDescriptionLabel() {
-        var label = new JLabel();
+    static DescriptionLabel createFontDescriptionLabel() {
+        var label = new DescriptionLabel();
         label.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createLineBorder(UIUtils.getComponentBorderColor()),
             UIUtils.spacingBorder(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_LABEL_PADDING)

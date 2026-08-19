@@ -32,25 +32,26 @@ import songscribe.ui.binding.Property;
 import songscribe.ui.binding.Timing;
 import songscribe.ui.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
+import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
 
-import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * A self-contained date-input row (year, month, day) that can be embedded in any
- * dialog panel. Owns its three widgets, views each of them as a property, and
- * exposes pure predicate methods so callers can unit-test the enable/reset logic
- * without driving Swing.
+ * dialog panel. Owns its three widgets and views each of them as a property.
  *
  * <p>The row is not a {@link BaseDialog.Tab} and owns no {@code Bindings} of its
  * own: it takes one from the tab that builds it, so the dialog still owns every
  * edge this row declares and disposes them with the rest.
  *
- * <p>Both combos are indexed rather than valued — index {@value #NONE_INDEX} is the
- * empty entry meaning "not chosen" — so the row views them with
- * {@link Controls#itemIndex} and speaks positions throughout: the properties, the
- * getters, the setter and {@link #dayEnabled} all use the index {@code SongMetadata}
- * stores. The item lists exist only to build the combos.
+ * <p>The month combo is <i>valued</i>: it holds {@link MonthChoice} constants, so the
+ * property answers a month rather than a position and no agreement between list order
+ * and month number has to hold. The stored integer {@code SongMetadata} carries is
+ * produced in {@link #getMonth} and consumed in {@link #setValues}, which are the only
+ * two places that representation appears.
+ *
+ * <p>The day combo is still indexed — a day genuinely is its number — with index
+ * {@value #NONE_INDEX} the empty entry meaning "no day".
  */
 final class SongSettingsDateInputRow {
 
@@ -58,42 +59,95 @@ final class SongSettingsDateInputRow {
     private static final int YEAR_MAX = 2007;
     private static final int MAX_YEAR_CHARS = 4;
     private static final int YEAR_FIELD_COLUMNS = 4;
+
+    // A song's date may be absent entirely, so an empty year field stands. Held as a
+    // constant rather than reached through yearField so that the derivations below ask
+    // the rule directly instead of through a Swing control.
+    private static final NumericRange YEAR_RANGE =
+        new NumericRange(YEAR_MIN, YEAR_MAX, NumericRange.Blank.ACCEPTED);
     private static final int DAYS_IN_MONTH_MAX = 31;
 
-    /** The empty leading entry of both combos: no month, no day. */
-    private static final int NONE_INDEX = 0;
+    /** The empty leading entry of the day combo: no day. */
+    static final int NONE_INDEX = 0;
 
-    private final List<String> monthNames = List.of(
-        "",
-        Strings.get(Strings.MONTH_JANUARY),
-        Strings.get(Strings.MONTH_FEBRUARY),
-        Strings.get(Strings.MONTH_MARCH),
-        Strings.get(Strings.MONTH_APRIL),
-        Strings.get(Strings.MONTH_MAY),
-        Strings.get(Strings.MONTH_JUNE),
-        Strings.get(Strings.MONTH_JULY),
-        Strings.get(Strings.MONTH_AUGUST),
-        Strings.get(Strings.MONTH_SEPTEMBER),
-        Strings.get(Strings.MONTH_OCTOBER),
-        Strings.get(Strings.MONTH_NOVEMBER),
-        Strings.get(Strings.MONTH_DECEMBER)
-    );
+    /**
+     * The month combo's items: the twelve months and the absence of one.
+     *
+     * <p>A closed set rather than a list of names read by position. The number
+     * {@code SongMetadata} stores is a property of the constant, so reordering the
+     * combo, translating it, or inserting a separator cannot change what a selection
+     * means.
+     */
+    private enum MonthChoice {
+        NONE(0, Strings.MONTH_NONE),
+        JANUARY(1, Strings.MONTH_JANUARY),
+        FEBRUARY(2, Strings.MONTH_FEBRUARY),
+        MARCH(3, Strings.MONTH_MARCH),
+        APRIL(4, Strings.MONTH_APRIL),
+        MAY(5, Strings.MONTH_MAY),
+        JUNE(6, Strings.MONTH_JUNE),
+        JULY(7, Strings.MONTH_JULY),
+        AUGUST(8, Strings.MONTH_AUGUST),
+        SEPTEMBER(9, Strings.MONTH_SEPTEMBER),
+        OCTOBER(10, Strings.MONTH_OCTOBER),
+        NOVEMBER(11, Strings.MONTH_NOVEMBER),
+        DECEMBER(12, Strings.MONTH_DECEMBER);
+
+        private final int stored;
+        private final String labelKey;
+
+        MonthChoice(int stored, String labelKey) {
+            this.stored = stored;
+            this.labelKey = labelKey;
+        }
+
+        /**
+         * Returns the constant {@code SongMetadata} stores as {@code stored}.
+         *
+         * @param stored the stored month number, 0 for none
+         * @return the matching constant
+         * @throws IllegalArgumentException if {@code stored} names no month and is not
+         *     0 — which a song file damaged outside this application can produce, and
+         *     nothing in the application can
+         */
+        static MonthChoice ofStored(int stored) {
+            for (var choice : values()) {
+                if (choice.stored == stored) {
+                    return choice;
+                }
+            }
+
+            throw new IllegalArgumentException("No month is stored as " + stored);
+        }
+
+        /** @return the number {@code SongMetadata} stores for this month, 0 for none */
+        int stored() {
+            return stored;
+        }
+
+        /** @return the localized month name, which for {@link #NONE} is empty */
+        @Override
+        public String toString() {
+            return Strings.get(labelKey);
+        }
+    }
+
     private final List<String> dayNames = buildDayNames();
 
     private final NumericTextField yearField =
-        new NumericTextField(YEAR_FIELD_COLUMNS, YEAR_MIN, YEAR_MAX, true, MAX_YEAR_CHARS);
-    private final JComboBox<String> monthCombo = uneditableCombo(monthNames);
+        new NumericTextField(YEAR_FIELD_COLUMNS, YEAR_RANGE, MAX_YEAR_CHARS);
+    private final JComboBox<MonthChoice> monthCombo = uneditableCombo(List.of(MonthChoice.values()));
     private final JComboBox<String> dayCombo = uneditableCombo(dayNames);
 
     private final Property<String> year = Controls.text(yearField, Timing.ON_COMMIT);
-    private final Property<Integer> month = Controls.itemIndex(monthCombo);
+    private final Property<MonthChoice> month = Controls.item(monthCombo);
     private final Property<Integer> day = Controls.itemIndex(dayCombo);
 
     /**
      * Builds the row and declares its edges on {@code bindings}.
      *
      * <p>The row announces nothing of its own. Its three getters read the three
-     * properties, so a caller that reads them inside an {@code ObservableValue.computed}
+     * properties, so a caller that reads them inside a {@code Bindings.computed}
      * acquires a dependency on each one it reads and is re-derived when the user edits
      * it — including when the year becomes invalid, losing a date being as much a change
      * to what this row contributes as gaining one. A second callback route beside that
@@ -115,39 +169,42 @@ final class SongSettingsDateInputRow {
         // off the field, so the derivation records the dependency.
         bindings.bind(
             Widgets.enabled(monthCombo),
-            computed(() -> yearField.isValidValue(year.get()))
+            bindings.computed(() -> YEAR_RANGE.containsValue(year.get()))
         );
         bindings.bind(
             Widgets.enabled(dayCombo),
-            computed(() -> dayEnabled(yearField.isValidValue(year.get()), month.get()))
+            bindings.computed(() -> dayEnabled(YEAR_RANGE.containsValue(year.get()), month.get()))
         );
 
-        bindings.onChange(year, () -> {
-            if (!yearField.isValidValue(year.get())) {
+        bindings.onNotify(year, () -> {
+            if (!YEAR_RANGE.containsValue(year.get())) {
                 // A year that names no date leaves no month or day standing.
-                month.set(NONE_INDEX);
+                month.set(MonthChoice.NONE);
                 day.set(NONE_INDEX);
             }
         });
 
-        bindings.onChange(month, () -> {
-            if (month.get() == NONE_INDEX) {
+        bindings.onNotify(month, () -> {
+            if (month.get() == MonthChoice.NONE) {
                 day.set(NONE_INDEX);
             }
         });
     }
 
     /**
-     * Returns true when the day combo should be enabled.
-     * Pure: no side effects, safe to call from tests.
+     * Returns whether the day combo should be enabled.
+     *
+     * <p>A total function of its two arguments: it reads no field and no control, so
+     * the derivation that drives the combo's enabled state passes what it read from
+     * the properties rather than letting this reach for it.
      *
      * @param yearValid whether the year field holds a value in range
-     * @param month the selected month index, {@value #NONE_INDEX} for none
+     * @param month the selected month, {@link MonthChoice#NONE} for none
      * @return {@code true} when a valid year and a chosen month together make a day
      *     meaningful
      */
-    static boolean dayEnabled(boolean yearValid, int month) {
-        return yearValid && month != 0;
+    private static boolean dayEnabled(boolean yearValid, MonthChoice month) {
+        return yearValid && month != MonthChoice.NONE;
     }
 
     /**
@@ -172,11 +229,13 @@ final class SongSettingsDateInputRow {
      * into, which is what makes its selected item the whole of its value and so a
      * legal subject for {@link Controls#item}.
      *
-     * @param items the items, in index order
+     * @param <E> the item type
+     * @param items the items, in the order they are offered
      * @return the combo, with its first item selected
      */
-    private static JComboBox<String> uneditableCombo(List<String> items) {
-        var combo = new JComboBox<>(items.toArray(new String[0]));
+    private static <E> JComboBox<E> uneditableCombo(List<E> items) {
+        var combo = new JComboBox<E>();
+        items.forEach(combo::addItem);
         combo.setEditable(false);
 
         return combo;
@@ -217,12 +276,14 @@ final class SongSettingsDateInputRow {
      * way.
      *
      * @param yearText the stored year, empty when the song has none
-     * @param monthIndex the stored month, {@value #NONE_INDEX} for none
+     * @param monthNumber the stored month, 0 for none
      * @param dayIndex the stored day, {@value #NONE_INDEX} for none
+     * @throws IllegalArgumentException if {@code monthNumber} names no month and is
+     *     not 0
      */
-    void setValues(String yearText, int monthIndex, int dayIndex) {
+    void setValues(String yearText, int monthNumber, int dayIndex) {
         year.set(yearText);
-        month.set(monthIndex);
+        month.set(MonthChoice.ofStored(monthNumber));
         day.set(dayIndex);
     }
 
@@ -234,10 +295,10 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * @return the selected month's index, {@value #NONE_INDEX} for none
+     * @return the selected month as {@code SongMetadata} stores it, 0 for none
      */
     int getMonth() {
-        return month.get();
+        return month.get().stored();
     }
 
     /**

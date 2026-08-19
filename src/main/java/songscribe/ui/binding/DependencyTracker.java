@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  * Collects the {@link ObservableValue}s read while a derivation body runs, so a
  * {@code computed} can discover its dependencies rather than declare them.
  *
- * <p>Only {@link ObservableValue#computed} arms the recording. The transforming
+ * <p>Only {@link Bindings#computed} arms the recording. The transforming
  * {@code bind} overloads subscribe to the source they were handed and never run the
  * tracker, so a function passed to {@code bind} may read whatever it likes without
  * acquiring a dependency on it.

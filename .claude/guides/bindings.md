@@ -35,27 +35,31 @@ from a background thread can corrupt a dependency set or lose a notification,
 and nothing reports it.
 
 **A dialog's `Bindings` is disposed when the dialog closes**, which is what
-releases the observations and everything they capture — see
+releases the observations and everything they capture — including the
+observations each `computed` holds on its dependencies, which is why a `computed`
+is created through `Bindings` rather than standing free. See
 [lifecycle](../../docs/lifecycle.md).
 
 ## Deriving values
 
-**A `computed` body reads its inputs through `ObservableValue`s only.** A direct
+**A `computed` is created through the dialog's `Bindings`, and its body reads its
+inputs through `ObservableValue`s only.** A direct
 control read — `field.getText()`, `combo.getSelectedItem()` — is invisible to
 the dependency tracker, so the computed acquires no dependency on it, never
 recomputes when it changes, and answers a stale value.
 
 **There is no fluent predicate algebra.** A single-source transform is the
 `Function` overload of `bind`; a value derived from more than one source is a
-`computed`. `ObservableValue` has no `map`, no `combine` and no boolean
+`bindings.computed`. `ObservableValue` has no `map`, no `combine` and no boolean
 combinators, and a call site that wants one is asking for one of those two
 constructs.
 
 **An effect that must run on a real change goes through a `ValueProperty`.**
-`Bindings.onChange` runs its action whenever the source notifies, and a
+`Bindings.onNotify` runs its action whenever the source notifies, and a
 `Computed` notifies whenever any dependency notifies — not when its value
-changes. Bind a `ValueProperty` from the computed and call `onChange` on the
-`ValueProperty`, which notifies only on a transition.
+changes. Bind a `ValueProperty` from the computed and call `onNotify` on the
+`ValueProperty`, which notifies only on a transition. The method is named for
+notification rather than change because that is what it delivers.
 
 ## A rule the dialog and the framework share
 
@@ -90,6 +94,12 @@ A button adapter therefore observes items and never actions.
 else.** A normalizer always runs on focus loss, whichever `Timing` was asked
 for, and in the same listener — normalize, write back, then notify — so the
 value notified is the normalized one.
+
+**One focus loss notifies at most once.** The write-back goes through the
+property's own write path rather than through the control, so a field this
+repository owns does not also route that write back as a second notification.
+Announcing it a second time in the listener would run every effect on the field
+twice per edit.
 
 **`MyJTextField` and `MyJTextArea` route `setText` into the associated
 property**, so a direct write to a bound field of either class propagates

@@ -75,7 +75,6 @@ import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * The base class for all application dialogs, providing common layout
@@ -155,7 +154,7 @@ public abstract class BaseDialog implements Disposable {
      * this, and so does one that is added.
      */
     protected final ObservableValue<Boolean> valid =
-        computed(() -> validityConditions.get().stream().allMatch(ObservableValue::get));
+        bindings.computed(() -> validityConditions.get().stream().allMatch(ObservableValue::get));
 
     /** The tab {@link #showTab} asked for, consumed by the next show. */
     private @Nullable Tab requestedTab = null;

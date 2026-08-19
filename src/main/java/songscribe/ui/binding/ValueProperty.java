@@ -34,7 +34,7 @@ import java.util.Objects;
  * <p>It is also the change-only adapter over a derivation. A {@code computed}
  * notifies whenever a dependency changes; binding a {@code ValueProperty} from it
  * and observing the property instead collapses that to notifications on real
- * transitions. See {@link Bindings#onChange}.
+ * transitions. See {@link Bindings#onNotify}.
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  *
@@ -69,7 +69,7 @@ public final class ValueProperty<T> implements Property<T> {
      *
      * <p>Writing the value already held is therefore silent, and that is the whole
      * point of this class as an effect source: it is what makes
-     * {@link Bindings#onChange} fire on a real transition rather than on every
+     * {@link Bindings#onNotify} fire on a real transition rather than on every
      * write, no matter how often whatever feeds the property re-writes it.
      *
      * @param newValue the value to hold, never {@code null}
@@ -92,7 +92,7 @@ public final class ValueProperty<T> implements Property<T> {
     }
 
     @Override
-    public Subscription observe(Runnable onChange) {
-        return observers.add(onChange);
+    public Subscription observe(Runnable onNotify) {
+        return observers.add(onNotify);
     }
 }

@@ -94,11 +94,11 @@ public final class AttributionFormatter {
      * {@link Song#showTranslation()} when operating on a committed song, or
      * computed inline when operating on uncommitted dialog state.
      *
-     * @param data            the song metadata
+     * @param data            the song's credits, place and dates
      * @param showTranslation {@code true} when the song has a non-empty official translation
      * @return ordered list of attribution lines (attribution first, sub-attribution last)
      */
-    public static List<AttributionLine> lines(SongMetadata data, boolean showTranslation) {
+    public static List<AttributionLine> lines(SongAttribution data, boolean showTranslation) {
         var credits = buildCredits(data, showTranslation);
         var lines = groupCreditsToLines(credits, sharedAuthor(data));
         lines.addAll(buildSubAttributionLines(data));
@@ -112,7 +112,7 @@ public final class AttributionFormatter {
      * "Words and Music by" credit.
      */
     @Nullable
-    private static String sharedAuthor(SongMetadata data) {
+    private static String sharedAuthor(SongAttribution data) {
         var lyricist = data.lyricist();
         var composer = data.composer();
 
@@ -166,11 +166,11 @@ public final class AttributionFormatter {
     /**
      * Returns the full attribution text as newline-joined lines, for use by IO.
      *
-     * @param data            the song metadata
+     * @param data            the song's credits, place and dates
      * @param showTranslation {@code true} when the song has a non-empty official translation
      * @return attribution text with lines separated by {@code \n}
      */
-    public static String text(SongMetadata data, boolean showTranslation) {
+    public static String text(SongAttribution data, boolean showTranslation) {
         return lines(data, showTranslation).stream()
             .map(AttributionLine::text)
             .collect(Collectors.joining("\n"));
@@ -184,7 +184,7 @@ public final class AttributionFormatter {
      * Builds the raw credit list in canonical role order:
      * Words, Music, [Arrangement], [Translation].
      */
-    private static List<Credit> buildCredits(SongMetadata data, boolean showTranslation) {
+    private static List<Credit> buildCredits(SongAttribution data, boolean showTranslation) {
         var credits = new ArrayList<Credit>();
         var lyricist = data.lyricist();
         var composer = data.composer();
@@ -247,7 +247,7 @@ public final class AttributionFormatter {
     /**
      * Builds the date and place sub-attribution lines.
      */
-    private static List<AttributionLine> buildSubAttributionLines(SongMetadata data) {
+    private static List<AttributionLine> buildSubAttributionLines(SongAttribution data) {
         var lines = new ArrayList<AttributionLine>();
         var musicDate = formatDate(data.year(), data.month(), data.day());
         var wordsDate = formatDate(data.wordsYear(), data.wordsMonth(), data.wordsDay());

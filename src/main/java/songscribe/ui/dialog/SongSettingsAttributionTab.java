@@ -46,6 +46,7 @@ import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.Song;
+import songscribe.dom.SongAttribution;
 import songscribe.dom.SongMetadata;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
@@ -63,7 +64,6 @@ import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
-import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * The {@link SongSettingsDialog} Attribution tab: the words/music credits, their
@@ -76,16 +76,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private static final int LYRICIST_COLUMNS = 20;
     private static final int PLACE_FIELD_COLUMNS = 27;
     private static final int COMPOSER_FIELD_COLUMNS = 27;
-
-    /**
-     * The title, number and subtitle the preview's metadata record carries.
-     * <p>
-     * {@link AttributionFormatter#lines} reads none of the three — it builds the credits
-     * from the two people and the flags, and the sub-attribution from the dates and the
-     * place — so the preview supplies nothing for them rather than reaching into the
-     * Title tab for values that cannot reach the output.
-     */
-    private static final String UNREAD_BY_FORMATTER = "";
 
     // Place and date panel
     private final MyJTextField placeField = new MyJTextField(PLACE_FIELD_COLUMNS);
@@ -139,8 +129,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     // description labels and the preview are both written from them. Seeded with the
     // system defaults, which the chooser rows need something to answer with before
     // populate replaces them on every opening.
-    private final JLabel attributionFontLabel = FontSettingRow.createFontDescriptionLabel();
-    private final JLabel subAttributionFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel attributionFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel subAttributionFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final ValueProperty<Font> attributionFont =
         new ValueProperty<>(FontSettingRow.defaultFont(FontKey.ATTRIBUTION));
     private final ValueProperty<Font> subAttributionFont =
@@ -192,7 +182,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         // binding above so the panel has already taken its new state when this re-packs,
         // and on the property rather than the preview because an unchecked box with empty
         // date fields leaves what the preview draws untouched.
-        dialogBindings.onChange(differentDate, this::repackToContent);
+        dialogBindings.onNotify(differentDate, this::repackToContent);
 
         dialogBindings.bind(
             Widgets.labelText(attributionFontLabel), attributionFont, MyFontUtils::getFullFontDescription);
@@ -201,7 +191,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         // An empty lyricist inherits the composer, so a committed composer is mirrored
         // into a lyricist field the user has left blank.
-        dialogBindings.onChange(composer, this::inheritComposerIntoEmptyLyricist);
+        dialogBindings.onNotify(composer, this::inheritComposerIntoEmptyLyricist);
 
         // The preview is one derivation over every value above, folded through a
         // ValueProperty so the re-pack below runs on a change to what is drawn rather
@@ -210,7 +200,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         // silent.
         previewState = new ValueProperty<>(buildPreviewState());
         WritableValue<AttributionPaneWidget.PreviewState> preview = attributionPreview::setPreviewState;
-        dialogBindings.bind(previewState, computed(this::buildPreviewState));
+        dialogBindings.bind(previewState, dialogBindings.computed(this::buildPreviewState));
         dialogBindings.bind(preview, previewState);
 
         // The preview's height changes with both the line count and the
@@ -218,7 +208,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         // at show time, so a taller preview would be starved by the tab's GridBagLayout.
         // Registering the effect after the binding keeps the binding's settling write
         // from re-packing a dialog that is not yet shown.
-        dialogBindings.onChange(previewState, this::repackToContent);
+        dialogBindings.onNotify(previewState, this::repackToContent);
 
         build();
     }
@@ -383,10 +373,9 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         attributionFontRow = FontSettingRow.create(
             mainFrame,
             wordsMusicLabel,
-            attributionFontLabel,
-            FontKey.ATTRIBUTION,
-            attributionFont::get,
-            attributionFont::set
+            new FontSettingRow.Spec(
+                attributionFontLabel, FontKey.ATTRIBUTION, attributionFont::get, attributionFont::set
+            )
         );
         section.add(attributionFontRow.panel());
 
@@ -395,10 +384,9 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         subAttributionFontRow = FontSettingRow.create(
             mainFrame,
             datePlaceLabel,
-            subAttributionFontLabel,
-            FontKey.SUB_ATTRIBUTION,
-            subAttributionFont::get,
-            subAttributionFont::set
+            new FontSettingRow.Spec(
+                subAttributionFontLabel, FontKey.SUB_ATTRIBUTION, subAttributionFont::get, subAttributionFont::set
+            )
         );
         section.add(subAttributionFontRow.panel());
 
@@ -500,15 +488,13 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * preview would answer stale.
      */
     private AttributionPaneWidget.PreviewState buildPreviewState() {
-        // The SongMetadata constructor normalizes each field, so the raw property text is
-        // passed through directly.
+        // The SongAttribution constructor normalizes each field, so the raw property text
+        // is passed through directly.
         var composerText = composer.get();
         var lyricistText = resolveLyricistText(composerText);
         var translation = unofficialTranslation.get();
         var gatedDate = getWordsDate();
-        var metadata = new SongMetadata(
-            UNREAD_BY_FORMATTER,
-            UNREAD_BY_FORMATTER,
+        var credits = new SongAttribution(
             place.get(),
             musicDate.getYear(),
             musicDate.getMonth(),
@@ -517,8 +503,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             lyricistText,
             lyricsSource.get(),
             arrangement.get(),
-            translation,
-            UNREAD_BY_FORMATTER,
             gatedDate.year(),
             gatedDate.month(),
             gatedDate.day()
@@ -528,7 +512,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         return new AttributionPaneWidget.PreviewState(
             attributionFont.get(),
             subAttributionFont.get(),
-            AttributionFormatter.lines(metadata, showTranslation)
+            AttributionFormatter.lines(credits, showTranslation)
         );
     }
 

@@ -19,15 +19,14 @@
  */
 package songscribe.ui.dialog;
 
-import java.util.Objects;
 import javax.swing.JComboBox;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Key;
-import songscribe.error.RuntimeError;
 import songscribe.ui.KeyCellRenderer;
+import songscribe.ui.binding.Controls;
+import songscribe.ui.binding.Property;
+import songscribe.ui.binding.ValueProperty;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -57,63 +56,56 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
      */
     private final JComboBox<Key> keysCombo = new JComboBox<>(Key.allSignatures().toArray(Key[]::new));
 
+    /** The notator's current choice, which is what OK is measured against. */
+    private final Property<Key> selectedKey = Controls.item(keysCombo);
+
     /**
-     * The key the combo opened on, which is what OK is measured against. Null only before the first
-     * {@link #populate}, which happens before the window is ever on screen.
+     * The key the combo opened on. Starts at the model's first signature, which is also what the
+     * combo starts on, so a dialog that has not yet been populated offers no change and OK is
+     * unavailable — the same state {@link #populate} then re-establishes for the real key.
      */
-    private @Nullable Key keyInEffect = null;
+    private final ValueProperty<Key> keyInEffect = new ValueProperty<>(Key.allSignatures().getFirst());
 
     public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE), ops);
 
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyCellRenderer());
-        keysCombo.addItemListener(_ -> okButton.setEnabled(isChangeFromCurrent()));
         UIUtils.forceLightModeCombo(keysCombo);
-        okButton.setEnabled(false);
+
+        // Committing the key already in effect would write a change that changes nothing, so OK is
+        // unavailable until the notator picks a different one. Stated as a validity condition
+        // rather than by setting the button, because StandardDialog binds the button to the
+        // conjunction of these — a second writer would fight that binding.
+        requireValid(bindings().computed(() -> !selectedKey.get().equals(keyInEffect.get())));
     }
 
     /**
      * {@inheritDoc}
      *
-     * <p>Selecting the key in effect fires the item listener, which reads what OK is measured
-     * against — so that is recorded first. OK is disabled afterwards regardless, because a combo
-     * already showing that key fires nothing at all.
+     * <p>Both properties are written, so the two agree and the dialog opens offering no change.
+     * Nothing has to disable OK afterwards: the validity condition is a derivation over these two
+     * values, so it re-answers on its own however the combo came to hold what it holds.
      *
      * @param values the key in effect where the change is bound
      */
     @Override
     protected void populate(Key values) {
-        keyInEffect = values;
-        keysCombo.setSelectedItem(values);
-        okButton.setEnabled(false);
+        keyInEffect.set(values);
+        selectedKey.set(values);
     }
 
     /**
      * {@inheritDoc}
      *
      * <p>The combo is built over the whole of {@link Key#allSignatures()}, so its model is never
-     * empty and a non-empty combo always carries a selection. The guard is there to satisfy
-     * the compiler, the call to RuntimeError.exit is theoretically unreachable.
+     * empty and a non-empty combo always carries a selection — which is what lets the property
+     * answer a {@link Key} rather than something possibly absent.
      *
      * @return the key the notator chose
      */
     @Override
     protected Key gather() {
-        var key = (Key) keysCombo.getSelectedItem();
-
-        if (key == null) {
-            throw RuntimeError.exit("the key combo has no selection");
-        }
-
-        return key;
-    }
-
-    /**
-     * @return {@code true} when the combo names something other than the key already in effect,
-     *         which is the whole condition for OK being offered at all
-     */
-    private boolean isChangeFromCurrent() {
-        return !Objects.equals(keysCombo.getSelectedItem(), keyInEffect);
+        return selectedKey.get();
     }
 }

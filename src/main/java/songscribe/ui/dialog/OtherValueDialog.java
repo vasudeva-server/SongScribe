@@ -25,7 +25,6 @@ import songscribe.ui.binding.Timing;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.NonBlankTextField;
 
-import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * Asks for a value an {@link OtherValueComboBox} does not offer: one field under one prompt, with
@@ -65,7 +64,7 @@ final class OtherValueDialog extends StandardDialog<OtherValue, String> {
         super(mainFrame, prompt.title(), ops);
 
         addLabeledField(contentPanel, prompt.label(), field, LabelPosition.TOP);
-        requireValid(computed(() -> !text.get().isBlank()));
+        requireValid(bindings().computed(() -> !text.get().isBlank()));
     }
 
     /**

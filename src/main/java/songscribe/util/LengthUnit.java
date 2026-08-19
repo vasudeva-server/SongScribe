@@ -23,7 +23,7 @@ import songscribe.Strings;
 
 /**
  * A physical length unit the user types and reads lengths in, chosen by
- * {@code PrefsKey.METRIC}.
+ * {@code PrefsKey.UNITS}.
  *
  * <p>Inches are the pivot: every conversion here goes through them, because inches are what
  * the layout's own limits are expressed in ({@code PageModel.MIN_LINE_WIDTH_INCHES} and its

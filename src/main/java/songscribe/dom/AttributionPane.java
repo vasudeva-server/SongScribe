@@ -492,6 +492,6 @@ public class AttributionPane {
             return List.of();
         }
 
-        return AttributionFormatter.lines(song.getMetadata(), song.showTranslation());
+        return AttributionFormatter.lines(song.getMetadata().attribution(), song.showTranslation());
     }
 }

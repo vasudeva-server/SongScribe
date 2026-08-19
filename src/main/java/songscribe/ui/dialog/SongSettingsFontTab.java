@@ -47,7 +47,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
     // The Fonts tab owns the fonts that have no dedicated contextual tab:
     // lyrics and annotation. Title, attribution, and sub-attribution fonts
     // are owned by the Title and Attribution tabs respectively.
-    private final JLabel lyricsFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel lyricsFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final ScoreTextPreview lyricsFontPreview = new ScoreTextPreview(
         "I shall bind myself at Your Feet.",
         "With this hope I have come to You",
@@ -58,7 +58,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         "   Of my surrender."
     );
 
-    private final JLabel annotationFontLabel = FontSettingRow.createFontDescriptionLabel();
+    private final FontSettingRow.DescriptionLabel annotationFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final ScoreTextPreview annotationFontPreview = new ScoreTextPreview(
         "D.C. al fine (a tempo)"
     );
@@ -117,7 +117,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
         );
         lyricsFontRow = FontSettingRow.create(
-            mainFrame, lyricsFontLabel, FontKey.LYRICS, lyricsFont::get, lyricsFont::set
+            mainFrame, new FontSettingRow.Spec(lyricsFontLabel, FontKey.LYRICS, lyricsFont::get, lyricsFont::set)
         );
         lyricsSection.add(lyricsFontRow.panel());
         BaseDialog.addLargeSeparator(lyricsSection);
@@ -131,7 +131,8 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ANNOTATION)
         );
         annotationFontRow = FontSettingRow.create(
-            mainFrame, annotationFontLabel, FontKey.ANNOTATION, annotationFont::get, annotationFont::set
+            mainFrame,
+            new FontSettingRow.Spec(annotationFontLabel, FontKey.ANNOTATION, annotationFont::get, annotationFont::set)
         );
         annotationSection.add(annotationFontRow.panel());
         BaseDialog.addLargeSeparator(annotationSection);

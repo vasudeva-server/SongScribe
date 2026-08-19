@@ -28,15 +28,17 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * The derivation returned by {@link ObservableValue#computed}, whose contract this
- * class implements and does not extend.
+ * The derivation returned by {@link Bindings#computed}, whose contract this class
+ * implements and does not extend.
  *
  * <p>Reached only through that factory: nothing outside this package can name the
- * type, so the derivation can only ever be used as an {@link ObservableValue}.
+ * type, so the derivation can only ever be used as an {@link ObservableValue}. The
+ * factory registers it with the {@link Bindings} that created it, which is what
+ * cancels the observations it takes on its own dependencies — see {@link #cancel}.
  *
  * @param <T> the derived value's type
  */
-final class Computed<T> implements ObservableValue<T> {
+final class Computed<T> implements ObservableValue<T>, Subscription {
 
     private final Supplier<T> body;
     private final Observers observers = new Observers();
@@ -68,8 +70,37 @@ final class Computed<T> implements ObservableValue<T> {
     }
 
     @Override
-    public Subscription observe(Runnable onChange) {
-        return observers.add(onChange);
+    public Subscription observe(Runnable onNotify) {
+        return observers.add(onNotify);
+    }
+
+    /**
+     * Drops every observation this derivation holds on its dependencies.
+     *
+     * <p>Called by {@link Bindings#dispose} on the derivations that {@link
+     * Bindings#computed} registered. Until this runs, each dependency holds a
+     * reference to this derivation, and this derivation holds its body — so a
+     * derivation over anything outliving its dialog would keep the dialog, its
+     * controls and everything the body captured reachable for as long as that
+     * dependency lives.
+     *
+     * <p>Idempotent: the dependency set is emptied, so a second call cancels nothing.
+     * The value is marked stale rather than cleared, so a read made after this — which
+     * a disposed dialog has no way to reach — re-runs the body and re-links honestly
+     * rather than answering a cached value whose inputs are no longer observed.
+     *
+     * @effects cancels each dependency observation and empties the dependency set.
+     *     Observers registered on this derivation are left registered; they simply
+     *     stop being notified, because nothing notifies this derivation any more.
+     */
+    @Override
+    public void cancel() {
+        for (var observation : dependencies.values()) {
+            observation.cancel();
+        }
+
+        dependencies.clear();
+        stale = true;
     }
 
     /**
