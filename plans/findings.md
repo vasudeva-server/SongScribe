@@ -1,686 +1,567 @@
-# Review of commit d8da209c — the UI binding framework
+# Review Findings — test-only-surface working tree
 
-> **Status: applied.** Everything below that was approved has been made, compiled
-> and run against the unit suite (5 tests, green). Findings 7 and 11 were declined
-> and are left as they were; both say so in place. Two things surfaced during the
-> work and were not acted on — see *Left alone* at the end.
-
-Three review passes ran over this commit: one on design, one on contracts and API
-shape, one on correctness and efficiency. There are no test files in the commit,
-so the test-conformance pass did not run. The seven tests the plan calls for live
-in `src/test/java/songscribe/ui/binding/BindingsTest.java`, which this commit does
-not touch.
-
-A note before the list. The framework itself is good work. The three-way split
-between a value you can read, a value you can write, and a value you can do both
-to genuinely makes the compiler reject a binding that could never fire. The
-dependency tracker re-collects its inputs on every run and drops the ones a branch
-stopped reading, which is what makes a conditional derivation correct. The
-re-entrancy suppression is per edge rather than per dialog, which is the detail
-that lets the old hand-written "am I adjusting?" flags go away instead of merely
-moving. None of that is in question below.
+Nothing here is producing a user-visible failure today. Three findings are latent
+defects that will fire the first time someone uses the mechanism the way its own
+documentation invites, one is a live off-thread defect in a standalone entry
+point, and the rest are dead members, unearned visibility and contract gaps.
 
 ---
 
-## 1. A production bug: a user's centimetres setting is deleted on upgrade
+## 1. Design: the application bus lives inside the stack of temporary buses
 
-**Where.** `src/main/java/songscribe/prefs/Prefs.java:76`, the list of preference
-keys the application deletes from the user's saved settings at startup.
+**Where:** `src/main/java/songscribe/message/MessageCenter.java:31–86`.
 
-**What the code does now.** The commit replaces a stored yes/no setting called
-`metric` (yes meaning centimetres) with a stored setting called `units` holding
-either `INCHES` or `CENTIMETERS`. `metric` is added to the obsolete-keys list,
-which deletes it from the user's settings file at startup without reading it
-first. `units` then falls back to its default, `INCHES`.
+**What the code does now.** The message bus is how everything in the application
+talks to everything else: an object *subscribes* to it, and any code can *post* a
+notification that every subscriber hears. Until this change there was exactly one
+bus, held in a `static final` field.
 
-**What's wrong with it.** A user who had chosen centimetres opens the upgraded
-application and finds inches selected, with no message. By then the old value has
-been erased from their settings file, so there is nothing to recover. The
-obsolete-keys list is the mechanism for settings that no longer mean anything, and
-this one still means something — it only changed how it is spelled.
+The change made it a stack. `MessageCenter` now holds an `ArrayDeque` of buses.
+`post`, `subscribe` and `unsubscribe` all go through a private `bus()` method that
+looks at the top of the stack, and — if the stack is empty — builds the
+application bus and pushes it. A `MessageBusScope` pushes a second bus on top for
+the duration of a conversion, and popping it restores the one underneath.
 
-The commit message describes this as "Turn the METRIC preference into a Units
-enum," which reads as a translation rather than a discard, so this looks
-unintended rather than decided.
+**What's wrong with it.** The application bus and the temporary scopes are two
+different things with two different lifetimes, and putting them in one container
+forces the code to keep telling them apart:
 
-**What to do instead.** Read the old yes/no value before discarding it, and write
-`CENTIMETERS` when it was set. Roughly four lines in the existing migration step
-in `Prefs`.
+- **The one-time-creation guarantee is gone.** A `static final` field is
+  initialized by the JVM under a lock, exactly once, and the result is visible to
+  every thread before any of them can use it. "Peek, and build one if the stack is
+  empty" has neither property. Two threads arriving at the first `post` or
+  `subscribe` together can each see an empty stack, each build a bus, and each
+  push onto a deque that is not safe for concurrent modification. The result is
+  two buses: some listeners registered on one, messages posted to the other, no
+  exception anywhere — just a part of the window that silently stops updating.
+  Nothing in the running application is known to hit this today, because the main
+  window subscribes on the event thread before any background thread starts. It is
+  a guarantee that was traded away for nothing.
+- **The reason given for the laziness is not correct.** The comment on `bus()`
+  says it builds on demand "so that the bus does not depend on when this class
+  happens to be loaded." Loading a class does not run its field initializers;
+  *using* it does, and the first use is the first `post` or `subscribe` — the same
+  moment `bus()` would build it. The laziness buys nothing.
+- **The stack has to be told which entry is sacred.** `pushBus` opens with a bare
+  call to `bus()` and a two-line comment explaining that it must "materialize the
+  application bus first so a scope always has one beneath it, which is what lets
+  `popBus` tell a scope from the bus it must never discard." `popBus` then encodes
+  "do not discard the application bus" as `if (BUS_STACK.size() <= 1)`. Two pieces
+  of arithmetic standing in for a fact a separate field would simply state.
+- **Every headless conversion builds a bus it never uses.** In a converter nothing
+  has subscribed before the scope opens, so that materialize-first call constructs
+  a whole MBassador — with its dispatch machinery — purely so the size check comes
+  out right, and then immediately covers it up.
+- **The guard reports through the path the scope exists to avoid.** When `popBus`
+  finds nothing to pop it calls `RuntimeError.exit`, which puts up the fatal-error
+  dialog that a headless converter cannot display — the exact problem
+  `MessageBusScope` was built to solve.
 
-Note that finding 6 may make this moot: nothing in the application currently reads
-this setting at all, so if the setting goes away the migration question goes with
-it.
+**The corrected design.** Take the application bus out of the stack:
 
-Confidence: high.
+```java
+private static final MBassador<Message> APPLICATION_BUS =
+    new MBassador<>(MessageCenter::exitOnPublicationError);
+private static final Deque<MBassador<Message>> SCOPE_STACK = new ArrayDeque<>();
+
+private static MBassador<Message> bus() {
+    var scoped = SCOPE_STACK.peek();
+    return scoped != null ? scoped : APPLICATION_BUS;
+}
+```
+
+`pushBus` pushes onto `SCOPE_STACK` and nothing else. `popBus` asks the plain
+question "is the scope stack empty?"
+
+**Symptoms this accounts for.** The lazy null check in `bus()`, the
+materialize-first call and its comment in `pushBus`, the `size() <= 1` sentinel in
+`popBus`, the throwaway bus every conversion builds, and the class Javadoc's claim
+that the stack is "never emptied below the application bus" — which stops being a
+rule someone must maintain and becomes true by construction.
+
+**What it touches.** One file. Two field declarations, three method bodies. No
+call site changes; `MessageBusScope`, `Converter` and the test helper are
+untouched.
+
+**Recommendation: make this change.** It puts back the guarantee the old field
+gave for free, and it deletes the special-casing that was added to work around
+losing it.
+
+### 1a. `unsubscribe` can silently fail to undo a `subscribe`
+
+Same file, same cause. All three operations act on whichever bus is on top. An
+object that subscribed on the application bus and is disposed while a scope is in
+force sends its `unsubscribe` to the scope's bus, where it matches nothing — and
+stays subscribed on the application bus forever.
+
+Nothing reaches this today: the only production scope is a converter with nothing
+subscribed beneath it. But `docs/messages.md` states "subscribe in your
+constructor, unsubscribe in `dispose()`" as a mechanical rule for the whole
+codebase, and that rule now has a case where it quietly does nothing. Worth
+deciding whether `unsubscribe` should search the whole stack, or whether the
+documentation should say plainly that disposal inside a scope is not supported.
+
+### 1b. `MessageBusScope.close()` can discard someone else's bus
+
+`src/main/java/songscribe/message/MessageBusScope.java`. The scope object keeps no
+reference to the bus it pushed — `close()` just discards whatever is on top. Two
+consequences, neither stated:
+
+- **It must be called exactly once.** `AutoCloseable`'s own contract encourages
+  implementers to make `close()` idempotent, so a caller is entitled to assume it
+  is. Here a second call discards the *enclosing* scope's bus, or, with no scope
+  left, terminates the process.
+- **Scopes must close in the reverse order they opened.** The class Javadoc says
+  "Nesting is allowed; interleaving is not" as advice. `try`-with-resources
+  enforces it; `MessageCenterTestHelper`, which opens and closes from separate
+  JUnit lifecycle methods, does not — and it is the only caller that uses the type
+  that way.
+
+Both are fixable in the type rather than in prose: have the scope store the bus it
+pushed and have `popBus` take that bus and verify it is the one on top. Closing out
+of order then fails immediately and says which scope was wrong, instead of quietly
+discarding another scope's bus.
+
+### 1c. Nesting has no caller and is not enforced
+
+`MessageBusScope` is constructed in exactly two places — `Converter.run` and the
+unit-test base class — and neither nests. The stack exists to support nesting that
+nobody does, while the constraint that actually matters (only one scope at a time
+in a live application) is a paragraph of prose that nothing checks.
 
 ---
 
-# Design findings
-
-## 2. A derived value can never be released, and two documents promise that it is
-
-**Where.** `src/main/java/songscribe/ui/binding/Computed.java` — the class behind
-`computed(...)`, which builds a value derived from other values. The promises are
-in `ObservableValue.java` (the `computed` documentation) and
-`docs/lifecycle.md:131-136`.
-
-**What the code does now.** A dialog derives values by writing something like "the
-preview is built from the title, the number and the wrap width." The derivation
-works out what it depends on by running once and noting what it read, then
-registers itself as a listener on each of those values. When the dialog closes it
-disposes its `Bindings` object, which cancels every listener the dialog *declared*.
-
-It does not cancel the listeners a derivation registered on its own inputs.
-`Computed` has no teardown method at all — no `dispose`, no `cancel` — and nothing
-outside the package can even name the type in order to add one.
-
-**What's wrong with it.** Two contracts say this cleanup happens. The `computed`
-documentation says its listeners "are released when a dependency drops out of the
-set on a later run, and when the last consumer of the computed is itself
-disposed." The first half is true. The second half is not implemented: nothing
-counts consumers and nothing releases anything. `docs/lifecycle.md` makes the same
-claim about disposal releasing "the dialog, its controls and everything its
-transforms and effects captured."
-
-Nothing leaks today. I checked every place a derivation is created, and every
-value they read belongs to the same dialog, so the whole cluster becomes garbage
-together when the dialog is dropped. The problem is the first derivation built
-over something longer-lived — a preference, a value on the main window. That
-derivation will keep the dialog, its controls, and everything its body captured
-alive for the rest of the session, re-running on every change, computing something
-nobody reads. The contract will say it was released. Nothing at runtime will say
-otherwise. That is the failure `docs/lifecycle.md` exists to prevent, and it grows
-one dialog-opening at a time, which is the hardest kind to notice.
-
-**What to do instead.** Give the derivation to the object that already has a
-lifecycle. Move the factory off `ObservableValue` and onto `Bindings`, so a dialog
-writes `bindings.computed(...)`; make `Computed` implement `Subscription` so its
-`cancel()` drops its input listeners; and have `Bindings.dispose` cancel the
-derivations along with the edges. Removing the static factory means a derivation
-with no owner stops being expressible, rather than merely discouraged.
-
-**What it touches.** `ObservableValue.java`, `Computed.java`, `Bindings.java`, and
-nine call sites across `BaseDialog`, the two converted Song Settings tabs, the date
-row and `OtherValueDialog` — each changing from a static call to a call on the
-bindings object it already holds. Both contract paragraphs above become true rather
-than needing rewording.
-
-I recommend making this change. It uses machinery that already exists — there is
-already a disposal owner and already a subscription type — and it turns two false
-promises into true ones.
-
-Confidence: high.
-
-## 3. The normalizer's write-back notifies twice, and one fix for it is wrong
-
-**Where.** `src/main/java/songscribe/ui/binding/Controls.java`, the private
-`textProperty` method that both `Controls.text` overloads are built on —
-specifically its focus-loss handler.
-
-**What the code does now.** `Controls.text` can take a "normalizer": a function
-that tidies what the user typed when they click away — trimming spaces, turning
-straight quotes into curly ones. On focus loss the handler runs the normalizer,
-writes the result back into the field, and then tells everything watching the
-field that it changed.
-
-The write-back is not inert. This commit makes the repository's own text fields
-(`MyJTextField`, `MyJTextArea`) override `setText` so a programmatic write is
-routed into the property, and that routing announces the change on its own. The
-handler then announces it a second time.
-
-**What's wrong with it.** Every value derived from one of these fields is
-recomputed twice for one user action. This is live on all five normalized fields:
-the title and subtitle fields on the Title tab, and place, composer and lyricist on
-the Attribution tab. Typing any title containing an apostrophe — "Don't" — and
-clicking away rebuilds the title preview twice. Leaving the composer field runs the
-"copy the composer into an empty lyricist field" effect twice.
-
-Nothing visibly breaks today, because the second pass is absorbed downstream before
-it reaches a Swing write. What is wrong is that an effect registered on one of
-these fields runs twice per edit, and no contract says so. A caller who registers a
-non-idempotent effect — pushing an undo step, starting playback, posting a message
-— gets it done twice, and only on some fields.
-
-There is a second, quieter part: `Timing.WHILE_TYPING` is documented as "notifies
-on every keystroke, as the text changes," but a field with a normalizer also
-notifies on focus loss with no keystroke involved.
-
-**What to do instead.** The handler should let the write announce the change
-instead of announcing it itself. Write the normalized text through the framework's
-own write path rather than through the control, and then announce explicitly only
-for the commit-timing case, which is the one the write cannot announce. That gives
-exactly one notification in every combination and makes the `WHILE_TYPING`
-documentation true again. One method, one file.
-
-**One proposal to avoid.** The obvious-looking fix — skip the trailing
-announcement whenever a write happened — is wrong. On a plain Swing text field the
-repository does not own, a commit-timing write neither routes nor triggers a
-document listener, so that field would end up with *no* notification at all. The
-fix has to go through the framework's write path, not around it.
-
-Confidence: high; I traced every combination of timing, normalizer outcome, and
-owned-versus-plain control.
-
-## 4. Should the stray-write routing exist at all? — I think yes
-
-The two design passes disagreed about this, so it is worth putting the question
-squarely rather than burying it.
-
-**What the mechanism is.** `BoundText` stores a field's property inside the Swing
-component under a magic key, and `MyJTextField` / `MyJTextArea` override `setText`
-to redirect a programmatic write into that property. It exists because a
-commit-timing property listens for focus loss, and code writing a field causes no
-focus loss — so the write would otherwise go unnoticed.
-
-**The case for deleting it.** No commit-timing field in the tree is currently
-written by anything other than its own property, so the mechanism catches no stray
-write today. It costs two general-purpose Swing widgets an import of the binding
-framework, adds a second re-entrancy flag in a different place from the one
-`Binding` already owns, and forces `Controls`'s contract to carry a paragraph
-explaining that it works for exactly two classes.
-
-**Why I think it should stay.** The framework's own route table answers this.
-Of the six Swing notification routes it lists, five fire on a programmatic write —
-document changes, combo box selection, button selection, spinner and slider values
-all announce themselves. Exactly one does not: focus loss. So this is not an
-arbitrary special case bolted onto text fields; it is the one hole in the model,
-and the routing is aimed at it. Deleting it would leave a silent staleness bug
-available in precisely the spot the design already identifies as the dangerous one.
-
-Note also that deleting it does **not** fix finding 3. With the routing gone, a
-keystroke-timing field still gets one notification from the document write and a
-second from the handler. Finding 3 is a separate defect and needs its own fix
-either way.
-
-My recommendation is to keep the routing and fix finding 3. I am flagging it
-because one review pass recommended deletion and you should see that argument
-rather than only my conclusion.
-
-## 5. Two writers now own the OK button's enabled state
-
-**Where.** `src/main/java/songscribe/ui/dialog/StandardDialog.java:117` and
-`src/main/java/songscribe/ui/dialog/KeyChangeDialog.java:71,73,89`.
-
-**What the code does now.** The commit adds a general way for a dialog to say "my
-values are not ready to be committed": a tab calls `requireValid(...)` with a
-condition, the dialog combines all such conditions, and `StandardDialog` binds the
-OK button's enabled state to the result. The Song Settings title tab uses this to
-grey out OK while the song title is blank.
-
-`KeyChangeDialog` extends `StandardDialog`, so it now inherits that binding. It
-also has exactly the same kind of rule — "OK only once you have picked a key
-different from the one in effect" — and implements it by hand: disabling OK in the
-constructor, disabling it again after populating, and recomputing it from a
-listener on the combo box.
-
-**What's wrong with it.** The same button property has two owners that know nothing
-about each other. It works today only by accident: `KeyChangeDialog` contributes no
-validity condition, so the combined condition never changes, so the binding never
-writes again after its first write and the hand-wiring is left in possession. But
-the binding believes it last wrote "enabled" while the button is actually disabled,
-so the two disagree from the moment the constructor finishes.
-
-The day anyone adds a validity rule to this dialog — the obvious thing to do, since
-it has one — the binding will write "enabled" and switch OK back on regardless of
-whether the key actually changed, and the user will be able to commit a key change
-that changes nothing.
-
-**What to do instead.** Express the rule with the mechanism the commit just added.
-View the combo box as a property, hold the key in effect in a `ValueProperty`, and
-call `requireValid` with the condition that the two differ. The item listener and
-both `setEnabled` calls go. So does a `@Nullable` field on that class whose comment
-says "null only before the first populate" — it is nullable only because the
-hand-written listener has to read it at a moment when it may not be filled in yet.
-
-One file, roughly a dozen lines net removed, and the OK button has one owner again.
-
-Confidence: high that both writers exist and that the current behaviour survives by
-accident. The user-visible bug is latent, not firing today.
-
-## 6. Two enums for "inches or centimetres", and neither has a consumer
-
-**Where.** The new `src/main/java/songscribe/prefs/Units.java` and the existing
-`src/main/java/songscribe/util/LengthUnit.java`.
-
-**What the code does now.** The commit creates `Units { INCHES, CENTIMETERS }` to
-hold the preference. The codebase already has `LengthUnit { INCHES, CENTIMETERS }`,
-which additionally knows the conversion factor, converts in both directions, and
-carries the display label for each unit. `LengthUnit`'s own documentation says it
-is "chosen by `PrefsKey.METRIC`" — the preference this commit just removed.
-
-**What's wrong with it.** One idea now has two spellings in two packages, and the
-older one refers to a preference key that no longer exists. Any code that later
-needs to display a length has to choose, and choosing `Units` means rewriting the
-conversion arithmetic `LengthUnit` already has.
-
-Underneath that is a larger thing. Neither enum has a production consumer.
-`LengthUnit` has none at all. `Units` is read only by the Preferences dialog, to
-decide which of its own two radio buttons to select, and written only by those same
-radio buttons. Nothing in the application measures anything in the chosen unit. So
-this is a setting the user can change that changes nothing — and the commit spent a
-new type on it. A note already in `plans/ui-dialog-interface.md:419-421` records
-exactly this: the radio "changes nothing the user can see" since the line-width
-field was removed.
-
-**Decision: merge the enums, keep the radio buttons.** Delete `Units` and store the
-preference as a `LengthUnit`, fixing that class's stale reference to the removed
-`PrefsKey.METRIC` at the same time. The radio buttons stay: they move to page setup
-when issue #632 is implemented, so the code should not be lost even though nothing
-reads the setting today.
-
-Because the setting is kept, finding 1's upgrade migration matters and is fixed too
-— a user's centimetres choice should still be theirs when #632 gives it an effect.
-
-Confidence: high on both the duplication and the consumer counts, which I traced
-rather than assumed.
-
-## 7. The framework ships surface nobody calls, carrying its deepest contracts
-
-**Where.** `Controls.number`, `Controls.value`, `Controls.choice`,
-`Bindings.bindBidirectional` (both overloads), the three-argument merge overload of
-`Bindings.bind`, all of `Transform.java`, and the `SKIP` case of
-`Binding.InitialWrite`.
-
-**What the code does now.** Both review passes traced production callers for every
-public member the framework adds. These have none — not production code, not tests,
-nothing but the framework's own cross-references and the plan document. I
-spot-checked several myself and confirmed it: the two-way binding methods are
-referenced only by each other and by documentation, and `Transform` and the `SKIP`
-case exist only to serve them. Together they are roughly 250 lines, most of it
-contract prose.
-
-**What's wrong with it.** These are not stubs; they carry the deepest promises in
-the package. The two-way binding promises that propagation *terminates* rather than
-oscillating, and explains the mechanism that makes it so. `Transform` promises its
-two conversion functions round-trip. The merge overload spends a paragraph
-explaining why its target parameter is typed differently from its sibling and that
-"the difference is not an oversight." Nothing has ever exercised any of it.
-
-Promises made about code nobody runs are the ones that quietly turn out to be
-wrong, and the first person to reach for the two-way binding will trust the
-termination promise rather than test it. A reader also counts the surface and
-concludes the design has been exercised across all of it; it has been exercised
-across five adapters and two wiring methods.
-
-There is a smaller thing inside the radio-group adapter. Its private helper throws
-with the message "radio group has no button for X, which the factory should have
-refused" — the code naming its own dead branch. The factory does refuse it and the
-map is copied so it cannot go partial afterwards, so the branch is unreachable.
-
-**Decision: keep them as future surface.** More dialog conversions are coming and
-the code should not be lost. No change.
-
-What remains true, and is worth knowing rather than acting on: the first caller of
-the two-way binding will be the one who finds out whether the termination promise
-holds, because nothing has exercised it. That is a reason to exercise it when that
-caller arrives, not a reason to delete the code now.
-
-Confidence: high on the caller counts.
-
-## 8. A domain rule lives on a Swing component, so a derivation reaches through a text field
-
-**Where.** `NumericTextField.isValidValue(String)`, added by this commit, and its
-uses in `src/main/java/songscribe/ui/dialog/SongSettingsDateInputRow.java:122`.
-
-**What the code does now.** The date row derives whether the month and day
-dropdowns should be usable. Both are written as
-`computed(() -> yearField.isValidValue(year.get()))` — take the year text from the
-property, then hand it back to the Swing text field to ask whether it is a valid
-year. `isValidValue` was added in this commit precisely so the question could be
-asked without reading the control, and its contract says so.
-
-**What's wrong with it.** "Is 1993 a valid year for this row?" is a fact about a
-number range. It has nothing to do with Swing. But the range is two private fields
-on a text field, so the only way to ask is to hold that text field. A derivation is
-reaching through a UI component to get at a domain rule.
-
-The cost compounds. Every future derived value that needs to know whether a numeric
-field's contents are acceptable must capture the field — which is the pattern
-`Controls`'s own documentation warns about ("do not build a property over a control
-that outlives the dialog holding the bindings"), and it is unsafe for the same
-reason. It also means the rule cannot be stated anywhere a controller's commit-time
-validation could call it, which is what the bindings guide asks for: a rule shared
-by a binding and a guard is a named function both call.
-
-**What to do instead.** Give the range its own small record — minimum, maximum,
-whether blank is acceptable, character limit — with one method answering whether a
-string is acceptable. `NumericTextField` takes one and delegates both
-`isValidValue` and its focus-time verifier to it. The date row holds the year range
-as a constant and writes `computed(() -> YEAR_RANGE.accepts(year.get()))`, which
-captures no Swing object at all.
-
-This also answers finding 13 below: that record is the parameter object the
-five-argument constructor needs, so the two are one change rather than two.
-
-**What it touches.** `NumericTextField.java`, one new record, the two call sites
-that construct a ranged numeric field, and the three derivation sites in the date
-row. No behaviour changes.
-
-I recommend making it. It removes the last Swing reference from the date row's
-derivations, gives the rule a name a controller could also call, and collapses a
-five-argument constructor into a readable one.
-
-Confidence: high that the rule is misplaced; the exact record shape is worth
-confirming.
-
-## 9. The attribution preview fills three fields with a constant named for its own meaninglessness
-
-**Where.** `src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java:85`
-and the method around `:499-530`.
-
-This arrived in the follow-up commit `a6df2337` rather than the one under review.
-It is in the current state of the file and it is a design fault, so it belongs on
-the list.
-
-**What the code does now.** The Attribution tab draws a live preview of the credit
-block by calling a formatter that turns a song's metadata into lines of text. The
-formatter takes the whole 15-field metadata record but reads only the twelve fields
-to do with credits, dates and place. So the preview builds a metadata record and
-fills the other three — title, number, subtitle — with a constant declared as
-`private static final String UNREAD_BY_FORMATTER = ""`, with an eight-line comment
-explaining that the formatter reads none of them.
-
-**What's wrong with it.** The tab has to fabricate a value it does not have, cannot
-get, and knows will be ignored, and then explain in a comment why the fabrication
-is safe. The comment is load-bearing: nothing in the formatter's signature says
-those three fields are ignored, so the next person who adds a field to the credit
-lines has to find this call site and decide whether the empty strings are still
-harmless. The constant name is the previous author pointing straight at the
-mistake — the type being passed does not match the information the operation needs.
-
-**What to do instead.** Give the formatter a parameter shaped like what it reads.
-Add an accessor on the metadata record returning a smaller record of the twelve
-fields the formatter uses, and have the formatter take that. The constant and its
-comment go, and adding a field to the credit lines becomes a compile error at every
-call site instead of a silent empty string. Other callers hold a real song's
-metadata, so they pass the accessor and are otherwise unaffected.
-
-Confidence: high on the defect.
-
-## 10. The date row speaks combo-box positions where the domain has a month
-
-**Where.** `SongSettingsDateInputRow.java` throughout, and the `Controls.itemIndex`
-factory that exists to serve it.
-
-**What the code does now.** The month combo is built from a hand-written list of
-thirteen strings — an empty one, then twelve month names — arranged so each name's
-position equals its month number. The row then views the combo as an integer
-*position* rather than a value, and threads that integer through the properties,
-the getters, the enable rule and the setter, with `0` meaning "not chosen."
-
-**What's wrong with it.** Correctness rests on an unstated agreement that a list
-position equals a month number. Insert a separator, reorder for a different locale,
-or drop the leading empty entry, and every getter, the enable rule, the reset logic
-and the stored data all silently mean something else, with nothing failing to
-compile. The `0`-means-none convention is the same problem in miniature: "absent"
-shares a channel with the data.
-
-The in-memory `SongMetadata` record holds month and day as bare integers with `0`
-meaning none, and the dialog matched that shape rather than converting at its own
-edge. (The persisted form is a single ISO `YYYY-MM-DD` date string — month is never
-stored on its own — so this is a question about the in-memory record and the dialog,
-not about the file format.)
-
-**Decision: fix the dialog only.** Populate the month combo from a closed set of
-month values and view it with `Controls.item`, so the property answers a month
-rather than a position. Convert to the integer the record holds in the row's getter
-and back in its setter — one line each, and the only place that representation
-appears. The enable rule then reads "a month has been chosen." The `SongMetadata`
-record and the ISO persistence are left alone.
-
-## 11. A rendering change landed inside a commit about UI binding
-
-**Where.** `src/main/java/songscribe/util/StringUtils.java`, the method that breaks
-a title into lines.
-
-The commit replaces the old greedy wrapping with a search that considers every
-possible set of line breaks and picks the one minimising total squared unused
-width. It is a better algorithm and its contract is unusually good — five separate
-result invariants, each of which the implementation could in principle violate,
-which is the mark of a contract written from the domain rather than read off the
-code.
-
-The finding is that it changes where the line breaks fall in every multi-line title
-in every existing document, and it arrived inside a commit titled "add the UI
-binding framework and convert the Song Settings dialog." A reader scanning that
-commit for the binding framework has no reason to open a string utility, so the
-change was never separately looked at against real titles.
-
-One substantive choice inside it: the evenness measure counts the last line's
-unused width along with every other line's, where classic line-breaking excludes
-it. That is what makes this a *balance* rather than a fill, and it decides what
-most titles look like.
-
-**Decision: counting the last line is intended.** No code change. The contract
-already states the choice plainly, so nothing needs documenting either.
+## 2. Design: `subscribed` is a second copy of a fact the bus already owns
+
+**Where:** `src/main/java/songscribe/ui/component/score/PreviewElementManager.java:107`
+and `:118–127`; the same shape at `src/main/java/songscribe/undo/UndoController.java:161`
+and `:172–177`.
+
+**What the code does now.** `PreviewElementManager` is the class that draws the
+ghost note following your mouse in edit mode. It used to attach itself to the
+message bus from a `static { }` block; this change replaced that with a public
+`initialize()` called from `MainFrame`'s startup, guarded by a private
+`static boolean subscribed` that is set to `true` on the first call and never set
+back. The Javadoc calls the method "Idempotent."
+
+**What's wrong with it.** The Javadoc explains why the static block had to go: as
+a static initializer, the subscription "could land inside a scope and be discarded
+when that scope closed, leaving the singleton permanently unsubscribed with no
+static initializer left to run again." The boolean latch reproduces that outcome
+exactly. If `initialize()` ever runs while a bus scope is open, it subscribes to
+the scope's bus, sets the flag, and loses the subscription when the scope closes —
+and because the flag stays `true`, every later call does nothing. The hover
+preview goes dead for the rest of the process, with nothing logged. The word
+"Idempotent" is what makes it unrecoverable.
+
+The deeper problem is that the flag means *"`initialize()` has run at least
+once"*, while what the code needs to know is *"the singleton is on the bus that is
+in force"*. Those are two different facts, and the bus is the one that owns the
+second.
+
+**The correcting fact: the bus already does this.** MBassador's `subscribe`
+refuses a listener it already holds — `AbstractConcurrentSet.insert` checks
+membership before inserting. Subscribing twice is already a no-op. So the flag
+guards nothing, and the copy it keeps is the one that can go stale.
+
+**The corrected design.** Delete the `subscribed` field and the `if`, and call
+`MessageCenter.subscribe(INSTANCE)` unconditionally. `initialize()` becomes
+genuinely idempotent — because the bus makes it so — and it also *heals*: calling
+it after a bus change re-subscribes rather than silently refusing to.
+
+The identical latch in `UndoController.subscribeToBus` should go the same way.
+`UndoController.deinitialize()` stays (it also clears the undo and redo stacks);
+only the `INSTANCE.subscribed = false` line inside it goes.
+
+**What it touches.** Two files, one field and one branch deleted from each, one
+line deleted from `UndoController.deinitialize()`, and the word "Idempotent."
+stays in `PreviewElementManager`'s Javadoc because it becomes true.
+
+**Recommendation: make this change.** Two agents independently proposed adding a
+`deinitialize()` to `PreviewElementManager` to reset the flag. That would work,
+but it adds a method to keep two facts in step when deleting the second fact makes
+them one. The rest of that Javadoc — including the genuinely useful point that a
+headless conversion now never subscribes a preview handler at all — stays as is.
+
+**Note on the lifecycle question.** `PreviewElementManager` subscribes for the
+life of the process on the application bus, and `docs/lifecycle.md` says outright
+that there is no point unsubscribing on the way out of a process. With the flag
+gone it needs no `deinitialize()`. It does still owe the class-Javadoc *Lifecycle*
+heading naming `MainFrame.initFrame` as its caller, which `docs/lifecycle.md`
+requires of anything registering with something process-global, and
+`docs/lifecycle.md`'s own startup section still shows only `Actions.initialize(this)`
+where three initializers now run in sequence.
 
 ---
 
-# Contract findings
+## 3. Design: six "takes its inputs explicitly" methods are the deleted tests' injection points, relabelled
 
-## 12. Proposed change to an existing contract: rename `onChange`
+**Where:** `src/main/java/songscribe/SongScribe.java:47–120` (four methods) and
+`src/main/java/songscribe/smufl/SMuFLMetadata.java:92–129` (two).
 
-This one changes what the API says to its callers, so it needs an explicit decision
-rather than being folded in with the tidy-ups.
+**What the code does now.** Each is one of a pair: a real method, plus an overload
+that takes as parameters the things the real one would otherwise look up for
+itself.
 
-**What it promises now.** `Bindings.onChange(source, action)` and the parameter
-named `onChange` on `ObservableValue.observe` are both named for change. Neither
-delivers change semantics. `Bindings.onChange`'s contract has to open by correcting
-its own name — "runs `action` whenever `source` **notifies**" — and then spends a
-bolded paragraph explaining that whether it fires on a real change depends on the
-source, because a derived value notifies whenever any of its inputs notifies
-regardless of whether the derived value changed. `ObservableValue.observe` does the
-same under its own bolded heading, "Notification is not the same as a change." The
-bindings guide then says it a third time.
+- `configureLogging()` calls `configureLogging(env, consoleLogUrl)`
+- `truncateLogIfRequested()` calls `truncateLogIfRequested(env)`
+- `resolveLogDir(env)` calls `resolveLogDir(env, isMacOS, isWindows)`
+- `getAdvanceWidth(glyph)` calls `getAdvanceWidth(map, glyph)`, whose whole body is `map.get(glyph)`
+- `getAdvanceWidthOrZero(glyph)` calls `getAdvanceWidthOrZero(map, glyph)`
 
-**What it should promise instead.** The same thing, under a name that does not
-contradict it. The name is the part of a contract every caller reads and usually
-the only part. Someone writing `bindings.onChange(previewText, this::repackWindow)`
-reads a promise that the window repacks when the text changes; what they get is a
-repack on every keystroke that leaves the text as it was. That is not hypothetical
-— it is the mistake the Title tab already has to work around, routing its
-subtitle-emptiness through a separate holder value purely to get change semantics
-back.
+The change kept all of them and rewrote the comment on each. Where they said
+"Package-private for testing: accepts explicit platform flags so tests can
+exercise Windows and 'other OS' branches", they now say "Takes the platform flags
+explicitly, so the directory choice is a pure function of its arguments."
 
-**Why the domain requires it.** When the same correction has to be written three
-times in three documents, the name is what is wrong, not the reader.
+**What's wrong with it.** Purity is a property, not a purpose. Every one of these
+overloads has exactly one caller — its own wrapper, in its own class — and every
+one of them is always passed the same fixed values. Nothing in the application
+supplies a different environment, a different platform, or a different glyph map,
+and nothing can. The parameter exists so something *outside* could vary it, and
+the only thing that ever did was a test that no longer exists. Rewording the
+comment does not change what the member is; it removes the evidence a later reader
+would need to recognise it. The plan's own rule is the test these fail: judge a
+restructured member on whether it is a coherent unit with its own contract.
 
-**The change.** Rename `Bindings.onChange` to `Bindings.onNotify` and the `observe`
-parameter to `onNotify`. Six call sites, updated by the rename refactoring. The
-three correcting paragraphs shrink to one clause each. The exact replacement name
-is open — what matters is that it stops saying "change."
+`resolveLogDir(env, isMacOS, isWindows)` additionally takes two adjacent
+`boolean`s that a call site can transpose with no complaint from the compiler,
+which the project's Java rules forbid outright — and `(isMacOS=true,
+isWindows=true)` is a state the signature permits and the world does not.
 
-## 13. The `Bindings` class documentation contradicts one of its own methods
+**The corrected design.** Collapse each pair into the one method the application
+actually has: `resolveLogDir()`, `configureLogging()` and `truncateLogIfRequested()`
+read `SystemInfo` and `System.getenv` directly; `getAdvanceWidth(glyph)` and
+`getAdvanceWidthOrZero(glyph)` do `instance().advanceWidths.get(glyph)` directly
+and the two-argument overloads disappear, since neither does anything a `Map.get`
+does not.
 
-The class documentation says, in bold: "**Every method settles what it registers
-immediately.** A binding evaluates its source once at registration and writes its
-target, so a dialog is consistent the moment it has finished declaring itself."
+`getAdvanceWidth(SMuFLGlyph)` has **no caller at all** (verified: one Javadoc link
+and nothing else), so the `SMuFLMetadata` cluster collapses to a single method:
 
-`onChange` is a method of that class, and its own contract says the opposite:
-"Unlike a binding, `action` is **not** run at registration; it runs on
-notifications only."
+```java
+public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
+    var width = instance().advanceWidths.get(glyph);
+    return width != null ? width : 0.0;
+}
+```
 
-A bolded class-level invariant is exactly what a reader takes at face value. Someone
-who does will register an effect expecting it to settle whatever it manages, and
-the symptom is a dialog that opens with something in the wrong state until the user
-touches the control that drives it. Whether they ever open `onChange`'s own
-documentation is the difference between the bug and no bug.
+**What it touches.** Two files, six methods deleted, four bodies inlined into
+their wrappers. No call site outside those two classes changes.
 
-Narrow the class sentence to what is true: every *binding* settles its target
-immediately; an effect registered with `onChange` does not run at registration. One
-sentence, one file.
-
-## 14. `Controls.itemIndex` documents an exception on the wrong method
-
-Its contract carries `@throws IllegalArgumentException from set, when the index is
-neither -1 nor a position the combo holds`. But `itemIndex(...)` never throws that.
-The exception comes from writing a bad position into the object it returns, possibly
-much later. Its siblings `Controls.item` and `Controls.number` both get this right,
-describing the returned object's failure modes inside their `@return` clause.
-
-The `@throws` tag is what an IDE shows at the call site of `itemIndex`. A caller
-sees "this call can throw" and either wraps it in a `try`/`catch` that can never
-fire or treats the factory as risky, while the condition that can actually fire is
-attached to the wrong method. Move the clause into `@return`, matching its two
-siblings. One method, one file.
-
-## 15. A method uses a bare `0` on the line below the documentation naming the constant for `0`
-
-`SongSettingsDateInputRow` introduces `NONE_INDEX = 0`, the position of the blank
-leading entry meaning "not chosen." `dayEnabled`'s own documentation cites it —
-"the selected month index, `{@value #NONE_INDEX}` for none" — and the body one line
-below reads `return yearValid && month != 0;`.
-
-Nothing breaks; the two agree today. The cost is that the constant was introduced
-to stop `0` meaning two things, and the very method whose documentation cites it
-still writes the literal. Someone changing what "not chosen" means will change the
-constant, watch the documentation update itself through `{@value}`, and miss this
-line — and the day dropdown will enable itself for a month nobody picked.
-
-Related: `NONE_INDEX` is private, but four package-visible members cite it in their
-contracts, and their callers have no name for the value those contracts describe.
-Per the project's rule that a constant named by a contract takes that contract's
-visibility, it should be package-private.
-
-Replace the `0` with `NONE_INDEX` and widen the constant. One file.
-
-## 16. `NumericTextField.hasValidValue()` has a doc comment and no `@return`
-
-The method carries a two-sentence doc comment, returns a boolean, and has no
-`@return` tag. The commit rewrote its body. The project rule is mechanical: any
-documented method whose return type is not `void` carries the tag, because the tag
-is what the IDE shows at the call site. Its new sibling `isValidValue(String)`,
-added by the same commit, has one.
-
-Add the tag.
-
-## 17. `NumericTextField`'s five-argument constructor cannot be read at its call site
-
-The constructor reads
-`NumericTextField(int columns, int min, int max, boolean isOptional, int maxChars)`,
-and its call sites read
-`new NumericTextField(YEAR_FIELD_COLUMNS, YEAR_MIN, YEAR_MAX, true, MAX_YEAR_CHARS)`.
-
-Five parameters, three of them adjacent integers a call site could transpose with
-the compiler saying nothing — swap the width and the minimum and you get a field one
-character wide that accepts years up to 2007. And a bare `true` that names nothing:
-the reader has to open the constructor to learn it means "a blank field is
-acceptable."
-
-This predates the commit. I am reporting it because the commit changed this file and
-both of its call sites, and because a reader arriving at that `true` today has no way
-to know what it selects.
-
-The fix is the record from finding 8 — the range, the character limit, and blank
-acceptance as a two-valued enum rather than a boolean — so the constructor takes the
-column count and that one value. The two findings are one change.
-
-## 18. `FontSettingRow` — six parameters, and a record whose two halves nothing tells apart
-
-The larger `create` overload takes six parameters — a main frame, two labels, a font
-key, a supplier and a consumer — with no parameter object. The two adjacent `JLabel`
-parameters make the risk concrete: a transposed pair puts the row's caption where the
-font description belongs, silently. The smaller five-parameter overload has a doc
-comment that documents none of its parameters.
-
-The commit also adds a record `Row(JPanel panel, Disposable chooseAction, Disposable
-resetAction)` so the caller can release the two message-bus subscriptions the row's
-buttons make. Its two `Disposable` components are adjacent and same-typed, so they
-are transposable at the one construction site. Nothing anywhere calls
-`chooseAction()` or `resetAction()` — the only thing that reads them is the record's
-own `dispose()`, which calls both. The record names two things where the code only
-ever has one: "the disposables this row created."
-
-Give `create` a parameter object for the row's inputs, leaving the main frame as the
-one separate argument; collapse the record so the two disposables are one value; and
-add the missing `@param` tags. One file plus its four call sites.
-
-## 19. `Modality.java` has no license header
-
-Every other Java file in the repository opens with the GNU GPL block, including
-`Units.java`, added by the same commit. `Modality.java` starts at its `package`
-statement. Copy the eighteen lines.
-
-## 20. `SongSettingsDateInputRow` advertises testability that does not exist here
-
-Its class documentation says the row "exposes pure predicate methods so callers can
-unit-test the enable/reset logic without driving Swing," and `dayEnabled` adds
-"Pure: no side effects, safe to call from tests."
-
-No test exercises those methods. The finding would stand even if one did: a contract
-that justifies a method's shape by naming a consumer is stating a rationale rather
-than a promise. Point the comment at the
-actual promise — `dayEnabled` is a total function of two values and consults nothing
-else — or drop the testability claim.
+**Recommendation: make this change.** These are the largest remaining pocket of
+test-shaped production code, and they are the ones most likely to be mistaken for
+deliberate design, because the change gave each of them a design-sounding
+sentence.
 
 ---
 
-# Correctness and efficiency
+## 4. Contract change: `Converter.run` claims a benefit its only caller does not get
 
-The only finding from this pass is the double notification, reported as finding 3
-above because its fix is the same edit.
+**This one alters an existing promise, so it needs a decision rather than a fix.**
 
-Everything else checked out. The dependency tracker restores its previous recording
-state in a `finally`, so a derivation that throws cannot poison later reads. The
-observer list is iterated over a copy, so a derivation re-linking itself mid-pass
-cannot corrupt the pass in progress. The per-edge re-entrancy flag and the
-unchanged-value stop between them make two-way propagation terminate. The
-per-opening dialog lifecycle and its disposal chain match `docs/lifecycle.md`. The
-new `requireValid` mechanism is correct against the dependency tracker: a condition
-not read because an earlier one already failed is correctly not subscribed, and is
-picked up when the earlier one passes.
+**Where:** `src/main/java/songscribe/converter/Converter.java:26–44`, and the same
+sentence in `docs/messages.md`.
 
-# Test conformance
+**What it promises now.** The Javadoc gives two reasons for running a conversion
+inside a bus scope. The first: "Its object graph — the score view a conversion
+builds, its controller, and everything those subscribe — is discarded wholesale
+when the scope closes, rather than staying subscribed for the rest of the
+process."
 
-Did not run — the commit contains no test files.
+**What's wrong with it.** For the four headless converters, "the rest of the
+process" is microseconds. `PDFConverter` builds one score view for the whole run
+and the scope closes immediately before the process exits.
+`docs/lifecycle.md` states the point directly: there is no point unsubscribing on
+the way out of the process. So the disposal half of what a scope promises has no
+production reader. Its real reader is the test suite, and tests are not consumers.
+
+The second reason is real and is the whole justification: a throwing `@Handler` on
+the application bus is treated as fatal and puts up a dialog, which a headless
+process cannot show, so a converter supplies an error handler that logs instead.
+
+**What it should promise instead.** Cut the disposal claim from both
+`Converter.run`'s Javadoc and `docs/messages.md`, leaving the error handler as the
+stated reason. Keep the disposal *mechanism* — the test suite depends on it, and
+`MessageBusScope`'s own Javadoc is the right place to describe it — but stop
+telling a reader of `Converter.run` that it buys that caller something it does not.
 
 ---
 
-# Left alone
+## 5. Contract gaps in the new API
 
-Three things came up while making the changes above.
+- **`MessageCenter.describe(PublicationError)`** (`MessageCenter.java:95`) — public,
+  returns a `String`, has a doc comment and no `@return`. The tag is what the IDE
+  shows at the call site; without it a caller sees no answer to "what do I get
+  back?" The body also calls `whichHandlerThrew(error)` in both branches of one
+  ternary — assign it to a local first, per the project's rule against repeating a
+  call inside a method.
+- **`Converter.run`** — no `@param <T>`; no statement of the precondition on
+  `type` (`ArgumentReader` reflects over it, so `T` must have a no-argument
+  constructor and annotated public fields, and a caller who passes anything else
+  finds out at runtime); and no `@effects` for two process-global side effects —
+  it reconfigures logging for the whole process and replaces the application's
+  message bus for the duration.
+- **`MessageCenter.popBus()`** — terminates the process via `RuntimeError.exit`
+  when there is no scope in force, with no `@throws` naming the condition.
+- **`Converter.loadSong(File, ScoreView)`** — has `@return`, has neither `@param`.
+- **`Converter.applyExportExclusions(Song, boolean withoutLyrics, boolean withoutSongTitle)`**
+  (`Converter.java:107`) — two adjacent booleans a call site can transpose with no
+  compiler complaint, called from `PDFConverter` and `SVGConverter`. The project's
+  rules require a `record` or an enum here. It also has no `@param` tags at all.
+- **`MessageCenter.post` / `subscribe` / `unsubscribe`** — the highest-fan-in API
+  in the codebase (67 post call sites in 45 files; 25 subscribe call sites in 23
+  files) and all three have no Javadoc at all. Two promises callers most need are
+  written down only in `docs/messages.md`, which nothing links to: `post` is
+  synchronous, so every handler runs on the calling thread and finishes before
+  `post` returns; and the bus holds subscribers weakly, so a listener nothing
+  keeps strongly reachable is silently collected and stops receiving messages. A
+  one-line Javadoc on each plus a pointer from the class Javadoc to
+  `docs/messages.md` closes it, and this change already rewrote that class
+  Javadoc, which is when it is cheapest.
 
-## `Prefs`'s seven test-only members — fixed
+---
 
-`Prefs` carried `getRawStored(PrefsKey)`, `getRawStored(String)`, `putRawStored`,
-`removeObsoleteKeysForTest`, `removeSystemDefaultKeysFromStoreForTest`,
-`writeTypedForTest` and `migrateForTest` — seven openings in production surface that
-no production code called.
+## 6. Correctness
 
-They existed for one reason: the startup transformations were private methods on a
-singleton mutating its private store, and nothing could get a `Prefs` whose store it
-chose. None of them needed the singleton.
+### 6a. Two members with no caller anywhere
 
-The four transformations now live in `PrefsUpgrade`, a package-private class taking
-the store, the defaults and the system-default keys, with one `apply(oldPropsFile)`
-that runs them in the order they depend on — the `metric` carry-over before obsolete
-keys are dropped, since `metric` is one of the keys being dropped — and reports
-whether the store changed. `Prefs` builds one over its own store and saves once if it
-says so, where it previously wrote the file up to three times during startup. All
-seven members are deleted and nothing replaced them: anything exercising the upgrade
-constructs a `PrefsUpgrade` over a map it owns and reads that map.
+- `src/main/java/songscribe/ui/selection/SelectionDragTracker.java:85` —
+  `getGlobalMouseReleasedListener()`. A reference lookup returns nothing: no
+  production caller, no test caller, no Javadoc link. The sweep missed it because
+  the "package-private for tests" comment sat on the neighbouring
+  `getDraggingLine()` that *was* deleted. `ui/selection` has no test package, so a
+  member with no callers is simply dead. Delete it.
+- `src/main/java/songscribe/smufl/SMuFLMetadata.java:96` —
+  `getAdvanceWidth(SMuFLGlyph)`, covered under finding 3.
 
-## The same violation stands across the rest of the codebase
+### 6b. A builder default nothing can reach, that hands back a plausible wrong answer
 
-Handed off to `plans/test-only-surface.md` — the path
-`ui/dialog/AttachmentDialogController.java:55` already cites as the rule it obeys,
-so writing it there makes that reference resolve.
+**Where:** `src/main/java/songscribe/ui/renderer/LineInvariants.java:638–646`. Not
+in the diff; found on the way through.
 
-A preliminary sweep hits roughly thirty files, not the dozen a first pass
-suggested. The handoff carries the two searches that found them (neither is
-sufficient alone), the confirmed declarations with line numbers, the two entries
-already settled as stale comments rather than violations, and the `PrefsUpgrade`
-extraction as the pattern to follow. Completing the inventory is its first task.
+`setViewScale` carries the Javadoc "Defaults to `ViewScale.IDENTITY` (natural
+size) when not set, e.g. in tests." Its only production caller,
+`LineRenderer.buildInvariants`, always sets it, and the tests named in the comment
+are the deleted suite. `build()` already refuses to produce an object when
+`layoutResult` or `lyricRenderMetrics` are missing, but says nothing about zoom.
 
-## The four unranged `NumericTextField` constructors are gone
+So a future caller who forgets the zoom gets a line rendered at 100% while the
+rest of the view is zoomed, with no error to say so. That is the shape
+`~/.claude/guides/design.md` singles out as the one that must never be written: an
+arbitrary default that masquerades as success. Check `viewScale` in `build()`
+alongside the other two required fields, or take it in the `Builder`'s
+constructor, and delete the sentence about tests.
 
-Decided during the work: `NumericTextField()`, `(boolean allowDecimal)`,
-`(int columns)` and `(int columns, boolean allowDecimal)` had no callers and no
-subclasses, so they were removed rather than given a default range.
+### 6c. The standalone folder converter drives Swing from a background thread
 
-Worth recording because their removal fixed something quietly: those constructors
-left `min` and `max` both at `0`, so `hasValidValue()` on such a field accepted only
-the literal `"0"`. Had anything ever used one, it would have been wrong. If they come
-back, they should come back with an explicit unbounded range, and the question of
-what `hasValidValue()` means on a decimal-accepting field has to be answered then —
-an integer range cannot contain `"1.5"`.
+**Where:** `src/main/java/songscribe/uiconverter/ConvertAction.java:88` and its
+inner `ConvertThread.run()`. Not in the diff; found while tracing which threads
+reach the message bus.
+
+`ConvertAction` starts a plain `Thread` and, from it, calls
+`scoreView.openFile(...)` for each song, then writes files, builds images and
+advances a progress dialog. `openFile` goes on to `setSong`, which constructs a
+`ScoreViewController`, which subscribes to the message bus in its constructor and
+posts synchronously. All of that — Swing component construction, Swing mutation
+and synchronous handler dispatch — happens off the event thread.
+
+Scope, corrected from the agent's report: `UIConverter` is a **separate process
+mode** (`SongScribe.main` dispatches `case "ui_converter"`), so there is no live
+main window whose handlers this reaches. The damage is confined to the converter's
+own object graph. It is still an off-thread Swing violation, of the kind that
+usually works and occasionally produces a corrupted repaint, a stale-state
+exception in a handler that assumed the event thread, or a hang.
+
+This is not something the current change caused, and it is not something the
+current change makes worse. It is worth naming because the change just built the
+right mechanism for exactly this shape of work — `Converter.run`'s scope — and
+`ConvertAction` is the one remaining conversion path that does not use it.
+Deciding what to do here belongs with the converter redesign
+`docs/lifecycle.md` already anticipates.
+
+---
+
+## 7. Twenty-three members kept their test-widened visibility after the comments were deleted
+
+`plans/test-only-surface.md` records these as "verified live and corrected in
+place rather than deleted." The verification asked *does this have a production
+caller?* — which each does. The question the plan's own rule requires is *does it
+have a production caller **outside its own class**?*
+
+A reference sweep over the plan's list found that **23 of the 26 named members are
+referenced only inside the class that declares them.** I spot-checked six of these
+directly (`Shutdown.runJVMTasksFromHook`, `StaffPanel.layOutLines`,
+`ActionReflector.triggerReflection`, both `SMuFLMetadata` overloads, and
+`SelectionDragTracker.getGlobalMouseReleasedListener`) and each held. They should
+be `private`, and the compiler proves each one.
+
+| Class | Members with no caller outside the declaring class |
+|---|---|
+| `SongScribe` | `resolveLogDir` ×2, `configureLogging(env, url)`, `truncateLogIfRequested(env)` |
+| `SMuFLMetadata` | `getAdvanceWidth(map, glyph)`, `getAdvanceWidthOrZero(map, glyph)` |
+| `LineRenderer` | `drawStaffLines`, `getElementColor`, `computeOverrideXSs`, `renderKeyChanges`, `renderWithPreviewShiftIfNeeded` |
+| `PlaybackController` | `handleMetaMessage`, `updatePlayingNote`, `setLoopSequence`, `buildSequenceForSelection` |
+| `AttributionPane` | `LINE_BOX_REFERENCE`, `MeasuredCache`, `measure` |
+| `LineComponent` | `layoutResult`, `layoutDirty` |
+| `TextPanel` | `calculateUnionWidth` |
+| `StaffPanel` | `layOutLines` |
+| `FootnotesComponent` | `calculateRenderX` |
+| `LineSelectionHandler` | `HEADER_GAP_PX` |
+| `ScoreView` | `scoreKeyBindings` |
+| `PlayStopAction` | `PLAY_ICON`, `STOP_ICON` |
+| `ActionReflector` | `triggerReflection` |
+
+Three from the plan's list are genuinely package-private and correct:
+`LineComponent.readyLayout` (called by `LineSelectionHandler`),
+`StaffPanel.ensureAllLineLayouts` (called by `StaffLinesLayout`), and
+`MeasureBuilder.buildMeasure` (called by `ScorePartwiseBuilder`).
+
+Three more, not on the plan's list, are in the same state and carry Javadoc that
+describes the visibility as intentional:
+
+- `Shutdown.shutdown()` — only caller is `Shutdown.now()`, and its Javadoc still
+  reads "Package-private — production code calls `now()`."
+- `Shutdown.runJVMTasksFromHook()` — only referenced by the method reference in
+  `Shutdown`'s own constructor, so `private` is correct.
+- `MidiController.closed` — only read and written by `MidiController.closeMidi`.
+
+**Why it matters.** Nothing breaks today. What it costs is a signal: package-private
+tells the next reader "something else in this package depends on this, so changing
+its shape is not a local decision." Twenty-six false signals make the three true
+ones unreadable, and the next person who wants to widen a member for a test has a
+pile of precedent to point at.
+
+---
+
+## 8. Test conformance
+
+### 8a. `UndoController.deinitialize()` is test-only production surface
+
+**Where:** `src/main/java/songscribe/undo/UndoController.java:411`.
+
+A reference lookup returns exactly one caller: `UnitTest.teardown()` in the test
+tree. Unlike `Actions.deinitialize()` and `PlaybackController.deinitialize()`,
+which are called by their own `initialize()` on the re-entry path, nothing in
+production calls this one — `UndoController.initialize()` does not.
+
+This is the plan's own rule ("No production member exists to serve a test") with
+one surviving exception it did not catch. It is not simply deletable: the test
+suite needs it, because `UndoController` is a static singleton whose undo and redo
+stacks outlive a test even though its bus subscription no longer does. That makes
+the honest fix a design question about the singleton, not a deletion — which is
+why I am reporting it rather than proposing one. Worth a decision on whether it
+belongs in the design-pass register.
+
+### 8b. The teardown comment explains one of the two calls it sits above
+
+**Where:** `src/test/java/songscribe/UnitTest.java:90–96`.
+
+The rewritten comment says the calls retire the action singletons and release the
+mocked main window they captured. That is accurate for `Actions.deinitialize()`.
+The next line calls `UndoController.deinitialize()`, which captures no main window
+— its reason is that it clears the undo and redo stacks, which the bus scope
+closing cannot do. As written, the comment documents the easy-to-see reason and
+omits the one that would explain a confusing failure if the call were ever
+removed.
+
+### 8c. The new bus-scope behavior has no test
+
+This change replaced a single static bus with a stack carrying real invariants: a
+scope replaces rather than layers, closing discards everything subscribed inside
+it, popping below the application bus is refused. None of the six surviving test
+classes asserts any of that; it is exercised only incidentally, as plumbing, by
+every test's setup and teardown. The project's own rule is that changing a
+contract or an implementation requires a test in the same change, and this is the
+kind of multi-call invariant the testing floor exists for.
+
+I am not proposing a list here — the project requires the proposed tests to be
+seen and approved before any are written. Flagging the gap at the change that
+created it.
+
+---
+
+## 9. Documentation and comments still pointing at a suite that no longer exists
+
+- **`UndoController.initialize()`** (`UndoController.java:181–188`) — its Javadoc
+  says subscription is explicit because lazy construction "in tests can occur
+  while the message bus is mocked — subscribing then would register the listener
+  against a mock and corrupt its later real subscription." There is no mocked bus
+  any more; tests get a real bus in a scope. Rewrite to the reason that still
+  holds, which is the one `PreviewElementManager` now states.
+- **`BaseDialog`'s constructor** (`BaseDialog.java:285–289`) — "a test teardown
+  that unsubscribes it is healed by the next dialog construction." Test teardown
+  no longer unsubscribes individual listeners; it discards the bus.
+- **`SongSettingsLayout`'s class Javadoc** (`SongSettingsLayout.java:32–38`) —
+  describes its contents as distinct from "the pure-logic helpers
+  `SongSettingsDialog` hosts for testability", which is a claim about a suite that
+  does not exist.
+- **`docs/lifecycle.md`** was not updated. Its closing table, introduced as "Three
+  teardowns exist and none substitutes for another", does not mention that closing
+  a bus scope now also ends a set of registrations — the paragraph
+  `docs/messages.md` gained about a scope not discharging the disposal obligation
+  belongs in the table that claims to be exhaustive. Its startup section also
+  still shows only `Actions.initialize(this)` where three initializers now run.
+- **`plans/design-pass-register.md:191`** states that `MidiController.synthesizer`
+  "is still test-only surface on the same class." It is not:
+  `PreferencesDialog.ensureInstrumentsLoaded` reads it. It is over-visible (a
+  `public static volatile` field written only inside `MidiController`) and the
+  register's own pass-26 fix removes it anyway, but the characterisation would
+  mislead whoever picks that pass up.
+- **`RuntimeError.setExitHandlerForTesting`**, **`resetAlertShownForTesting`** and
+  **`OptionDialogs.setSuppressDialogs`** are the only surviving hits for the
+  plan's own `ForTesting` name sweep. The register owns them under pass 30, so
+  this is not an oversight — but they are live test-only production surface, and
+  the plan's opening line currently has three exceptions.
+
+---
+
+## 10. Formatting left behind by the deletions
+
+- A paragraph tag with nothing after it, immediately before the tag block — the
+  paragraph it opened was the deleted sentence. Renders as a stray empty
+  paragraph: `FootnotesComponent.java:99`, `TextPanel.java:185`,
+  `StaffPanel.java:206`. These three are the only occurrences in `src/main/java`,
+  and all three came from this change.
+- A blank line between the last member and the class's closing brace, where a
+  deleted member used to be: `BeamScoring.java`, `AppearanceManager.java`,
+  `PreviewOverlayRegistry.java`, `MyFontUtils.java`.
+- A doubled blank line at `MyFontUtils.java:90`, where `resetFontCache` was.
+
+---
+
+## Duplication
+
+`Converter.java:72–78` and `src/test/java/songscribe/message/MessageCenterTestHelper.java:59–64`
+each build the same thing: a synchronized `List<String>`, a lambda appending
+`MessageCenter.describe(error)` to it, and an emptiness check — including two
+hand-written copies of the comment explaining why the list is synchronized. A
+small `PublicationErrorLog implements IPublicationErrorHandler`, holding the list
+and exposing whether it is empty and what it collected, removes both copies and
+gives the "swallowed handler error" idea one name. It has a production caller, so
+it is not test-only surface.
+
+---
+
+## Checked and clean
+
+- `Converter.run` reproduces what each converter's `main` did before: same
+  ordering, and exit codes are untouched because they come from `System.exit(-1)`
+  inside `ArgumentReader`, which runs before `run` checks its result.
+  `ImageConverter` gains a log line on the rare reflection-failure parse path
+  where it previously returned silently.
+- No orphaned members from the deletions: `AppearanceManager.unregisterOsListener`
+  still has its production caller (`switchTheme`), `PreviewOverlayRegistry.getOverlay`
+  and `PreviewCursorHider.discard` still have production callers, and all four
+  converters' `LOG` fields are still used.
+- `describe` / `whichHandlerThrew` / `exitOnPublicationError` are a faithful
+  decomposition of the old `handlePublicationError` — same null handling, same
+  fatal-exit logic.
+- The unit suite runs in a single non-forked JVM with no parallel execution
+  configured, so `MessageCenterTestHelper`'s static scope and error list are safe
+  as written.
+- JUnit runs superclass `@BeforeEach` first and subclass `@AfterEach` first, so
+  `MainFrameMockTest`'s subscriptions land inside the test's scope and its mock is
+  closed before the scope is discarded. That ordering is correct.
+- The new API adds no test-only surface of its own — every new member has at least
+  one production caller, verified by reference lookup.

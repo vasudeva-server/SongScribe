@@ -60,7 +60,6 @@ class LineSelectionHandler {
 
     /**
      * The gap the band's leading edge keeps from the staff header, so a sweep never touches it.
-     * Package-private for testing.
      * <p>
      * There is no matching gap on the right: the auto-maintained terminal is right-aligned with
      * the end of the staff, so the leading edge stopping at its left ink edge already leaves no
@@ -69,7 +68,7 @@ class LineSelectionHandler {
      * Document pixels rather than view pixels: the reachable range is then the same music at
      * every zoom, which is the whole reason the band's endpoints are held in staff spaces.
      */
-    static final double HEADER_GAP_PX = 1.0;
+    private static final double HEADER_GAP_PX = 1.0;
 
     private final LineComponent lc;
 

@@ -182,13 +182,11 @@ public class TextPanel extends JPanel {
      * <p>
      * This is the maximum width of lyrics, Bangla lyrics, and translation,
      * used to center all sections at the same X position.
-     * <p>
-     * Package-private for testing.
      *
      * @param g2 Graphics context
      * @return Union width in pixels
      */
-    double calculateUnionWidth(Graphics2D g2) {
+    private double calculateUnionWidth(Graphics2D g2) {
         double maxWidth = 0;
 
         maxWidth = Math.max(maxWidth, underLyricsComponent.getTextWidth(g2));

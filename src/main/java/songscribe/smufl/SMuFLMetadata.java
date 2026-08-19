@@ -90,44 +90,13 @@ public final class SMuFLMetadata {
     }
 
     /**
-     * Returns the advance width for a glyph, or null if not present in metadata.
-     */
-    @Nullable
-    public static Double getAdvanceWidth(SMuFLGlyph glyph) {
-        return getAdvanceWidth(instance().advanceWidths, glyph);
-    }
-
-    /**
-     * Returns the advance width {@code advanceWidths} holds for {@code glyph}, or null if
-     * {@code glyph} has no entry.
+     * Returns the glyph's advance width in staff spaces, or 0 if the font has no metadata for it.
      *
-     * <p>The instance-bound {@link #getAdvanceWidth(SMuFLGlyph)} delegates here with
-     * {@code instance().advanceWidths}. Package-private so a test can exercise the
-     * null-return case with a caller-supplied map, since every {@link SMuFLGlyph} the font
-     * declares currently has a real Bravura entry and the null branch is otherwise
-     * unreachable.
+     * @return the advance width in staff spaces, or 0 when the font declares none for this glyph
      */
-    @Nullable
-    static Double getAdvanceWidth(Map<SMuFLGlyph, Double> advanceWidths, SMuFLGlyph glyph) {
-        return advanceWidths.get(glyph);
-    }
-
-    /** Returns the glyph's advance width in staff spaces, or 0 if the font has no metadata for it. */
     public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
-        return getAdvanceWidthOrZero(instance().advanceWidths, glyph);
-    }
+        var width = instance().advanceWidths.get(glyph);
 
-    /**
-     * Returns the advance width {@code advanceWidths} holds for {@code glyph}, or 0 if
-     * {@code glyph} has no entry.
-     *
-     * <p>The instance-bound {@link #getAdvanceWidthOrZero(SMuFLGlyph)} delegates here with
-     * {@code instance().advanceWidths}. Package-private so a test can exercise the
-     * zero-fallback case with a caller-supplied map, for the same reason as
-     * {@link #getAdvanceWidth(Map, SMuFLGlyph)}.
-     */
-    static double getAdvanceWidthOrZero(Map<SMuFLGlyph, Double> advanceWidths, SMuFLGlyph glyph) {
-        var width = getAdvanceWidth(advanceWidths, glyph);
         return width != null ? width : 0.0;
     }
 

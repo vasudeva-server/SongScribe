@@ -1275,20 +1275,4 @@ final class BeamScoring {
             breakdownOf(candidate)
         );
     }
-
-    // ---------------------------------------------------------------------
-    // Accessors for the pipeline state (used by tests)
-    // ---------------------------------------------------------------------
-
-    double unquantedLeftY() {
-        return unquantedLeftY;
-    }
-
-    double unquantedRightY() {
-        return unquantedRightY;
-    }
-
-    double musicalDy() {
-        return musicalDy;
-    }
 }

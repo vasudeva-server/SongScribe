@@ -53,8 +53,10 @@ SongScribe.main
 ```
   MainFrame.getInstance()        — constructs the singleton via InstanceHolder
     └─► MainFrame.initFrame()    — wires the UI; called from main()
-          └─► Actions.initialize(this)  — populates all Actions.* constants
-                └─► first constant use  — MenuController.init(this)
+          ├─► Actions.initialize(this)  — populates all Actions.* constants
+          │     └─► first constant use  — MenuController.init(this)
+          ├─► PlaybackController.initialize(this)
+          └─► PreviewElementManager.initialize()  — attaches the hover-preview singleton
 ```
 
 ---
@@ -140,19 +142,28 @@ otherwise keep the dialog reachable for the rest of the session.
 A further case is coming rather than present: a `ScoreView` built for one
 conversion, with its controller, its `SelectionCoordinator` and that
 coordinator's `ActionReflector`, is finished with when the conversion is. The
-converters are being redesigned; whatever replaces them owes the disposal, and
-`ScoreView` acquires `dispose()` then — not before, because the rewrite decides
-whether a converter builds a view at all.
+`MessageBusScope` a headless conversion runs inside does not settle it: closing
+a scope unsubscribes, and unsubscribing on the way out of a process buys
+nothing. The converters are being redesigned; whatever replaces them owes the
+disposal, and `ScoreView` acquires `dispose()` then — not before, because the
+rewrite decides whether a converter builds a view at all.
 
-Three teardowns exist and none substitutes for another:
+Four things end a set of registrations, and none substitutes for another:
 
 | | Ends | Reversed by |
 |---|---|---|
 | `Shutdown.now()` | the process | nothing |
 | `Foo.deinitialize()` | a static subsystem's current initialization | `Foo.initialize(...)` |
 | `foo.dispose()` | one instance, permanently | nothing |
+| `scope.close()` | every subscription made on that bus | opening another scope |
 
 There is no point unsubscribing on the way out of the process, and no point
 running the quit sequence to discard a view. `deinitialize()` is the odd one:
 it is the only teardown you can undo, which is why it is named for the thing
 that undoes it.
+
+**Closing a `MessageBusScope` is not disposal.** It covers the unsubscribe half
+and nothing else: `dispose()` also cancels the `Bindings` observations an object
+declared and releases what its transforms and effects captured, and discarding a
+bus does neither. Most subscribers are on the application bus in any case, where
+no scope ever closes. See [messages.md](messages.md).

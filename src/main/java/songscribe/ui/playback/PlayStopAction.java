@@ -37,10 +37,8 @@ public final class PlayStopAction extends SequencerAction {
     private static final String STOP_NAME = Strings.get(Strings.ACTION_PLAY_STOP);
     private static final String STOP_TOOLTIP = Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP);
 
-    // Package-private so the tests can assert the button shows the right glyph without
-    // redeclaring the codepoints.
-    static final String PLAY_ICON = "@\uF446";
-    static final String STOP_ICON = "@\uF447";
+    private static final String PLAY_ICON = "@\uF446";
+    private static final String STOP_ICON = "@\uF447";
 
     private static final int ICON_SIZE = 20;
 

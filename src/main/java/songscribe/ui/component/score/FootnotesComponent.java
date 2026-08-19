@@ -96,13 +96,11 @@ public class FootnotesComponent extends ScoreComponent {
      * <p>
      * The text width is capped at {@code MAX_WIDTH_PERCENTAGE} of the line width before
      * centering, so the returned value is always non-negative.
-     * <p>
-     * Package-private for testing.
      *
      * @param textWidth measured pixel width of the footnote block
      * @return x coordinate (in pixels) of the left edge of the first drawn character
      */
-    float calculateRenderX(double textWidth) {
+    private float calculateRenderX(double textWidth) {
         if (song == null) {
             return 0;
         }

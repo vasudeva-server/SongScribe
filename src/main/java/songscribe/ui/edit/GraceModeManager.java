@@ -292,58 +292,6 @@ public final class GraceModeManager {
         return cachedHostInsertion;
     }
 
-    // -------------------------------------------------------------------------
-    // Package-private accessors (for tests)
-    // -------------------------------------------------------------------------
-
-    static void setInstance(@Nullable GraceModeManager value) {
-        instance = value;
-    }
-
-    void setState(State state) {
-        this.state = state;
-    }
-
-    void setPendingCancel(boolean pendingCancel) {
-        this.pendingCancel = pendingCancel;
-    }
-
-    boolean isPendingCancel() {
-        return pendingCancel;
-    }
-
-    boolean isPendingConnect() {
-        return pendingConnect;
-    }
-
-    @Nullable StaffElement getGraceNote() {
-        return graceNote;
-    }
-
-    void setGraceNote(@Nullable StaffElement graceNote) {
-        this.graceNote = graceNote;
-    }
-
-    @Nullable Line getGraceLine() {
-        return graceLine;
-    }
-
-    void setGraceLine(@Nullable Line graceLine) {
-        this.graceLine = graceLine;
-    }
-
-    void setGraceLineComponent(@Nullable LineComponent graceLineComponent) {
-        this.graceLineComponent = graceLineComponent;
-    }
-
-    int getGraceNoteIndex() {
-        return graceNoteIndex;
-    }
-
-    boolean isJustEnteredInsert() {
-        return justEnteredInsert;
-    }
-
     /**
      * Computes the host-note insertion preview using the current locked state.
      * Returns null if state is incomplete (preview/line/component missing) or the

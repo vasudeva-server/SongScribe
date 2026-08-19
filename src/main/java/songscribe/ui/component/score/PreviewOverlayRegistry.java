@@ -194,21 +194,4 @@ final class PreviewOverlayRegistry {
     static @Nullable PreviewElementOverlay getOverlay() {
         return overlay;
     }
-
-    /**
-     * Returns the installed grace-host glissando-preview overlay, or null before
-     * {@link #install}.
-     */
-    static @Nullable GraceGlissandoPreviewOverlay getGraceGlissandoOverlay() {
-        return graceGlissandoOverlay;
-    }
-
-    /**
-     * Clears the installed overlays (for test teardown), so a later test's {@link #install}
-     * starts from a clean slate instead of reusing a previous test's overlay instances.
-     */
-    static void reset() {
-        overlay = null;
-        graceGlissandoOverlay = null;
-    }
 }

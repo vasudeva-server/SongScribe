@@ -160,16 +160,24 @@ the reason for it is still in hand.
   `Prefs`'s constructor — extract a `PrefsStore`, constructed from a path, that
   the pipeline runs against, so a test can build one directly.
 - **→ Pass 30.** `RecentDocumentsManager.resetForTest`/`reloadForTest` are
-  test-only; `clear()` already covers teardown, and `reloadForTest`'s logic
-  (stored strings in, existing paths out) wants to be a static `readRecents`
-  function that `loadFromPrefs` calls, not a constructor step exposed for
-  replay.
+  deleted — both had zero callers once the test vault was retired. What remains
+  is the shaping: `loadFromPrefs`'s logic (stored strings in, existing paths
+  out) wants to be a static `readRecents` function, not a constructor step. The
+  extraction is still there, now with its test justification removed from the
+  Javadoc rather than acted on.
 - **→ Pass 25.** `MainFrame.clearStartupErrorsForTest` and
-  `PreviewElementManager.resetOverlaysForTest` are test-only access onto
-  process-global static state (`STARTUP_ERRORS`; `PreviewOverlayRegistry`'s and
-  `PreviewCursorHider`'s statics). Extract a `StartupErrorQueue` that
-  `MainFrame` owns an instance of; move overlay ownership onto
-  `OverlayHost`/`ScoreView` so a discarded view takes its overlays with it.
+  `PreviewElementManager.resetOverlaysForTest` are deleted, along with seven
+  more dead members on `PreviewElementManager` and two on
+  `PreviewOverlayRegistry`. The state they reached is untouched and still
+  process-global: extract a `StartupErrorQueue` that `MainFrame` owns an
+  instance of; move overlay ownership onto `OverlayHost`/`ScoreView` so a
+  discarded view takes its overlays with it.
+- **→ Pass 25.** `PreviewElementManager` subscribes through
+  `PreviewElementManager.initialize()`, called from `MainFrame.initFrame()`
+  beside `Actions.initialize` and `PlaybackController.initialize`, rather than
+  from a `static {}` block. Bus wiring no longer depends on class-load order,
+  and a headless conversion — which builds a score view but never hovers — does
+  not subscribe a preview handler at all.
 - **→ Pass 26, then Pass 23.** `PreferencesDialog`'s instrument cache
   (`ensureInstrumentsLoaded`, `getInstrumentStrings`, `getInstrumentPrograms`,
   `resetInstrumentsForTesting`) is the open synthesizer's state, living on a
@@ -179,9 +187,25 @@ the reason for it is still in hand.
   `PreferencesDialog` becomes the caller. `programToIndex`'s `0` fallback for
   an unrecognized program is an arbitrary default that is also a legitimate
   index — a guard, not a value — worth fixing in the same move.
-  `MidiController.synthesizer` (`public static volatile`) and
-  `failForTesting` (`public static`, read by production) are test-only surface
-  on the same class.
+  `MidiController.failForTesting` and the `openMidi()` branch reading it are
+  deleted; `MidiController.synthesizer` (`public static volatile`) is over-visible
+  on the same class — written only inside `MidiController` and read by
+  `PreferencesDialog.ensureInstrumentsLoaded`, which this pass retires anyway.
+  `PreferencesDialog.resetInstrumentsForTesting` is deleted, but the cache it
+  reset is untouched and still lives on the dialog.
+- **→ Pass 30, needing Pass 26.** The fatal-error path assumes a display that
+  four of the seven entry points do not have. `RuntimeError.exit` routes
+  unconditionally through `OptionDialogs.showErrorMessageWithString`, i.e. a
+  modal `JOptionPane`, and the only thing that turns it off is
+  `OptionDialogs.setSuppressDialogs` — `public`, documented "for testing", with
+  no production caller. So `ImageConverter`, `PDFConverter`, `MidiConverter` and
+  `SVGConverter` attempt a dialog on any fatal error. That, together with
+  `RuntimeError.setExitHandlerForTesting`/`resetAlertShownForTesting`, is one
+  missing decision wearing three test-shaped disguises: **how does this entry
+  point report and terminate a fatal error?** Answer it once, at the boundary,
+  and all three members stop being back doors. `Converter.run` now installs a
+  non-interactive *publication-error* handler, which is the same question
+  answered for the bus only.
 
 ## Blockers
 

@@ -156,10 +156,6 @@ public final class UndoController {
     private UndoStep cleanStep = BASELINE;
     private boolean cleanValid = true;
 
-    // Guards against double-subscription so initialize() can safely re-subscribe the
-    // singleton after deinitialize() removed it.
-    private boolean subscribed;
-
     // Tier-A op-name declared by the current UI action, set around dispatch by the
     // UIAction template and consumed by Song.beginModification at the depth 0→1
     // transition. Held here — the intermediary between UI and model — rather than on
@@ -170,26 +166,21 @@ public final class UndoController {
     private UndoController() {
     }
 
-    private void subscribeToBus() {
-        if (!subscribed) {
-            MessageCenter.subscribe(this);
-            subscribed = true;
-        }
-    }
-
     /**
-     * Subscribes the singleton to the bus, attaching it. Idempotent — a call while
-     * already attached is a no-op.
+     * Subscribes the singleton to the bus in force, attaching it. Idempotent — the bus refuses a
+     * listener it already holds, so no flag here tracks whether this has run, and a call after
+     * {@link #deinitialize()} re-attaches.
      *
      * <p>Subscription is deliberately not a constructor side effect: the singleton is
      * also constructed lazily the first time {@link Song#beginModification} reads the
-     * pending op-name, which in tests can occur while the message bus is mocked —
-     * subscribing then would register the listener against a mock and corrupt its
-     * later real subscription. Keeping subscription explicit means only an explicit call
-     * to this method ever registers it, always against the live bus.
+     * pending op-name, which orders it against nothing in particular. Keeping subscription
+     * explicit means only a call to this method ever attaches the controller, at a point
+     * startup chooses.
+     *
+     * @effects the controller begins recording mutations posted on the bus in force
      */
     public static void initialize() {
-        INSTANCE.subscribeToBus();
+        MessageCenter.subscribe(INSTANCE);
     }
 
     /**
@@ -416,7 +407,6 @@ public final class UndoController {
      */
     public static void deinitialize() {
         MessageCenter.unsubscribe(INSTANCE);
-        INSTANCE.subscribed = false;
         INSTANCE.undoStack.clear();
         INSTANCE.redoStack.clear();
         INSTANCE.pendingOpName = null;

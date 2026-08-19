@@ -22,79 +22,63 @@ package songscribe.message;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Set;
+
+import org.jspecify.annotations.Nullable;
 
 /**
- * Test-only access to {@link MessageCenter} internals.
- * Lives in the same package to reach package-private methods without opening production APIs.
+ * Gives each test its own message bus, via {@link MessageBusScope}.
  *
- * <p>Two probes are installed:
+ * <p>A test's scope solves both problems a shared bus creates for tests:
  *
  * <ul>
- *   <li><b>Publication errors</b> — MBassador swallows any throwable the registered error
- *       handler throws, so a {@code @Handler} that throws during {@link MessageCenter#post}
- *       silently aborts delivery to every lower-priority subscriber of that post and the
- *       test keeps running. The probe records each publication error so {@code UnitTest}'s
- *       teardown can fail the test loudly instead.</li>
- *   <li><b>Subscriptions</b> — production objects subscribe in their constructors, so
- *       merely constructing one in a test leaves a zombie listener on the JVM-wide bus
- *       that fires against torn-down mocks in later tests. The probe records every
- *       listener subscribed during a test so {@code UnitTest}'s teardown can unsubscribe
- *       them all.</li>
+ *   <li><b>Zombie listeners.</b> Production objects subscribe in their constructors, so merely
+ *       constructing one in a test leaves a listener behind that fires against torn-down mocks
+ *       in later tests. Closing the scope discards the bus and everything on it at once, so
+ *       there is nothing to track and nothing to unsubscribe.</li>
+ *   <li><b>Swallowed handler errors.</b> MBassador wraps its error handler in
+ *       {@code catch(Throwable)}, so a {@code @Handler} that throws during
+ *       {@link MessageCenter#post} silently aborts delivery to every lower-priority subscriber
+ *       of that post and the test keeps running. The scope's error handler records them so
+ *       {@link #assertNoPublicationErrors} can fail the test loudly instead.</li>
  * </ul>
+ *
+ * <p>Because the scope replaces the application bus rather than layering over it, anything
+ * subscribed outside a test — a class that subscribes from a static initializer, say — is not
+ * reachable from inside one, and is discarded along with the scope if it happened to load
+ * during a test.
  */
 public final class MessageCenterTestHelper {
 
+    // Synchronized because handlers may publish from non-test threads.
     private static final List<String> publicationErrors = Collections.synchronizedList(new ArrayList<>());
 
-    // Identity semantics: mocks and value-like listeners must be tracked by reference,
-    // not equals(). Synchronized because handlers may subscribe from non-test threads.
-    private static final Set<Object> trackedListeners =
-        Collections.synchronizedSet(Collections.newSetFromMap(new IdentityHashMap<>()));
+    private static @Nullable MessageBusScope scope = null;
 
     /**
-     * Installs the recording probes. Call once from a {@code @BeforeAll} in each test
-     * base class. Safe to call multiple times.
+     * Opens this test's bus scope. Call from {@code @BeforeEach}, before anything the test
+     * constructs can subscribe.
      */
-    public static void install() {
-        MessageCenter.setPublicationErrorProbeForTesting(publicationErrors::add);
-        MessageCenter.setSubscriptionProbeForTesting(trackedListeners::add);
-    }
-
-    /**
-     * Unsubscribes every listener subscribed via {@link MessageCenter#subscribe} since
-     * the last call, restoring an empty bus between tests. Call from {@code @AfterEach}
-     * in test base classes.
-     */
-    public static void unsubscribeTrackedListeners() {
-        // Snapshot: unsubscribing must not race a handler subscribing mid-iteration.
-        Object[] listeners;
-
-        synchronized (trackedListeners) {
-            listeners = trackedListeners.toArray();
-            trackedListeners.clear();
-        }
-
-        for (var listener : listeners) {
-            MessageCenter.unsubscribe(listener);
-        }
-    }
-
-    /**
-     * Discards recorded publication errors. Call after intentionally driving the error
-     * path (e.g. invoking {@code handlePublicationError} directly) so teardown does not
-     * flag the deliberate error.
-     */
-    public static void clearPublicationErrors() {
+    public static void openScope() {
         publicationErrors.clear();
+        scope = new MessageBusScope(error -> publicationErrors.add(MessageCenter.describe(error)));
     }
 
     /**
-     * Fails if any publication error was recorded since the last clear. Recorded errors
-     * are cleared before throwing so a failure does not cascade into later tests in the
-     * same class.
+     * Closes this test's bus scope, discarding every listener it subscribed. Call from
+     * {@code @AfterEach}, before {@link #assertNoPublicationErrors} so the discard always runs.
+     * Idempotent.
+     */
+    public static void closeScope() {
+        if (scope != null) {
+            scope.close();
+            scope = null;
+        }
+    }
+
+    /**
+     * Fails if any publication error was recorded in this test's scope. Recorded errors are
+     * cleared before throwing so a failure does not cascade into later tests in the same class.
      */
     public static void assertNoPublicationErrors() {
         if (publicationErrors.isEmpty()) {

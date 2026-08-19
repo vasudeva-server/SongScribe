@@ -104,11 +104,27 @@ public final class PreviewElementManager {
     /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
     private static final PreviewElementManager INSTANCE = new PreviewElementManager();
 
-    static {
-        MessageCenter.subscribe(INSTANCE);
+    private PreviewElementManager() {
     }
 
-    private PreviewElementManager() {
+    /**
+     * Attaches the singleton to the bus in force. Called by {@code MainFrame.initFrame} during
+     * startup; see {@code docs/lifecycle.md}.
+     * <p>
+     * Idempotent, and no flag here makes it so — the bus refuses a listener it already holds. That
+     * matters more than saving the second call: a guard remembering that this ran once would
+     * answer "already subscribed" after a {@link songscribe.message.MessageBusScope} had discarded
+     * the subscription, and the singleton would stay off the bus for the rest of the process.
+     * <p>
+     * Subscription is deliberately not a static-initializer side effect. As one, it happened
+     * whenever the classloader first reached this class, which nothing orders. Keeping it explicit
+     * also means a headless conversion, which builds a score view but never hovers, does not
+     * subscribe a preview handler at all.
+     *
+     * @effects the singleton begins receiving mode, zoom, dialog and background notifications
+     */
+    public static void initialize() {
+        MessageCenter.subscribe(INSTANCE);
     }
 
     @Handler
@@ -524,69 +540,10 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Sets the current insertion X index (0 to elementCount inclusive).
-     */
-    static void setCurrentXIndex(int index) {
-        currentXIndex = index;
-    }
-
-    /**
-     * Sets the current preview line.
-     */
-    static void setCurrentPreviewLine(@Nullable LineComponent line) {
-        currentPreviewLine = line;
-    }
-
-    /**
-     * Sets the current Y position on the staff (in staff position units, not pixels).
-     */
-    static void setCurrentStaffPosition(int position) {
-        currentStaffPosition = position;
-    }
-
-    /**
      * Returns whether the mouse X (in staff spaces) is within the horizontal bounds of a note head.
      */
     static boolean isXPosSsMatchesElement() {
         return xPosSsMatchesElement;
-    }
-
-    /**
-     * Sets whether the mouse X (in staff spaces) is within the horizontal bounds of a note head.
-     */
-    static void setXPosSsMatchesElement(boolean matches) {
-        xPosSsMatchesElement = matches;
-    }
-
-    /**
-     * Returns the message-bus singleton (package-private for test support only), so tests can
-     * invoke its {@code @Handler} methods directly without posting through the mocked bus.
-     */
-    static PreviewElementManager instance() {
-        return INSTANCE;
-    }
-
-    /** Returns the installed hover-preview overlay, or null before {@link #installOverlay}. */
-    static @Nullable PreviewElementOverlay getOverlay() {
-        return PreviewOverlayRegistry.getOverlay();
-    }
-
-    /**
-     * Returns the installed grace-host glissando-preview overlay, or null before
-     * {@link #installOverlay}.
-     */
-    static @Nullable GraceGlissandoPreviewOverlay getGraceGlissandoOverlay() {
-        return PreviewOverlayRegistry.getGraceGlissandoOverlay();
-    }
-
-    /**
-     * Clears the installed overlays (package-private for test teardown), so a later test's
-     * {@link #installOverlay} starts from a clean slate instead of reusing a previous test's
-     * overlay instances.
-     */
-    static void resetOverlaysForTest() {
-        PreviewOverlayRegistry.reset();
-        PreviewCursorHider.discard();
     }
 
     // ==========================================================================

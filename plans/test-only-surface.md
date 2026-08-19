@@ -1,7 +1,5 @@
 # Test-Only Production Surface
 
-Handoff. The inventory below is preliminary — completing it is the first task.
-
 No production member exists to serve a test. A member whose only callers are
 tests is deleted, or the code is restructured so production supplies what the
 test needed. Widening visibility, adding a `*ForTest` accessor, or branching
@@ -12,148 +10,110 @@ obeys.
 
 ## What checks the work
 
-Tests are resident in `src/test/`, so both halves of each fix are verifiable:
+`src/test/` holds six test classes — `BindingsTest`, `OtherValueComboBoxTest`,
+`StringUtilsTest`, `PackageDependencyTest`, `MainFrameMockTest`, `E2ETest` —
+plus base classes and helpers. Test packages exist only for `songscribe`,
+`dom`, `e2e`, `error`, `io`, `io/musicxml`, `message`, `ui/action`,
+`ui/binding`, `ui/dialog` and `util`. **A flagged member in any other package
+cannot have a test caller**, so if it has no production caller it is simply
+dead, and deletion is the whole fix.
 
-- `jet_brains_find_referencing_symbols` on the member shows every caller,
-  production and test alike. A member with only test callers is the finding; a
-  member with none is dead either way.
-- `./scripts/compile.sh --test` catches a removal the tests still depend on.
-  Run it after each fix, and rewrite the affected test to the new shape in the
-  same change.
+- `jet_brains_find_referencing_symbols` on the member is the check. A member
+  with only test callers is the finding; a member with none is dead either way.
+- `./scripts/compile.sh --test` catches a removal something still depends on.
+- Deletions cascade. `PreviewElementManager.resetOverlaysForTest` was one member
+  in the first sweep and turned out to be eight, which then orphaned two more on
+  `PreviewOverlayRegistry`. After deleting a member, run
+  `find_referencing_symbols` on everything it called.
 
 Judge a restructured member on whether it is a coherent unit with its own
-contract, never on whether it is convenient to call from a test. A shape adopted
-because it suits an existing test is the original violation rearranged.
+contract, never on whether it is convenient to call from a test.
 
-## Task 1: complete the inventory
+## The remaining work: members widened silently
 
-The sweep below used two searches, and **neither alone is sufficient** — members
-like `ActionReflector.hasSavedActionStates` carry no telltale name and appear
-only in the comment search, while a declaration with no comment appears only in
-the name search.
+The name sweep and the comment sweep are both exhausted. What neither finds is a
+member widened with no naming convention and no comment admitting why —
 
 ```bash
-# names
 PROSE=1 rg -n "ForTest|ForTesting|VisibleForTesting" src/main/java/
-
-# justifications written in comments
-PROSE=1 rg -n "for test|for tests|package-private for test|package-visible for test|in unit tests|so a test|that a test|test setup|test teardown|test isolation|test injection|test inspection|for testability" src/main/java/
+PROSE=1 rg -ni "for test|for tests|in unit tests|so a test|that a test|test setup|test teardown|test isolation|test injection|test inspection|for testability|used by tests|exposed for" src/main/java/
 ```
 
-Both miss a member that is widened silently, with neither a naming convention
-nor a comment admitting why. Those are found only by asking of each
-package-private or non-private member: **which production code calls this?** Use
-`jet_brains_find_referencing_symbols`; a member with no production caller in this
-worktree is a candidate regardless of how it is named.
+— and that is the whole remaining category. `ActionReflector.setManagedActions`
+was one: `public`, undocumented, zero callers, found only by asking of a member
+that looked ordinary **which production code calls this?** Nothing but that
+question over every package-private and non-private member will find the rest.
 
-The preliminary sweep hit roughly **30 files**. Record the full list before
-fixing anything, because the fixes cluster — several files share one root cause
-and one change retires them together.
+Work package by package with `get_symbols_overview`, then
+`find_referencing_symbols` on each member that is not private. Packages with no
+test package at all are the cheapest ground, because there a zero-caller member
+needs no judgement — it is dead.
 
-## Task 2: fix them
+## What the comment sweep taught
 
-### Confirmed declarations
+Most of what the comment search returns is a **stale comment on a legitimate
+member**: real production callers, wrong comment. Verified live and corrected in
+place rather than deleted — `FootnotesComponent.calculateRenderX`,
+`LineComponent.readyLayout`/`layoutDirty`/`layoutResult`,
+`LineRenderer.drawStaffLines`/`getElementColor`/`computeOverrideXSs`/`renderKeyChanges`/`renderWithPreviewShiftIfNeeded`,
+`TextPanel.calculateUnionWidth`, `StaffPanel.ensureAllLineLayouts`/`layOutLines`,
+`LineSelectionHandler.HEADER_GAP_PX`, `ScoreView.scoreKeyBindings`,
+`MeasureBuilder.buildMeasure`,
+`AttributionPane.LINE_BOX_REFERENCE`/`MeasuredCache`/`measure`,
+`PlayStopAction.PLAY_ICON`, `ActionReflector.triggerReflection`, all four
+flagged `PlaybackController` members, and the four `SongScribe` and four
+`SMuFLMetadata` overloads that take their inputs explicitly and are called by
+their own no-argument wrappers.
 
-Verified as declarations, not comments. Line numbers as of this writing.
+Never delete on the strength of the comment. Run the reference check first.
 
-| File | Member | Line |
-|---|---|---|
-| `ui/playback/MidiController.java` | `failForTesting`, and the branch reading it | 61, 81 |
-| `error/RuntimeError.java` | `setExitHandlerForTesting`, `resetAlertShownForTesting` | 135, 140 |
-| `message/MessageCenter.java` | `setPublicationErrorProbeForTesting`, `setSubscriptionProbeForTesting` | 29, 34 |
-| `prefs/RecentDocumentsManager.java` | `resetForTest`, `reloadForTest` | 109, 119 |
-| `ui/component/LyricEditor.java` | `setFocusedForTesting`, `setSuppressDismissAdjustmentForTesting` | 1742, 1747 |
-| `ui/component/MainFrame.java` | `clearStartupErrorsForTest` — **`public`** | 189 |
-| `ui/component/score/PreviewElementManager.java` | `resetOverlaysForTest` | 587 |
-| `ui/dialog/PreferencesDialog.java` | `resetInstrumentsForTesting` | 206 |
-| `lifecycle/Shutdown.java` | `reset()` | 195 |
+Comments deliberately left as they are: `ModificationSession`, `Song`,
+`StaffElement` and `Line` describe a **mutation contract** in which bypassing a
+bracket is permitted for setup that mirrors `withoutMutationTracking` — that is
+contract language, matching `docs/mutations.md` and `docs/undo.md`, not a
+justification for a member's existence.
 
-### Comment-flagged, members not yet read
+## What the register owns
 
-Each of these carries a comment admitting a test justification. Read the member
-before deciding anything; some will turn out to be like the two settled cases
-below, where the comment is wrong and the member is legitimate.
-
-`SongScribe.java` (46, 53, 86, 116) · `dom/ModificationSession.java` (165) ·
-`dom/StaffElement.java` (603) · `smufl/SMuFLMetadata.java` (105, 125) ·
-`ui/OptionDialogs.java` (59) · `ui/component/BorderPanel.java` (70, 125, 130) ·
-`ui/component/score/FootnotesComponent.java` (100) ·
-`ui/component/score/LineComponent.java` (146, 150, 1219, 1222) ·
-`ui/component/score/LineRenderer.java` (203, 317, 343, 461, 505) ·
-`ui/component/score/LineSelectionHandler.java` (63) ·
-`ui/component/score/PreviewOverlayRegistry.java` (207) ·
-`ui/component/score/StaffPanel.java` (183, 210) ·
-`ui/component/score/TextPanel.java` (186) ·
-`ui/dialog/SongSettingsLayout.java` (37) ·
-`ui/dialog/fontchooser/model/FamilyListModel.java` (42) ·
-`ui/edit/EditModeManager.java` (90) · `ui/edit/GraceModeManager.java` (296) ·
-`ui/edit/InsertionPointMode.java` (206) ·
-`ui/playback/PlaybackController.java` (221, 237, 531, 546) ·
-`ui/selection/ActionReflector.java` (257) ·
-`ui/selection/SelectionDragTracker.java` (87)
-
-### Already settled — do not re-investigate
-
-Both are stale comments on legitimate members. Fix the comment, leave the code.
-
-- **`lifecycle/Shutdown.java:185`**, `runJVMTasksFromHook`. The comment says
-  "Package-private for tests", but the registry-owned JVM shutdown hook calls it.
-  It is a real production entry point. Drop the test clause from the comment.
-  (`Shutdown.reset()` at 195 is a genuine violation and is in the table above.)
-- **`dom/SongMetadata.java:131`**, the header reading "Normalization helpers
-  (package-visible for tests in this package)". The two members under it —
-  `normalizeTitle` (143) and `titleFromLyrics` (177) — are both `public` with
-  production callers. Delete the parenthetical.
-
-### Choosing the fix
-
-Three kinds, and the fix differs:
-
-- **Genuinely test-only** — delete it, or move the logic somewhere production
-  constructs directly. When a test cannot arrange the state it needs, the answer
-  is a constructor or factory taking that state, used by production too.
-- **A misnamed internal API** — it takes explicit arguments and returns a value,
-  so it is already a coherent unit. Rename it to the concept and write its
-  contract.
-- **An incomplete lifecycle contract** — a class with `initialize()` and no way
-  back has a missing half, tests or no tests. Name and document the teardown
-  rather than deleting the member. Most of the `reset*` / `setInstance` group is
-  this: a process-global with no way to put it back, so every test needs a back
-  door to undo the last one. Fixing the lifecycle retires several at once.
-
-### Start with `MidiController`
-
-`failForTesting` (61) is not surface, it is a branch. It is a mutable static that
-`openMidi()` — production code, on every launch — reads, and when set the method
-throws `MidiUnavailableException("forced failure for testing")`. So what a test
-exercises is not what ships, and anything leaving the flag set poisons audio for
-the rest of the process. Take it first.
-
-`MainFrame.clearStartupErrorsForTest` (189) is next: it is `public`, so it is
-application-wide API existing for a test rather than a widened internal.
+`plans/design-pass-register.md` carries the findings whose fix belongs to a
+numbered pass, not here: the `StartupErrorQueue` and overlay-ownership
+extractions (pass 25), the `PreferencesDialog` instrument cache (passes 26/23),
+`RecentDocumentsManager`'s `readRecents` shaping (pass 30), and the fatal-error
+path across the seven entry points (pass 30, needing pass 26) — of which
+`OptionDialogs.setSuppressDialogs` is one third. Do not duplicate them here.
 
 ## The pattern to follow
 
-`prefs/PrefsUpgrade.java` is the worked example, from removing seven such members
-from `Prefs`.
+Three worked examples, for the three shapes a real fix takes.
 
-`Prefs` had `getRawStored` ×2, `putRawStored`, `removeObsoleteKeysForTest`,
-`removeSystemDefaultKeysFromStoreForTest`, `writeTypedForTest` and
-`migrateForTest`. All seven existed for one reason: the startup transformations
-were private methods on a singleton mutating its private store, and nothing could
-obtain a `Prefs` whose store it chose. None of them needed the singleton.
+**Extract a type constructed with the state it works on.** `prefs/PrefsUpgrade`
+came from removing seven such members from `Prefs`: `getRawStored` ×2,
+`putRawStored`, `removeObsoleteKeysForTest`,
+`removeSystemDefaultKeysFromStoreForTest`, `writeTypedForTest`, `migrateForTest`.
+All seven existed because the startup transformations were private methods on a
+singleton mutating its private store, and nothing could obtain a `Prefs` whose
+store it chose. The four transformations moved to a package-private class taking
+the store, the defaults and the system-default keys, with one `apply(oldPropsFile)`
+running them in order and reporting whether the store changed. Keep the steps
+private: `apply` is the promise, and exposing the four so a test can drive each
+one is the same mistake one level out.
 
-The four transformations moved to `PrefsUpgrade`, a package-private class taking
-the store, the defaults and the system-default keys, with one
-`apply(oldPropsFile)` running them in the order they depend on and reporting
-whether the store changed. `Prefs` builds one over its own store and saves once if
-it says so.
+**Make the thing the probe observed into a parameter.** `MessageCenter` had two
+observation hooks — `setPublicationErrorProbeForTesting`,
+`setSubscriptionProbeForTesting` — plus null checks in the hot `subscribe` and
+error paths, and a test helper that tracked every listener so teardown could
+unsubscribe them. All of it existed because the bus was a `static final`
+singleton with no lifecycle. It is now a stack, with `MessageBusScope`
+(`AutoCloseable`) pushing a bus whose publication-error handler is a constructor
+parameter. Closing the scope discards the bus and everything subscribed to it in
+one operation, so there is nothing to track. The production caller is
+`Converter.run`, which gives each headless conversion its own bus and an error
+handler that logs rather than showing a dialog no headless process can display.
+See `docs/messages.md`.
 
-Two things to copy from it:
-
-- **Extract the logic to a type constructed with the state it works on**, rather
-  than exposing the singleton's internals. That is what made all seven members
-  unnecessary at once instead of one at a time.
-- **Keep the steps private.** `apply` is the promise; the four steps are not.
-  Exposing them so a test can drive each one individually is the same mistake one
-  level out.
+**Delete the abstraction when the injection point goes.** `ui/LafOperations` was
+an interface with one implementation, `AppearanceManager.DefaultLafOperations`,
+and a Javadoc that said what it was for: "Abstraction over static FlatLaf
+operations to enable test mocking." Once `setLafOperations` was deleted nothing
+could supply another, so the interface could no longer vary. Each of its four
+methods was a single static call, so both types went and the calls inlined.

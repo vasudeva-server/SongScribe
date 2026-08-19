@@ -38,8 +38,7 @@ public final class RuntimeError {
     private static final String FATAL_ALERT_TITLE = "Fatal Error";
     private static final String FATAL_USER_MESSAGE =
         "Sorry, but a fatal error has occurred and the application must quit.";
-    // Package-private so RuntimeErrorTest can assert against the wired value instead of a copy.
-    static final String MISSING_RESOURCE_USER_MESSAGE =
+    private static final String MISSING_RESOURCE_USER_MESSAGE =
         "A required resource is missing. Please reinstall the application.";
 
     // Guards against showing the alert more than once if exit() is called re-entrantly.

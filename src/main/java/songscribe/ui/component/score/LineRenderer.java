@@ -180,7 +180,7 @@ class LineRenderer {
             editedVerse = activeEditor.getActiveVerse();
         }
 
-        return LineInvariants.builder(song, score)
+        return LineInvariants.builder(song, score, score.getViewScale())
             .setCurrentLine(line)
             .setLineIndex(lineIndex)
             .setMiddleLineYSs(lc.getMiddleLineYSs())
@@ -191,7 +191,6 @@ class LineRenderer {
             .setSelectionProvider(lc.getSelectionProvider())
             .setPlayingNoteIndex(lc.getPlayingNoteIndex())
             .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
-            .setViewScale(score.getViewScale())
             .build();
     }
 
@@ -200,9 +199,9 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Draws the 5 staff lines. Package-private for testing.
+     * Draws the 5 staff lines.
      */
-    void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
+    private void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
         var staffSelected = selectionProvider != null
@@ -314,7 +313,6 @@ class LineRenderer {
      * Returns the element's natural layout X plus the preview shift amount, or
      * {@link Double#NaN} if no override applies (no shift, element before boundary,
      * or element is a final double barline which is never shifted).
-     * Package-private for testing.
      *
      * @param lineFrame    Line-level frame carrying any active preview shift
      * @param elementIndex Index of the element within the line
@@ -322,7 +320,7 @@ class LineRenderer {
      * @param layoutResult The current layout result
      * @return Override X in staff-space, or {@link Double#NaN}
      */
-    static double computeOverrideXSs(
+    private static double computeOverrideXSs(
         ElementFrame lineFrame,
         int elementIndex,
         StaffElement element,
@@ -340,13 +338,12 @@ class LineRenderer {
      * <p>
      * Delegates edit mode, playback, selection, and hover logic to
      * {@link LineInvariants#getElementColor}. Adds the grace-cancel coloring on top.
-     * Package-private for testing.
      *
      * @param elementIndex The index of the element within this line
      * @param invariants          The per-line invariants
      * @return The color to use for rendering
      */
-    Color getElementColor(int elementIndex, LineInvariants invariants) {
+    private Color getElementColor(int elementIndex, LineInvariants invariants) {
         var color = invariants.getElementColor(elementIndex);
 
         if (!LineInvariants.isDefaultColor(color)) {
@@ -458,9 +455,9 @@ class LineRenderer {
     /**
      * Runs {@code render} with the frame's preview shift translated into {@code g2} when
      * {@code spanStart} falls at or after the shift boundary. The transform is restored
-     * on exit (including on exception). Package-private for testing.
+     * on exit (including on exception).
      */
-    static void renderWithPreviewShiftIfNeeded(
+    private static void renderWithPreviewShiftIfNeeded(
         Graphics2D g2,
         ElementFrame frame,
         int spanStart,
@@ -502,12 +499,11 @@ class LineRenderer {
      * The last line has no next line to warn about, so nothing is drawn there — the same null
      * answer {@code HorizontalSpacingCalculator.trailingReservationSs} reserves nothing for, so
      * what is drawn and what layout kept clear for it are decided from one source.
-     * Package-private for testing.
      *
      * @param g2  Graphics context
      * @param invariants Line invariants
      */
-    void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
+    private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();
         var nextRunningKey = line.nextLineRunningKey();
 

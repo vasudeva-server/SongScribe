@@ -203,11 +203,6 @@ public final class InsertionPointMode {
         return instance != null && instance.active;
     }
 
-    /** Sets the singleton instance; intended for test teardown only. */
-    static void setInstance(@Nullable InsertionPointMode value) {
-        instance = value;
-    }
-
     /** @return {@code true} while this mode is waiting for the user to pick an index */
     public boolean isInProgress() {
         return active;

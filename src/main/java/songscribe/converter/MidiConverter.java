@@ -51,16 +51,7 @@ public class MidiConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
-        SongScribe.configureLogging();
-        var reader = new ArgumentReader<>(args, MidiConverter.class);
-        var converter = reader.getObj();
-
-        if (converter == null) {
-            LOG.error("Failed to parse arguments");
-            return;
-        }
-
-        converter.convert();
+        Converter.run(args, MidiConverter.class, MidiConverter::convert);
     }
 
     @SuppressWarnings("ConstantValue")

@@ -143,12 +143,12 @@ public class LineComponent extends ScoreComponent
     /** Index of the grace note paired with the currently playing note (-1 if none). */
     private int playingGraceNoteIndex = -1;
 
-    /** Cached layout result from the last layout pass. Package-private for test injection. */
+    /** Cached layout result from the last layout pass. */
     @Nullable
-    LayoutResult layoutResult;
+    private LayoutResult layoutResult;
 
-    /** Whether layout needs to be recalculated. Package-private for test inspection. */
-    boolean layoutDirty = true;
+    /** Whether layout needs to be recalculated. */
+    private boolean layoutDirty = true;
 
     /**
      * True once the overflow alert has been shown for the current document, so it is shown once
@@ -1216,10 +1216,8 @@ public class LineComponent extends ScoreComponent
         return selectionProvider;
     }
 
-    /** Package-private for testing. */
     record ReadyLayout(Line line, LayoutResult layoutResult) {}
 
-    /** Package-private for testing. */
     @Nullable ReadyLayout readyLayout() {
         if (line == null) {
             return null;

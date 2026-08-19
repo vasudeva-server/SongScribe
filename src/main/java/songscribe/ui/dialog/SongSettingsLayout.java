@@ -33,9 +33,9 @@ import songscribe.ui.FlatLafProps;
 /**
  * Preview-section layout helpers shared by more than one {@link SongSettingsDialog} tab.
  * <p>
- * These are Swing composition units rather than the pure-logic helpers
- * {@link SongSettingsDialog} hosts for testability, so they live here instead of adding
- * layout code back to the dialog the tabs were split out of.
+ * These are Swing composition units rather than the pure-logic helpers {@link SongSettingsDialog}
+ * hosts, so they live here instead of adding layout code back to the dialog the tabs were split
+ * out of.
  */
 final class SongSettingsLayout {
 

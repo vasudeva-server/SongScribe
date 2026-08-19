@@ -1737,14 +1737,4 @@ public final class LyricEditor extends MyJTextField {
             lineComponent.repaint();
         }
     }
-
-    /** Test-only hook to set the focused state without a real focus event. */
-    void setFocusedForTesting(boolean focused) {
-        this.focused = focused;
-    }
-
-    /** Test-only hook to set the suppress-dismiss-adjustment flag directly. */
-    void setSuppressDismissAdjustmentForTesting(boolean suppress) {
-        suppressDismissAdjustment = suppress;
-    }
 }

@@ -128,7 +128,7 @@ public record SongMetadata(
     }
 
     // -------------------------------------------------------------------------
-    // Normalization helpers (package-visible for tests in this package)
+    // Normalization helpers
     // -------------------------------------------------------------------------
 
     /**

@@ -167,10 +167,6 @@ public final class ActionReflector implements Disposable {
         return managedActions;
     }
 
-    public void setManagedActions(@Nullable List<UIAction> actions) {
-        managedActions = actions;
-    }
-
     // -------------------------------------------------------------------------
     // Action state save/restore
     // -------------------------------------------------------------------------
@@ -250,14 +246,6 @@ public final class ActionReflector implements Disposable {
      */
     public void clearSavedActionStates() {
         savedActionStates.clear();
-    }
-
-    /**
-     * Returns whether the saved action states map is empty.
-     * Package-private for tests that verify clear/restore semantics.
-     */
-    boolean hasSavedActionStates() {
-        return !savedActionStates.isEmpty();
     }
 
     /**
@@ -384,9 +372,8 @@ public final class ActionReflector implements Disposable {
 
     /**
      * Reflects the current selection onto all reflectable toolbar actions.
-     * Package-private so tests can trigger reflection directly without a notification.
      */
-    void triggerReflection() {
+    private void triggerReflection() {
         var actions = getReflectableActions();
 
         // A line selection selects the line as a whole, not its content, so no action

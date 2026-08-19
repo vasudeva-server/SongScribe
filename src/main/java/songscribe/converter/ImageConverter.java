@@ -80,13 +80,7 @@ public class ImageConverter {
     public final File[] files = new File[0];
 
     public static void main(String[] args) {
-        SongScribe.configureLogging();
-        var reader = new ArgumentReader<>(args, ImageConverter.class);
-        var converter = reader.getObj();
-
-        if (converter != null) {
-            converter.convert();
-        }
+        Converter.run(args, ImageConverter.class, ImageConverter::convert);
     }
 
     private void convert() {

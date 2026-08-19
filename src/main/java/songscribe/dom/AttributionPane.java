@@ -90,11 +90,8 @@ public class AttributionPane {
      * The cap height of {@code T} contributes the ascent and the descender of
      * {@code y} the descent, so every line is boxed to the font's full vertical
      * extent regardless of which characters it contains.
-     * <p>
-     * Package-private so the measurement test can reference the same string
-     * rather than duplicating the literal.
      */
-    static final String LINE_BOX_REFERENCE = "Ty";
+    private static final String LINE_BOX_REFERENCE = "Ty";
 
     /**
      * Zoom factor for a natural-scale (unzoomed) measurement. The public
@@ -161,11 +158,8 @@ public class AttributionPane {
      * {@code marginTopPx} is the zoom-scaled top margin; storing it here rather than
      * re-deriving it in {@link #render} keeps the measure and render passes from
      * drifting apart.
-     * <p>
-     * Package-private, like {@link #measure}, so the measurement test can assert on
-     * the zoom-scaled layout directly instead of inferring it from paint calls.
      */
-    record MeasuredCache(
+    private record MeasuredCache(
         List<LineLayout> layouts,
         Font attributionFont,
         Font subAttributionFont,
@@ -359,8 +353,7 @@ public class AttributionPane {
      * <p>
      * Natural-scale and zoomed measurements live in separate slots so the layout
      * pass (always natural) and the paint pass (at the view zoom) cannot evict each
-     * other. Package-private so the measurement test can assert on the zoom-scaled
-     * layout without going through a mocked {@code Graphics2D}.
+     * other.
      *
      * @param attributionFont    font for {@link FontKey#ATTRIBUTION} lines
      * @param subAttributionFont font for {@link FontKey#SUB_ATTRIBUTION} lines
@@ -368,7 +361,7 @@ public class AttributionPane {
      *                           and margins; pass {@value #NATURAL_ZOOM_FACTOR} to
      *                           measure at natural scale
      */
-    MeasuredCache measure(Font attributionFont, Font subAttributionFont, double zoomFactor) {
+    private MeasuredCache measure(Font attributionFont, Font subAttributionFont, double zoomFactor) {
         var isNaturalScale = zoomFactor == NATURAL_ZOOM_FACTOR;
         var cached = isNaturalScale ? cachedNaturalMeasure : cachedZoomedMeasure;
 

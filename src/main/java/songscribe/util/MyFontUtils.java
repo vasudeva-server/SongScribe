@@ -87,13 +87,6 @@ public final class MyFontUtils {
 
     private MyFontUtils() {}
 
-    // Clears the lazy font cache so tests can install fonts before the first load.
-    public static void resetFontCache() {
-        allFonts = List.of();
-        psFonts.clear();
-        familyNames.clear();
-    }
-
     public static List<Font> getAllFonts() {
         if (allFonts.isEmpty()) {
             var fonts = FontUtils.getAllFonts();
@@ -453,5 +446,4 @@ public final class MyFontUtils {
     public static FontMetrics getFontMetrics(Font font) {
         return METRICS_GRAPHICS.getFontMetrics(font);
     }
-
 }

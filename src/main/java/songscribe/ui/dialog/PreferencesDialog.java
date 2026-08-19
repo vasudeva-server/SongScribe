@@ -199,16 +199,6 @@ public class PreferencesDialog extends BaseDialog {
         return TickSlider.nearestStopIndex(VALID_VOLUME_STOPS, volume);
     }
 
-    /**
-     * Resets the static instruments cache. For use in tests only — production
-     * code must never call this.
-     */
-    static void resetInstrumentsForTesting() {
-        instrumentsLoaded = false;
-        instrumentStrings = new String[0];
-        instrumentPrograms = new int[0];
-    }
-
     // -----------------------------------------------------------------------
     // GeneralTab
     // -----------------------------------------------------------------------

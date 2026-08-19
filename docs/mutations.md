@@ -142,8 +142,15 @@ runs, and **`afterElement`** a clone captured *after* it runs. `Line.modifyEleme
 does both automatically.
 
 **`Song.withoutMutationTracking(Runnable)`** — full suspension: records nothing (no
-notification, no undo, no modified flag). Used by test setup and by production
-file-load infrastructure (`MusicXmlReader`, `SongIO`, `ScoreView.setSong`).
+notification, no undo, no modified flag). Used by `Song`'s own constructor,
+`ScoreView.setSong`, `TupletLoadPass` and `MigrationPipeline`, and by
+`GraceModeManager` during live editing — it is not a load-only mechanism.
+
+**`Song.beginSuspendMutationTracking()` / `endSuspendMutationTracking()`** — the same
+suspension for a caller that cannot wrap its scope in a `Runnable`, because the scope
+spans a parse whose body throws a checked exception. `SongMapper` uses it on the
+MusicXML read path and `SongIO` on the legacy one; every other caller should prefer
+`withoutMutationTracking`.
 
 **`Song.withReplay(Runnable)` / `isReplaying()`** — replay mode, used by the undo
 engine while it re-applies a recorded batch inside an open bracket. Unlike

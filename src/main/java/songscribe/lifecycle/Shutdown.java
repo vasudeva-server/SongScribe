@@ -139,12 +139,11 @@ public final class Shutdown {
     }
 
     /**
-     * Run the shutdown sequence. Package-private — production code calls {@link #now()};
-     * tests call this directly and reset state between cases via {@link #reset()}.
+     * Run the shutdown sequence. Callers use {@link #now()}, which schedules this on the EDT.
      *
      * @return true if shutdown ran to completion, false if aborted or already completed.
      */
-    static boolean shutdown() {
+    private static boolean shutdown() {
         if (INSTANCE.completed || INSTANCE.inProgress) {
             return false;
         }
@@ -182,23 +181,14 @@ public final class Shutdown {
         }
     }
 
-    /** Entry point for the registry-owned JVM shutdown hook. Package-private for tests. */
-    static void runJVMTasksFromHook() {
+    /** Entry point for the registry-owned JVM shutdown hook. */
+    private static void runJVMTasksFromHook() {
         try {
             runCleanupTasksLIFO(INSTANCE.jvmTasks, "JVM (hook)");
         } catch (Throwable t) {
             // Boundary catch so the JVM doesn't print a raw stack trace on its way out.
             LOG.error("Exception escaping JVM shutdown hook", t);
         }
-    }
-
-    /** Clears all registered tasks and resets state. Package-private for test isolation. */
-    static void reset() {
-        INSTANCE.confirmEntries.clear();
-        INSTANCE.edtTasks.clear();
-        INSTANCE.jvmTasks.clear();
-        INSTANCE.inProgress = false;
-        INSTANCE.completed = false;
     }
 
     private record ConfirmEntry(String tag, ConfirmTask task) implements Tagged {}

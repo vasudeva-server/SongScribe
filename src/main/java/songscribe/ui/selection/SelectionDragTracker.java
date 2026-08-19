@@ -81,17 +81,4 @@ public final class SelectionDragTracker {
             globalMouseReleasedListener, AWTEvent.MOUSE_EVENT_MASK
         );
     }
-
-    /**
-     * Returns the LineComponent that currently has an active rubber-band drag, or null.
-     * Package-private for tests that verify drag-cleanup semantics.
-     */
-    @Nullable
-    LineComponent getDraggingLine() {
-        return draggingLine;
-    }
-
-    AWTEventListener getGlobalMouseReleasedListener() {
-        return globalMouseReleasedListener;
-    }
 }

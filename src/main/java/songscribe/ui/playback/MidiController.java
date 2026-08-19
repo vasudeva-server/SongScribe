@@ -55,10 +55,7 @@ public final class MidiController {
     public static volatile @Nullable Sequencer sequencer = null;
     public static volatile @Nullable Receiver midiReceiver = null;
     public static volatile @Nullable Synthesizer synthesizer = null;
-    static boolean closed = false;
-
-    // Set to true in unit tests to force openMidi() into the failure path.
-    static boolean failForTesting = false;
+    private static boolean closed = false;
 
     private MidiController() {}
 
@@ -78,10 +75,6 @@ public final class MidiController {
         }
 
         try {
-            if (failForTesting) {
-                throw new MidiUnavailableException("forced failure for testing");
-            }
-
             synthesizer = openSynthesizerWithSoundbank(soundbank);
             midiReceiver = synthesizer.getReceiver();
             initChannels(midiReceiver);

@@ -147,9 +147,21 @@ public final class LineInvariants {
         }
     }
 
-    /** Returns a new builder for invariants describing the given song. */
-    public static Builder builder(Song song, DocumentFontsHolder fonts) {
-        return new Builder(song, fonts);
+    /**
+     * Returns a new builder for invariants describing the given song, rendered at the given zoom.
+     * <p>
+     * The zoom is a constructor argument rather than a setter because there is no sensible value
+     * to fall back on: a render pass that left it out would draw this line at natural size inside
+     * a zoomed view, and look like a layout bug rather than a missing argument.
+     *
+     * @param song      the song being rendered
+     * @param fonts     supplies the document's fonts
+     * @param viewScale the zoom this render pass draws at
+     * @return a builder whose remaining required values are the layout result and the lyric
+     *         render metrics
+     */
+    public static Builder builder(Song song, DocumentFontsHolder fonts, ViewScale viewScale) {
+        return new Builder(song, fonts, viewScale);
     }
 
     // ==========================================================================
@@ -573,11 +585,12 @@ public final class LineInvariants {
         private Color selectionColor = ScoreView.getSelectionColor();
         private int playingNoteIndex = -1;
         private int playingGraceNoteIndex = -1;
-        private ViewScale viewScale = ViewScale.IDENTITY;
+        private final ViewScale viewScale;
 
-        private Builder(Song song, DocumentFontsHolder fonts) {
+        private Builder(Song song, DocumentFontsHolder fonts, ViewScale viewScale) {
             this.song = song;
             this.fonts = fonts;
+            this.viewScale = viewScale;
         }
 
         public Builder setCurrentLine(@Nullable Line currentLine) {
@@ -633,15 +646,6 @@ public final class LineInvariants {
 
         public Builder setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
             this.playingGraceNoteIndex = playingGraceNoteIndex;
-            return this;
-        }
-
-        /**
-         * Captures the view zoom for this render pass. Defaults to
-         * {@link ViewScale#IDENTITY} (natural size) when not set, e.g. in tests.
-         */
-        public Builder setViewScale(ViewScale viewScale) {
-            this.viewScale = viewScale;
             return this;
         }
 

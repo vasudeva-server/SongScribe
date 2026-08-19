@@ -282,11 +282,11 @@ public abstract class BaseDialog implements Disposable {
     }
 
     protected BaseDialog(MainFrame mainFrame, String title, Modality modality, DialogCategory category) {
-        // Subscribed here rather than in a static initializer: geometry can only be
-        // saved once a dialog exists, so first-construction subscription loses nothing,
-        // merely loading the class cannot register the handler, and a test teardown
-        // that unsubscribes it is healed by the next dialog construction. Subscribing
-        // is idempotent, so repeated constructions are safe.
+        // Subscribed here rather than in a static initializer: geometry can only be saved
+        // once a dialog exists, so first-construction subscription loses nothing, and merely
+        // loading the class cannot register the handler. Subscribing is idempotent — the bus
+        // refuses a listener it already holds — so repeated constructions are safe, and a
+        // construction after the subscriber's bus went away re-attaches it.
         MessageCenter.subscribe(GEOMETRY_RESET_SUBSCRIBER);
 
         this.mainFrame = mainFrame;
@@ -331,11 +331,6 @@ public abstract class BaseDialog implements Disposable {
         return tabs;
     }
 
-    /** Package-private: allows tests to read the sidebar/card composite without full dialog setup. */
-    JComponent getTabbedContent() {
-        return tabbedContent;
-    }
-
     /**
      * The container a subclass's button panel should attach to. With a sidebar,
      * that is the content column to the right of the full-height sidebar, so the
@@ -344,11 +339,6 @@ public abstract class BaseDialog implements Disposable {
      */
     protected Container getButtonPanelContainer() {
         return hasSidebar ? tabContentArea : contentPanel;
-    }
-
-    /** Package-private: allows tests to read the sidebar list without full dialog setup. */
-    JList<String> getTabList() {
-        return tabList;
     }
 
     private JList<String> buildTabList() {

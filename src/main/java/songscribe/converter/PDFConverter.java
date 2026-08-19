@@ -97,16 +97,7 @@ public class PDFConverter {
     public File[] files = new File[0];
 
     public static void main(String[] args) {
-        SongScribe.configureLogging();
-        var reader = new ArgumentReader<>(args, PDFConverter.class);
-        var converter = reader.getObj();
-
-        if (converter == null) {
-            LOG.error("Failed to parse arguments");
-            return;
-        }
-
-        converter.convert();
+        Converter.run(args, PDFConverter.class, PDFConverter::convert);
     }
 
     public void convert() {

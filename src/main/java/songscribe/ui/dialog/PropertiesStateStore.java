@@ -34,11 +34,6 @@ public class PropertiesStateStore implements SystemFileChooser.StateStore {
             .node("fileDialog");
     }
 
-    /** Package-private: allows tests to inject a mock {@link Preferences} node. */
-    PropertiesStateStore(Preferences prefs) {
-        this.prefs = prefs;
-    }
-
     @Override
     public String get(String key, String def) {
         return prefs.get(key, def);

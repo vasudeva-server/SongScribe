@@ -117,15 +117,18 @@ record inverse mutations into the batch so the notification faithfully describes
 what changed.
 
 The **reentrancy guard** (`applyingReplay`) keeps the replay batch from being
-pushed as a new step — this is the "production-safe suppression distinct from the
-test-only `withoutMutationTracking`" the issue asks for. The **replay mode**
-(`song.withReplay`) is orthogonal: it suppresses companion side-work and bypasses
-guards inside the model.
+pushed as a new step. The **replay mode** (`song.withReplay`) is orthogonal: it
+suppresses companion side-work and bypasses guards inside the model.
 
-`withoutMutationTracking` is a full-suspension mechanism (records nothing at all;
-used by production file-load — `MusicXmlReader`, `SongIO`, `ScoreView.setSong` —
-**and** test setup, not "tests-only") and is not used by the engine.
-`MessageCenter.post` is synchronous, so the guard is race-free on the EDT.
+`withoutMutationTracking` is a third mechanism, unrelated to both: full
+suspension, recording nothing at all. It is production machinery, and not only
+for loading — `Song`'s own constructor, `ScoreView.setSong`, `TupletLoadPass` and
+`MigrationPipeline` use it, and so does `GraceModeManager` during live editing. A
+caller whose suspension cannot fit inside a `Runnable` uses the
+`beginSuspendMutationTracking`/`endSuspendMutationTracking` pair instead:
+`SongMapper` on the MusicXML read path, `SongIO` on the legacy one. The undo
+engine uses neither. `MessageCenter.post` is synchronous, so the guard is
+race-free on the EDT.
 
 ------------------------------------------------------------------------
 

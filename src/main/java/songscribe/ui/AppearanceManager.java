@@ -48,7 +48,6 @@ public final class AppearanceManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(AppearanceManager.class);
 
-    private static LafOperations lafOps = new DefaultLafOperations();
     private static boolean listenerRegistered = false;
     private static @Nullable Consumer<Boolean> osThemeListener = null;
 
@@ -65,7 +64,7 @@ public final class AppearanceManager {
         var laf = createLaf(isDark);
 
         try {
-            lafOps.installLaf(laf);
+            UIManager.setLookAndFeel(laf);
         } catch (UnsupportedLookAndFeelException | RuntimeException e) {
             throw new IllegalStateException("Failed to install initial look and feel: " + e.getMessage(), e);
         }
@@ -122,21 +121,6 @@ public final class AppearanceManager {
         };
     }
 
-    /**
-     * Replaces the LAF operations implementation. Used by tests to inject mocks.
-     */
-    static void setLafOperations(LafOperations ops) {
-        lafOps = ops;
-    }
-
-    /**
-     * Resets internal state. Used by tests.
-     */
-    static void reset() {
-        unregisterOsListener();
-        lafOps = new DefaultLafOperations();
-    }
-
     private static boolean detectSystemDark() {
         return SystemThemeDetector.isDark();
     }
@@ -153,10 +137,10 @@ public final class AppearanceManager {
         var laf = createLaf(isDark);
 
         try {
-            lafOps.showSnapshot();
-            lafOps.installLaf(laf);
-            lafOps.updateUI();
-            lafOps.hideSnapshotWithAnimation();
+            FlatAnimatedLafChange.showSnapshot();
+            UIManager.setLookAndFeel(laf);
+            FlatLaf.updateUI();
+            FlatAnimatedLafChange.hideSnapshotWithAnimation();
             return true;
         } catch (UnsupportedLookAndFeelException | RuntimeException e) {
             LOG.warn("Failed to switch theme: {}", e.getMessage());
@@ -191,28 +175,6 @@ public final class AppearanceManager {
             listenerRegistered = false;
         } catch (RuntimeException e) {
             LOG.warn("Failed to unregister OS theme listener: {}", e.getMessage());
-        }
-    }
-
-    private static class DefaultLafOperations implements LafOperations {
-        @Override
-        public void installLaf(LookAndFeel laf) throws UnsupportedLookAndFeelException {
-            UIManager.setLookAndFeel(laf);
-        }
-
-        @Override
-        public void showSnapshot() {
-            FlatAnimatedLafChange.showSnapshot();
-        }
-
-        @Override
-        public void updateUI() {
-            FlatLaf.updateUI();
-        }
-
-        @Override
-        public void hideSnapshotWithAnimation() {
-            FlatAnimatedLafChange.hideSnapshotWithAnimation();
         }
     }
 }

@@ -179,9 +179,6 @@ public class StaffPanel extends JPanel {
 
     /**
      * Forces every line's layout so that {@link StaffLinesLayout} can measure the results.
-     * <p>
-     * Package-private for testing: tests can spy on this method to avoid
-     * the full ScoreView dependency.
      */
     void ensureAllLineLayouts() {
         var firstLineView = linePanels.getFirst().getLineComponent().getScoreView();
@@ -206,14 +203,12 @@ public class StaffPanel extends JPanel {
     /**
      * Lays out every line in order, threading lyric-extender continuation across line boundaries so
      * that a melisma running off the end of one line reappears as a leading stub on the next.
-     * <p>
-     * Package-private for testing.
      *
      * @return The layout of each line that produced one, in line order. Lines that have not been
      *         laid out yet are skipped, so the list can be shorter than the line count
      */
     @SuppressWarnings("UnusedReturnValue")
-    ArrayList<LayoutResult> layOutLines() {
+    private ArrayList<LayoutResult> layOutLines() {
         var layouts = new ArrayList<LayoutResult>();
         var hasLeadingLyricContinuation = false;
 

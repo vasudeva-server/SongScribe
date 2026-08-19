@@ -79,7 +79,6 @@ public abstract class UnitTest {
     static void suppressDialogs() throws Exception {
         OptionDialogs.setSuppressDialogs(true);
         RuntimeErrorTestHelper.install();
-        MessageCenterTestHelper.install();
         installFlatLafDefaults();
 
         if (!bannerShown) {
@@ -88,23 +87,22 @@ public abstract class UnitTest {
         }
     }
 
-    // MBassador holds subscribers weakly, so the action singletons a test creates via
-    // Actions.initialize() linger as zombie bus listeners until GC — still handling later
-    // tests' notifications and throwing in the torn-down/mocked environment, which routes to
-    // RuntimeError and pollutes unrelated tests. Retire them after every test.
-    // Actions.deinitialize() is null-safe (it skips uninitialized fields) and idempotent,
-    // so this is a harmless no-op for tests that never touch Actions.
+    // Both calls do what closing the bus scope cannot. Actions.initialize() installs a
+    // generation of action singletons; retiring them releases the mocked MainFrame they
+    // captured. UndoController is a static singleton, so its undo and redo stacks and its
+    // pending op-name outlive a test even though its subscription does not. Both are
+    // null-safe (they skip uninitialized fields) and idempotent, so this is a harmless
+    // no-op for a test that never touches either.
     @AfterEach
-    void unsubscribeActionSubscribers() {
+    void teardown() {
         Actions.deinitialize();
         UndoController.deinitialize();
 
-        // Every listener subscribed during this test (usually via production
-        // constructors) is removed so it cannot linger as a zombie that fires against
-        // torn-down mocks in later tests.
-        MessageCenterTestHelper.unsubscribeTrackedListeners();
+        // Discards this test's bus and every listener on it, so nothing a production
+        // constructor subscribed can fire against torn-down mocks in a later test.
+        MessageCenterTestHelper.closeScope();
 
-        // Last, so the unsubscribes above always run: fail loudly if any @Handler threw
+        // After the close, so the discard always runs: fail loudly if any @Handler threw
         // during a post in this test — MBassador swallows the error and silently aborts
         // delivery to the post's remaining subscribers, so nothing else reports it.
         MessageCenterTestHelper.assertNoPublicationErrors();
@@ -116,9 +114,12 @@ public abstract class UnitTest {
     }
 
     @BeforeEach
-    void resetRuntimeError() {
+    void setup() {
         RuntimeErrorTestHelper.reset();
-        MessageCenterTestHelper.clearPublicationErrors();
+
+        // Opened before the test can construct anything, so every subscription it makes
+        // lands on this test's bus and leaves with it.
+        MessageCenterTestHelper.openScope();
 
         // Reinstalled every test: some tests (e.g. SongScribeTest's main() tests) call
         // Thread.setDefaultUncaughtExceptionHandler themselves, replacing this probe.

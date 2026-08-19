@@ -218,8 +218,7 @@ public final class PlaybackController {
         }
     }
 
-    // Package-private for testing
-    static void handleMetaMessage(MetaMessage meta) {
+    private static void handleMetaMessage(MetaMessage meta) {
         if (meta.getType() == MidiMetaMessageTypes.SEQUENCE_NUMBER) {
             var data = meta.getData();
             var lineIndex = (data[0] << 8) | data[1];
@@ -234,8 +233,7 @@ public final class PlaybackController {
         }
     }
 
-    // Package-private for testing
-    static void updatePlayingNote(int lineIndex, int noteIndex) {
+    private static void updatePlayingNote(int lineIndex, int noteIndex) {
         var score = registeredScore;
         if (score == null) {
             return;
@@ -528,8 +526,7 @@ public final class PlaybackController {
         }
     }
 
-    // Package-private for testing
-    static void setLoopSequence(
+    private static void setLoopSequence(
         @Nullable ElementSelection noteSelection,
         Sequencer sequencer
     ) {
@@ -543,8 +540,7 @@ public final class PlaybackController {
         sequencer.setLoopCount(loopPlayback ? Sequencer.LOOP_CONTINUOUSLY : 0);
     }
 
-    // Package-private for testing
-    static Sequence buildSequenceForSelection(
+    private static Sequence buildSequenceForSelection(
         Song song,
         @Nullable ElementSelection selection
     ) throws InvalidMidiDataException {

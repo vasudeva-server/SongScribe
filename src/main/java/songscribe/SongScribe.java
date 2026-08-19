@@ -21,10 +21,8 @@ package songscribe;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.function.Function;
 import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.util.SystemInfo;
@@ -43,27 +41,16 @@ public final class SongScribe {
 
     private SongScribe() {}
 
-    // Package-private for testing: look up a platform-specific log directory,
-    // creating it if it does not already exist, and return its path. Returns
-    // null if the directory could not be created.
-    static @Nullable String resolveLogDir(Function<? super String, @Nullable String> env) {
-        return resolveLogDir(env, SystemInfo.isMacOS, SystemInfo.isWindows);
-    }
-
-    // Package-private for testing: accepts explicit platform flags so tests can
-    // exercise Windows and "other OS" branches without requiring a real OS switch.
-    static @Nullable String resolveLogDir(
-        Function<? super String, @Nullable String> env,
-        boolean isMacOS,
-        boolean isWindows
-    ) {
+    // Look up a platform-specific log directory, creating it if it does not already
+    // exist, and return its path. Returns null if the directory could not be created.
+    private static @Nullable String resolveLogDir() {
         var userHome = System.getProperty("user.home");
         String dir;
 
-        if (isMacOS) {
+        if (SystemInfo.isMacOS) {
             dir = userHome + "/Library/Logs/SongScribe";
-        } else if (isWindows) {
-            var appData = env.apply("APPDATA");
+        } else if (SystemInfo.isWindows) {
+            var appData = System.getenv("APPDATA");
             dir = (appData != null ? appData : userHome) + "/SongScribe/Logs";
         } else {
             dir = userHome + "/.songscribe/logs";
@@ -80,19 +67,14 @@ public final class SongScribe {
     }
 
     public static void configureLogging() {
-        configureLogging(System::getenv, SongScribe.class.getResource("/logback-console.xml"));
-    }
+        if (System.getenv("CONSOLE_LOG") != null) {
+            var consoleLogUrl = SongScribe.class.getResource("/logback-console.xml");
 
-    // Package-private for testing: accepts an env-var provider and console-log
-    // resource URL so tests can supply controlled values without relying on actual
-    // OS environment variables or classpath resources.
-    static void configureLogging(Function<? super String, @Nullable String> env, @Nullable URL consoleLogUrl) {
-        if (env.apply("CONSOLE_LOG") != null) {
             if (consoleLogUrl != null) {
                 System.setProperty("logback.configurationFile", consoleLogUrl.toString());
             }
         } else {
-            var logDir = resolveLogDir(env);
+            var logDir = resolveLogDir();
 
             if (logDir != null) {
                 System.setProperty("songscribe.log.dir", logDir);
@@ -102,21 +84,15 @@ public final class SongScribe {
             // fails to initialize → only CONSOLE appender activates.
         }
 
-        var logLevel = env.apply("LOG_LEVEL");
+        var logLevel = System.getenv("LOG_LEVEL");
 
         if (logLevel != null) {
             System.setProperty("songscribe.log.level", logLevel.toUpperCase());
         }
     }
 
-    static void truncateLogIfRequested() {
-        truncateLogIfRequested(System::getenv);
-    }
-
-    // Package-private for testing: accepts an env-var provider so tests can
-    // control whether TRUNCATE_LOG is considered set without touching the real OS env.
-    static void truncateLogIfRequested(Function<? super String, @Nullable String> env) {
-        if (env.apply("TRUNCATE_LOG") == null) {
+    private static void truncateLogIfRequested() {
+        if (System.getenv("TRUNCATE_LOG") == null) {
             return;
         }
 

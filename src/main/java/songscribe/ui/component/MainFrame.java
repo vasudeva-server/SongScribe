@@ -95,6 +95,7 @@ import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
@@ -183,11 +184,6 @@ public class MainFrame extends JFrame implements Printable {
     /** Enqueues a startup error to be drained by {@link #drainStartupErrors()}. */
     public static void enqueueStartupError(StartupError error) {
         STARTUP_ERRORS.add(error);
-    }
-
-    /** Clears all enqueued startup errors. For use in tests only. */
-    public static void clearStartupErrorsForTest() {
-        STARTUP_ERRORS.clear();
     }
 
     /**
@@ -501,6 +497,7 @@ public class MainFrame extends JFrame implements Printable {
         // of one of those constants is MenuController.init(this). See docs/lifecycle.md.
         Actions.initialize(this);
         PlaybackController.initialize(this);
+        PreviewElementManager.initialize();
 
         setTitle(appName);
         setAppIcon();
