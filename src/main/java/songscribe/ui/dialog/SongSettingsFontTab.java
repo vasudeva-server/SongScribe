@@ -32,7 +32,10 @@ import songscribe.Strings;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.binding.ValueProperty;
+import songscribe.ui.binding.Widgets;
 import songscribe.util.GraphicUtils;
+import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -40,8 +43,6 @@ import songscribe.util.UIUtils;
  * contextual tab — lyrics and annotation — each with a rendered sample.
  */
 final class SongSettingsFontTab extends BaseDialog.Tab {
-
-    private final SongSettingsDialog dialog;
 
     // The Fonts tab owns the fonts that have no dedicated contextual tab:
     // lyrics and annotation. Title, attribution, and sub-attribution fonts
@@ -62,6 +63,15 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         "D.C. al fine (a tempo)"
     );
 
+    // The two chosen fonts are this tab's own context: no Swing component holds either,
+    // so these are where they live, and each one's description label and sample are
+    // derived from it. Seeded with the system defaults, which the chooser rows need
+    // something to answer with before populate replaces them on every opening.
+    private final ValueProperty<Font> lyricsFont =
+        new ValueProperty<>(FontSettingRow.defaultFont(FontKey.LYRICS));
+    private final ValueProperty<Font> annotationFont =
+        new ValueProperty<>(FontSettingRow.defaultFont(FontKey.ANNOTATION));
+
     // The font rows own actions that subscribe themselves to the message bus, so this tab
     // holds each row until dispose() releases it. Assigned by initContents(), which build()
     // runs from the constructor — a UI builder NullAway cannot follow.
@@ -76,7 +86,6 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS),
             FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PADDING
         );
-        this.dialog = dialog;
 
         var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
 
@@ -86,12 +95,21 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             preview.setOpaque(true);
         }
 
+        // Each chosen font drives both a sample rendered in it and a label describing it.
+        // Declared here rather than in initContents because the font rows built there read
+        // the properties these edges settle.
+        var dialogBindings = bindings();
+        dialogBindings.bind(Widgets.font(lyricsFontPreview), lyricsFont);
+        dialogBindings.bind(Widgets.labelText(lyricsFontLabel), lyricsFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(Widgets.font(annotationFontPreview), annotationFont);
+        dialogBindings.bind(Widgets.labelText(annotationFontLabel), annotationFont, MyFontUtils::getFullFontDescription);
+
         build();
     }
 
     @Override
     protected void initContents() {
-        var mainFrame = dialog.getMainFrame();
+        var mainFrame = getMainFrame();
 
         var previewPadding = FlatLafProps.getInsets(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PREVIEW_PADDING);
 
@@ -99,7 +117,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
         );
         lyricsFontRow = FontSettingRow.create(
-            mainFrame, lyricsFontLabel, FontKey.LYRICS, lyricsFontPreview::getFont, lyricsFontPreview::setFont
+            mainFrame, lyricsFontLabel, FontKey.LYRICS, lyricsFont::get, lyricsFont::set
         );
         lyricsSection.add(lyricsFontRow.panel());
         BaseDialog.addLargeSeparator(lyricsSection);
@@ -113,7 +131,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ANNOTATION)
         );
         annotationFontRow = FontSettingRow.create(
-            mainFrame, annotationFontLabel, FontKey.ANNOTATION, annotationFontPreview::getFont, annotationFontPreview::setFont
+            mainFrame, annotationFontLabel, FontKey.ANNOTATION, annotationFont::get, annotationFont::set
         );
         annotationSection.add(annotationFontRow.panel());
         BaseDialog.addLargeSeparator(annotationSection);
@@ -167,13 +185,6 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         }
 
         @Override
-        public void setFont(Font font) {
-            super.setFont(font);
-            revalidate();
-            repaint();
-        }
-
-        @Override
         public Dimension getPreferredSize() {
             var font = getFont();
 
@@ -204,15 +215,15 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
      */
     void populate(SongSettingsInput input) {
         var fonts = input.fonts();
-        FontSettingRow.applyFont(fonts.getFont(FontKey.LYRICS),     lyricsFontLabel,     lyricsFontPreview::setFont);
-        FontSettingRow.applyFont(fonts.getFont(FontKey.ANNOTATION), annotationFontLabel, annotationFontPreview::setFont);
+        lyricsFont.set(fonts.getFont(FontKey.LYRICS));
+        annotationFont.set(fonts.getFont(FontKey.ANNOTATION));
     }
 
     Font getLyricsFont() {
-        return lyricsFontPreview.getFont();
+        return lyricsFont.get();
     }
 
     Font getAnnotationFont() {
-        return annotationFontPreview.getFont();
+        return annotationFont.get();
     }
 }

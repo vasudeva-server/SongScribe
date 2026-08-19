@@ -30,6 +30,7 @@ import songscribe.ui.binding.Bindings;
 import songscribe.ui.binding.Controls;
 import songscribe.ui.binding.Property;
 import songscribe.ui.binding.Timing;
+import songscribe.ui.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.ui.component.NumericTextField;
 
@@ -91,27 +92,24 @@ final class SongSettingsDateInputRow {
     /**
      * Builds the row and declares its edges on {@code bindings}.
      *
-     * <p>{@code onChange} is the row's only outward signal, and it runs whenever one of
-     * the three properties notifies — including when the year becomes invalid. Losing a
-     * date is as much a change to what this row contributes as gaining one, and a reader
-     * that showed the old date until some unrelated field fired would be showing a date
-     * the row no longer holds. The two enabled states are not reported through
-     * {@code onChange}; they are bindings, and the framework keeps them current on its
-     * own.
+     * <p>The row announces nothing of its own. Its three getters read the three
+     * properties, so a caller that reads them inside an {@code ObservableValue.computed}
+     * acquires a dependency on each one it reads and is re-derived when the user edits
+     * it — including when the year becomes invalid, losing a date being as much a change
+     * to what this row contributes as gaining one. A second callback route beside that
+     * would carry the same change and fire on a different schedule.
      *
-     * <p>Clearing the year clears the month and day with it, and each of those writes
-     * notifies in turn, so one such gesture runs {@code onChange} more than once. Every
-     * run reads the row's current state, so the last one is what stands; a reader that
-     * cannot afford the repeats coalesces them itself.
+     * <p>Clearing the year clears the month and day with it, so one such gesture
+     * notifies three times. A reader that cannot afford the repeats derives through a
+     * {@link ValueProperty}, which notifies only on a transition.
      *
-     * <p>{@link #setValues} writes the three properties like any other writer, so
-     * seeding the row from stored data runs {@code onChange} once per seeded field.
+     * <p>The two enabled states are bindings, and the framework keeps them current on
+     * its own.
      *
      * @param bindings the owning dialog's bindings, which this row registers its
      *     edges and effects on and which disposes them
-     * @param onChange run after any edit to this row, valid date or not
      */
-    SongSettingsDateInputRow(Bindings bindings, Runnable onChange) {
+    SongSettingsDateInputRow(Bindings bindings) {
         // The month combo is enabled exactly when the year is valid; the day combo
         // additionally needs a month. Both read the year through the property, never
         // off the field, so the derivation records the dependency.
@@ -130,19 +128,13 @@ final class SongSettingsDateInputRow {
                 month.set(NONE_INDEX);
                 day.set(NONE_INDEX);
             }
-
-            onChange.run();
         });
 
         bindings.onChange(month, () -> {
             if (month.get() == NONE_INDEX) {
                 day.set(NONE_INDEX);
             }
-
-            onChange.run();
         });
-
-        bindings.onChange(day, onChange);
     }
 
     /**
@@ -222,7 +214,7 @@ final class SongSettingsDateInputRow {
      *
      * <p>The year is written first, so that an unusable one clears the month and day
      * before this method seeds them — what is put in is what comes back out either
-     * way. Each write that changes a property runs the row's {@code onChange}.
+     * way.
      *
      * @param yearText the stored year, empty when the song has none
      * @param monthIndex the stored month, {@value #NONE_INDEX} for none

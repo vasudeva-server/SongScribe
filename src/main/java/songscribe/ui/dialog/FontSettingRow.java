@@ -43,7 +43,6 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -52,9 +51,13 @@ import songscribe.util.UIUtils;
  * font chooser — it knows nothing about any particular tab or document font.
  * <p>
  * The owning tab supplies a {@code currentFont} supplier (read to seed the
- * chooser) and an {@code onFontChosen} callback (invoked with the new font);
- * the row keeps the description label in sync. Each tab decides what choosing a
- * font means for its own context.
+ * chooser) and an {@code onFontChosen} callback (invoked with the new font).
+ * Each tab decides what choosing a font means for its own context.
+ * <p>
+ * The row lays the description label out but never writes it. The chosen font is the
+ * tab's own value, and the label is one of the things the tab derives from it — writing
+ * the label here as well would leave the same text arriving by two routes, one of which
+ * fires only when the font is chosen through this row.
  */
 final class FontSettingRow {
 
@@ -153,8 +156,8 @@ final class FontSettingRow {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         row.add(fontDescription, constraints);
 
-        var chooseAction = new ChooseFontAction(mainFrame, fontDescription, currentFont, onFontChosen);
-        var resetAction = new ResetFontAction(mainFrame, fontKey, fontDescription, onFontChosen);
+        var chooseAction = new ChooseFontAction(mainFrame, currentFont, onFontChosen);
+        var resetAction = new ResetFontAction(mainFrame, fontKey, onFontChosen);
 
         var buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
@@ -185,16 +188,6 @@ final class FontSettingRow {
         return label;
     }
 
-    /**
-     * Writes {@code font}'s description into the row's display label and notifies
-     * the owner. Shared by the Choose / Reset actions and by each tab's initial
-     * {@code getData()} so the row, label, and the tab's preview start in sync.
-     */
-    static void applyFont(Font font, JLabel fontDescription, Consumer<? super Font> onFontChosen) {
-        fontDescription.setText(MyFontUtils.getFullFontDescription(font));
-        onFontChosen.accept(font);
-    }
-
     static Font defaultFont(FontKey fontKey) {
         if (systemDefaultFonts == null) {
             systemDefaultFonts = DocumentFonts.defaultFonts();
@@ -205,13 +198,11 @@ final class FontSettingRow {
 
     private static final class ChooseFontAction extends UIAction {
 
-        private final JLabel fontDescription;
         private final Supplier<? extends Font> currentFont;
         private final Consumer<? super Font> onFontChosen;
 
         private ChooseFontAction(
             MainFrame mainFrame,
-            JLabel fontDescription,
             Supplier<? extends Font> currentFont,
             Consumer<? super Font> onFontChosen
         ) {
@@ -220,27 +211,24 @@ final class FontSettingRow {
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
                 CHOOSE_FONT_COMMAND
             );
-            this.fontDescription = fontDescription;
             this.currentFont = currentFont;
             this.onFontChosen = onFontChosen;
         }
 
         @Override
         protected void performAction(ActionEvent e) {
-            applyFont(FontDialog.showDialog(getMainFrame(), currentFont.get()), fontDescription, onFontChosen);
+            onFontChosen.accept(FontDialog.showDialog(getMainFrame(), currentFont.get()));
         }
     }
 
     private static final class ResetFontAction extends UIAction {
 
         private final FontKey fontKey;
-        private final JLabel fontDescription;
         private final Consumer<? super Font> onFontChosen;
 
         private ResetFontAction(
             MainFrame mainFrame,
             FontKey fontKey,
-            JLabel fontDescription,
             Consumer<? super Font> onFontChosen
         ) {
             super(
@@ -249,13 +237,12 @@ final class FontSettingRow {
                 RESET_FONT_COMMAND
             );
             this.fontKey = fontKey;
-            this.fontDescription = fontDescription;
             this.onFontChosen = onFontChosen;
         }
 
         @Override
         protected void performAction(ActionEvent e) {
-            applyFont(defaultFont(fontKey), fontDescription, onFontChosen);
+            onFontChosen.accept(defaultFont(fontKey));
         }
     }
 }

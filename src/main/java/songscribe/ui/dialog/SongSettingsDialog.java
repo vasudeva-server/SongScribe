@@ -63,8 +63,7 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
 
     private final SongSettingsFontTab fontTab = new SongSettingsFontTab(this);
     private final SongSettingsTitleTab textTab = new SongSettingsTitleTab(this);
-    private final SongSettingsAttributionTab attributionTab =
-        new SongSettingsAttributionTab(this, textTab);
+    private final SongSettingsAttributionTab attributionTab = new SongSettingsAttributionTab(this);
 
     // Built in the constructor rather than here, so its construction order relative to the
     // tabbed container is unchanged.

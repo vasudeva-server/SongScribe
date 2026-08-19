@@ -26,8 +26,6 @@ import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
 import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
@@ -52,11 +50,20 @@ import songscribe.dom.SongMetadata;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.binding.Controls;
+import songscribe.ui.binding.Property;
+import songscribe.ui.binding.Timing;
+import songscribe.ui.binding.ValueProperty;
+import songscribe.ui.binding.Widgets;
+import songscribe.ui.binding.WritableValue;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.util.GraphicUtils;
+import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
+
+import static songscribe.ui.binding.ObservableValue.computed;
 
 /**
  * The {@link SongSettingsDialog} Attribution tab: the words/music credits, their
@@ -70,15 +77,21 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private static final int PLACE_FIELD_COLUMNS = 27;
     private static final int COMPOSER_FIELD_COLUMNS = 27;
 
-    // The title tab owns the title/subtitle/number the preview's metadata record needs.
-    private final SongSettingsTitleTab titleTab;
+    /**
+     * The title, number and subtitle the preview's metadata record carries.
+     * <p>
+     * {@link AttributionFormatter#lines} reads none of the three — it builds the credits
+     * from the two people and the flags, and the sub-attribution from the dates and the
+     * place — so the preview supplies nothing for them rather than reaching into the
+     * Title tab for values that cannot reach the output.
+     */
+    private static final String UNREAD_BY_FORMATTER = "";
 
     // Place and date panel
     private final MyJTextField placeField = new MyJTextField(PLACE_FIELD_COLUMNS);
     // dialog.super(...) completes before any field initializer here runs, so the
     // inherited bindings() already answers.
-    private final SongSettingsDateInputRow musicDate =
-        new SongSettingsDateInputRow(bindings(), this::refreshPreview);
+    private final SongSettingsDateInputRow musicDate = new SongSettingsDateInputRow(bindings());
 
     // Attribution panel
     private final MyJTextField composerField = new MyJTextField(COMPOSER_FIELD_COLUMNS);
@@ -88,8 +101,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private final JCheckBox differentDateCheckbox = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_DIFFERENT_DATE)
     );
-    private final SongSettingsDateInputRow wordsDate =
-        new SongSettingsDateInputRow(bindings(), this::refreshPreview);
+    private final SongSettingsDateInputRow wordsDate = new SongSettingsDateInputRow(bindings());
     private final JPanel wordsDatePanel = new JPanel();
     private final JCheckBox unofficialTranslationCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_UNOFFICIAL_TRANSLATION)
@@ -105,14 +117,45 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     );
     private final AttributionPaneWidget attributionPreview = new AttributionPaneWidget();
 
-    // The attribution and sub-attribution fonts are this tab's own context.
-    // The chooser rows write the chosen font into these fields (the source of
-    // truth at commit) and their description labels show it. Seeded from the
-    // document in the constructor so they are never null.
+    // The controls stay fields because the layout code adds them; everything read or
+    // written after the build goes through the property over each one.
+    //
+    // Every text property commits on focus loss rather than while typing: the preview
+    // re-packs the dialog when its height changes, and a preview following each keystroke
+    // would resize the window under the user mid-word.
+    private final Property<String> place =
+        Controls.text(placeField, Timing.ON_COMMIT, SongSettingsAttributionTab::normalizePlace);
+    private final Property<String> composer =
+        Controls.text(composerField, Timing.ON_COMMIT, SongSettingsAttributionTab::normalizeComposer);
+    private final Property<String> lyricist =
+        Controls.text(lyricistField, Timing.ON_COMMIT, this::normalizeLyricist);
+    private final Property<Song.LyricsSource> lyricsSource = Controls.item(sourceCombo);
+    private final Property<Boolean> differentDate = Controls.selected(differentDateCheckbox);
+    private final Property<Boolean> unofficialTranslation = Controls.selected(unofficialTranslationCheck);
+    private final Property<Boolean> arrangement = Controls.selected(arrangementCheck);
+
+    // The attribution and sub-attribution fonts are this tab's own context: no Swing
+    // component holds either, so these are where they live, and the chooser rows'
+    // description labels and the preview are both written from them. Seeded with the
+    // system defaults, which the chooser rows need something to answer with before
+    // populate replaces them on every opening.
     private final JLabel attributionFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final JLabel subAttributionFontLabel = FontSettingRow.createFontDescriptionLabel();
-    private Font attributionFont;
-    private Font subAttributionFont;
+    private final ValueProperty<Font> attributionFont =
+        new ValueProperty<>(FontSettingRow.defaultFont(FontKey.ATTRIBUTION));
+    private final ValueProperty<Font> subAttributionFont =
+        new ValueProperty<>(FontSettingRow.defaultFont(FontKey.SUB_ATTRIBUTION));
+
+    // Whether the song carries a translation, which decides both whether the
+    // unofficial-translation checkbox is shown at all and whether the preview renders the
+    // translation credit. Set by populate on every opening.
+    private final ValueProperty<Boolean> hasTranslation = new ValueProperty<>(false);
+
+    // What the preview shows. A ValueProperty notifies only on a real change, so the
+    // effect over it re-packs the dialog when the preview's height can actually have
+    // moved, and on no other notification a dependency makes. Assigned in the constructor,
+    // which is the first point at which the derivation it is seeded from can run.
+    private final ValueProperty<AttributionPaneWidget.PreviewState> previewState;
 
     // Each font row owns two actions that subscribe themselves to the message bus, so this
     // tab holds the rows until dispose() releases them. Assigned while the Fonts section is
@@ -123,14 +166,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     @SuppressWarnings("NullAway.Init")
     private FontSettingRow.Row subAttributionFontRow;
 
-    // Whether the song carries a translation, which decides both whether the
-    // unofficial-translation checkbox is shown at all and whether the preview renders the
-    // translation credit. Set by populate on every opening.
-    private boolean hasTranslation = false;
-
-    SongSettingsAttributionTab(SongSettingsDialog dialog, SongSettingsTitleTab titleTab) {
+    SongSettingsAttributionTab(SongSettingsDialog dialog) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION));
-        this.titleTab = titleTab;
 
         sourceCombo.setEditable(false);
         composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
@@ -142,10 +179,46 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND)
         );
 
-        // Placeholders so the font suppliers the chooser rows capture are never null before
-        // the first populate; the document's own fonts replace them on every opening.
-        attributionFont = FontSettingRow.defaultFont(FontKey.ATTRIBUTION);
-        subAttributionFont = FontSettingRow.defaultFont(FontKey.SUB_ATTRIBUTION);
+        var dialogBindings = bindings();
+
+        // The words-date panel is visible exactly when the "different date" box is
+        // checked, and the unofficial-translation row exactly when the song has a
+        // translation. Both settle at registration, so neither needs an initial pass.
+        dialogBindings.bind(Widgets.visible(wordsDatePanel), differentDate);
+        dialogBindings.bind(Widgets.visible(translationRow), hasTranslation);
+
+        // Showing or hiding the words-date panel changes the tab's height, and the dialog
+        // is packed to a fixed height at show time. Registered after the visibility
+        // binding above so the panel has already taken its new state when this re-packs,
+        // and on the property rather than the preview because an unchecked box with empty
+        // date fields leaves what the preview draws untouched.
+        dialogBindings.onChange(differentDate, this::repackToContent);
+
+        dialogBindings.bind(
+            Widgets.labelText(attributionFontLabel), attributionFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(
+            Widgets.labelText(subAttributionFontLabel), subAttributionFont, MyFontUtils::getFullFontDescription);
+
+        // An empty lyricist inherits the composer, so a committed composer is mirrored
+        // into a lyricist field the user has left blank.
+        dialogBindings.onChange(composer, this::inheritComposerIntoEmptyLyricist);
+
+        // The preview is one derivation over every value above, folded through a
+        // ValueProperty so the re-pack below runs on a change to what is drawn rather
+        // than on every notification a dependency makes. Seeding the property from the
+        // same derivation makes the binding's settling write an equal one, which is
+        // silent.
+        previewState = new ValueProperty<>(buildPreviewState());
+        WritableValue<AttributionPaneWidget.PreviewState> preview = attributionPreview::setPreviewState;
+        dialogBindings.bind(previewState, computed(this::buildPreviewState));
+        dialogBindings.bind(preview, previewState);
+
+        // The preview's height changes with both the line count and the
+        // attribution/sub-attribution font size. The dialog is packed to a fixed height
+        // at show time, so a taller preview would be starved by the tab's GridBagLayout.
+        // Registering the effect after the binding keeps the binding's settling write
+        // from re-packing a dialog that is not yet shown.
+        dialogBindings.onChange(previewState, this::repackToContent);
 
         build();
     }
@@ -218,10 +291,10 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         sourceRow.add(differentDateCheckbox);
         section.add(sourceRow);
 
-        // Collapsible words-date panel, hidden by default.
+        // Collapsible words-date panel, whose visibility follows the checkbox above
+        // through a binding declared in the constructor.
         wordsDatePanel.setLayout(new BoxLayout(wordsDatePanel, BoxLayout.Y_AXIS));
         wordsDatePanel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        wordsDatePanel.setVisible(false);
         addHorizontalDivider(wordsDatePanel);
 
         var wordsYearLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_YEAR));
@@ -230,31 +303,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         wordsDate.addTo(wordsDateRow, wordsYearLabel);
         wordsDatePanel.add(wordsDateRow);
         section.add(wordsDatePanel);
-
-        lyricistField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                // An empty lyricist inherits the composer (Sri Chinmoy when the
-                // composer is itself empty); otherwise show the committed value
-                // with typographic substitution applied.
-                if (lyricistField.getText().trim().isEmpty()) {
-                    lyricistField.setText(
-                        Song.coercePerson(StringUtils.processText(composerField.getText(), false))
-                    );
-                } else {
-                    lyricistField.setText(StringUtils.processText(lyricistField.getText(), false));
-                }
-
-                refreshPreview();
-            }
-        });
-
-        sourceCombo.addActionListener(e -> refreshPreview());
-
-        differentDateCheckbox.addActionListener(e -> {
-            syncWordsDatePanel();
-            refreshPreview();
-        });
 
         // Don't let the section grow vertically
         UIUtils.setFlexibleWidth(section);
@@ -316,36 +364,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         BaseDialog.addLabeledField(section, placeLabel, placeField);
 
-        composerField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                // Show the committed value: typographic substitution applied,
-                // an empty field coerced to Sri Chinmoy.
-                composerField.setText(
-                    Song.coercePerson(StringUtils.processText(composerField.getText(), false))
-                );
-
-                // An empty (or whitespace-only) lyricist inherits the
-                // composer, so mirror the normalized composer into it.
-                if (lyricistField.getText().trim().isEmpty()) {
-                    lyricistField.setText(composerField.getText());
-                }
-
-                refreshPreview();
-            }
-        });
-
-        unofficialTranslationCheck.addActionListener(e -> refreshPreview());
-        arrangementCheck.addActionListener(e -> refreshPreview());
-
-        placeField.addFocusListener(new FocusAdapter() {
-            @Override
-            public void focusLost(FocusEvent e) {
-                placeField.setText(StringUtils.processText(placeField.getText(), false));
-                refreshPreview();
-            }
-        });
-
         // Don't let the section grow vertically
         UIUtils.setFlexibleWidth(section);
         return section;
@@ -367,8 +385,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             wordsMusicLabel,
             attributionFontLabel,
             FontKey.ATTRIBUTION,
-            () -> attributionFont,
-            this::applyAttributionFont
+            attributionFont::get,
+            attributionFont::set
         );
         section.add(attributionFontRow.panel());
 
@@ -379,8 +397,8 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             datePlaceLabel,
             subAttributionFontLabel,
             FontKey.SUB_ATTRIBUTION,
-            () -> subAttributionFont,
-            this::applySubAttributionFont
+            subAttributionFont::get,
+            subAttributionFont::set
         );
         section.add(subAttributionFontRow.panel());
 
@@ -394,22 +412,12 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         subAttributionFontRow.dispose();
     }
 
-    private void applyAttributionFont(Font font) {
-        attributionFont = font;
-        refreshPreview();
-    }
-
-    private void applySubAttributionFont(Font font) {
-        subAttributionFont = font;
-        refreshPreview();
-    }
-
     Font getAttributionFont() {
-        return attributionFont;
+        return attributionFont.get();
     }
 
     Font getSubAttributionFont() {
-        return subAttributionFont;
+        return subAttributionFont.get();
     }
 
     /**
@@ -442,27 +450,34 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         }
     }
 
-    private void refreshPreview() {
-        // Use the tab's in-progress fonts (not the committed document fonts)
-        // so the preview reflects font edits made in this tab's font rows
-        // before the dialog is committed.
-        attributionPreview.setPreviewState(
-            attributionFont,
-            subAttributionFont,
-            buildPreviewLines()
-        );
-
-        // The preview's height changes with both the line count and the
-        // attribution/sub-attribution font size. The dialog is packed to a
-        // fixed height at show time, so a taller preview would be starved by
-        // the tab's GridBagLayout. Re-pack so the window fits the new height.
-        repackToContent();
+    /** Applies typographic substitution to the place, leaving an empty place empty. */
+    private static String normalizePlace(String text) {
+        return StringUtils.processText(text, false);
     }
 
-    // The words-date panel is visible exactly when the "different date"
-    // checkbox is selected; both the listener and getData() derive it here.
-    private void syncWordsDatePanel() {
-        wordsDatePanel.setVisible(differentDateCheckbox.isSelected());
+    /** Applies typographic substitution to the composer, coercing an empty one to Sri Chinmoy. */
+    private static String normalizeComposer(String text) {
+        return Song.coercePerson(StringUtils.processText(text, false));
+    }
+
+    /**
+     * An empty lyricist inherits the composer credit — Sri Chinmoy when the composer is
+     * itself empty; otherwise the typed name with typographic substitution applied.
+     *
+     * <p>The composer is read here rather than observed: this runs on focus loss, at
+     * which point the committed composer is what the inheritance is supposed to name.
+     */
+    private String normalizeLyricist(String text) {
+        return text.trim().isEmpty()
+            ? normalizeComposer(composer.get())
+            : StringUtils.processText(text, false);
+    }
+
+    /** Mirrors a committed composer into a lyricist field the user has left blank. */
+    private void inheritComposerIntoEmptyLyricist() {
+        if (lyricist.get().trim().isEmpty()) {
+            lyricist.set(composer.get());
+        }
     }
 
     /**
@@ -471,48 +486,54 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * (matching the legacy field-by-field default).
      */
     private String resolveLyricistText(String composerText) {
-        var lyricistText = lyricistField.getText().trim();
+        var lyricistText = lyricist.get().trim();
         return lyricistText.isEmpty() ? composerText : lyricistText;
     }
 
-    private List<AttributionLine> buildPreviewLines() {
-        // Read live widget values, not committed Song state, so the preview
-        // reflects uncommitted edits. The SongMetadata constructor normalizes
-        // each field, so the raw widget text is passed through directly.
-        var composerText = composerField.getText();
+    /**
+     * Builds what the preview draws from the tab's own values rather than from the
+     * committed song, so it shows the edits in progress — including the fonts chosen in
+     * this tab's font rows, which the document does not carry until the dialog commits.
+     *
+     * <p>Every value is read through a property, which is what makes this a derivation
+     * the framework can track: a direct control read would be invisible to it and the
+     * preview would answer stale.
+     */
+    private AttributionPaneWidget.PreviewState buildPreviewState() {
+        // The SongMetadata constructor normalizes each field, so the raw property text is
+        // passed through directly.
+        var composerText = composer.get();
         var lyricistText = resolveLyricistText(composerText);
-        var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
-
-        if (lyricsSource == null) {
-            lyricsSource = Song.LyricsSource.LYRICIST;
-        }
-
-        var arrangement = arrangementCheck.isSelected();
-        var unofficialTranslation = unofficialTranslationCheck.isSelected();
+        var translation = unofficialTranslation.get();
         var gatedDate = getWordsDate();
         var metadata = new SongMetadata(
-            titleTab.getTitleText(),
-            titleTab.getNumberText(),
-            getPlaceText(),
-            getYearText(),
-            getMonth(),
-            getDay(),
+            UNREAD_BY_FORMATTER,
+            UNREAD_BY_FORMATTER,
+            place.get(),
+            musicDate.getYear(),
+            musicDate.getMonth(),
+            musicDate.getDay(),
             composerText,
             lyricistText,
-            lyricsSource,
-            arrangement,
-            unofficialTranslation,
-            titleTab.getSubtitleText(),
+            lyricsSource.get(),
+            arrangement.get(),
+            translation,
+            UNREAD_BY_FORMATTER,
             gatedDate.year(),
             gatedDate.month(),
             gatedDate.day()
         );
-        var showTranslation = !unofficialTranslation && hasTranslation;
-        return AttributionFormatter.lines(metadata, showTranslation);
+        var showTranslation = !translation && hasTranslation.get();
+
+        return new AttributionPaneWidget.PreviewState(
+            attributionFont.get(),
+            subAttributionFont.get(),
+            AttributionFormatter.lines(metadata, showTranslation)
+        );
     }
 
     String getPlaceText() {
-        return placeField.getText();
+        return place.get();
     }
 
     String getYearText() {
@@ -528,7 +549,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     String getComposerText() {
-        return Song.coercePerson(composerField.getText());
+        return Song.coercePerson(composer.get());
     }
 
     String getLyricistText() {
@@ -536,16 +557,15 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     Song.LyricsSource getLyricsSource() {
-        var lyricsSource = (Song.LyricsSource) sourceCombo.getSelectedItem();
-        return lyricsSource != null ? lyricsSource : Song.LyricsSource.LYRICIST;
+        return lyricsSource.get();
     }
 
     boolean isArrangement() {
-        return arrangementCheck.isSelected();
+        return arrangement.get();
     }
 
     boolean isUnofficialTranslation() {
-        return unofficialTranslationCheck.isSelected();
+        return unofficialTranslation.get();
     }
 
     /**
@@ -560,7 +580,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      *         unchecked
      */
     WordsDate getWordsDate() {
-        if (!differentDateCheckbox.isSelected()) {
+        if (!differentDate.get()) {
             return WordsDate.NONE;
         }
 
@@ -568,91 +588,94 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     /**
-     * Sets every control on this tab to show {@code input}.
+     * Sets every value on this tab to show {@code input}.
      *
      * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
      * with nothing else touched, answer the same values — with the one documented exception
      * that a words date equal to the music date arrives already collapsed to
      * {@link WordsDate#NONE}, because {@code SongMetadata} stores it that way.
      *
-     * <p>Shows or hides the unofficial-translation checkbox to match the song, which is a
-     * per-opening decision rather than a construction-time one.
+     * <p>The composer is written before the lyricist, so the inheritance effect the composer
+     * fires writes a lyricist the stored one then replaces. Every other order carries
+     * nothing: the preview, the two font labels and the two collapsible rows are all derived
+     * from these values, so each write re-derives whatever depends on it.
      *
      * @param input the settings this opening of the dialog is showing
      */
     void populate(SongSettingsInput input) {
         var metadata = input.metadata();
+        var fonts = input.fonts();
 
-        hasTranslation = input.lyrics().hasTranslation();
-        translationRow.setVisible(hasTranslation);
-
-        placeField.setText(metadata.place());
+        hasTranslation.set(input.lyrics().hasTranslation());
+        attributionFont.set(fonts.getFont(FontKey.ATTRIBUTION));
+        subAttributionFont.set(fonts.getFont(FontKey.SUB_ATTRIBUTION));
+        place.set(metadata.place());
         musicDate.setValues(metadata.year(), metadata.month(), metadata.day());
-        composerField.setText(metadata.composer());
-        lyricistField.setText(metadata.lyricist());
-        sourceCombo.setSelectedItem(metadata.lyricsSource());
-        arrangementCheck.setSelected(metadata.arrangement());
-        unofficialTranslationCheck.setSelected(metadata.unofficialTranslation());
+        composer.set(metadata.composer());
+        lyricist.set(metadata.lyricist());
+        lyricsSource.set(metadata.lyricsSource());
+        arrangement.set(metadata.arrangement());
+        unofficialTranslation.set(metadata.unofficialTranslation());
 
         var wordsYear = metadata.wordsYear();
         wordsDate.setValues(wordsYear, metadata.wordsMonth(), metadata.wordsDay());
-        differentDateCheckbox.setSelected(!wordsYear.isEmpty());
-        syncWordsDatePanel();
-
-        // Populate both font rows' description labels and, through them, refresh the preview
-        // with the fonts just set.
-        var fonts = input.fonts();
-        FontSettingRow.applyFont(fonts.getFont(FontKey.ATTRIBUTION), attributionFontLabel, this::applyAttributionFont);
-        FontSettingRow.applyFont(fonts.getFont(FontKey.SUB_ATTRIBUTION), subAttributionFontLabel, this::applySubAttributionFont);
+        differentDate.set(!wordsYear.isEmpty());
     }
 
     /**
      * Thin Swing wrapper around {@link AttributionPane}.
      * Delegates measure and paint to the bare rendering surface;
-     * stores the current fonts so {@link #getPreferredSize()} and
-     * {@link #paintComponent} can pass them through.
+     * holds the state one preview refresh writes so {@link #getPreferredSize()} and
+     * {@link #paintComponent} can pass the fonts through.
      */
     private static final class AttributionPaneWidget extends JComponent {
 
         private final AttributionPane pane = new AttributionPane();
 
+        // Null until the first write, which the owning tab's binding makes while it is
+        // being constructed — before this widget is ever laid out or painted.
         @Nullable
-        private Font attributionFont;
-
-        @Nullable
-        private Font subAttributionFont;
+        private PreviewState state = null;
 
         /**
-         * Sets both fonts and the override lines, then invalidates size and
-         * paint once. Batched so a single preview refresh triggers one
-         * {@code revalidate}/{@code repaint} rather than three.
+         * Everything one preview refresh writes, as one value.
+         * <p>
+         * One record rather than three arguments so the binding into this widget can
+         * compare against what it last wrote, and so the tab's re-pack effect fires on a
+         * change to what is drawn rather than on every notification a dependency makes.
+         *
+         * @param attributionFont    the font the main credit lines render in
+         * @param subAttributionFont the font the date and place lines render in
+         * @param lines              the lines to draw, in order
          */
-        void setPreviewState(
-            Font attributionFont,
-            Font subAttributionFont,
-            @Nullable List<AttributionLine> lines
-        ) {
-            this.attributionFont = attributionFont;
-            this.subAttributionFont = subAttributionFont;
-            pane.setOverrideLines(lines);
+        record PreviewState(Font attributionFont, Font subAttributionFont, List<AttributionLine> lines) {}
+
+        /**
+         * Shows {@code state}, then invalidates size and paint once. Batched so a single
+         * preview refresh triggers one {@code revalidate}/{@code repaint} rather than
+         * three.
+         */
+        void setPreviewState(PreviewState state) {
+            this.state = state;
+            pane.setOverrideLines(state.lines());
             revalidate();
             repaint();
         }
 
         @Override
         public Dimension getPreferredSize() {
-            if (attributionFont == null || subAttributionFont == null) {
+            if (state == null) {
                 return new Dimension(0, 0);
             }
 
-            return pane.getContentSizePx(attributionFont, subAttributionFont);
+            return pane.getContentSizePx(state.attributionFont(), state.subAttributionFont());
         }
 
         @Override
         public Dimension getMaximumSize() {
             // Track the preferred size so the BoxLayout never stretches the
             // preview vertically. Computed dynamically because the preferred
-            // size is zero until the fonts are set by the first refresh.
+            // size is zero until the first refresh writes the fonts.
             return getPreferredSize();
         }
 
@@ -660,7 +683,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
-            if (attributionFont == null || subAttributionFont == null) {
+            if (state == null) {
                 return;
             }
 
@@ -668,7 +691,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             GraphicUtils.setRenderingHints(g2);
             // The preview always renders unzoomed (no ScoreView), so measure at natural scale.
             pane.render(
-                g2, 0, 0, getWidth(), attributionFont, subAttributionFont,
+                g2, 0, 0, getWidth(), state.attributionFont(), state.subAttributionFont(),
                 AttributionPane.NATURAL_ZOOM_FACTOR);
         }
     }
