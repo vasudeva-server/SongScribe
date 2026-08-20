@@ -317,8 +317,11 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the {@code <direction>} for {@code element}'s {@link AnnotationAttachment}, or
-     * {@code null} when the element carries no annotation.
+     * Builds the {@code <direction>} for {@code element}'s {@link AnnotationAttachment}.
+     *
+     * @return the direction, or {@code null} when the element carries no annotation or the
+     *         annotation has no text — an annotation with nothing to draw is not written, so a
+     *         reload does not have to decide what an empty {@code <words>} means
      */
     static @Nullable Direction buildElementAnnotationDirection(
             BuildContext context, StaffElement element) {
@@ -328,7 +331,13 @@ final class DirectionBuilder {
             return null;
         }
 
-        return buildAnnotationDirection(context, annotationAttachment.getAnnotation());
+        var annotation = annotationAttachment.getAnnotation();
+
+        if (annotation.getAnnotation().isBlank()) {
+            return null;
+        }
+
+        return buildAnnotationDirection(context, annotation);
     }
 
     /**

@@ -56,7 +56,7 @@ public class Annotation implements Copyable<Annotation> {
 
     /**
      * @param annotation the text to display; expected to be non-blank
-     * @log warning if {@code annotation} is blank; the blank text is stored anyway
+     * @log warn if {@code annotation} is blank; the blank text is stored anyway
      */
     public Annotation(String annotation) {
         this(annotation, Component.LEFT_ALIGNMENT);
@@ -65,7 +65,7 @@ public class Annotation implements Copyable<Annotation> {
     /**
      * @param annotation the text to display; expected to be non-blank
      * @param alignment  a {@code Component} horizontal alignment constant
-     * @log warning if {@code annotation} is blank; the blank text is stored anyway
+     * @log warn if {@code annotation} is blank; the blank text is stored anyway
      */
     public Annotation(String annotation, float alignment) {
         warnIfBlank(annotation);

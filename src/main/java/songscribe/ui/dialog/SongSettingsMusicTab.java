@@ -19,6 +19,7 @@
  */
 package songscribe.ui.dialog;
 
+import java.util.List;
 import javax.swing.JPanel;
 
 import songscribe.Strings;
@@ -41,7 +42,7 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     private final TempoSection tempoSection = new TempoSection(
         Duration.values(),
         Strings.get(Strings.DIALOG_SONG_SETTINGS_SHOW_ONLY_DESCRIPTION),
-        "tempos"
+        List.of("tempos")
     );
 
     SongSettingsMusicTab(SongSettingsDialog dialog) {

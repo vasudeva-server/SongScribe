@@ -44,8 +44,9 @@ public class NumericTextField extends MyJTextField {
      *
      * <p>Validation is enforced with an {@link InputVerifier}: while the value is
      * unacceptable the field refuses to yield focus, so a button that triggers it — OK,
-     * say — will not fire. To let a button bypass validation, as Cancel must, call
-     * {@code button.setVerifyInputWhenFocusTarget(false)}.
+     * say — will not fire. A dialog built on {@link songscribe.ui.dialog.StandardDialog} needs
+     * nothing for this, since it already exempts Cancel and Remove; a dismissing button outside
+     * that family exempts itself the same way.
      *
      * @param columns the field's width, in the usual Swing column units
      * @param range the values this field accepts, and whether it may be left empty

@@ -20,28 +20,13 @@
 package songscribe.ui.component;
 
 /**
- * A text field that may not be left blank, carrying its own {@link NonBlankGuard}.
+ * A text field that installs its own {@link NonBlankGuard}.
  *
- * <p><strong>The field is never blank once focus has left it, unless it has never held a
- * non-blank value.</strong> Emptying a field that has held a value and moving on beeps, says
- * so, and puts back what was there. That promise is the field's own, not something each
- * caller installs, which is what keeps a rule about the value from being one a caller can
- * forget to apply.
+ * <p><strong>The field is never blank once focus has left it.</strong> Emptying it and moving on
+ * beeps, says so, and puts back what was there; {@link NonBlankGuard} carries the rule.
  *
- * <p>The alert is deliberate rather than a silent restore: a field that refills itself
- * without a word reads as the application having eaten the keystroke, where the alert
- * names the rule and makes the returning value an answer.
- *
- * <p>The guard speaks only when focus leaves, and it can only restore what it has already
- * seen, so a field that has never held a non-blank value has nothing to fall back to but
- * empty. A dialog that wants a blank field to be uncommittable contributes a validity
- * condition over the field's property — {@code requireValid(bindings().computed(() ->
- * !text.get().isBlank()))} — which follows the document and so answers to typing, cut and
- * paste alike. The two are complementary: the condition is what makes a blank field
- * uncommittable, and the guard is what restores a value once the user moves on.
- *
- * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored
- * value to be the one the user was looking at rather than empty.
+ * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored value
+ * to be the one the user was looking at.
  */
 public class NonBlankTextField extends MyJTextField {
 
@@ -60,10 +45,6 @@ public class NonBlankTextField extends MyJTextField {
     /**
      * Marks the field's current text as the value to restore, per
      * {@link NonBlankGuard#rememberCurrentText()}.
-     *
-     * <p>Call it after populating the field. A programmatic write is indistinguishable
-     * from typing here, so without this the guard would restore empty where the
-     * user expects what the dialog had just shown them.
      *
      * @effects replaces the text this field restores on a blank entry, unless the current
      *     text is blank, which is ignored

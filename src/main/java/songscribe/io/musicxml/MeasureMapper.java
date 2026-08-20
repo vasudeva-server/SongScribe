@@ -759,7 +759,7 @@ final class MeasureMapper {
      *
      * @return the annotation the direction describes, or {@code null} when it carries none or
      *         no text
-     * @log warning if the direction's words are blank
+     * @log warn if the direction's words carry no value or a blank one
      */
     @Nullable
     private static Annotation annotationOf(Direction direction) {

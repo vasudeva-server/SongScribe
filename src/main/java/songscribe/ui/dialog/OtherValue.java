@@ -25,9 +25,8 @@ import songscribe.util.Copyable;
  * The text {@link OtherValueDialog} opens on.
  *
  * <p>It exists because {@link String} is a JDK class and cannot be made {@link Copyable}, which
- * {@link DialogController}'s input bound requires. Wrapping is the only way a type we do not own
- * crosses the dialog interface, and stating that here is what keeps the bound total rather than
- * total-with-exceptions. {@link FontChoice} is the same case for {@link java.awt.Font}.
+ * {@link DialogController}'s input bound requires. {@link FontChoice} is the same case for
+ * {@link java.awt.Font}.
  *
  * @param text the value to show in the field when the prompt opens
  */
@@ -36,8 +35,7 @@ record OtherValue(String text) implements Copyable<OtherValue> {
     /**
      * {@inheritDoc}
      *
-     * @return {@code this}. {@link String} is immutable, so there is nothing for a copy to separate
-     *         — which is the fact this record's existence asserts.
+     * @return {@code this}; {@link String} is immutable, so there is nothing for a copy to separate
      */
     @Override
     public OtherValue copy() {

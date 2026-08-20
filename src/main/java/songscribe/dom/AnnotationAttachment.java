@@ -56,24 +56,17 @@ public final class AnnotationAttachment extends Attachment {
     }
 
     /**
-     * Returns the annotation data.
+     * @return the annotation data
      */
     public Annotation getAnnotation() {
         return annotation;
     }
 
     /**
-     * Sets the annotation data.
+     * @param annotation the annotation data this attachment carries from now on
      */
     public void setAnnotation(Annotation annotation) {
         this.annotation = annotation;
-    }
-
-    /**
-     * Returns the annotation text.
-     */
-    public String getText() {
-        return annotation.getAnnotation();
     }
 
     /**

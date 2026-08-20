@@ -29,28 +29,17 @@ import songscribe.ui.OptionDialogs;
 /**
  * An {@link InputVerifier} for a field that may not be left blank. Emptying the field beeps, says
  * so, and puts back what was in it. Install it with
- * {@code field.setInputVerifier(new NonBlankGuard(field))}; the field may be a combo box's editor
- * as easily as a plain text field.
+ * {@code field.setInputVerifier(new NonBlankGuard(field))}.
  *
- * <p><strong>The field is never blank once focus has left it, unless it has never held a
- * non-blank value — and it never carries leading or trailing whitespace.</strong> A guard that has
- * never seen a non-blank value has nothing to restore but empty, so what closes that gap is
- * {@code requireValid} over the field's property: bound by the caller, it disables the commit
- * while the field is blank, leaving the guard free to restore a value once the user moves on
- * rather than to guarantee one exists.
+ * <p><strong>The field is never blank once focus has left it, and never carries leading or
+ * trailing whitespace.</strong> Whoever populates the field gives the guard the value it restores,
+ * by calling {@link #rememberCurrentText()}; a caller that also wants the commit disabled while
+ * the field is blank binds {@code requireValid} over the field's property, which speaks while the
+ * user types where the guard speaks when they leave.
  *
  * <p>Blank rather than empty is the test throughout: a field holding only spaces is a field the
  * user has left with no value in it, whatever the document length says. Text that survives the
  * test is stripped, so the surrounding whitespace never reaches the value either.
- *
- * <p>Telling the user and then restoring, rather than only restoring, is deliberate. A field that
- * silently refills itself reads as the application having lost the keystroke; the alert names the
- * rule that was broken, so the value that reappears is an answer rather than a glitch. It still
- * yields focus afterwards — an emptied field is not a reason to strand the caret in a field the
- * user was trying to leave, and the restored value is already valid.
- *
- * <p>Whoever populates the field must call {@link #rememberCurrentText()} for the restored value to
- * be the one the user was looking at rather than empty.
  */
 public final class NonBlankGuard extends InputVerifier {
 
@@ -70,12 +59,11 @@ public final class NonBlankGuard extends InputVerifier {
      *
      * <p>Call it after setting the field programmatically. Such a write is invisible here — it
      * leaves the document looking exactly as typing would — so without this the guard cannot tell a
-     * value a dialog just put in from a half-finished edit, and a user who empties a freshly opened
-     * field would get the fallback instead of what they were looking at.
+     * value a dialog just put in from a half-finished edit.
      *
      * <p>Blank text is ignored rather than remembered: a field populated with nothing has no
-     * previous value worth restoring, and taking it would break the class promise. That makes the
-     * call safe after a write that may or may not have produced anything.
+     * previous value worth restoring. That makes the call safe after a write that may or may not
+     * have produced anything.
      *
      * @effects remembers the current text, stripped, unless it is blank
      */
@@ -102,20 +90,17 @@ public final class NonBlankGuard extends InputVerifier {
      * <p>Yielding either way is what keeps the guard from trapping the user: once the previous
      * value is back the field is valid, so there is nothing to keep the caret for.
      *
-     * <p>Yielding is not on its own enough to keep a dismissing button clickable, though. The alert
-     * goes up inside the mouse press that moves focus to the button, and takes the release with it,
-     * so the button's action never runs — the user is told about a value that was about to be
-     * discarded, and the dialog stays up. What answers that is the button declining verification it
-     * has no use for: {@code StandardDialog} exempts Cancel and Remove.
+     * <p>Yielding does not on its own keep a button that dismisses the dialog clickable; a button
+     * that never reads the field declines this verification instead. See
+     * {@link songscribe.ui.dialog.StandardDialog}.
      *
-     * <p>Stripping happens here rather than at whatever later reads the field, so that what the
-     * user is left looking at is what the value will be. A field whose text is already stripped is
-     * not written, so leaving a field untouched costs no document change and fires nothing.
+     * <p>Stripping happens here, so what the user is left looking at is what the value will be. A
+     * field whose text is already stripped is not written, so leaving a field untouched costs no
+     * document change and fires nothing.
      *
      * @return always {@code true}
      * @effects replaces the field's text with its stripped form, or with the previous value when
-     *     the field is blank, in which case the user is alerted first; that previous value is
-     *     empty until a non-blank value has been remembered
+     *     the field is blank, in which case the user is alerted first
      */
     @Override
     public boolean shouldYieldFocus(JComponent source, JComponent target) {

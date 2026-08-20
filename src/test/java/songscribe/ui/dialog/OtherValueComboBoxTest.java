@@ -19,8 +19,11 @@
  */
 package songscribe.ui.dialog;
 
-import org.junit.jupiter.api.DisplayName;
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
@@ -29,41 +32,54 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OtherValueComboBoxTest extends UnitTest {
 
-    private static final String ANNOTATION_FILE = "annotations";
+    private static final String CHOICES_FILE = "test-choices";
+    private static final String FIRST_CHOICE = "Andante";
 
-    private static OtherValueComboBox annotationCombo() {
+    private static OtherValueComboBox combo(OtherValueComboBox.EmptyChoice emptyChoice) {
         return new OtherValueComboBox(
             new OtherValuePrompt("Title", "Label"),
-            OtherValueComboBox.EmptyChoice.WITHHELD,
-            ANNOTATION_FILE
+            emptyChoice,
+            List.of(CHOICES_FILE)
         );
     }
 
     @Test
-    @DisplayName("text equal to the Other… label is an ordinary value, not the sentinel")
-    void otherLabelAsValue() {
-        var combo = annotationCombo();
-        // A distinct instance, which interning of the literal would otherwise prevent: the
-        // override recognises the sentinel by identity, so an equal instance must select normally
-        // rather than open the prompt.
-        var equalToSentinel = new String(Strings.get(Strings.LABEL_OTHER));
-
-        combo.setSelectedItem(equalToSentinel);
-
-        assertThat(combo.getValue()).isEqualTo(equalToSentinel);
-    }
-
-    @Test
-    @DisplayName("a value the list does not hold is added above Other… and selected")
-    void unknownValueIsAdded() {
-        var combo = annotationCombo();
+    void testUnknownValueIsAddedAboveOtherAndSelected() {
+        var combo = combo(OtherValueComboBox.EmptyChoice.WITHHELD);
         var unknownValue = "Poco a poco accelerando";
 
-        combo.setSelectedItem(unknownValue);
+        combo.setValue(unknownValue);
 
         assertThat(combo.getValue()).isEqualTo(unknownValue);
+
         var lastIndex = combo.getItemCount() - 1;
         assertThat(combo.getItemAt(lastIndex)).isEqualTo(Strings.get(Strings.LABEL_OTHER));
         assertThat(combo.getItemAt(lastIndex - 1)).isEqualTo(unknownValue);
+    }
+
+    @ParameterizedTest
+    @EnumSource(OtherValueComboBox.EmptyChoice.class)
+    void testEmptyRowIsPresentOnlyWhenOffered(OtherValueComboBox.EmptyChoice emptyChoice) {
+        var combo = combo(emptyChoice);
+
+        if (emptyChoice == OtherValueComboBox.EmptyChoice.OFFERED) {
+            assertThat(combo.getItemAt(0)).isEmpty();
+            assertThat(combo.getValue()).isEmpty();
+        } else {
+            assertThat(combo.getItemAt(0)).isNotEmpty();
+            assertThat(combo.getValue()).isNotEmpty();
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(OtherValueComboBox.EmptyChoice.class)
+    void testCommandLabelsAndExistingValuesAreInUse(OtherValueComboBox.EmptyChoice emptyChoice) {
+        var combo = combo(emptyChoice);
+
+        assertThat(combo.isValueInUse(Strings.get(Strings.LABEL_OTHER))).isTrue();
+        assertThat(combo.isValueInUse(FIRST_CHOICE)).isTrue();
+        assertThat(combo.isValueInUse("Poco a poco accelerando")).isFalse();
+        assertThat(combo.isValueInUse(Strings.get(Strings.LABEL_NONE)))
+            .isEqualTo(emptyChoice == OtherValueComboBox.EmptyChoice.OFFERED);
     }
 }

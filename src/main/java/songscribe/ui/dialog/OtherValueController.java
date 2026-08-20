@@ -19,6 +19,7 @@
  */
 package songscribe.ui.dialog;
 
+import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -27,15 +28,8 @@ import songscribe.ui.component.MainFrame;
  *
  * <p><strong>It touches no document.</strong> The combo it serves is a control inside whatever
  * dialog opened it, so an OK here changes what that combo says and nothing more; the document is
- * written, if at all, when that dialog's own OK commits. Nothing in this class reaches the song,
- * the view or the line, and it will not begin to — a prompt that wrote the score would commit an
- * edit the user has not yet accepted in the dialog they are still standing in.
- *
- * <p><strong>It exists because {@link StandardDialog} takes a {@link DialogOps}, and
- * {@link DialogController#ops()} is the only place one is assembled.</strong> Handing the dialog a
- * {@code DialogOps} built at the call site would work and would be shorter, and it would also be a
- * second route around the one place {@link #read()}'s answer is copied — the guarantee that a
- * dialog cannot reach through what it was shown holds only while every bundle comes from here.
+ * written, if at all, when that dialog's own OK commits. A prompt that wrote the score would commit
+ * an edit the user has not yet accepted in the dialog they are still standing in.
  *
  * <p>Constructed per gesture, by the combo whose {@code Other…} row was chosen, and discarded with
  * the dialog.
@@ -70,15 +64,34 @@ final class OtherValueController extends DialogController<OtherValue, String> {
     /**
      * {@inheritDoc}
      *
-     * <p>The combo adds a value its list does not already carry, so a value typed here is selected
-     * whether or not it was ever offered — see {@link OtherValueComboBox#setSelectedItem}.
+     * <p>Refuses a value the combo already shows, so the list never ends up with two rows the user
+     * cannot tell apart. Comparison is against what the rows display, which is what makes the
+     * {@code (none)} and {@code Other…} labels unavailable as values.
      *
      * @param text the text the user entered, already known to be non-blank
+     * @return {@link ValidationResult#valid()} unless some row already shows {@code text}
+     */
+    @Override
+    protected ValidationResult validate(String text) {
+        if (combo.isValueInUse(text)) {
+            return ValidationResult.invalid(new ValidationFailure(
+                Strings.ALERT_TITLE_INVALID_ENTRY,
+                new LocalizedMessage(Strings.ERROR_VALUE_IN_USE)
+            ));
+        }
+
+        return ValidationResult.valid();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @param text the text the user entered, already known to be non-blank and not already in use
      * @effects selects {@code text} in the combo, adding it to the combo's list when the list does
-     *     not already contain it
+     *     not already contain it — see {@link OtherValueComboBox#setValue}
      */
     @Override
     protected void commit(String text) {
-        combo.setSelectedItem(text);
+        combo.setValue(text);
     }
 }

@@ -22,6 +22,7 @@ package songscribe.ui.dialog;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.util.List;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -38,17 +39,17 @@ import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
 
 /**
- * An editable text combo plus alignment and placement radios, for editing the annotation on an
- * element.
+ * A fixed-list annotation combo plus alignment and placement radios, for editing the annotation on
+ * an element.
  *
- * <p><strong>The text is never blank.</strong> {@link Annotation} does not permit it. The combo
+ * <p><strong>The text is never blank.</strong> This dialog is where that is enforced: the combo
  * offers a fixed list of non-blank annotations plus an {@code Other…} row whose prompt cannot
  * commit a blank value, so blank text cannot be entered through it. Emptying a field is therefore
  * not a way to delete an annotation; the Remove button is.
  */
 public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
-    static final String DEFAULT_ANNOTATION = "Fine";
+    private static final String DEFAULT_ANNOTATION = "Fine";
     private static final String ANNOTATION_FILE = "annotations";
 
     final OtherValueComboBox annotationCombo = new OtherValueComboBox(
@@ -57,7 +58,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
             Strings.get(Strings.LABEL_ANNOTATION_OTHER_PROMPT)
         ),
         OtherValueComboBox.EmptyChoice.WITHHELD,
-        ANNOTATION_FILE
+        List.of(ANNOTATION_FILE)
     );
     final JRadioButton leftRadio =
         new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
@@ -130,7 +131,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     protected void populateControls(@Nullable Annotation existingChange) {
         var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
-        annotationCombo.setSelectedItem(annotation.getAnnotation());
+        annotationCombo.setValue(annotation.getAnnotation());
 
         var alignment = annotation.getXAlignment();
 

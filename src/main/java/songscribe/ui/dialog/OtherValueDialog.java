@@ -38,15 +38,13 @@ import songscribe.ui.component.NonBlankTextField;
  * condition reads the field's property, so it answers to a cut and a paste as readily as to
  * typing.
  *
- * <p>The field is a {@link NonBlankTextField}, so the same rule is also enforced once focus leaves
- * it — the condition speaks while the user types, the field's own guard restores what was there
- * when they move on. Both are the one rule; neither is a copy of the other's decision.
+ * <p>The field is a {@link NonBlankTextField}, so the same rule also holds once focus leaves it:
+ * the condition speaks while the user types, the field's own guard restores what was there when
+ * they move on. See the validity section of {@code .claude/guides/dialogs.md}.
  *
  * <p><strong>It opens while another modal dialog is already up</strong>, which is the ordinary case
  * rather than the exception: the combo it serves lives inside a dialog. That needs no
- * {@link DialogCategory} override — it is {@code OPERATIONAL}, the default. {@code BaseDialog}
- * reference-counts blocking dialogs and posts only at the 0↔1 transitions, so a second blocking
- * dialog on top of the first neither re-announces the block nor un-announces it on the way out.
+ * {@link DialogCategory} override — it is {@code OPERATIONAL}, the default.
  */
 final class OtherValueDialog extends StandardDialog<OtherValue, String> {
 
@@ -78,9 +76,6 @@ final class OtherValueDialog extends StandardDialog<OtherValue, String> {
     @Override
     protected void populate(OtherValue values) {
         text.set(values.text());
-
-        // A programmatic write is indistinguishable from typing to the guard, so without this it
-        // would restore the empty string where the user expects the text they were just shown.
         field.rememberCurrentText();
     }
 

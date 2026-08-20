@@ -21,10 +21,10 @@ package songscribe.ui.dialog;
 
 import java.awt.Component;
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.JComboBox;
@@ -32,43 +32,42 @@ import javax.swing.JList;
 import javax.swing.SwingUtilities;
 
 import songscribe.Strings;
-import songscribe.ui.OptionDialogs;
+import songscribe.error.RuntimeError;
 import songscribe.ui.component.MainFrame;
 
 /**
  * A non-editable combo box offering a fixed list of values plus a final {@code Other…} row, which
  * opens a one-field modal prompt for a value the list does not contain.
  *
- * <p>{@code Other…} is always the last row and is never a value: choosing it opens the prompt
- * instead of changing the selection, so no observer of this combo — listener, binding, or caller
- * of {@link #getValue()} — can ever see it. A value the prompt commits is added to the list
- * immediately above {@code Other…} and selected. So is a value written with
- * {@link #setSelectedItem(Object)} that the list does not already hold: the value a song carries is
- * shown even when it was typed before it was ever offered, rather than silently ignored the way a
- * non-editable {@link JComboBox} would ignore it.
+ * <p><strong>The command rows are the ends of the list.</strong> The last row is always
+ * {@code Other…}; the first row is the {@code (none)} row when the caller asks for it with
+ * {@link EmptyChoice#OFFERED}. Position is what identifies them, so no text comparison decides
+ * whether the user picked a command or a value.
+ *
+ * <p>Choosing {@code Other…} opens the prompt rather than selecting anything, so no listener,
+ * binding, or caller of {@link #getValue()} ever sees it as the value. The prompt refuses a value
+ * any row already shows — see {@link #isValueInUse} — so the list never holds two rows the user
+ * cannot tell apart.
+ *
+ * <p>{@link #setValue(String)} adds a value the list does not hold, immediately above
+ * {@code Other…}, and selects it — so the value a song carries is shown even when it was entered
+ * before it was ever offered.
  *
  * <p>Values entered through the prompt live as long as this combo does. Nothing persists them: a
  * later dialog starts from the configured list again, with the song's own value added back by the
  * write that populates the combo.
  *
- * <p>The optional empty row <strong>is the value</strong> {@code ""}, not a label with a mapping
- * behind it; a renderer paints it as {@code (none)}. {@link #getSelectedItem()} therefore answers
- * the real value with no translation layer. The row exists only when the caller asks for it with
- * {@link EmptyChoice#OFFERED}.
- *
- * <p>The class satisfies the preconditions of {@code Controls.item}: it is uneditable and always
- * holds a selection, so its value is its selection and a binding over it sees every change. An
- * editable combo satisfies neither — its value lives in its editor rather than in its selection,
- * and the two disagree until the look and feel chooses to commit.
+ * <p>The {@code (none)} row's value is {@code ""}, painted as {@code (none)}, and
+ * {@link #getValue()} answers {@code ""} for it.
  */
 final class OtherValueComboBox extends JComboBox<String> {
 
     /**
-     * Whether the list offers the empty value.
+     * Whether the list offers a row standing for no value.
      *
-     * <p>{@link #OFFERED} puts the value {@code ""} in the list as its first row, rendered as
-     * {@code (none)}. A combo whose value may not be empty asks for {@link #WITHHELD}, and then no
-     * row of the list is empty and {@link #getValue()} never answers {@code ""}.
+     * <p>{@link #OFFERED} puts the {@code (none)} row first, and {@link #getValue()} answers
+     * {@code ""} when it is selected. A combo whose value may not be empty asks for
+     * {@link #WITHHELD}, and then {@link #getValue()} never answers {@code ""}.
      */
     enum EmptyChoice {
         OFFERED,
@@ -78,30 +77,26 @@ final class OtherValueComboBox extends JComboBox<String> {
     private static final String CONF_RESOURCE_PREFIX = "/conf/";
 
     private final OtherValuePrompt prompt;
+    private final EmptyChoice emptyChoice;
     private final DefaultComboBoxModel<String> comboModel = new DefaultComboBoxModel<>();
 
     /**
-     * The one instance of the {@code Other…} text that {@link #setSelectedItem(Object)} compares
-     * against by identity. Resolved once and never re-resolved, since a second equal instance would
-     * not be the sentinel.
-     */
-    private final String otherItem = Strings.get(Strings.LABEL_OTHER);
-
-    /**
-     * Builds the combo: the empty row when asked for, then the values read from {@code fileNames}
-     * in the order given, then {@code Other…}.
+     * Builds the combo: the {@code (none)} row when asked for, then the values read from
+     * {@code fileNames} in the order given, then {@code Other…}.
      *
      * @param prompt      the title and field label of the prompt that {@code Other…} opens, as
      *                    resolved text
-     * @param emptyChoice whether the list offers the empty value as its first row
+     * @param emptyChoice whether the list offers the {@code (none)} row first
      * @param fileNames   names of the {@code /conf} resources to read values from, one value per
-     *                    line; a name may be given for a resource that yields no values
+     *                    line; blank lines are skipped
      * @effects installs this combo's model and renderer, and reads each named resource
-     * @log an unreadable resource is reported to the user as a damaged installation and leaves
-     *      the combo with the values it read before the failure
+     * @throws RuntimeException via {@link RuntimeError#missingResource}, exiting the application,
+     *                          when a named resource is absent or unreadable, or when the rows
+     *                          leave nothing selectable — each is a damaged installation
      */
-    OtherValueComboBox(OtherValuePrompt prompt, EmptyChoice emptyChoice, String... fileNames) {
+    OtherValueComboBox(OtherValuePrompt prompt, EmptyChoice emptyChoice, List<String> fileNames) {
         this.prompt = prompt;
+        this.emptyChoice = emptyChoice;
         setModel(comboModel);
 
         if (emptyChoice == EmptyChoice.OFFERED) {
@@ -112,67 +107,112 @@ final class OtherValueComboBox extends JComboBox<String> {
             addValuesFromFile(comboModel, fileName);
         }
 
-        comboModel.addElement(otherItem);
+        // Nothing but the command row would mean no value can ever be chosen, and the model would
+        // select the command row for want of anything else.
+        if (comboModel.getSize() == 0) {
+            throw RuntimeError.missingResource(
+                "No combo values were read from: " + String.join(", ", fileNames));
+        }
+
+        comboModel.addElement(Strings.get(Strings.LABEL_OTHER));
         setRenderer(new EmptyValueRenderer());
     }
 
     /**
-     * Selects {@code item}, adding it to the list first when the list does not hold it, or opens
-     * the {@code Other…} prompt when {@code item} is the {@code Other…} sentinel.
+     * Selects {@code text}, adding it to the list immediately above {@code Other…} when the list
+     * does not already hold it.
      *
-     * <p>Three promises, each of which is why this is written as an override rather than as a
-     * listener:
+     * <p>A programmatic write never opens the prompt, whatever the text.
      *
-     * <ul>
-     *   <li><strong>The sentinel is never observable.</strong> A listener reacting to
-     *   {@code Other…} runs once the selection already is {@code Other…}, so every other listener
-     *   would see the sentinel as the value and correctness would depend on registration order.
-     *   Intercepting the write means no observer can see it at all.</li>
-     *   <li><strong>The sentinel is recognised by identity.</strong> The popup and keyboard
-     *   selection both route through {@link #setSelectedIndex(int)}, which passes the model's own
-     *   instance, so identity is what the sentinel is. It is also what lets a user enter the
-     *   literal text {@code Other…} as a value: it arrives as a different instance, and the two
-     *   never collide.</li>
-     *   <li><strong>A value the list does not hold is added, then selected.</strong> A
-     *   non-editable {@link JComboBox} silently ignores an unknown value, which would leave a
-     *   dialog showing a value other than the one the document carries, and commit that instead
-     *   of the user's.</li>
-     * </ul>
+     * @param text the value to select; {@code ""} selects the {@code (none)} row, and does nothing
+     *             in a {@link EmptyChoice#WITHHELD} combo, which has none
+     * @effects adds a row for {@code text} when the list does not hold one
+     */
+    void setValue(String text) {
+        if (text.isEmpty()) {
+            if (emptyChoice == EmptyChoice.OFFERED) {
+                super.setSelectedIndex(0);
+            }
+
+            return;
+        }
+
+        var index = comboModel.getIndexOf(text);
+
+        if (index < 0) {
+            index = otherIndex();
+            comboModel.insertElementAt(text, index);
+        }
+
+        super.setSelectedIndex(index);
+    }
+
+    /**
+     * Selects the row at {@code index}, or opens the prompt when {@code index} is the
+     * {@code Other…} row.
      *
-     * <p>The prompt is opened through {@link SwingUtilities#invokeLater}, which is required rather
-     * than stylistic: this runs inside the popup's {@code mouseReleased}, before the popup hides,
-     * so a modal dialog shown here would re-enter the event loop with the popup still up.
-     * Deferred, the popup closes first, and because the selection never changed no
-     * {@code ActionEvent} fires — an observer sees one notification, carrying the committed value,
-     * and never a transient one.
+     * <p>Every route by which the user picks a row — the popup, the arrow keys, typeahead — arrives
+     * here, which is what lets position alone identify the command. Intercepting the write is what
+     * keeps the command out of every observer's view.
      *
-     * @param item the value to select, or the {@code Other…} sentinel to open the prompt
-     * @effects adds {@code item} to the list immediately above {@code Other…} when the list does
-     *          not hold it; opens a modal prompt, later on the EDT, when {@code item} is the
-     *          sentinel
-     * @invariant the selection afterwards is never the {@code Other…} sentinel
+     * <p>The prompt opens through {@link SwingUtilities#invokeLater} because this runs inside the
+     * popup's mouse-release handling, before the popup hides, and a modal dialog shown there would
+     * re-enter the event loop with the popup still up. The call therefore returns before the user
+     * has answered, with the selection unchanged.
+     *
+     * @param index the row to select, or {@link #otherIndex()} to open the prompt
+     * @effects opens a modal prompt, later on the event dispatch thread, for the {@code Other…} row
+     * @invariant the selection afterwards is never the {@code Other…} row
      */
     @Override
-    public void setSelectedItem(Object item) {
-        // Identity, not equality: see the contract above. Do not "fix" this to equals().
-        if (item == otherItem) {
+    public void setSelectedIndex(int index) {
+        if (index == otherIndex()) {
             SwingUtilities.invokeLater(this::promptForOther);
             return;
         }
 
-        if (item instanceof String text && comboModel.getIndexOf(text) < 0) {
-            comboModel.insertElementAt(text, comboModel.getSize() - 1);
-        }
-
-        super.setSelectedItem(item);
+        super.setSelectedIndex(index);
     }
 
     /**
-     * @return the selected value; {@code ""} exactly when the empty row is selected, and never the
-     *         {@code Other…} sentinel, which {@link #setSelectedItem(Object)} never selects
+     * @return the selected value, or {@code ""} when the {@code (none)} row is selected
      */
     String getValue() {
         return (String) getSelectedItem();
+    }
+
+    /**
+     * Whether a row already shows {@code text}, comparing what the rows <strong>display</strong> so
+     * that the {@code (none)} and {@code Other…} labels count as taken.
+     *
+     * @param text the value the prompt is offering to commit
+     * @return {@code true} when some row already shows {@code text}, in which case committing it
+     *         would add a second row the user could not tell from the first
+     */
+    boolean isValueInUse(String text) {
+        for (var index = 0; index < comboModel.getSize(); index++) {
+            if (text.equals(displayText(comboModel.getElementAt(index)))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return the index of the {@code Other…} row, which is always the last
+     */
+    private int otherIndex() {
+        return comboModel.getSize() - 1;
+    }
+
+    /**
+     * @param value a row's value
+     * @return the text that row paints — the {@code (none)} label for the empty value, and the
+     *         value itself otherwise
+     */
+    private static String displayText(String value) {
+        return value.isEmpty() ? Strings.get(Strings.LABEL_NONE) : value;
     }
 
     /**
@@ -187,52 +227,46 @@ final class OtherValueComboBox extends JComboBox<String> {
     }
 
     /**
-     * Adds one value per line of the {@code /conf} resource named {@code fileName} to
+     * Adds one value per non-blank line of the {@code /conf} resource named {@code fileName} to
      * {@code model}, in file order.
      *
      * @param model    the model to add the values to
      * @param fileName the resource name under {@code /conf}
-     * @effects reports an unreadable resource to the user as a damaged installation, and returns
-     *          with the values read before the failure already added
+     * @throws RuntimeException via {@link RuntimeError#missingResource}, exiting the application,
+     *                          when the resource is absent or cannot be read
      */
-    private static void addValuesFromFile(DefaultComboBoxModel<String> model, String fileName) {
-        try {
-            var inputStream =
-                OtherValueComboBox.class.getResourceAsStream(CONF_RESOURCE_PREFIX + fileName);
+    private static void addValuesFromFile(
+        DefaultComboBoxModel<String> model,
+        String fileName
+    ) {
+        var resource = CONF_RESOURCE_PREFIX + fileName;
+        var inputStream = OtherValueComboBox.class.getResourceAsStream(resource);
 
-            if (inputStream == null) {
-                throw new FileNotFoundException("File not found: " + fileName);
-            }
+        if (inputStream == null) {
+            throw RuntimeError.missingResource("Combo values resource not found: " + resource);
+        }
 
-            try (
-                var reader = new BufferedReader(
-                    new InputStreamReader(inputStream, StandardCharsets.UTF_8)
-                )
-            ) {
-                var line = reader.readLine();
+        try (
+            var reader = new BufferedReader(
+                new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+            )
+        ) {
+            var line = reader.readLine();
 
-                while (line != null) {
+            while (line != null) {
+                if (!line.isBlank()) {
                     model.addElement(line);
-                    line = reader.readLine();
                 }
+
+                line = reader.readLine();
             }
         } catch (IOException e) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_FILE_ERROR,
-                Strings.ERROR_FILE_REINSTALL
-            );
+            throw RuntimeError.missingResource(
+                "Could not read combo values from " + resource + ": " + e.getMessage());
         }
     }
 
-    /**
-     * Paints the empty value as {@code (none)} and every other value verbatim.
-     *
-     * <p>Installed whatever the {@link EmptyChoice}: a {@link EmptyChoice#WITHHELD} combo holds no
-     * empty value, so the branch is simply never taken, and a conditional install would be a
-     * second thing to keep in step with the model. It is also what stops an empty row painting at
-     * zero height.
-     */
+    /** Paints the empty value as {@code (none)} and every other value verbatim. */
     private static final class EmptyValueRenderer extends DefaultListCellRenderer {
 
         @Override
@@ -243,7 +277,7 @@ final class OtherValueComboBox extends JComboBox<String> {
             boolean isSelected,
             boolean cellHasFocus
         ) {
-            var text = "".equals(value) ? Strings.get(Strings.LABEL_NONE) : value;
+            var text = value instanceof String string ? displayText(string) : value;
 
             return super.getListCellRendererComponent(list, text, index, isSelected, cellHasFocus);
         }

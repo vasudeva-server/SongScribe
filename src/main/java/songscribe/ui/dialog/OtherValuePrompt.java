@@ -25,13 +25,7 @@ package songscribe.ui.dialog;
  *
  * <p>It carries <strong>resolved display text</strong>, not {@link songscribe.Strings} keys, which
  * is how every other dialog in this package takes its title — the caller resolves, the dialog
- * shows. A prompt built from keys would make the dialog the thing that decides when a string is
- * looked up, and it is the only dialog here that would.
- *
- * <p>It is a record rather than two constructor parameters because two adjacent transposable
- * {@code String}s at a call site are exactly what {@code .claude/rules/java.md} requires a parameter
- * object for: nothing but the argument order distinguishes a title from a prompt, and the compiler
- * cannot catch the transposition.
+ * shows.
  *
  * @param title the dialog window's title
  * @param label the prompt shown above the field

@@ -20,6 +20,7 @@
 package songscribe.ui.dialog;
 
 import java.awt.BorderLayout;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -39,7 +40,7 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
     final TempoSection tempoSection = new TempoSection(
         Duration.values(),
         Strings.get(Strings.DIALOG_TEMPO_CHANGE_SHOW_ONLY_DESCRIPTION),
-        "tempochanges", "tempos"
+        List.of("tempochanges", "tempos")
     );
 
     public TempoChangeDialog(MainFrame mainFrame, DialogOps<@Nullable Tempo, Tempo> ops) {

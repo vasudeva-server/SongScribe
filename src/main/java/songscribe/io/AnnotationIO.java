@@ -173,7 +173,7 @@ public final class AnnotationIO {
          * @return the annotation the accumulated parts describe, or {@code null} when it has no
          *         text — an annotation with no text has nothing to draw, so it is not attached
          *         rather than imported
-         * @log warning if the accumulated text is blank
+         * @log warn if the accumulated text is blank
          */
         @Nullable
         private Annotation build() {

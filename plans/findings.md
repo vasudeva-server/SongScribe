@@ -1,567 +1,622 @@
-# Review Findings — test-only-surface working tree
+# Review: commit 71233310
 
-Nothing here is producing a user-visible failure today. Three findings are latent
-defects that will fire the first time someone uses the mechanism the way its own
-documentation invites, one is a live off-thread defect in a standalone entry
-point, and the rest are dead members, unearned visibility and contract gaps.
+`feat: replace editable annotation/tempo combos with a non-editable Other picker`
 
----
+Four axes ran over the commit's 17 production files and its one new test file:
+Design, Contract & API, Correctness & Efficiency, Test Conformance. Every
+mechanical claim below was re-verified against the source before being written
+here; where an axis was wrong, it is listed at the end under *Rejected*.
 
-## 1. Design: the application bus lives inside the stack of temporary buses
-
-**Where:** `src/main/java/songscribe/message/MessageCenter.java:31–86`.
-
-**What the code does now.** The message bus is how everything in the application
-talks to everything else: an object *subscribes* to it, and any code can *post* a
-notification that every subscriber hears. Until this change there was exactly one
-bus, held in a `static final` field.
-
-The change made it a stack. `MessageCenter` now holds an `ArrayDeque` of buses.
-`post`, `subscribe` and `unsubscribe` all go through a private `bus()` method that
-looks at the top of the stack, and — if the stack is empty — builds the
-application bus and pushes it. A `MessageBusScope` pushes a second bus on top for
-the duration of a conversion, and popping it restores the one underneath.
-
-**What's wrong with it.** The application bus and the temporary scopes are two
-different things with two different lifetimes, and putting them in one container
-forces the code to keep telling them apart:
-
-- **The one-time-creation guarantee is gone.** A `static final` field is
-  initialized by the JVM under a lock, exactly once, and the result is visible to
-  every thread before any of them can use it. "Peek, and build one if the stack is
-  empty" has neither property. Two threads arriving at the first `post` or
-  `subscribe` together can each see an empty stack, each build a bus, and each
-  push onto a deque that is not safe for concurrent modification. The result is
-  two buses: some listeners registered on one, messages posted to the other, no
-  exception anywhere — just a part of the window that silently stops updating.
-  Nothing in the running application is known to hit this today, because the main
-  window subscribes on the event thread before any background thread starts. It is
-  a guarantee that was traded away for nothing.
-- **The reason given for the laziness is not correct.** The comment on `bus()`
-  says it builds on demand "so that the bus does not depend on when this class
-  happens to be loaded." Loading a class does not run its field initializers;
-  *using* it does, and the first use is the first `post` or `subscribe` — the same
-  moment `bus()` would build it. The laziness buys nothing.
-- **The stack has to be told which entry is sacred.** `pushBus` opens with a bare
-  call to `bus()` and a two-line comment explaining that it must "materialize the
-  application bus first so a scope always has one beneath it, which is what lets
-  `popBus` tell a scope from the bus it must never discard." `popBus` then encodes
-  "do not discard the application bus" as `if (BUS_STACK.size() <= 1)`. Two pieces
-  of arithmetic standing in for a fact a separate field would simply state.
-- **Every headless conversion builds a bus it never uses.** In a converter nothing
-  has subscribed before the scope opens, so that materialize-first call constructs
-  a whole MBassador — with its dispatch machinery — purely so the size check comes
-  out right, and then immediately covers it up.
-- **The guard reports through the path the scope exists to avoid.** When `popBus`
-  finds nothing to pop it calls `RuntimeError.exit`, which puts up the fatal-error
-  dialog that a headless converter cannot display — the exact problem
-  `MessageBusScope` was built to solve.
-
-**The corrected design.** Take the application bus out of the stack:
-
-```java
-private static final MBassador<Message> APPLICATION_BUS =
-    new MBassador<>(MessageCenter::exitOnPublicationError);
-private static final Deque<MBassador<Message>> SCOPE_STACK = new ArrayDeque<>();
-
-private static MBassador<Message> bus() {
-    var scoped = SCOPE_STACK.peek();
-    return scoped != null ? scoped : APPLICATION_BUS;
-}
-```
-
-`pushBus` pushes onto `SCOPE_STACK` and nothing else. `popBus` asks the plain
-question "is the scope stack empty?"
-
-**Symptoms this accounts for.** The lazy null check in `bus()`, the
-materialize-first call and its comment in `pushBus`, the `size() <= 1` sentinel in
-`popBus`, the throwaway bus every conversion builds, and the class Javadoc's claim
-that the stack is "never emptied below the application bus" — which stops being a
-rule someone must maintain and becomes true by construction.
-
-**What it touches.** One file. Two field declarations, three method bodies. No
-call site changes; `MessageBusScope`, `Converter` and the test helper are
-untouched.
-
-**Recommendation: make this change.** It puts back the guarantee the old field
-gave for free, and it deletes the special-casing that was added to work around
-losing it.
-
-### 1a. `unsubscribe` can silently fail to undo a `subscribe`
-
-Same file, same cause. All three operations act on whichever bus is on top. An
-object that subscribed on the application bus and is disposed while a scope is in
-force sends its `unsubscribe` to the scope's bus, where it matches nothing — and
-stays subscribed on the application bus forever.
-
-Nothing reaches this today: the only production scope is a converter with nothing
-subscribed beneath it. But `docs/messages.md` states "subscribe in your
-constructor, unsubscribe in `dispose()`" as a mechanical rule for the whole
-codebase, and that rule now has a case where it quietly does nothing. Worth
-deciding whether `unsubscribe` should search the whole stack, or whether the
-documentation should say plainly that disposal inside a scope is not supported.
-
-### 1b. `MessageBusScope.close()` can discard someone else's bus
-
-`src/main/java/songscribe/message/MessageBusScope.java`. The scope object keeps no
-reference to the bus it pushed — `close()` just discards whatever is on top. Two
-consequences, neither stated:
-
-- **It must be called exactly once.** `AutoCloseable`'s own contract encourages
-  implementers to make `close()` idempotent, so a caller is entitled to assume it
-  is. Here a second call discards the *enclosing* scope's bus, or, with no scope
-  left, terminates the process.
-- **Scopes must close in the reverse order they opened.** The class Javadoc says
-  "Nesting is allowed; interleaving is not" as advice. `try`-with-resources
-  enforces it; `MessageCenterTestHelper`, which opens and closes from separate
-  JUnit lifecycle methods, does not — and it is the only caller that uses the type
-  that way.
-
-Both are fixable in the type rather than in prose: have the scope store the bus it
-pushed and have `popBus` take that bus and verify it is the one on top. Closing out
-of order then fails immediately and says which scope was wrong, instead of quietly
-discarding another scope's bus.
-
-### 1c. Nesting has no caller and is not enforced
-
-`MessageBusScope` is constructed in exactly two places — `Converter.run` and the
-unit-test base class — and neither nests. The stack exists to support nesting that
-nobody does, while the constraint that actually matters (only one scope at a time
-in a live application) is a paragraph of prose that nothing checks.
+Two findings need your decision before any code changes: **D1** and **D2**. D2
+reverses a decision Phase 1 of the plan made deliberately.
 
 ---
 
-## 2. Design: `subscribed` is a second copy of a fact the bus already owns
+## Production defects
 
-**Where:** `src/main/java/songscribe/ui/component/score/PreviewElementManager.java:107`
-and `:118–127`; the same shape at `src/main/java/songscribe/undo/UndoController.java:161`
-and `:172–177`.
+### P1. A user who types `Other…` as their own value gets the command row selected instead
 
-**What the code does now.** `PreviewElementManager` is the class that draws the
-ghost note following your mouse in edit mode. It used to attach itself to the
-message bus from a `static { }` block; this change replaced that with a public
-`initialize()` called from `MainFrame`'s startup, guarded by a private
-`static boolean subscribed` that is set to `true` on the first call and never set
-back. The Javadoc calls the method "Idempotent."
+**Where:** `src/main/java/songscribe/ui/dialog/OtherValueComboBox.java:118-168`
+(the overridden selection method) and `:171-176` (the value accessor).
 
-**What's wrong with it.** The Javadoc explains why the static block had to go: as
-a static initializer, the subscription "could land inside a scope and be discarded
-when that scope closed, leaving the singleton permanently unsubscribed with no
-static initializer left to run again." The boolean latch reproduces that outcome
-exactly. If `initialize()` ever runs while a bus scope is open, it subscribes to
-the scope's bus, sets the flag, and loses the subscription when the scope closes —
-and because the flag stays `true`, every later call does nothing. The hover
-preview goes dead for the rest of the process, with nothing logged. The word
-"Idempotent" is what makes it unrecoverable.
+**What the code does now.** The new combo box is a drop-down list of choices —
+annotation texts, or tempo descriptions — whose last row reads `Other…`. Picking
+that row opens a small dialog where the user types a value the list does not
+offer. The list holds plain text, and `Other…` is just another piece of text in
+it. To tell "the user picked the `Other…` command" apart from "the user picked a
+value that happens to read `Other…`", the class keeps the one text object it put
+in the list and compares incoming selections against it by object identity
+rather than by matching text.
 
-The deeper problem is that the flag means *"`initialize()` has run at least
-once"*, while what the code needs to know is *"the singleton is on the bus that is
-in force"*. Those are two different facts, and the bus is the one that owns the
-second.
+**What goes wrong.** Java's combo box does not select the object you hand it.
+For a non-editable combo it scans the list for an element with matching text and
+selects **that** object instead. Verified directly from the JDK 25 source on this
+machine (`JComboBox.setSelectedItem`: `objectToSelect = element`).
 
-**The correcting fact: the bus already does this.** MBassador's `subscribe`
-refuses a listener it already holds — `AbstractConcurrentSet.insert` checks
-membership before inserting. Subscribing twice is already a no-op. So the flag
-guards nothing, and the copy it keeps is the one that can go stale.
+So when a user types the exact text `Other…` into the prompt and commits it:
 
-**The corrected design.** Delete the `subscribed` field and the `if`, and call
-`MessageCenter.subscribe(INSTANCE)` unconditionally. `initialize()` becomes
-genuinely idempotent — because the bus makes it so — and it also *heals*: calling
-it after a bus change re-subscribes rather than silently refusing to.
+- the identity comparison correctly says "this is not the command", so the prompt
+  does not reopen;
+- but the value is **not** added to the list, because a matching entry already
+  exists — the `Other…` row itself;
+- and the combo then selects that row.
 
-The identical latch in `UndoController.subscribeToBus` should go the same way.
-`UndoController.deinitialize()` stays (it also clears the undo and redo stacks);
-only the `INSTANCE.subscribed = false` line inside it goes.
+The user's annotation text is saved correctly, so nothing is lost or corrupted.
+What is wrong is the state the combo is left in: the selected row is the command
+row. The user cannot re-select their own value from the list afterwards, because
+clicking that row opens the prompt instead. And the class documents, twice, that
+this state is impossible.
 
-**What it touches.** Two files, one field and one branch deleted from each, one
-line deleted from `UndoController.deinitialize()`, and the word "Idempotent."
-stays in `PreviewElementManager`'s Javadoc because it becomes true.
+**Confidence:** high — the mechanism is verified from the JDK source.
 
-**Recommendation: make this change.** Two agents independently proposed adding a
-`deinitialize()` to `PreviewElementManager` to reset the flag. That would work,
-but it adds a method to keep two facts in step when deleting the second fact makes
-them one. The rest of that Javadoc — including the genuinely useful point that a
-headless conversion now never subscribes a preview handler at all — stays as is.
+**What to do instead.** This is one of the symptoms of **D1** below, and D1's fix
+removes it outright. If D1 is declined, the two false clauses must at least be
+corrected to describe what actually happens (see **C1**).
 
-**Note on the lifecycle question.** `PreviewElementManager` subscribes for the
-life of the process on the application bus, and `docs/lifecycle.md` says outright
-that there is no point unsubscribing on the way out of a process. With the flag
-gone it needs no `deinitialize()`. It does still owe the class-Javadoc *Lifecycle*
-heading naming `MainFrame.initFrame` as its caller, which `docs/lifecycle.md`
-requires of anything registering with something process-global, and
-`docs/lifecycle.md`'s own startup section still shows only `Actions.initialize(this)`
-where three initializers now run in sequence.
+### P2. An empty or missing choice file leaves the command row as the value
 
----
+**Where:** the same file, constructor at `:103-117`.
 
-## 3. Design: six "takes its inputs explicitly" methods are the deleted tests' injection points, relabelled
+**What the code does now.** The constructor adds the optional "no value" row,
+then the values read from the bundled choice files, then the `Other…` row.
 
-**Where:** `src/main/java/songscribe/SongScribe.java:47–120` (four methods) and
-`src/main/java/songscribe/smufl/SMuFLMetadata.java:92–129` (two).
+**What goes wrong.** Java's combo box model automatically selects the first
+element ever added to it, and it does so on the model directly — so the class's
+own interception of the command row cannot see it. Verified from the JDK 25
+source (`DefaultComboBoxModel.addElement`).
 
-**What the code does now.** Each is one of a pair: a real method, plus an overload
-that takes as parameters the things the real one would otherwise look up for
-itself.
+If no real values load, `Other…` is the first element added and becomes the
+selection. Two routes get there, and only one of them warns anybody:
 
-- `configureLogging()` calls `configureLogging(env, consoleLogUrl)`
-- `truncateLogIfRequested()` calls `truncateLogIfRequested(env)`
-- `resolveLogDir(env)` calls `resolveLogDir(env, isMacOS, isWindows)`
-- `getAdvanceWidth(glyph)` calls `getAdvanceWidth(map, glyph)`, whose whole body is `map.get(glyph)`
-- `getAdvanceWidthOrZero(glyph)` calls `getAdvanceWidthOrZero(map, glyph)`
+- the choice file is missing or unreadable — this raises the "damaged
+  installation, please reinstall" alert;
+- the choice file exists and is **empty** — no exception, no alert, nothing.
 
-The change kept all of them and rewrote the comment on each. Where they said
-"Package-private for testing: accepts explicit platform flags so tests can
-exercise Windows and 'other OS' branches", they now say "Takes the platform flags
-explicitly, so the directory choice is a pure function of its arguments."
+Both need the mode that omits the "no value" row, so the annotation dialog is the
+only one exposed; the tempo section always adds its empty row first and is safe.
 
-**What's wrong with it.** Purity is a property, not a purpose. Every one of these
-overloads has exactly one caller — its own wrapper, in its own class — and every
-one of them is always passed the same fixed values. Nothing in the application
-supplies a different environment, a different platform, or a different glyph map,
-and nothing can. The parameter exists so something *outside* could vary it, and
-the only thing that ever did was a test that no longer exists. Rewording the
-comment does not change what the member is; it removes the evidence a later reader
-would need to recognise it. The plan's own rule is the test these fail: judge a
-restructured member on whether it is a coherent unit with its own contract.
+All three shipped choice files (`annotations`, `tempos`, `tempochanges`) exist and
+are populated, so this is not reachable in a correct installation. It is also
+masked today because both callers write a real selection in before anything reads
+it. Nothing is broken for a user right now.
 
-`resolveLogDir(env, isMacOS, isWindows)` additionally takes two adjacent
-`boolean`s that a call site can transpose with no complaint from the compiler,
-which the project's Java rules forbid outright — and `(isMacOS=true,
-isWindows=true)` is a state the signature permits and the world does not.
+**Confidence:** high on the mechanism, and it is a documented-invariant violation
+rather than a live user-facing bug.
 
-**The corrected design.** Collapse each pair into the one method the application
-actually has: `resolveLogDir()`, `configureLogging()` and `truncateLogIfRequested()`
-read `SystemInfo` and `System.getenv` directly; `getAdvanceWidth(glyph)` and
-`getAdvanceWidthOrZero(glyph)` do `instance().advanceWidths.get(glyph)` directly
-and the two-argument overloads disappear, since neither does anything a `Map.get`
-does not.
-
-`getAdvanceWidth(SMuFLGlyph)` has **no caller at all** (verified: one Javadoc link
-and nothing else), so the `SMuFLMetadata` cluster collapses to a single method:
-
-```java
-public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
-    var width = instance().advanceWidths.get(glyph);
-    return width != null ? width : 0.0;
-}
-```
-
-**What it touches.** Two files, six methods deleted, four bodies inlined into
-their wrappers. No call site outside those two classes changes.
-
-**Recommendation: make this change.** These are the largest remaining pocket of
-test-shaped production code, and they are the ones most likely to be mistaken for
-deliberate design, because the change gave each of them a design-sounding
-sentence.
+**What to do instead.** Also a symptom of **D1**, whose fix makes the empty-list
+case a decision the compiler forces rather than a wrong string at runtime.
 
 ---
 
-## 4. Contract change: `Converter.run` claims a benefit its only caller does not get
+## Design findings — these need your approval
 
-**This one alters an existing promise, so it needs a decision rather than a fix.**
+### D1. The `Other…` command and the real values are carried in one channel, so three of the class's promises cannot be enforced
 
-**Where:** `src/main/java/songscribe/converter/Converter.java:26–44`, and the same
-sentence in `docs/messages.md`.
+Both opus axes reached this independently, with the same proposed shape.
 
-**What it promises now.** The Javadoc gives two reasons for running a conversion
-inside a bus scope. The first: "Its object graph — the score view a conversion
-builds, its controller, and everything those subscribe — is discarded wholesale
-when the scope closes, rather than staying subscribed for the rest of the
-process."
+**Where:** `src/main/java/songscribe/ui/dialog/OtherValueComboBox.java`, the whole
+class; and `src/test/java/songscribe/ui/dialog/OtherValueComboBoxTest.java:44-57`.
 
-**What's wrong with it.** For the four headless converters, "the rest of the
-process" is microseconds. `PDFConverter` builds one score view for the whole run
-and the scope closes immediately before the process exits.
-`docs/lifecycle.md` states the point directly: there is no point unsubscribing on
-the way out of the process. So the disposal half of what a scope promises has no
-production reader. Its real reader is the test suite, and tests are not consumers.
+**The flaw.** Three different kinds of row are all represented as plain text: a
+real value, the "no value" row (the empty string, painted as `(none)`), and the
+`Other…` command. Because a command and a value are indistinguishable by type,
+telling them apart falls to object identity — a comparison the language cannot
+check, guarded only by a source comment reading *"Identity, not equality … Do not
+'fix' this to equals()."*
 
-The second reason is real and is the whole justification: a throwing `@Handler` on
-the application bus is treated as fatal and puts up a dialog, which a headless
-process cannot show, so a converter supplies an error handler that logs instead.
+**The symptoms it accounts for.** Every one of these disappears if the flaw is
+fixed, and each needs its own separate patch if it is not:
 
-**What it should promise instead.** Cut the disposal claim from both
-`Converter.run`'s Javadoc and `docs/messages.md`, leaving the error handler as the
-stated reason. Keep the disposal *mechanism* — the test suite depends on it, and
-`MessageBusScope`'s own Javadoc is the right place to describe it — but stop
-telling a reader of `Converter.run` that it buys that caller something it does not.
+- **P1** — a user-typed `Other…` selects the command row.
+- **P2** — an empty choice file leaves the command row as the value.
+- The identity comparison, and the comment defending it against a future reader.
+- The renderer comparing against the empty string to decide whether to paint
+  `(none)`.
+- The value accessor's unchecked cast, with no stated guarantee that a selection
+  exists (**CE1**).
+- The one test that looks like it covers P1 but cannot detect it. It asserts that
+  the returned **text** matches, and matching text is exactly what is true in the
+  broken case — so it passes either way. Its stated claim ("text equal to the
+  `Other…` label is an ordinary value, not the sentinel") is the opposite of what
+  happens.
+- Two contract clauses that are simply false (**C1**).
 
----
+**The corrected design.** Give the rows a type instead of overloading text. A
+sealed row type — a value case carrying its text, a "no value" case, and a
+command case — over a combo box of that type. Then:
 
-## 5. Contract gaps in the new API
+- a user-typed `Other…` is a value case and **cannot** be the command case, so P1
+  is unrepresentable rather than documented-against;
+- the value accessor must handle every case, so the empty-list state of P2 is a
+  compile-time decision instead of a wrong string at runtime;
+- the identity comparison, its defending comment, and the test guarding it are
+  all deleted rather than rewritten.
 
-- **`MessageCenter.describe(PublicationError)`** (`MessageCenter.java:95`) — public,
-  returns a `String`, has a doc comment and no `@return`. The tag is what the IDE
-  shows at the call site; without it a caller sees no answer to "what do I get
-  back?" The body also calls `whichHandlerThrew(error)` in both branches of one
-  ternary — assign it to a local first, per the project's rule against repeating a
-  call inside a method.
-- **`Converter.run`** — no `@param <T>`; no statement of the precondition on
-  `type` (`ArgumentReader` reflects over it, so `T` must have a no-argument
-  constructor and annotated public fields, and a caller who passes anything else
-  finds out at runtime); and no `@effects` for two process-global side effects —
-  it reconfigures logging for the whole process and replaces the application's
-  message bus for the duration.
-- **`MessageCenter.popBus()`** — terminates the process via `RuntimeError.exit`
-  when there is no scope in force, with no `@throws` naming the condition.
-- **`Converter.loadSong(File, ScoreView)`** — has `@return`, has neither `@param`.
-- **`Converter.applyExportExclusions(Song, boolean withoutLyrics, boolean withoutSongTitle)`**
-  (`Converter.java:107`) — two adjacent booleans a call site can transpose with no
-  compiler complaint, called from `PDFConverter` and `SVGConverter`. The project's
-  rules require a `record` or an enum here. It also has no `@param` tags at all.
-- **`MessageCenter.post` / `subscribe` / `unsubscribe`** — the highest-fan-in API
-  in the codebase (67 post call sites in 45 files; 25 subscribe call sites in 23
-  files) and all three have no Javadoc at all. Two promises callers most need are
-  written down only in `docs/messages.md`, which nothing links to: `post` is
-  synchronous, so every handler runs on the calling thread and finishes before
-  `post` returns; and the bus holds subscribers weakly, so a listener nothing
-  keeps strongly reachable is silently collected and stops receiving messages. A
-  one-line Javadoc on each plus a pointer from the class Javadoc to
-  `docs/messages.md` closes it, and this change already rewrote that class
-  Javadoc, which is when it is cheapest.
+While doing it, split the override's two unrelated jobs. One method currently
+does three different things depending on what it is handed: open a dialog,
+add-then-select, or plain select. A separate `setValue` method for programmatic
+writes leaves the override doing only the thing that must happen there —
+intercepting the command row before any listener sees it.
 
----
+The codebase already has this pattern: `DurationListCellRenderer.createCombo`
+drives a typed combo box with a renderer.
 
-## 6. Correctness
+**What the change touches.** One new file for the row type; `OtherValueComboBox`
+rewritten (251 lines today, and it gets shorter); two value-accessor call sites,
+in `AnnotationDialog.gather` and `TempoSection.getTempoDescription`; one line in
+`OtherValueController.commit`; one of the two test cases deleted. The mode enum
+that selects whether the "no value" row appears survives unchanged.
 
-### 6a. Two members with no caller anywhere
+**The argument on the other side,** which the class documentation makes: keeping
+the rows as plain text means a future binding helper could read the combo with no
+translation step. Nothing binds either combo today, and a typed model gives that
+helper a typed property the caller converts once.
 
-- `src/main/java/songscribe/ui/selection/SelectionDragTracker.java:85` —
-  `getGlobalMouseReleasedListener()`. A reference lookup returns nothing: no
-  production caller, no test caller, no Javadoc link. The sweep missed it because
-  the "package-private for tests" comment sat on the neighbouring
-  `getDraggingLine()` that *was* deleted. `ui/selection` has no test package, so a
-  member with no callers is simply dead. Delete it.
-- `src/main/java/songscribe/smufl/SMuFLMetadata.java:96` —
-  `getAdvanceWidth(SMuFLGlyph)`, covered under finding 3.
+**What it costs to leave alone.** The class's correctness is not checkable by
+reading it. It depends on which internal Swing paths happen to pass the list's own
+objects through, on a comment surviving future edits, and on two clauses that are
+already wrong. The next person adding a third combo of this shape copies it
+without reading the JDK, and inherits P1 and P2 along with it.
 
-### 6b. A builder default nothing can reach, that hands back a plausible wrong answer
+**Recommendation: make the change.** It puts all three promises in front of the
+compiler.
 
-**Where:** `src/main/java/songscribe/ui/renderer/LineInvariants.java:638–646`. Not
-in the diff; found on the way through.
+### D2. The rule "an annotation's text is never blank" was taken out of the type and restated as prose in five files — this reverses a Phase 1 decision
 
-`setViewScale` carries the Javadoc "Defaults to `ViewScale.IDENTITY` (natural
-size) when not set, e.g. in tests." Its only production caller,
-`LineRenderer.buildInvariants`, always sets it, and the tests named in the comment
-are the deleted suite. `build()` already refuses to produce an object when
-`layoutResult` or `lyricRenderMetrics` are missing, but says nothing about zoom.
+Both opus axes reached this independently. **This one undoes a choice the plan
+made deliberately**, so it is squarely yours.
 
-So a future caller who forgets the zoom gets a line rendered at 100% while the
-rest of the view is zoomed, with no error to say so. That is the shape
-`~/.claude/guides/design.md` singles out as the one that must never be written: an
-arbitrary default that masquerades as success. Check `viewScale` in `build()`
-alongside the other two required fields, or take it in the `Builder`'s
-constructor, and delete the sentence about tests.
+**Where:** `src/main/java/songscribe/dom/Annotation.java:29-87`, with the claim
+repeated in `AnnotationController.java:39-41` and `:77-79`,
+`AnnotationDialog.java:44`, `AnnotationIO.java:172-177`, and
+`MeasureMapper.java:761-763`.
 
-### 6c. The standalone folder converter drives Swing from a background thread
+**What the code does now.** An annotation is a short text drawn above or below a
+note — `dolce`, `Fine`. Before this commit its constructors refused blank text by
+throwing, and the text accessor promised "never blank". Now the constructor writes
+one line to the log and stores the blank text anyway, and the accessor promises
+only "whatever this annotation was given". The non-blank rule is stated in prose
+as something the user interface guarantees.
 
-**Where:** `src/main/java/songscribe/uiconverter/ConvertAction.java:88` and its
-inner `ConvertThread.run()`. Not in the diff; found while tracing which threads
-reach the message bus.
+**What's wrong with it.** Six places in production read that text, and none of
+them checks it: the layout width calculation, the on-screen renderer, the
+MusicXML writer, the legacy-format writer, the old-format migrator, and a dead
+accessor (**C13**). All six were written against the promise this commit deleted.
+A blank annotation would measure zero wide but still occupy a layout slot, draw
+nothing, and be written to MusicXML as an empty element that the reader then
+discards — so the attachment would vanish between save and reload with no
+message. The only trace is a log line reading `Annotation text must not be blank`,
+naming no note and no location.
 
-`ConvertAction` starts a plain `Thread` and, from it, calls
-`scoreView.openFile(...)` for each song, then writes files, builds images and
-advances a progress dialog. `openFile` goes on to `setSong`, which constructs a
-`ScoreViewController`, which subscribes to the message bus in its constructor and
-posts synchronously. All of that — Swing component construction, Swing mutation
-and synchronous handler dispatch — happens off the event thread.
+The guarantee did not move somewhere stronger. `Annotation` lives in `dom/`, a
+package forbidden to know about the user interface — the build has a test that
+fails if a `dom` class so much as imports one. So a document-model class's
+contract is now written in terms of a dialog it may not reference, and nothing can
+ever check that the two agree. The justification is circular: the model points at
+the combo, and the combo's "no empty row" guarantee holds only if nothing writes
+an empty value into it, and the only thing that could is an annotation carrying
+blank text.
 
-Scope, corrected from the agent's report: `UIConverter` is a **separate process
-mode** (`SongScribe.main` dispatches `case "ui_converter"`), so there is no live
-main window whose handlers this reaches. The damage is confined to the converter's
-own object graph. It is still an off-thread Swing violation, of the kind that
-usually works and occasionally produces a corrupted repaint, a stale-state
-exception in a handler that assumed the event thread, or a hang.
+Three further consequences:
 
-This is not something the current change caused, and it is not something the
-current change makes worse. It is worth naming because the change just built the
-right mechanism for exactly this shape of work — `Converter.run`'s scope — and
-`ConvertAction` is the one remaining conversion path that does not use it.
-Deciding what to do here belongs with the converter redesign
-`docs/lifecycle.md` already anticipates.
+- **The check was already unreachable, which is what made it free.** Tracing every
+  construction site: both file readers drop blank text before constructing, and
+  the dialog's two sites use the hard-coded default and the combo's value. No
+  caller can produce blank text. So the throw cost nothing and bought a promise
+  six readers relied on.
+- **The commit adds a warning for a corruption it is itself what enables.**
+  `MeasureMapper` now logs `Corrupt document: annotation with no text`. Only
+  SongScribe's own files are ever read, and SongScribe could not write a blank
+  annotation before this commit.
+- **It makes a promise elsewhere in the same commit falsifiable.** The new combo's
+  no-empty-row mode promises its value is never empty. The annotation dialog
+  populates that combo straight from the annotation's text.
+- `dom/` does the opposite elsewhere: `StaffElement.setLyricForVerse` throws for
+  the analogous rule. `Annotation` is now the outlier in its own package.
 
----
+**The corrected design.** Restore the blank check as a thrown exception, delete
+the warning helper and the logger field, restore "never blank" on the accessor,
+and reduce the four cross-referencing prose paragraphs to a reference to the type
+that carries the rule. Keep both readers' blank-text drops — a damaged file is
+input a caller genuinely produces — and keep the new warning, which then
+describes a genuinely damaged file.
 
-## 7. Twenty-three members kept their test-widened visibility after the comments were deleted
+**What the change touches.** One production file with logic changes; four files
+with documentation-only changes; zero call sites; zero tests. Nothing in the test
+tree pins the current behavior or wording.
 
-`plans/test-only-surface.md` records these as "verified live and corrected in
-place rather than deleted." The verification asked *does this have a production
-caller?* — which each does. The question the plan's own rule requires is *does it
-have a production caller **outside its own class**?*
+**The plan's stated reason** was that a caller breaking the rule should be visible
+in the log rather than crashing the app. After the commit's other phases there is
+no caller that can break it, so there is nothing left to crash.
 
-A reference sweep over the plan's list found that **23 of the 26 named members are
-referenced only inside the class that declares them.** I spot-checked six of these
-directly (`Shutdown.runJVMTasksFromHook`, `StaffPanel.layOutLines`,
-`ActionReflector.triggerReflection`, both `SMuFLMetadata` overloads, and
-`SelectionDragTracker.getGlobalMouseReleasedListener`) and each held. They should
-be `private`, and the compiler proves each one.
+**Recommendation: restore the check.** The type is the only place this rule can
+live without every future reader of annotation text having to decide what a blank
+one means.
 
-| Class | Members with no caller outside the declaring class |
-|---|---|
-| `SongScribe` | `resolveLogDir` ×2, `configureLogging(env, url)`, `truncateLogIfRequested(env)` |
-| `SMuFLMetadata` | `getAdvanceWidth(map, glyph)`, `getAdvanceWidthOrZero(map, glyph)` |
-| `LineRenderer` | `drawStaffLines`, `getElementColor`, `computeOverrideXSs`, `renderKeyChanges`, `renderWithPreviewShiftIfNeeded` |
-| `PlaybackController` | `handleMetaMessage`, `updatePlayingNote`, `setLoopSequence`, `buildSequenceForSelection` |
-| `AttributionPane` | `LINE_BOX_REFERENCE`, `MeasuredCache`, `measure` |
-| `LineComponent` | `layoutResult`, `layoutDirty` |
-| `TextPanel` | `calculateUnionWidth` |
-| `StaffPanel` | `layOutLines` |
-| `FootnotesComponent` | `calculateRenderX` |
-| `LineSelectionHandler` | `HEADER_GAP_PX` |
-| `ScoreView` | `scoreKeyBindings` |
-| `PlayStopAction` | `PLAY_ICON`, `STOP_ICON` |
-| `ActionReflector` | `triggerReflection` |
+### D3. Historical and rejected-alternative narration in the new documentation
 
-Three from the plan's list are genuinely package-private and correct:
-`LineComponent.readyLayout` (called by `LineSelectionHandler`),
-`StaffPanel.ensureAllLineLayouts` (called by `StaffLinesLayout`), and
-`MeasureBuilder.buildMeasure` (called by `ScorePartwiseBuilder`).
+This is the question you raised mid-review, and the Design axis reached the same
+diagnosis independently — it found the annotation rule "restated as prose in five
+files" without any prompting about verbosity.
 
-Three more, not on the plan's list, are in the same state and carry Javadoc that
-describes the visibility as intentional:
+Per the rule now added to `~/.claude/rules/development.md`, the following come out:
 
-- `Shutdown.shutdown()` — only caller is `Shutdown.now()`, and its Javadoc still
-  reads "Package-private — production code calls `now()`."
-- `Shutdown.runJVMTasksFromHook()` — only referenced by the method reference in
-  `Shutdown`'s own constructor, so `private` is correct.
-- `MidiController.closed` — only read and written by `MidiController.closeMidi`.
+- `OtherValueController` — two paragraphs defending the design against an
+  alternative nobody is proposing.
+- `OtherValueDialog` — a paragraph narrating how `BaseDialog` counts blocking
+  dialogs internally. If that counting changes, this subclass's comment is
+  silently wrong. The contractual part is only that this dialog opens while
+  another modal dialog is up, which is supported.
+- `OtherValueComboBox`'s private renderer — a three-sentence rationale on a
+  private nested class with no caller outside the file.
+- `setSelectedItem`'s deferral paragraph — it explains the mechanism at length
+  but never states the consequence a caller needs: **the call returns before the
+  user has answered, with the selection unchanged.** The mechanism is in; the
+  promise is missing.
+- `OtherValueDialog.populate`'s comment describes a situation that cannot arise —
+  the input is always empty by contract, and the remember call ignores blank text,
+  so the call does nothing and the comment's scenario is unreachable. The call
+  itself should stay, because the field's contract requires whoever populates it
+  to make the call.
 
-**Why it matters.** Nothing breaks today. What it costs is a signal: package-private
-tells the next reader "something else in this package depends on this, so changing
-its shape is not a local decision." Twenty-six false signals make the three true
-ones unreadable, and the next person who wants to widen a member for a test has a
-pile of precedent to point at.
+What stays: the one-line `Do not "fix" this to equals()` warning, which sits
+exactly where a reader would otherwise break it — and which is load-bearing only
+for as long as **D1** is declined.
 
----
+**Recommendation: strip them.** No behavior change, five files.
 
-## 8. Test conformance
+### D4. Two class names now promise a guarantee they no longer deliver
 
-### 8a. `UndoController.deinitialize()` is test-only production surface
+**Where:** `src/main/java/songscribe/ui/component/NonBlankGuard.java` and
+`NonBlankTextField.java`.
 
-**Where:** `src/main/java/songscribe/undo/UndoController.java:411`.
+**What the code does now.** The guard watches a text field; when focus leaves a
+blank field it alerts and puts back the last non-blank text it remembers. This
+commit removed the constructor argument that seeded that memory, so a guard that
+has never seen a non-blank value alerts and puts back **nothing**.
 
-A reference lookup returns exactly one caller: `UnitTest.teardown()` in the test
-tree. Unlike `Actions.deinitialize()` and `PlaybackController.deinitialize()`,
-which are called by their own `initialize()` on the re-entry path, nothing in
-production calls this one — `UndoController.initialize()` does not.
+That state is reachable by the most ordinary route there is: a new song has an
+empty title, the title field is populated blank, and the remember call ignores
+blank text — so clicking into the still-empty title field and tabbing away alerts
+and leaves it empty. The plan confirms this was intended.
 
-This is the plan's own rule ("No production member exists to serve a test") with
-one surviving exception it did not catch. It is not simply deletable: the test
-suite needs it, because `UndoController` is a static singleton whose undo and redo
-stacks outlive a test even though its bus subscription no longer does. That makes
-the honest fix a design question about the singleton, not a deletion — which is
-why I am reporting it rather than proposing one. Worth a decision on whether it
-belongs in the design-pass register.
+**What's wrong with it.** The names, and the summary sentences, still promise the
+unconditional rule. The guard's first line reads "for a field that may not be
+left blank", and the paragraph directly below it concedes the field **can** be
+left blank. What actually prevents a blank commit is a separate mechanism: the
+dialog's validity condition disabling OK.
 
-### 8b. The teardown comment explains one of the two calls it sits above
+**Proposed names:** `RestoreOnBlankGuard` and `RestoreOnBlankTextField`, with
+summaries stating what is promised — a blank entry is refused with an alert and
+the last remembered value put back; the field is left empty when there is nothing
+to put back. Two users of the field class, one direct user of the guard;
+`jet_brains_rename` updates them.
 
-**Where:** `src/test/java/songscribe/UnitTest.java:90–96`.
-
-The rewritten comment says the calls retire the action singletons and release the
-mocked main window they captured. That is accurate for `Actions.deinitialize()`.
-The next line calls `UndoController.deinitialize()`, which captures no main window
-— its reason is that it clears the undo and redo stacks, which the bus scope
-closing cannot do. As written, the comment documents the easy-to-see reason and
-omits the one that would explain a confusing failure if the call were ever
-removed.
-
-### 8c. The new bus-scope behavior has no test
-
-This change replaced a single static bus with a stack carrying real invariants: a
-scope replaces rather than layers, closing discards everything subscribed inside
-it, popping below the application bus is refused. None of the six surviving test
-classes asserts any of that; it is exercised only incidentally, as plumbing, by
-every test's setup and teardown. The project's own rule is that changing a
-contract or an implementation requires a test in the same change, and this is the
-kind of multi-call invariant the testing floor exists for.
-
-I am not proposing a list here — the project requires the proposed tests to be
-seen and approved before any are written. Flagging the gap at the change that
-created it.
+**This is a naming judgment, so I am asking rather than asserting it.**
 
 ---
 
-## 9. Documentation and comments still pointing at a suite that no longer exists
+## Contract findings
 
-- **`UndoController.initialize()`** (`UndoController.java:181–188`) — its Javadoc
-  says subscription is explicit because lazy construction "in tests can occur
-  while the message bus is mocked — subscribing then would register the listener
-  against a mock and corrupt its later real subscription." There is no mocked bus
-  any more; tests get a real bus in a scope. Rewrite to the reason that still
-  holds, which is the one `PreviewElementManager` now states.
-- **`BaseDialog`'s constructor** (`BaseDialog.java:285–289`) — "a test teardown
-  that unsubscribes it is healed by the next dialog construction." Test teardown
-  no longer unsubscribes individual listeners; it discards the bus.
-- **`SongSettingsLayout`'s class Javadoc** (`SongSettingsLayout.java:32–38`) —
-  describes its contents as distinct from "the pure-logic helpers
-  `SongSettingsDialog` hosts for testability", which is a claim about a suite that
-  does not exist.
-- **`docs/lifecycle.md`** was not updated. Its closing table, introduced as "Three
-  teardowns exist and none substitutes for another", does not mention that closing
-  a bus scope now also ends a set of registrations — the paragraph
-  `docs/messages.md` gained about a scope not discharging the disposal obligation
-  belongs in the table that claims to be exhaustive. Its startup section also
-  still shows only `Actions.initialize(this)` where three initializers now run.
-- **`plans/design-pass-register.md:191`** states that `MidiController.synthesizer`
-  "is still test-only surface on the same class." It is not:
-  `PreferencesDialog.ensureInstrumentsLoaded` reads it. It is over-visible (a
-  `public static volatile` field written only inside `MidiController`) and the
-  register's own pass-26 fix removes it anyway, but the characterisation would
-  mislead whoever picks that pass up.
-- **`RuntimeError.setExitHandlerForTesting`**, **`resetAlertShownForTesting`** and
-  **`OptionDialogs.setSuppressDialogs`** are the only surviving hits for the
-  plan's own `ForTesting` name sweep. The register owns them under pass 30, so
-  this is not an oversight — but they are live test-only production surface, and
-  the plan's opening line currently has three exceptions.
+### C1. Two clauses that are false — proposed change to an existing contract
+
+**Where:** `OtherValueComboBox.java` — the invariant on the overridden selection
+method ("the selection afterwards is never the `Other…` sentinel") and the value
+accessor's promise ("never the `Other…` sentinel").
+
+Both are false, by the two mechanisms in **P1** and **P2**. A third clause is also
+false for the P1 input: "a value the prompt commits is added to the list
+immediately above `Other…` and selected" — it is not added, because a matching
+entry already exists.
+
+**If D1 is approved,** all three become true and no wording changes.
+**If D1 is declined,** they must be weakened to state the exceptions — which
+means writing down that the command row can be the value. That is a promise worth
+seeing before agreeing to it, which is the argument for D1.
+
+### C2. The new `@log` tag on the combo box documents a log line the method never writes
+
+**Where:** `OtherValueComboBox.java:100` (constructor) and `:169-200` (the private
+file-reading helper).
+
+The clause reads *"an unreadable resource is reported to the user as a damaged
+installation and leaves the combo with the values it read before the failure."*
+The class has **no logger at all**, and the caught exception is discarded without
+being read. `logging.md` fixes the form as `@log <level> <condition>`; this clause
+has no level word and names no log call — it describes a modal alert and a
+postcondition, which is `@effects` material.
+
+There is a line in the log indirectly, because the alert helper logs every alert
+it shows — but what it logs is the resolved alert text ("please reinstall"), with
+no file name and no exception. A user reporting that alert leaves the log unable
+to say which of several named resources failed, or why.
+
+**Fix:** add the standard logger and log where the failure happens —
+`LOG.error("Could not read combo values from '{}'", fileName, e);` — then the
+clause becomes `@log error when a named resource cannot be read`, and the alert
+plus the partial-list outcome move to `@effects`.
+
+### C3. Four new `@log` clauses spell the level differently from the three that already existed
+
+The commit's clauses (both `Annotation` constructors, `AnnotationIO.build`,
+`MeasureMapper.annotationOf`) write `warning`. The three pre-existing clauses in
+the codebase write `warn` and `error` — the actual SLF4J level names, which is
+what `logging.md` specifies. Verified by searching both. The disagreement was
+introduced by the same commit that documents the tag.
+
+**Fix:** `warning` → `warn` in four places.
+
+### C4. One `@log` clause names half its condition
+
+`MeasureMapper.annotationOf` says *"warning if the direction's words are blank"*.
+The code also logs when the words element carries no value at all
+(`text == null || text.isBlank()`). Anyone deriving a test from that clause misses
+half the condition.
+
+**Fix:** "warn when the direction's words carry no value or a blank one."
+
+### C5. The annotation dialog's class documentation states two things that are false
+
+**Where:** `AnnotationDialog.java:40-47`.
+
+Its first sentence still reads "An **editable** text combo plus alignment and
+placement radios" — making that combo non-editable is the entire point of this
+commit, and it cannot be typed into. Two lines later: "**The text is never
+blank.** `Annotation` does not permit it" — Phase 1 of this same commit is what
+made `Annotation` permit it.
+
+The class comment is the first thing a reader opens, and the second sentence is
+the more damaging: a reader who believes the type refuses blank text does not
+think to check, which is how the six unchecked readers in **D2** came about.
+
+The plan's Phase 6 said to "keep the first paragraph and the reference to
+`Annotation`" — written before Phase 1 landed, which is how both survived.
+
+**Fix:** first sentence → "A fixed-list annotation combo plus alignment and
+placement radios". Second paragraph: if **D2** is approved the appeal to
+`Annotation` becomes true and stays; if declined, drop it and state what this
+dialog is responsible for.
+
+### C6. A method's documentation still describes a parameter this commit deleted
+
+**Where:** `NonBlankGuard.rememberCurrentText`.
+
+It still says a user emptying a freshly opened field "would get **the fallback**
+instead of what they were looking at" — the fallback was deleted by this commit —
+and that remembering blank text "would break the class promise", which the new
+promise explicitly allows.
+
+**Fix:** delete both clauses; the `@effects` line already states the real promise.
+
+### C7. `NonBlankGuard` still advertises a use that was deliberately closed
+
+**Where:** `NonBlankGuard.java:28-32`.
+
+It says "the field may be a combo box's editor as easily as a plain text field."
+This commit deleted the helper that obtained a combo box's editor and made both
+editable combos non-editable. There is now no combo box editor in the tree and no
+supported way to get one — and reopening that path is what the commit exists to
+prevent.
+
+**Fix:** delete the clause.
+
+### C8. A four-paragraph contract on a private one-line helper, stating a rule that belongs one tier up
+
+**Where:** `StandardDialog.java:136-158` (`dismissWithoutVerifying`), and the same
+rule again in `NonBlankGuard.shouldYieldFocus`.
+
+The fix itself is right and the explanation is worth having: a field's alert goes
+up inside the mouse press that moves focus to the button, swallows the release,
+and the button's action never runs. But that rule binds every dialog and every
+field verifier in the application, not this one private helper wrapping a single
+setter — and it is already written out in full a second time, in the guard.
+
+**Fix:** state it once on `StandardDialog`'s class comment, which already
+describes the button lifecycle; leave the helper an accurate name and a one-line
+`@effects`; have the guard link rather than restate.
+
+### C9. The same rule is written in four places, and two copies already contradict each other
+
+The pairing — the validity condition makes a blank field uncommittable, the guard
+restores a value once focus leaves — is stated in `NonBlankGuard`'s class comment,
+`NonBlankTextField`'s class comment, `OtherValueDialog`'s class comment, and
+`.claude/guides/dialogs.md`. All four were written or rewritten in this one
+commit, and they already disagree: the guide still opens "A field that must never
+be *left* blank is a `NonBlankTextField`", which is the promise the classes gave
+up (**D4**).
+
+**Fix:** state it once in `dialogs.md` under Validity, corrected; have the classes
+link to it. Each class comment then keeps only its own promise.
+
+### C10. A documented sentence that teaches something untrue
+
+**Where:** `OtherValueComboBox.java:88`, the field holding the command text.
+
+Its Javadoc justifies resolving the label once with "a second equal instance would
+not be the sentinel." Verified: the string lookup delegates to the resource
+bundle, which returns the **same** instance every call — so resolving twice cannot
+produce a second instance. Resolving once is still correct, because it does not
+depend on that; the stated reason is false and teaches a future reader something
+wrong about how string lookup behaves.
+
+**Fix:** delete the justification, keep the field.
+
+### C11. Missing mandatory tags
+
+`contracts.md` makes `@return` mandatory on any documented method that returns a
+value, and `@param` on documented parameters. Missing on:
+
+- `StandardDialog.verifyFocusedField` — returns the boolean that decides whether
+  OK proceeds, explains all three cases in prose, no tag.
+- `AnnotationAttachment.getAnnotation` and `getText` — no `@return`.
+- `AnnotationAttachment.setAnnotation` — no `@param`.
+- `TempoSection.setTempo` — no `@param`.
+
+All predate this commit; all are in files it changed.
+
+### C12. Two same-typed parameters a call site can silently transpose
+
+**Where:** `TempoSection.java:62` —
+`TempoSection(Duration[] types, String checkboxLabel, String... fileNames)`.
+
+At a call site reading `new TempoSection(types, "Show only the tempo
+description", "tempochanges", "tempos")`, nothing but argument order separates the
+checkbox label from the first resource name. Swapping them compiles: the label
+would be looked up as a file, and a file name painted beside a checkbox. This
+commit routes those names into the new combo box, so it is the live path.
+`java.md` requires a parameter object for exactly this shape.
+
+**Fix:** take the resource names as one typed value so the label cannot slide into
+their position.
+
+### C13. A public method on a document-model class with no callers
+
+**Where:** `AnnotationAttachment.getText()`. Verified: zero references across
+production and tests. This commit deleted its counterpart setter and two unused
+constructors but left the getter. It is a second public route to data the class
+already exposes.
+
+**Fix:** delete it.
+
+### C14. A constant wider than it needs to be
+
+`AnnotationDialog.DEFAULT_ANNOTATION` is package-private with exactly one
+reference, inside its own class, and no contract names it. Should be `private`.
+Predates this commit.
 
 ---
 
-## 10. Formatting left behind by the deletions
+## Correctness & Efficiency
 
-- A paragraph tag with nothing after it, immediately before the tag block — the
-  paragraph it opened was the deleted sentence. Renders as a stray empty
-  paragraph: `FootnotesComponent.java:99`, `TextPanel.java:185`,
-  `StaffPanel.java:206`. These three are the only occurrences in `src/main/java`,
-  and all three came from this change.
-- A blank line between the last member and the class's closing brace, where a
-  deleted member used to be: `BeamScoring.java`, `AppearanceManager.java`,
-  `PreviewOverlayRegistry.java`, `MyFontUtils.java`.
-- A doubled blank line at `MyFontUtils.java:90`, where `resetFontCache` was.
+### CE1. The value accessor's cast depends on a guarantee nothing states
 
----
+**Where:** `OtherValueComboBox.java:171-176` — `return (String) getSelectedItem();`,
+no null check.
 
-## Duplication
+This is safe only because nothing currently empties the combo or clears its
+selection, and because construction always leaves *something* selected — which
+**P2** shows is not always the thing the contract promises. Nothing documents "a
+selection always exists" as an invariant, so a future caller has no way to know
+that clearing the selection sends a null into the annotation constructor, where
+the blank check calls a method on it and throws.
 
-`Converter.java:72–78` and `src/test/java/songscribe/message/MessageCenterTestHelper.java:59–64`
-each build the same thing: a synchronized `List<String>`, a lambda appending
-`MessageCenter.describe(error)` to it, and an emptiness check — including two
-hand-written copies of the comment explaining why the list is synchronized. A
-small `PublicationErrorLog implements IPublicationErrorHandler`, holding the list
-and exposing whether it is empty and what it collected, removes both copies and
-gives the "swallowed handler error" idea one name. It has a production caller, so
-it is not test-only surface.
+Reported as a symptom of **D1**, whose typed accessor must handle every case
+explicitly. If D1 is declined, state the invariant on the class.
 
 ---
 
-## Checked and clean
+## Test Conformance
 
-- `Converter.run` reproduces what each converter's `main` did before: same
-  ordering, and exit codes are untouched because they come from `System.exit(-1)`
-  inside `ArgumentReader`, which runs before `run` checks its result.
-  `ImageConverter` gains a log line on the rare reflection-failure parse path
-  where it previously returned silently.
-- No orphaned members from the deletions: `AppearanceManager.unregisterOsListener`
-  still has its production caller (`switchTheme`), `PreviewOverlayRegistry.getOverlay`
-  and `PreviewCursorHider.discard` still have production callers, and all four
-  converters' `LOG` fields are still used.
-- `describe` / `whichHandlerThrew` / `exitOnPublicationError` are a faithful
-  decomposition of the old `handlePublicationError` — same null handling, same
-  fatal-exit logic.
-- The unit suite runs in a single non-forked JVM with no parallel execution
-  configured, so `MessageCenterTestHelper`'s static scope and error list are safe
-  as written.
-- JUnit runs superclass `@BeforeEach` first and subclass `@AfterEach` first, so
-  `MainFrameMockTest`'s subscriptions land inside the test's scope and its mock is
-  closed before the scope is discarded. That ordering is correct.
-- The new API adds no test-only surface of its own — every new member has at least
-  one production caller, verified by reference lookup.
+### T1. A line this commit made redundant, with a comment that is now misleading
+
+**Where:** `SongSettingsDialog.java:93-95`.
+
+This commit made the shared dialog base class exempt Cancel and Remove from field
+verification, for every subclass. Song Settings already had that exact line for
+its own Cancel button, so the call now happens twice. Setting a flag twice is
+harmless; the comment is not. It reads "Let Cancel bypass the title field's
+`NonBlankGuard`", naming one field as the reason — which the base class's own
+documentation explicitly argues against ("nothing a field says about its value is
+relevant to a path that never reads the value"). The next author reading Song
+Settings learns the wrong rule and copies the line into their dialog.
+
+**Fix:** delete the three lines. No behavior change.
+
+### T2. The class's central promise has no test — and cannot get one in its current shape
+
+**Where:** `OtherValueComboBoxTest.java` versus `setSelectedItem`'s contract.
+
+The promise the whole class exists for is that choosing `Other…` never changes the
+selection, so no listener or caller can ever observe the command row as a value.
+Neither test ever passes the real command object, so that promise is asserted
+nowhere.
+
+**The Test axis proposed simply adding that test. That does not work, and the
+reason is the finding.** Passing the command object queues the prompt through
+`invokeLater`, and the prompt-opening method fetches the main window from a
+process-global singleton and constructs the dialog itself. The unit test task does
+**not** set `java.awt.headless` — I checked; that flag is set only in the mutation
+testing block, despite a comment claiming unit tests run headlessly — so the queued
+task would try to open a real modal dialog on the event thread, asynchronously,
+after the test method has returned. That is a hang or a cross-test failure
+attributed to whichever test happens to be running.
+
+The honest finding is about the production design, not the missing test: the
+class's central promise is unobservable because the class builds its own dialog
+from a singleton. Injecting the prompt-opener would make it observable — the test
+asserts the opener was asked and the selection did not change, with no dialog and
+no singleton. **I am not proposing a mock**, which would be a workaround around
+the same flaw.
+
+This interacts with **D1**: D1 splits the override's jobs, which is the natural
+point to also give it the collaborator rather than have it reach for one.
+
+### T3. A two-value choice where only one value is ever exercised
+
+The mode enum deciding whether the "no value" row appears has a real production
+caller for each value — the annotation dialog uses one, the tempo section the
+other. Every test uses only the annotation dialog's. So nothing checks that the
+other mode puts the empty row first, that the value accessor can answer empty, or
+that the renderer paints it as `(none)` — the half of the class the tempo
+description picker depends on.
+
+`testing-common.md` calls out exactly this: a finite domain sampled rather than
+enumerated, where picking one is what leaves the other broken.
+
+**Fix:** one parameterized test over both values, checking what differs.
+
+### T4. The tests read shipped data and re-declare a production constant's value
+
+Both tests build their combo from the real shipped `conf/annotations` file. One
+then asserts a particular phrase is *not* already in that list, and the other
+relies on the command label not colliding with any entry — neither assumption is
+pinned, so an unrelated edit to the shipped annotations file could break a test
+that has nothing to do with it.
+
+Separately, the test re-types the literal `"annotations"` that already exists as a
+constant in `AnnotationDialog`. `contracts.md` forbids redeclaring a production
+constant's literal in test code.
+
+**Fix:** neither test needs a real file — the constructor takes zero or more file
+names, so passing none gives a combo whose only content is the command row, with
+no shipped-data dependency and no duplicated literal. **Note:** that setup is
+exactly the state **P2** describes, so writing it while D1 is unfixed would make
+the tests sit on top of the defect. Worth doing after D1, not before.
+
+### T5. The only test class in the suite using `@DisplayName`, on methods that skip the naming convention
+
+`testing-common.md:280` requires a `test*` prefix naming the contract case;
+`@DisplayName` without that prefix belongs on a `@Nested` class. Verified: this is
+the only test class in `src/test/java/songscribe/` using the annotation — the two
+other matches are test infrastructure.
+
+**Fix:** fold the display text into `test*`-prefixed method names and drop the
+annotation.
+
+---
+
+## Rejected — axis claims that did not survive checking
+
+- **"`NonBlankGuard` needs a unit test because changing non-UI code requires
+  one."** The rule quoted says the opposite: *"UI is excluded because a window is
+  verified by opening it."* A Swing input verifier whose observable behavior is a
+  modal alert and a focus yield is UI. The plan also designates manual
+  verification for this, deliberately.
+- **"`NonBlankGuard`'s 'unless it has never held a non-blank value' hedge describes
+  an unreachable case."** It is reachable by the most ordinary route there is —
+  see **D4**. The hedge is accurate and load-bearing.
+- **"The dialog framework should grow a 'reads nothing' input case."** One dialog
+  would use it. Both axes and I agree: leave it.
+- **The Design axis read the sentinel test as worthless.** It is narrower than
+  that. The test does still catch the regression it was written for — changing the
+  identity comparison to a text comparison would fail it. What is wrong is that
+  its stated claim is the opposite of what happens, and asserting on text rather
+  than identity is what lets **P1** pass unnoticed.
+
+---
+
+## Not a finding, but outstanding
+
+The plan's **Phase 11, manual UI verification, is still pending.** It is the only
+verification for the dialog wiring and the whole `Other…` flow — no automated test
+covers any of it (**T2**). It needs your permission to run the app.

@@ -63,6 +63,13 @@ import songscribe.util.UIUtils;
  * nothing this dialog can do to the outside world happens anywhere but on the OK path. Remove is
  * the third path, and neither gathers nor validates.
  *
+ * <p><strong>Cancel and Remove decline the focused field's {@link InputVerifier}</strong>, because
+ * neither reads the field. Swing runs that verifier before handing focus to the button, in the
+ * middle of the mouse press; a verifier that puts a modal alert up there takes the release with it,
+ * so the button's action never runs and the dialog the user was dismissing stays open. Nothing a
+ * field says about its value is relevant to a path that never reads the value. A dismissing button
+ * outside this class exempts itself the same way.
+ *
  * <p><strong>Always modal.</strong> Cancel promises that nothing happened, and that promise is only
  * worth anything if nothing could have happened meanwhile. A dialog that applies each edit as it is
  * made has no OK/Cancel cycle to put a boundary across and extends {@link BaseDialog} directly —
@@ -138,20 +145,7 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
     }
 
     /**
-     * Exempts a button that dismisses the dialog without reading the controls from the focused
-     * field's {@link InputVerifier}.
-     *
-     * <p>Swing runs the verifier of the field being left before it hands focus to the button, in
-     * the middle of the mouse press. A verifier that only refuses focus would merely be pointless
-     * here; one that <strong>tells the user something</strong> — as {@code NonBlankGuard} does —
-     * puts a modal alert up inside that press, and the alert takes the release, so the button's
-     * action never runs. The user gets an alert about a value that is about to be discarded, and
-     * the dialog they were dismissing is still there.
-     *
-     * <p>So this is not an accommodation of one guard's alert: nothing a field says about its
-     * value is relevant to a path that never reads the value.
-     *
-     * @param button the button to exempt
+     * @param button a button that dismisses the dialog without reading the controls
      * @effects stops the focused field's verifier from running when {@code button} takes focus
      */
     private static void dismissWithoutVerifying(JButton button) {
@@ -164,11 +158,11 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
     }
 
     /**
-     * Runs the {@link InputVerifier} of the currently focused field, as a
-     * mouse click on OK would. Returns true if there is no focused field, the
-     * field has no verifier, or the verifier yields focus; false if the
-     * verifier rejects the value (in which case it has already shown the user
-     * the reason and focus remains on the field).
+     * Runs the {@link InputVerifier} of the currently focused field, as a mouse click on OK would.
+     *
+     * @return {@code true} when there is no focused field, the field has no verifier, or the
+     *         verifier yields focus; {@code false} when the verifier rejects the value, in which
+     *         case it has already shown the user the reason and focus remains on the field
      */
     private boolean verifyFocusedField() {
         var focusOwner = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();

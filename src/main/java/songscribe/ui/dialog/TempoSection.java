@@ -23,6 +23,7 @@ import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.util.List;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -59,7 +60,7 @@ class TempoSection extends JPanel {
      * @param checkboxLabel the label for the "show only description" checkbox
      * @param fileNames     resource file names from which to load description values
      */
-    TempoSection(Duration[] types, String checkboxLabel, String... fileNames) {
+    TempoSection(Duration[] types, String checkboxLabel, List<String> fileNames) {
         tempoTypeCombo = DurationListCellRenderer.createCombo(types);
 
         showOnlyDescriptionCheckBox = new JCheckBox(checkboxLabel);
@@ -109,7 +110,7 @@ class TempoSection extends JPanel {
     void setTempo(Tempo tempo) {
         tempoTypeCombo.setSelectedItem(tempo.getTempoType());
         tempoSpinnerModel.setValue(tempo.getVisibleTempo());
-        tempoDescriptionCombo.setSelectedItem(tempo.getTempoDescription());
+        tempoDescriptionCombo.setValue(tempo.getTempoDescription());
         showOnlyDescriptionCheckBox.setSelected(!tempo.shouldShowTempo());
     }
 
