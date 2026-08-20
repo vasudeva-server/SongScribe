@@ -11,6 +11,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 - dom/ — the document model (`Song`, `Line`, elements), not a DOM/XML tree
 - layout/ vs engraving/ — `layout/` computes positions and spacing; `engraving/` holds staff geometry and engraving constants
 - converter/ vs uiconverter/ — `converter/` is the headless batch converter; `uiconverter/` is its Swing front end
+- binding/ vs ui/binding/ — `binding/` is the Swing-free property graph (`Bindings`, `Property`, `ViewProperty`); `ui/binding/` holds only the views over Swing controls (`Controls`, `Widgets`). A view over non-Swing storage is a `ViewProperty` and belongs with that storage, not in either package
 
 ### Key Entry Points
 

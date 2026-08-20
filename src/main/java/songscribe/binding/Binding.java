@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -25,14 +25,14 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /**
- * One edge of the property graph: a target, a source to observe, and the value to
- * write when that source notifies.
+ * One binding: a target, a source to observe, and the value to write when that
+ * source notifies.
  *
- * <p>Every edge carries its own re-entrancy flag. Writing a Swing control fires
- * that control's own notification, which arrives back at this edge; the flag is
+ * <p>Every binding carries its own re-entrancy flag. Writing a Swing control fires
+ * that control's own notification, which arrives back at this binding; the flag is
  * raised for the duration of the write and a notification arriving while it is
- * raised is dropped. <b>The flag is per edge and never per {@link Bindings}</b> — a
- * dialog-wide flag also swallows legitimate propagation through the other edges
+ * raised is dropped. <b>The flag is per binding and never per {@link Bindings}</b> — a
+ * dialog-wide flag also swallows legitimate propagation through the other bindings
  * that the write set off, which is the defect that makes a hand-wired dialog
  * re-synchronize its controls by hand afterwards.
  *
@@ -40,14 +40,14 @@ import org.jspecify.annotations.Nullable;
  */
 final class Binding<T> implements Subscription {
 
-    /** Whether a newly created edge writes its target immediately. */
+    /** Whether a newly created binding writes its target immediately. */
     enum InitialWrite {
         /** Evaluate and write at once, settling the target. */
         WRITE,
 
         /**
          * Record the current value as though it had been written, without writing.
-         * For the reverse edge of a two-way binding, whose target the forward edge
+         * For the reverse half of a two-way binding, whose target the forward half
          * has just settled.
          */
         SKIP
@@ -62,11 +62,11 @@ final class Binding<T> implements Subscription {
     private @Nullable T lastWritten = null;
 
     /**
-     * Creates the edge, observes {@code source}, and settles the target according
+     * Creates the binding, observes {@code source}, and settles the target according
      * to {@code initial}.
      *
-     * @param target what this edge writes
-     * @param source what this edge observes; every notification from it re-runs
+     * @param target what this binding writes
+     * @param source what this binding observes; every notification from it re-runs
      *     {@code value} and possibly writes {@code target}
      * @param value produces the value to write; it is run on every notification, so
      *     it must be cheap and free of side effects
@@ -87,15 +87,15 @@ final class Binding<T> implements Subscription {
 
     /**
      * Re-runs the value supplier and writes the target, unless the result is the
-     * value this edge last wrote.
+     * value this binding last wrote.
      *
      * <p>The comparison is against the last <i>written</i> value, never against the
      * target's current value, because a {@link WritableValue} has no readable
      * current value at all — a preview sink has a setter and no getter, and the
-     * adapters over such state are built on exactly that. An edge that has never
+     * adapters over such state are built on exactly that. A binding that has never
      * written has no last value, so its first application always writes.
      *
-     * <p>Does nothing when the notification is the one this edge's own write
+     * <p>Does nothing when the notification is the one this binding's own write
      * caused.
      */
     private void apply() {

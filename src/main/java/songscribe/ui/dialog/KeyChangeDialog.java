@@ -25,8 +25,8 @@ import songscribe.Strings;
 import songscribe.dom.Key;
 import songscribe.ui.KeyCellRenderer;
 import songscribe.ui.binding.Controls;
-import songscribe.ui.binding.Property;
-import songscribe.ui.binding.ValueProperty;
+import songscribe.binding.Property;
+import songscribe.binding.ValueProperty;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 

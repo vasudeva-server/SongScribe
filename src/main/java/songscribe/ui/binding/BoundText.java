@@ -23,6 +23,8 @@ import javax.swing.text.JTextComponent;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.binding.Property;
+
 /**
  * The association between a text control and the {@link Property} that views it,
  * and the two operations that association exists for: writing the control from the

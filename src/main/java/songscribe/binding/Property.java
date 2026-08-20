@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 /**
  * A value that can be read, observed and written — the two-way case.

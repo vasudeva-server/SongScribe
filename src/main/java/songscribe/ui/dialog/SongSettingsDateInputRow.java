@@ -26,11 +26,11 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 
 import songscribe.Strings;
-import songscribe.ui.binding.Bindings;
+import songscribe.binding.Bindings;
 import songscribe.ui.binding.Controls;
-import songscribe.ui.binding.Property;
+import songscribe.binding.Property;
 import songscribe.ui.binding.Timing;
-import songscribe.ui.binding.ValueProperty;
+import songscribe.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
@@ -42,7 +42,7 @@ import songscribe.ui.component.NumericTextField;
  *
  * <p>The row is not a {@link BaseDialog.Tab} and owns no {@code Bindings} of its
  * own: it takes one from the tab that builds it, so the dialog still owns every
- * edge this row declares and disposes them with the rest.
+ * binding this row declares and disposes them with the rest.
  *
  * <p>The month combo is <i>valued</i>: it holds {@link MonthChoice} constants, so the
  * property answers a month rather than a position and no agreement between list order
@@ -144,7 +144,7 @@ final class SongSettingsDateInputRow {
     private final Property<Integer> day = Controls.itemIndex(dayCombo);
 
     /**
-     * Builds the row and declares its edges on {@code bindings}.
+     * Builds the row and declares its bindings on {@code bindings}.
      *
      * <p>The row announces nothing of its own. Its three getters read the three
      * properties, so a caller that reads them inside a {@code Bindings.computed}
@@ -161,7 +161,7 @@ final class SongSettingsDateInputRow {
      * its own.
      *
      * @param bindings the owning dialog's bindings, which this row registers its
-     *     edges and effects on and which disposes them
+     *     bindings and effects on and which disposes them
      */
     SongSettingsDateInputRow(Bindings bindings) {
         // The month combo is enabled exactly when the year is valid; the day combo

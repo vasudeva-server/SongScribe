@@ -67,9 +67,9 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.binding.Bindings;
-import songscribe.ui.binding.ObservableValue;
-import songscribe.ui.binding.ValueProperty;
+import songscribe.binding.Bindings;
+import songscribe.binding.ObservableValue;
+import songscribe.binding.ValueProperty;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.util.GraphicUtils;
@@ -211,7 +211,7 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * @return this dialog's {@link Bindings}, which every edge it declares belongs to and
+     * @return this dialog's {@link Bindings}, which every binding it declares belongs to and
      *     which {@link #dispose()} cancels
      */
     protected final Bindings bindings() {
@@ -247,7 +247,7 @@ public abstract class BaseDialog implements Disposable {
      * marks this instance spent.
      * <p>
      * Tabs dispose first so a tab's own {@link Tab#dispose()} still runs with its bound
-     * controls intact, rather than after the edges backing them have already been torn down.
+     * controls intact, rather than after the bindings backing them have already been torn down.
      * <p>
      * Idempotent: {@code setVisible(false)} is reachable both from the OK/Cancel path and
      * from {@code windowClosing}, so a second call has to be a no-op rather than a second

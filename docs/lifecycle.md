@@ -132,7 +132,7 @@ font rows built and any it built for a button of its own; each of those
 subscribed itself to the message bus in its constructor, and disposing them is
 what keeps a closed dialog's actions from handling messages for the rest of the
 run. Disposing the `Bindings` cancels every observation the dialog declared —
-its edges, its effects, and the observations each `computed` holds on its own
+its bindings, its effects, and the observations each `computed` holds on its own
 dependencies — which is what releases the dialog, its controls and everything
 its transforms, derivations and effects captured. A `computed` is created
 through `Bindings` rather than as a free-standing value precisely so that last

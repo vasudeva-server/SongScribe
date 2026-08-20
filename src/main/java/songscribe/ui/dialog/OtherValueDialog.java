@@ -20,7 +20,7 @@
 package songscribe.ui.dialog;
 
 import songscribe.ui.binding.Controls;
-import songscribe.ui.binding.Property;
+import songscribe.binding.Property;
 import songscribe.ui.binding.Timing;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.NonBlankTextField;

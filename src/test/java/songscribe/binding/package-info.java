@@ -1,4 +1,4 @@
 @NullMarked
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import org.jspecify.annotations.NullMarked;

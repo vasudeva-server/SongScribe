@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.List;
  * removes one, and the notification pass.
  *
  * <p>Every implementation that notifies — {@link ValueProperty}, {@link Computed},
- * and each control adapter in {@link Controls} — holds one of these rather than
+ * and each view an adapter package builds over its own storage — holds one of these rather than
  * repeating the list, the idempotent cancel and the copy-iterating pass. Every call
  * happens on the EDT, per the package invariant, so nothing here is synchronized.
  */

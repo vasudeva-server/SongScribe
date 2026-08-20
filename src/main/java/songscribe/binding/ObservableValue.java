@@ -17,14 +17,14 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 /**
  * A value that can be read and observed, but not written — the source half of the
  * property graph.
  *
  * <p>The three capabilities are three types so that the compiler refuses a nonsense
- * edge:
+ * binding:
  *
  * <table border="1">
  * <caption>Capabilities</caption>

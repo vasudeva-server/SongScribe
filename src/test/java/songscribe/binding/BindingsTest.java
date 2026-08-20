@@ -18,7 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -35,8 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * collects by running its body, the ones it drops when a later run stops reading them,
  * and how often the body runs for consumers sharing it.
  *
- * <p>What propagates along an edge: an edge absorbing the notification its own write
- * caused without silencing the other edges, a fold that settles, a two-way binding that
+ * <p>What propagates along a binding: a binding absorbing the notification its own
+ * write caused without silencing the other bindings, a fold that settles, a two-way binding that
  * round-trips, and the release {@link Bindings#dispose} performs.
  *
  * <p>Everything is arranged through {@link ValueProperty} and {@code computed}, which
@@ -45,10 +45,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class BindingsTest extends UnitTest {
 
-    /** The value the self-feeding edge of the re-entrancy case starts from. */
+    /** The value the self-feeding binding of the re-entrancy case starts from. */
     private static final int FIRST_COUNT = 1;
 
-    /** A later value written from outside, distinct from anything the edge produces. */
+    /** A later value written from outside, distinct from anything the binding produces. */
     private static final int LATER_COUNT = 5;
 
     private static final int HEADING_SIZE = 24;
@@ -58,7 +58,7 @@ class BindingsTest extends UnitTest {
     private static final String SERIF = "Serif";
     private static final String SANS = "Sans";
 
-    /** What the transforming edge of the disposal case appends, so a write is visible. */
+    /** What the transforming binding of the disposal case appends, so a write is visible. */
     private static final String BOLD_SUFFIX = " Bold";
 
     private static final int SPELLED_NUMBER = 7;
@@ -154,11 +154,11 @@ class BindingsTest extends UnitTest {
         var mirror = new ValueProperty<>(0);
         var bindings = new Bindings();
 
-        // A second edge off the same value, registered first so its target is settled
-        // before the self-feeding edge below writes anything.
+        // A second binding off the same value, registered first so its target is settled
+        // before the self-feeding binding below writes anything.
         bindings.bind(mirror, counter);
 
-        // This edge's own write notifies the value it observes, so every application
+        // This binding's own write notifies the value it observes, so every application
         // arrives straight back at it. An increment makes a re-entry visible as a
         // value rather than as a hang.
         bindings.bind(counter, counter, value -> value + 1);
@@ -221,7 +221,7 @@ class BindingsTest extends UnitTest {
         assertThat(spelled.get()).isEqualTo(String.valueOf(TYPED_NUMBER));
         assertThat(number.get()).isEqualTo(TYPED_NUMBER);
 
-        // One change on each side: the write travelling back through the far edge stops
+        // One change on each side: the write travelling back through the far side stops
         // instead of driving the pair round again.
         assertThat(spelledChanges).hasValue(1);
         assertThat(numberChanges).hasValue(1);
@@ -248,7 +248,7 @@ class BindingsTest extends UnitTest {
         bindings.dispose();
         source.set(SANS);
 
-        // Nothing is written by disposal either: each target keeps what its edge last
+        // Nothing is written by disposal either: each target keeps what its binding last
         // gave it.
         assertThat(plain.get()).isEqualTo(SERIF);
         assertThat(transformed.get()).isEqualTo(SERIF + BOLD_SUFFIX);

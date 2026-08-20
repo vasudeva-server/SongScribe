@@ -1,18 +1,20 @@
 # UI Bindings
 
-`songscribe.ui.binding` is the property graph a dialog wires itself with: values
-that can be read and observed, values that can be written, and declarative edges
-between them. The package Javadoc states the design and each member's contract
-states its own promises. This guide states the rules that hold across all of
-them.
+`songscribe.binding` is the property graph a dialog wires itself with: values
+that can be read and observed, values that can be written, and declarative bindings
+between them. It knows nothing about Swing; `songscribe.ui.binding` holds the views
+over Swing controls, and a view over any other storage — a preference, a model
+object — is a `ViewProperty` built the same way. The package Javadoc states the
+design and each member's contract states its own promises. This guide states the
+rules that hold across all of them.
 
 ## Values, sources and sinks
 
 **A source is an `ObservableValue`, a sink is a `WritableValue`, and a control
-the user edits is a `Property`.** Type every target as narrowly as the edge
+the user edits is a `Property`.** Type every target as narrowly as the binding
 allows: a target typed `Property` where `WritableValue` would do is a value that
 can then be handed to somebody else as a source, and the compiler no longer
-refuses the edge.
+refuses the binding.
 
 **A control the user edits is reached through `Controls`; presentation state a
 dialog computes is written through `Widgets`.** `Controls` answers `Property`,
@@ -65,7 +67,7 @@ notification rather than change because that is what it delivers.
 
 **A rule shared by a binding, an input guard and a controller's `validate` is a
 named domain function all three call, never a method on the framework.** A rule
-that lives inside `songscribe.ui.binding` cannot be referenced by a controller,
+that lives inside `songscribe.binding` cannot be referenced by a controller,
 so putting it there guarantees the second copy — and the second copy is what
 tells the user something different about one mistake. See
 [dialogs](dialogs.md).

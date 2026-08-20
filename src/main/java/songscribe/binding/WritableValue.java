@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 /**
  * A sink: something the framework can write, and nothing else.
@@ -28,7 +28,7 @@ package songscribe.ui.binding;
  * computes — a component's enabled state, its font, a preview rendering — is
  * write-only in Swing itself. There is no notification behind any of it, so a
  * binding that took one as a source would be a binding that silently never runs.
- * Typing them this way is what makes the compiler refuse that edge.
+ * Typing them this way is what makes the compiler refuse that binding.
  *
  * <p>The adapters over such state return this type for exactly that reason. A
  * control the user also edits has a notification route and is typed
@@ -43,6 +43,7 @@ package songscribe.ui.binding;
  *
  * @param <T> the written value's type
  */
+@FunctionalInterface
 public interface WritableValue<T> {
 
     /**

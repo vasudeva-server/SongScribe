@@ -19,30 +19,27 @@
  */
 
 /**
- * A property graph for dialog state: values that can be read and observed, values
- * that can be written, and declarative edges between them.
+ * The Swing half of the binding framework: views that make a Swing control's state
+ * bindable.
  *
- * <p>A value here is a <i>view</i> onto storage that already exists — a Swing
- * control, or a plain holder — never a second copy of it. A binding declares
- * <i>target &larr; source</i>, and the framework owns observation, propagation and
- * re-entrancy.
+ * <p>{@link songscribe.binding} owns the values, the bindings and the propagation,
+ * and knows nothing about Swing. This package supplies the adapters. {@code Controls}
+ * returns two-way {@code Property} views over what the user edits — a checkbox's
+ * selected state, a radio group's chosen constant, a text field's text. {@code Widgets}
+ * returns write-only {@code WritableValue} sinks for presentation state Swing never
+ * reports back: an enabled flag, a font, a preview. {@code Timing} chooses when a text
+ * control's property notifies.
  *
- * <h2>Package invariants</h2>
+ * <p>Every invariant of {@code songscribe.binding} holds here too — EDT only, and
+ * values replaced rather than mutated.
  *
- * <p><b>Every call in this package happens on the EDT.</b> Nothing here is
- * synchronized and nothing here is thread-safe: the observer lists, the dirty
- * flags, the re-entrancy flags and the dependency sets are all plain mutable state
- * guarded by nothing but that invariant. A call from a background thread can
- * corrupt a dependency set or lose a notification, and no diagnostic reports it.
+ * <h2>Lifecycle</h2>
  *
- * <p><b>Values are replaced, never mutated.</b> An {@link
- * songscribe.ui.binding.ObservableValue} observes <i>replacement</i> of its value
- * and has no way to see a mutation made inside one. A mutable {@code T} whose
- * contents are edited in place therefore notifies nobody, and every binding and
- * {@code computed} that depends on it silently keeps the value it last saw. Use
- * immutable value types, and replace through {@link
- * songscribe.ui.binding.WritableValue#set} rather than editing what {@link
- * songscribe.ui.binding.ObservableValue#get} handed back.
+ * <p>A view registers a Swing listener on its control and never unregisters it. The
+ * listener lives as long as the control does, and both die with the dialog that built
+ * them. Disposing a {@code Bindings} cancels the observations taken <i>on</i> a view;
+ * it does not — and need not — unregister the view's own listener. A view over storage
+ * that outlives the dialog cannot make that assumption and belongs elsewhere.
  */
 @NullMarked
 package songscribe.ui.binding;

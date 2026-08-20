@@ -23,6 +23,11 @@ import java.awt.Font;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 
+import songscribe.binding.Bindings;
+import songscribe.binding.ObservableValue;
+import songscribe.binding.Property;
+import songscribe.binding.ValueProperty;
+import songscribe.binding.WritableValue;
 import songscribe.ui.component.score.BaseTitleComponent;
 
 /**
@@ -35,7 +40,7 @@ import songscribe.ui.component.score.BaseTitleComponent;
  * title component's preview was changed; there is no listener to register and no
  * event to receive. A binding that took one of these as its source would therefore
  * be a binding that never runs, with nothing at runtime reporting it — so the type
- * makes the compiler refuse the edge instead.
+ * makes the compiler refuse the binding instead.
  *
  * <p>Nothing here reads or observes. These are the far end of a binding: a dialog
  * derives the state with a {@code computed} over the {@link Controls} properties the

@@ -32,7 +32,7 @@ import songscribe.Strings;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.binding.ValueProperty;
+import songscribe.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -97,7 +97,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
 
         // Each chosen font drives both a sample rendered in it and a label describing it.
         // Declared here rather than in initContents because the font rows built there read
-        // the properties these edges settle.
+        // the properties these bindings settle.
         var dialogBindings = bindings();
         dialogBindings.bind(Widgets.font(lyricsFontPreview), lyricsFont);
         dialogBindings.bind(Widgets.labelText(lyricsFontLabel), lyricsFont, MyFontUtils::getFullFontDescription);

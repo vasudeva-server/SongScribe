@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import java.util.function.Function;
 
@@ -28,8 +28,8 @@ import java.util.function.Function;
  * <p>A record rather than two parameters at the bind site: {@code Function<A,B>}
  * and {@code Function<B,A>} are transposable at a lambda call site without the
  * compiler objecting whenever {@code A} and {@code B} are inferred, and a
- * transposed pair produces a binding that converts in the wrong direction on every
- * edge. Naming the two halves is what makes the mistake visible.
+ * transposed pair produces a binding that converts in the wrong direction on both
+ * sides. Naming the two halves is what makes the mistake visible.
  *
  * <p>The two functions are expected to round-trip: {@code backward(forward(a))}
  * should equal {@code a}, and likewise from the other side. A pair that does not

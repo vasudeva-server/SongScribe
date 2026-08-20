@@ -221,7 +221,7 @@ explaining why; don't "fix" either back into `BaseDialog`.
 Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSectionSeparator(this)` (static on `BaseDialog`) adds the inter-section vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
 
 Inherited from the dialog, and the whole of what a tab reaches — **a tab does not hold its dialog**:
-- `bindings()` — the owning dialog's `Bindings`, which is where a tab declares its edges and effects; they are torn down with the dialog. See [bindings](bindings.md).
+- `bindings()` — the owning dialog's `Bindings`, which is where a tab declares its bindings and effects; they are torn down with the dialog. See [bindings](bindings.md).
 - `getMainFrame()` — window parenting only, the same rule as on `BaseDialog`.
 - `repackToContent()` — re-packs the owning dialog when the tab's content changes height at runtime.
 - `requireValid(condition)` — adds a condition to the owning dialog's validity, which is what disables OK while the tab's own values cannot be committed.

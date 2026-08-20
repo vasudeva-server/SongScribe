@@ -36,6 +36,13 @@ import javax.swing.text.JTextComponent;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.binding.Bindings;
+import songscribe.binding.ObservableValue;
+import songscribe.binding.Property;
+import songscribe.binding.Subscription;
+import songscribe.binding.ViewProperty;
+import songscribe.binding.ViewProperty.WriteNotification;
+import songscribe.binding.WritableValue;
 import songscribe.error.RuntimeError;
 
 /**
@@ -195,10 +202,10 @@ public final class Controls {
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
     public static <E> Property<E> item(JComboBox<E> combo) {
-        var property = new ControlProperty<E>(
+        var property = new ViewProperty<E>(
             () -> selectedItem(combo),
             combo::setSelectedItem,
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
         combo.addActionListener(event -> property.notifyObservers());
 
@@ -229,10 +236,10 @@ public final class Controls {
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
     public static Property<Integer> itemIndex(JComboBox<?> combo) {
-        var property = new ControlProperty<Integer>(
+        var property = new ViewProperty<Integer>(
             combo::getSelectedIndex,
             combo::setSelectedIndex,
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
         combo.addActionListener(event -> property.notifyObservers());
 
@@ -252,10 +259,10 @@ public final class Controls {
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
     public static Property<Boolean> selected(AbstractButton button) {
-        var property = new ControlProperty<Boolean>(
+        var property = new ViewProperty<Boolean>(
             button::isSelected,
             button::setSelected,
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
         button.addItemListener(event -> property.notifyObservers());
 
@@ -284,10 +291,10 @@ public final class Controls {
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
     public static Property<Number> number(SpinnerModel model) {
-        var property = new ControlProperty<Number>(
+        var property = new ViewProperty<Number>(
             () -> (Number) model.getValue(),
             model::setValue,
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
         model.addChangeListener(event -> property.notifyObservers());
 
@@ -311,10 +318,10 @@ public final class Controls {
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
     public static Property<Integer> value(JSlider slider) {
-        var property = new ControlProperty<Integer>(
+        var property = new ViewProperty<Integer>(
             slider::getValue,
             slider::setValue,
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
         slider.addChangeListener(event -> property.notifyObservers());
 
@@ -369,10 +376,10 @@ public final class Controls {
         }
 
         var group = new EnumMap<>(buttons);
-        var property = new ControlProperty<E>(
+        var property = new ViewProperty<E>(
             () -> selectedConstant(group),
             constant -> select(group, constant),
-            ControlProperty.WriteNotification.FROM_CONTROL
+            WriteNotification.FROM_SOURCE
         );
 
         for (var button : group.values()) {
@@ -399,13 +406,13 @@ public final class Controls {
         // ON_COMMIT observes focusLost, which no write reaches, so for that timing the
         // write itself is the only notification there is.
         var writeNotification = timing == Timing.ON_COMMIT
-            ? ControlProperty.WriteNotification.FROM_WRITE
-            : ControlProperty.WriteNotification.FROM_CONTROL;
+            ? WriteNotification.FROM_WRITE
+            : WriteNotification.FROM_SOURCE;
 
         // The write goes through BoundText rather than straight to the field: that is
         // what raises the guard the delegating setText checks, so the property writing
         // its own control does not route straight back into itself.
-        var property = new ControlProperty<String>(
+        var property = new ViewProperty<String>(
             field::getText,
             text -> BoundText.write(field, text),
             writeNotification
@@ -522,73 +529,4 @@ public final class Controls {
         button.setSelected(true);
     }
 
-    /**
-     * The one {@link Property} implementation behind every factory in this class: a
-     * read function, a write function, and the observer list the control's own
-     * listener drives.
-     *
-     * <p>Every adapter differs only in those two functions and in which Swing
-     * listener calls {@link #notifyObservers}, so there is one implementation rather
-     * than one per control.
-     *
-     * @param <T> the viewed value's type
-     */
-    private static final class ControlProperty<T> implements Property<T> {
-
-        /**
-         * Whether a write made through this view notifies on its own.
-         *
-         * <p>Which one a factory passes is read straight off the route table in the
-         * class documentation: a route the control fires on a programmatic write
-         * notifies by itself, and a route it does not fire has nothing else to notify
-         * with.
-         */
-        private enum WriteNotification {
-            /** The control's own listener fires on a write, so notifying here too would notify twice. */
-            FROM_CONTROL,
-
-            /** No listener of the control's fires on a write, so the write is the notification. */
-            FROM_WRITE
-        }
-
-        private final Observers observers = new Observers();
-        private final Supplier<T> reader;
-        private final Consumer<T> writer;
-        private final WriteNotification writeNotification;
-
-        private ControlProperty(Supplier<T> reader, Consumer<T> writer, WriteNotification writeNotification) {
-            this.reader = reader;
-            this.writer = writer;
-            this.writeNotification = writeNotification;
-        }
-
-        @Override
-        public T get() {
-            DependencyTracker.track(this);
-
-            return reader.get();
-        }
-
-        @Override
-        public void set(T value) {
-            writer.accept(value);
-
-            if (writeNotification == WriteNotification.FROM_WRITE) {
-                observers.notifyObservers();
-            }
-        }
-
-        @Override
-        public Subscription observe(Runnable onNotify) {
-            return observers.add(onNotify);
-        }
-
-        /**
-         * Notifies this property's observers, called by the control's own Swing
-         * listener when the control reports a change.
-         */
-        void notifyObservers() {
-            observers.notifyObservers();
-        }
-    }
 }

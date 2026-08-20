@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package songscribe.ui.binding;
+package songscribe.binding;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,15 +26,15 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 import songscribe.lifecycle.Disposable;
-import songscribe.ui.binding.Binding.InitialWrite;
+import songscribe.binding.Binding.InitialWrite;
 
 /**
  * The set of bindings and effects one dialog declares, and the owner that tears
  * them all down together.
  *
- * <p>Declaring an edge here is the alternative to wiring a listener by hand: the
+ * <p>Declaring a binding here is the alternative to wiring a listener by hand: the
  * framework observes the source, decides when the target has to be written, and
- * absorbs the notification its own write causes. Every edge, every derivation and
+ * absorbs the notification its own write causes. Every binding, every derivation and
  * every effect registered here is held until {@link #dispose}, which is the only way
  * to release them.
  *
@@ -71,7 +71,7 @@ public final class Bindings implements Disposable {
      * <p>Evaluation is lazy: a dependency's notification marks the result stale and
      * is passed on to the result's own observers at once, but {@code body} does not
      * run again until the value is next read. An eager consumer — a {@link #bind}
-     * edge — reads on every notification and so behaves eagerly; an unbound
+     * binding — reads on every notification and so behaves eagerly; an unbound
      * derivation shared by two readers evaluates once per change rather than once
      * per reader.
      *
@@ -108,7 +108,7 @@ public final class Bindings implements Disposable {
      * Writes {@code source}'s value into {@code target}, now and on every later
      * notification from {@code source}.
      *
-     * <p>The target is a {@link WritableValue}, so this edge is one-way by
+     * <p>The target is a {@link WritableValue}, so this binding is one-way by
      * construction: an edit made to the target by anything else does not travel
      * back, and the next notification from the source overwrites it.
      *
@@ -118,10 +118,10 @@ public final class Bindings implements Disposable {
      * @param source what to read and observe
      * @effects evaluates {@code source} and writes {@code target} before returning,
      *     then holds an observation on {@code source} until {@link #dispose}.
-     * @invariant the edge writes nothing when the value it computes equals the
-     *     value this same edge last wrote, by {@code Objects.equals}. The
+     * @invariant the binding writes nothing when the value it computes equals the
+     *     value this same binding last wrote, by {@code Objects.equals}. The
      *     comparison is against the last written value rather than the target's
-     *     current value, since a {@code WritableValue} has none to read. An edge
+     *     current value, since a {@code WritableValue} has none to read. A binding
      *     that has not yet written always writes, which is what makes the
      *     registration-time write happen.
      */
@@ -139,7 +139,7 @@ public final class Bindings implements Disposable {
      * every notification, and it does <b>not</b> run under the dependency tracker:
      * only {@link #computed} discovers dependencies, so a transform
      * that reads some other observable value acquires no dependency on it and the
-     * edge will not fire when that value changes. A value derived from more than
+     * binding will not fire when that value changes. A value derived from more than
      * one source is a {@code computed}.
      *
      * @param <S> the source's value type
@@ -151,8 +151,8 @@ public final class Bindings implements Disposable {
      * @effects evaluates the source, applies the transform and writes
      *     {@code target} before returning, then holds an observation on
      *     {@code source} until {@link #dispose}.
-     * @invariant the edge writes nothing when the transformed value equals the
-     *     value this same edge last wrote, by {@code Objects.equals}, so a source
+     * @invariant the binding writes nothing when the transformed value equals the
+     *     value this same binding last wrote, by {@code Objects.equals}, so a source
      *     that notifies without changing what the transform produces causes no
      *     write at all.
      */
@@ -178,7 +178,7 @@ public final class Bindings implements Disposable {
      *
      * <p>Like the transform overload, {@code merge} does not run under the
      * dependency tracker: reading the target inside it acquires no dependency on
-     * the target, so an edit to the target does not re-fire this edge.
+     * the target, so an edit to the target does not re-fire this binding.
      *
      * @param <S> the source's value type
      * @param <T> the target's value type
@@ -189,8 +189,8 @@ public final class Bindings implements Disposable {
      * @effects evaluates the source, reads {@code target}, and writes the merged
      *     value into {@code target} before returning, then holds an observation on
      *     {@code source} until {@link #dispose}.
-     * @invariant the edge writes nothing when the merged value equals the value
-     *     this same edge last wrote, by {@code Objects.equals}.
+     * @invariant the binding writes nothing when the merged value equals the value
+     *     this same binding last wrote, by {@code Objects.equals}.
      */
     public <S, T> void bind(Property<T> target, ObservableValue<S> source, BiFunction<S, T, T> merge) {
         register(new Binding<>(target, source, () -> merge.apply(source.get(), target.get()), InitialWrite.WRITE));
@@ -207,7 +207,7 @@ public final class Bindings implements Disposable {
      * @param b the other side
      * @effects writes {@code a}'s value into {@code b} before returning, then holds
      *     an observation on each side until {@link #dispose}.
-     * @invariant propagation terminates. Each of the two edges carries its own
+     * @invariant propagation terminates. Each of the two halves carries its own
      *     re-entrancy flag and drops the notification caused by its own write, and
      *     each also declines to write a value equal to the one it last wrote; a
      *     write echoing back through the far side therefore stops on the second
@@ -227,7 +227,7 @@ public final class Bindings implements Disposable {
      * {@code transform.backward()} converts back.
      *
      * <p>{@code a} is the side that wins at registration: {@code b} is written with
-     * {@code forward(a.get())}, and {@code a} is left as it was. The reverse edge is
+     * {@code forward(a.get())}, and {@code a} is left as it was. The reverse half is
      * created already knowing that value, so it does not immediately write
      * {@code a} back.
      *
@@ -239,7 +239,7 @@ public final class Bindings implements Disposable {
      *     or each side will keep rewriting the other's value into something else
      * @effects writes {@code forward(a.get())} into {@code b} before returning, then
      *     holds an observation on each side until {@link #dispose}.
-     * @invariant propagation terminates, by the same per-edge re-entrancy flag and
+     * @invariant propagation terminates, by the same per-binding re-entrancy flag and
      *     unchanged-value stop as {@link #bindBidirectional(Property, Property)}.
      */
     public <A, B> void bindBidirectional(Property<A> a, Property<B> b, Transform<A, B> transform) {
@@ -284,7 +284,7 @@ public final class Bindings implements Disposable {
      * registered here.
      *
      * <p>Idempotent: a second call cancels nothing because nothing is left
-     * registered. The instance is not reusable afterwards — registering a new edge
+     * registered. The instance is not reusable afterwards — registering a new binding
      * on a disposed {@code Bindings} would work, and would then never be torn down,
      * because the dialog that owned the disposal is gone.
      *
