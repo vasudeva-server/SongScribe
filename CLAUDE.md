@@ -43,6 +43,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.claude/guides/option-dialogs.md).
 - **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), **or the controller behind one** (`DialogOps`, `DialogController`, any `*Controller` in `ui/dialog/`): [Dialogs](.claude/guides/dialogs.md). It states what a dialog may and may not touch, which is the rule a controller exists to keep, and that the controller rather than the dialog is what carries tests.
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.claude/guides/prefs.md).
+- **Bindings** (`Bindings`, `Property`, `ObservableValue`, `ValueProperty`, `ViewProperty`, `Computed`, `Controls`, `Widgets`), or wiring a Swing listener for state a binding could carry: [Bindings](.claude/guides/bindings.md).
 - **Custom UI constants** (`FlatLafProps`, `FlatLafKeys`, `FlatLaf.properties`): [FlatLaf Properties](.claude/guides/flatlaf-props.md).
 - **File-based logging**: [Logging](.claude/guides/logging.md). If the user says, "check the log", read this guide to know where to look.
 - **Nullability** — `@Nullable`, `@NullMarked`, NullAway suppressions, deferred-init fields, `requireXxx()` accessors, or reacting to an unexpected null: [Null Handling](.claude/guides/null-handling.md).
