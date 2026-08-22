@@ -116,15 +116,15 @@ In both cases the carrier is *named* for what it is (`getViewPixelsPerStaffSpace
 
 `AttributionPane` lives in `songscribe.dom` and so must not reach for `ViewScale` itself — the factor is pushed in by the caller. Its **measurement** API is deliberately zoom-free: `getContentSizePx`/`getContentWidthPx`/`getContentHeightPx` always measure at `AttributionPane.NATURAL_ZOOM_FACTOR`, so the staff-space dimensions the layout reserves are zoom-invariant by construction. Only the render pass is zoomed. Off-score callers with no `ScoreView` (the settings-dialog preview) pass `NATURAL_ZOOM_FACTOR` explicitly.
 
-## No typed seam inside `paintComponent`
+## No typed units inside `paintComponent`
 
-Typed units (`Ss`, `DocPx`, `ViewPx`) exist to guard **seams** — layout, measurement, mouse, and page boundaries — where getting the wrong unit is a real, easy-to-make bug. They are deliberately **not** used inside the per-frame paint path:
+Typed units (`Ss`, `DocPx`, `ViewPx`) exist to guard the points where one unit regime **converts** into another — layout, measurement, mouse, and page boundaries — where getting the wrong unit is a real, easy-to-make bug. They are deliberately **not** used inside the per-frame paint path:
 
 - `LineComponent.paintComponent` and everything it calls stay on plain-`double` `ssToPx`/`pxToSs` arithmetic.
 - `ScaleContext`'s measurement helpers (`textWidthSs`, `fontAscentSs`, etc.) do return typed `Ss` at their own boundary, but callers inside or adjacent to the paint path unwrap immediately with `.value()` rather than threading the typed value further into paint-time math (see `AnnotationRenderer`, `MetronomeRenderer`).
 - `scaleFont` keeps returning a plain `Font` — no typed wrapper.
 
-This is a deliberate performance boundary: typed records are cheap but not free, and the paint path runs every frame. Introducing a typed seam there would be a correctness no-op with a needless allocation cost — flag it in review.
+This is a deliberate performance boundary: typed records are cheap but not free, and the paint path runs every frame. Introducing a typed unit there would be a correctness no-op with a needless allocation cost — flag it in review.
 
 ## Mouse input: converting out of view pixels at the entry point
 

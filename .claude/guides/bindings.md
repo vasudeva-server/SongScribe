@@ -85,10 +85,14 @@ nothing at runtime reports the loss.
 | `ActionListener` on a combo box | yes |
 | `ItemListener` on a button | yes |
 | `ChangeListener` on a spinner model or a slider | yes |
+| `ListSelectionListener` on a list | yes |
 | `focusLost` | no |
 | `ActionListener` on a button | no |
+| `TickSlider` tick listener | no |
 
 A button adapter therefore observes items and never actions.
+
+**A radio group is read from its `ButtonGroup`, never by polling the buttons.** Swing turns the outgoing button off before it turns the incoming one on, and announces the first step in between — so there is a moment in every change when no button reports itself selected while the group already names the new one. `Controls.radioGroup` creates the group for this reason, and passes on only the selection half of the notification, since Swing announces both halves of one change.
 
 ## Text controls
 

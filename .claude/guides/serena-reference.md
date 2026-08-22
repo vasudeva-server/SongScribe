@@ -27,6 +27,20 @@ For `extends`/`implements` relationships, use `jet_brains_type_hierarchy`. A hoo
 
 For constructor *signatures*, `find_symbol` with `depth=1` and `include_info=true` lists the overloads as `ClassName[0]`, `ClassName[1]`, and so on.
 
+## Looking up a dependency's API
+
+`jet_brains_find_symbol` with `search_deps: true` searches inside project dependencies (external libraries), not just project code. Use it in place of decompiling a library JAR or web search when you need a dependency's API.
+
+A result from a dependency returns a `relative_path` that starts with `<ext`. Reuse that exact identifier for a further lookup inside that dependency — do not guess a path for it.
+
 ## Refactoring catalog
 
 Prefer `jet_brains_rename`, `jet_brains_move`, `jet_brains_safe_delete` and `jet_brains_inline_symbol` over manual edits — they update every reference atomically. Never move a Java file by hand.
+
+### `rename_in_comments` stays off
+
+Pass `rename_in_comments: false`. A symbol named from a comment via `{@link}`, `{@code}` or backticks is a real reference the IDE tracks, so the rename updates it structurally without help.
+
+The option is a repo-wide *textual* sweep instead. Renaming `PrefsValue.key()` to `storedValue()` with it on rewrote the ordinary English word "key" as "storedValue" across 103 files that had nothing to do with the symbol — doc comments, plain comments, and AssertJ `.as(...)` failure messages ("line 0 ... must establish a storedValue of its own"). The tool also timed out partway through, so the damage was already in the working tree before any result came back.
+
+If a comment genuinely names the symbol in bare prose, fix that one comment by hand afterwards — and consider that it should have used `{@code}`. After renaming a short or common word, check `git status` for files outside the expected set before continuing.

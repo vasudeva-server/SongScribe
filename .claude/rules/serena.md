@@ -4,4 +4,10 @@ Whenever you are about to determine the set of places a symbol is used — metho
 
 Use `Edit` for code changes so the user sees a diff. Do not use `replace_symbol_body`, `insert_after_symbol` or `insert_before_symbol`. To get exact text for an `Edit`, read it with `find_symbol` and `include_body=true`.
 
+Use `replace_content` only when `Edit`'s literal `replace_all` cannot express the change: a regex match, or a long wildcard span you do not want to type out in full. For an exact-string change, even one repeated across a file, use `Edit` with `replace_all`.
+
+Use `replace_in_files` in place of a `sed` or Python call for a bulk find-and-replace across many files, or many places in one file. Run it with `dry_run: true` first and check the diff before you apply it.
+
+Always pass `rename_in_comments: false` to `jet_brains_rename`. A symbol named in a comment via `{@link}`, `{@code}` or backticks renames on its own; the option is a repo-wide textual sweep that damages unrelated prose.
+
 For name-path syntax, per-tool parameters, the constructor-body workaround, and the refactoring tool catalog: [Serena Reference](../guides/serena-reference.md).

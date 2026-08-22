@@ -71,6 +71,18 @@ geometry, focus, tab selection and how a message reads are not things a test
 observes. A dialog's populate–gather–ops path is UI in this sense however much
 Java it contains.
 
+**Never propose a test for UI behavior, and never propose a way to make UI
+testable.** Dialogs, focus traversal, input verifiers and renderers carry no
+tests. When a UI promise has no test, say the verification is manual and stop. Do
+not offer injection, a mocked singleton, a suppressed dialog or a test-only
+accessor as the route to a test — a test that needs one of those verifies the
+scaffolding, not the promise. Plans in this repo assign that verification to a
+manual phase on purpose.
+
+The line is whether the assertion needs a window, focus or a dialog. Model logic
+reachable without one — a combo's list contents, a mapping function — is still
+fair game.
+
 ### When the code under a test changes
 
 Find the affected tests with `jet_brains_find_referencing_symbols` on the members

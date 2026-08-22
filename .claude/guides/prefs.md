@@ -93,7 +93,28 @@ Note the difference in collection semantics:
 
 ## Reacting to Changes
 
+There are two ways, and they are not alternatives — pick by what you are reacting *with*.
+
+### A bound control: use an observable view
+
+`Prefs` hands out a `Property` per key — `intProperty`, `booleanProperty`, `choiceProperty` — which reads and writes through the store and notifies whenever its key changes, whoever changed it. Bind a control to one and the control follows the store in both directions; there is nothing to subscribe and nothing to unregister.
+
+```java
+bindings().bindBidirectional(
+    Prefs.choiceProperty(PrefsKey.PAGE_SIZE, PageModel.Size.class),
+    Controls.radioGroup(buttonsByPageSize)
+);
+```
+
+An enum-valued preference implements `PrefsValue`, which supplies the string each constant is stored as; `Prefs.getChoice` decodes it, case-insensitively, falling back to the key's default when the stored value names no constant. Do not write a conversion at the bind site and do not give an enum its own `fromKey`.
+
+Views are created per call and cost nothing to drop; the observations a caller takes on one are cancelled by `Bindings.dispose`. Because they feed the binding framework, which is unsynchronized by design, **every `put`, `reset` and `resetAll` is EDT-only**. Reads are unrestricted.
+
+### A consequence that is not a value: use the message
+
 Every mutation (`put`, `putStringList`, `putMap`, `reset`, `resetAll`) posts `PrefsDidChangeNotification` after a successful write. The notification carries the key that changed, or `PrefsKey.ALL` for `resetAll`. A `@Handler` that reacts to a specific key should always also check for `PrefsKey.ALL`, since `resetAll` will not name the individual key.
+
+**Views are notified before the message is posted**, so a handler runs with the bound controls already settled.
 
 ```java
 // In constructor
@@ -134,6 +155,6 @@ When reviewing a change that adds an enum constant, confirm the corresponding en
 
 ## Removing a Preference
 
-Deleting a `PrefsKey` constant and its `user-defaults.json` entry is not enough — existing users' `prefs.json` files will still contain the old key. Add the JSON key string to the `OBSOLETE_KEYS` list in `Prefs`; it is stripped from the store on the next launch.
+Deleting a `PrefsKey` constant and its `user-defaults.json` entry is not enough — existing users' `prefs.json` files will still contain the old key. Add the JSON key string to the `OBSOLETE_KEYS` list in `PrefsUpgrade`; it is stripped from the store on the next launch.
 
 Removing a `SystemPrefsKey` constant needs no such cleanup: system keys are never written to `prefs.json`, so deleting the constant and its `system-defaults.json` entry is sufficient.

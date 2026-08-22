@@ -2,10 +2,6 @@ Language-neutral principles — contracts, contract-driven testing, signature
 quality — live in `~/.claude/rules/development.md` (global). This file holds
 only project-specific mechanics.
 
-## Branch Topology
-
-Feature branches are based on `develop`, not `main`. Before any operation that references a base branch (diff, checkout, rebase, PR creation), verify the actual parent with `git log --oneline --graph` or `git merge-base`. Never assume `main`.
-
 ## Development Scripts
 
 - Compile: run `./scripts/compile.sh --test`, which builds both trees. Never use `./gradlew`, `gradle`, `javac`, or `java -cp`. Outputs SUCCESS/FAILURE. Fix errors before proceeding. Include `--test` on every change: with the suite dormant, compiling the test tree is the always-on check that nothing still pins a member you deleted or renamed. `clean` is available for a from-scratch build.
