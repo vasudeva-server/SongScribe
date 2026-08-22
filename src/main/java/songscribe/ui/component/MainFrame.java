@@ -425,13 +425,7 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     static void performStartupAction(@Nullable Path mostRecentPath) {
-        var startupAction = StartupAction.DO_NOTHING;
-
-        try {
-            startupAction = StartupAction.valueOf(
-                Prefs.getString(PrefsKey.STARTUP_ACTION)
-            );
-        } catch (IllegalArgumentException ignored) {}
+        var startupAction = Prefs.getChoice(PrefsKey.STARTUP_ACTION, StartupAction.class);
 
         if (ModifierState.isAltPressed()) {
             startupAction = StartupAction.DO_NOTHING;

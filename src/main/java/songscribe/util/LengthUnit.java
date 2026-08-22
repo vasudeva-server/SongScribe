@@ -20,6 +20,7 @@
 package songscribe.util;
 
 import songscribe.Strings;
+import songscribe.prefs.PrefsValue;
 
 /**
  * A physical length unit the user types and reads lengths in, chosen by
@@ -33,14 +34,24 @@ import songscribe.Strings;
  * <p>This is a display unit, not a layout unit. Staff spaces and pixels — and the rules for
  * moving between them — are a separate matter, covered by {@code docs/unit-conversion.md};
  * nothing here is a suffix that document governs.
+ *
+ * <p><b>Nothing reads the user's choice yet.</b> The Preferences dialog offers it and the
+ * conversions below are unused, because the line-width field that displayed inches or
+ * centimetres is gone. Page setup is where the choice is going, and the control stays in
+ * Preferences until it lands there. Do not remove either as dead code.
  */
-public enum LengthUnit {
+public enum LengthUnit implements PrefsValue {
 
     INCHES(1, Strings.LABEL_UNIT_INCHES),
     CENTIMETERS(GraphicUtils.CM_PER_INCH, Strings.LABEL_UNIT_CM);
 
     private final double perInch;
     private final String labelKey;
+
+    @Override
+    public String storedValue() {
+        return name();
+    }
 
     LengthUnit(double perInch, String labelKey) {
         this.perInch = perInch;

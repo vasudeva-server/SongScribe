@@ -87,14 +87,14 @@ public final class AppearanceManager {
             return;
         }
 
-        Prefs.put(PrefsKey.APPEARANCE, preference.key());
+        Prefs.put(PrefsKey.APPEARANCE, preference.storedValue());
 
         if (!applyTheme(resolveIsDark(preference))) {
-            Prefs.put(PrefsKey.APPEARANCE, currentPreference.key());
+            Prefs.put(PrefsKey.APPEARANCE, currentPreference.storedValue());
             return;
         }
 
-        LOG.info("Theme switched to: {}", preference.key());
+        LOG.info("Theme switched to: {}", preference.storedValue());
 
         if (preference == Appearance.SYSTEM) {
             registerOsListener();
@@ -107,7 +107,7 @@ public final class AppearanceManager {
      * Returns the current appearance preference.
      */
     public static Appearance getPreference() {
-        return Appearance.fromKey(Prefs.getString(PrefsKey.APPEARANCE));
+        return Prefs.getChoice(PrefsKey.APPEARANCE, Appearance.class);
     }
 
     /**

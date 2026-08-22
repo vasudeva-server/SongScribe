@@ -126,7 +126,7 @@ public final class Bindings implements Disposable {
      *     registration-time write happen.
      */
     public <T> void bind(WritableValue<T> target, ObservableValue<? extends T> source) {
-        register(new Binding<>(target, source, source::get, InitialWrite.WRITE));
+        register(new Binding<>(target, source, source::get, InitialWrite.WRITE, new WriteGuard()));
     }
 
     /**
@@ -157,7 +157,7 @@ public final class Bindings implements Disposable {
      *     write at all.
      */
     public <S, T> void bind(WritableValue<T> target, ObservableValue<S> source, Function<S, T> transform) {
-        register(new Binding<>(target, source, () -> transform.apply(source.get()), InitialWrite.WRITE));
+        register(new Binding<>(target, source, () -> transform.apply(source.get()), InitialWrite.WRITE, new WriteGuard()));
     }
 
     /**
@@ -193,7 +193,7 @@ public final class Bindings implements Disposable {
      *     this same binding last wrote, by {@code Objects.equals}.
      */
     public <S, T> void bind(Property<T> target, ObservableValue<S> source, BiFunction<S, T, T> merge) {
-        register(new Binding<>(target, source, () -> merge.apply(source.get(), target.get()), InitialWrite.WRITE));
+        register(new Binding<>(target, source, () -> merge.apply(source.get(), target.get()), InitialWrite.WRITE, new WriteGuard()));
     }
 
     /**
@@ -207,11 +207,15 @@ public final class Bindings implements Disposable {
      * @param b the other side
      * @effects writes {@code a}'s value into {@code b} before returning, then holds
      *     an observation on each side until {@link #dispose}.
-     * @invariant propagation terminates. Each of the two halves carries its own
-     *     re-entrancy flag and drops the notification caused by its own write, and
-     *     each also declines to write a value equal to the one it last wrote; a
-     *     write echoing back through the far side therefore stops on the second
-     *     pass rather than cycling.
+     * @invariant propagation terminates. The two halves share one re-entrancy scope,
+     *     so while either is writing the other declines, and each also declines to
+     *     write a value equal to the one it last wrote.
+     * @invariant a change arriving from outside the pair — the storage behind a view
+     *     being written by something else — settles both sides without being written
+     *     back to where it came from. The far half declines while the near half is
+     *     applying, so a caller may bind two-way over storage whose writes are
+     *     expensive without the value it just reported being handed straight back to
+     *     it.
      */
     public <T> void bindBidirectional(Property<T> a, Property<T> b) {
         bindBidirectional(a, b, new Transform<>(Function.identity(), Function.identity()));
@@ -239,12 +243,14 @@ public final class Bindings implements Disposable {
      *     or each side will keep rewriting the other's value into something else
      * @effects writes {@code forward(a.get())} into {@code b} before returning, then
      *     holds an observation on each side until {@link #dispose}.
-     * @invariant propagation terminates, by the same per-binding re-entrancy flag and
-     *     unchanged-value stop as {@link #bindBidirectional(Property, Property)}.
+     * @invariant propagation terminates, and a change arriving from outside the pair is
+     *     not written back to where it came from, by the same shared re-entrancy scope
+     *     and unchanged-value stop as {@link #bindBidirectional(Property, Property)}.
      */
     public <A, B> void bindBidirectional(Property<A> a, Property<B> b, Transform<A, B> transform) {
-        register(new Binding<>(b, a, () -> transform.forward().apply(a.get()), InitialWrite.WRITE));
-        register(new Binding<>(a, b, () -> transform.backward().apply(b.get()), InitialWrite.SKIP));
+        var guard = new WriteGuard();
+        register(new Binding<>(b, a, () -> transform.forward().apply(a.get()), InitialWrite.WRITE, guard));
+        register(new Binding<>(a, b, () -> transform.backward().apply(b.get()), InitialWrite.SKIP, guard));
     }
 
     /**

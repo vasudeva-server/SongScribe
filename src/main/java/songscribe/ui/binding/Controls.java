@@ -21,12 +21,18 @@ package songscribe.ui.binding;
 
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
+import java.awt.event.ItemEvent;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import javax.swing.AbstractButton;
+import javax.swing.ButtonGroup;
+import javax.swing.ButtonModel;
+import javax.swing.JList;
 import javax.swing.JComboBox;
 import javax.swing.JSlider;
 import javax.swing.SpinnerModel;
@@ -44,6 +50,7 @@ import songscribe.binding.ViewProperty;
 import songscribe.binding.ViewProperty.WriteNotification;
 import songscribe.binding.WritableValue;
 import songscribe.error.RuntimeError;
+import songscribe.ui.component.TickSlider;
 
 /**
  * Property views over the Swing controls a user edits — the framework's
@@ -78,14 +85,20 @@ import songscribe.error.RuntimeError;
  *     and why a stray write to a control this repo owns is routed into it</td></tr>
  * <tr><td>{@code ActionListener} on {@code JComboBox}</td><td>{@link #item}, {@link #itemIndex}</td>
  *     <td>yes — {@code setSelectedItem} and {@code setSelectedIndex} both fire it</td></tr>
- * <tr><td>{@code ItemListener} on {@code AbstractButton}</td><td>{@link #selected}, {@link #choice}</td>
- *     <td>yes — {@code setSelected} fires it</td></tr>
+ * <tr><td>{@code ItemListener} on {@code AbstractButton}</td><td>{@link #selected}, {@link #radioGroup}</td>
+ *     <td>yes — {@code setSelected} fires it. {@link #radioGroup} passes on only the
+ *     selection half, since Swing announces both halves of one group change</td></tr>
  * <tr><td>{@code ActionListener} on {@code AbstractButton}</td><td>nothing here</td>
  *     <td><b>no</b> — which is why the button adapters observe items instead</td></tr>
  * <tr><td>{@code ChangeListener} on a {@code SpinnerModel}</td><td>{@link #number}</td>
  *     <td>yes — {@code setValue} fires it</td></tr>
  * <tr><td>{@code ChangeListener} on a {@code JSlider}</td><td>{@link #value}</td>
  *     <td>yes — {@code setValue} fires it</td></tr>
+ * <tr><td>{@code ListSelectionListener} on a {@code JList}</td><td>{@link #selectedIndex}</td>
+ *     <td>yes — {@code setSelectedIndex} fires it</td></tr>
+ * <tr><td>{@code TickSlider} tick listener</td><td>{@link #tick}</td>
+ *     <td><b>no</b> — {@code setSnappedValue} suppresses its own report, which is why a
+ *     write through that property notifies by itself</td></tr>
  * </table>
  *
  * <h2>Lifecycle</h2>
@@ -329,12 +342,96 @@ public final class Controls {
     }
 
     /**
-     * Returns a property view of a radio group, valued as the enum constant whose
-     * button is selected.
+     * Returns a property view of {@code list}'s selected index.
      *
-     * <p>This is what turns a group of buttons back into the one choice it stands
-     * for. Each button is observed with an {@code ItemListener}, so both a user's
-     * click and a programmatic {@code set} propagate.
+     * <p>Observed with a {@code ListSelectionListener}, which <b>does</b> fire on a
+     * programmatic {@code setSelectedIndex}, ignoring the events Swing sends while a
+     * selection is still being dragged out — a caller wants where the selection landed,
+     * not every row it passed over.
+     *
+     * <p>The value is an index into the list's current data, so a caller binding one is
+     * responsible for the data being in place first; a selection written into an empty
+     * list is silently nothing.
+     *
+     * @param list the list to view
+     * @return the two-way view over the selected index, {@code -1} when nothing is
+     *     selected, which is a value a transform binding it to a domain value has to
+     *     account for
+     * @effects registers a {@code ListSelectionListener} on {@code list}, never
+     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     */
+    public static Property<Integer> selectedIndex(JList<?> list) {
+        var property = new ViewProperty<Integer>(
+            list::getSelectedIndex,
+            list::setSelectedIndex,
+            WriteNotification.FROM_SOURCE
+        );
+        list.addListSelectionListener(event -> {
+            if (!event.getValueIsAdjusting()) {
+                property.notifyObservers();
+            }
+        });
+
+        return property;
+    }
+
+    /**
+     * Returns a property view of {@code slider}'s tick stop.
+     *
+     * <p>Observed with a tick listener, which reports a landing on a stop and nothing
+     * else — not every pixel of a drag. That is the slider's answer to the question
+     * {@link Timing} answers for text controls, and it is not a choice a caller makes
+     * here: a slider that reported continuously would write its target on the way past
+     * every stop between where the drag began and where it ended.
+     *
+     * <p>Writing goes through {@link TickSlider#setSnappedValue}, so a value that is not
+     * exactly a stop lands on the nearest one rather than being refused.
+     *
+     * <p><b>The tick route does not fire on a programmatic write</b>, because
+     * {@code setSnappedValue} suppresses its own report — the value is arriving from
+     * wherever the slider's value is kept, so reporting it back there is the write nobody
+     * asked for. The write through this property is therefore the only notification a
+     * programmatic change produces. A change to {@code setSnappedValue} that started
+     * reporting would announce every such change twice.
+     *
+     * @param slider the slider to view
+     * @return the two-way view over the slider's tick stop
+     * @effects registers a tick listener on {@code slider}, never unregistered. See the
+     *     class documentation's <i>Lifecycle</i> section.
+     */
+    public static Property<Integer> tick(TickSlider slider) {
+        var property = new ViewProperty<Integer>(
+            slider::getValue,
+            slider::setSnappedValue,
+            WriteNotification.FROM_WRITE
+        );
+        slider.addTickListener(property::notifyObservers);
+
+        return property;
+    }
+
+    /**
+     * Groups {@code buttons} into a {@link ButtonGroup} and returns a property view of
+     * which constant that group has chosen.
+     *
+     * <p>This is what turns a set of buttons into the one choice they stand for. The
+     * group is created here rather than accepted from the caller, because the chosen
+     * constant is read from the group itself: a view over buttons that were never
+     * grouped would have no choice to report, and making the group here is what stops
+     * one being built.
+     *
+     * <p><b>The value is read from the group, never by polling the buttons.</b> Swing
+     * changes a radio group in two steps — it turns the outgoing button off, then turns
+     * the incoming one on — and it announces the first step before performing the
+     * second. Between those two moments no button reports itself selected, while the
+     * group already names the incoming one. Asking the buttons therefore has a window in
+     * which the group appears to have no value at all; asking the group has none. Do not
+     * change this to a scan of {@code isSelected()}.
+     *
+     * <p>Each button is observed with an {@code ItemListener}, so both a user's click
+     * and a programmatic {@code set} propagate. Only the selection half of the
+     * notification is passed on, because Swing announces both halves of one change and
+     * a deselection is the first half of a change rather than a change of its own.
      *
      * <p>{@code buttons} is copied, so a later change to the caller's map does not
      * reach the view and cannot break the totality established here.
@@ -343,19 +440,20 @@ public final class Controls {
      * @param buttons the button standing for each constant. It must contain an entry
      *     for every constant of {@code E}: a partial map is a real thing a caller can
      *     hand over, and rejecting it here is what lets the view's {@code get} be
-     *     total. An {@code EnumMap} rather than a plain {@code Map} so that iteration
-     *     follows the enum's own declaration order.
-     * @return the two-way view. Its {@code get} answers the constant whose button is
-     *     selected and throws {@link IllegalStateException} when none is — a group
-     *     with no selection has no value, and a caller binding one must select a
+     *     total. Naming each constant beside its button is what makes a transposed
+     *     pairing impossible to write; the compiler places them.
+     * @return the two-way view. Its {@code get} answers the constant the group has
+     *     chosen and throws {@link IllegalStateException} when it has chosen none — a
+     *     group with no selection has no value, and a caller binding one must select a
      *     button before the first read. Its {@code set} selects the given constant's
-     *     button, which the enclosing {@code ButtonGroup} deselects the others for.
+     *     button, which the group deselects the others for.
      * @throws IllegalArgumentException if {@code buttons} is empty, or does not cover
      *     every constant of {@code E}; the message names the missing constants
-     * @effects registers an {@code ItemListener} on every button, never
-     *     unregistered. See the class documentation's <i>Lifecycle</i> section.
+     * @effects adds every button to a new {@code ButtonGroup} and registers an
+     *     {@code ItemListener} on each, never unregistered. See the class
+     *     documentation's <i>Lifecycle</i> section.
      */
-    public static <E extends Enum<E>> Property<E> choice(EnumMap<E, AbstractButton> buttons) {
+    public static <E extends Enum<E>> Property<E> radioGroup(EnumMap<E, AbstractButton> buttons) {
         if (buttons.isEmpty()) {
             throw new IllegalArgumentException("A radio-group property needs a button for every enum constant, but the map is empty");
         }
@@ -375,15 +473,27 @@ public final class Controls {
                     + " constant, but these have none: " + String.join(", ", missing));
         }
 
-        var group = new EnumMap<>(buttons);
+        var byConstant = new EnumMap<>(buttons);
+        var group = new ButtonGroup();
+        var byModel = new HashMap<ButtonModel, E>();
+
+        for (var entry : byConstant.entrySet()) {
+            group.add(entry.getValue());
+            byModel.put(entry.getValue().getModel(), entry.getKey());
+        }
+
         var property = new ViewProperty<E>(
-            () -> selectedConstant(group),
-            constant -> select(group, constant),
+            () -> chosenConstant(group, byModel),
+            constant -> select(byConstant, constant),
             WriteNotification.FROM_SOURCE
         );
 
-        for (var button : group.values()) {
-            button.addItemListener(event -> property.notifyObservers());
+        for (var button : byConstant.values()) {
+            button.addItemListener(event -> {
+                if (event.getStateChange() == ItemEvent.SELECTED) {
+                    property.notifyObservers();
+                }
+            });
         }
 
         return property;
@@ -493,21 +603,26 @@ public final class Controls {
     }
 
     /**
-     * Returns the constant whose button is selected.
+     * Returns the constant {@code group} has chosen.
+     *
+     * <p>Reads the group's own selection rather than scanning the buttons, which is
+     * correct throughout a change and not only after one — see {@link #radioGroup}.
      *
      * @param <E> the enum the group offers
-     * @param buttons the button for every constant of {@code E}
-     * @return the selected constant
-     * @throws IllegalStateException if no button in the group is selected
+     * @param group the button group
+     * @param constants the constant each button model stands for
+     * @return the chosen constant
+     * @throws IllegalStateException if the group has chosen nothing
      */
-    private static <E extends Enum<E>> E selectedConstant(EnumMap<E, AbstractButton> buttons) {
-        for (var entry : buttons.entrySet()) {
-            if (entry.getValue().isSelected()) {
-                return entry.getKey();
-            }
+    private static <E extends Enum<E>> E chosenConstant(ButtonGroup group, Map<ButtonModel, E> constants) {
+        var selection = group.getSelection();
+        var constant = selection == null ? null : constants.get(selection);
+
+        if (constant == null) {
+            throw new IllegalStateException("A radio group viewed as a property must always have a selection, and this one has none");
         }
 
-        throw new IllegalStateException("A radio group viewed as a property must always have a selection, and this one has none");
+        return constant;
     }
 
     /**

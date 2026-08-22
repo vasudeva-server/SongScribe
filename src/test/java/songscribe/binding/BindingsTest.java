@@ -36,8 +36,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * and how often the body runs for consumers sharing it.
  *
  * <p>What propagates along a binding: a binding absorbing the notification its own
- * write caused without silencing the other bindings, a fold that settles, a two-way binding that
- * round-trips, and the release {@link Bindings#dispose} performs.
+ * write caused without silencing the other bindings, a fold that settles, a two-way
+ * binding that round-trips, a two-way binding declining to push back a change that
+ * arrived from outside it, and the release {@link Bindings#dispose} performs.
  *
  * <p>Everything is arranged through {@link ValueProperty} and {@code computed}, which
  * are real implementations, so nothing here mocks anything. The whole graph is
@@ -231,6 +232,42 @@ class BindingsTest extends UnitTest {
         assertThat(number.get()).isEqualTo(SPELLED_NUMBER);
         assertThat(spelledChanges).hasValue(2);
         assertThat(numberChanges).hasValue(2);
+    }
+
+    @Test
+    void testBidirectionalDoesNotPushBackAChangeThatArrivedFromOutside() {
+        // Storage that reports what it costs: every write through the view is counted,
+        // and a change made behind the view's back is announced by the storage itself,
+        // which is how a preference behaves.
+        var storage = new AtomicInteger(SPELLED_NUMBER);
+        var writes = new AtomicInteger();
+        var stored = new ViewProperty<Integer>(
+            storage::get,
+            value -> {
+                writes.incrementAndGet();
+                storage.set(value);
+            },
+            ViewProperty.WriteNotification.FROM_SOURCE
+        );
+        var shown = new ValueProperty<>(0);
+        var bindings = new Bindings();
+
+        bindings.bindBidirectional(stored, shown);
+
+        // The first side wins at registration, so the view is read and never written.
+        assertThat(shown.get()).isEqualTo(SPELLED_NUMBER);
+        assertThat(writes).hasValue(0);
+
+        // Neither side of the pair made this change.
+        storage.set(TYPED_NUMBER);
+        stored.notifyObservers();
+
+        assertThat(shown.get()).isEqualTo(TYPED_NUMBER);
+
+        // Still none. The far side settles and stops: it does not write back into the
+        // side the value came from, so the storage is not asked to store what it just
+        // reported.
+        assertThat(writes).hasValue(0);
     }
 
     @Test

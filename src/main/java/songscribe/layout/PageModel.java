@@ -23,6 +23,7 @@ import songscribe.dom.DocPx;
 import songscribe.dom.ScaleContext;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
+import songscribe.prefs.PrefsValue;
 import songscribe.util.GraphicUtils;
 
 /**
@@ -49,18 +50,18 @@ public final class PageModel {
     public static final double MIN_LINE_WIDTH_INCHES = 5.0;
 
     /** Physical page sizes. */
-    public enum Size {
+    public enum Size implements PrefsValue {
         LETTER(8.5, 11.0, "letter"),
         A4(8.27, 11.69, "a4");
 
         private final double widthInches;
         private final double heightInches;
-        private final String key;
+        private final String storedValue;
 
-        Size(double widthInches, double heightInches, String key) {
+        Size(double widthInches, double heightInches, String storedValue) {
             this.widthInches = widthInches;
             this.heightInches = heightInches;
-            this.key = key;
+            this.storedValue = storedValue;
         }
 
         public double widthInches() {
@@ -71,9 +72,9 @@ public final class PageModel {
             return heightInches;
         }
 
-        /** The {@link PrefsKey#PAGE_SIZE} string this size is stored under. */
-        public String key() {
-            return key;
+        @Override
+        public String storedValue() {
+            return storedValue;
         }
     }
 
@@ -81,15 +82,7 @@ public final class PageModel {
 
     /** Returns the active page size from preferences. */
     public static Size getSize() {
-        var value = Prefs.getString(PrefsKey.PAGE_SIZE);
-
-        for (var size : Size.values()) {
-            if (size.key.equalsIgnoreCase(value)) {
-                return size;
-            }
-        }
-
-        return Size.LETTER;
+        return Prefs.getChoice(PrefsKey.PAGE_SIZE, Size.class);
     }
 
     /** Full page width in document pixels (fixed document scale, independent of view zoom). */

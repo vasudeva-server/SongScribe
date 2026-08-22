@@ -20,8 +20,10 @@
 
 package songscribe.ui.component;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Set;
 
 import javax.swing.JLabel;
@@ -30,29 +32,38 @@ import javax.swing.JSlider;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link JSlider} subclass that fires {@link #tickDidChange(int)} only when
- * the slider value lands on one of the provided tick stops. This works during
- * drag (not just on mouse release), which avoids the Swing limitation where
- * {@code mouseReleased} is not delivered when the mouse is released outside
- * the parent window.
+ * A {@link JSlider} that reports a change only when its value lands on one of the
+ * provided tick stops. This works during drag (not just on mouse release), which avoids
+ * the Swing limitation where {@code mouseReleased} is not delivered when the mouse is
+ * released outside the parent window.
  *
- * <p>Subclasses must override {@link #tickDidChange(int)} to respond to
- * tick changes (e.g., update preferences, sync playback settings).</p>
+ * <p>The reporting route is {@link #addTickListener}, and it is what a
+ * {@code Controls.tick} view observes. A programmatic {@link #setSnappedValue} does
+ * <b>not</b> report: it is the value arriving from wherever the slider's value is kept,
+ * so reporting it back there is the write nobody asked for.
  */
-public abstract class TickSlider extends JSlider {
+public class TickSlider extends JSlider {
 
     private final Set<Integer> stopSet;
     private final int[] stops;
+    private final List<Runnable> tickListeners = new ArrayList<>();
     private int lastCommittedValue;
 
     /**
-     * Creates a new TickSlider.
+     * Creates a slider whose range runs from the first stop to the last.
      *
-     * @param stops  valid tick positions, sorted in ascending order and evenly spaced
+     * <p>The stops are drawn as evenly spaced ticks, using the first gap as the spacing
+     * for all of them, so stops that are not evenly spaced produce ticks that do not line
+     * up with them. A domain whose values are unevenly spaced is bound through the stop
+     * <i>positions</i> and a conversion, not through the values themselves.
+     *
+     * @param stops valid tick positions: at least two, ascending, and evenly spaced.
+     *     None of that is checked, and a violation misdraws the slider rather than
+     *     failing.
      * @param labels parallel array (same length as {@code stops}); non-null entries
      *               become labels at the corresponding stop, null entries have no label
      */
-    protected TickSlider(int[] stops, @Nullable String[] labels) {
+    public TickSlider(int[] stops, @Nullable String[] labels) {
         super(stops[0], stops[stops.length - 1]);
 
         this.stops = stops;
@@ -85,30 +96,48 @@ public abstract class TickSlider extends JSlider {
 
             if (stopSet.contains(value) && value != lastCommittedValue) {
                 lastCommittedValue = value;
-                tickDidChange(value);
+
+                for (var listener : List.copyOf(tickListeners)) {
+                    listener.run();
+                }
             }
         });
     }
 
     /**
-     * Called when the slider lands on a new tick stop, either during drag
-     * or on release. Subclasses override to respond to tick changes.
+     * Registers {@code listener}, to be run whenever the slider lands on a new tick stop,
+     * during a drag or on release.
      *
-     * @param tick the new tick stop value
+     * <p>The listener is told that a landing happened, not what it landed on: every
+     * consumer reads the slider itself, and a value handed over separately is a second
+     * copy of what {@link #getValue} already answers.
+     *
+     * @param listener run on each landing
+     * @effects holds {@code listener} for the life of this slider; there is no
+     *     unregistration, and none is needed, since a listener outlives the slider only
+     *     if the slider outlives the dialog that built it.
      */
-    protected abstract void tickDidChange(int tick);
+    public void addTickListener(Runnable listener) {
+        tickListeners.add(listener);
+    }
 
     /**
      * Sets the slider value to the nearest valid stop. Use this when loading
      * a value from preferences that may not exactly match a stop.
      *
+     * <p><b>This does not report a tick.</b> The value is arriving from wherever the
+     * slider's value is kept, so reporting it back there is the write nobody asked for.
+     * A caller that needs the change announced announces it itself; {@code Controls.tick}
+     * is built on exactly that.
+     *
      * @param value the value to snap to the nearest stop
+     * @effects moves the slider to the nearest stop without running any tick listener
      */
     public void setSnappedValue(int value) {
         var closest = stops[nearestStopIndex(stops, value)];
 
-        // Update lastCommittedValue to prevent a spurious tickDidChange
-        // when the change listener fires from setValue.
+        // Suppresses the report the change listener would otherwise make when setValue
+        // moves the slider.
         lastCommittedValue = closest;
         setValue(closest);
     }

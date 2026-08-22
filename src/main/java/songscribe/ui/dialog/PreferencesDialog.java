@@ -34,6 +34,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.Map;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaEventListener;
@@ -41,10 +42,10 @@ import javax.sound.midi.MidiEvent;
 import javax.sound.midi.Sequence;
 import javax.sound.midi.ShortMessage;
 import javax.swing.AbstractAction;
+import javax.swing.AbstractButton;
 import javax.swing.Action;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -59,6 +60,8 @@ import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import org.jspecify.annotations.Nullable;
@@ -67,6 +70,8 @@ import songscribe.Strings;
 import songscribe.layout.PageModel;
 import songscribe.midi.MidiEventFactory;
 import songscribe.midi.MidiSequenceBuilder;
+import songscribe.binding.Transform;
+import songscribe.ui.binding.Controls;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.StartupAction;
@@ -82,6 +87,7 @@ import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.playback.PlaybackVolume;
 import songscribe.util.GraphicUtils;
 import songscribe.util.LengthUnit;
 import songscribe.util.MyFontUtils;
@@ -89,20 +95,19 @@ import songscribe.util.UIUtils;
 
 /**
  * The non-modal preferences window. There is no OK/Cancel cycle and nothing to revert: each
- * control writes its {@link Prefs} key the moment it changes, and closing the window keeps
- * every change made while it was open. This dialog does not subscribe to {@link
- * songscribe.prefs.PrefsDidChangeNotification} — a {@code resetAll()} triggered elsewhere
- * while this dialog is open leaves its widgets showing stale values until it is reopened.
+ * control is bound two-way to its {@link Prefs} key, so an edit reaches the store the moment
+ * it is made, and closing the window keeps every change made while it was open.
+ *
+ * <p>Because the bindings are two-way over the store's own views, a change made by anything
+ * else while this window is open — a {@code resetAll()} elsewhere, a theme switch that
+ * failed and reverted — moves the control that shows it. Nothing here subscribes to
+ * {@code PrefsDidChangeNotification} and nothing re-reads the store when a tab is shown.
  */
 public class PreferencesDialog extends BaseDialog {
 
     private static String[] instrumentStrings = new String[0];
     private static int[] instrumentPrograms = new int[0];
     private static boolean instrumentsLoaded = false;
-
-    // The volume values the slider's five stops stand for. Unevenly spaced, which is why the
-    // slider is built over stop indices instead and this maps between the two.
-    private static final int[] VALID_VOLUME_STOPS = { 50, 63, 75, 88, 100 };
 
     public PreferencesDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), Modality.MODELESS, DialogCategory.EXCLUSIVE);
@@ -159,9 +164,23 @@ public class PreferencesDialog extends BaseDialog {
     }
 
     /**
-     * @param program a MIDI program number
-     * @return the index of {@code program} in {@link #getInstrumentPrograms()}, or 0 if no
-     *     loaded instrument uses that program
+     * The row {@code program} occupies in the instrument list.
+     *
+     * <p>Every program the store can hold is a loaded one: the soundfont ships with the
+     * application and the application does not start without it, and the only writer of
+     * this preference is the list itself. So a program with no row is a broken store
+     * rather than a user whose instrument has gone missing, and answering row 0 would
+     * hand back a legitimate index for it — the store would then keep a program the list
+     * contradicts, with nothing reporting the disagreement.
+     *
+     * <p>A caller must first establish that any instrument is loaded at all. The
+     * synthesizer failing to open is a startup warning rather than a fatal error, and
+     * leaves {@link #getInstrumentPrograms()} empty.
+     *
+     * @param program a MIDI program number a loaded instrument uses
+     * @return the index of {@code program} in {@link #getInstrumentPrograms()}
+     * @throws IllegalStateException if no loaded instrument uses {@code program},
+     *     including when none is loaded
      */
     public static int programToIndex(int program) {
         ensureInstrumentsLoaded();
@@ -172,7 +191,7 @@ public class PreferencesDialog extends BaseDialog {
             }
         }
 
-        return 0;
+        throw new IllegalStateException("No loaded instrument uses MIDI program " + program);
     }
 
     public static String[] getInstrumentStrings() {
@@ -183,20 +202,6 @@ public class PreferencesDialog extends BaseDialog {
     public static int[] getInstrumentPrograms() {
         ensureInstrumentsLoaded();
         return instrumentPrograms;
-    }
-
-    /**
-     * The volume slider position a stored playback volume lands on.
-     *
-     * <p>The slider runs over stop indices rather than volumes, because {@link TickSlider} draws
-     * evenly spaced ticks and these five volumes are not evenly spaced. This is the mapping back.
-     *
-     * @param volume a stored playback volume, which need not be one of the five stop values
-     * @return the slider position, with a tie going to the quieter stop — see
-     *         {@link TickSlider#nearestStopIndex}
-     */
-    private static int volumeToSliderIndex(int volume) {
-        return TickSlider.nearestStopIndex(VALID_VOLUME_STOPS, volume);
     }
 
     // -----------------------------------------------------------------------
@@ -244,134 +249,49 @@ public class PreferencesDialog extends BaseDialog {
 
         @Override
         protected void initContents() {
-            var pageSizeGroup = new ButtonGroup();
-            pageSizeGroup.add(letterRadio);
-            pageSizeGroup.add(a4Radio);
-
-            var unitsGroup = new ButtonGroup();
-            unitsGroup.add(inchesRadio);
-            unitsGroup.add(centimetersRadio);
-
-            var appearanceGroup = new ButtonGroup();
-            appearanceGroup.add(systemRadio);
-            appearanceGroup.add(lightRadio);
-            appearanceGroup.add(darkRadio);
-
-            var startupActionGroup = new ButtonGroup();
-            startupActionGroup.add(doNothingRadio);
-            startupActionGroup.add(showFileChooserRadio);
-            startupActionGroup.add(openMostRecentRadio);
-
             add(createPageSizeAndUnitsRow());
             addSectionSeparator(this);
             add(createAppearanceSection());
             addSectionSeparator(this);
             add(createStartupActionSection());
 
-            addChangeListeners();
-        }
+            var pageSizeButtons = new EnumMap<PageModel.Size, AbstractButton>(PageModel.Size.class);
+            pageSizeButtons.put(PageModel.Size.LETTER, letterRadio);
+            pageSizeButtons.put(PageModel.Size.A4, a4Radio);
+            bindings().bindBidirectional(
+                Prefs.choiceProperty(PrefsKey.PAGE_SIZE, PageModel.Size.class),
+                Controls.radioGroup(pageSizeButtons)
+            );
 
-        @Override
-        protected boolean getData() {
-            (PageModel.getSize() == PageModel.Size.A4
-                ? a4Radio : letterRadio).setSelected(true);
+            var unitsButtons = new EnumMap<LengthUnit, AbstractButton>(LengthUnit.class);
+            unitsButtons.put(LengthUnit.INCHES, inchesRadio);
+            unitsButtons.put(LengthUnit.CENTIMETERS, centimetersRadio);
+            bindings().bindBidirectional(
+                Prefs.choiceProperty(PrefsKey.UNITS, LengthUnit.class),
+                Controls.radioGroup(unitsButtons)
+            );
 
-            var units = LengthUnit.INCHES;
+            var startupButtons = new EnumMap<StartupAction, AbstractButton>(StartupAction.class);
+            startupButtons.put(StartupAction.DO_NOTHING, doNothingRadio);
+            startupButtons.put(StartupAction.SHOW_FILE_CHOOSER, showFileChooserRadio);
+            startupButtons.put(StartupAction.OPEN_MOST_RECENT, openMostRecentRadio);
+            bindings().bindBidirectional(
+                Prefs.choiceProperty(PrefsKey.STARTUP_ACTION, StartupAction.class),
+                Controls.radioGroup(startupButtons)
+            );
 
-            try {
-                units = LengthUnit.valueOf(Prefs.getString(PrefsKey.UNITS));
-            } catch (IllegalArgumentException ignored) {}
-
-            (switch (units) {
-                case INCHES -> inchesRadio;
-                case CENTIMETERS -> centimetersRadio;
-            }).setSelected(true);
-
-            (switch (AppearanceManager.getPreference()) {
-                case LIGHT -> lightRadio;
-                case DARK -> darkRadio;
-                case SYSTEM -> systemRadio;
-            }).setSelected(true);
-
-            var startupAction = StartupAction.DO_NOTHING;
-
-            try {
-                startupAction = StartupAction.valueOf(Prefs.getString(PrefsKey.STARTUP_ACTION));
-            } catch (IllegalArgumentException ignored) {}
-
-            (switch (startupAction) {
-                case SHOW_FILE_CHOOSER -> showFileChooserRadio;
-                case OPEN_MOST_RECENT -> openMostRecentRadio;
-                case DO_NOTHING -> doNothingRadio;
-            }).setSelected(true);
-
-            return true;
-        }
-
-        private void addChangeListeners() {
-            var pageSizeListener = new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    var size = a4Radio.isSelected() ? PageModel.Size.A4 : PageModel.Size.LETTER;
-                    Prefs.put(PrefsKey.PAGE_SIZE, size.key());
-                }
-            };
-
-            letterRadio.addActionListener(pageSizeListener);
-            a4Radio.addActionListener(pageSizeListener);
-
-            var unitsListener = new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    var units = centimetersRadio.isSelected() ? LengthUnit.CENTIMETERS : LengthUnit.INCHES;
-                    Prefs.put(PrefsKey.UNITS, units.name());
-                }
-            };
-
-            inchesRadio.addActionListener(unitsListener);
-            centimetersRadio.addActionListener(unitsListener);
-
-            var appearanceListener = new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    Appearance newAppearance;
-
-                    if (darkRadio.isSelected()) {
-                        newAppearance = Appearance.DARK;
-                    } else if (lightRadio.isSelected()) {
-                        newAppearance = Appearance.LIGHT;
-                    } else {
-                        newAppearance = Appearance.SYSTEM;
-                    }
-
-                    AppearanceManager.switchTheme(newAppearance);
-                }
-            };
-
-            systemRadio.addActionListener(appearanceListener);
-            lightRadio.addActionListener(appearanceListener);
-            darkRadio.addActionListener(appearanceListener);
-
-            var startupActionListener = new ActionListener() {
-                @Override
-                public void actionPerformed(ActionEvent e) {
-                    StartupAction action;
-
-                    if (showFileChooserRadio.isSelected()) {
-                        action = StartupAction.SHOW_FILE_CHOOSER;
-                    } else if (openMostRecentRadio.isSelected()) {
-                        action = StartupAction.OPEN_MOST_RECENT;
-                    } else {
-                        action = StartupAction.DO_NOTHING;
-                    }
-
-                    Prefs.put(PrefsKey.STARTUP_ACTION, action.name());
-                }
-            };
-
-            doNothingRadio.addActionListener(startupActionListener);
-            showFileChooserRadio.addActionListener(startupActionListener);
-            openMostRecentRadio.addActionListener(startupActionListener);
+            // Appearance is a command rather than an assignment: switchTheme applies the
+            // theme, writes the preference itself, and writes the old value back when
+            // applying fails. So the group drives the command and follows the preference,
+            // never writing it — which also makes a failed switch move the radio back on
+            // its own, because the preference it reverts to is what the group is bound to.
+            var appearanceButtons = new EnumMap<Appearance, AbstractButton>(Appearance.class);
+            appearanceButtons.put(Appearance.SYSTEM, systemRadio);
+            appearanceButtons.put(Appearance.LIGHT, lightRadio);
+            appearanceButtons.put(Appearance.DARK, darkRadio);
+            var appearance = Controls.radioGroup(appearanceButtons);
+            bindings().bind(appearance, Prefs.choiceProperty(PrefsKey.APPEARANCE, Appearance.class));
+            bindings().onNotify(appearance, () -> AppearanceManager.switchTheme(appearance.get()));
         }
 
         private JPanel createPageSizeAndUnitsRow() {
@@ -462,13 +382,6 @@ public class PreferencesDialog extends BaseDialog {
 
     private final class PlayTab extends Tab {
 
-        private static final int[] VALID_VOLUME_INDICES = { 0, 1, 2, 3, 4 };
-        private static final @Nullable String[] VOLUME_LABELS = {
-            Strings.get(Strings.LABEL_PREFS_SOFTER), null,
-            Strings.get(Strings.LABEL_PREFS_SOFT), null,
-            Strings.get(Strings.LABEL_PREFS_FULL),
-        };
-
         private static final int[] VALID_TEMPO_STOPS = { 50, 75, 100, 125, 150 };
         private static final @Nullable String[] TEMPO_LABELS = { "50%", "75%", "100%", "125%", "150%" };
 
@@ -486,36 +399,13 @@ public class PreferencesDialog extends BaseDialog {
             Strings.get(Strings.LABEL_PREFS_PLAY_SELECTED_NOTE)
         );
 
-        private final TickSlider durationSlider =
-            new TickSlider(VALID_DURATION_STOPS, DURATION_LABELS) {
-                @Override
-                protected void tickDidChange(int tick) {
-                    Prefs.put(PrefsKey.PLAYBACK_NOTE_DURATION, tick);
-                }
-            };
-
-        private final TickSlider volumeSlider =
-            new TickSlider(VALID_VOLUME_INDICES, VOLUME_LABELS) {
-                @Override
-                protected void tickDidChange(int tick) {
-                    var volume = VALID_VOLUME_STOPS[tick];
-                    Prefs.put(PrefsKey.PLAYBACK_VOLUME, volume);
-                    MidiController.setPlaybackVolume(volume);
-                }
-            };
-
-        private final TickSlider tempoSlider =
-            new TickSlider(VALID_TEMPO_STOPS, TEMPO_LABELS) {
-                @Override
-                protected void tickDidChange(int tick) {
-                    Prefs.put(PrefsKey.TEMPO_CHANGE_PERCENT, tick);
-                }
-            };
+        private final TickSlider durationSlider = new TickSlider(VALID_DURATION_STOPS, DURATION_LABELS);
+        private final TickSlider volumeSlider = new TickSlider(PlaybackVolume.positions(), PlaybackVolume.labels());
+        private final TickSlider tempoSlider = new TickSlider(VALID_TEMPO_STOPS, TEMPO_LABELS);
 
         PlayTab() {
             super(Strings.get(Strings.LABEL_PREFS_TAB_PLAY));
             build();
-            addChangeListeners();
         }
 
         @Override
@@ -523,28 +413,40 @@ public class PreferencesDialog extends BaseDialog {
             add(createFeedbackSection());
             addSectionSeparator(this);
             add(createPlaybackSection());
-        }
 
-        @Override
-        protected boolean getData() {
-            playInsertingNoteCheck.setSelected(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
-            playSelectedNoteCheck.setSelected(Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE));
+            bindings().bindBidirectional(
+                Prefs.booleanProperty(PrefsKey.PLAY_INSERTED_NOTE),
+                Controls.selected(playInsertingNoteCheck)
+            );
 
-            durationSlider.setSnappedValue(Prefs.getInt(PrefsKey.PLAYBACK_NOTE_DURATION));
-            volumeSlider.setSnappedValue(volumeToSliderIndex(Prefs.getInt(PrefsKey.PLAYBACK_VOLUME)));
-            tempoSlider.setSnappedValue(Prefs.getInt(PrefsKey.TEMPO_CHANGE_PERCENT));
+            bindings().bindBidirectional(
+                Prefs.booleanProperty(PrefsKey.PLAY_SELECTED_NOTE),
+                Controls.selected(playSelectedNoteCheck)
+            );
 
-            return true;
-        }
+            bindings().bindBidirectional(
+                Prefs.intProperty(PrefsKey.PLAYBACK_NOTE_DURATION),
+                Controls.tick(durationSlider)
+            );
 
-        private void addChangeListeners() {
-            playInsertingNoteCheck.addActionListener(_ -> Prefs.put(
-                PrefsKey.PLAY_INSERTED_NOTE, playInsertingNoteCheck.isSelected()
-            ));
+            bindings().bindBidirectional(
+                Prefs.intProperty(PrefsKey.TEMPO_CHANGE_PERCENT),
+                Controls.tick(tempoSlider)
+            );
 
-            playSelectedNoteCheck.addActionListener(_ -> Prefs.put(
-                PrefsKey.PLAY_SELECTED_NOTE, playSelectedNoteCheck.isSelected()
-            ));
+            // The volume slider runs over step positions rather than percentages, because
+            // TickSlider draws evenly spaced ticks and the five steps are not evenly
+            // spaced. The transform is that mapping, and it round-trips because the steps
+            // and the positions are the same closed set counted two ways.
+            var volume = Prefs.choiceProperty(PrefsKey.PLAYBACK_VOLUME, PlaybackVolume.class);
+            bindings().bindBidirectional(
+                volume,
+                Controls.tick(volumeSlider),
+                new Transform<>(PlaybackVolume::ordinal, PlaybackVolume::atPosition)
+            );
+
+            // Applying the volume is a consequence of the change, not a second copy of it.
+            bindings().onNotify(volume, () -> MidiController.setPlaybackVolume(volume.get().percent()));
         }
 
         private JPanel createFeedbackSection() {
@@ -598,11 +500,15 @@ public class PreferencesDialog extends BaseDialog {
         private final ScaleAction scaleAction = new ScaleAction();
         private final JButton scaleButton = new JButton(scaleAction);
 
+        // Set by the selection listener on a real selection change, so the click
+        // listener below knows the bound INSTRUMENT preference already previewed
+        // this click and does not preview it again.
+        private boolean previewedOnSelectionChange = false;
+
         InstrumentsTab() {
             super(Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS));
             build();
 
-            addChangeListener();
             addClickListener();
         }
 
@@ -623,8 +529,11 @@ public class PreferencesDialog extends BaseDialog {
             panel.add(selectHintLabel, gc);
 
             ensureInstrumentsLoaded();
+            instrumentList.setListData(instrumentStrings);
             instrumentList.setVisibleRowCount(instrumentStrings.length);
             instrumentList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            keepSelectionNonEmpty();
+
             gc.gridx = 0;
             gc.gridy = 1;
             gc.weightx = 0.5;
@@ -632,6 +541,25 @@ public class PreferencesDialog extends BaseDialog {
             gc.fill = GridBagConstraints.HORIZONTAL;
             gc.insets = new Insets(0, 0, 0, 0);
             panel.add(new JScrollPane(instrumentList), gc);
+
+            // Nothing to choose between when the synthesizer could not be opened, which is
+            // a warning at startup rather than a fatal error, so the tab is reachable with
+            // an empty list. Binding it would ask which of no instruments is selected.
+            if (instrumentPrograms.length > 0) {
+                // The list holds row numbers and the preference holds MIDI programs, so
+                // the transform is that mapping. It round-trips: every stored program has
+                // a row, and the list always has a selection.
+                var instrument = Prefs.intProperty(PrefsKey.INSTRUMENT);
+                bindings().bindBidirectional(
+                    instrument,
+                    Controls.selectedIndex(instrumentList),
+                    new Transform<>(PreferencesDialog::programToIndex, index -> instrumentPrograms[index])
+                );
+
+                // Previewing the instrument is a consequence of the change. Bound to the
+                // preference rather than to the selection so it runs after the store has it.
+                bindings().onNotify(instrument, this::previewInstrument);
+            }
 
             scaleButton.setText("\uEF4E");
             scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(FlatLafProps.getFloat(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
@@ -660,10 +588,26 @@ public class PreferencesDialog extends BaseDialog {
             add(panel, constraints);
         }
 
-        /** Plays a single note with the selected instrument, unless the scale is currently playing. */
+        /**
+         * Plays a single note with the selected instrument, unless the scale is
+         * currently playing.
+         *
+         * <p>Sets {@link PlaybackController}'s instrument to the clicked row's program
+         * first. {@link PlayThread} reads that field rather than the {@code INSTRUMENT}
+         * preference directly, and nothing else has synced it to this click yet — the
+         * sync that {@code PrefsDidChangeNotification} drives runs after bound views
+         * (see {@code prefs.md}), so without this the note would play on the
+         * previously selected instrument instead of the one just clicked.
+         */
         private void playSingleNoteIfNotScalePlaying() {
             if (scaleAction.isPlaying()) {
                 return;
+            }
+
+            var selectedIndex = instrumentList.getSelectedIndex();
+
+            if (selectedIndex >= 0) {
+                PlaybackController.setInstrument(instrumentPrograms[selectedIndex]);
             }
 
             new PlayThread(ScaleAction.SINGLE_NOTE_PITCH).start();
@@ -673,14 +617,10 @@ public class PreferencesDialog extends BaseDialog {
         protected void tabWillShow() {
             PlaybackController.stop();
 
-            ensureInstrumentsLoaded();
-
-            var instrumentIndex = programToIndex(
-                Prefs.getInt(PrefsKey.INSTRUMENT)
-            );
-            instrumentList.setListData(instrumentStrings);
-            instrumentList.setSelectedIndex(instrumentIndex);
-            instrumentList.ensureIndexIsVisible(instrumentIndex);
+            // The selection itself is bound, so it already holds the stored instrument;
+            // only scrolling it into view waits for the tab to be shown, because a list
+            // that has never been laid out cannot scroll.
+            instrumentList.ensureIndexIsVisible(instrumentList.getSelectedIndex());
         }
 
         /**
@@ -701,41 +641,72 @@ public class PreferencesDialog extends BaseDialog {
             scaleAction.stop();
         }
 
-        private void addChangeListener() {
-            instrumentList.addListSelectionListener(e -> {
-                if (e.getValueIsAdjusting()) {
-                    return;
-                }
-
-                var index = instrumentList.getSelectedIndex();
-                Prefs.put(
-                    PrefsKey.INSTRUMENT, index >= 0 ? instrumentPrograms[index] : 0
-                );
-
-                if (scaleAction.isPlaying()) {
-                    // Restart scale if it was already playing
-                    scaleAction.stop();
-                    scaleAction.play();
-                } else {
-                    playSingleNoteIfNotScalePlaying();
-                }
-            });
-        }
-
-        /** ListSelectionListener doesn't fire when clicking an already-selected item, so play it here instead. */
+        /**
+         * Plays the clicked row's instrument exactly once.
+         *
+         * <p>A click that changes the selection already plays through {@link
+         * #previewInstrument}, bound to the {@code INSTRUMENT} preference.
+         * {@code ListSelectionListener} does not fire when the click lands on the
+         * already-selected row, so that case is handled here — but only that case,
+         * or the changed-selection click would play the instrument twice.
+         */
         private void addClickListener() {
+            instrumentList.addListSelectionListener(event -> previewedOnSelectionChange = true);
+
             instrumentList.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     var index = instrumentList.locationToIndex(e.getPoint());
 
-                    if (index >= 0 && index == instrumentList.getSelectedIndex()) {
-                        if (scaleAction.isPlaying()) {
-                            scaleAction.stop();
-                            scaleAction.play();
-                        } else {
-                            playSingleNoteIfNotScalePlaying();
-                        }
+                    if (index >= 0 && index == instrumentList.getSelectedIndex() && !previewedOnSelectionChange) {
+                        previewInstrument();
+                    }
+
+                    previewedOnSelectionChange = false;
+                }
+            });
+        }
+
+        /**
+         * Plays the chosen instrument so the user hears what they picked.
+         *
+         * @effects restarts the scale on the chosen instrument if it is playing, and
+         *     otherwise plays a single note on it
+         */
+        private void previewInstrument() {
+            if (scaleAction.isPlaying()) {
+                // Restart the scale so it is heard on the newly chosen instrument.
+                scaleAction.stop();
+                scaleAction.play();
+            } else {
+                playSingleNoteIfNotScalePlaying();
+            }
+        }
+
+        /**
+         * Restores the selection whenever Swing clears it.
+         *
+         * <p>A single-selection {@code JList} still lets a modifier-click deselect the
+         * chosen row, leaving no selection at all. An instrument is always chosen — the
+         * preference always names one — so there is no such state to represent, and
+         * without this the binding would have to invent a program number to stand for
+         * "none", which every legitimate program already means something else.
+         *
+         * @effects registers a {@code ListSelectionListener} that re-selects the row the
+         *     list last held
+         */
+        private void keepSelectionNonEmpty() {
+            instrumentList.addListSelectionListener(new ListSelectionListener() {
+                private int lastSelected = 0;
+
+                @Override
+                public void valueChanged(ListSelectionEvent event) {
+                    var selected = instrumentList.getSelectedIndex();
+
+                    if (selected >= 0) {
+                        lastSelected = selected;
+                    } else if (instrumentList.getModel().getSize() > 0) {
+                        instrumentList.setSelectedIndex(lastSelected);
                     }
                 }
             });

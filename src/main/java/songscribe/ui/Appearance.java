@@ -19,11 +19,13 @@
 */
 package songscribe.ui;
 
+import songscribe.prefs.PrefsValue;
+
 
 /**
  * Appearance preference for the application theme.
  */
-public enum Appearance {
+public enum Appearance implements PrefsValue {
     SYSTEM("system"),
     LIGHT("light"),
     DARK("dark");
@@ -34,17 +36,9 @@ public enum Appearance {
         this.key = key;
     }
 
-    public String key() {
+    @Override
+    public String storedValue() {
         return key;
     }
 
-    public static Appearance fromKey(String key) {
-        for (var value : values()) {
-            if (value.key.equals(key)) {
-                return value;
-            }
-        }
-
-        return SYSTEM;
-    }
 }
