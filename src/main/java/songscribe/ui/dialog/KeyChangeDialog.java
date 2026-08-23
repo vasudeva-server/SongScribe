@@ -50,14 +50,8 @@ import songscribe.util.UIUtils;
  */
 public class KeyChangeDialog extends StandardDialog<Key, Key> {
 
-    /**
-     * Fixed at construction: the fifteen key signatures are the whole domain and never vary by
-     * gesture, so the model outlives any one opening and {@link #populate} only chooses within it.
-     */
-    private final JComboBox<Key> keysCombo = new JComboBox<>(Key.allSignatures().toArray(Key[]::new));
-
     /** The notator's current choice, which is what OK is measured against. */
-    private final Property<Key> selectedKey = Controls.item(keysCombo);
+    private final Property<Key> selectedKey;
 
     /**
      * The key the combo opened on. Starts at the model's first signature, which is also what the
@@ -68,6 +62,11 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
 
     public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE), ops);
+
+        // The fifteen key signatures are the whole domain and never vary by gesture, so the model
+        // is fixed here and populate() only chooses within it.
+        var keysCombo = new JComboBox<>(Key.allSignatures().toArray(Key[]::new));
+        selectedKey = Controls.item(keysCombo);
 
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyCellRenderer());
