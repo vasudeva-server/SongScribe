@@ -218,11 +218,6 @@ public final class SongSettingsController extends DialogController<SongSettingsI
             return;
         }
 
-        song.withModification(() -> MessageCenter.post(new TempoDidChangeNotification(
-            tempo.getTempoType(),
-            tempo.getVisibleTempo(),
-            tempo.getTempoDescription(),
-            tempo.shouldShowTempo()
-        )));
+        song.withModification(() -> MessageCenter.post(new TempoDidChangeNotification(tempo)));
     }
 }

@@ -25,8 +25,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ActionEvent;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -36,6 +34,7 @@ import javax.swing.JPanel;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.binding.Property;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.lifecycle.Disposable;
@@ -50,9 +49,9 @@ import songscribe.util.UIUtils;
  * font-description display, and a Choose / Reset button pair. The row is a pure
  * font chooser — it knows nothing about any particular tab or document font.
  * <p>
- * The owning tab supplies a {@code currentFont} supplier (read to seed the
- * chooser) and an {@code onFontChosen} callback (invoked with the new font).
- * Each tab decides what choosing a font means for its own context.
+ * The owning tab supplies the {@link Property} that holds the chosen font. The row
+ * reads it to seed the chooser, and writes the chosen font back to it. Each tab
+ * decides what that font means for its own context.
  * <p>
  * The row lays the description label out but never writes it. The chosen font is the
  * tab's own value, and the label is one of the things the tab derives from it — writing
@@ -95,22 +94,17 @@ final class FontSettingRow {
     /**
      * What a tab has to supply for a font row, other than the frame the chooser opens over.
      *
-     * <p>A record rather than four more parameters: with the caption the count passes what a
+     * <p>A record rather than three more parameters: with the caption the count passes what a
      * call site can be read against, and the description label's own type is what stops it
      * being swapped with the caption.
      *
      * @param description the boxed label the font's description is displayed in, from
      *     {@link #createFontDescriptionLabel()}
      * @param fontKey the font this row sets, which is also the key Reset restores from
-     * @param currentFont supplies the font that seeds the chooser
-     * @param onFontChosen notified with the font chosen, or reset to default
+     * @param font holds the chosen font. The row reads it to seed the chooser. Choose writes
+     *     the chosen font to it, and Reset writes the system default for {@code fontKey}.
      */
-    record Spec(
-        DescriptionLabel description,
-        FontKey fontKey,
-        Supplier<? extends Font> currentFont,
-        Consumer<? super Font> onFontChosen
-    ) {}
+    record Spec(DescriptionLabel description, FontKey fontKey, Property<Font> font) {}
 
     /**
      * The boxed label a font's description is displayed in.
@@ -144,8 +138,7 @@ final class FontSettingRow {
     static Row create(MainFrame mainFrame, JLabel rowLabel, Spec spec) {
         var fontDescription = spec.description();
         var fontKey = spec.fontKey();
-        var currentFont = spec.currentFont();
-        var onFontChosen = spec.onFontChosen();
+        var font = spec.font();
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
         var row = new JPanel(new GridBagLayout());
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -169,8 +162,8 @@ final class FontSettingRow {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         row.add(fontDescription, constraints);
 
-        var chooseAction = new ChooseFontAction(mainFrame, currentFont, onFontChosen);
-        var resetAction = new ResetFontAction(mainFrame, fontKey, onFontChosen);
+        var chooseAction = new ChooseFontAction(mainFrame, font);
+        var resetAction = new ResetFontAction(mainFrame, fontKey, font);
 
         var buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
@@ -213,51 +206,41 @@ final class FontSettingRow {
 
     private static final class ChooseFontAction extends UIAction {
 
-        private final Supplier<? extends Font> currentFont;
-        private final Consumer<? super Font> onFontChosen;
+        private final Property<Font> font;
 
-        private ChooseFontAction(
-            MainFrame mainFrame,
-            Supplier<? extends Font> currentFont,
-            Consumer<? super Font> onFontChosen
-        ) {
+        private ChooseFontAction(MainFrame mainFrame, Property<Font> font) {
             super(
                 mainFrame,
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
                 CHOOSE_FONT_COMMAND
             );
-            this.currentFont = currentFont;
-            this.onFontChosen = onFontChosen;
+            this.font = font;
         }
 
         @Override
         protected void performAction(ActionEvent e) {
-            onFontChosen.accept(FontDialog.showDialog(getMainFrame(), currentFont.get()));
+            font.set(FontDialog.showDialog(getMainFrame(), font.get()));
         }
     }
 
     private static final class ResetFontAction extends UIAction {
 
         private final FontKey fontKey;
-        private final Consumer<? super Font> onFontChosen;
+        private final Property<Font> font;
 
-        private ResetFontAction(
-            MainFrame mainFrame,
-            FontKey fontKey,
-            Consumer<? super Font> onFontChosen
-        ) {
+        private ResetFontAction(MainFrame mainFrame, FontKey fontKey, Property<Font> font) {
             super(
                 mainFrame,
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET),
                 RESET_FONT_COMMAND
             );
             this.fontKey = fontKey;
-            this.onFontChosen = onFontChosen;
+            this.font = font;
         }
 
         @Override
         protected void performAction(ActionEvent e) {
-            onFontChosen.accept(defaultFont(fontKey));
+            font.set(defaultFont(fontKey));
         }
     }
 }

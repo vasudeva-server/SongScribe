@@ -124,6 +124,37 @@ reach the number. *"…a push past that evicts the oldest, and if the evicted st
 was the clean marker the document can no longer return to clean"* is the whole
 promise, and it is the half that a caller has to write code against.
 
+## A stated precondition is the caller's obligation
+
+A contract that states an invariant makes the caller responsible for it. A caller
+that violates it has the bug, and the result is undefined. That is the normal
+meaning of a contract, and it is what makes the clause worth writing.
+
+**Guards belong at the point of entry and nowhere else.** The entry points are
+the two boundaries in *Boundaries convert, they do not check* in
+[design.md](/Users/aparajita/.claude/guides/design.md): file and network input,
+and the human at the UI. Those convert an untrusted value into a domain value
+that satisfies the invariant. Every layer below them relies on the invariant and
+re-checks nothing.
+
+Interior code therefore never defends against a state the contract forbids. Doing
+so costs more than the lines it adds:
+
+- The re-check reads as evidence the state can occur, so the next reader cannot
+  tell which belief is current — the contract's, or the guard's.
+- A guard that returns early or substitutes a default converts a caller's bug
+  into a wrong answer with nothing marking it wrong.
+- The invariant now lives in two places, and only one of them is the contract.
+
+**The tell** is a check whose condition restates a clause the contract already
+forbids, in a method no untrusted value reaches. Delete it, and make sure the
+contract states the clause.
+
+This does not license removing a check at a boundary. It also does not license
+removing one whose condition a caller can legitimately produce — that condition
+is part of the domain, and it belongs in the contract as a `@param` range, a
+`@throws` clause or a `@log` clause rather than as an unstated defence.
+
 ## What a contract leaves out
 
 `forTypeToken(String typeToken, boolean isRest, boolean isGrace)` documents every

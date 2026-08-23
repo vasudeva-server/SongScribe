@@ -117,7 +117,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_LYRICS_TRANSLATION)
         );
         lyricsFontRow = FontSettingRow.create(
-            mainFrame, new FontSettingRow.Spec(lyricsFontLabel, FontKey.LYRICS, lyricsFont::get, lyricsFont::set)
+            mainFrame, new FontSettingRow.Spec(lyricsFontLabel, FontKey.LYRICS, lyricsFont)
         );
         lyricsSection.add(lyricsFontRow.panel());
         BaseDialog.addLargeSeparator(lyricsSection);
@@ -132,7 +132,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         );
         annotationFontRow = FontSettingRow.create(
             mainFrame,
-            new FontSettingRow.Spec(annotationFontLabel, FontKey.ANNOTATION, annotationFont::get, annotationFont::set)
+            new FontSettingRow.Spec(annotationFontLabel, FontKey.ANNOTATION, annotationFont)
         );
         annotationSection.add(annotationFontRow.panel());
         BaseDialog.addLargeSeparator(annotationSection);

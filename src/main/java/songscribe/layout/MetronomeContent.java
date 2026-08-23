@@ -31,6 +31,7 @@ import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
+import songscribe.dom.TempoMarking;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -45,9 +46,9 @@ import songscribe.smufl.SMuFLMetadata;
  * {@code BeatChangeAttachment}, the per-note {@code TempoChangeAttachment} and the song-level
  * {@code SongTempoMark} at the first line's staff header.
  * <p>
- * {@link Tempo#shouldShowTempo()} is not a visibility flag. When it is false the metronome
- * glyph and the BPM are omitted and only the description is drawn; the mark vanishes entirely
- * only when the description is empty too, which shows up here as a {@link #widthSs} of 0.
+ * A {@link TempoMarking.TextOnly} tempo omits the metronome glyph and the BPM, and draws its
+ * description alone. It is not a hidden tempo: {@link #widthSs} is never 0, because that case
+ * always carries text and the {@link TempoMarking.Metronome} case always begins with a glyph.
  * <p>
  * Every measurement here is in staff spaces and therefore zoom-invariant:
  * {@code ScaleContext.setPixelsPerStaffSpace} is never called in production, and zoom is
@@ -147,23 +148,26 @@ public record MetronomeContent(
 
     /**
      * Builds the content for a tempo marking: the metronome glyph, the "=", the BPM and the
-     * description — or the description alone when {@link Tempo#shouldShowTempo()} is false.
+     * description — or the description alone, according to the tempo's {@link TempoMarking}.
      *
      * @param tempo the tempo being depicted
      * @param font  the resolved annotation font, unscaled, in pixel units
+     * @return the content, whose width is never zero — a metronome marking always begins with a
+     *         glyph, and a text-only marking always carries text
      */
     public static MetronomeContent forTempo(Tempo tempo, Font font) {
         var builder = new Builder(font);
-        var description = tempo.getTempoDescription();
 
-        if (tempo.shouldShowTempo()) {
-            builder.appendNote(tempo.getTempoType().getNote());
-            // The "=" and the BPM/description are separate items because they are drawn as
-            // two separate strings at two positions.
-            builder.appendText(EQUALS_STR);
-            builder.appendText(bpmWithDescription(tempo.getVisibleTempo(), description));
-        } else {
-            builder.appendText(description);
+        switch (tempo.getMarking()) {
+            case TempoMarking.Metronome metronome -> {
+                builder.appendNote(tempo.getTempoType().getNote());
+                // The "=" and the BPM/description are separate items because they are drawn as
+                // two separate strings at two positions.
+                builder.appendText(EQUALS_STR);
+                builder.appendText(
+                    bpmWithDescription(tempo.getVisibleTempo(), metronome.description()));
+            }
+            case TempoMarking.TextOnly textOnly -> builder.appendText(textOnly.description());
         }
 
         return builder.build();

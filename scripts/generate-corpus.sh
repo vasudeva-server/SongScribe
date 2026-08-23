@@ -19,6 +19,3 @@ source "$SCRIPT_DIR/set-java-home.sh"
 shopt -s nullglob
 files=("$SYNTHETIC_DIR"/*.mssw)
 echo "Generated ${#files[@]} synthetic corpus files in $SYNTHETIC_DIR"
-
-echo "Verifying corpus round-trips losslessly..."
-"$SCRIPT_DIR/test.sh" MusicXmlCorpusLosslessnessTest

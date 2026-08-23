@@ -112,11 +112,6 @@ public class SystemStacker {
         var line = context.getLine();
         var content = MetronomeContent.forTempo(line.getSong().getTempo(), fonts.getAnnotationFont());
 
-        // showTempo false with an empty description leaves nothing to draw.
-        if (content.widthSs() <= 0) {
-            return;
-        }
-
         stackAboveWithRegions(
             systemExtents,
             tempoMark,

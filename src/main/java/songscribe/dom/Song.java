@@ -1669,8 +1669,7 @@ public final class Song implements Disposable {
         // not dirty the undo step or run a beat-defining edit — the settings dialog seeds
         // its widgets from getTempo(), so confirming it unedited resends exactly what is
         // already there.
-        var newTempo = currentTempo.copy();
-        applyTempoUpdate(update, newTempo);
+        var newTempo = update.getTempo();
 
         if (Tempo.haveSameValue(currentTempo, newTempo)) {
             return;
@@ -1683,41 +1682,22 @@ public final class Song implements Disposable {
         // song through a tuplet revalidation — and must not be able to remove a tuplet.
         var redefinesBeat = !Tempo.haveSameBeat(oldTempo, newTempo);
 
-        // The update is applied a second time, to the live instance, on purpose. Assigning
-        // newTempo would replace the instance, and applying it before the bracket would put
-        // the write outside withBeatDefiningEdit, which must run the change itself in order
-        // to invalidate tuplets against the new beat.
+        // The values are copied onto the live instance rather than assigned as a replacement,
+        // because the song and the layout both hold that instance. The copy happens inside the
+        // bracket because withBeatDefiningEdit must run the change itself in order to
+        // invalidate tuplets against the new beat.
         withModification(() -> applyChange(
             new MetadataChange(MetadataField.TEMPO, oldTempo, newTempo),
             () -> {
                 if (redefinesBeat) {
                     withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                        () -> applyTempoUpdate(update, currentTempo));
+                        () -> currentTempo.copyFrom(newTempo));
                     return;
                 }
 
-                applyTempoUpdate(update, currentTempo);
+                currentTempo.copyFrom(newTempo);
             }
         ));
-    }
-
-    /** Copies {@code update}'s non-null fields onto {@code target}, leaving the rest alone. */
-    private static void applyTempoUpdate(TempoDidChangeNotification update, Tempo target) {
-        if (update.getTempoType() != null) {
-            target.setTempoType(update.getTempoType());
-        }
-
-        if (update.getVisibleTempo() != null) {
-            target.setVisibleTempo(update.getVisibleTempo());
-        }
-
-        if (update.getTempoDescription() != null) {
-            target.setTempoDescription(update.getTempoDescription());
-        }
-
-        if (update.getShowTempo() != null) {
-            target.setShowTempo(update.getShowTempo());
-        }
     }
 
     @Handler

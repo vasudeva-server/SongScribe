@@ -131,7 +131,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     protected void populateControls(@Nullable Annotation existingChange) {
         var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
-        annotationCombo.setValue(annotation.getAnnotation());
+        annotationCombo.setSelectedItem(annotation.getAnnotation());
 
         var alignment = annotation.getXAlignment();
 

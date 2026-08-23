@@ -35,19 +35,18 @@ import songscribe.util.UIUtils;
  *
  * <p>Nothing on this tab can be wrong. The controls are a note-value combo, a bounded spinner, a
  * description combo and a checkbox, so every state they can reach describes a tempo — which is why
- * this tab has no {@code InputVerifier} and contributes nothing to validation.
+ * this tab has no {@code InputVerifier} and contributes nothing to validation. The one pair that
+ * would not describe a visible tempo is barred inside {@link TempoSection} by two bindings, so it
+ * is unreachable rather than rejected.
  */
 final class SongSettingsMusicTab extends BaseDialog.Tab {
 
-    private final TempoSection tempoSection = new TempoSection(
-        Duration.values(),
-        Strings.get(Strings.DIALOG_SONG_SETTINGS_SHOW_ONLY_DESCRIPTION),
-        List.of("tempos")
-    );
+    private final TempoSection tempoSection;
 
     SongSettingsMusicTab(SongSettingsDialog dialog) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC));
 
+        tempoSection = new TempoSection(bindings(), List.of("tempos"));
         build();
     }
 
@@ -83,11 +82,6 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
      * @return the tempo this tab's controls now describe, for every state they can reach
      */
     Tempo gather() {
-        return new Tempo(
-            tempoSection.getVisibleTempo(),
-            tempoSection.getTempoType(),
-            tempoSection.getTempoDescription(),
-            !tempoSection.isShowOnlyDescription()
-        );
+        return tempoSection.getTempo();
     }
 }

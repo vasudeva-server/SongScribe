@@ -50,18 +50,46 @@ could forget to check.
 
 ## `shouldShowTempo` is not a visibility flag
 
-`Tempo.shouldShowTempo()` corresponds to the Tempo Change dialog's "Show only the tempo
-description" checkbox, inverted. When it is false, the mark still renders — just without the
-glyph and the BPM number, description only. The mark disappears entirely only when its computed
-content width is zero, which happens when `showTempo` is false *and* the description is empty.
-It is never a switch for "hide the tempo mark" on its own.
+`Tempo.shouldShowTempo()` corresponds to the tempo panel's "Show only description" checkbox,
+inverted. When it is false, the mark still renders — just without the glyph and the BPM number,
+description only. It is never a switch for "hide the tempo mark" on its own.
 
-That content width is `MetronomeContent.forTempo`'s `widthSs`, and it is where the two cases part:
-with `showTempo` true the content always begins with a note glyph, so the width can never be zero;
-with it false the content is the description alone, and an empty description appends no item at
-all. `SystemStacker.stackTempoMark` reads the zero width and stacks nothing. For how that content
-is built and why the whole marking is typeset in layout rather than at paint time, see
+The mark would draw nothing at all only when `showTempo` is false *and* the description is
+empty. `MetronomeContent.forTempo`'s `widthSs` is where the two cases part: with `showTempo`
+true the content always begins with a note glyph, so the width can never be zero; with it false
+the content is the description alone, and an empty description appends no item at all. That pair
+is the one no tempo may hold, and the next section is how it is kept out. For how the content is
+built and why the whole marking is typeset in layout rather than at paint time, see
 [Metronome Typesetting](metronome-typesetting.md).
+
+`Tempo.isVisible` is that question asked as one named rule. Nothing a song holds answers false
+to it, and that is a precondition on every producer of a tempo rather than a guard `Tempo`
+keeps. `Tempo`'s constructor and `setShowTempo` both still accept the pair, because
+`TempoIO.TempoReader` builds a tempo one setter per XML tag and passes through the pair on the
+way to a complete one.
+
+The rule is kept where untrusted values enter, and nowhere else:
+
+- **The dialog cannot produce the pair.** `TempoSection` declares two bindings, one per
+  direction. The "show only description" checkbox is disabled while the description is empty,
+  and the description combo's `(none)` row is barred while the checkbox is checked. Each binding
+  asks `isVisible` about the tempo its own control would produce.
+
+  Barring a row means refusing it, not painting it grey. `OtherValueComboBox` installs a
+  selection model on the list its drop-down shows, so a barred row can never become that list's
+  selection — which is what the Enter key commits. Its `setSelectedIndex` override covers the
+  one route that does not go through the drop-down: an arrow key pressed while the drop-down is
+  closed.
+- **Both readers repair the pair.** `MeasureMapper.buildTempo` and `TempoIO.TempoReader` each
+  call `Tempo.makeVisible` and log a warning. They repair rather than discard because only the
+  flag is wrong: the beat unit and the BPM are good, and they drive beaming and playback. A
+  discarded song tempo would silently revert to the defaults, and a discarded tempo change would
+  vanish. Each reader also strips the description it read, so a description of whitespace alone
+  counts as no description at all.
+
+Everything below those entry points relies on the rule and checks nothing. In particular
+`SystemStacker.stackTempoMark` stacks whatever `MetronomeContent.forTempo` builds, with no
+zero-width case, because no tempo it can be handed produces one.
 
 ------------------------------------------------------------------------
 

@@ -88,10 +88,10 @@ final class OtherValueController extends DialogController<OtherValue, String> {
      *
      * @param text the text the user entered, already known to be non-blank and not already in use
      * @effects selects {@code text} in the combo, adding it to the combo's list when the list does
-     *     not already contain it — see {@link OtherValueComboBox#setValue}
+     *     not already contain it — see {@link OtherValueComboBox#setSelectedItem}
      */
     @Override
     protected void commit(String text) {
-        combo.setValue(text);
+        combo.setSelectedItem(text);
     }
 }

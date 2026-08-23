@@ -335,7 +335,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
         titleFontRow = FontSettingRow.create(
             getMainFrame(),
-            new FontSettingRow.Spec(titleFontLabel, FontKey.TITLE, titleFont::get, titleFont::set)
+            new FontSettingRow.Spec(titleFontLabel, FontKey.TITLE, titleFont)
         );
         section.add(titleFontRow.panel());
 
@@ -360,7 +360,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         BaseDialog.addSeparator(section);
         subtitleFontRow = FontSettingRow.create(
             getMainFrame(),
-            new FontSettingRow.Spec(subtitleFontLabel, FontKey.SUBTITLE, subtitleFont::get, subtitleFont::set)
+            new FontSettingRow.Spec(subtitleFontLabel, FontKey.SUBTITLE, subtitleFont)
         );
         section.add(subtitleFontRow.panel());
 

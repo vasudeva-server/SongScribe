@@ -43,6 +43,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.TempoMarking;
 
 /**
  * Builds the {@code <direction>} nodes of the {@link org.audiveris.proxymusic.ScorePartwise}
@@ -101,7 +102,7 @@ final class DirectionBuilder {
         var direction = factory.createDirection();
         direction.getDirectionType().add(buildMetronomeDirectionType(factory, tempo, beatUnit));
 
-        var description = tempo.getTempoDescription();
+        var description = tempo.getMarking().description();
 
         if (!description.isEmpty()) {
             direction.getDirectionType().add(buildWordsDirectionType(factory, description));
@@ -139,7 +140,7 @@ final class DirectionBuilder {
             ObjectFactory factory, Tempo tempo, BeatUnitMapping.BeatUnitEntry beatUnit) {
         var metronome = factory.createMetronome();
 
-        if (!tempo.shouldShowTempo()) {
+        if (tempo.getMarking() instanceof TempoMarking.TextOnly) {
             metronome.setPrintObject(YesNo.NO);
         }
 

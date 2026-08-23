@@ -29,6 +29,7 @@ import org.xml.sax.SAXException;
 
 import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
+import songscribe.dom.TempoMarking;
 
 public final class TempoIO {
 
@@ -65,9 +66,11 @@ public final class TempoIO {
             Integer.toString(t.getVisibleTempo())
         );
         XML.writeValue(pw, XML_TEMPO_TYPE, t.getTempoType().name());
-        XML.writeValue(pw, XML_TEMPO_DESCRIPTION, t.getTempoDescription());
 
-        if (!t.shouldShowTempo()) {
+        var marking = t.getMarking();
+        XML.writeValue(pw, XML_TEMPO_DESCRIPTION, marking.description());
+
+        if (marking instanceof TempoMarking.TextOnly) {
             XML.writeEmptyTag(pw, XML_DONT_SHOW_TEMPO);
         }
 
@@ -86,25 +89,37 @@ public final class TempoIO {
         private Tempo tempo = null;
         private int pos10 = 0;
 
+        // The two values the file states separately, held until the closing tag, because a
+        // TempoMarking is built from both at once and neither tag is guaranteed to arrive.
+        private String description = "";
+        private boolean hideMetronome = false;
+
         @Nullable
         private String lastTag;
 
         private final StringBuilder value = new StringBuilder(20);
 
         public void startElement10(String qName) {
-            if (qName.equals(XML_TEMPO_CHANGE)) {
-                tempo = new Tempo();
-                lastTag = null;
-            } else {
-                lastTag = qName;
-            }
-
-            value.delete(0, value.length());
+            startElement(qName, XML_TEMPO_CHANGE);
         }
 
         public void startElement11(String qName) {
-            if (qName.equals(XML_TEMPO)) {
+            startElement(qName, XML_TEMPO);
+        }
+
+        /**
+         * Begins a tempo when {@code qName} opens one, and otherwise records the tag whose text
+         * is about to arrive.
+         *
+         * @param qName    the tag that just opened
+         * @param tempoTag the name the tempo element carries in this document version
+         * @effects discards any text accumulated for the previous tag
+         */
+        private void startElement(String qName, String tempoTag) {
+            if (qName.equals(tempoTag)) {
                 tempo = new Tempo();
+                description = "";
+                hideMetronome = false;
                 lastTag = null;
             } else {
                 lastTag = qName;
@@ -132,57 +147,77 @@ public final class TempoIO {
             return duration;
         }
 
+        /**
+         * Answers the tempo a closing tempo tag completes, with its marking built from the two
+         * values the file stated separately. See {@link TempoMarking#fromFile}.
+         *
+         * @return the tempo just read, or {@code null} when no tempo element was opened
+         * @effects sets the tempo's marking
+         * @log warn when it shows a tempo the file asked to hide
+         */
         @Nullable
-        public Tempo endElement10(String qName) throws SAXException {
-            if (qName.equals(XML_TEMPO_CHANGE)) {
-                return tempo;
-            }
+        private Tempo finishTempo() {
             if (tempo == null) {
                 return null;
             }
+
+            var read = TempoMarking.fromFile(description, hideMetronome);
+
+            if (read.repaired()) {
+                LOG.warn("Showing a hidden tempo that carries no description");
+            }
+
+            tempo.setMarking(read.marking());
+            return tempo;
+        }
+
+        @Nullable
+        public Tempo endElement10(String qName) throws SAXException {
+            if (qName.equals(XML_TEMPO_CHANGE)) {
+                return finishTempo();
+            }
+
+            return endTempoChild(qName);
+        }
+
+        @Nullable
+        public Tempo endElement11(String qName) throws SAXException {
+            if (qName.equals(XML_TEMPO)) {
+                return finishTempo();
+            }
+
+            return endTempoChild(qName);
+        }
+
+        /**
+         * Applies the text of the tempo child that just closed.
+         *
+         * <p>Shared by both document versions, whose tempo elements carry the same children
+         * apart from {@code position}, which only a v1.0 tempo change states.
+         *
+         * @param qName the tag that just closed
+         * @return {@code null} always, so a caller can hand it straight back — a tempo is
+         *         answered only by the closing tempo tag, which does not reach here
+         * @effects discards the accumulated text and forgets the tag it belonged to
+         * @throws SAXException when the tempo type names a duration this reader does not know
+         */
+        @Nullable
+        private Tempo endTempoChild(String qName) throws SAXException {
+            if (tempo == null) {
+                return null;
+            }
+
             //noinspection PointlessNullCheck
             if (lastTag != null && qName.equals(lastTag)) {
                 var str = value.toString();
 
                 switch (lastTag) {
                     case XML_POS -> pos10 = Integer.parseInt(str);
-                    case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(
-                        Integer.parseInt(str)
-                    );
+                    case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(Integer.parseInt(str));
                     case XML_TEMPO_TYPE -> tempo.setTempoType(resolveTempoDuration(str));
-                    case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
-                        str
-                    );
-                    case XML_DONT_SHOW_TEMPO -> tempo.setShowTempo(false);
-                }
-            }
-
-            value.delete(0, value.length());
-            lastTag = null;
-            return null;
-        }
-
-        @Nullable
-        public Tempo endElement11(String qName) throws SAXException {
-            if (qName.equals(XML_TEMPO)) {
-                return tempo;
-            }
-            if (tempo == null) {
-                return null;
-            }
-            //noinspection PointlessNullCheck
-            if (lastTag != null && qName.equals(lastTag)) {
-                var str = value.toString();
-
-                switch (lastTag) {
-                    case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(
-                        Integer.parseInt(str)
-                    );
-                    case XML_TEMPO_TYPE -> tempo.setTempoType(resolveTempoDuration(str));
-                    case XML_TEMPO_DESCRIPTION -> tempo.setTempoDescription(
-                        str
-                    );
-                    case XML_DONT_SHOW_TEMPO -> tempo.setShowTempo(false);
+                    case XML_TEMPO_DESCRIPTION -> description = str;
+                    case XML_DONT_SHOW_TEMPO -> hideMetronome = true;
+                    default -> { }
                 }
             }
 

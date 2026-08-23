@@ -49,6 +49,7 @@ import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.TempoMarking;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -85,8 +86,8 @@ import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
  *   ./scripts/generate-corpus.sh
  * }</pre>
  *
- * The losslessness gate that consumes the corpus is
- * {@link MusicXmlCorpusLosslessnessTest}.
+ * <p>Nothing reads the corpus today. The losslessness gate that consumed it no longer
+ * exists, so these fixtures are generated and committed but never verified.
  */
 public class MusicXmlCorpusGenerator {
 
@@ -168,6 +169,9 @@ public class MusicXmlCorpusGenerator {
     private static final int SUB_ATTRIBUTION_FONT_SIZE = 38;
 
     private static final String NO_DESCRIPTION = "";
+
+    // A text-only marking carries the whole marking in its text, so this fixture needs one.
+    private static final String HIDDEN_DESCRIPTION = "Meno mosso";
 
     /**
      * A named song plus the fonts to serialize it with. The fonts ride into the
@@ -466,10 +470,10 @@ public class MusicXmlCorpusGenerator {
     // -------------------------------------------------------------------------
 
     private static Song songKeyAndTempo() {
-        var baseTempo = new Tempo(BASE_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
-        var perNoteTempo = new Tempo(PER_NOTE_BPM, Duration.MINIM, NO_DESCRIPTION, true);
-        var describedTempo = new Tempo(DESCRIBED_BPM, Duration.CROTCHET, "Allegro vivace", true);
-        var hiddenTempo = new Tempo(HIDDEN_BPM, Duration.CROTCHET, NO_DESCRIPTION, false);
+        var baseTempo = new Tempo(BASE_BPM, Duration.CROTCHET, new TempoMarking.Metronome(NO_DESCRIPTION));
+        var perNoteTempo = new Tempo(PER_NOTE_BPM, Duration.MINIM, new TempoMarking.Metronome(NO_DESCRIPTION));
+        var describedTempo = new Tempo(DESCRIBED_BPM, Duration.CROTCHET, new TempoMarking.Metronome("Allegro vivace"));
+        var hiddenTempo = new Tempo(HIDDEN_BPM, Duration.CROTCHET, new TempoMarking.TextOnly(HIDDEN_DESCRIPTION));
         var metricModulation = new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM);
 
         var song = buildSong(
@@ -635,7 +639,7 @@ public class MusicXmlCorpusGenerator {
     // -------------------------------------------------------------------------
 
     private static Song songKitchenSink() {
-        var baseTempo = new Tempo(BASE_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
+        var baseTempo = new Tempo(BASE_BPM, Duration.CROTCHET, new TempoMarking.Metronome(NO_DESCRIPTION));
 
         var song = buildSong(
             line -> {

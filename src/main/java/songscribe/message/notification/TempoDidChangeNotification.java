@@ -20,49 +20,32 @@
 
 package songscribe.message.notification;
 
-import org.jspecify.annotations.Nullable;
-
-import songscribe.dom.Duration;
+import songscribe.dom.Tempo;
 import songscribe.message.Message;
 
+/**
+ * Announces that the song's tempo is to become {@code tempo}.
+ *
+ * <p>The tempo is carried whole. A sender that means to change one of its values reads the
+ * song's current tempo, changes that value, and sends the result.
+ */
 public class TempoDidChangeNotification extends Message {
 
-    private final @Nullable Duration tempoType;
-    @Nullable
-    private final Integer visibleTempo;
-    @Nullable
-    private final String tempoDescription;
-    @Nullable
-    private final Boolean showTempo;
+    private final Tempo tempo;
 
-    public TempoDidChangeNotification(
-        @Nullable Duration tempoType,
-        @Nullable Integer visibleTempo,
-        @Nullable String tempoDescription,
-        @Nullable Boolean showTempo
-    ) {
-        this.tempoType = tempoType;
-        this.visibleTempo = visibleTempo;
-        this.tempoDescription = tempoDescription;
-        this.showTempo = showTempo;
+    /**
+     * @param tempo the tempo the song is to take, which must be a copy detached from the song's
+     *              own instance. The receiver copies its values onto the live instance, so a
+     *              sender that passed the live instance would be asking it to copy from itself.
+     */
+    public TempoDidChangeNotification(Tempo tempo) {
+        this.tempo = tempo;
     }
 
-    public @Nullable Duration getTempoType() {
-        return tempoType;
-    }
-
-    @Nullable
-    public Integer getVisibleTempo() {
-        return visibleTempo;
-    }
-
-    @Nullable
-    public String getTempoDescription() {
-        return tempoDescription;
-    }
-
-    @Nullable
-    public Boolean getShowTempo() {
-        return showTempo;
+    /**
+     * @return the tempo the song is to take
+     */
+    public Tempo getTempo() {
+        return tempo;
     }
 }

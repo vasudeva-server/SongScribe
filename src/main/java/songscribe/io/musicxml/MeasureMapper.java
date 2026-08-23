@@ -58,6 +58,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.TempoMarking;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -917,8 +918,20 @@ final class MeasureMapper {
     }
 
     /**
-     * The {@link Tempo} a beat-unit {@code <metronome>} states, or {@code null} when it
-     * is incomplete or names a beat unit this reader does not know.
+     * The {@link Tempo} a beat-unit {@code <metronome>} states.
+     *
+     * <p>A {@code print-object="no"} metronome with no description states a tempo that draws
+     * nothing. This shows it instead of dropping it. See {@link TempoMarking#fromFile}.
+     *
+     * @param metronome   the element to read the beat unit and the speed from
+     * @param description the text of the direction's {@code <words>}, or {@code null} when the
+     *                    direction carries no words, or carries words that belong to an
+     *                    annotation rather than to this tempo
+     * @return the tempo the element states, or {@code null} when the element states no speed,
+     *         no beat unit, or a beat unit this reader does not know
+     * @throws SAXException when the {@code <per-minute>} text is not an integer
+     * @log warn when it ignores an unrecognised beat unit
+     * @log warn when it shows a metronome the file asked to hide
      */
     @Nullable
     private static Tempo buildTempo(Metronome metronome, @Nullable String description) throws SAXException {
@@ -941,8 +954,14 @@ final class MeasureMapper {
 
         var visibleTempo = MusicXmlUnits.parseIntOrThrow(MusicXmlTags.PER_MINUTE, perMinuteValue);
         // print-object="no" hides the mark; the default is shown.
-        var showTempo = metronome.getPrintObject() != YesNo.NO;
-        return new Tempo(visibleTempo, duration, description == null ? "" : description, showTempo);
+        var hideMetronome = metronome.getPrintObject() == YesNo.NO;
+        var read = TempoMarking.fromFile(description == null ? "" : description, hideMetronome);
+
+        if (read.repaired()) {
+            LOG.warn("Showing a hidden <metronome> that carries no <words> description");
+        }
+
+        return new Tempo(visibleTempo, duration, read.marking());
     }
 
     /**

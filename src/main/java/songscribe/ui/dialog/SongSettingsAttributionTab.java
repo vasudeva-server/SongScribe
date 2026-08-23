@@ -372,9 +372,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         attributionFontRow = FontSettingRow.create(
             mainFrame,
             wordsMusicLabel,
-            new FontSettingRow.Spec(
-                attributionFontLabel, FontKey.ATTRIBUTION, attributionFont::get, attributionFont::set
-            )
+            new FontSettingRow.Spec(attributionFontLabel, FontKey.ATTRIBUTION, attributionFont)
         );
         section.add(attributionFontRow.panel());
 
@@ -383,9 +381,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         subAttributionFontRow = FontSettingRow.create(
             mainFrame,
             datePlaceLabel,
-            new FontSettingRow.Spec(
-                subAttributionFontLabel, FontKey.SUB_ATTRIBUTION, subAttributionFont::get, subAttributionFont::set
-            )
+            new FontSettingRow.Spec(subAttributionFontLabel, FontKey.SUB_ATTRIBUTION, subAttributionFont)
         );
         section.add(subAttributionFontRow.panel());
 

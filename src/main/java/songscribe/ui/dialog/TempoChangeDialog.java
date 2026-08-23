@@ -32,19 +32,16 @@ import songscribe.ui.component.MainFrame;
 /**
  * A {@link TempoSection} in a dialog, for editing the tempo change on an element.
  *
- * <p>The dialog owns nothing but the section: every control, and every rule about which of them
- * is enabled, belongs to {@code TempoSection}, which the song settings use as well.
+ * <p>The dialog owns nothing but the section, which the song settings use as well.
  */
 public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
-    final TempoSection tempoSection = new TempoSection(
-        Duration.values(),
-        Strings.get(Strings.DIALOG_TEMPO_CHANGE_SHOW_ONLY_DESCRIPTION),
-        List.of("tempochanges", "tempos")
-    );
+    final TempoSection tempoSection;
 
     public TempoChangeDialog(MainFrame mainFrame, DialogOps<@Nullable Tempo, Tempo> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), ops);
+
+        tempoSection = new TempoSection(bindings(), List.of("tempochanges", "tempos"));
         contentPanel.add(BorderLayout.CENTER, tempoSection);
     }
 
@@ -55,13 +52,6 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
     @Override
     protected Tempo gather() {
-        return new Tempo(
-            tempoSection.getVisibleTempo(),
-            tempoSection.getTempoType(),
-            tempoSection.getTempoDescription(),
-            // The checkbox asks whether to show the description alone; Tempo stores the opposite
-            // question — whether the metronome mark is shown as well.
-            !tempoSection.isShowOnlyDescription()
-        );
+        return tempoSection.getTempo();
     }
 }

@@ -20,6 +20,8 @@
 package songscribe.ui.dialog;
 
 import java.util.List;
+import javax.swing.JList;
+import javax.swing.plaf.basic.ComboPopup;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -48,13 +50,24 @@ class OtherValueComboBoxTest extends UnitTest {
         var combo = combo(OtherValueComboBox.EmptyChoice.WITHHELD);
         var unknownValue = "Poco a poco accelerando";
 
-        combo.setValue(unknownValue);
+        combo.setSelectedItem(unknownValue);
 
         assertThat(combo.getValue()).isEqualTo(unknownValue);
 
         var lastIndex = combo.getItemCount() - 1;
         assertThat(combo.getItemAt(lastIndex)).isEqualTo(Strings.get(Strings.LABEL_OTHER));
         assertThat(combo.getItemAt(lastIndex - 1)).isEqualTo(unknownValue);
+    }
+
+    @Test
+    void testSelectingEmptyStringSelectsNoneRowWithoutInsertingARow() {
+        var combo = combo(OtherValueComboBox.EmptyChoice.OFFERED);
+        var itemCountBefore = combo.getItemCount();
+
+        combo.setSelectedItem("");
+
+        assertThat(combo.getValue()).isEqualTo("");
+        assertThat(combo.getItemCount()).isEqualTo(itemCountBefore);
     }
 
     @ParameterizedTest
@@ -69,6 +82,65 @@ class OtherValueComboBoxTest extends UnitTest {
             assertThat(combo.getItemAt(0)).isNotEmpty();
             assertThat(combo.getValue()).isNotEmpty();
         }
+    }
+
+    /**
+     * The list the drop-down shows, which is what every route the user takes selects into, and
+     * what the Enter key reads the committed value from.
+     */
+    private static JList<Object> popupList(OtherValueComboBox combo) {
+        return ((ComboPopup) combo.getUI().getAccessibleChild(combo, 0)).getList();
+    }
+
+    @Test
+    void testBarredEmptyRowCannotBecomeThePopupSelection() {
+        var combo = combo(OtherValueComboBox.EmptyChoice.OFFERED);
+        var list = popupList(combo);
+        combo.setSelectedItem(FIRST_CHOICE);
+
+        combo.setEmptyChoiceSelectable(false);
+        list.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
+
+        // Nothing the Enter key could commit is the barred row.
+        assertThat(list.getSelectedIndex()).isNotEqualTo(OtherValueComboBox.EMPTY_INDEX);
+
+        combo.setEmptyChoiceSelectable(true);
+        list.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
+
+        assertThat(list.getSelectedIndex()).isEqualTo(OtherValueComboBox.EMPTY_INDEX);
+    }
+
+    @Test
+    void testSelectingTheOtherRowOpensThePromptAndCommitsNoValue() {
+        var combo = combo(OtherValueComboBox.EmptyChoice.WITHHELD);
+        combo.setSelectedItem(FIRST_CHOICE);
+        var otherLabel = combo.getItemAt(combo.getItemCount() - 1);
+
+        // The route the Enter key takes, which does not pass through setSelectedIndex.
+        combo.setSelectedItem(otherLabel);
+
+        assertThat(combo.getValue()).isEqualTo(FIRST_CHOICE);
+    }
+
+    @Test
+    void testBarredEmptyRowRefusesTheUserButNotACaller() {
+        var combo = combo(OtherValueComboBox.EmptyChoice.OFFERED);
+        combo.setSelectedItem(FIRST_CHOICE);
+
+        combo.setEmptyChoiceSelectable(false);
+
+        // The user's route, which every popup, arrow key and typeahead selection arrives at.
+        combo.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
+        assertThat(combo.getValue()).isEqualTo(FIRST_CHOICE);
+
+        // A caller's route, which barring does not govern.
+        combo.setSelectedItem("");
+        assertThat(combo.getValue()).isEmpty();
+
+        combo.setSelectedItem(FIRST_CHOICE);
+        combo.setEmptyChoiceSelectable(true);
+        combo.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
+        assertThat(combo.getValue()).isEmpty();
     }
 
     @ParameterizedTest
