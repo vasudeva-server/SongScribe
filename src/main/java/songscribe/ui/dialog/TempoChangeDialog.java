@@ -36,7 +36,7 @@ import songscribe.ui.component.MainFrame;
  */
 public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
-    final TempoSection tempoSection;
+    private final TempoSection tempoSection;
 
     public TempoChangeDialog(MainFrame mainFrame, DialogOps<@Nullable Tempo, Tempo> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), ops);

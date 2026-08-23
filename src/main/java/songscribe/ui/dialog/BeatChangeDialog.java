@@ -22,18 +22,18 @@ package songscribe.ui.dialog;
 import java.awt.BorderLayout;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.binding.Property;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
-import songscribe.error.RuntimeError;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.binding.Controls;
 import songscribe.ui.component.DurationListCellRenderer;
 import songscribe.ui.component.MainFrame;
 
@@ -43,9 +43,9 @@ import songscribe.ui.component.MainFrame;
  *
  * <p><strong>Both combos always carry a selection.</strong> Each is built over the whole
  * {@link Duration} enum, so its model is never empty, and a non-empty combo selects its first
- * entry on construction. {@link #gather()} relies on that: there is no state reachable
- * through the UI in which it has nothing to gather, which is why it produces a {@link BeatChange}
- * unconditionally instead of quietly declining to commit.
+ * entry on construction. That is the precondition {@link Controls#item} states, and it is what
+ * lets {@link #gather()} produce a {@link BeatChange} unconditionally instead of quietly
+ * declining to commit.
  */
 public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
@@ -56,13 +56,16 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     static final BeatChange DEFAULT_BEAT_CHANGE =
         new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
 
-    final JComboBox<Duration> durationCombo =
-        DurationListCellRenderer.createCombo(Duration.values());
-    final JComboBox<Duration> beatCombo =
-        DurationListCellRenderer.createCombo(Duration.values());
+    private final Property<Duration> duration;
+    private final Property<Duration> beat;
 
     public BeatChangeDialog(MainFrame mainFrame, DialogOps<@Nullable BeatChange, BeatChange> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), ops);
+
+        var durationCombo = DurationListCellRenderer.createCombo(Duration.values());
+        var beatCombo = DurationListCellRenderer.createCombo(Duration.values());
+        duration = Controls.item(durationCombo);
+        beat = Controls.item(beatCombo);
 
         var row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
@@ -87,32 +90,12 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     protected void populateControls(@Nullable BeatChange existingChange) {
         var change = existingChange != null ? existingChange : DEFAULT_BEAT_CHANGE;
 
-        durationCombo.setSelectedItem(change.duration());
-        beatCombo.setSelectedItem(change.beat());
+        duration.set(change.duration());
+        beat.set(change.beat());
     }
 
     @Override
     protected BeatChange gather() {
-        return new BeatChange(selectedDuration(durationCombo), selectedDuration(beatCombo));
-    }
-
-    /**
-     * The note value a combo is showing.
-     *
-     * <p>{@code JComboBox.getSelectedItem} is nullable in general, but not for these two — see the
-     * class contract. The guard states that invariant rather than defending against it: a null
-     * here means the combo was built or emptied some other way, which no code path does.
-     *
-     * @param combo one of this dialog's two note-value combos
-     * @return the selected note value
-     */
-    private static Duration selectedDuration(JComboBox<Duration> combo) {
-        var duration = (Duration) combo.getSelectedItem();
-
-        if (duration == null) {
-            throw RuntimeError.exit("beat change combo has no selection");
-        }
-
-        return duration;
+        return new BeatChange(duration.get(), beat.get());
     }
 }
