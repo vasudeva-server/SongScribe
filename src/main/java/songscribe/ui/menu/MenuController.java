@@ -55,7 +55,6 @@ import songscribe.ui.action.RevertToSavedAction;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.ProgressBarDialog;
 import songscribe.ui.platform.mac.MacNativeMenuController;
 
 public class MenuController {
@@ -79,7 +78,8 @@ public class MenuController {
 
     public MenuController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;
-        var scoreView = mainFrame.requireScoreView();
+        // Fail here rather than later: every menu this builds acts on the score view.
+        mainFrame.requireScoreView();
         initMenus();
         MessageCenter.subscribe(this);
     }
@@ -148,39 +148,7 @@ public class MenuController {
             menu.add(Actions.QUIT_ACTION);
         }
 
-        // Temporary: ProgressBarDialog has no reachable caller in the running app (its only
-        // caller is the standalone UIConverter). Gives plans/ui-dialog-interface.md Phase 10
-        // a way to exercise it manually. Remove once that manual pass is recorded.
-        if (System.getenv("DEBUG") != null) {
-            menu.addSeparator();
-            var progressBarTestItem = new JMenuItem("Test Progress Bar (DEBUG)");
-            progressBarTestItem.addActionListener(_ -> runProgressBarDialogTest());
-            menu.add(progressBarTestItem);
-        }
-
         return menu;
-    }
-
-    private void runProgressBarDialogTest() {
-        var maximum = 20;
-        var dialog = new ProgressBarDialog(mainFrame, "Testing ProgressBarDialog…", maximum);
-
-        new Thread(() -> {
-            for (var i = 0; i < maximum; i++) {
-                try {
-                    Thread.sleep(150);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return;
-                }
-
-                dialog.nextValue();
-            }
-
-            dialog.setVisible(false);
-        }).start();
-
-        dialog.setVisible(true);
     }
 
     void rebuildOpenRecentMenu() {

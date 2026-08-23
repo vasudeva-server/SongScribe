@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +34,6 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.dom.Span;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -62,106 +60,6 @@ public final class LineIO {
     static final String XML_TRILLS = "trills";
 
     private LineIO() {
-    }
-
-    public static void writeLine(Line line, PrintWriter pw) {
-        pw.println("    <" + XML_LINE + '>');
-        XML.setIndent(6);
-
-        // A line writes its key only where it establishes one. A line that inherits writes no key
-        // tags at all, which is what the reader reads back as inheriting; line 0 always
-        // establishes one, so the song's starting key is always in the file.
-        var key = line.getKey();
-
-        if (key != null) {
-            XML.writeValue(pw, XML_KEYS, Integer.toString(key.accidentalCount()));
-            XML.writeValue(pw, XML_KEYTYPE, LegacyKeyType.forKey(key).name());
-        }
-
-        if (line.getElementSpacingRatio() != 1f) {
-            XML.writeValue(
-                pw,
-                XML_NOTE_DIST_CHANGE,
-                Float.toString(line.getElementSpacingRatio())
-            );
-        }
-
-        // Note: Line-level Y position fields (tempoChangeYPos, beatChangeYPos,
-        // firstSecondEndingYPos, trillYPos) are no longer written to new documents.
-        // Per-instance offsets on element objects are used instead.
-        // These fields are still read by LineReader for backward compatibility.
-
-        // Lyrics Y position is still written (not yet migrated to per-instance)
-        XML.writeValue(
-            pw,
-            XML_LYRICS_YPOS,
-            Double.toString(line.getLyricsYPosSs())
-        );
-
-        var beams = line.findSpans(Beam.class);
-
-        if (!beams.isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, spansToString(beams));
-        }
-
-        var ties = line.findTies();
-
-        if (!ties.isEmpty()) {
-            XML.writeValue(pw, XML_TIES, spansToString(ties));
-        }
-
-        var tuplets = line.findSpans(Tuplet.class);
-
-        if (!tuplets.isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, spansToString(tuplets));
-        }
-
-        var endings = line.findEndings();
-
-        if (!endings.isEmpty()) {
-            XML.writeValue(
-                pw,
-                XML_FSENDINGS,
-                spansToString(endings)
-            );
-        }
-
-        var crescendos = line.getCrescendos();
-
-        if (!crescendos.isEmpty()) {
-            XML.writeValue(pw, XML_CRESCENDO, spansToString(crescendos));
-        }
-
-        var diminuendos = line.getDiminuendos();
-
-        if (!diminuendos.isEmpty()) {
-            XML.writeValue(pw, XML_DIMINUENDO, spansToString(diminuendos));
-        }
-
-        var trills = line.findSpans(Trill.class);
-
-        if (!trills.isEmpty()) {
-            XML.writeValue(pw, XML_TRILLS, spansToString(trills));
-        }
-
-        pw.println("      <" + XML_NOTES + '>');
-
-        for (var i = 0; i < line.elementCount(); i++) {
-            StaffElementIO.writeElement(line.getElement(i), pw, line, i);
-        }
-
-        pw.println("      </" + XML_NOTES + '>');
-        pw.println("    </" + XML_LINE + '>');
-    }
-
-    static String spansToString(List<? extends Span> elements) {
-        var sb = new StringBuilder(27);
-
-        for (var element : elements) {
-            sb.append(element.toIndexString());
-        }
-
-        return sb.toString();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")

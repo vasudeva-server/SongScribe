@@ -52,7 +52,7 @@ class OtherValueComboBoxTest extends UnitTest {
 
         combo.setSelectedItem(unknownValue);
 
-        assertThat(combo.getValue()).isEqualTo(unknownValue);
+        assertThat(combo.getSelectedItem()).isEqualTo(unknownValue);
 
         var lastIndex = combo.getItemCount() - 1;
         assertThat(combo.getItemAt(lastIndex)).isEqualTo(Strings.get(Strings.LABEL_OTHER));
@@ -66,7 +66,7 @@ class OtherValueComboBoxTest extends UnitTest {
 
         combo.setSelectedItem("");
 
-        assertThat(combo.getValue()).isEqualTo("");
+        assertThat(combo.getSelectedItem()).isEqualTo("");
         assertThat(combo.getItemCount()).isEqualTo(itemCountBefore);
     }
 
@@ -77,10 +77,10 @@ class OtherValueComboBoxTest extends UnitTest {
 
         if (emptyChoice == OtherValueComboBox.EmptyChoice.OFFERED) {
             assertThat(combo.getItemAt(0)).isEmpty();
-            assertThat(combo.getValue()).isEmpty();
+            assertThat(combo.getSelectedItem()).isEmpty();
         } else {
             assertThat(combo.getItemAt(0)).isNotEmpty();
-            assertThat(combo.getValue()).isNotEmpty();
+            assertThat(combo.getSelectedItem()).isNotEmpty();
         }
     }
 
@@ -119,7 +119,7 @@ class OtherValueComboBoxTest extends UnitTest {
         // The route the Enter key takes, which does not pass through setSelectedIndex.
         combo.setSelectedItem(otherLabel);
 
-        assertThat(combo.getValue()).isEqualTo(FIRST_CHOICE);
+        assertThat(combo.getSelectedItem()).isEqualTo(FIRST_CHOICE);
     }
 
     @Test
@@ -131,16 +131,16 @@ class OtherValueComboBoxTest extends UnitTest {
 
         // The user's route, which every popup, arrow key and typeahead selection arrives at.
         combo.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
-        assertThat(combo.getValue()).isEqualTo(FIRST_CHOICE);
+        assertThat(combo.getSelectedItem()).isEqualTo(FIRST_CHOICE);
 
         // A caller's route, which barring does not govern.
         combo.setSelectedItem("");
-        assertThat(combo.getValue()).isEmpty();
+        assertThat(combo.getSelectedItem()).isEmpty();
 
         combo.setSelectedItem(FIRST_CHOICE);
         combo.setEmptyChoiceSelectable(true);
         combo.setSelectedIndex(OtherValueComboBox.EMPTY_INDEX);
-        assertThat(combo.getValue()).isEmpty();
+        assertThat(combo.getSelectedItem()).isEmpty();
     }
 
     @ParameterizedTest

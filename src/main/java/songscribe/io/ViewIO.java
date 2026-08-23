@@ -67,15 +67,6 @@ public final class ViewIO {
 
     private ViewIO() {}
 
-    public static void writeView(DocumentFontsHolder fonts, PrintWriter pw) {
-        XML.setIndent(4);
-        for (var t : FONT_TAGS) {
-            var font = fonts.getFont(t.key);
-            XML.writeValue(pw, t.nameTag, font.getPSName());
-            XML.writeValue(pw, t.sizeTag, Integer.toString(font.getSize()));
-        }
-    }
-
     public static class ViewReader {
 
         private static final Logger LOG = LoggerFactory.getLogger(ViewReader.class);

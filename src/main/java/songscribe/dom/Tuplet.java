@@ -400,14 +400,4 @@ public class Tuplet extends Span {
         verticalPositionSs = verticalPosition;
     }
 
-    @Override
-    public String toIndexString() {
-        var base = getAnchorElementIndex() + "," + getEndElementIndex() + ',' + grade;
-
-        if (verticalPositionSs != 0) {
-            return base + ',' + verticalPositionSs + ';';
-        }
-
-        return base + ';';
-    }
 }

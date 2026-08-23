@@ -139,10 +139,9 @@ were cut:
 
 **Deliberately out of scope (remaining `getInstance()` callers, non-action paths):**
 - `PreviewElementManager` (preview-element insert/modify mouse handlers).
-- `uiconverter.ConvertAction` (standalone converter utility, `extends AbstractAction`).
 
-Both pass `MainFrame.getInstance()` at the call site into the new required
-dialog constructors (decision 4A). Because these paths remain, the shared
+It passes `MainFrame.getInstance()` at the call site into the new required
+dialog constructors (decision 4A). Because this path remains, the shared
 `MainFrameMockTest` `mockStatic(MainFrame.class)` is retained (and documented in
 that class); `SongScribeTest` and `MainFrameTest` keep their two legitimate
 bootstrap mocks. Action-level tests no longer require the static mock.

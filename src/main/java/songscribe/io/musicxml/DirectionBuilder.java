@@ -26,7 +26,6 @@ import org.audiveris.proxymusic.AboveBelow;
 import org.audiveris.proxymusic.Direction;
 import org.audiveris.proxymusic.DirectionType;
 import org.audiveris.proxymusic.Empty;
-import org.audiveris.proxymusic.LeftCenterRight;
 import org.audiveris.proxymusic.Metronome;
 import org.audiveris.proxymusic.ObjectFactory;
 import org.audiveris.proxymusic.Wedge;
@@ -334,7 +333,7 @@ final class DirectionBuilder {
 
         var annotation = annotationAttachment.getAnnotation();
 
-        if (annotation.getAnnotation().isBlank()) {
+        if (annotation.getText().isBlank()) {
             return null;
         }
 
@@ -345,7 +344,7 @@ final class DirectionBuilder {
      * Builds an annotation {@code <direction placement="above|below">} to be placed immediately
      * before the annotated {@code <note>}: a single
      * {@code <direction-type><words halign="…" justify="…" relative-y="…">text</words>} from
-     * {@code getAnnotation()} / {@code getXAlignment()} / {@code getUserYOffsetSs()}.
+     * {@code getText()} / {@code getAlignment()} / {@code getUserYOffsetSs()}.
      * {@code halign} and {@code justify} share the one alignment token. {@code default-y} (the
      * computed base position) is write-forward only and intentionally omitted; the reader
      * recovers the annotation from {@code placement} + {@code halign} + {@code relative-y} and
@@ -353,10 +352,10 @@ final class DirectionBuilder {
      */
     static Direction buildAnnotationDirection(BuildContext context, Annotation annotation) {
         var factory = context.factory();
-        var alignment = LeftCenterRight.fromValue(TextAlignmentMapping.alignToken(annotation.getXAlignment()));
+        var alignment = annotation.getAlignment();
 
         var words = factory.createFormattedTextId();
-        words.setValue(annotation.getAnnotation());
+        words.setValue(annotation.getText());
         words.setHalign(alignment);
         words.setJustify(alignment);
         words.setRelativeY(MusicXmlUnits.ssAsTenths(annotation.getUserYOffsetSs()));
@@ -366,7 +365,7 @@ final class DirectionBuilder {
 
         var direction = factory.createDirection();
         direction.getDirectionType().add(directionType);
-        direction.setPlacement(AboveBelow.fromValue(PlacementMapping.placementToken(annotation.getPlacement())));
+        direction.setPlacement(annotation.getPlacement());
 
         return direction;
     }

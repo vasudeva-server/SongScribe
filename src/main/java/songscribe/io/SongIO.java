@@ -52,8 +52,20 @@ import songscribe.util.DateUtils;
 
 public final class SongIO {
 
-    public static final int IO_MAJOR_VERSION = 2;
-    public static final int IO_MINOR_VERSION = 10;
+    /**
+     * The first legacy revision. A document that claims exactly this one is parsed by a
+     * different set of readers from every later revision.
+     */
+    private static final int ORIGINAL_MAJOR_VERSION = 1;
+    private static final int ORIGINAL_MINOR_VERSION = 0;
+
+    /**
+     * The newest legacy revision this reader understands. A document that claims a newer one
+     * is refused with a {@link NewerVersionException}. Raise these when the reader learns a
+     * new revision.
+     */
+    private static final int MAX_READABLE_MAJOR_VERSION = 2;
+    private static final int MAX_READABLE_MINOR_VERSION = 10;
 
     // version 1.0
     private static final String XML_SONG = "song";
@@ -102,133 +114,6 @@ public final class SongIO {
     private static final String XML_SUBTITLE = "subtitle";
 
     private SongIO() {
-    }
-
-    public static void writeSong(Song c, DocumentFontsHolder fonts, PrintWriter pw) {
-        pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-        pw.println(
-            '<' +
-                XML_SONG +
-                ' ' +
-                XML_VERSION +
-                "=\"" +
-                IO_MAJOR_VERSION +
-                '.' +
-                IO_MINOR_VERSION +
-                "\">"
-        );
-        XML.setIndent(2);
-
-        // No song-level key is written: a song has no key of its own, so every line that
-        // establishes one writes it (LineIO.writeLine) and there is nothing left over to put
-        // here. The read path still honours the tag, because old files carry it.
-
-        TempoIO.writeTempo(c.getTempo(), pw, 2);
-
-        XML.setIndent(2);
-
-        XML.writeValue(pw, XML_NUMBER, c.getNumber());
-
-        if (!c.getTitle().isEmpty()) {
-            XML.writeValue(pw, XML_TITLE, c.getTitle());
-        }
-
-        if (!c.getSubtitle().isEmpty()) {
-            XML.writeValue(pw, XML_SUBTITLE, c.getSubtitle());
-        }
-
-        if (!c.getPlace().isEmpty()) {
-            XML.writeValue(pw, XML_PLACE, c.getPlace());
-        }
-
-        if (!c.getYear().isEmpty()) {
-            XML.writeValue(pw, XML_YEAR, c.getYear());
-        }
-
-        if (c.getMonth() > 0) {
-            XML.writeValue(pw, XML_MONTH, Integer.toString(c.getMonth()));
-        }
-
-        if (c.getDay() > 0) {
-            XML.writeValue(pw, XML_DAY, Integer.toString(c.getDay()));
-        }
-
-        var lyricsDateStr = DateUtils.toIsoDate(c.getWordsYear(), c.getWordsMonth(), c.getWordsDay());
-
-        if (!lyricsDateStr.isEmpty()) {
-            XML.writeValue(pw, XML_LYRICS_DATE, lyricsDateStr);
-        }
-
-        if (!c.getUnderLyrics().isEmpty()) {
-            XML.writeValue(pw, XML_UNDERLYRICS, c.getUnderLyrics());
-        }
-
-        if (!c.getBanglaLyrics().isEmpty()) {
-            XML.writeValue(pw, XML_BANGLA_LYRICS, c.getBanglaLyrics());
-        }
-
-        if (!c.getTranslatedLyrics().isEmpty()) {
-            XML.writeValue(pw, XML_TRANSLATED_LYRICS, c.getTranslatedLyrics());
-        }
-
-        if (c.isUnofficialTranslation()) {
-            XML.writeValue(
-                pw,
-                XML_UNOFFICIAL_TRANSLATION,
-                Boolean.toString(true)
-            );
-        }
-
-        XML.writeValue(pw, XML_COMPOSER, c.getComposer());
-        XML.writeValue(pw, XML_LYRICIST, c.getLyricist());
-        XML.writeValue(pw, XML_LYRICS_SOURCE, c.getLyricsSource().name());
-
-        if (c.isArrangement()) {
-            XML.writeValue(pw, XML_ARRANGEMENT, Boolean.toString(true));
-        }
-
-        // Keep writing the computed blob for interop with older readers.
-        var attributionBlob = AttributionFormatter.text(c.getMetadata().attribution(), c.showTranslation());
-
-        if (!attributionBlob.isEmpty()) {
-            XML.writeValue(pw, XML_INFO, attributionBlob);
-        }
-
-        if (!c.getFootnotes().isEmpty()) {
-            XML.writeValue(pw, XML_FOOTNOTES, c.getFootnotes());
-        }
-
-        if (c.getRowHeightAdjustmentSs() != 0) {
-            XML.writeValue(
-                pw,
-                XML_ROW_HEIGHT,
-                Double.toString(c.getRowHeightAdjustmentSs())
-            );
-        }
-
-        // Line width in staff-space units
-        XML.writeValue(pw, XML_LINE_WIDTH, Double.toString(c.getLineWidthSs()));
-
-        // Always write dynamicLayout=true for new documents
-        XML.writeValue(pw, XML_DYNAMIC_LAYOUT, Boolean.toString(true));
-
-        var attributionYOffsetSs = c.getAttributionElement().getUserYOffsetSs();
-
-        if (attributionYOffsetSs != 0) {
-            XML.writeValue(pw, XML_ATTRIBUTION_Y_OFFSET, Double.toString(attributionYOffsetSs));
-        }
-
-        pw.println("  <" + XML_LINES + '>');
-
-        for (var l = 0; l < c.lineCount(); l++) {
-            LineIO.writeLine(c.getLine(l), pw);
-        }
-
-        pw.println("  </" + XML_LINES + '>');
-        pw.println("  <" + XML_VIEW + '>');
-        ViewIO.writeView(fonts, pw);
-        pw.println("  </" + XML_VIEW + '>');
-        pw.println("</" + XML_SONG + '>');
     }
 
     public static class NewerVersionException extends SAXException {
@@ -405,13 +290,12 @@ public final class SongIO {
 
                         parsingSong = newSuspendedStubSong();
 
-                        if ((majorVersion == 1) && (minorVersion == 0)) {
+                        if (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion == ORIGINAL_MINOR_VERSION) {
                             noteReader = new StaffElementIO.StaffElementReader();
                             tempoReader = new TempoIO.TempoReader();
                         } else if (
-                            (majorVersion == 1 && minorVersion >= 1) ||
-                            // Hard-coded to IO_MINOR_VERSION; bump when the reader is updated.
-                            (majorVersion == 2 && minorVersion <= 10)
+                            (majorVersion == ORIGINAL_MAJOR_VERSION && minorVersion > ORIGINAL_MINOR_VERSION) ||
+                            (majorVersion == MAX_READABLE_MAJOR_VERSION && minorVersion <= MAX_READABLE_MINOR_VERSION)
                         ) {
                             lineReader = new LineIO.LineReader(parsingSong);
                             viewReader = new ViewIO.ViewReader();

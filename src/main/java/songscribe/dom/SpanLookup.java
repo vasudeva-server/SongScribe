@@ -250,20 +250,6 @@ public interface SpanLookup {
     }
 
     /**
-     * Returns all {@link Crescendo} spans in this line.
-     */
-    default List<Crescendo> getCrescendos() {
-        return findSpans(Crescendo.class);
-    }
-
-    /**
-     * Returns all {@link Diminuendo} spans in this line.
-     */
-    default List<Diminuendo> getDiminuendos() {
-        return findSpans(Diminuendo.class);
-    }
-
-    /**
      * Returns true if the given note index falls strictly inside any hairpin (crescendo or
      * diminuendo), its bound elements excluded.
      * <p>

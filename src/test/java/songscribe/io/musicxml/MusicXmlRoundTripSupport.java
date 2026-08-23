@@ -54,11 +54,9 @@ import static songscribe.io.XmlFixtures.openTag;
  * construction, the fixed clock every date-bearing case writes under, and the
  * cross-cutting assertion helpers used by more than one concern-specific test file.
  *
- * <p>Static helpers rather than a base class. These are needed by tests that already
- * extend {@link songscribe.UnitTest} directly and by
- * {@link MusicXmlCorpusGenerator}, which is not a test at all; making them inherited
- * would leave every such caller re-declaring its own copy, which is exactly what
- * happened while this was an abstract superclass.
+ * <p>Static helpers rather than a base class. Tests that need them already extend
+ * {@link songscribe.UnitTest} directly, so making them inherited would leave every such
+ * caller re-declaring its own copy.
  */
 final class MusicXmlRoundTripSupport {
 

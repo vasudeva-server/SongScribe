@@ -60,6 +60,7 @@ public class SystemStacker {
      * Margin from reference point to annotation
      */
     public static final double ANNOTATION_MARGIN_SS = 1.0;  // 8px
+
     private final StackingContext context;
     private final StaffExtents systemExtents;
     private final DocumentFontsHolder fonts;
@@ -178,15 +179,18 @@ public class SystemStacker {
         var widthSs = annotation.computeContentWidthSs(annotationFont);
         var heightSs = ScaleContext.textHeightSs(annotationFont).value();
 
-        // xAlignment is 0.0 (left), 0.5 (center), or 1.0 (right). The text is
-        // anchored to the matching point on the notehead: left edge → left,
-        // center → center, right edge → right.
-        double xAlignment = annotation.getAnnotation().getXAlignment();
-
         var elementType = note.getType();
         var anchorWidthSs = elementType.getElementWidthSs();
 
-        var xSs = columnXSs + xAlignment * (anchorWidthSs - widthSs);
+        // The text is anchored to the matching point on the notehead: its left edge to the
+        // notehead's left edge, its center to the center, its right edge to the right edge.
+        var freeWidthSs = anchorWidthSs - widthSs;
+
+        var xSs = switch (annotation.getAnnotation().getAlignment()) {
+            case LEFT -> columnXSs;
+            case CENTER -> columnXSs + freeWidthSs / 2;
+            case RIGHT -> columnXSs + freeWidthSs;
+        };
 
         stackAbove(systemExtents, annotation, xSs,
             widthSs, heightSs,

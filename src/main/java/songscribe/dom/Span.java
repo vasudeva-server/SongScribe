@@ -341,13 +341,6 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * Serializes this element's anchor/end indices as {@code "anchorIdx,endIdx;"}.
-     */
-    public String toIndexString() {
-        return getAnchorElementIndex() + "," + getEndElementIndex() + ';';
-    }
-
-    /**
      * A test on a span's endpoints as the asking line resolved them.
      * <p>
      * The bounds are {@link SpanBound}s, not indices, because an endpoint may sit off one of

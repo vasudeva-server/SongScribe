@@ -851,24 +851,6 @@ public abstract class E2ETest {
         performLayout(0);
     }
 
-    // -- Save/load round-trip --
-
-    protected Song roundTrip(Song original) throws IOException, SAXException, ParserConfigurationException {
-        var fonts = DocumentFonts.defaultFonts();
-        var sw = new StringWriter();
-        var pw = new PrintWriter(sw);
-        SongIO.writeSong(original, fonts, pw);
-        pw.flush();
-        var xml = sw.toString();
-
-        var factory = SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-
-        return reader.getSong();
-    }
-
     // -- Test result tracking --
 
     @SuppressWarnings({"AssignmentToStaticFieldFromInstanceMethod", "PackageVisibleInnerClass"})

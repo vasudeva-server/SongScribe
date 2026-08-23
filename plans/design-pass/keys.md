@@ -106,9 +106,6 @@ must not be reported as done:
   `plans/ui-dialog-interface.md` Phase 10 task 4 is where this gets looked at,
   along with all four key-change gestures. Do not schedule a second manual run
   for it.
-- **`MusicXmlCorpusGenerator`'s four updated call sites** compile but have not
-  been run; `scripts/generate-corpus.sh` cannot verify itself because its gate,
-  `MusicXmlCorpusLosslessnessTest`, is archived until pass 16.
 
 ## Findings raised
 

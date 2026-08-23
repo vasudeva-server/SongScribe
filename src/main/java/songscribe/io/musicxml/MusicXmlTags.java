@@ -265,16 +265,6 @@ public final class MusicXmlTags {
     static final String SCALING_TENTHS      = "40";
     static final String PAGE_HEIGHT_TENTHS  = "1596";
 
-    // Attribute values — text alignment (credit / direction words).
-    static final String JUSTIFY_CENTER = "center";
-    static final String HALIGN_LEFT    = "left";
-    static final String HALIGN_CENTER  = "center";
-    static final String HALIGN_RIGHT   = "right";
-
-    // Attribute values — direction placement (credit / annotation).
-    static final String PLACEMENT_ABOVE = "above";
-    static final String PLACEMENT_BELOW = "below";
-
     // Attribute values — <supports> element tokens (write-forward, always emitted).
     static final String SUPPORTS_ACCIDENTAL = "accidental";
     static final String SUPPORTS_BEAM       = "beam";

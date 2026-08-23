@@ -54,7 +54,7 @@ Hang off a parent note; occupy no column → **X is raw** (never reflows notes).
 | `Articulation` (STACCATO, ACCENT) | yes | raw | owner note head; stem side | — | independent |
 | `FermataAttachment` | yes | raw | owner note | — | independent |
 | `DynamicAttachment` (pp…ff, sfz, fp) | yes | raw | owner note | — | independent |
-| `AnnotationAttachment` | yes | raw (`xAlignment`) | owner note; `Placement` | — | independent |
+| `AnnotationAttachment` | yes | raw (`alignment`) | owner note; `placement` | — | independent |
 | `TempoChangeAttachment` | yes | raw | owner note | — | independent |
 | `BeatChangeAttachment` | yes | raw | owner note | — | independent |
 

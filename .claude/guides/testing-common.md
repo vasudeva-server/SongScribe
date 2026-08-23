@@ -277,7 +277,6 @@ tests. Suppresses modal dialogs and provides shared helpers:
 
 - `loadFixture(name)` — load `src/test/resources/fixtures/{name}` into a `Song`, preferring
   a `.musicxml` fixture over a `.mssw` fixture of the same name (see [Fixtures](#fixtures))
-- `roundTrip(song)` — serialize a `Song` and reparse it, for save/load fidelity tests
 - `minimalSongMock()` / `detachedLine()` — a `Song` mock (mutation tracking
   suspended) and a `Line` backed by one, for model tests that don't need the UI
 - `installFlatLafDefaults()` — see [Unit Test Guide](./testing-unit.md)

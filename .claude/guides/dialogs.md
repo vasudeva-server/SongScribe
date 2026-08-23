@@ -15,7 +15,7 @@ The mechanical test, applied to every dialog class without judgment:
 
 A dialog is still free to use the domain's *static knowledge*. That line, not a package line, is where the boundary runs: a `songscribe.dom` import is fine when it names knowledge and wrong when it names the document.
 
-- **Knowledge — allowed.** Enums (`Duration`, `Annotation.Placement`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score. A mutable value type reaches a dialog as a copy — see [`I` is `Copyable`](#i-is-copyable-and-the-copy-happens-in-one-place).
+- **Knowledge — allowed.** Enums (`Duration`, `Key`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score. A mutable value type reaches a dialog as a copy — see [`I` is `Copyable`](#i-is-copyable-and-the-copy-happens-in-one-place).
 - **State — forbidden.** `Song`, `Line`, `StaffElement`, `ScoreView`, and reaching through `MainFrame` for any of them. `getMainFrame()` is for **window parenting only**.
 
 Under this rule a dialog's own steps — populate, gather, call the ops — are wiring and carry no tests of their own. **What carries tests is the controller.**
@@ -189,7 +189,7 @@ Nothing here repaints the score. A commit that writes the document does so insid
 Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
 
 Category precedent (pick by analogy):
-- INFORMATIONAL — `ProgressBarDialog`
+- INFORMATIONAL — no dialog carries it today. It is for a window that reports and never edits, so blocking it would hide the report.
 - EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
 - OPERATIONAL — the default; everything else
 

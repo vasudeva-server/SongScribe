@@ -19,8 +19,8 @@
  */
 package songscribe.dom;
 
-import java.awt.Component;
-
+import org.audiveris.proxymusic.AboveBelow;
+import org.audiveris.proxymusic.LeftCenterRight;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,11 +39,9 @@ public class Annotation implements Copyable<Annotation> {
 
     private static final Logger LOG = LoggerFactory.getLogger(Annotation.class);
 
-    public enum Placement { ABOVE, BELOW }
-
-    private Placement placement = Placement.ABOVE;
+    private AboveBelow placement = AboveBelow.ABOVE;
     private String annotation;
-    private float xAlignment = Component.LEFT_ALIGNMENT;
+    private LeftCenterRight alignment = LeftCenterRight.LEFT;
 
     /**
      * User's manual vertical offset from the layout-calculated position.
@@ -59,24 +57,24 @@ public class Annotation implements Copyable<Annotation> {
      * @log warn if {@code annotation} is blank; the blank text is stored anyway
      */
     public Annotation(String annotation) {
-        this(annotation, Component.LEFT_ALIGNMENT);
+        warnIfBlank(annotation);
+        this.annotation = annotation;
     }
 
     /**
      * @param annotation the text to display; expected to be non-blank
-     * @param alignment  a {@code Component} horizontal alignment constant
+     * @param alignment  how the text sits against the note it is attached to
      * @log warn if {@code annotation} is blank; the blank text is stored anyway
      */
-    public Annotation(String annotation, float alignment) {
-        warnIfBlank(annotation);
-        this.annotation = annotation;
-        xAlignment = alignment;
+    public Annotation(String annotation, LeftCenterRight alignment) {
+        this(annotation);
+        this.alignment = alignment;
     }
 
     /**
      * @return the text to display, whatever this annotation was given
      */
-    public String getAnnotation() {
+    public String getText() {
         return annotation;
     }
 
@@ -86,19 +84,25 @@ public class Annotation implements Copyable<Annotation> {
         }
     }
 
-    public float getXAlignment() {
-        return xAlignment;
+    /**
+     * @return how the text sits against the note it is attached to
+     */
+    public LeftCenterRight getAlignment() {
+        return alignment;
     }
 
-    public void setXAlignment(float alignment) {
-        xAlignment = alignment;
+    public void setAlignment(LeftCenterRight alignment) {
+        this.alignment = alignment;
     }
 
-    public Placement getPlacement() {
+    /**
+     * @return whether the text sits above the staff or below it
+     */
+    public AboveBelow getPlacement() {
         return placement;
     }
 
-    public void setPlacement(Placement placement) {
+    public void setPlacement(AboveBelow placement) {
         this.placement = placement;
     }
 
@@ -119,7 +123,7 @@ public class Annotation implements Copyable<Annotation> {
      */
     @Override
     public Annotation copy() {
-        var copy = new Annotation(annotation, xAlignment);
+        var copy = new Annotation(annotation, alignment);
         copy.placement = placement;
         copy.userYOffsetSs = userYOffsetSs;
         return copy;

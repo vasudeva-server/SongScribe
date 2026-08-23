@@ -40,10 +40,9 @@ Two consequences worth stating once:
   import — `dom/StaffElementFactory`, `error/RuntimeErrorTestHelper`,
   `message/MessageCenterTestHelper`, `ui/action/MockEnvHelper` — which cannot
   move up beside the bases because they reach package-private internals of the
-  packages they sit in. Separately, `io/musicxml/MusicXmlCorpusGenerator` and its
-  two supports (`MusicXmlRoundTripSupport`, `io/XmlFixtures`) stay because they
-  are the `generateCorpus` build tool (`build.gradle.kts:258`,
-  `scripts/generate-corpus.sh`), not tests. Everything else — 13 per-package
+  packages they sit in. Separately, `io/musicxml/MusicXmlRoundTripSupport` and
+  `io/XmlFixtures` stay because `MusicXmlTempoReadTest` imports them and
+  `specs/184b-page-setup.md` plans further use. Everything else — 13 per-package
   support classes, and 19 `package-info.java` files left carrying `@NullMarked`
   for packages with no code — went to the archive. Every remaining package has a
   `package-info.java`; `error`, `message` and `io/musicxml` had never had one, so
@@ -52,9 +51,12 @@ Two consequences worth stating once:
   **Restore by role, never by filename.** The reset in `2ea1c471` deleted every
   `*Test.java`, and all three base classes are named that way, so it took them
   along with the 486 real tests and left their dependants behind uncompilable.
-  Note also that `scripts/generate-corpus.sh` verifies through
-  `MusicXmlCorpusLosslessnessTest`, which is archived: the script's generate half
-  works, its verify half does not, until pass 16 rebuilds that test.
+
+  **There is no MusicXML losslessness gate, and no pass restores one.** The
+  `.mssw` corpus it consumed, and the generator that built that corpus, went with
+  the legacy write path. Both are reachable only from git history now. A pass that
+  wants such a gate builds its songs in memory and round-trips them through
+  MusicXML; it does not restore `MusicXmlCorpusLosslessnessTest`.
 - **Docs are corrected inside the pass that invalidates them**, never in a
   trailing phase. A doc left wrong while the code moves is how it got wrong.
 
@@ -108,7 +110,7 @@ the error this file exists to avoid.
 | 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
 | 27 | MIDI | `midi` | ⏳ | |
 | 28 | Export | `export` | ⏳ | |
-| 29 | Converter | `converter`, `uiconverter` | ⏳ | Headless; a producer that reaches the model without the UI. |
+| 29 | Converter | `converter` | ⏳ | Headless; a producer that reaches the model without the UI. |
 | 30 | Leaf utilities | `util`, `error`, `shape`, `font`, `prefs` | ⏳ | Swept as encountered; a pass of their own only if one earns it. |
 
 Legend: ⏳ not started · 🔄 in progress · ✅ complete · ⛔ blocked

@@ -460,15 +460,6 @@ public abstract sealed class Hairpin extends Span
         return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + getEndElementWidthSs());
     }
 
-    @Override
-    public String toIndexString() {
-        var base = getAnchorElementIndex() + "," + getEndElementIndex();
-        if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
-            return base + ',' + x1ShiftSs + ',' + x2ShiftSs + ',' + yShiftSs + ';';
-        }
-        return base + ';';
-    }
-
     /**
      * Which of the two hairpins a crescendo or diminuendo is — a plain two-value tag
      * rather than a {@code Class} token, since a hairpin is always constructed

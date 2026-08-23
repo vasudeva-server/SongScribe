@@ -166,11 +166,11 @@ assertThat(isSelected).isEqualTo(expected);
 var button = findButtonByName(action.getActionCommand());
 var isSelected = GuiActionRunner.execute(() -> button.getModel().isSelected());
 assertThat(isSelected).isEqualTo(expected);
-
-// Save/load round-trip
-var reloaded = roundTrip(song());
-assertThat(reloaded.getLine(0).elementCount()).isEqualTo(original.getLine(0).elementCount());
 ```
+
+`E2ETest` has no save/load round-trip helper. Save and load fidelity is a
+question about the MusicXML mapping, and it is asserted by the unit tests in
+`songscribe.io.musicxml`, not from an e2e test.
 
 ## Common Patterns
 

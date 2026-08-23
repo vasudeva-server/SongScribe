@@ -291,7 +291,7 @@ public final class FormatMigrator {
         }
 
         var annotation = annotationAttachment.getAnnotation();
-        var dynamicType = symbolMap.get(annotation.getAnnotation());
+        var dynamicType = symbolMap.get(annotation.getText());
 
         if (dynamicType == null) {
             return;

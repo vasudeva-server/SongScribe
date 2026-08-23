@@ -212,27 +212,6 @@ public abstract class UnitTest {
     }
 
     /**
-     * Serializes a song through the legacy {@link SongIO} writer and parses it back, verifying
-     * round-trip fidelity of the read-only migration path. Tests of the current storage format
-     * use {@code MusicXmlRoundTripSupport.roundTrip} instead.
-     */
-    public static Song legacyRoundTrip(Song original) throws Exception {
-        var fonts = DocumentFonts.defaultFonts();
-        var sw = new StringWriter();
-        var pw = new PrintWriter(sw);
-        SongIO.writeSong(original, fonts, pw);
-        pw.flush();
-        var xml = sw.toString();
-
-        var factory = SAXParserFactory.newInstance();
-        var parser = factory.newSAXParser();
-        var reader = new SongIO.DocumentReader();
-        parser.parse(new InputSource(new StringReader(xml)), reader);
-
-        return reader.getSong();
-    }
-
-    /**
      * A line width no fixture built here can overflow, so the fit gates never refuse an edit a
      * test did not set out to have refused. A test that exercises a gate stubs its own width.
      * An unstubbed mock would report 0, which every gate reads as a line with no room at all.

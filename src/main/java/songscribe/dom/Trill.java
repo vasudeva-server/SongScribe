@@ -84,15 +84,6 @@ public class Trill extends Span {
         this.yPositionSs = yPositionSs;
     }
 
-    @Override
-    public String toIndexString() {
-        var base = getAnchorElementIndex() + "," + getEndElementIndex();
-        if (yPositionSs != 0) {
-            return base + ',' + yPositionSs + ';';
-        }
-        return base + ';';
-    }
-
     /**
      * Returns the width of the trill "tr" glyph in staff-space units.
      * <p>

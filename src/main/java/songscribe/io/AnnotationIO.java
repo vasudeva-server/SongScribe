@@ -19,8 +19,8 @@
  */
 package songscribe.io;
 
-import java.io.PrintWriter;
-
+import org.audiveris.proxymusic.AboveBelow;
+import org.audiveris.proxymusic.LeftCenterRight;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,38 +31,57 @@ import songscribe.dom.ScaleContext;
 public final class AnnotationIO {
 
     // version 1.1
-    public static final String XML_ANNOTATION = "annotation";
-    public static final String XML_NAME = "name";
-    public static final String XML_ALIGNMENT = "alignment";
-    public static final String XML_YPOS = "ypos";
+    static final String XML_ANNOTATION = "annotation";
+    static final String XML_NAME = "name";
+    static final String XML_ALIGNMENT = "alignment";
+    private static final String XML_YPOS = "ypos";
+
+    /**
+     * The number a legacy document's {@code <alignment>} tag holds, for each alignment.
+     *
+     * <p>These numbers belong to the file format. The documents that carry them are already on
+     * disk, so nothing here may change what those files mean.
+     */
+    private static final float LEGACY_LEFT = 0.0f;
+    private static final float LEGACY_CENTER = 0.5f;
+    private static final float LEGACY_RIGHT = 1.0f;
 
     // version 2.1 (Phase 11)
-    public static final String XML_USER_Y_OFFSET = "useryoffset";
+    private static final String XML_USER_Y_OFFSET = "useryoffset";
 
     // version 2.5 (annotation-placement-refactor)
-    public static final String XML_PLACEMENT = "placement";
+    private static final String XML_PLACEMENT = "placement";
 
     private AnnotationIO() {}
 
-    public static void writeAnnotation(
-        Annotation a,
-        PrintWriter pw,
-        int indent
-    ) {
-        XML.setIndent(indent);
-        XML.writeBeginTag(pw, XML_ANNOTATION);
-        XML.setIndent(indent + 2);
-        XML.writeValue(pw, XML_NAME, a.getAnnotation());
-        XML.writeValue(pw, XML_ALIGNMENT, Float.toString(a.getXAlignment()));
-        XML.writeValue(pw, XML_PLACEMENT, a.getPlacement().name());
+    /**
+     * @param text the text of a legacy document's {@code <alignment>} tag
+     * @return the alignment that text names, or {@code null} when the text is not a number, or
+     *         is a number no alignment uses. A null answer is what leaves
+     *         {@link Annotation}'s own default in place.
+     */
+    private static @Nullable LeftCenterRight alignmentFor(String text) {
+        float number;
 
-        // Write userYOffset if non-zero (Phase 11)
-        if (a.getUserYOffsetSs() != 0) {
-            XML.writeValue(pw, XML_USER_Y_OFFSET, Double.toString(a.getUserYOffsetSs()));
+        try {
+            number = Float.parseFloat(text);
+        } catch (NumberFormatException e) {
+            return null;
         }
 
-        XML.setIndent(indent);
-        XML.writeEndTag(pw, XML_ANNOTATION);
+        if (number == LEGACY_LEFT) {
+            return LeftCenterRight.LEFT;
+        }
+
+        if (number == LEGACY_CENTER) {
+            return LeftCenterRight.CENTER;
+        }
+
+        if (number == LEGACY_RIGHT) {
+            return LeftCenterRight.RIGHT;
+        }
+
+        return null;
     }
 
     /**
@@ -84,8 +103,8 @@ public final class AnnotationIO {
 
         private boolean inAnnotation = false;
         private String text = "";
-        private @Nullable Float xAlignment = null;
-        private Annotation.@Nullable Placement placement = null;
+        private @Nullable LeftCenterRight alignment = null;
+        private @Nullable AboveBelow placement = null;
         private double userYOffsetSs = 0;
 
         @Nullable
@@ -97,7 +116,7 @@ public final class AnnotationIO {
             if (qName.equals(XML_ANNOTATION)) {
                 inAnnotation = true;
                 text = "";
-                xAlignment = null;
+                alignment = null;
                 placement = null;
                 userYOffsetSs = 0;
                 lastTag = null;
@@ -123,15 +142,15 @@ public final class AnnotationIO {
                 switch (tag) {
                     case XML_NAME -> text = str;
                     case XML_ALIGNMENT -> {
-                        try {
-                            xAlignment = Float.parseFloat(str);
-                        } catch (NumberFormatException e) {
+                        alignment = alignmentFor(str);
+
+                        if (alignment == null) {
                             LOG.warn("Corrupt document: malformed alignment: '{}', using default", str);
                         }
                     }
                     case XML_PLACEMENT -> {
                         try {
-                            placement = Annotation.Placement.valueOf(str);
+                            placement = AboveBelow.valueOf(str);
                         } catch (IllegalArgumentException e) {
                             LOG.warn("Corrupt document: malformed placement: '{}', using default", str);
                         }
@@ -183,13 +202,13 @@ public final class AnnotationIO {
             }
 
             var annotation = new Annotation(text);
-            var alignment = xAlignment;
+            var readAlignment = alignment;
             var readPlacement = placement;
 
             // Only what the document actually carried is applied; the rest keeps Annotation's own
             // defaults rather than a second copy of them here.
-            if (alignment != null) {
-                annotation.setXAlignment(alignment);
+            if (readAlignment != null) {
+                annotation.setAlignment(readAlignment);
             }
 
             if (readPlacement != null) {

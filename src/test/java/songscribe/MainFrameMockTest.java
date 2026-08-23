@@ -49,8 +49,8 @@ import static org.mockito.Mockito.mockStatic;
  * <p>The {@code mockStatic(MainFrame.class)} stub is retained even though the four
  * action/dialog routes were decoupled (#375 follow-up): the deliberately out-of-scope
  * non-action paths still call {@code MainFrame.getInstance()} — {@code PreviewElementManager}
- * (preview-element insert/modify mouse handlers) and {@code uiconverter.ConvertAction} —
- * and subclass tests that reach them rely on the stub returning the mock frame.
+ * (preview-element insert/modify mouse handlers) — and subclass tests that reach them rely on
+ * the stub returning the mock frame.
  */
 public abstract class MainFrameMockTest extends UnitTest {
 

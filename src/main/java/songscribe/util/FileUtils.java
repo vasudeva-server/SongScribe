@@ -123,22 +123,4 @@ public final class FileUtils {
         }
     }
 
-    public static void zipFile(
-        ZipOutputStream zos,
-        File file,
-        @Nullable String requestName,
-        byte[] buf
-    ) throws IOException, FileNotFoundException {
-        var fileName = (requestName == null) ? file.getName() : requestName;
-        zos.putNextEntry(new ZipEntry(fileName));
-
-        try (var inputStream = new FileInputStream(file)) {
-            var bytesRead = inputStream.read(buf);
-
-            while (bytesRead != -1) {
-                zos.write(buf, 0, bytesRead);
-                bytesRead = inputStream.read(buf);
-            }
-        }
-    }
 }

@@ -34,14 +34,14 @@ import songscribe.dom.TempoMarking;
 public final class TempoIO {
 
     // version 1.1
-    public static final String XML_TEMPO = "tempo";
+    static final String XML_TEMPO = "tempo";
     // version 1.0
-    public static final String XML_TEMPO_CHANGE = "tempochange";
-    public static final String XML_POS = "position";
-    public static final String XML_VISIBLE_TEMPO = "visibletempo";
-    public static final String XML_TEMPO_TYPE = "tempotype";
-    public static final String XML_TEMPO_DESCRIPTION = "tempodescription";
-    public static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
+    private static final String XML_TEMPO_CHANGE = "tempochange";
+    private static final String XML_POS = "position";
+    static final String XML_VISIBLE_TEMPO = "visibletempo";
+    static final String XML_TEMPO_TYPE = "tempotype";
+    static final String XML_TEMPO_DESCRIPTION = "tempodescription";
+    static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
 
     // Maps v1.0 XML names (no underscores) to the canonical Duration constants.
     private static final Map<String, Duration> LEGACY_TEMPO_DURATION_NAMES = Map.of(
@@ -52,34 +52,6 @@ public final class TempoIO {
     );
 
     private TempoIO() {}
-
-    public static void writeTempo(Tempo t, PrintWriter pw, int indent) {
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
-        pw.println('<' + XML_TEMPO + '>');
-        XML.setIndent(indent + 2);
-        XML.writeValue(
-            pw,
-            XML_VISIBLE_TEMPO,
-            Integer.toString(t.getVisibleTempo())
-        );
-        XML.writeValue(pw, XML_TEMPO_TYPE, t.getTempoType().name());
-
-        var marking = t.getMarking();
-        XML.writeValue(pw, XML_TEMPO_DESCRIPTION, marking.description());
-
-        if (marking instanceof TempoMarking.TextOnly) {
-            XML.writeEmptyTag(pw, XML_DONT_SHOW_TEMPO);
-        }
-
-        for (var i = 0; i < indent; i++) {
-            pw.print(' ');
-        }
-
-        pw.println("</" + XML_TEMPO + '>');
-    }
 
     public static class TempoReader {
 

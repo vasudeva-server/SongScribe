@@ -31,24 +31,13 @@ Cover every dialog in `ui.dialog`, not only the ones this track rewrote.
 | `TempoChangeDialog`     |                 |                                    |                                  |                 |                                       |        |
 | `KeyChangeDialog`       |                 |                                    |                                  |                 |                                       |        |
 | `PreferencesDialog`\*\* |                 | n/a                                | n/a                              | n/a             |                                       |        |
-| `ProgressBarDialog`\*\* |                 | n/a                                | n/a                              | n/a             | n/a                                   |        |
 
-\* `PreferencesDialog` is non-modal with no OK/Cancel/button row (Phase 6);
-`ProgressBarDialog` has no button row either (Phase 7 task 4). Verify only
-that they open and close correctly; see §3 for `PreferencesDialog`'s own
-items.
+\* `PreferencesDialog` is non-modal with no OK/Cancel/button row (Phase 6).
+Verify only that it opens and closes correctly; see §3 for its own items.
 
-**`ProgressBarDialog` has no reachable caller in the running app** — its only
-production caller is `ConvertAction`, in the standalone `UIConverter` entry
-point (`ui_converter` mode), not `MainFrame`. `MenuController.initFileMenu`
-now carries a temporary **File → "Test Progress Bar (DEBUG)"** item, gated
-behind `System.getenv("DEBUG") != null`, that opens a `ProgressBarDialog` and
-animates it from 0 to its maximum on a background thread before closing it —
-run with `DEBUG=1 ./scripts/run.sh`. Confirm the bar opens sized correctly,
-fills smoothly to the end, and the window cannot be closed by the user while
-it runs (`isClosable()` is false). **Remove `MenuController`'s temporary menu
-item and `runProgressBarDialogTest` once this row is recorded** — it exists
-only to make this checklist item exercisable and is not part of the track.
+`ProgressBarDialog` is not on this list. It is deleted, along with the
+standalone `UIConverter` entry point that was its only caller and the temporary
+DEBUG menu item that made it exercisable.
 
 ---
 

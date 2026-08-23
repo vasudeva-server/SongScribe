@@ -163,18 +163,7 @@ public final class AttributionFormatter {
         return expanded;
     }
 
-    /**
-     * Returns the full attribution text as newline-joined lines, for use by IO.
-     *
-     * @param data            the song's credits, place and dates
-     * @param showTranslation {@code true} when the song has a non-empty official translation
-     * @return attribution text with lines separated by {@code \n}
-     */
-    public static String text(SongAttribution data, boolean showTranslation) {
-        return lines(data, showTranslation).stream()
-            .map(AttributionLine::text)
-            .collect(Collectors.joining("\n"));
-    }
+
 
     // -------------------------------------------------------------------------
     // Private display algorithm

@@ -35,7 +35,6 @@ import songscribe.converter.PDFConverter;
 import songscribe.error.RuntimeError;
 import songscribe.io.musicxml.MusicXmlSerializer;
 import songscribe.ui.component.MainFrame;
-import songscribe.uiconverter.UIConverter;
 
 public final class SongScribe {
 
@@ -218,7 +217,6 @@ public final class SongScribe {
             case "image_converter" -> ImageConverter.main(args);
             case "midi_converter" -> MidiConverter.main(args);
             case "pdf_converter" -> PDFConverter.main(args);
-            case "ui_converter" -> UIConverter.main(args);
             // macOS system properties are already set above on the main thread.
             // Bootstrap the UI on the EDT so the splash can appear immediately.
             default -> SwingUtilities.invokeLater(() -> MainFrame.main(args));

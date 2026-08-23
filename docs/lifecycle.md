@@ -74,7 +74,7 @@ cleanup runs even on emergency exits.
   MainFrame.windowClosing -+           SIGTERM
   CloseWindowAction       -+-> now()   last non-daemon thread ends
   Desktop quit (macOS)    -+      |             |
-  UIConverter.windowClose -+      v             |
+                                  v             |
                              Confirm phase      |
                              (reg. order,       |
                               vetoable, EDT)    |

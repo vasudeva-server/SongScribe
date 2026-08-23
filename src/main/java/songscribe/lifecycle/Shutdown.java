@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * thread-safe cleanup runs even on emergency exits.
  *
  * <p>The user-invoked paths — {@code QuitAction}, {@code MainFrame.windowClosing},
- * {@code CloseWindowAction}, the macOS Desktop quit, and {@code UIConverter}'s window close — all
+ * {@code CloseWindowAction}, and the macOS Desktop quit — all
  * call {@link #now()}. That runs the confirm phase on the EDT in registration order, where any
  * handler may veto; if none does, the EDT cleanup tasks run LIFO, then the JVM cleanup tasks run
  * LIFO, then {@code System.exit(0)}.

@@ -49,7 +49,7 @@ import songscribe.ui.component.MainFrame;
  * text comparison decides whether the user picked a command or a value.
  *
  * <p>Choosing {@code Other…} opens the prompt rather than selecting anything, so no listener,
- * binding, or caller of {@link #getValue()} ever sees it as the value. The prompt refuses a value
+ * binding, or reader of the selected item ever sees it as the value. The prompt refuses a value
  * any row already shows — see {@link #isValueInUse} — so the list never holds two rows the user
  * cannot tell apart.
  *
@@ -61,8 +61,8 @@ import songscribe.ui.component.MainFrame;
  * later dialog starts from the configured list again, with the song's own value added back by the
  * write that populates the combo.
  *
- * <p>The {@code (none)} row's value is {@code ""}, painted as {@code (none)}, and
- * {@link #getValue()} answers {@code ""} for it. A caller whose value may be empty only under
+ * <p>The {@code (none)} row's value is {@code ""}, painted as {@code (none)}, so the selected
+ * item is {@code ""} while it is chosen. A caller whose value may be empty only under
  * some condition bars the row with {@link #setEmptyChoiceSelectable} rather than rebuilding
  * the list, which keeps every position fixed.
  */
@@ -71,9 +71,9 @@ final class OtherValueComboBox extends JComboBox<String> {
     /**
      * Whether the list offers a row standing for no value.
      *
-     * <p>{@link #OFFERED} puts the {@code (none)} row first, and {@link #getValue()} answers
-     * {@code ""} when it is selected. A combo whose value may not be empty asks for
-     * {@link #WITHHELD}, and then {@link #getValue()} never answers {@code ""}.
+     * <p>{@link #OFFERED} puts the {@code (none)} row first, and the selected item is
+     * {@code ""} while it is chosen. A combo whose value may not be empty asks for
+     * {@link #WITHHELD}, and then the selected item is never {@code ""}.
      */
     enum EmptyChoice {
         OFFERED,
@@ -218,10 +218,13 @@ final class OtherValueComboBox extends JComboBox<String> {
     }
 
     /**
-     * @return the selected value, or {@code ""} when the {@code (none)} row is selected
+     * Narrows {@code JComboBox}'s {@code Object} to what every row of this list actually holds.
+     *
+     * @return the selected value, which is {@code ""} while the {@code (none)} row is chosen
      */
-    String getValue() {
-        return (String) getSelectedItem();
+    @Override
+    public String getSelectedItem() {
+        return (String) super.getSelectedItem();
     }
 
     /**
@@ -233,8 +236,8 @@ final class OtherValueComboBox extends JComboBox<String> {
      * combo without knowing what is barred.
      *
      * <p>Barring refuses a new selection and never changes the current one. A combo already
-     * showing {@code (none)} keeps showing it, and {@link #getValue()} keeps answering
-     * {@code ""}. A caller that needs the value legal must write a legal one.
+     * showing {@code (none)} keeps showing it, and its selected item stays {@code ""}. A caller
+     * that needs the value legal must write a legal one.
      *
      * <p>A combo built with {@link EmptyChoice#WITHHELD} has no {@code (none)} row, and this
      * changes nothing for it.

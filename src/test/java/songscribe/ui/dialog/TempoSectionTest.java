@@ -105,11 +105,11 @@ class TempoSectionTest extends UnitTest {
         tempoSection.setTempo(textOnly(DESCRIPTION));
 
         descriptionCombo.setSelectedIndex(NONE_INDEX);
-        assertThat(descriptionCombo.getValue()).isEqualTo(DESCRIPTION);
+        assertThat(descriptionCombo.getSelectedItem()).isEqualTo(DESCRIPTION);
 
         tempoSection.setTempo(metronome(DESCRIPTION));
 
         descriptionCombo.setSelectedIndex(NONE_INDEX);
-        assertThat(descriptionCombo.getValue()).isEmpty();
+        assertThat(descriptionCombo.getSelectedItem()).isEmpty();
     }
 }

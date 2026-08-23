@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -40,7 +39,6 @@ import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
-import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
@@ -162,163 +160,6 @@ public final class StaffElementIO {
             case "continue" -> Lyric.Extend.CONTINUE;
             default -> Lyric.Extend.START;
         };
-    }
-
-    /** Returns the MusicXML {@code type} attribute string for the given extend state. */
-    static String extendTypeAttr(Lyric.Extend extend) {
-        return switch (extend) {
-            case START -> "start";
-            case STOP -> "stop";
-            case CONTINUE -> "continue";
-            case NONE -> throw new IllegalArgumentException("NONE has no type attribute");
-        };
-    }
-
-    public static void writeElement(
-        StaffElement element,
-        PrintWriter writer,
-        Line line,
-        int elementIndex
-    ) {
-        writer.println(
-            "          <" +
-                XML_NOTE +
-                ' ' +
-                XML_TYPE +
-                "=\"" +
-                element.getType().name() +
-                "\">"
-        );
-        XML.setIndent(12);
-
-        if (element.getXOffsetPx() != 0) {
-            XML.writeValue(writer, XML_XPOS, Integer.toString(element.getXOffsetPx()));
-        }
-
-        XML.writeValue(writer, XML_STAFF_POSITION, Integer.toString(element.getStaffPosition()));
-
-        if (element.getDotCount() != 0) {
-            XML.writeValue(
-                writer,
-                XML_DOTTED,
-                Integer.toString(element.getDotCount())
-            );
-        }
-
-        if (element.getAccidental() != null) {
-            XML.writeValue(writer, XML_PREFIX, element.getAccidental().name());
-        }
-
-        if (element.isAccidentalInParentheses()) {
-            XML.writeEmptyTag(writer, XML_PREFIX_IN_PARENTHESIS);
-        }
-
-        for (var articulation : element.getArticulations()) {
-            switch (articulation.getType()) {
-                case ACCENT -> XML.writeValue(
-                    writer,
-                    XML_FORCE_ARTICULATION,
-                    ArticulationType.ACCENT.name()
-                );
-                case STACCATO -> XML.writeValue(
-                    writer,
-                    XML_DURATION_ARTICULATION,
-                    ArticulationType.STACCATO.name()
-                );
-            }
-        }
-
-        if (element.hasFall()) {
-            XML.writeEmptyTag(writer, XML_FALL);
-        } else if (element.hasGlissando()) {
-            XML.writeEmptyTag(writer, XML_GLISSANDO);
-        }
-
-        if (!element.isStemDirectionAuto()) {
-            XML.writeEmptyTag(writer, XML_STEM_DIRECTION_AUTO);
-        }
-
-        if (element.isUpper()) {
-            XML.writeEmptyTag(writer, XML_UPPER);
-        }
-
-        var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
-
-        if (tempoAttachment != null) {
-            TempoIO.writeTempo(tempoAttachment.getTempo(), writer, 12);
-        }
-
-        var annotationAttachment = element.findAttachment(AnnotationAttachment.class);
-
-        if (annotationAttachment != null) {
-            AnnotationIO.writeAnnotation(annotationAttachment.getAnnotation(), writer, 12);
-        }
-
-        if (element.findAttachment(FermataAttachment.class) != null) {
-            XML.writeEmptyTag(writer, XML_FERMATA);
-        }
-
-        var dynamic = element.findAttachment(DynamicAttachment.class);
-
-        if (dynamic != null) {
-            writer.println(
-                "            <" + XML_DYNAMIC + ' ' + XML_TYPE + "=\"" +
-                    dynamic.getType().name() + "\" />"
-            );
-        }
-
-        var beatChangeAttachment = element.findAttachment(BeatChangeAttachment.class);
-
-        if (beatChangeAttachment != null) {
-            var beatChange = beatChangeAttachment.getBeatChange();
-            XML.writeEmptyTag(
-                writer,
-                XML_BEAT_CHANGE + ' ' + XML_BEAT_CHANGE_DURATION + "=\"" +
-                    beatChange.duration().name() + "\" " +
-                    XML_BEAT_CHANGE_BEAT + "=\"" + beatChange.beat().name() + '"'
-            );
-        }
-
-
-        for (var lyric : element.lyrics) {
-            writer.println("            <" + XML_LYRIC + ' ' + XML_LYRIC_NUMBER + "=\"" + lyric.verse() + "\">");
-
-            // STOP/CONTINUE carriers have no text and only emit the extender marker.
-            if (lyric.extend() == Lyric.Extend.STOP || lyric.extend() == Lyric.Extend.CONTINUE) {
-                writer.println(
-                    "              <" + XML_EXTEND_TAG + ' ' + XML_TYPE + "=\"" +
-                        extendTypeAttr(lyric.extend()) + "\"/>"
-                );
-                writer.println("            </" + XML_LYRIC + '>');
-                continue;
-            }
-
-            var syllabicValue = switch (lyric.syllabic()) {
-                case SINGLE -> "single";
-                case BEGIN -> "begin";
-                case MIDDLE -> "middle";
-                case END -> "end";
-                case null -> "single";
-            };
-
-            writer.println("              <" + XML_SYLLABIC + '>' + syllabicValue + "</" + XML_SYLLABIC + '>');
-
-            var lyricText = lyric.compound() ? lyric.text() + Lyric.COMPOUND_WORD_MARKER : lyric.text();
-            writer.println(
-                "              <" + XML_LYRIC_TEXT + '>' +
-                    XML.escapeXML(lyricText) + "</" + XML_LYRIC_TEXT + '>'
-            );
-
-            if (lyric.extend() == Lyric.Extend.START) {
-                writer.println(
-                    "              <" + XML_EXTEND_TAG + ' ' + XML_TYPE + "=\"start\"/>"
-                );
-            }
-
-            writer.println("            </" + XML_LYRIC + '>');
-        }
-
-        writer.println("          </" + XML_NOTE + '>');
     }
 
     public static class StaffElementReader {

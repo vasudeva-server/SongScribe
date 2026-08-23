@@ -178,7 +178,7 @@ final class MeasureMapper {
 
     /** The parts of a {@code <direction>} the resolution passes read. */
     private record DirectionContent(
-        Annotation.@Nullable Placement placement,
+        @Nullable AboveBelow placement,
         @Nullable FormattedTextId words,
         @Nullable Metronome metronome
     ) {}
@@ -782,9 +782,14 @@ final class MeasureMapper {
         }
 
         var annotation = new Annotation(text);
-        annotation.setXAlignment(
-            TextAlignmentMapping.xAlignment(ProxyMusicAccess.token(words.getHalign(), LeftCenterRight::value))
-        );
+        var halign = words.getHalign();
+
+        // Only what the document actually carried is applied, so an absent halign keeps
+        // Annotation's own default rather than a second copy of it here.
+        if (halign != null) {
+            annotation.setAlignment(halign);
+        }
+
         annotation.setPlacement(placement);
         annotation.setUserYOffsetSs(ProxyMusicAccess.tenthsToSs(words.getRelativeY()));
         return annotation;
@@ -813,11 +818,7 @@ final class MeasureMapper {
             }
         }
 
-        return new DirectionContent(
-            PlacementMapping.placementFor(ProxyMusicAccess.token(direction.getPlacement(), AboveBelow::value)),
-            words,
-            metronome
-        );
+        return new DirectionContent(direction.getPlacement(), words, metronome);
     }
 
     @Nullable

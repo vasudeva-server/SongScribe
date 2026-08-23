@@ -22,20 +22,25 @@ package songscribe.ui.dialog;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.util.EnumMap;
 import java.util.List;
+import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 
+import org.audiveris.proxymusic.AboveBelow;
+import org.audiveris.proxymusic.LeftCenterRight;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.binding.Property;
 import songscribe.dom.Annotation;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.binding.Controls;
 import songscribe.ui.component.MainFrame;
 
 /**
@@ -52,36 +57,38 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     private static final String DEFAULT_ANNOTATION = "Fine";
     private static final String ANNOTATION_FILE = "annotations";
 
-    final OtherValueComboBox annotationCombo = new OtherValueComboBox(
-        new OtherValuePrompt(
-            Strings.get(Strings.DIALOG_ANNOTATION_TITLE),
-            Strings.get(Strings.LABEL_ANNOTATION_OTHER_PROMPT)
-        ),
-        OtherValueComboBox.EmptyChoice.WITHHELD,
-        List.of(ANNOTATION_FILE)
-    );
-    final JRadioButton leftRadio =
-        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
-    final JRadioButton centerRadio =
-        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_CENTER));
-    final JRadioButton rightRadio =
-        new JRadioButton(Strings.get(Strings.LABEL_ALIGN_RIGHT));
-    final JRadioButton aboveRadio =
-        new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
-    final JRadioButton belowRadio =
-        new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
+    private final Property<String> text;
+    private final Property<LeftCenterRight> alignment;
+    private final Property<AboveBelow> placement;
 
     public AnnotationDialog(MainFrame mainFrame, DialogOps<@Nullable Annotation, Annotation> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), ops);
 
-        var alignmentGroup = new ButtonGroup();
-        alignmentGroup.add(leftRadio);
-        alignmentGroup.add(centerRadio);
-        alignmentGroup.add(rightRadio);
+        var annotationCombo = new OtherValueComboBox(
+            new OtherValuePrompt(
+                Strings.get(Strings.DIALOG_ANNOTATION_TITLE),
+                Strings.get(Strings.LABEL_ANNOTATION_OTHER_PROMPT)
+            ),
+            OtherValueComboBox.EmptyChoice.WITHHELD,
+            List.of(ANNOTATION_FILE)
+        );
+        text = Controls.item(annotationCombo);
 
-        var verticalGroup = new ButtonGroup();
-        verticalGroup.add(aboveRadio);
-        verticalGroup.add(belowRadio);
+        var alignmentButtons = new EnumMap<LeftCenterRight, AbstractButton>(LeftCenterRight.class);
+        var leftRadio = new JRadioButton(Strings.get(Strings.LABEL_ALIGN_LEFT));
+        alignmentButtons.put(LeftCenterRight.LEFT, leftRadio);
+        var centerRadio = new JRadioButton(Strings.get(Strings.LABEL_ALIGN_CENTER));
+        alignmentButtons.put(LeftCenterRight.CENTER, centerRadio);
+        var rightRadio = new JRadioButton(Strings.get(Strings.LABEL_ALIGN_RIGHT));
+        alignmentButtons.put(LeftCenterRight.RIGHT, rightRadio);
+        alignment = Controls.radioGroup(alignmentButtons);
+
+        var placementButtons = new EnumMap<AboveBelow, AbstractButton>(AboveBelow.class);
+        var aboveRadio = new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_ABOVE_STAFF));
+        placementButtons.put(AboveBelow.ABOVE, aboveRadio);
+        var belowRadio = new JRadioButton(Strings.get(Strings.DIALOG_ANNOTATION_BELOW_STAFF));
+        placementButtons.put(AboveBelow.BELOW, belowRadio);
+        placement = Controls.radioGroup(placementButtons);
 
         var alignmentSection = new TitledSection(Strings.get(Strings.DIALOG_ANNOTATION_ALIGNMENT));
         alignmentSection.add(leftRadio);
@@ -131,47 +138,16 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     protected void populateControls(@Nullable Annotation existingChange) {
         var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
-        annotationCombo.setSelectedItem(annotation.getAnnotation());
-
-        var alignment = annotation.getXAlignment();
-
-        if (alignment == Component.CENTER_ALIGNMENT) {
-            centerRadio.setSelected(true);
-        } else if (alignment == Component.RIGHT_ALIGNMENT) {
-            rightRadio.setSelected(true);
-        } else {
-            leftRadio.setSelected(true);
-        }
-
-        if (annotation.getPlacement() == Annotation.Placement.ABOVE) {
-            aboveRadio.setSelected(true);
-        } else {
-            belowRadio.setSelected(true);
-        }
+        text.set(annotation.getText());
+        alignment.set(annotation.getAlignment());
+        placement.set(annotation.getPlacement());
     }
 
     @Override
     protected Annotation gather() {
-        var annotation = new Annotation(annotationCombo.getValue(), selectedAlignment());
-        annotation.setPlacement(
-            aboveRadio.isSelected() ? Annotation.Placement.ABOVE : Annotation.Placement.BELOW);
+        var annotation = new Annotation(text.get(), alignment.get());
+        annotation.setPlacement(placement.get());
 
         return annotation;
-    }
-
-    /**
-     * @return the {@code Component} alignment constant the selected alignment radio stands for;
-     *         left when none is selected, matching the button group's initial state
-     */
-    private float selectedAlignment() {
-        if (centerRadio.isSelected()) {
-            return Component.CENTER_ALIGNMENT;
-        }
-
-        if (rightRadio.isSelected()) {
-            return Component.RIGHT_ALIGNMENT;
-        }
-
-        return Component.LEFT_ALIGNMENT;
     }
 }

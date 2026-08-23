@@ -76,7 +76,7 @@ public final class AnnotationAttachment extends Attachment {
      * @return width in staff-space units
      */
     public double computeContentWidthSs(Font font) {
-        return ScaleContext.textWidthSs(font, annotation.getAnnotation()).value();
+        return ScaleContext.textWidthSs(font, annotation.getText()).value();
     }
 
     /**
