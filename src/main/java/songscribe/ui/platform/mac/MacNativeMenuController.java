@@ -46,10 +46,10 @@ import songscribe.ui.action.UIAction.AppMenuAction;
  * via {@link Actions#getAppMenuActions()}. Adding a new app menu action requires
  * no changes to this class.
  * <p>
- * Each managed {@code NSMenuItem} is {@code -retain}ed (Rococoa retained these
- * for us before) so its pointer stays valid across runloop ticks. The controller
- * is an application-lifetime singleton with no teardown, so the retains are
- * reclaimed by the OS at process exit rather than via explicit {@code -release}.
+ * Each managed {@code NSMenuItem} is {@code -retain}ed so its pointer stays valid
+ * across runloop ticks. The controller is an application-lifetime singleton with
+ * no teardown, so the retains are reclaimed by the OS at process exit rather than
+ * via explicit {@code -release}.
  */
 public class MacNativeMenuController {
 

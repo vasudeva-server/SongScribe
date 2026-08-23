@@ -23,10 +23,14 @@ package songscribe.ui.platform.mac;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.StructLayout;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
@@ -42,9 +46,16 @@ import org.jspecify.annotations.Nullable;
  * class must not be referenced on other platforms; callers guard with
  * {@link com.formdev.flatlaf.util.SystemInfo#isMacOS}.
  * <p>
- * Only non-struct ({@code id} / pointer) returns are supported here, so a single
- * descriptor per argument signature is sufficient — there is no {@code _stret}
- * variant to worry about on arm64.
+ * A non-struct return ({@code id} / pointer / {@code BOOL} / {@code NSInteger})
+ * needs one descriptor per argument signature. A struct return needs its own
+ * descriptor per struct, and its own entry point: the two architectures return a
+ * struct by different rules, so {@link #msgSendRect} binds the one each requires.
+ * arm64 passes the four doubles of an {@code NSRect} back in registers through
+ * {@code objc_msgSend}, while x86_64 returns the 32-byte struct in memory through
+ * {@code objc_msgSend_stret}. Add a second struct return the same way.
+ * <p>
+ * Every {@code msgSend*} method wraps any failure of the native call in an
+ * {@link IllegalStateException} naming the signature that failed.
  */
 public final class ObjC {
 
@@ -74,6 +85,9 @@ public final class ObjC {
     /** {@code NSInteger objc_msgSend(id self, SEL op)} */
     private static final MethodHandle MSG_SEND_RET_LONG;
 
+    /** {@code NSRect objc_msgSend(id self, SEL op)} (e.g. {@code -frame}) */
+    private static final MethodHandle MSG_SEND_RET_RECT;
+
     /** {@code void objc_msgSend(id self, SEL op)} (e.g. {@code -release}) */
     private static final MethodHandle MSG_SEND_VOID;
 
@@ -83,6 +97,26 @@ public final class ObjC {
     /** {@code void objc_autoreleasePoolPop(void *pool)} */
     private static final MethodHandle AUTORELEASE_POOL_POP;
 
+    private static final StructLayout NS_POINT_LAYOUT = MemoryLayout.structLayout(
+        ValueLayout.JAVA_DOUBLE.withName("x"),
+        ValueLayout.JAVA_DOUBLE.withName("y")
+    );
+
+    private static final StructLayout NS_SIZE_LAYOUT = MemoryLayout.structLayout(
+        ValueLayout.JAVA_DOUBLE.withName("width"),
+        ValueLayout.JAVA_DOUBLE.withName("height")
+    );
+
+    private static final StructLayout NS_RECT_LAYOUT = MemoryLayout.structLayout(
+        NS_POINT_LAYOUT.withName("origin"),
+        NS_SIZE_LAYOUT.withName("size")
+    );
+
+    private static final VarHandle NS_RECT_X = rectField("origin", "x");
+    private static final VarHandle NS_RECT_Y = rectField("origin", "y");
+    private static final VarHandle NS_RECT_WIDTH = rectField("size", "width");
+    private static final VarHandle NS_RECT_HEIGHT = rectField("size", "height");
+
     static {
         var arena = Arena.global();
         var objc = SymbolLookup.libraryLookup("/usr/lib/libobjc.A.dylib", arena);
@@ -90,6 +124,9 @@ public final class ObjC {
         // Loading Foundation registers its Obj-C classes (NSString, NSUserDefaults,
         // …) with the runtime so objc_getClass can resolve them.
         SymbolLookup.libraryLookup("/System/Library/Frameworks/Foundation.framework/Foundation", arena);
+
+        // AppKit does the same for the UI classes (NSApplication, NSWindow, NSView, …).
+        SymbolLookup.libraryLookup("/System/Library/Frameworks/AppKit.framework/AppKit", arena);
 
         OBJC_GET_CLASS = downcall(objc, "objc_getClass",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -113,9 +150,48 @@ public final class ObjC {
             FunctionDescriptor.of(ValueLayout.ADDRESS));
         AUTORELEASE_POOL_POP = downcall(objc, "objc_autoreleasePoolPop",
             FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
+
+        // objc_msgSend_stret exists on x86_64 only, and there it is the required
+        // entry point for a struct this size. arm64 dropped it, and returns the
+        // four doubles in registers through plain objc_msgSend.
+        var structReturnEntryPoint = objc.find("objc_msgSend_stret").isPresent()
+            ? "objc_msgSend_stret"
+            : "objc_msgSend";
+
+        MSG_SEND_RET_RECT = downcall(objc, structReturnEntryPoint,
+            FunctionDescriptor.of(NS_RECT_LAYOUT, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
     }
 
     private ObjC() {
+    }
+
+    /**
+     * An Obj-C {@code NSRect}. Coordinates are in points, in whatever space the
+     * message that produced the rectangle uses. For a view's {@code -frame} that
+     * space is the superview, whose y axis points up.
+     *
+     * @param x left edge
+     * @param y bottom edge
+     * @param width horizontal extent
+     * @param height vertical extent
+     */
+    public record NsRect(double x, double y, double width, double height) {
+        /**
+         * Returns the x coordinate of the right edge, the equivalent of
+         * {@code NSMaxX()}.
+         *
+         * @return the x coordinate of the rectangle's right edge
+         */
+        public double maxX() {
+            return x + width;
+        }
+    }
+
+    private static VarHandle rectField(String group, String field) {
+        return NS_RECT_LAYOUT.varHandle(
+            MemoryLayout.PathElement.groupElement(group),
+            MemoryLayout.PathElement.groupElement(field)
+        );
     }
 
     private static MethodHandle downcall(SymbolLookup lookup, String name, FunctionDescriptor descriptor) {
@@ -230,6 +306,38 @@ public final class ObjC {
     }
 
     /**
+     * Sends a no-argument message returning an {@code NSRect} (e.g. {@code -frame},
+     * {@code -bounds}).
+     * <p>
+     * Unlike the pointer-returning sends, this one has no nil-receiver behavior a
+     * caller can test for. A nil receiver leaves the return registers untouched on
+     * x86_64, and zeroes them on arm64, so the caller gets an undefined or an
+     * empty rectangle with nothing to mark it wrong. Check the receiver first.
+     *
+     * @param receiver the object to message; must not be nil
+     * @param selector the selector to send
+     * @return the rectangle the receiver returned
+     * @throws IllegalStateException if the native call fails, or the returned
+     *                               rectangle cannot be read
+     */
+    public static NsRect msgSendRect(MemorySegment receiver, MemorySegment selector) {
+        try (var arena = Arena.ofConfined()) {
+            var rect = (MemorySegment) MSG_SEND_RET_RECT.invoke(
+                (SegmentAllocator) arena, receiver, selector
+            );
+
+            return new NsRect(
+                (double) NS_RECT_X.get(rect, 0L),
+                (double) NS_RECT_Y.get(rect, 0L),
+                (double) NS_RECT_WIDTH.get(rect, 0L),
+                (double) NS_RECT_HEIGHT.get(rect, 0L)
+            );
+        } catch (Throwable t) {
+            throw asRuntime("objc_msgSend(id, SEL) -> NSRect", t);
+        }
+    }
+
+    /**
      * Reads an {@code NSString} into a Java string via {@code -UTF8String}.
      * Returns {@code null} when the string pointer is {@code nil}.
      */
@@ -264,8 +372,11 @@ public final class ObjC {
      * Runs {@code body} inside a fresh autorelease pool, draining it afterwards so
      * temporary autoreleased objects (e.g. those returned by message sends) do not
      * leak. Extract any Java values you need from native objects before returning.
+     * <p>
+     * The body may produce {@code null}, for a search over native objects that
+     * finds nothing.
      */
-    public static <T> T withAutoreleasePool(Supplier<T> body) {
+    public static <T extends @Nullable Object> T withAutoreleasePool(Supplier<T> body) {
         MemorySegment pool;
 
         try {

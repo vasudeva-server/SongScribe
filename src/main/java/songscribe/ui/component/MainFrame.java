@@ -47,6 +47,7 @@ import java.nio.file.Path;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
@@ -58,6 +59,8 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.WindowConstants;
 
+import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.ui.FlatNativeMacLibrary;
 import com.formdev.flatlaf.util.SystemFileChooser;
 import com.formdev.flatlaf.util.SystemInfo;
 import net.engio.mbassy.listener.Handler;
@@ -101,6 +104,7 @@ import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.menu.MenuController;
+import songscribe.ui.platform.mac.MacWindowControls;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.util.ExtensionFileFilter;
@@ -164,7 +168,31 @@ public class MainFrame extends JFrame implements Printable {
     @Nullable
     private JLabel titleBarLabel = null;
 
-    private static final int MAC_TITLE_BAR_HEIGHT = 28;
+    /** macOS 26 (Tahoe) is the first release that left-aligns the window title. */
+    private static final int MACOS_TAHOE_VERSION = 26;
+
+    /**
+     * True on macOS 26 and later. That release left-aligns the window title beside
+     * the window controls and makes the title bar taller. The app draws its own
+     * title into the title bar area, so it must follow the platform itself.
+     */
+    private static final boolean IS_MACOS_TAHOE_OR_LATER = SystemInfo.isMacOS &&
+        SystemInfo.osVersion >= SystemInfo.toVersion(MACOS_TAHOE_VERSION, 0, 0, 0);
+
+    private static final int MAC_TITLE_BAR_HEIGHT_PRE_TAHOE = 28;
+    private static final int MAC_TITLE_BAR_HEIGHT_TAHOE = 32;
+
+    private static final int MAC_TITLE_BAR_HEIGHT = IS_MACOS_TAHOE_OR_LATER
+        ? MAC_TITLE_BAR_HEIGHT_TAHOE
+        : MAC_TITLE_BAR_HEIGHT_PRE_TAHOE;
+
+    /**
+     * Gap in points between the right edge of the window controls and a left-aligned
+     * title. macOS leaves this much room before the first title element, which is the
+     * proxy icon in an app that shows one.
+     */
+    private static final int MAC_TITLE_CONTROLS_GAP = 16;
+
     private static final int MAC_TITLE_FONT_SIZE = 13;
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
 
@@ -372,6 +400,13 @@ public class MainFrame extends JFrame implements Printable {
 
         hideSplash();
         setVisible(true);
+
+        // The app owns no window until now, so this is the first layout that can
+        // measure the window controls.
+        if (IS_MACOS_TAHOE_OR_LATER) {
+            positionTitleAfterWindowControls();
+        }
+
         forceInitialPaint();
         UIUtils.preWarmDialogPeer(this);
         ActivationGate.install(this);
@@ -637,7 +672,11 @@ public class MainFrame extends JFrame implements Printable {
             var titleBar = new TitlePanel();
             titleBar.setPreferredSize(new Dimension(0, MAC_TITLE_BAR_HEIGHT));
 
-            titleBarLabel = new JLabel("", SwingConstants.CENTER) {
+            var alignment = IS_MACOS_TAHOE_OR_LATER
+                ? SwingConstants.LEADING
+                : SwingConstants.CENTER;
+
+            titleBarLabel = new JLabel("", alignment) {
                 @Override
                 public void updateUI() {
                     super.updateUI();
@@ -646,6 +685,20 @@ public class MainFrame extends JFrame implements Printable {
             };
             // macOS private system UI font for native title bar appearance
             titleBarLabel.setFont(new Font(".AppleSystemUIFont", Font.BOLD, MAC_TITLE_FONT_SIZE));
+
+            if (IS_MACOS_TAHOE_OR_LATER) {
+                positionTitleAfterWindowControls();
+
+                // FlatLaf republishes the control bounds when the native window
+                // appears and on every full-screen toggle. The measurement itself
+                // never changes; the indent does, because full screen hides the
+                // controls.
+                rootPane.addPropertyChangeListener(
+                    FlatClientProperties.FULL_WINDOW_CONTENT_BUTTONS_BOUNDS,
+                    event -> positionTitleAfterWindowControls()
+                );
+            }
+
             titleBar.add(titleBarLabel, BorderLayout.CENTER);
 
             var northPanel = new JPanel(new BorderLayout());
@@ -663,6 +716,32 @@ public class MainFrame extends JFrame implements Printable {
         contentPane.add(requireScoreView().requireScrollPane(), BorderLayout.CENTER);
         contentPane.add(new StatusBar(), BorderLayout.SOUTH);
 
+    }
+
+    /**
+     * Indents the title so that it clears the macOS window controls.
+     *
+     * @effects sets the title label's border; messages AppKit through
+     *          {@link MacWindowControls}, so call on the event dispatch thread
+     */
+    private void positionTitleAfterWindowControls() {
+        if (titleBarLabel == null) {
+            return;
+        }
+
+        // Full screen hides the controls, so the title starts at the gap alone.
+        // FlatLaf answers for this window; MacWindowControls reports a system
+        // metric and cannot say which window is in full screen.
+        var isFullScreen = FlatNativeMacLibrary.isLoaded() &&
+            FlatNativeMacLibrary.isWindowFullScreen(this);
+
+        var controlsWidth = isFullScreen
+            ? 0
+            : (int) Math.round(MacWindowControls.zoomControlRightEdge());
+
+        titleBarLabel.setBorder(
+            BorderFactory.createEmptyBorder(0, controlsWidth + MAC_TITLE_CONTROLS_GAP, 0, 0)
+        );
     }
 
     public void setFrameSize() {
