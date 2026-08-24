@@ -56,11 +56,10 @@ import static songscribe.message.MessageCenter.post;
  * provided the room check passes. From there a drag-left or Escape cancels; a drag-right onto an
  * existing next note pairs directly ({@code GRACE_NOTE_PAIRED}); and a click, or a drag-right with
  * no next note, enters {@code GRACE_NOTE_INSERT} to preview a host note the user has yet to create.
- * {@code GRACE_NOTE_INSERT} either cancels (click miss or Escape) or commits to
+ * Entering that state computes the host-note insertion preview once and holds it fixed until the
+ * user clicks or cancels. {@code GRACE_NOTE_INSERT} either cancels (click miss or Escape) or commits to
  * {@code GRACE_NOTE_PAIRED} on a left-click or line change. Both cancel and success paths run
  * through {@code FINISH}, which tears the interaction down and returns to {@code INACTIVE}.
- *
- * <p>See {@code docs/grace-note-pairing.md} for the full state diagram and per-edge notes.
  */
 public final class GraceModeManager {
 

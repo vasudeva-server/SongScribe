@@ -86,7 +86,7 @@ import songscribe.engraving.Staff;
  *   <li>Every other pairing is uncorrected.
  * </ul>
  *
- * <p>See {@code docs/layout-geometry.md} for the annotated diagram and the correction table.
+ * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
  */
 public final class OpticalSpacing {
 

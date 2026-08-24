@@ -42,7 +42,8 @@ import songscribe.undo.UndoController;
  * {@link #acceptsInsertionIndex} accepts them all — see its contract for why that is a real
  * rule and not a missing one.
  *
- * <p>See section 5 of {@code docs/clipboard.md} for the full state diagram.
+ * <p>See <i>Placing a paste by clicking</i> in {@code docs/clipboard.md} for the division of
+ * labour between the mode and its clients.
  */
 public final class PasteModeManager implements InsertionPointMode.Client {
 

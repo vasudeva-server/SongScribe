@@ -36,13 +36,15 @@ If they would differ — and differ *defensibly*, each able to argue their readi
 The promise is determinable from something you can point at:
 
 - **the type system** — nullability, sealed hierarchies, what an enum admits;
-- **arithmetic** — geometry, spacing, unit conversion (`docs/unit-conversion.md`
-  and `docs/zoom.md` already state the governing rules);
+- **arithmetic** — geometry, spacing, unit conversion
+  (`.claude/guides/spatial-units.md` and `docs/zoom.md` already state the
+  governing rules);
 - **an external standard** — MusicXML's schema, SMuFL's glyph registry, the MIDI
   spec. The standard is the authority and it is readable;
-- **an existing tier-3 document** — `docs/mutations.md`, `docs/lyrics.md`,
-  `docs/messages.md`, `docs/undo.md`, `docs/lifecycle.md`. If the rule is already
-  stated there, the method contract cites it rather than re-deciding it;
+- **an existing subsystem overview** — `docs/mutations.md`, `docs/lyrics.md`,
+  `docs/messages.md`, `docs/undo.md`, `docs/lifecycle.md`. If the arrangement is
+  already described there, the method contract cites it rather than re-deciding
+  it;
 - **collections, parsing, string handling, serialization round-trips**, and
   dispatch or delegation whose only promise is *this call reaches that
   collaborator*.

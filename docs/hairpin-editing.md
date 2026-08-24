@@ -1,226 +1,132 @@
-# Hairpin Editing Rules
+# Hairpin Editing
 
-This document is the long-term home for the editor's hairpin rules: how
-`MusicEditOperations.resolveHairpinAction(Hairpin.Kind)` decides whether a
-selection can carry a new hairpin, extend an existing one, or is blocked or
-ineligible. `docs/line-layout.md` covers hairpin *layout and rendering*
-(endpoint geometry, stacking, spacing); this document covers the *editor*
-decision that precedes layout.
+Whether a selection can carry a new hairpin, extend an existing one, or neither.
+[line-layout.md](line-layout.md) covers where a hairpin's tips end up once it
+exists; this is the decision that precedes layout, and
+[span-invalidation.md](span-invalidation.md) is the framework that re-asks it
+after every element change.
 
-## Decision tree
+## The resolution runs per menu item
 
-`resolveHairpinAction` is resolved once per menu item, with the hairpin kind
-(`Hairpin.Kind.CRESCENDO` or `DIMINUENDO`) as an explicit input — the two menu
-items can and do disagree about the same selection, because a crescendo
-extension and a diminuendo addition are different gestures over different
-spans.
+Crescendo and diminuendo are resolved separately, with the kind as an input,
+because the two menu items can and do disagree about the same selection — a
+crescendo extension and a diminuendo addition are different gestures over
+different stretches of music.
 
-```
-resolveHairpinAction(kind)                    selection = [begin, end]
-──────────────────────────────────────────────────────────────────────
-  range == null? ────────────────────────yes──> INELIGIBLE
-        │ no
-        ▼
-  ┌─ converge the union ────────────────────────────────────────────┐
-  │   sameType = findSpans(kind.spanType(),                         │
-  │       overlapping(spanBegin−REACH, spanEnd+REACH))              │
-  │   isExtend = !sameType.isEmpty()                                │
-  │   a sameType hairpin covers the ORIGINAL [begin,end]? → BLOCKED │
-  │   widen [spanBegin, spanEnd] over every sameType hairpin        │
-  │ repeat while the span grew                                      │
-  └─────────────────────────────────────────────────────────────────┘
-        ▼
-  anchorComesFromSelection && !canAnchorHairpin(begin, spanEnd)? ─yes─> INELIGIBLE
-  endComesFromSelection   && !canEndHairpin(end)?               ─yes─> INELIGIBLE
-        │ no          └── an inherited endpoint stays put, unchecked
-        ▼
-  spansStructuralBoundary(spanBegin, spanEnd)? ──yes──> isExtend ? BLOCKED
-        │ no                                                     : INELIGIBLE
-        ▼
-  hasSpan(kind.opposite(),
-          overlappingBeyondEndpoint(spanBegin, spanEnd))? ──yes──> BLOCKED
-        │ no        └── one shared endpoint is allowed; ≥2 shared is not
-        ▼
-  !isExtend && !Hairpin.hasEnoughColumns(…)? ────────────────yes─> INELIGIBLE
-        │ no
-        ▼
-  isExtend ? EXTEND : CAN_ADD   over [spanBegin, spanEnd]
-```
+The resolution is recomputed on every ask and deliberately not cached. Two
+resolutions cost a few scans per selection change, which is free; a resolution
+cached against the selection would go stale the moment a hairpin is added or
+undone without the selection moving, leaving both menu items lying about what they
+would do.
 
-## `INELIGIBLE` vs `BLOCKED`
+## The span converges before anything is judged
 
-- **`INELIGIBLE`** — this span cannot carry a hairpin, whatever else is on the
-  line. The menu item reads "Add …", disabled.
-- **`BLOCKED`** — another hairpin is the obstacle. The menu item reads
-  "Add …" (or "Extend …" for the boundary case reached mid-extension),
-  disabled.
+Adding a hairpin absorbs any same-type hairpin within reach of it, and absorbing
+one can bring a further one into reach. So the span widens over every same-type
+hairpin found, then rescans at the wider span, repeating until a pass finds
+nothing new.
 
-Every return in `resolveHairpinAction` follows that distinction, including the
-structural-boundary check's ternary: when the union only reaches the boundary
-because a same-type hairpin widened it, that hairpin is the obstacle
-(`BLOCKED`); when the raw selection itself crosses the boundary with nothing
-in play, the span itself is at fault (`INELIGIBLE`).
+That has to converge **before** the endpoint, boundary, opposite-type and
+column-count checks run, because all four judge the span the model is actually
+about to build. A menu label promising a narrower hairpin than the commit would
+produce would be a lie. Each pass either strictly widens the span or ends the
+loop, so it takes at most one pass per same-type hairpin on the line.
+
+## Ineligible versus blocked
+
+Two different refusals, and every return distinguishes them:
+
+- **Ineligible** — this stretch of music cannot carry a hairpin, whatever else is
+  on the line.
+- **Blocked** — another hairpin is the obstacle.
+
+The structural-boundary check shows why the distinction is worth keeping: when the
+span only reaches the boundary because a same-type hairpin widened it, *that
+hairpin* is the obstacle; when the raw selection crosses the boundary on its own,
+the selection is at fault.
+
+An endpoint inherited from an absorbed hairpin rather than supplied by the
+selection is left unchecked — it is already where it was, and re-judging it would
+refuse an extension because of a position the user is not proposing.
 
 ## Back-to-back hairpins
 
-Two opposite-type hairpins may share exactly the one element where one ends
-and the next begins — a crescendo ending on note 4 and a diminuendo starting
-on note 4 is legal, ordinary engraving practice. A gap between them is
-equally fine. More than one shared element is a collision and is `BLOCKED`.
+Two opposite-type hairpins may share **exactly one** element, where one ends and
+the next begins. A crescendo ending on a note and a diminuendo starting on it is
+ordinary engraving practice, and a gap between them is equally fine. More than one
+shared element is a collision.
 
-`Span.overlappingBeyondEndpoint` is what permits this: it treats the single
-shared boundary element as *not* an overlap, so `Line.hasSpan(kind.opposite(),
-Span.overlappingBeyondEndpoint(...))` only fires when the opposite-type
-hairpin's overlap goes beyond that one shared element. This also fixes a
-pre-existing accident where a gap of exactly one element was blocked while a
-gap of two or more already worked — both reused the same-type adjacency scan
-before this predicate existed.
+The predicate that permits this treats a single shared boundary element as *not*
+an overlap, so the opposite-type check only fires when the overlap goes beyond
+that one element.
 
-At layout time, the shared element's endpoints pull back from the notehead
-center by `Hairpin.BACK_TO_BACK_PADDING_SS` on each side, so the two wedges'
-tips do not touch — see `docs/line-layout.md`, Example 8. This holds only when
-the shared element carries no dynamic. When it does — `<f>` — the dynamic's
-own-bound rule takes precedence instead; see
-[Text dynamics at a hairpin bound](#text-dynamics-at-a-hairpin-bound) below.
+## A dynamic may sit on a bound, never inside
 
-## Text dynamics at a hairpin bound
+A text dynamic may sit on **either bound** of a hairpin — its first or its last
+element — or outside it entirely. It may never sit **strictly inside**. So a
+dynamic before a crescendo, after a diminuendo, or between two back-to-back
+hairpins are all legal, and only the wedge's interior is off limits.
 
-A text dynamic (`p`, `mf`, `f` …) may sit on **any hairpin bound** — a
-hairpin's anchor element or its end element. It may never sit **strictly
-inside** a hairpin's range. So `f<`, `>p` and `<f>` are all legal, and only
-the wedge's interior is off limits. This is LilyPond's uniform bound rule
-(`lily/hairpin.cc:216-220`, the `has_interface<Text_interface>(b)` branch pads
-the wedge away from a dynamic text that *is* its bound).
+Two things enforce it, one live and one on commit: the dynamic commands are
+unavailable for a selection strictly inside a hairpin, and adding or extending a
+hairpin over an existing dynamic strips only those in the strict interior, leaving
+one that has become a bound alone.
 
-`<f>` on a single note — a leading crescendo, an `f`, and a trailing
-diminuendo, all anchored on that one note — is the configuration issue #744
-was filed for. The hairpins were never the problem: #743 already made two
-opposite-type hairpins sharing one element creatable (see "Back-to-back
-hairpins" above). What was missing was the UI half — the dynamic itself could
-not be placed: `DynamicMarkingAction.updateEnabledState` disabled all six
-dynamic actions on any element inside a hairpin's *inclusive* range, so the
-shared bound was off limits along with the true interior.
+**The rule is bound-wide rather than shared-element-only, and that is what makes
+it need no cleanup machinery.** Deleting one of two back-to-back hairpins that
+shared a dynamic-bearing element leaves the survivor with that element as its own
+bound — which is itself a legal shape. Nothing is ever left stranded that the menu
+would refuse to create, so there is no sweep to hook into deletion.
 
-The editor enforces the bound-or-outside rule through two symbols:
+## Ending on a rest, but never starting from one
 
-- `SpanLookup.isInsideHairpin` — read by
-  `DynamicMarkingAction.updateEnabledState` to decide whether the dynamic
-  actions are enabled for the current selection. It reports true only for a
-  hairpin's strict interior, never for either bound.
-- `MusicEditOperations.stripInteriorPointDynamics` — strips any point dynamic
-  that falls in a hairpin's strict interior when the hairpin is added or
-  extended over it. A dynamic already sitting on what becomes a bound is left
-  alone.
+A hairpin may **end** on a rest and may never **anchor** on one: a wedge closing
+on a rest reads naturally, trailing off into silence, but a wedge cannot
+meaningfully begin from silence.
 
-The rule is bound-wide — covering `f<` and `>p` as well as `<f>` — rather than
-shared-note-only, and that is deliberate: it needs no invalidation machinery.
-Deleting one of two back-to-back hairpins that shared a dynamic-bearing
-element leaves the surviving hairpin with that same element as its own bound
-— `f>` after deleting the crescendo out of `f<>`, say — which is itself a
-legal shape under this rule. Nothing is ever left stranded that the menu
-would refuse to create, so there is no cleanup sweep to hook into
-`Line.applySpanOutcomes` or the hairpin arm of
-`ScoreViewController.deleteSelectedTarget`.
+**At most one rest, though.** A rest is accepted as an end only when the nearest
+duration element before it is a pitched note, so a hairpin ends on the rest that
+closes a run of notes and not on a second one after it — a wedge running on across
+further rests has nothing left to slope over. Selecting a note and two rests is
+therefore refused outright rather than resolving to a shorter span: the resolution
+never narrows a selection, it only reports that the end the selection supplies
+cannot be an end. Non-durations are skipped when looking back, so a grace note
+between two rests does not make the second one count as the first of its run.
 
-## The rest rule and its asymmetry
+This is a rule about where a hairpin *stops*, not about what it may *cross*.
+Interior rests, however many, are unaffected.
 
-A hairpin may **end** on a rest (`Hairpin.canEndAt`) but may never **anchor**
-on one (`Hairpin.canAnchorAt`, unchanged). `Line.canEndHairpin` and
-`Line.canAnchorHairpin` are thin instance conveniences that delegate to these
-— the rule itself lives on `Hairpin`. This follows LilyPond
-(`hairpin.cc:268-271`): a wedge closing on a rest reads naturally — the
-diminuendo trails off into silence — but a wedge cannot meaningfully begin
-from silence.
+## The model can never hold a shape the menu would refuse
 
-**At most one rest**, though. `Hairpin.canEndAt` accepts a rest only when the
-nearest duration element before it is a pitched note, so a hairpin ends on
-the rest that closes a run of notes and not on a second one after it — a
-wedge running on across further rests has nothing left to slope over.
-Selecting `note, rest, rest` is therefore `INELIGIBLE` rather than resolving
-to a shorter span; the resolution never narrows a selection, it only reports
-that the end the selection supplies cannot be an end. Non-durations are
-skipped when looking back, so a grace note between two rests does not make
-the second one count as the first of its run.
+A hairpin is re-checked after **every** change to the line's elements — insertion,
+replacement and deletion alike, not only replacement — and the rules consulted are
+exactly the three the menu itself reads. Whatever a fresh hairpin could not anchor
+on, end on, or slope across, a surviving hairpin cannot be left with either.
 
-This is a rule about where a hairpin *stops*, not about what it may *cross*:
-interior rests, however many, are unaffected.
+The response differs by what the edit made possible:
 
-`Hairpin.resolveEndIndex` reads the same predicate, so deleting a hairpin's
-end element pulls the end in to the first surviving rest rather than the
-last — the model can never hold a shape the menu would refuse to create.
+- An **insertion or a replacement** that leaves an endpoint invalid **removes**
+  the hairpin, silently, the way ties and tuplets go; undo restores it. Neither
+  deletes an element for the hairpin to pull back to, so there is no reliable
+  "move the end there instead" to reach for. Left unchecked, re-pointing would
+  quietly produce shapes the menu would never allow — a hairpin ending on a grace
+  note, or anchored on silence.
+- A **deletion** **reshapes** the hairpin to its nearest valid endpoints instead,
+  because a deletion always leaves a shorter run of surviving elements to pull back
+  onto.
 
-## A hairpin is revalidated after every element change
+**Two legal endpoints do not imply a legal hairpin.** A grace note shares its
+host's column, so a hairpin anchored on a grace note and ending on its host has
+two elements but a single column — both endpoints legal, nothing to slope across.
+That shape is removed rather than kept. An insertion can only widen a span, so it
+never costs a hairpin its columns.
 
-A hairpin is re-checked against `Hairpin.outcomeFor` after **every** change to
-the line's elements — insertion, replacement or deletion — not only
-replacement. See `docs/span-invalidation.md` for the general framework this
-sits on top of (the projected-element-list hook every span type answers, and
-why decisions are made before the change lands); this section covers only the
-rules `Hairpin.outcomeFor` applies.
-
-An insertion or a replacement that leaves an endpoint invalid **removes** the
-hairpin, silently, the way ties and tuplets go; undo restores it. Left
-unchecked, `Line.setElement`'s re-pointing would quietly produce shapes the
-menu would never allow — replace the rest a hairpin ends on with a grace note
-and the hairpin ends on the grace note; replace an anchor note with a rest and
-the hairpin is anchored on silence — and an insertion can do the same, for
-example pushing a hairpin's end rest into second place in its run. The
-hairpin is removed rather than shortened for these two shapes because neither
-one deletes an element for the hairpin to pull back to: there is no reliable
-"move the end there instead" to reach for.
-
-A **deletion**, by contrast, **reshapes** the hairpin to its nearest valid
-endpoints rather than removing it, because a deletion always leaves a shorter
-run of surviving elements for the hairpin to pull back onto.
-
-In every case the rules consulted are exactly `Hairpin.canAnchorAt`,
-`Hairpin.canEndAt` and `Hairpin.hasEnoughColumns` — the same three the menu
-itself reads when deciding whether a selection is eligible for a new hairpin
-(the first two through `Line.canAnchorHairpin` / `Line.canEndHairpin`). The
-model can therefore never hold a shape the menu would refuse to create:
-whatever a fresh hairpin could not anchor on, end on, or slope across, a
-surviving hairpin cannot be left with either.
-
-The column rule is the one that two legal endpoints do not imply. A grace note
-shares its host's column, so a hairpin anchored on a grace note and ending on
-its host has two elements but a single column — both endpoints legal, nothing
-to slope across. Deleting everything after the host of such a hairpin, or
-replacing a two-note hairpin's anchor with a grace note, therefore **removes**
-the hairpin rather than leaving that shape behind. An insertion can only ever
-widen the span, so it never costs a hairpin its columns.
-
-A trailing rest counts toward the two-column minimum
-(`Hairpin.MIN_COLUMNS`): one pitched note followed by a rest is enough
-columns for a new hairpin to slope across, even though the rest itself
-carries no dynamic. `Hairpin.hasEnoughColumns` counts every pitched note in
-`[begin, end]` plus one more if the element at `end` is a rest; interior
-rests and grace notes never count.
-
-## Why the union converges rather than scanning once
-
-`Line.addHairpin` absorbs any same-type hairpin within `Line.
-SPAN_ADJACENCY_REACH` of the span it is handed, and absorbing one hairpin can
-bring a further one into reach. `resolveHairpinAction` widens
-`[spanBegin, spanEnd]` over every same-type hairpin found, then rescans at the
-wider span, repeating until a pass finds nothing new to absorb. This has to
-converge before the endpoint, boundary, opposite-type and column-count checks
-run, because all four judge the *resolved* span the model is about to build,
-not the raw selection — a menu label promising a narrower hairpin than
-`Line.addHairpin` will actually produce would be a lie. Each pass either
-strictly widens the union or ends the loop, so convergence takes at most one
-pass per same-type hairpin on the line.
-
-## The resolution is deliberately uncached
-
-`resolveHairpinAction` is recomputed on every call, once per menu item. Two
-independent resolutions cost a handful of `O(spans)` scans per selection
-change, which is free; a resolution cached on the selection would go stale
-the moment a hairpin is added or undone without the selection moving,
-leaving both menu items lying about what they will do.
+A trailing rest counts toward the two-column minimum: one pitched note followed by
+a rest is enough to slope across, even though the rest carries no dynamic of its
+own. Interior rests and grace notes never count.
 
 ## Corpus figures
 
-Both configurations documented here are ordinary engraving practice, not
-theoretical edge cases: back-to-back hairpins appear in 25 files of the ABC
-corpus, and hairpins bounded by a trailing rest appear in two. See issue
-#743.
+Both configurations documented here are ordinary engraving practice rather than
+theoretical edge cases: back-to-back hairpins appear in twenty-five files of the
+ABC corpus, and hairpins bounded by a trailing rest in two.

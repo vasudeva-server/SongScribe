@@ -186,15 +186,22 @@ contradict itself:
 Package invariants go in `package-info.java`, which otherwise carries only
 `@NullMarked` here.
 
-## When it belongs in `docs/` instead
+## What does not go in `docs/`
 
-Tier 3, a prose document, when the rule **spans subsystems** and no single class
-owns it. *"Creating a tuplet preserves the absolute playback duration of the
-enclosed passage"* is not a fact about one method. Live examples: `docs/undo.md`,
-`docs/line-layout.md`, `docs/key-signatures.md`.
+**A contract is never a document.** However many subsystems a promise touches, it
+is a promise about some method, class or lifetime, and it belongs on that member
+in Javadoc. *"Creating a tuplet preserves the absolute playback duration of the
+enclosed passage"* reads like a cross-cutting rule and is not one — it is the
+contract of the method that creates a tuplet, and stating it in prose elsewhere
+makes a second copy that nothing keeps honest.
 
-Method Javadoc then **links** to the document. A paraphrase is a second copy, and
-the second copy is the one that goes stale.
+`docs/` is for the shape a reader cannot recover from any one class: what the
+pieces are, how work flows between them, and which piece decides what. A doc
+states concepts, never class or method names — see the `docs/` paragraph in
+[CLAUDE.md](../../CLAUDE.md).
+
+Where a doc genuinely carries the shape, method Javadoc **links** to it rather
+than paraphrasing.
 
 ## `@Nullable` returns
 

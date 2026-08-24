@@ -60,8 +60,8 @@ import songscribe.dom.StaffElement;
  * surviving spans are added.
  *
  * <p>Because the stored {@code Fragment} is never itself inserted, repeated pastes
- * are independent by construction. See section 1 of {@code docs/clipboard.md} for the full
- * diagram.
+ * are independent by construction. {@code docs/clipboard.md} gives the surrounding
+ * arrangement this sits in.
  *
  * @param elements         The captured elements, cloned from the source line
  * @param priorAccidentals The effective accidental each element had on its source line,

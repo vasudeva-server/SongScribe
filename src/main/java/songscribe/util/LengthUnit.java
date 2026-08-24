@@ -32,8 +32,8 @@ import songscribe.prefs.PrefsValue;
  * to a unit and back returns it unchanged up to floating-point rounding.
  *
  * <p>This is a display unit, not a layout unit. Staff spaces and pixels — and the rules for
- * moving between them — are a separate matter, covered by {@code docs/unit-conversion.md};
- * nothing here is a suffix that document governs.
+ * moving between them — are a separate matter, covered by
+ * {@code .claude/guides/spatial-units.md}; nothing here is a suffix that guide governs.
  *
  * <p><b>Nothing reads the user's choice yet.</b> The Preferences dialog offers it and the
  * conversions below are unused, because the line-width field that displayed inches or

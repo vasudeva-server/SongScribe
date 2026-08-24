@@ -21,7 +21,7 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Design Docs
 
-`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others) and the tier-3 layer of the contract hierarchy — architectural and domain rules that span subsystems, which no single class's Javadoc can state because no single class owns them (`unit-conversion.md`, `zoom.md`, `lyrics.md`, `messages.md`, `mutations.md`, and others). Guides in `.claude/guides/` tell you the conventions to follow within that hierarchy — how to write code here, not what the system promises. The two directories are siblings, not nested: `docs/` states promises, `.claude/guides/` states conventions. Check for a matching doc before a non-trivial change to one of these areas.
+`docs/*.md` holds subsystem overviews — the picture you would otherwise build by reading multiple classes: what the pieces are, how work flows between them, and which piece decides what. Do NOT repeat Javadocs or API in prose. Write a doc when the shape is the thing that is hard to recover, and it should state *concepts*, not class/method names. Guides in `.claude/guides/` state the conventions code must follow — how to write code here. The two directories are siblings, not nested: `docs/` states shape, `.claude/guides/` states conventions. Check for a matching doc before a non-trivial change to one of these areas.
 
 ### Spawning Fresh Subagents
 
@@ -35,9 +35,9 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.claude/guides/strings.md).
 - **MusicXML** — reading, writing, the `ScorePartwise` object graph, a builder or mapper, or any question about what a MusicXML file may contain: [MusicXML Object Model](docs/musicxml-object-model.md). Note especially that **only SongScribe-authored files are read** — foreign input is rejected at the provenance gate, so no design effort goes into supporting it.
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](docs/lyrics.md).
-- **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](docs/unit-conversion.md).
+- **Pixels, staff-spaces, or conversion between them**: [Spatial Units](.claude/guides/spatial-units.md).
 - **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](docs/zoom.md).
-- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message Framework](docs/messages.md).
+- **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Messages](.claude/guides/messages.md) for the conventions, [The Message Bus](docs/messages.md) for how delivery, subscriber lifetime and scopes behave.
 - **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation Framework](docs/mutations.md).
 - **Key signatures** — line keys and inheritance, mid-line key changes, cautionary rendering, or the cancellation policy: [Key Signatures](docs/key-signatures.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.claude/guides/option-dialogs.md).

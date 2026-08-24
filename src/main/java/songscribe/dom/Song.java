@@ -1268,6 +1268,17 @@ public final class Song implements Disposable {
      * {@link SongDidChangeNotification} with all accumulated mutations.
      * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
      * the depth counter is always balanced even if {@code body} throws.
+     *
+     * <p>Every state change {@code body} makes must be recorded as a {@link Mutation} in this
+     * bracket's batch, through {@link #applyChange} or a {@code Line} helper wrapping it. Undo
+     * replays the recorded batch mechanically, so a change made outside that route — a raw
+     * {@code spans.removeIf}, a field written directly — is invisible to it and makes the round
+     * trip lossy. The failure is silent: the batch still replays cleanly, with the unrecorded
+     * change simply missing. A helper that drops dependent state therefore routes each removal
+     * through the typed tracked helper {@code Line.removeInvalidatedSpan} dispatches to, so the
+     * proper removal mutation lands in the batch.
+     *
+     * @invariant every state change made inside the bracket is recorded as a mutation in its batch
      */
     public void withModification(Runnable body) {
         modifications.withModification(body);
@@ -1288,7 +1299,8 @@ public final class Song implements Disposable {
      * Executes {@code body} inside a modification bracket that declares {@code label}
      * as its op-name (Tier B), then posts a single {@link SongDidChangeNotification}.
      * The label is captured only if this is the outermost bracket (see
-     * {@link #beginModification(String)}).
+     * {@link #beginModification(String)}). {@code body} carries the same recording
+     * obligation stated on {@link #withModification(Runnable)}.
      */
     public void withModification(String label, Runnable body) {
         modifications.withModification(label, body);

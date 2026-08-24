@@ -12,6 +12,23 @@ SongScribe approves for the word — both name a physical place on a staff.
 - **"Beams at the seams"** — the beat-context problem at the two edges of a
   paste. See `docs/clipboard.md` and `PasteSpanReconciliation`.
 
+## Key versus signature
+
+**A key is the key. A key signature is what gets drawn from it.** The notator
+does not think of changing the signature; they think of changing the key, and the
+signature follows. Every name in this area is chosen against that rule, and it
+applies to user-facing strings as much as to code.
+
+- **Key** — the value, and anything that establishes or edits one. On screen the
+  notator reads "Key Change", never "Key Signature Change".
+- **Key signature** — only what is rendered: the positioned box in a staff
+  header, and the painting of it. Nothing else may take the name.
+
+The tell that a name is wrong is that it describes the value or the edit while
+saying "signature", or describes glyphs on a staff while saying "key". Where the
+words genuinely describe drawn accidentals — "five flats" in a key's display
+name — "signature" stays correct.
+
 ## The dialog framework's record boundary
 
 The dialog framework's record boundary is the **dialog interface**; the

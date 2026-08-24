@@ -86,7 +86,7 @@ import songscribe.util.UIUtils;
  * While the mode is active, presses on a line are inert — no line select, no lyric select,
  * no pitch drag — so the click that follows is always a placement or a cancel.
  *
- * <p>See section 5 of {@code docs/clipboard.md} for the state diagram and the division of
+ * <p>See <i>Placing a paste by clicking</i> in {@code docs/clipboard.md} for the division of
  * labour with {@link PasteModeManager}.
  *
  * <p>Mirrors {@link GraceModeManager}'s single-flag / static-instance shape: at most one

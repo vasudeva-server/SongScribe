@@ -96,8 +96,8 @@ Produce:
   rejects;
 - **fan-in per public method** — how many callers rely on it, which is what
   decides whether it earns a contract at all;
-- which existing `docs/*.md` state rules governing this target, since those are
-  tier-3 contracts a method cites rather than restates;
+- which existing `docs/*.md` describe the subsystem this target sits in, since a
+  method cites that overview rather than restating it;
 - every test class, with its case count and what it appears to cover.
 
 Subagent prompts must bound the search surface: absolute working directory,

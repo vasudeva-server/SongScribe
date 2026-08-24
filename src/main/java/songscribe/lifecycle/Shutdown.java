@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * tasks LIFO on the hook thread, and the {@code CleanupTask} wrapper guarantees each runs at most
  * once across both paths.
  *
- * <p>See {@code docs/lifecycle.md} for the full diagram.
+ * <p>See {@code docs/lifecycle.md} for how this fits the surrounding lifecycle.
  */
 public final class Shutdown {
 

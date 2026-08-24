@@ -1,40 +1,33 @@
-# Layout Geometry Diagrams
+# Layout Geometry
 
-Spatial reference diagrams for `songscribe.layout` and `songscribe.shape`. The classes
-themselves carry prose summaries and point here.
+Spatial reference for the parts of layout where the arrangement is easier to see
+than to read. See [line-layout.md](line-layout.md) for the placement rules these
+geometries serve.
 
-See also [Line Layout Rules](line-layout.md) for the placement rules these geometries
-serve, and [Unit Conversion](unit-conversion.md) for the pixel/staff-space
-conventions.
+## Ledger-line extent
 
----
-
-## Ledger-line extent (`NoteGeometry.LedgerLineGeometry`)
-
-Note-relative coordinates, X right-positive, Y down-positive.
+Note-relative, horizontal right-positive, vertical down-positive.
 
 ```
                       note origin (x = 0)
                            |
         headLeft           |          headRight
            |               |              |
-   --------+---------------+--------------+--------   ← a ledger line (one of several),
-   |       |          width = headRight - headLeft    drawn at note-relative y = yOffsetSs
-   |       |                              |       |   (Y increases downward)
+   --------+---------------+--------------+--------   ← one ledger line, drawn at
+   |       |          width = headRight - headLeft      the note-relative height
+   |       |                              |       |    it belongs to
 ledgerLeft |                              |  ledgerRight
    <-------->                             <-------->
-   lf · width                             lf · width
+    overhang                               overhang
 
-   accidental clamp midpoint = (accRight + headLeft) / 2
-     lands between the accidental's right edge and headLeft, i.e. right of ledgerLeft;
-     extentAtSs() pulls ledgerLeft in to this midpoint where an accidental spans the ledger's y.
+   accidental clamp midpoint = midway between the accidental's right edge
+     and headLeft — i.e. right of ledgerLeft. Where an accidental spans the
+     ledger's height, the ledger's left end is pulled in to that midpoint.
 ```
 
----
+## Column extent
 
-## Column extent (`NoteColumnGeometry`)
-
-Note-local space, X = 0 at the notehead glyph origin.
+Note-local, with the origin at the note-head glyph.
 
 ```
   Stem up:
@@ -50,16 +43,15 @@ Note-local space, X = 0 at the notehead glyph origin.
     |←  left   →|    ←left            →right
 ```
 
-Full-extent left is driven by the accidental if present, else the stem's left edge when the
-stem points down, else the notehead's left edge. Full-extent right is driven by the stem's
-right edge when the stem points up, else the notehead's right edge or the augmentation dots.
-The stem-free glissando-attach extent drops the stem contribution entirely, so its left and
-right come only from the accidental, notehead, and augmentation dots. Ledger lines are
-excluded — they are reference lines, not ink the glissando must avoid.
+The left edge is driven by the accidental if there is one, else the stem when it
+points down, else the note head. The right edge is driven by the stem when it
+points up, else the note head or the augmentation dots.
 
----
+The extent used for attaching a glissando is a **different** measurement: it drops
+the stem entirely, taking only the accidental, note head and dots. Ledger lines
+are excluded from both — they are reference lines, not ink a glissando must avoid.
 
-## Stem-tip Y (`ElementColumnBuilder`)
+## Stem-tip height
 
 ```
 Stem up:            Stem down:
@@ -69,134 +61,112 @@ Stem up:            Stem down:
  ==o==                  |  <- bottom (tip)
 ```
 
-For stem-up elements the top is the stem tip above the head. For stem-down or stemless
-elements the top is the top edge of the element's own glyph bounding box — a rest reaches
-far higher than a notehead, and a barline spans half the staff height — rather than a fixed
-notehead half-height.
+For a stem-up element the top is the stem tip. For a stem-down or stemless one it
+is the top of the element's own glyph box — a rest reaches far higher than a note
+head, and a barline spans half the staff — rather than a fixed note-head
+half-height.
 
----
+## Optical stem-overlap correction
 
-## Optical stem-overlap correction (`OpticalSpacing`)
-
-Screen-down Ss axis; negative is higher on the staff.
+Two adjacent columns whose stems point opposite ways read as closer together than
+they are, because the ink between them is a stem and a stem rather than two note
+heads. Where their vertical spans genuinely overlap, the gap is widened; where two
+same-direction stems sit far apart in pitch, it is adjusted the other way.
 
 ```
-    -Ss --- stem tip (UP stem)
+    higher  --- stem tip (UP stem)
           |
           |       prev (UP)        curr (DOWN)
-    top --|       +---+             +---+   <- getAbsoluteTopYSs  (smaller / higher)
+    top --|       +---+             +---+   <- smaller / higher
           |  o====|   |       o=====|   |
-      0 --+---- staff middle line ---------
+        --+---- staff middle line ---------
           |       |   |notehead    |   |
-    bot --|       +---+             +---+   <- getAbsoluteBottomYSs (larger / lower)
+    bot --|       +---+             +---+   <- larger / lower
           |                          |
-    +Ss --                          +-- stem tip (DOWN stem)
+    lower --                        +-- stem tip (DOWN stem)
 
-    verticalOverlapSs = min(bottoms) - max(tops)   (> 0 only where the spans intersect)
-
-    A grace note is a stem-UP row like any other, on its shorter grace stem.
+    vertical overlap = min(bottoms) − max(tops), positive only where
+                       the two spans actually intersect
 ```
 
-| prev | curr | fires when | correction (Ss) |
-| ---- | ---- | ---------- | --------------- |
-| stem UP | stem DOWN | overlap > 0, not a knee | `+ramp * OPPOSITE_STEM_MAX_CORRECTION_SS` |
-| stem DOWN | stem UP | overlap > 0, not a knee | `-ramp * OPPOSITE_STEM_MAX_CORRECTION_SS` |
-| stem X | stem X | \|deltaPos\| > `SAME_DIRECTION_THRESHOLD_SS` | `±SAME_DIRECTION_MAX_CORRECTION_SS` (widen if curr is higher) |
-| barline | stem DOWN | overlap(staff span, curr) > 0 | `+ramp * DOWNSTEM_BARLINE_MAX_CORRECTION_SS` |
-| — | — | otherwise | 0 |
+The correction ramps with how much the spans overlap, up to a cap, rather than
+switching on at a threshold — so the spacing does not jump as a pitch changes by
+one step. A grace note is an ordinary stem-up row on its own shorter stem. A
+barline against a stem-down note is corrected too, measured against the staff span
+rather than against a note.
 
-where `ramp = min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)`.
+The correction is skipped for a knee — two stems already pointing away from each
+other — where the ink is not in fact adjacent.
 
----
+## The spring recipe
 
-## Spring recipe (`HorizontalSpacingCalculator.buildSpring`)
-
-Each `Spring` governs the delta-X between one adjacent column pair, `prev` to `curr`.
+Each spring governs the distance between one adjacent pair of columns.
 
 ```
-  base rest  ┌ grace note prev ──▶ prevRight + GRACE_HOST_REST_SS     (fixed, never scales)
-             ├ key change curr ──▶ rightExtentExclAug + KEY_SIGNATURE_PADDING_SS
-             │                                                     (fixed, never scales)
-             ├ same beam group ──▶ rightExtentExclAug + factor × lineRest  (0.6× both ≤16th,
-             │                                                              else 1.0×)
-             └ otherwise ────────▶ rightExtentExclAug + lineRest                      (1.0×)
+  resting length  ┌ grace note before ──▶ a fixed rest that never scales
+                  ├ key change after ───▶ a fixed padding that never scales
+                  ├ same beam group ────▶ a reduced share of the line rest
+                  └ otherwise ──────────▶ the full line rest
 
-  strut = max( note-collision floor    prevRight + minInkGap + |currLeft|
-                                                  where minInkGap = KEY_SIGNATURE_PADDING_SS
-                                                    when curr is a key change, else
-                                                    MIN_COLUMN_GAP_SS
-             , syllable-collision floor prevSyl/2 + prev.minCollisionGapToNextSyllable
-                                                  + currSyl/2   (either bears a syllable;
-                                                    floor = 1 space, or bare hyphen if hyphenated)
-             , glissando reservation    prevRight − currLeft
-                                                  + MIN_GLISSANDO_RESERVATION_SS
-                                                                (prev has a glissando)
-             , grace compression floor  rest − GRACE_HOST_COMPRESSION_ALLOWANCE_SS
-                                                                (prev is a grace note)
-             , hairpin reservation      MINIMUM_LENGTH_SS − curr.noteheadWidth
-                                                                (only when prev has a hairpin ending at curr) )
+  floor  = max( note-collision floor      the two columns' ink, plus a minimum gap
+              , syllable-collision floor  half of each syllable, plus the minimum
+                                          gap between them (a bare hyphen where
+                                          the pair is hyphenated)
+              , glissando reservation     room for the slide to be legible
+              , grace compression floor   how far a grace note may be pulled in
+              , hairpin reservation       room for a wedge whose tips are pulled
+                                          back by a dynamic on a bound )
 
-  compliance = max(0, rest − strut)     ← rest ≤ strut ⇒ the gap starts frozen
-
-  A barline→key-change gap is frozen by construction: rest and floor are both
-  KEY_SIGNATURE_PADDING_SS, and the gap is lift-exempt, so the accidentals stand that exact
-  distance behind their barline on every line. See docs/key-signatures.md.
-
-  prevRight = rightExtentFacingSs(prev, curr) — prev's full right extent, except that a grace
-              note's flag is not charged when it hangs clear of curr's left-facing band
+  give   = max(0, resting length − floor)   ← rest ≤ floor ⇒ the gap starts frozen
 ```
 
----
+A barline-to-key-change gap is frozen by construction: its resting length and its
+floor are the same padding, and it is exempt from the lyric lift, so the
+accidentals stand that exact distance behind their barline on every line.
 
-## Spring solver (`SpringSpacer.solve`)
+## The spring solver
 
-Each gap starts at its natural length `max(rest, strut)` — `max` rather than `rest` because a
-wide-glyph gap can have `rest < strut`, in which case the strut wins and the gap starts on its
-floor. Such a gap simply never gives; the water-fill leaves it there. That is the only way a
-gap can be immovable — there is no separate pinning flag.
+Each gap starts at its natural length — the larger of its resting length and its
+floor, because a wide-glyph gap can have a rest below its floor, in which case the
+floor wins and the gap simply never gives. That is the only way a gap can be
+immovable; there is no separate pinning flag.
 
 ```
-  natural = SUM max(rest_i, strut_i)
+  natural total = sum of the natural lengths
 
-         natural <= availableSpanSs                 natural > availableSpanSs
-                  |                                           |
-                  v                                           v
-         +------------------+          floorSum = SUM strut_i
-         |     SOLVED       |                            |
-         | gap = natural    |            floorSum > available   floorSum <= available
-         | (ragged right,   |                    |                     |
-         |  O(n), no loop)  |                    v                     v
-         +------------------+             +-------------+       WEIGHTED WATER-FILL to unit U:
-                                          | INFEASIBLE  |       SUM clamp(w_i·U, strut_i,
-                                          | (struts do  |           natural_i) = availableSpanSs
-                                          |  not fit)   |
-                                          +-------------+
-                                                                       |
-                                                                       v
-                                          length_i = clamp(w_i·U, strut_i, natural_i)
-                                            - w_i·U < strut_i  : freeze on the strut (floor)
-                                            - w_i·U > natural_i: cap at natural (no stretch)
-                                            - otherwise        : the weighted level w_i·U
+         natural ≤ available                    natural > available
+                  |                                      |
+                  v                                      v
+         +------------------+          floor total > available   floor total ≤ available
+         |     SOLVED       |                    |                        |
+         | every gap at its |                    v                        v
+         | natural length   |            +-------------+      WEIGHTED WATER-FILL:
+         | (ragged right)   |            | INFEASIBLE  |      raise a common level until
+         +------------------+            | the floors  |      the clamped lengths sum to
+                                         | do not fit  |      the available width
+                                         +-------------+                 |
+                                                                         v
+                                    each gap = its weighted share of that level,
+                                    clamped below by its floor and above by its
+                                    natural length
 ```
 
-`U` is found by levelling the still-free gaps, clamping the single most-violated one, and
-re-levelling the rest — so the loop is bounded by `springs.size()` passes. Exceeding that
-bound is a solver bug, not a layout condition, and throws rather than mis-spacing.
+The level is found by levelling the still-free gaps, clamping the single
+most-violated one, and re-levelling the rest — so the loop is bounded by the
+number of springs. Exceeding that bound is a solver fault, not a layout condition,
+and fails loudly rather than mis-spacing.
 
----
+## Tuplet bracket arms
 
-## Tuplet bracket arms (`TupletBracketShape`)
-
-A sloped bracket gives each corner its own Y, so the horizontal segments tilt with the note
-contour. The verticals still hang straight down from their sloped corners by a fixed arm
-height. The four corner Ys are supplied by the caller; the class only orders the points.
+A sloped bracket gives each corner its own height, so the horizontal segments tilt
+with the note contour. The verticals still hang straight down from their sloped
+corners by a fixed arm length.
 
 ```
   left corner                          right corner
-  (leftXSs, leftYSs)                    (rightXSs, rightYSs)
        o___________                       ___________o
        |           \___         gap   ___/           |
-       |               o (gapLeftYSs)  o (gapRightYSs)|
-       |                                              |
-       o (leftXSs, armBottomYSs)   (rightXSs, armBottomYSs) o
+       |               o               o             |
+       |                                             |
+       o                                             o
 ```

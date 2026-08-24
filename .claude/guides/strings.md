@@ -65,23 +65,6 @@ Pattern syntax:
 
 This trap only bites the varargs form; `Strings.get(key)` does no MessageFormat processing.
 
-### Writing curly quotes/apostrophes (Claude Code limitation)
-
-The `Edit` / `Write` tools cannot emit curly characters (“ ” ‘ ’). This matters **only when the new or changed value itself contains them** — editing an ASCII-only line works normally even though the file is full of curly characters elsewhere.
-
-When a value needs curly characters, do a *targeted* edit via `Bash` + python3 — modify only the relevant lines, do not retype the whole file:
-
-```bash
-python3 - <<'EOF'
-path = 'src/main/resources/songscribe/strings.properties'
-lines = open(path, encoding='utf-8').read().splitlines(keepends=True)
-for i, l in enumerate(lines):
-    if l.startswith('confirm.song.empty.title '):
-        lines[i] = 'confirm.song.empty.title = The song must have a title. Use “Untitled” or continue editing?\n'
-open(path, 'w', encoding='utf-8').write(''.join(lines))
-EOF
-```
-
 ### API
 
 ```java

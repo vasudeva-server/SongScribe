@@ -99,7 +99,19 @@ import songscribe.util.UIUtils;
  * {@code advance()} scans forward for the next element that is not a rest (or is a rest that
  * already has a lyric), reopening the editor there or dismissing if there is none.
  *
- * <p>See {@code docs/lyric-editor.md} for the full lifecycle, including the per-key boundary table.
+ * <p>Each boundary key reads the editor's state to decide what it means, advancing afterwards
+ * except where it beeps:
+ *
+ * <ul>
+ *   <li>{@code -} — non-empty commits the text as a syllable; empty advances without committing.
+ *   <li>{@code =} or {@code +} — non-empty with the caret at the end commits as a compound;
+ *       empty, or a caret mid-text, beeps and stays open.
+ *   <li>{@code _} — empty, or non-empty with everything selected, drops any text and extends the
+ *       chain backward from the predecessor. Non-empty with the caret at the end commits as an
+ *       extender {@code START} and makes the next element its {@code STOP}, advancing past it,
+ *       but only when that next element carries no syllable of its own. Any other combination
+ *       beeps and stays open.
+ * </ul>
  *
  * <p>Invariant: while the editor is active, no external code path may mutate the song or fire any
  * toolbar keystroke. This is enforced by {@code DISABLE_WHEN_EDITING_TEXT} on every toolbar

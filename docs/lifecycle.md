@@ -1,169 +1,99 @@
-# Application Lifecycle
+# Application and Object Lifecycle
 
-Startup and shutdown sequences. `MainFrame` and `Shutdown` carry prose summaries and
-point here.
+## Startup is gated, not sequential
 
----
+Three concerns compete at startup: the window should appear quickly, it must not
+appear before the fonts it draws with are installed, and MIDI initialization is
+slow and may fail.
 
-## Startup
+They are reconciled by showing a splash immediately under a **minimal** theme —
+one font face, enough to draw the splash in the right typeface rather than a
+fallback — then doing the expensive work behind it: opening MIDI on a background
+thread, installing the remaining font faces, and building the main window without
+showing it.
 
-Three threads participate: the main thread, the EDT, and two background threads
-(`"midi-init"` and `"startup-gate"`).
+A **gate** then holds the reveal until both a minimum splash duration has elapsed
+and MIDI has either finished or run out of its allowance. The floor stops the
+splash flashing past on a fast machine; the cap stops a broken MIDI device
+holding the application hostage.
 
-```
-[main thread]                          [EDT]                         [bg threads]
-SongScribe.main
-  set macOS props
-  invokeLater(MainFrame.main) ──────►  initMinimalTheme():
-                                         install Source Sans 3 Regular only
-                                         setPreferredFontFamily(FAMILY)
-                                         registerCustomDefaultsSource + AppearanceManager.init
-                                       showSplash(); force first paint
-                                         (splash JLabels now render in Source Sans, not fallback)
-                                       splashShownAtMs = now
-                                       midiReadyLatch =
-                                         openMidiAsync() ───────────► "midi-init":
-                                                                        openMidi() (capped via await)
-                                                                        finally latch.countDown()
-                                       installEagerFonts():
-                                         remaining Source Sans faces + TiroBangla (~1.1 s)
-                                       build main window (initFrame, NOT shown)
-                                       pendingStartupAction = <autoload|arg|select>
-                                       startStartupGate() ──────────► "startup-gate":
-                                                                        sleep(remainingFloor)
-                                                                        latch.await(remainingCap)
-                                                                        invokeLater(reveal) ─┐
-                                                                                             │
-                            reveal (EDT): ◄──────────────────────────────────────────────────┘
-                              drainStartupErrors():
-                                fatal present → throw RuntimeError.exit(fatal.message())
-                                                (logs + shows fatal dialog over splash + System.exit;
-                                                 splash NOT hidden, window NOT revealed)
-                              hideSplash(); setVisible(true)
-                              preWarmDialogPeer / ActivationGate.install / requestFocusInWindow
-                              for each non-fatal: showWarning(...)
-                              maybeShowWhatsNew()
-                              pendingStartupAction.run()
-```
+Errors raised during that window are collected rather than thrown. At the reveal,
+a fatal one exits with its dialog shown over the splash — the window is never
+revealed and the splash never hidden, so the user does not see a half-built
+application. Non-fatal ones are shown as warnings after the window is up.
 
-### Action-constant initialization order
+Whatever the user asked for — a file on the command line, the autoloaded
+document, or the open dialog — is decided while the window is being built and run
+last, once there is a window to run it in.
 
-`Actions.*` constants must exist before anything reads them, which fixes this order:
+**One ordering constraint is worth knowing:** the action constants must exist
+before anything reads them, which is what fixes the order in which the main
+window wires itself up.
 
-```
-  MainFrame.getInstance()        — constructs the singleton via InstanceHolder
-    └─► MainFrame.initFrame()    — wires the UI; called from main()
-          ├─► Actions.initialize(this)  — populates all Actions.* constants
-          │     └─► first constant use  — MenuController.init(this)
-          ├─► PlaybackController.initialize(this)
-          └─► PreviewElementManager.initialize()  — attaches the hover-preview singleton
-```
+## Shutdown is one vetoable sequence
 
----
+Every quit path the user can invoke funnels into a single ordered sequence:
+confirm, then clean up. Confirmation runs in registration order and any
+participant may veto, which is what makes "save your changes?" work regardless of
+*how* the user asked to quit — the window's close button, the menu command, the
+platform quit, or closing the last window.
 
-## Shutdown
+Cleanup then runs in reverse registration order, so a component is torn down
+before whatever it depends on.
 
-`Shutdown` is the process-global registry that funnels every user-invoked quit path
-through one ordered, vetoable sequence, and owns the JVM shutdown hook so thread-safe
-cleanup runs even on emergency exits.
+A separate set of tasks is owned by a process-level shutdown hook, so
+thread-safe cleanup still happens on paths that never reach the sequence at all —
+a fatal error, a termination signal, or the last non-daemon thread ending. Each
+task is wrapped so it runs **at most once** across both routes.
 
-```
-  User-invoked quit paths              Emergency exit paths
-  -------------------------            --------------------
-  QuitAction              -+           RuntimeError.exit()
-  MainFrame.windowClosing -+           SIGTERM
-  CloseWindowAction       -+-> now()   last non-daemon thread ends
-  Desktop quit (macOS)    -+      |             |
-                                  v             |
-                             Confirm phase      |
-                             (reg. order,       |
-                              vetoable, EDT)    |
-                                   |            |
-                             veto? | no         |
-                                   v            |
-                             EDT cleanup        |
-                             (LIFO, EDT)        |
-                                   |            |
-                                   v            |
-                             JVM cleanup        |
-                             (LIFO, EDT)        |
-                                   |            |
-                                   v            |
-                             System.exit(0) ----+
-                                                v
-                                      Registry-owned JVM
-                                      shutdown hook runs
-                                      JVM tasks LIFO on
-                                      hook thread. The
-                                      CleanupTask wrapper
-                                      guarantees at-most-
-                                      once across paths.
-```
+## Most objects are never torn down
 
----
-
-## Object lifecycle
-
-Most objects in this application live as long as the process. The main window,
-the menu controller, the status bar and every action constant are created at
-startup and released by process exit; nothing tears them down, and nothing
+The main window, the menus, the status bar and every action constant are created
+at startup and released by process exit. Nothing tears them down, and nothing
 should.
 
-The exceptions are objects retired while the process continues, and they are
-the ones that need disposal. An object that registers itself with something
-process-global — today, the message bus — stays registered after the last
-reference to it is dropped, because the registry holds it weakly and the
-collector runs when it runs. Until then it keeps handling messages on behalf of
-something nobody is using.
+The exceptions are objects retired **while the process continues**, and they are
+the ones that need disposal. An object registered with something process-global —
+today, the message bus — stays registered after the last reference to it is
+dropped, because the registry holds it weakly and the collector runs when it runs.
+Until then it keeps handling messages on behalf of something nobody is using. See
+[messages.md](messages.md).
 
-Such a class implements `songscribe.lifecycle.Disposable` and its class Javadoc
-names, under a `Lifecycle` heading, who calls `dispose()`.
+Two live cases:
 
-One live case is the document model. Every document load replaces the `Song`
-installed in the `ScoreView`, and `ScoreView.setSong` disposes the outgoing one.
-A `Song` left subscribed keeps handling broadcast commands and posting undo
-steps against a document nobody has open.
+- **The document.** Every load replaces the installed song, and the outgoing one
+  is disposed. Left subscribed, it keeps handling broadcast commands and recording
+  undo steps against a document nobody has open.
+- **Dialogs.** A dialog is built for one opening and retired when it closes, so
+  hiding it disposes it: first every registered tab, then the dialog's own
+  bindings. Tabs go first, so a tab's disposal runs while its bound controls are
+  still whole. A tab disposes the actions its rows built, each of which subscribed
+  itself in its constructor — that is what keeps a closed dialog's actions from
+  handling messages for the rest of the run. Disposing the bindings cancels every
+  observation the dialog declared, including those each derived value holds on its
+  own dependencies, which is what releases the dialog and everything its
+  transforms and effects captured. A derived value is created through the dialog's
+  bindings rather than standing free precisely so that last part has an owner:
+  one reading anything that outlives the dialog would otherwise keep the dialog
+  reachable for the rest of the session.
 
-The other is dialogs. A `BaseDialog` is built for one opening and retired when
-it closes, so `setVisible(false)` disposes it: first every registered `Tab`,
-then the dialog's own `Bindings`. Tabs go first, so a tab's `dispose()` runs
-while its bound controls are still whole. A tab disposes the `UIAction`s its
-font rows built and any it built for a button of its own; each of those
-subscribed itself to the message bus in its constructor, and disposing them is
-what keeps a closed dialog's actions from handling messages for the rest of the
-run. Disposing the `Bindings` cancels every observation the dialog declared —
-its bindings, its effects, and the observations each `computed` holds on its own
-dependencies — which is what releases the dialog, its controls and everything
-its transforms, derivations and effects captured. A `computed` is created
-through `Bindings` rather than as a free-standing value precisely so that last
-part has an owner: a derivation reading anything that outlives the dialog would
-otherwise keep the dialog reachable for the rest of the session.
+## Four things end a set of registrations
 
-A further case is coming rather than present: a `ScoreView` built for one
-conversion, with its controller, its `SelectionCoordinator` and that
-coordinator's `ActionReflector`, is finished with when the conversion is. The
-`MessageBusScope` a headless conversion runs inside does not settle it: closing
-a scope unsubscribes, and unsubscribing on the way out of a process buys
-nothing. The converters are being redesigned; whatever replaces them owes the
-disposal, and `ScoreView` acquires `dispose()` then — not before, because the
-rewrite decides whether a converter builds a view at all.
-
-Four things end a set of registrations, and none substitutes for another:
+None substitutes for another:
 
 | | Ends | Reversed by |
 |---|---|---|
-| `Shutdown.now()` | the process | nothing |
-| `Foo.deinitialize()` | a static subsystem's current initialization | `Foo.initialize(...)` |
-| `foo.dispose()` | one instance, permanently | nothing |
-| `scope.close()` | every subscription made on that bus | opening another scope |
+| the quit sequence | the process | nothing |
+| a static subsystem's teardown | that subsystem's current initialization | initializing it again |
+| disposing an instance | one object, permanently | nothing |
+| closing a bus scope | every subscription made on that bus | opening another scope |
 
 There is no point unsubscribing on the way out of the process, and no point
-running the quit sequence to discard a view. `deinitialize()` is the odd one:
-it is the only teardown you can undo, which is why it is named for the thing
-that undoes it.
+running the quit sequence to discard a view. A subsystem's teardown is the odd one
+out: it is the only reversible teardown, which is why it is named for the thing
+that reverses it.
 
-**Closing a `MessageBusScope` is not disposal.** It covers the unsubscribe half
-and nothing else: `dispose()` also cancels the `Bindings` observations an object
-declared and releases what its transforms and effects captured, and discarding a
-bus does neither. Most subscribers are on the application bus in any case, where
-no scope ever closes. See [messages.md](messages.md).
+**Closing a bus scope is not disposal.** It covers the unsubscribing and nothing
+else — disposal also cancels the observations an object declared and releases what
+its transforms and effects captured, and discarding a bus does neither. Most
+subscribers are on the application bus in any case, where no scope ever closes.
