@@ -161,108 +161,25 @@ var grace = graceQuaver();
 var note = StaffElementFactory.createNote(staffPosition, upper);   // pitched
 ```
 
-Available: `semibreve`, `crotchet`, `quaver`, `graceQuaver`, `crotchetRest`,
-`repeatLeft`, `repeatRight`, `repeatLeftRight`, `singleBarline`, `doubleBarline`,
-`finalDoubleBarline`, `createNote(staffPosition, upper)`.
-
 If the type you need is missing, add a method to `StaffElementFactory` rather
 than reaching for `newInstance()` at the call site — a per-class `note()` helper
 is the duplication this factory exists to prevent.
 
-## MainFrame Singleton Mocking (fallback)
+## Mocking the MainFrame singleton is a fallback
 
-This is a fallback, not a first resort. Reach for it only when the class under
-test cannot be constructed without the `MainFrame.getInstance()` chain and
-cannot be changed to take its collaborators directly. A dependency that needs
-this much mocking to exercise is usually a constructor-injection finding — the
-collaborator belongs as a constructor or factory parameter, real API used by
-production too, not something reached for through a static singleton at test
-time. Prefer that fix over adding another mock setup here.
+**Reach for `mockStatic(MainFrame.class)` only when the class under test cannot
+be constructed without the `MainFrame.getInstance()` chain and cannot be changed
+to take its collaborators directly.** A dependency that needs this much mocking
+to exercise is usually a constructor-injection finding — the collaborator belongs
+as a constructor or factory parameter, real API used by production too, not
+something reached for through a static singleton at test time. Prefer that fix
+over adding another mock setup.
 
-### Inline (try-with-resources) — for simple tests
-
-```java
-try (var mainFrameMock = mockStatic(MainFrame.class)) {
-    var mockFrame = mock(MainFrame.class);
-    var mockScore = mock(Score.class);
-    var mockCoordinator = mock(SelectionCoordinator.class);
-
-    mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
-    when(mockFrame.getScore()).thenReturn(mockScore);
-    when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-    when(mockScore.getMode()).thenReturn(Mode.EDIT);
-    when(mockScore.getSelectionSize()).thenReturn(0);
-
-    // test code
-}
-```
-
-### Field-based (BeforeEach/AfterEach) — for test classes with many tests needing the same mock
-
-```java
-private MockedStatic<MainFrame> mainFrameMock;
-
-@BeforeEach
-void setUp() {
-    mainFrameMock = mockStatic(MainFrame.class);
-    setupMainFrameMock();
-}
-
-@AfterEach
-void tearDown() {
-    mainFrameMock.close();
-}
-```
-
-### Full MainFrame mock setup (when Actions class initializes)
-
-When the code under test triggers `Actions` initialization (which calls `UIUtils.registerActionKeystroke()`), you also need:
-
-```java
-var mockRootPane = mock(JRootPane.class);
-when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
-when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
-when(mockFrame.getRootPane()).thenReturn(mockRootPane);
-```
-
-## Multiple Static Mocks
-
-When mocking several static classes, open all in `setUp()` and close all in `tearDown()`:
-
-```java
-private MockedStatic<MainFrame> mainFrameMock;
-private MockedStatic<InsertionElementManager> insertionManagerMock;
-
-@BeforeEach
-void setUp() {
-    mainFrameMock = mockStatic(MainFrame.class);
-    insertionManagerMock = mockStatic(InsertionElementManager.class);
-    // configure...
-}
-
-@AfterEach
-void tearDown() {
-    insertionManagerMock.close();
-    mainFrameMock.close();
-}
-```
-
-## Mockito Patterns
-
-```java
-// Stubbing
-when(mockScore.getMode()).thenReturn(Mode.EDIT);
-when(coordinator.hasActiveSelection()).thenReturn(true);
-
-// Static method stubbing with arguments
-spacingCalcMock.when(
-    () -> InsertionSpacingCalculator.hasRoomForGraceNotePair(any(), anyInt())
-).thenReturn(true);
-
-// Verification
-verify(composition).setModified(true);
-verify(mockCoordinator, never()).applyActionToSelection(any(), anyBoolean());
-```
+The trap when you cannot: **code that triggers `Actions` initialization needs a
+mocked root pane too**, carrying a real `InputMap` and `ActionMap`, because
+initialization registers action keystrokes through it. Without them the failure
+is a `NullPointerException` inside static initialization, which does not name the
+missing mock.
 
 ## AssertJ null checks and NullAway
 
@@ -292,48 +209,11 @@ if (restored == null) {
 That still compiles and is not worth churning through existing tests to replace, but
 new tests should use `assertThat(...).isNotNull()`.
 
-## Creating Test Action Instances
+## Reading FlatLaf properties from a test
 
-```java
-private static final FermataAction FERMATA_ACTION = new FermataAction();
-private static final AccidentalAction SHARP_ACTION =
-    new AccidentalAction(StaffElement.Accidental.SHARP, "Sharp", null, 0, "sharp", "Sharp");
-private static final ElementTypeAction QUARTER_ACTION = new ElementTypeAction(
-    Kind.DURATION, ElementType.CROTCHET, "Quarter", null, 0, "quarter", "Quarter note", 0, 0
-);
-```
+A test that reads a FlatLaf property needs FlatLaf installed with the production
+properties loaded first, which `UnitTest.installFlatLafDefaults()` does. Call it
+from `@BeforeAll`; it is idempotent, so several test classes in one JVM run may
+each call it.
 
-## FlatLaf Properties Access
-
-Tests that call `FlatLafProps.get()` need FlatLaf installed with the production properties loaded. Call `installFlatLafDefaults()` (from `UnitTest`) in a `@BeforeAll` method:
-
-```java
-@BeforeAll
-static void setUp() throws Exception {
-    installFlatLafDefaults();
-}
-
-@Test
-void testSomethingUsingFlatLafProps() {
-    int gap = FlatLafProps.get(FlatLafKeys.DIALOG_COMPONENT_VERTICAL_GAP);
-    assertThat(gap).isEqualTo(5);
-}
-```
-
-The helper is idempotent — safe to call from multiple test classes in the same JVM run.
-
-## Mock Helpers for Complex Setup
-
-Extract repeated mock wiring into private helper methods:
-
-```java
-private LineComponent lineComponentFor(Line line) {
-    var lc = mock(LineComponent.class);
-    when(lc.getLine()).thenReturn(line);
-    return lc;
-}
-
-private MouseEvent mouseEvent(Component source, int id, int x, int y, int button) {
-    return new MouseEvent(source, id, 0L, 0, x, y, x, y, 1, false, button);
-}
-```
+Without it the read fails as a missing key rather than as missing setup.

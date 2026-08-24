@@ -132,10 +132,8 @@ matters to the caller, and only what happens next has changed. State that too â€
 warning that leaves the caller holding the bad value promises something quite different
 from one that substitutes a default, and the caller cannot tell which by looking.
 
-Nothing in the build renders or validates Javadoc; the IDE knows the tag through its
-additional-Javadoc-tags setting (`ADDITIONAL_TAGS` in
-`.idea/inspectionProfiles/Project_Default.xml`), which lists `invariant`, `effects` and
-`log`.
+`@log` is a custom tag; for how the IDE is told about it see *Contracts in Javadoc* in
+[java.md](../rules/java.md).
 
 ## Configuration & log files
 

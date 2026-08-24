@@ -29,8 +29,16 @@ saying "signature", or describes glyphs on a staff while saying "key". Where the
 words genuinely describe drawn accidentals — "five flats" in a key's display
 name — "signature" stays correct.
 
-## The dialog framework's record boundary
+## The dialog framework and the dialog interface
 
-The dialog framework's record boundary is the **dialog interface**; the
-framework as a whole is the **dialog framework**. Both are defined at the top
-of `plans/ui-dialog-interface.md`.
+Two terms, and they name different things. Neither is a "seam".
+
+- **The dialog framework** — the whole of `songscribe.ui.dialog`: the dialog
+  lifecycle and persisted geometry, the button row, tabs, dialog categories and
+  the blocking counter. Named the way the message framework and the mutation
+  framework are.
+- **The dialog interface** — how data crosses between a dialog and the rest of
+  the application: a record in, a record out, and a bundle of function references
+  supplied by the controller that opened it.
+
+The rules that hold that boundary are in [dialogs.md](dialogs.md).

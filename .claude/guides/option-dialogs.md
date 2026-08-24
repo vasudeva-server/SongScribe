@@ -1,15 +1,15 @@
-## OptionDialogs Reference
+## OptionDialogs
 
-All user-facing `JOptionPane`-based dialogs must go through `songscribe.ui.OptionDialogs`, NEVER directly through `JOptionPane`. This class:
-
-- Suppresses dialogs in headless and test contexts (returns a caller-controlled default instead of blocking)
-- Logs every message at the appropriate level (info → `trace`, warning → `warn`, error → `error`)
-- Beeps on errors
-- Resolves title/message keys through `Strings`, applies standard dialog key bindings, and positions the dialog
+All user-facing `JOptionPane`-based dialogs go through `songscribe.ui.OptionDialogs`,
+**NEVER** directly through `JOptionPane`. Going direct loses all of what the class adds:
+suppression in headless and test contexts, a log line at the level matching the message
+kind, the error beep, `Strings` resolution, the standard dialog key bindings, and
+positioning.
 
 ### Strings keys, not raw strings
 
-This is the most important rule and the easiest to get wrong. Every method below — *except* `showErrorMessageWithString` — takes `Strings` **keys** for its title and message, not literal text. The method resolves them via `Strings.get(...)` internally. See [Strings](strings.md).
+This is the most important rule and the easiest to get wrong. Titles and messages are
+`Strings` **keys**, not literal text — the method resolves them itself.
 
 ```java
 // CORRECT — pass keys
@@ -19,51 +19,33 @@ OptionDialogs.showErrorMessage(parent, Strings.ALERT_TITLE_FILE_ERROR, Strings.E
 OptionDialogs.showErrorMessage(parent, "File Error", "Could not open the file.");
 ```
 
-The message-style methods (`showInfoMessage`, `showWarningMessage`, `showErrorMessage`) also accept trailing `Object... messageArgs` that are forwarded to `Strings.get(key, args)` for placeholder substitution.
+Nothing catches the wrong form at compile time, because a key is a `String`. See
+[Strings](strings.md).
 
-### Available methods
+The message-style methods take trailing `Object...` arguments, which are forwarded for
+placeholder substitution.
 
-| Method | Use for |
-|---|---|
-| `showInfoMessage(parent, titleKey, messageKey, args...)` | Informational alerts |
-| `showWarningMessage(parent, titleKey, messageKey, args...)` | Warnings |
-| `showErrorMessage(parent, titleKey, messageKey, args...)` | Errors (also beeps) |
-| `showErrorMessageWithString(parent, title, message)` | Errors when the text is **already-resolved** (not a key) — e.g. an exception message |
-| `showConfirmDialog(parent, titleKey, messageKey, optionType, messageType)` | Yes/No confirmations; suppressed default is `NO_OPTION` |
-| `showConfirmDialog(parent, titleKey, messageKey, optionType, messageType, suppressedDefault)` | Confirmations with an explicit suppressed/headless return value |
-| `showInputDialog(parent, titleKey, messageKey)` | Text input prompts; returns `@Nullable String`, suppressed default is `null` |
-| `showInputDialog(parent, titleKey, messageKey, suppressedDefault)` | Input prompt with an explicit suppressed/headless return value |
-| `showOptionDialog(parent, titleKey, messageKey, optionType, messageType, icon, options, initialValue, args...)` | Multi-option dialogs; suppressed default is `CLOSED_OPTION`. Title and message are keys like everywhere else — but the `options` array holds the button **labels**, which are already-resolved text, so resolve those yourself with `Strings.get` |
+**Two places take already-resolved text instead**, and both are deliberate:
 
-`parent` is `@Nullable Component`; pass `null` when there is no owning window.
+- The error-with-string variant, for text that is not a key — an exception message.
+- The `options` array of the multi-option dialog, which holds button **labels**. Its
+  title and message are still keys; resolve the labels yourself.
 
-### Canonical example — confirm dialog
+### The answer
 
-```java
-var answer = OptionDialogs.showConfirmDialog(
-    null,
-    Strings.ALERT_TITLE_FILE_ERROR,
-    Strings.CONFIRM_FILE_OPEN,
-    JOptionPane.YES_NO_OPTION,
-    JOptionPane.QUESTION_MESSAGE
-);
+Compare a confirm result against the `JOptionPane` constants. **A closed dialog is
+normalized for you** — a dismissed window answers `CANCEL_OPTION` where the dialog
+offered Cancel and `NO_OPTION` otherwise, so a confirm dialog never hands you
+`CLOSED_OPTION` to handle.
 
-if (answer == JOptionPane.YES_OPTION) {
-    // ...
-}
-```
+### Suppression
 
-Compare the result against `JOptionPane` constants (`YES_OPTION`, `NO_OPTION`, `CANCEL_OPTION`). A closed dialog (window dismissed) is normalized for you: it returns `CANCEL_OPTION` for `YES_NO_CANCEL_OPTION`, otherwise `NO_OPTION` — so you never have to handle `CLOSED_OPTION` from a confirm dialog.
+Dialogs are suppressed whenever `GraphicsEnvironment.isHeadless()` is true, and tests
+suppress them explicitly. A suppressed call logs instead of blocking and returns a fixed
+answer: the message methods return nothing, a multi-option dialog answers
+`CLOSED_OPTION`, and a confirm or input prompt answers its **suppressed default** — `NO`
+and `null` respectively unless the call names another.
 
-### Test suppression
-
-In tests, call `OptionDialogs.setSuppressDialogs(true)` so dialog calls log instead of blocking on UI. Dialogs are also auto-suppressed whenever `GraphicsEnvironment.isHeadless()` is true.
-
-When suppressed, each method returns a fixed default:
-
-- `show*Message` — return `void`, just log
-- `showConfirmDialog` — returns `suppressedDefault` (the 5-arg overload defaults this to `NO_OPTION`)
-- `showInputDialog` — returns `suppressedDefault` (the 3-arg overload defaults this to `null`)
-- `showOptionDialog` — returns `JOptionPane.CLOSED_OPTION`
-
-If a test exercises a code path whose behavior depends on the dialog's answer, use the overload that takes an explicit `suppressedDefault` so the suppressed call returns the value that path needs.
+**If a test exercises a path whose behavior depends on the answer, pass the explicit
+suppressed default** for the value that path needs. Otherwise the test silently
+exercises the "user said no" branch and nothing marks it as the reason.

@@ -167,39 +167,19 @@ Use `{@link ClassName#CONSTANT_NAME}` when the prose refers to the constant *as 
 
 Exception: illustrating an example calculation/formula, where literals are needed to show the math — reference the constant elsewhere in the same doc if possible.
 
-## Writing a Contract in Javadoc
+## Contracts in Javadoc
 
-See [Contracts](../guides/contracts.md) for what belongs in a method contract and
-a full worked example. This section is the Javadoc syntax for it.
+**Which clause goes in which tag, and how much contract a method earns, are in
+[Contracts](../guides/contracts.md).** Read it before writing one. Only the
+Javadoc mechanics are here.
 
-- **Preconditions** — valid argument ranges, nullability, required receiver
-  state — go in `@param`, in prose where the tag alone can't carry the
-  condition (`@param dotCount number of augmentation dots (0, 1, or 2)`).
-- **`@return` is mandatory on every method whose return type is not `void`**, no
-  exceptions, even when the summary sentence already says what comes back and
-  even for a one-line method. `@return` is what the IDE shows at the call site
-  and what a reader scans for; a promise stated only in the body is a promise the
-  caller does not see. Write the tag as the answer to *what do I get back?* —
-  `@return the composed Edit-menu label`, `@return {@code true} when …` — and
-  leave boundary semantics, invariants and side effects to the tags below.
-- **Postconditions** — what holds of the return value and of the receiver
-  afterward — go in `@return`, in prose.
-- **`@throws`** names every exception type and the exact condition that
-  produces it, one tag per type. A vague `@throws` ("if invalid") is not a
-  contract clause a test can be derived from.
-- **Boundary semantics and result invariants** — inclusive/exclusive ranges,
-  empty input, zero, ties, "every result satisfies X" — go in `@invariant`, one
-  clause per tag. The tag repeats like `@param` and `@throws`.
-- **Side effects** — mutation, messages posted, files written, threading
-  requirements — go in `@effects`.
-- **Relationships** — guard methods, inverses, sibling methods that must agree —
-  link with `{@link}` rather than restating the other method's contract.
+`invariant`, `effects` and `log` are custom tags, alongside the standard ones.
+Nothing in the build renders or validates Javadoc, so a malformed tag fails
+silently; the IDE knows the three through its additional-Javadoc-tags setting
+(`ADDITIONAL_TAGS` in `.idea/inspectionProfiles/Project_Default.xml`).
 
-`@invariant` and `@effects` are custom tags. Nothing in the build renders or
-validates Javadoc, and the IDE knows both through its additional-Javadoc-tags
-setting.
-- **Class and package invariants** go on the class or `package-info.java`
-  Javadoc, in prose, not repeated on every method that relies on them.
+Class and package invariants go on the class or `package-info.java` Javadoc, in
+prose, never repeated on every method that relies on them.
 
 ## Signature Rules for Contracts
 
@@ -210,8 +190,7 @@ From the global rules (`~/.claude/rules/development.md`), in Java terms:
   signature without checking the declaration.
 - **Two or more adjacent parameters of the same type: a `record` parameter
   object**, regardless of the total count, when a call site could transpose them
-  without the compiler catching it (`forTypeToken(token, false, false)` is the
-  case in [Contracts](../guides/contracts.md)).
+  without the compiler catching it.
 - **A boolean parameter that selects a mode or type: an enum, not a
   `boolean`.** See [Boolean "type" parameters](#boolean-type-parameters) above;
   this is the same rule restated for contract signatures.

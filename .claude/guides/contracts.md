@@ -24,23 +24,29 @@ Few methods have all nine. A method with none is trivial and needs no contract.
 **`@return` is not optional.** Any method whose return type is not `void` carries
 the tag, whatever the summary sentence already says, because the tag is what the
 IDE shows at the call site. Only a method with no doc comment at all may omit it.
+Write it as the answer to *what do I get back?* — "the composed Edit-menu label",
+"`true` when …" — and leave boundary semantics, invariants and side effects to
+their own tags.
+
+**A vague `@throws` is not a clause.** "if invalid" names no condition, so no
+test can be derived from it and no caller can tell which of their inputs reaches
+it. One tag per exception type, each naming the exact condition that produces it.
 
 **`@invariant` is singular and repeatable.** One clause per tag, the way `@param`
 and `@throws` repeat, so adding an invariant is a one-line diff rather than a
 rewrite of a paragraph, and so a reader can count the promises. `@effects`
 carries the whole of a method's effects.
 
-**`@log` repeats the same way**, in the form `@log <level> <condition>`. It earns a tag
-of its own rather than a line inside `@effects` because the caller cannot observe it: a
-method that logs and carries on returns like any other, so the contract is the only
-place the condition is visible. It is also where a `@throws` clause goes when a method
-stops rejecting a value and starts degrading instead — the condition survives, and what
-changed is what happens next, which the clause must say. Which log calls earn a clause
-at all is in [logging](logging.md).
+**`@log` repeats the same way.** It earns a tag of its own rather than a line
+inside `@effects` because the caller cannot observe it: a method that logs and
+carries on returns like any other, so the contract is the only place the
+condition is visible. Its form, which log calls earn a clause, and why a
+`@throws` clause becomes a `@log` clause when a method starts degrading instead
+of rejecting, are all in [logging](logging.md).
 
-**Both tags are required on a contract a test is derived from**, because a clause
-buried in prose is a clause the test author reads past. Elsewhere they are
-adopted as contracts are touched; there is no retrofit pass.
+**`@invariant` and `@log` are required on a contract a test is derived from**,
+because a clause buried in prose is a clause the test author reads past.
+Elsewhere they are adopted as contracts are touched; there is no retrofit pass.
 
 **What does not belong:** how it does it. The algorithm, the data structure, the
 iteration order unless the order is promised, the fact that it caches. A contract

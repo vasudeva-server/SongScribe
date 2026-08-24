@@ -1,13 +1,9 @@
 # Manual Verification Guide
 
-Read `./testing-common.md` first for shared conventions.
-
-## What this covers
-
-The behavior `testing-common.md` keeps out of tests because a window is verified by
-opening it: geometry, focus, tab selection, how a message reads, and a dialog's
-populate–gather–ops path. A checklist is where those promises are written down
-instead.
+Read `./testing-common.md` first for shared conventions, including
+[Choosing the level](./testing-common.md#choosing-the-level-unit-vs-e2e-vs-manual-vs-none),
+which decides what lands here rather than in a test. This guide is how a
+checklist for it is written.
 
 **The checklist is the durable artifact; a run is not.** The file states what must be
 true of a surface. What was observed, on what date, against which build, belongs to

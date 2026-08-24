@@ -124,41 +124,17 @@ completion either way.
 
 **A subclass of a *generic controller family* names both type arguments itself; it never supplies one value type and lets an intermediate class wrap it in `@Nullable`.** `AttachmentDialogController<I extends @Nullable Object, O> extends DialogController<I, O>` is a straight pass-through for exactly this reason: NullAway does not compose a `@Nullable` wrap performed in one generic class's `extends` clause with a further type-argument substitution a concrete subclass performs one level down. `AttachmentDialogController<C> extends DialogController<@Nullable C, C>`, with `AnnotationController extends AttachmentDialogController<Annotation>`, type-checks the family's own file but fails at every call to `new AnnotationController(...).ops()`, which NullAway resolves to `DialogOps<Annotation, Annotation>` instead of `DialogOps<@Nullable Annotation, Annotation>` — a real false positive, not a real nullability gap, but one no amount of restating the wrap at the intermediate class fixes. `AnnotationController`, `BeatChangeController` and `TempoChangeController` each write `AttachmentDialogController<@Nullable Annotation, Annotation>` in full. Follow the same shape for the next generic controller family whose `I` is nullable.
 
-### BaseDialog API surface
-
-Constructors: `(mainFrame, title)`, `(mainFrame, title, Modality)`, `(mainFrame, title, Modality, DialogCategory)`. The no-`Modality` form is `MODAL`.
+### What a dialog inherits, and what it does not
 
 Every dialog is owned by the main frame, `MODELESS` ones included. Ownership is not a free choice: an unowned window carries no menu bar, so the menus disappear for as long as it is frontmost. The price is that AWT keeps an owned window above its owner for as long as it exists, so a modeless dialog — `PreferencesDialog` is the only one — cannot be pushed behind the score, and closing it is the only way to see what it covers. That is accepted; do not unown a dialog to fix it.
 
-Fields: `contentPanel` (BorderLayout — add content to CENTER; `StandardDialog` attaches `buttonPanel` to SOUTH automatically).
+There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DocumentDialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling. What `BaseDialog` does hand down is a window for parenting, the dialog's own `Bindings`, and the validity conjunction described below.
 
-Accessors: `getMainFrame()` — window parenting only; `bindings()` — the dialog's own `Bindings`, disposed with it.
-
-Validity: `requireValid(condition)` adds a condition, `valid` is their conjunction. See [Validity](#validity-and-why-a-rule-belongs-in-front-of-ok).
-
-There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DocumentDialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
-
-Static helpers:
-- `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
-- `addLabelToBox(box, text, gapHeight)`
-- `addSeparator(container)` / `addLargeSeparator(container)` — add a component-gap spacer strut. Orientation follows the container's layout (X-axis `BoxLayout` → horizontal strut; Y-axis box or a `Tab`'s `GridBagLayout` → vertical), and the container's own `add` applies any constraints. Use within a `TitledSection`.
-- `addSectionSeparator(container)` — the larger `DIALOG_SECTION_GAP` vertical strut for spacing between stacked sections of a `Tab`. Pass `this` from the `Tab`.
-
-Spacing comes from FlatLaf props / per-component struts.
-
-Overridable hooks:
-- `getDefaultButton()` → null
-- `isResizable()` → false
-- `getExtraWidth()` / `getExtraHeight()` → 0
-- `isClosable()` → true (false blocks Esc/X/Cmd-W)
-- `getWindow()` → current JDialog (override for parent of nested dialogs from bg thread)
-- `getContentPaddingKey()` → FlatLaf key for content padding (Insets)
-- `hasButtons()` → true if dialog renders a button row
-- `getData()` → calls `tab.getData()` on each registered tab. Return false to cancel showing. Call `super` when overriding. **Final in `StandardDialog`** — see below. (Resetting the tabbed pane to index 0 happens separately in `setVisible()`, not here.)
+All spacing comes from FlatLaf props and the framework's own spacer struts — a dialog never writes a pixel gap of its own. A separator's orientation follows the container's layout rather than being chosen at the call site, so the same call is correct in a horizontal box and a vertical one.
 
 ### StandardDialog&lt;I, O&gt;
 
-Constructors: `(mainFrame, title, ops)`, `(mainFrame, title, ops, DialogCategory)`. **There is no `Modality` parameter — a `StandardDialog` is always `MODAL`.** Cancel promises nothing happened, and that promise is worth something only if nothing could have happened meanwhile. A window that applies each edit as it is made extends `BaseDialog` directly — `PreferencesDialog` is the one such window.
+**There is no `Modality` parameter — a `StandardDialog` is always `MODAL`.** Cancel promises nothing happened, and that promise is worth something only if nothing could have happened meanwhile. A window that applies each edit as it is made extends `BaseDialog` directly — `PreferencesDialog` is the one such window.
 
 ```
 show    →  populate(ops.read().get())
@@ -199,7 +175,7 @@ Only the **first** failure is shown — stacking modal alerts is worse than unde
 
 **Remove is a framework affordance**, not an attachment one: any dialog whose controller answers a non-null `removal()` gets the button, positioned left of Cancel, running the removal and closing. A dialog never builds one itself.
 
-`modifyButtonPanel()` — called once on first `setVisible(true)`. Mutate `buttonPanel` in place (add/remove buttons) or reassign the field entirely. Return the `BorderLayout` constraint for attaching it (default `SOUTH`). Do NOT call `contentPanel.add(buttonPanel, ...)` manually.
+A dialog that needs a different button row overrides the hook for it and returns where the row should attach. **The framework attaches the row; the dialog never adds it to the content panel itself**, or the row lands twice.
 
 Nothing here repaints the score. A commit that writes the document does so inside a modification bracket, and the bracket's `SongDidChangeNotification` is what re-lays out and repaints ([mutations](../../docs/mutations.md)).
 
@@ -239,15 +215,9 @@ explaining why; don't "fix" either back into `BaseDialog`.
 
 ### Tab (BaseDialog inner class)
 
-`extends JPanel` with GridBagLayout, top/left-aligned, horizontal fill default. Subclass constructor MUST end with `build()`.
+A tab lays its own contents out in an overridable hook, and its **subclass constructor must end with `build()`** — the framework cannot call it for you, and a tab that omits it comes up empty. Constraints are applied by the tab's own `add`, so a tab never writes a `GridBagConstraints`. At most one component per tab may be declared expanding.
 
-Override `initContents()` to add components. `add(c)` auto-applies constraints. `addSectionSeparator(this)` (static on `BaseDialog`) adds the inter-section vertical strut. `addExpanding(c, HORIZONTAL|VERTICAL|BOTH)` — at most once per tab.
-
-Inherited from the dialog, and the whole of what a tab reaches — **a tab does not hold its dialog**:
-- `bindings()` — the owning dialog's `Bindings`, which is where a tab declares its bindings and effects; they are torn down with the dialog. See [bindings](bindings.md).
-- `getMainFrame()` — window parenting only, the same rule as on `BaseDialog`.
-- `repackToContent()` — re-packs the owning dialog when the tab's content changes height at runtime.
-- `requireValid(condition)` — adds a condition to the owning dialog's validity, which is what disables OK while the tab's own values cannot be committed.
+**A tab does not hold its dialog.** What it reaches instead is exactly four things, and that list is the whole of it: the owning dialog's `Bindings`, which is where the tab declares its bindings and effects and is torn down with the dialog (see [bindings](bindings.md)); a window for parenting, under the same rule as on `BaseDialog`; a re-pack, for a tab whose content changes height at runtime; and `requireValid`, which contributes a condition to the owning dialog's validity and is what disables OK while the tab's own values cannot be committed.
 
 Lifecycle: `getData()` (populate, return false to cancel show), `tabWillShow()`, `tabWillHide()`, `dispose()`. A tab that owns a `Disposable` overrides `dispose()` to release it — a font row's `Choose`/`Reset` actions and any `UIAction` behind a button of the tab's own subscribe themselves to the message bus. A tab that owns none does not override it.
 
@@ -280,10 +250,6 @@ Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
 - The focus request is queued with `invokeLater`, so it lands once the window is actually up.
 
 `showTab` is protected, so a dialog gives callers its own typed entry point rather than exposing tab objects. `SongSettingsDialog.show(Section)` is the canonical example: one exhaustive switch maps each `Section` to both a tab and a field, so a section cannot open one tab while focusing a control on another, and a new `Section` fails to compile rather than silently opening the wrong tab.
-
-### TitledSection (BaseDialog inner class)
-
-`JPanel` + BoxLayout + `StandardTitledBorder`. `new TitledSection(title)` (Y_AXIS) or `(title, BoxLayout.X_AXIS)`. Use `addSeparator(section)` / `addLargeSeparator(section)` (static on `BaseDialog`) for spacers. Auto LEFT_ALIGNMENT.
 
 ### Opening
 

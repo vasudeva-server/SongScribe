@@ -138,20 +138,18 @@ it.
 
 ### Enumerate a finite domain
 
-An enum, a small set of states, a pair of flags: cover all of them via
-`@ParameterizedTest` over a `@MethodSource` or `@EnumSource`, which costs what
-picking two costs. The check runs *before* writing the test, not as a refactor
-after near-identical ones pile up: the moment a second `@Test` would be a copy of
-a sibling with a different literal, both become rows in one `record`-based case
-table. See [Unit Test Guide](./testing-unit.md#parameterized-tests-for-equivalence-classes-and-invariants).
+An enum, a small set of states, a pair of flags: cover **all** of them, never two
+representative values, because enumerating a finite domain costs what picking two
+costs and picking two is what leaves the third one broken. **An enumeration you
+claim must also be one the build can check**, so that a constant added later
+reaches the test on its own rather than leaving a table that goes on passing
+while the claim of completeness quietly stops being true.
 
-**An enumeration you claim must be one the build can check.** Drive cases from
-the domain itself — `@EnumSource`, `Type.values()`, a sealed hierarchy's
-permitted subclasses — so a new constant reaches the test on its own. Where a row
-needs a hand-built fixture, assert separately that the table's rows are exactly
-the domain. A hand-listed table goes on passing while the claim that it is
-complete quietly stops being true — only a coverage run catches the gap. See
-[Unit Test Guide](./testing-unit.md#asserting-that-a-table-is-exhaustive).
+The shapes for both — deriving rows from the domain, and asserting a hand-built
+table's coverage when a row needs a fixture that cannot be derived — are in the
+[Unit Test Guide](./testing-unit.md#parameterized-tests-for-equivalence-classes-and-invariants).
+The check runs *before* writing the test, not as a refactor after near-identical
+ones pile up.
 
 Where the domain is a private taxonomy, no assertion can reach it, and widening
 it so a test can is the no-test-only-surface violation rather than the way out.
@@ -237,10 +235,9 @@ in code the contract makes a promise about; never report the percentage.
 
 ## Constants in test code
 
-**Never redeclare or duplicate a production constant's literal in test code.** If
-a test needs the value, the question is whether the contract should name the
-constant, never whether the field should be widened. See
-[Contracts](./contracts.md#constants-and-the-contract).
+A test never redeclares a production constant's literal — see
+[Contracts](./contracts.md#constants-and-the-contract) for the rule and what to
+do instead.
 
 ## Frameworks
 

@@ -2,20 +2,7 @@
 
 - Defs: `src/main/resources/songscribe/FlatLaf.properties`, keys prefixed `SongScribe.`. Dark overrides: `[dark]SongScribe.foo = ...`.
 - Generated constants: the `FlatLafKey` enum at `build/generated-sources/songscribe/ui/FlatLafKey.java` (via `scripts/generate-flatlaf-keys.groovy`, run by `./scripts/compile.sh`).
-- Read: use typed getters — one exists for every type FlatLaf supports. Missing key or type mismatch → `RuntimeError.exit`.
-
-### Usage
-
-FlatLaf stores each property already typed (e.g. `... = 20` is an `Integer`, a color is a `Color`). The typed getters retrieve, type-check, and return in one call.
-
-```java
-setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND));
-var color = FlatLafProps.getColor(FlatLafKey.SCORE_PANEL_BACKGROUND);
-var indent = FlatLafProps.getInt(FlatLafKey.DIALOG_LABEL_INDENT);
-var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
-```
-
-Available typed getters: `getBoolean`, `getInt`, `getFloat`, `getString`, `getColor`, `getFont`, `getInsets`, `getDimension`, `getBorder`, `getIcon`, `getGrayFilter`.
+- Read: FlatLaf stores each property already typed (`... = 20` is an `Integer`, a color is a `Color`), so a typed getter retrieves, type-checks and returns in one call. One exists for every type FlatLaf supports, so no conversion belongs at a call site. Missing key or type mismatch → `RuntimeError.exit`.
 
 ### Adding / removing keys
 
