@@ -253,16 +253,28 @@ public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends
     /**
      * Performs whatever OK does beyond dismissing the dialog, and says whether it may be dismissed.
      *
-     * <p>Private, and there is no hook beside it: the order of the three steps, and the fact that
-     * validate and commit see the same values, are this class's promises rather than each
-     * dialog's. A dialog varies what OK does by varying {@link #gather} and the operations it was
-     * constructed with, never by taking over this path.
+     * <p>Private, and there is no hook beside it: the order of the steps, and the fact that all of
+     * them see the same values, are this class's promises rather than each dialog's. A dialog
+     * varies what OK does by varying {@link #gather} and the operations it was constructed with,
+     * never by taking over this path.
      *
-     * @return {@code true} once the commit has run, {@code false} when validation refused and the
-     *         user has been told why
+     * <p><strong>"Did anything change?" comes first.</strong> Values that change nothing are not a
+     * proposed change, so there is nothing for validation to judge and nothing to write. Asking
+     * anyway would let a rule about a change the notator never made refuse to let them out of the
+     * dialog — and would run its measurement on every dismissal. See
+     * {@link DialogController#dataWasModified}.
+     *
+     * @return {@code true} when the dialog may close — because the commit ran, or because there
+     *         was nothing to commit; {@code false} when validation refused and the user has been
+     *         told why
      */
     private boolean commitOnOk() {
         var values = gather();
+
+        if (!ops.wasModified().test(values)) {
+            return true;
+        }
+
         var result = ops.validate().apply(values);
 
         if (!result.isValid()) {

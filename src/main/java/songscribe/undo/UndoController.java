@@ -534,7 +534,7 @@ public final class UndoController {
             return Strings.get(labeledKey, opName);
         }
 
-        return Strings.get(labeledKey, Strings.get(opNameKey(dominantMutation(step.mutations()))));
+        return Strings.get(labeledKey, opName(dominantMutation(step.mutations())));
     }
 
     /**
@@ -577,25 +577,38 @@ public final class UndoController {
         return step.getFirst();
     }
 
-    private static String opNameKey(Mutation dominant) {
+    /**
+     * The fallback name for a step that declared none of its own, resolved here rather than
+     * returned as a key: a delete label carries its own plural as a choice suffix, so it needs
+     * the element count, and only the mutation holds that. Resolving every arm keeps the
+     * mutation types enumerated once. See {@code OpNames}, which builds the declared names.
+     *
+     * @param dominant the step's dominant mutation
+     * @return the localized operation name
+     */
+    private static String opName(Mutation dominant) {
         return switch (dominant) {
-            case ElementInsertion _ -> Strings.ACTION_EDIT_OP_ADD_NOTE;
-            case ElementDeletion _, ElementRangeDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
-            case ElementReplacement _ -> Strings.ACTION_EDIT_OP_REPLACE_NOTE;
-            case ElementModification _ -> Strings.ACTION_EDIT_OP_EDIT_NOTE;
-            case LineInsertion _ -> Strings.ACTION_EDIT_OP_ADD_LINE;
-            case LineDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_LINE;
-            case LineKeyChange _ -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
-            case LineLayoutChange _, LayoutChange _ -> Strings.ACTION_EDIT_OP_CHANGE_LAYOUT;
-            case BeamingAddition _, BeamingRemoval _ -> Strings.ACTION_EDIT_OP_BEAMING;
-            case TieAddition _, TieRemoval _ -> Strings.ACTION_EDIT_OP_TIE;
-            case TupletAddition _, TupletRemoval _ -> Strings.ACTION_EDIT_OP_TUPLET;
-            case CrescendoAddition _, CrescendoRemoval _ -> Strings.ACTION_EDIT_OP_CRESCENDO;
-            case DiminuendoAddition _, DiminuendoRemoval _ -> Strings.ACTION_EDIT_OP_DIMINUENDO;
-            case SpanAddition _, SpanRemoval _ -> Strings.ACTION_EDIT_OP_SPAN;
-            case MetadataChange metadataChange -> metadataOpNameKey(metadataChange.field());
-            case FontChange _ -> Strings.ACTION_EDIT_OP_CHANGE_FONTS;
-            case LyricsChange _ -> Strings.ACTION_EDIT_OP_EDIT_LYRICS;
+            case ElementInsertion _ -> Strings.get(Strings.ACTION_EDIT_OP_ADD_NOTE);
+            case ElementDeletion _ -> Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE, 1);
+
+            case ElementRangeDeletion rangeDeletion ->
+                Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE, rangeDeletion.deletedElements().size());
+
+            case ElementReplacement _ -> Strings.get(Strings.ACTION_EDIT_OP_REPLACE_NOTE);
+            case ElementModification _ -> Strings.get(Strings.ACTION_EDIT_OP_EDIT_NOTE);
+            case LineInsertion _ -> Strings.get(Strings.ACTION_EDIT_OP_ADD_LINE);
+            case LineDeletion _ -> Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE);
+            case LineKeyChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY);
+            case LineLayoutChange _, LayoutChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_LAYOUT);
+            case BeamingAddition _, BeamingRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_BEAMING);
+            case TieAddition _, TieRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_TIE);
+            case TupletAddition _, TupletRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_TUPLET);
+            case CrescendoAddition _, CrescendoRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_CRESCENDO);
+            case DiminuendoAddition _, DiminuendoRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_DIMINUENDO);
+            case SpanAddition _, SpanRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_SPAN);
+            case MetadataChange metadataChange -> Strings.get(metadataOpNameKey(metadataChange.field()));
+            case FontChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_FONTS);
+            case LyricsChange _ -> Strings.get(Strings.ACTION_EDIT_OP_EDIT_LYRICS);
         };
     }
 

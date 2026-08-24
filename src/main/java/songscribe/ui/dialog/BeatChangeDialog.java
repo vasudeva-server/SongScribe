@@ -59,7 +59,7 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
     private final Property<Duration> duration;
     private final Property<Duration> beat;
 
-    public BeatChangeDialog(MainFrame mainFrame, DialogOps<@Nullable BeatChange, BeatChange> ops) {
+    public BeatChangeDialog(MainFrame mainFrame, DialogOps<? extends @Nullable BeatChange, BeatChange> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), ops);
 
         var durationCombo = DurationListCellRenderer.createCombo(Duration.values());

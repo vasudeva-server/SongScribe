@@ -31,8 +31,8 @@ package songscribe.dom;
  * {@link Song#getTempoMarkElement()}).
  * <p>
  * The tempo it depicts is read from {@link Song#getTempo()} at layout and paint time rather
- * than stored here, so the mark cannot go stale when {@code Song.tempoDidChange} mutates the
- * live {@link Tempo} in place.
+ * than stored here, so the mark cannot go stale: it holds no tempo of its own for a later edit
+ * to leave behind.
  */
 public final class SongTempoMark extends LineElement {
 

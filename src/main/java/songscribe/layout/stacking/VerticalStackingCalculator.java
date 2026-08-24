@@ -321,8 +321,6 @@ public class VerticalStackingCalculator {
      *       base offsets for all decoration elements</li>
      *   <li>{@link Trill#getYPositionSs()}: additional Y offset for trills</li>
      *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
-     *   <li>{@link AnnotationAttachment} / {@link songscribe.dom.Annotation#getUserYOffsetSs()}:
-     *       legacy annotation Y offset</li>
      *   <li>{@link Tuplet#getVerticalPositionSs()}: tuplet bracket Y offset</li>
      *   <li>{@link Hairpin}: crescendo / diminuendo shifts in staff-space units</li>
      * </ul>
@@ -352,7 +350,6 @@ public class VerticalStackingCalculator {
             switch (element) {
                 case Trill trill -> yOffsetSs += trill.getYPositionSs();
                 case Ending ending -> yOffsetSs += ending.getYPositionSs();
-                case AnnotationAttachment annAttach -> yOffsetSs += annAttach.getAnnotation().getUserYOffsetSs();
                 case Tuplet tuplet -> yOffsetSs += tuplet.getVerticalPositionSs();
                 case Hairpin hairpin -> {
                     x1ExtraSs = hairpin.getX1ShiftSs();

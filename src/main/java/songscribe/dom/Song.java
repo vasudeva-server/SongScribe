@@ -723,26 +723,25 @@ public final class Song implements Disposable {
 
     /**
      * Sets the song's tempo, dropping any tuplet the new beat invalidates. No-ops when
-     * {@code tempo} holds the same four values as the current one, in which case the song
-     * keeps the instance it already has.
-     *
-     * <p>The song stores a <em>copy</em> rather than the caller's instance, so the
-     * {@link MetadataChange} recorded here holds no reference to the live {@link Tempo} —
-     * see {@link #tempoDidChange} for why that matters.
+     * {@code tempo} says what the current one says.
      *
      * <p>Stays public because the undo replayer and the MusicXML header reader both
      * legitimately drive it from outside the editing UI. Bypassing it is still not possible:
      * the write itself is routed through {@link #withBeatDefiningEdit}, which no-ops its
      * validation during replay and during a suspended load.
+     *
+     * @param tempo the tempo the song is to have
+     * @effects replaces the song's tempo, records one undo step, and revalidates tuplets
+     *          against the new beat
      */
     public void setTempo(Tempo tempo) {
-        if (Tempo.haveSameValue(this.tempo, tempo)) {
+        if (this.tempo.equals(tempo)) {
             return;
         }
 
         mutateMetadata(MetadataField.TEMPO, this.tempo, tempo,
             () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                () -> this.tempo = tempo.copy()));
+                () -> this.tempo = tempo));
     }
 
     /**
@@ -1770,51 +1769,44 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Applies a tempo edit to the live {@link Tempo} in place, recording the before and
-     * after values for undo.
+     * Replaces the song's {@link Tempo}, recording the before and after values for undo.
      *
-     * <p>Both recorded values are detached copies, never the live instance. This handler
-     * mutates that instance rather than replacing it, so a record holding it would have its
-     * "after" value silently rewritten by the <em>next</em> tempo edit — and redoing this
-     * step would then replay the later edit's values instead of its own.
+     * <p>A {@code Tempo} is a value, so the recorded "before" is simply the instance the song
+     * held: nothing can rewrite it afterwards, and the undo step keeps the values it was
+     * recorded with however many tempo edits follow.
      */
     @Handler
     public void tempoDidChange(TempoDidChangeNotification update) {
-        // Capture in a local so the lambda below closes over the instance rather than
-        // re-reading a field the replayer may have reassigned.
+        // Capture in a local so the lambda below closes over what the song holds now rather
+        // than re-reading a field the replayer may have reassigned.
         var currentTempo = tempo;
 
-        // Decide on a copy. An update whose fields already hold their current values must
-        // not dirty the undo step or run a beat-defining edit — the settings dialog seeds
-        // its widgets from getTempo(), so confirming it unedited resends exactly what is
-        // already there.
+        // An update whose values already match must not dirty the undo step or run a
+        // beat-defining edit — the settings dialog seeds its widgets from getTempo(), so
+        // confirming it unedited resends exactly what is already there.
         var newTempo = update.getTempo();
 
-        if (Tempo.haveSameValue(currentTempo, newTempo)) {
+        if (currentTempo.equals(newTempo)) {
             return;
         }
-
-        var oldTempo = currentTempo.copy();
 
         // Only the tempo type is the song's beat. A BPM, description or show-tempo edit changes
         // how the marking reads and nothing about the notation, so it must not drag the whole
         // song through a tuplet revalidation — and must not be able to remove a tuplet.
-        var redefinesBeat = !Tempo.haveSameBeat(oldTempo, newTempo);
+        var redefinesBeat = !Tempo.haveSameBeat(currentTempo, newTempo);
 
-        // The values are copied onto the live instance rather than assigned as a replacement,
-        // because the song and the layout both hold that instance. The copy happens inside the
-        // bracket because withBeatDefiningEdit must run the change itself in order to
-        // invalidate tuplets against the new beat.
+        // The assignment happens inside the bracket because withBeatDefiningEdit must run the
+        // change itself in order to invalidate tuplets against the new beat.
         withModification(() -> applyChange(
-            new MetadataChange(MetadataField.TEMPO, oldTempo, newTempo),
+            new MetadataChange(MetadataField.TEMPO, currentTempo, newTempo),
             () -> {
                 if (redefinesBeat) {
                     withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                        () -> currentTempo.copyFrom(newTempo));
+                        () -> tempo = newTempo);
                     return;
                 }
 
-                currentTempo.copyFrom(newTempo);
+                tempo = newTempo;
             }
         ));
     }

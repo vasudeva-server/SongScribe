@@ -34,8 +34,7 @@ final class FontDialogController extends DialogController<FontChoice, Font> {
 
     private Font selectedFont;
 
-    FontDialogController(MainFrame mainFrame, Font initialFont) {
-        super(mainFrame);
+    FontDialogController(Font initialFont) {
         selectedFont = initialFont;
     }
 

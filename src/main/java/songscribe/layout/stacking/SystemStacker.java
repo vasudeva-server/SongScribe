@@ -186,7 +186,7 @@ public class SystemStacker {
         // notehead's left edge, its center to the center, its right edge to the right edge.
         var freeWidthSs = anchorWidthSs - widthSs;
 
-        var xSs = switch (annotation.getAnnotation().getAlignment()) {
+        var xSs = switch (annotation.getAnnotation().alignment()) {
             case LEFT -> columnXSs;
             case CENTER -> columnXSs + freeWidthSs / 2;
             case RIGHT -> columnXSs + freeWidthSs;

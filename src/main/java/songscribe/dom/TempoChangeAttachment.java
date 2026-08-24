@@ -43,15 +43,17 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Copies this tempo change onto a new owner. Deliberately <em>not</em> routed through
+     * {@inheritDoc}
+     *
+     * <p>Deliberately <em>not</em> routed through
      * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
      * is no position to validate from. The clipboard is the only caller that copies a tempo
      * into a different beat context, and paste re-validates the tuplets it carries in
      * {@code PasteSpanReconciliation}.
      */
     @Override
-    public Attachment copy(StaffElement newOwner) {
-        return new TempoChangeAttachment(newOwner, tempo.copy());
+    protected Attachment createCopy(StaffElement newOwner) {
+        return new TempoChangeAttachment(newOwner, tempo);
     }
 
     public Tempo getTempo() {

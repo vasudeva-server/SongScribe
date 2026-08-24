@@ -160,11 +160,11 @@ That gives:
 
 - **Beat change** — 3 regions: duration note, `" = "`, beat note. Dotting either note widens that
   note's region; it never adds a fourth.
-- **Tempo mark with `shouldShowTempo()` true** — 3 regions: the metronome note, `" = "`, and the
-  BPM plus description drawn as one string.
-- **Tempo mark with `shouldShowTempo()` false** — 1 region for the description alone, or none at
-  all when the description is empty, which is the same condition that makes `widthSs` zero and the
-  mark vanish. See [Song-Level Tempo](song-tempo.md).
+- **Tempo mark with a `TempoMarking.Metronome`** — 3 regions: the metronome note, `" = "`, and
+  the BPM plus description drawn as one string.
+- **Tempo mark with a `TempoMarking.TextOnly`** — 1 region for the description alone. Never zero:
+  a text-only marking refuses blank text, so there is no marking that reserves nothing. See
+  [Song-Level Tempo](song-tempo.md).
 
 Note regions and text regions are not the same shape. A note region starts at the decoration's top
 edge and is `QUARTER_NOTE_HEIGHT_SS` tall. A text region sits on the note cap-height baseline, so

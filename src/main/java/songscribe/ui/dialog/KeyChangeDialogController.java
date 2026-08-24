@@ -29,6 +29,7 @@ import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
+import songscribe.dom.KeyChangeSite;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
@@ -43,7 +44,7 @@ import songscribe.util.UIUtils;
 
 /**
  * Everything {@link KeyChangeDialog} is not allowed to know: which line the notator pointed at,
- * what key is in effect there, whether the change will still fit, and which of the two commit
+ * what key is in effect there, whether the change will still fit, and which of the three commit
  * routes writes it.
  *
  * <p><strong>Three gestures in, one dialog out.</strong> A key change reaches the notator four
@@ -55,11 +56,11 @@ import songscribe.util.UIUtils;
  * cautionary share {@link #editLineKey} because they are the same edit — the cautionary depicts
  * the next line's key, so its caller passes that line.
  *
- * <p><strong>No caller states the binding twice.</strong> Whether the bound index carries a key
- * signature already is a fact only the caller has, and asking the line to recover it would put a
- * lookup in the way of an answer that arrived with the gesture. This is also what frees
- * {@link Line#keyAt} from its inclusive bound: the one binding that needs the key of a signature
- * sitting <em>on</em> the bound index reads it off the element.
+ * <p><strong>What varies between the gestures is a {@link KeyChangeSite}.</strong> Each entry point
+ * names the place the change is bound to, and the site answers what key is in effect there and
+ * which key signature, if any, already stands on it — so the three-way distinction is stated once,
+ * in the document model, rather than as a shape this controller keeps for itself. It is also why
+ * this controller's own comparison needs no cases: it asks the site.
  *
  * <p><strong>One commit route per binding.</strong> A line's own key and an existing mid-line key
  * signature are both changed <em>in place</em>; a key signature at a position that has none is
@@ -75,47 +76,19 @@ import songscribe.util.UIUtils;
  * accidental restatements, so a change that is going to be refused never raises a prompt about
  * accidentals it will never apply.
  */
-public final class KeyChangeDialogController extends DialogController<Key, Key> {
+public final class KeyChangeDialogController extends DocumentDialogController<Key, Key> {
 
     private static final Logger LOG = LoggerFactory.getLogger(KeyChangeDialogController.class);
 
-    /**
-     * The {@link #elementIndex} a {@link Binding#LINE_KEY} controller carries: no element at all.
-     *
-     * <p>Named because a bare 0 reads as "the first element" when it means the opposite.
-     * {@link KeyChangeElement}'s position invariant forbids a key signature at index 0, which is
-     * what leaves the value free to carry this meaning.
-     */
-    private static final int LINE_OWN_KEY_INDEX = 0;
-
-    /**
-     * What the dialog is bound to, which is the whole of what varies between the gestures.
-     *
-     * <p>The two mid-line constants differ in where the key already in effect is read from and in
-     * which route commits: {@link #changeMidLineKey} swaps the key on a signature that is already
-     * there, {@link #insertKeyChange} writes a new one.
-     */
-    private enum Binding {
-
-        /** The line's own key: what the header draws, and what a cautionary warns of. */
-        LINE_KEY,
-
-        /** A key signature already standing at the bound index. */
-        EXISTING_SIGNATURE,
-
-        /** A position inside the line with no key signature on it. */
-        NEW_POSITION
-    }
-
+    private final KeyChangeSite site;
     private final Line line;
     private final int elementIndex;
-    private final Binding binding;
 
-    private KeyChangeDialogController(MainFrame mainFrame, Line line, int elementIndex, Binding binding) {
+    private KeyChangeDialogController(MainFrame mainFrame, KeyChangeSite site) {
         super(mainFrame);
-        this.line = line;
-        this.elementIndex = elementIndex;
-        this.binding = binding;
+        this.site = site;
+        line = site.line();
+        elementIndex = site.elementIndex();
     }
 
     /**
@@ -130,7 +103,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      * @param line the line whose own key is being established or changed
      */
     public static void editLineKey(MainFrame mainFrame, Line line) {
-        open(mainFrame, new KeyChangeDialogController(mainFrame, line, LINE_OWN_KEY_INDEX, Binding.LINE_KEY));
+        open(mainFrame, new KeyChangeDialogController(mainFrame, KeyChangeSite.lineKey(line)));
     }
 
     /**
@@ -158,7 +131,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
         }
 
         open(mainFrame, new KeyChangeDialogController(
-            mainFrame, line, signatureIndex, Binding.EXISTING_SIGNATURE));
+            mainFrame, KeyChangeSite.existingSignature(line, signatureIndex)));
     }
 
     /**
@@ -176,7 +149,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      */
     public static void addKeyChange(MainFrame mainFrame, Line line, int insertionIndex) {
         open(mainFrame, new KeyChangeDialogController(
-            mainFrame, line, insertionIndex, Binding.NEW_POSITION));
+            mainFrame, KeyChangeSite.newPosition(line, insertionIndex)));
     }
 
     private static void open(MainFrame mainFrame, KeyChangeDialogController controller) {
@@ -186,24 +159,29 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     /**
      * {@inheritDoc}
      *
-     * <p>The key already in effect where this change is bound, read from whichever of the three
-     * places the binding names. It is what the combo opens on and the one choice OK refuses, so
-     * the dialog commits a change or nothing.
+     * <p>The key already in effect where this change is bound, which the {@link KeyChangeSite}
+     * answers for whichever of the three places it names. It is what the combo opens on and the
+     * one choice a commit refuses, so the dialog writes a change or nothing.
      *
      * @return the key in effect at the bound position; never null, because every position in every
      *         line is in some key
      */
     @Override
     protected Key read() {
-        return switch (binding) {
-            case LINE_KEY -> line.getRunningKey();
+        return site.keyInEffect();
+    }
 
-            // Off the element, not out of Line.keyAt: the notator pointed at this signature, so
-            // its own key is the answer without a query whose bound has to be argued about.
-            case EXISTING_SIGNATURE -> boundSignature().getKey();
-
-            case NEW_POSITION -> line.keyAt(elementIndex);
-        };
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Whether the chosen key writes anything is a question about the place the change is bound
+     * to, so the {@link KeyChangeSite} answers it — including the case where the key chosen is
+     * already in effect and the commit still changes the document, which is a line taking a key of
+     * its own for the first time.
+     */
+    @Override
+    protected boolean dataWasModified(Key values) {
+        return site.wouldChangeAnything(values);
     }
 
     /**
@@ -233,7 +211,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     protected ValidationResult validate(Key values) {
         var lyricRenderMetrics = requireScoreView().getLyricRenderMetrics();
 
-        return switch (binding) {
+        return switch (site.binding()) {
             case LINE_KEY -> refusalUnless(
                 KeyEditFitCalculator.lineKeyChangeFits(line, values, lyricRenderMetrics),
                 lineKeyRefusal());
@@ -251,8 +229,8 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     /**
      * {@inheritDoc}
      *
-     * <p>Both routes reconcile the accidentals the key move affects and raise at most one
-     * restatement prompt before opening their bracket, because a key change moves pitches and owes
+     * <p>Every route reconciles the accidentals the key move affects and raises at most one
+     * restatement prompt before opening its bracket, because a key change moves pitches and owes
      * the same protection an inserted barline owes. Cancelling at that prompt abandons the change:
      * nothing is mutated, no undo step exists, and the dialog closes all the same — a declined
      * confirm is a decision about the change, not about whether the notator is still choosing one.
@@ -261,7 +239,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      */
     @Override
     protected void commit(Key values) {
-        switch (binding) {
+        switch (site.binding()) {
             case LINE_KEY -> changeLineKey(values);
             case EXISTING_SIGNATURE -> changeMidLineKey(values);
             case NEW_POSITION -> insertKeyChange(values);
@@ -335,7 +313,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      * @param key the key the bound signature is to establish instead
      */
     private void changeMidLineKey(Key key) {
-        var signature = boundSignature();
+        var signature = site.boundSignature();
 
         // A swap, described to the reconciliation as what it is: the old signature removed and one
         // for the new key put in its place. Empty prior accidentals because the replacement has no
@@ -378,8 +356,8 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      * the {@link ElementType#SINGLE_BARLINE} the chosen position needs when it does not already
      * follow a barline or repeat.
      *
-     * <p><b>It inserts. It does not edit.</b> Only {@link Binding#NEW_POSITION} arrives here. A
-     * signature already standing at the bound index is changed in place by
+     * <p><b>It inserts. It does not edit.</b> Only {@link KeyChangeSite.Binding#NEW_POSITION}
+     * arrives here. A signature already standing at the bound index is changed in place by
      * {@link #changeMidLineKey}, which is a different edit rather than a variant of this one: it
      * moves no element, owes no barline, and is measured as a swap.
      *
@@ -490,23 +468,6 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
         reconciled.addAll(AccidentalReconciliation.reconcileModification(tail, removal));
 
         return reconciled;
-    }
-
-    /**
-     * The key signature this controller is bound to.
-     *
-     * <p>The guard states the binding's precondition rather than defending against it:
-     * {@link #editKeyChange} is reached only with an element the caller hit-tested on this line,
-     * so anything else there means the line was mutated under a dialog that is modal over it.
-     *
-     * @return the key signature standing at the bound index
-     */
-    private KeyChangeElement boundSignature() {
-        if (line.getElement(elementIndex) instanceof KeyChangeElement signature) {
-            return signature;
-        }
-
-        throw RuntimeError.exit("no key signature at the index this dialog was bound to");
     }
 
     /**

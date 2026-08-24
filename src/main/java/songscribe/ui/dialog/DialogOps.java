@@ -21,6 +21,7 @@ package songscribe.ui.dialog;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
@@ -32,15 +33,15 @@ import songscribe.util.Copyable;
  *
  * <p><strong>Function references rather than an interface, on purpose.</strong> An interface —
  * however narrowly drawn — is an object the dialog holds, and an object can be asked for whatever
- * its type exposes, including whatever the next person adds to that type. A dialog holding four
- * references can make four calls and can never make a fifth, so its reach is bounded by this
- * record's components rather than by a reviewer noticing. There is no receiver behind them that
- * the dialog can name, store or pass on: the controller that supplied them is not reachable from
- * here.
+ * its type exposes, including whatever the next person adds to that type. A dialog holding these
+ * references can make exactly these calls and can never make another, so its reach is bounded by
+ * this record's components rather than by a reviewer noticing. There is no receiver behind them
+ * that the dialog can name, store or pass on: the controller that supplied them is not reachable
+ * from here.
  *
  * <p><strong>Assembled by {@link DialogController#ops()} and nowhere else</strong>, so a bundle
- * always carries one controller's four operations rather than a mixture of several, and no dialog
- * is handed a partial one.
+ * always carries one controller's operations rather than a mixture of several, and no dialog is
+ * handed a partial one.
  *
  * <p>Whether Remove is offered is fixed when the bundle is assembled and never re-asked, so a
  * controller whose answer depends on the document is constructed for the gesture it serves rather
@@ -56,16 +57,22 @@ import songscribe.util.Copyable;
  * @param read     answers what to show, asked afresh on each opening rather than once at
  *                 construction, so a dialog reached from a cached action shows the document that
  *                 is open now. What it answers is already a copy
- * @param validate decides whether gathered values may be committed. Answers and displays nothing;
- *                 presenting the refusal is {@link StandardDialog}'s job
- * @param commit   writes the gathered values, and is reached only with values {@code validate}
- *                 accepted
- * @param remove   takes away what the dialog edits, or {@code null} when this dialog offers no
- *                 Remove — in which case no Remove button is built at all, so there is no state in
- *                 which one is on screen with nothing behind it
+ * @param wasModified answers whether the gathered values say anything the document does not
+ *                    already hold. Asked first on OK, before {@code validate}: values that change
+ *                    nothing are not a proposed change, so there is nothing to judge and nothing
+ *                    to write. A controller that cannot compare answers {@code true} always, which
+ *                    is the default — see {@link DialogController#dataWasModified}
+ * @param validate    decides whether gathered values may be committed. Answers and displays
+ *                    nothing; presenting the refusal is {@link StandardDialog}'s job
+ * @param commit      writes the gathered values, and is reached only with values
+ *                    {@code wasModified} and {@code validate} both accepted
+ * @param remove      takes away what the dialog edits, or {@code null} when this dialog offers no
+ *                    Remove — in which case no Remove button is built at all, so there is no state
+ *                    in which one is on screen with nothing behind it
  */
 public record DialogOps<I extends @Nullable Copyable<I>, O>(
     Supplier<I> read,
+    Predicate<O> wasModified,
     Function<O, ValidationResult> validate,
     Consumer<O> commit,
     @Nullable Runnable remove

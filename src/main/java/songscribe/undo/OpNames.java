@@ -70,7 +70,7 @@ public final class OpNames {
      * user while deleting one is not.
      */
     private enum Category {
-        NOTE, REST, BARLINE, REPEAT, BREATH_MARK
+        NOTE, REST, BARLINE, REPEAT, BREATH_MARK, KEY_CHANGE
     }
 
     /**
@@ -100,6 +100,10 @@ public final class OpNames {
             return Category.BREATH_MARK;
         }
 
+        if (type.isKeyChange()) {
+            return Category.KEY_CHANGE;
+        }
+
         return null;
     }
 
@@ -110,6 +114,11 @@ public final class OpNames {
      * no category, yields the generic {@code Delete Elements}. A note and its grace note
      * share the {@code Note} category, so deleting them together is {@code Delete Notes}
      * rather than the generic label.
+     *
+     * <p>{@code types} is what the user selected, not what the deletion will take: a key
+     * signature drags the barline it sits behind out with it, and that barline is in a
+     * category of its own. Naming the step from the widened range would report
+     * {@code Delete Elements} for a gesture the user made on one key signature.
      *
      * @param types the types of the elements being deleted, in any order; must not be
      *              empty — a deletion of nothing has no name, and nothing is promised for
@@ -139,26 +148,27 @@ public final class OpNames {
             return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ELEMENTS);
         }
 
-        var singular = types.size() == 1;
+        return Strings.get(deleteKey(common), types.size());
+    }
 
-        return Strings.get(
-            switch (common) {
-                case NOTE -> singular ?
-                    Strings.ACTION_EDIT_OP_DELETE_NOTE :
-                    Strings.ACTION_EDIT_OP_DELETE_NOTES;
-                case REST -> singular ?
-                    Strings.ACTION_EDIT_OP_DELETE_REST :
-                    Strings.ACTION_EDIT_OP_DELETE_RESTS;
-                case BARLINE -> singular ?
-                    Strings.ACTION_EDIT_OP_DELETE_BARLINE :
-                    Strings.ACTION_EDIT_OP_DELETE_BARLINES;
-                case REPEAT -> singular ?
-                    Strings.ACTION_EDIT_OP_DELETE_REPEAT :
-                    Strings.ACTION_EDIT_OP_DELETE_REPEATS;
-                case BREATH_MARK -> singular ?
-                    Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK :
-                    Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS;
-            });
+    /**
+     * The delete-label key for one category. Each value carries its own plural as a choice
+     * suffix over the element count, so the singular and the plural are one string rather
+     * than two that can drift apart, and picking between them is the format's job rather
+     * than this method's.
+     *
+     * @param category the category every deleted element shares
+     * @return the key, to be read through the varargs {@code Strings.get} with the count
+     */
+    private static String deleteKey(Category category) {
+        return switch (category) {
+            case NOTE -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
+            case REST -> Strings.ACTION_EDIT_OP_DELETE_REST;
+            case BARLINE -> Strings.ACTION_EDIT_OP_DELETE_BARLINE;
+            case REPEAT -> Strings.ACTION_EDIT_OP_DELETE_REPEAT;
+            case BREATH_MARK -> Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK;
+            case KEY_CHANGE -> Strings.ACTION_EDIT_OP_DELETE_KEY_CHANGE;
+        };
     }
 
     /**
@@ -167,7 +177,8 @@ public final class OpNames {
      * {@code Add Grace Note} rather than folding into {@code Add Note}.
      *
      * @param type the type being inserted; must belong to one of the categories the pen
-     *             can insert — a note, a rest, a barline, a repeat or a breath mark
+     *             can insert — a note, a rest, a barline, a repeat, a breath mark or a key
+     *             change
      * @return the localized name for the insertion
      * @throws IllegalArgumentException if {@code type} is in none of those categories,
      *                                  which no insertion the user can perform produces.
@@ -192,6 +203,7 @@ public final class OpNames {
                 case BARLINE -> Strings.ACTION_EDIT_OP_ADD_BARLINE;
                 case REPEAT -> Strings.ACTION_EDIT_OP_ADD_REPEAT;
                 case BREATH_MARK -> Strings.ACTION_EDIT_OP_ADD_BREATH_MARK;
+                case KEY_CHANGE -> Strings.ACTION_EDIT_OP_ADD_KEY;
             });
     }
 

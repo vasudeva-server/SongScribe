@@ -296,7 +296,7 @@ final class OtherValueComboBox extends JComboBox<String> {
      */
     private void promptForOther() {
         var mainFrame = MainFrame.getInstance();
-        new OtherValueDialog(mainFrame, prompt, new OtherValueController(mainFrame, this).ops())
+        new OtherValueDialog(mainFrame, prompt, new OtherValueController(this).ops())
             .setVisible(true);
     }
 

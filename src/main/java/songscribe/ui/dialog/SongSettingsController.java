@@ -49,7 +49,7 @@ import songscribe.ui.component.MainFrame;
  * is left to judge is a tempo built from bounded controls, metadata that is free text but cannot be
  * wrong, and a set of fonts — which is why the one rule below is about fonts alone.
  */
-public final class SongSettingsController extends DialogController<SongSettingsInput, SongSettingsOutput> {
+public final class SongSettingsController extends DocumentDialogController<SongSettingsInput, SongSettingsOutput> {
 
     /**
      * A proposed change of lyrics font: the one in effect and the one being offered.
@@ -214,7 +214,7 @@ public final class SongSettingsController extends DialogController<SongSettingsI
      * @param tempo the tempo the controls describe
      */
     private static void applyTempo(Song song, Tempo tempo) {
-        if (Tempo.haveSameValue(tempo, song.getTempo())) {
+        if (tempo.equals(song.getTempo())) {
             return;
         }
 

@@ -42,8 +42,7 @@ final class OtherValueController extends DialogController<OtherValue, String> {
      * @param mainFrame the application window, for parenting the prompt
      * @param combo     the combo the prompt writes its answer back to
      */
-    OtherValueController(MainFrame mainFrame, OtherValueComboBox combo) {
-        super(mainFrame);
+    OtherValueController(OtherValueComboBox combo) {
         this.combo = combo;
     }
 

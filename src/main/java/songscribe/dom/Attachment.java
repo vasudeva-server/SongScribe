@@ -81,7 +81,40 @@ public abstract sealed class Attachment extends LineElement
     }
 
     /**
-     * Returns a deep copy of this attachment, re-owned by {@code newOwner}.
+     * Returns a deep copy of this attachment, re-owned by {@code newOwner}, carrying over all
+     * {@link LineElement}-level user state (offsets, margins, position) and the alignment.
+     *
+     * <p>This is the single place that state is copied, so a new subclass cannot forget it — the
+     * same arrangement {@link Span#copy} uses. Subclasses carry their own state in
+     * {@link #createCopy}. Does not copy the children a composite attachment holds, and does not
+     * set {@code parentLine}: {@link StaffElement#addAttachment} owns both, and every caller
+     * reaches it immediately.
+     *
+     * @param newOwner the staff element the copy attaches to
+     * @return an attachment of the same concrete type as this one, sharing no mutable state with
+     *         it
      */
-    public abstract Attachment copy(StaffElement newOwner);
+    public final Attachment copy(StaffElement newOwner) {
+        var copy = createCopy(newOwner);
+
+        copy.setAlignment(getAlignment());
+        copy.setUserXOffsetSs(getUserXOffsetSs());
+        copy.setUserYOffsetSs(getUserYOffsetSs());
+        copy.setMarginSs(getMarginTopSs(), getMarginRightSs(), getMarginBottomSs(), getMarginLeftSs());
+        copy.setPosition(getPositionSs());
+
+        return copy;
+    }
+
+    /**
+     * Creates a new instance of this attachment's concrete subclass, owned by {@code newOwner} and
+     * carrying over any subclass-specific state.
+     *
+     * <p>Called only by {@link #copy}, which layers on the shared {@link LineElement}-level state
+     * afterwards. An implementation states its own value and nothing else.
+     *
+     * @param newOwner the staff element the copy attaches to
+     * @return a new attachment of this concrete type
+     */
+    protected abstract Attachment createCopy(StaffElement newOwner);
 }

@@ -48,48 +48,48 @@ could forget to check.
 
 ------------------------------------------------------------------------
 
-## `shouldShowTempo` is not a visibility flag
+## A marking always draws something
 
-`Tempo.shouldShowTempo()` corresponds to the tempo panel's "Show only description" checkbox,
-inverted. When it is false, the mark still renders — just without the glyph and the BPM number,
-description only. It is never a switch for "hide the tempo mark" on its own.
+What a tempo draws is a `TempoMarking`, a sealed pair of records on the `Tempo`:
 
-The mark would draw nothing at all only when `showTempo` is false *and* the description is
-empty. `MetronomeContent.forTempo`'s `widthSs` is where the two cases part: with `showTempo`
-true the content always begins with a note glyph, so the width can never be zero; with it false
-the content is the description alone, and an empty description appends no item at all. That pair
-is the one no tempo may hold, and the next section is how it is kept out. For how the content is
-built and why the whole marking is typeset in layout rather than at paint time, see
-[Metronome Typesetting](metronome-typesetting.md).
+- **`Metronome`** — the glyph, an `=`, the speed, and then the description when it carries one.
+- **`TextOnly`** — the description on its own, with no glyph and no speed. The speed and the beat
+  unit still live on the `Tempo`; they are not drawn, and they still drive beaming and playback.
 
-`Tempo.isVisible` is that question asked as one named rule. Nothing a song holds answers false
-to it, and that is a precondition on every producer of a tempo rather than a guard `Tempo`
-keeps. `Tempo`'s constructor and `setShowTempo` both still accept the pair, because
-`TempoIO.TempoReader` builds a tempo one setter per XML tag and passes through the pair on the
-way to a complete one.
+The "Show only description" checkbox in the tempo panel chooses between the two. It is not a
+switch for hiding the tempo mark: a `TextOnly` still renders, just without the glyph and the
+number.
 
-The rule is kept where untrusted values enter, and nowhere else:
+**The marking that would draw nothing is unrepresentable.** No glyph and no text is not one of the
+two cases: a `Metronome` always begins with a glyph, and `TextOnly`'s constructor throws on blank
+text. So nothing downstream asks whether a tempo is visible, and no guard anywhere repeats the
+rule. `MetronomeContent.forTempo` states the consequence as a result invariant — its width is
+never zero — and `SystemStacker.stackTempoMark` stacks whatever it builds with no zero-width case.
+For how the content is built and why the whole marking is typeset in layout rather than at paint
+time, see [Metronome Typesetting](metronome-typesetting.md).
 
-- **The dialog cannot produce the pair.** `TempoSection` declares two bindings, one per
-  direction. The "show only description" checkbox is disabled while the description is empty,
-  and the description combo's `(none)` row is barred while the checkbox is checked. Each binding
-  asks `isVisible` about the tempo its own control would produce.
+That leaves two places where a caller could still *try* to describe the pair, and each answers it
+in the way its own inputs allow:
+
+- **The dialog cannot describe it.** `TempoSection.getTempo()` would build a `TextOnly` from a
+  blank description and throw, so two bindings keep the controls out of that pair, one per
+  direction: the checkbox is disabled while the description is blank, and the description combo's
+  `(none)` row is barred while the checkbox is checked.
 
   Barring a row means refusing it, not painting it grey. `OtherValueComboBox` installs a
   selection model on the list its drop-down shows, so a barred row can never become that list's
   selection — which is what the Enter key commits. Its `setSelectedIndex` override covers the
   one route that does not go through the drop-down: an arrow key pressed while the drop-down is
   closed.
-- **Both readers repair the pair.** `MeasureMapper.buildTempo` and `TempoIO.TempoReader` each
-  call `Tempo.makeVisible` and log a warning. They repair rather than discard because only the
-  flag is wrong: the beat unit and the BPM are good, and they drive beaming and playback. A
-  discarded song tempo would silently revert to the defaults, and a discarded tempo change would
-  vanish. Each reader also strips the description it read, so a description of whitespace alone
-  counts as no description at all.
 
-Everything below those entry points relies on the rule and checks nothing. In particular
-`SystemStacker.stackTempoMark` stacks whatever `MetronomeContent.forTempo` builds, with no
-zero-width case, because no tempo it can be handed produces one.
+- **A file that states it is repaired.** A document states the two values separately — a
+  description, and a flag asking for the metronome to be left out — so it can state the pair that
+  the type cannot hold. `TempoMarking.fromFile` is where those two become one marking, and it
+  repairs the pair to a `Metronome` rather than discarding the tempo: only the flag is wrong, and
+  the beat unit and speed beside it are good. A discarded song tempo would silently revert to the
+  defaults, and a discarded tempo change would vanish. It strips the description first, so text of
+  whitespace alone counts as none. Both readers — `MeasureMapper.buildTempo` and
+  `TempoIO.TempoReader` — go through it and log the repair in their own words.
 
 ------------------------------------------------------------------------
 
@@ -132,15 +132,23 @@ binds to the following note as an ordinary tempo change, exactly as it always ha
 
 ------------------------------------------------------------------------
 
-## Why `Tempo` still has no `equals`/`hashCode`
+## `Tempo` is a value
 
-`Tempo` is mutable — four setters — and `Song.tempoDidChange` mutates the live instance in place
-rather than replacing it. Giving `Tempo` value equality would be unsafe the moment an instance
-ever entered a hash-based collection (a `HashSet`, a `HashMap` key) and then had one of its
-fields mutated out from under its stored hash code.
+`Tempo` is a record: immutable, compares by value, and copied by handing back the same
+instance. `Song.setTempo`, `Song.tempoDidChange` and `SongSettingsController.applyTempo` all
+compare two tempos with `equals` before recording a change and running the beat-defining
+machinery a tempo edit can trigger, and `TempoChangeController` inherits the same comparison
+from `AttachmentDialogController` rather than stating its own.
 
-`Tempo.haveSameValue` is the single sanctioned way to compare two tempos by value instead, and it
-now sits in `Song.setTempo` and `Song.tempoDidChange` — both need to tell whether an incoming
-tempo actually differs from the current one before recording a change and running the
-beat-defining machinery that a tempo edit can trigger. The same question for other mutable
-value-ish DOM types is broader than this feature and is tracked separately as #747.
+`Tempo.haveSameBeat` stays, and is a narrower question than equality: the beat is the tempo
+*type* alone, so a BPM or marking edit answers `true` and skips the tuplet revalidation that a
+beat change forces.
+
+**Every value-ish DOM type compares by value.** `Annotation`, `Tempo`, `BeatChange`,
+`SongMetadata` and `SongAttribution` are records, `Key` and `Duration` are enums, and each
+`TempoMarking` case is a record. A new type of this kind is a record.
+
+This is a rule about DOM value types, not about every holder in the codebase. `DocumentFonts`
+is a mutable holder the Fonts tab edits in place and it defines value equality anyway; it is a
+dialog-side accumulator rather than something the document stores, and it never enters a
+hash-based collection.

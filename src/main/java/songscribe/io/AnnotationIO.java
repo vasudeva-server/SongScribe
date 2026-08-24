@@ -128,7 +128,7 @@ public final class AnnotationIO {
         }
 
         @Nullable
-        public Annotation endElement11(String qName) {
+        public ReadAnnotation endElement11(String qName) {
             if (qName.equals(XML_ANNOTATION)) {
                 inAnnotation = false;
                 return build();
@@ -189,34 +189,25 @@ public final class AnnotationIO {
         }
 
         /**
-         * @return the annotation the accumulated parts describe, or {@code null} when it has no
-         *         text — an annotation with no text has nothing to draw, so it is not attached
-         *         rather than imported
+         * @return the annotation the accumulated parts describe together with where the document
+         *         placed it, or {@code null} when it has no text — an annotation with no text has
+         *         nothing to draw, so it is not attached rather than imported
          * @log warn if the accumulated text is blank
          */
         @Nullable
-        private Annotation build() {
+        private ReadAnnotation build() {
             if (text.isBlank()) {
                 LOG.warn("Corrupt document: annotation with no text, dropping it");
                 return null;
             }
 
-            var annotation = new Annotation(text);
-            var readAlignment = alignment;
-            var readPlacement = placement;
-
-            // Only what the document actually carried is applied; the rest keeps Annotation's own
+            // Only what the document actually carried is applied; the rest takes Annotation's own
             // defaults rather than a second copy of them here.
-            if (readAlignment != null) {
-                annotation.setAlignment(readAlignment);
-            }
+            var readAlignment = alignment == null ? Annotation.DEFAULT_ALIGNMENT : alignment;
+            var readPlacement = placement == null ? Annotation.DEFAULT_PLACEMENT : placement;
 
-            if (readPlacement != null) {
-                annotation.setPlacement(readPlacement);
-            }
-
-            annotation.setUserYOffsetSs(userYOffsetSs);
-            return annotation;
+            return new ReadAnnotation(
+                new Annotation(text, readAlignment, readPlacement), userYOffsetSs);
         }
 
         public void characters(char[] ch, int start, int length) {

@@ -61,7 +61,7 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     private final Property<LeftCenterRight> alignment;
     private final Property<AboveBelow> placement;
 
-    public AnnotationDialog(MainFrame mainFrame, DialogOps<@Nullable Annotation, Annotation> ops) {
+    public AnnotationDialog(MainFrame mainFrame, DialogOps<? extends @Nullable Annotation, Annotation> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_ANNOTATION_TITLE), ops);
 
         var annotationCombo = new OtherValueComboBox(
@@ -138,16 +138,19 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
     protected void populateControls(@Nullable Annotation existingChange) {
         var annotation = existingChange != null ? existingChange : new Annotation(DEFAULT_ANNOTATION);
 
-        text.set(annotation.getText());
-        alignment.set(annotation.getAlignment());
-        placement.set(annotation.getPlacement());
+        text.set(annotation.text());
+        alignment.set(annotation.alignment());
+        placement.set(annotation.placement());
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return the annotation the controls describe. Where it sits is the attachment's, not this
+     *         dialog's, so an edit here cannot move it — see {@link Annotation}
+     */
     @Override
     protected Annotation gather() {
-        var annotation = new Annotation(text.get(), alignment.get());
-        annotation.setPlacement(placement.get());
-
-        return annotation;
+        return new Annotation(text.get(), alignment.get(), placement.get());
     }
 }

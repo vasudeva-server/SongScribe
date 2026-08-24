@@ -63,28 +63,39 @@ strings or values this one is, where the JDK type alone would not.
 **`O` carries no bound.** It is built by `gather()` from the controls, so there is nothing of the
 document's in it to alias.
 
-**Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. Four references expose four calls and can never expose a fifth.
+**Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. A bundle of references exposes exactly those calls and can never expose another.
 
 The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the four operations need. **The dialog never sees it.**
 
 ```java
 abstract class DialogController<I extends @Nullable Copyable<I>, O> {
-    protected DialogController(MainFrame mainFrame)
-
-    // The access dialogs gave up. Legitimate here.
-    protected final MainFrame        getMainFrame()
-    protected final ScoreView        requireScoreView()
-    protected final Song             getSong()
-    protected final void             withModification(String label, Runnable mutator)
-
     protected abstract I                read()               // may answer the document's own object
     protected          ValidationResult validate(O values)   // default: accepts everything
+    protected          boolean          dataWasModified(O values)  // default: true
     protected abstract void             commit(O values)
     protected          @Nullable Runnable removal()          // default: null
 
     public final DialogOps<I, O> ops()      // final: no subclass hands over a partial bundle,
 }                                           // and the only place read()'s answer is copied
+
+// The access dialogs gave up. Legitimate here — and only for a controller that has to
+// resolve the open document rather than being handed what it edits.
+abstract class DocumentDialogController<I, O> extends DialogController<I, O> {
+    protected DocumentDialogController(MainFrame mainFrame)
+
+    protected final MainFrame        getMainFrame()
+    protected final ScoreView        requireScoreView()
+    protected final Song             getSong()
+    protected final void             withModification(String label, Runnable mutator)
+}
 ```
+
+**Extend `DocumentDialogController` only when the controller resolves the document itself.**
+`SongSettingsController` and `KeyChangeDialogController` do; the other four are constructed around
+the line and element they edit and would only be handed a window to ignore. Extending it is what
+forces a test to stand up a mocked application, so it is a claim worth checking: a controller that
+can be handed its subject is testable with nothing on screen, which is what
+`AttachmentDialogControllerTest` relies on.
 
 **`commit` may itself ask a yes/no question before it opens its bracket.**
 `AccidentalRestatements.confirm` must run in an edit's decide phase, before any
@@ -101,7 +112,7 @@ completion either way.
 
 **Whoever opens the dialog constructs the controller** and passes `controller.ops()`. `ops()` is public because openers are not all in `ui.dialog` — `Actions` registers the cached menu actions from `ui.action`. `AttachmentDialogController` is the worked example: it resolves the element and line, builds the controller around them, and hands the dialog four references that already hold them.
 
-**A controller bound to a gesture is constructed per gesture.** `removal()` is asked once, when `ops()` assembles the bundle, and decides whether a Remove button is *built* — not merely whether it is enabled. A controller serving a dialog reached from a cached action holds only the `MainFrame` and resolves the document in `read()`.
+**A controller bound to a gesture is constructed per gesture.** `removal()` is asked once, when `ops()` assembles the bundle, and decides whether a Remove button is *built* — not merely whether it is enabled. A controller serving a dialog reached from a cached action holds nothing of the document and resolves it in `read()`, which is what `DocumentDialogController` exists for.
 
 **There is one input shape, not two.** Every dialog asks `read` on each opening; none takes its input at construction. A dialog that appears to need no input is one whose constructor is smuggling its input in — if `I` wants to be `Void`, look at the constructor.
 
@@ -125,7 +136,7 @@ Accessors: `getMainFrame()` — window parenting only; `bindings()` — the dial
 
 Validity: `requireValid(condition)` adds a condition, `valid` is their conjunction. See [Validity](#validity-and-why-a-rule-belongs-in-front-of-ok).
 
-There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
+There is **no inherited route to the score**. `getScoreView()`, `requireScoreView()` and `getSong()` are not on `BaseDialog`; they are on `DocumentDialogController`. Reaching the document through `getMainFrame()` is the same rule broken in a longer spelling.
 
 Static helpers:
 - `addLabeledField(container, labelText, field, LabelPosition.LEFT|TOP)`
@@ -151,7 +162,9 @@ Constructors: `(mainFrame, title, ops)`, `(mainFrame, title, ops, DialogCategory
 
 ```
 show    →  populate(ops.read().get())
-OK      →  gather() → ops.validate() → ops.commit()   [commit only if valid]
+OK      →  gather() → ops.wasModified() → ops.validate() → ops.commit()
+           [closes and writes nothing when wasModified says no]
+           [commit only if valid]
            [OK is disabled entirely while requireValid conditions fail]
 Remove  →  ops.remove().run()                          [button built iff non-null]
 Cancel  →  nothing
@@ -162,6 +175,16 @@ Cancel  →  nothing
 **A rule the user can break while typing is stated as a validity condition, not caught at OK.** `requireValid(ObservableValue<Boolean>)` — on `BaseDialog` and on `Tab` — adds a condition; `valid` is the conjunction of every condition added, and `StandardDialog` binds its OK button's enabled state to it. A dialog that adds none is always valid, so this costs nothing where there is no rule.
 
 Conditions are `computed` values over the properties they read, so they answer to a paste and a cut as readily as to typing, and the user sees the commit become unavailable at the moment they make it unavailable — rather than being told after pressing OK, with the commit already done.
+
+**"Nothing has changed" is deliberately not a validity condition.** OK stays enabled whether or not the notator changed anything; what changes is whether the commit writes. `DialogController.dataWasModified(O)` is a fifth operation in the bundle, and `StandardDialog` asks it **first** on OK — before `validate`, not between it and `commit`. An OK the notator changed nothing before therefore closes the window, writes nothing, records no undo step and leaves the document clean.
+
+**It comes before `validate`, not after.** Values that change nothing are not a proposed change, so there is nothing to judge. Judging anyway lets a rule about a change the notator never made refuse to let them out of the dialog — `KeyChangeDialogController.validate` measures whether every re-keyed line still fits, and on a document that already overflows it would refuse a dismissal — and it runs that measurement on every OK press. The order lives in `StandardDialog.commitOnOk`, which is the one place that states what OK does; a controller states the comparison, never the skip and never the order.
+
+**No dialog disables OK because nothing has changed.** A greyed-out OK makes "commit" and "dismiss" two different questions for one button, and it needs a comparison in front of every keystroke rather than one at OK. Refusing to write says the same thing for less.
+
+The comparison belongs to the controller, not the dialog: whether two values say the same thing is a question about the document's types. That is also what makes it testable without a window — `AttachmentDialogControllerTest` asks all three attachment controllers with no window on screen. `dataWasModified` defaults to `true` — commit whatever the controls say — because a comparison is only meaningful where `I` and `O` describe the same thing; for a controller whose input and output are different shapes the default is the honest answer, and a partial no-op guard belongs in `commit` per write, as `SongSettingsController` does. `AttachmentDialogController` overrides it with `equals`, which is the whole of what its three subclasses need: every value type they carry — `Annotation`, `BeatChange`, `Tempo` — compares by value on its own, so none of them states a comparison of its own. It can state the comparison for the whole family because the family names **one** type parameter, `AttachmentDialogController<T>` over `DialogController<@Nullable T, T>` — two independent parameters would let a subclass name unrelated types, and the comparison would then silently answer "changed" every time.
+
+`KeyChangeDialogController` overrides it too, comparing the chosen key against the key already in effect. It does not switch on the gesture to find that key: a `KeyChangeSite` — the line, the index, and which of the three places it is — answers `keyInEffect()`, so one comparison covers all four key-editing gestures and the controller needs no window to be asked.
 
 This does not make `ops.validate()` redundant, and the two do not overlap. A validity condition is a rule about **one control's own value**, live and local. `validate` is for a rule about the **gathered values as a whole** — one spanning tabs, or needing the document to answer, like the lyrics-font rule that has to know which lines fit today. A rule that a control can answer for itself does not go in `validate`: the values reaching `validate` cannot break it, and a check there would be a guard on an impossible condition.
 

@@ -21,28 +21,31 @@ package songscribe.ui.dialog;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Song;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.ScoreView;
 import songscribe.util.Copyable;
 
 /**
  * The other end of a {@link DialogOps}: everything one dialog's operations need the document for.
  *
- * <p>The access a dialog gave up is legitimate here. This is not a window — it holds the score,
- * the view and whatever else its dialog edits, and it can be asked all four of its questions with
- * nothing on screen. That is what makes the decisions in a dialog's operation testable: they are
- * all on this side, and none of them is behind a widget.
+ * <p>The access a dialog gave up is legitimate here. This is not a window — it holds whatever its
+ * dialog edits, and it can be asked every one of its questions with nothing on screen. That is what
+ * makes the decisions in a dialog's operation testable: they are all on this side, and none of
+ * them is behind a widget.
+ *
+ * <p><strong>It holds no application window.</strong> A controller that resolves the open document
+ * — rather than being handed the line and element it edits — extends
+ * {@link DocumentDialogController}, which is where the window and the document accessors live. Two
+ * controllers need that; the rest are constructed around what they edit and would only be handed a
+ * window to ignore.
  *
  * <p><strong>The dialog never sees an instance of this.</strong> It sees the four function
  * references {@link #ops()} assembles, and cannot reach the receiver behind them — see
- * {@link DialogOps} for why that is four references rather than one narrow interface.
+ * {@link DialogOps} for why those are function references rather than one narrow interface.
  *
  * <p><strong>Bound to what it edits when it is constructed.</strong> A controller whose answers
  * depend on something the user pointed at — an element, an insertion point — is constructed for
  * that gesture and discarded with the dialog. A controller serving a dialog reached from a cached
- * action holds only the {@link MainFrame} and resolves the document in {@link #read()}, which is
- * asked afresh on every opening.
+ * action holds nothing of the document and resolves it in {@link #read()}, which is asked afresh
+ * on every opening.
  *
  * @param <I> what the dialog shows, answered by {@link #read()}. {@link Copyable}, because
  *            {@link #ops()} copies it on the way out — see there. Its bound permits
@@ -52,60 +55,13 @@ import songscribe.util.Copyable;
  */
 public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
 
-    private final MainFrame mainFrame;
-
-    /**
-     * @param mainFrame the application window, which is also how the open document is reached
-     */
-    protected DialogController(MainFrame mainFrame) {
-        this.mainFrame = mainFrame;
-    }
-
-    /**
-     * @return the application window, for parenting an alert a commit has to raise before it can
-     *         proceed — not for reaching the document, which the accessors below do directly
-     */
-    protected final MainFrame getMainFrame() {
-        return mainFrame;
-    }
-
-    /**
-     * @return the view onto the open document, for the two document-wide settings that are written
-     *         through the view rather than onto the song
-     */
-    protected final ScoreView requireScoreView() {
-        return mainFrame.requireScoreView();
-    }
-
-    /**
-     * @return the song now open, which is a different song each time a document is opened — so a
-     *         controller that outlives one document asks again rather than holding the answer
-     */
-    protected final Song getSong() {
-        return requireScoreView().getSong();
-    }
-
-    /**
-     * Runs {@code mutator} against the open song inside one modification bracket named
-     * {@code label}.
-     *
-     * <p>However many fields {@code mutator} touches, the whole of it is <strong>one undoable
-     * step</strong> and posts one {@code SongDidChangeNotification}. Nesting is safe: a mutator
-     * that opens further brackets still produces one step, per {@code docs/mutations.md}.
-     *
-     * @param label   the undo-step name, already resolved to display text, as it will read in the
-     *                Edit menu after {@code Undo}
-     * @param mutator the change to make
-     */
-    protected final void withModification(String label, Runnable mutator) {
-        getSong().withModification(label, mutator);
-    }
-
     /**
      * Reads what the dialog should show.
      *
-     * <p>Called once per opening, before the window appears, and never while it is up. Reads only:
-     * the document is left exactly as it was.
+     * <p>Called once per opening, before the window appears, and once more on OK for any
+     * controller whose {@link #dataWasModified} compares against it — so an implementation stays
+     * cheap and must not assume it is asked only once. Reads only: the document is left exactly as
+     * it was.
      *
      * <p><strong>It may return the document's own object.</strong> Keeping the dialog off it is
      * {@link #ops()}'s job and is done for every controller at once, so an implementation here
@@ -123,7 +79,9 @@ public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
      * fused decide-and-display method testable only by mocking the UI around it. This answers;
      * {@link StandardDialog} presents.
      *
-     * <p>Called on every OK, always with the values {@link #commit} will receive if it accepts.
+     * <p>Called on an OK that changes something, always with the values {@link #commit} will
+     * receive if it accepts. An OK the notator changed nothing before never reaches here: there is
+     * no proposed change to judge, so {@link #dataWasModified} closes the dialog ahead of this.
      *
      * @param values the values just gathered from the dialog's controls
      * @return {@link ValidationResult#valid()} when the values may be committed, otherwise a
@@ -138,12 +96,39 @@ public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
     }
 
     /**
+     * Whether {@code values} say anything the document does not already hold.
+     *
+     * <p>The first question OK asks, ahead of both {@link #validate} and {@link #commit}:
+     * answering {@code false} closes the dialog having written nothing, recorded no undo step and
+     * left the document clean. It comes first because values that change nothing are not a
+     * proposed change — there is nothing for {@code validate} to judge, and judging anyway would
+     * let a rule about a change the notator never made refuse to let them out of the dialog. The
+     * OK button itself stays available throughout: refusing to write is this controller's job, not
+     * a button state.
+     *
+     * <p>Asked once per OK. Reads only: the document is left exactly as it was.
+     *
+     * @param values the values the dialog's controls describe
+     * @return {@code true} when committing them would change something
+     * @implSpec Answers {@code true}: every commit is performed, whatever the controls say.
+     *           Override where the controller can compare {@code values} against what the document
+     *           holds. A comparison is only meaningful where {@code I} and {@code O} describe the
+     *           same thing — for a controller whose input and output are different shapes, the
+     *           default is the honest answer, and a partial no-op guard belongs in {@link #commit}
+     *           per write, as {@code SongSettingsController} does.
+     */
+    protected boolean dataWasModified(O values) {
+        return true;
+    }
+
+    /**
      * Commits {@code values} to whatever this dialog's OK writes to.
      *
-     * <p>Called only after {@link #validate} answered a valid result for these same values, so an
-     * implementation takes their validity as a precondition rather than re-deriving it. An
-     * implementation that writes the document does so through {@link #withModification}, so the
-     * whole commit is one undo step.
+     * <p>Called only after {@link #dataWasModified} answered that these values change something
+     * and {@link #validate} answered a valid result for them, so an implementation takes both as
+     * preconditions rather than re-deriving either. An implementation that writes the document
+     * does so through {@link DocumentDialogController#withModification}, so the whole commit is
+     * one undo step.
      *
      * @param values the values gathered from the dialog's controls, already validated
      */
@@ -166,18 +151,18 @@ public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
     }
 
     /**
-     * Assembles this controller's four operations into the bundle its dialog is constructed with.
+     * Assembles this controller's operations into the bundle its dialog is constructed with.
      *
      * <p>Final, and the only assembly point, so no subclass can hand a dialog a bundle that is
      * partial, that mixes controllers, or that routes {@code commit} past the {@link #validate}
-     * this controller declared. A controller varies what the dialog gets by overriding the four
+     * this controller declared. A controller varies what the dialog gets by overriding the
      * operations, never by rewiring the bundle.
      *
      * <p>Public because the handoff is the point: whoever opens the dialog constructs the
      * controller and passes this to the constructor, and openers are not all in this package —
      * {@code Actions} registers the cached menu actions from {@code songscribe.ui.action}. Handing
-     * the bundle out costs nothing, since it carries four function references and no route back to
-     * the receiver behind them.
+     * the bundle out costs nothing, since it carries function references and no route back to the
+     * receiver behind them.
      *
      * <p><strong>What the dialog is shown is a copy.</strong> {@link #read()} may answer the
      * document's own object; what goes into the bundle is {@link Copyable#copy()} of it, so a
@@ -187,10 +172,12 @@ public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
      * that cannot copy itself from being an input at all.
      *
      * @return a bundle carrying exactly this controller's {@link #read()} — copied — together with
-     *         its {@link #validate}, {@link #commit} and {@link #removal()}
+     *         its {@link #dataWasModified}, {@link #validate}, {@link #commit} and
+     *         {@link #removal()}
      */
     public final DialogOps<I, O> ops() {
-        return new DialogOps<>(this::readCopy, this::validate, this::commit, removal());
+        return new DialogOps<>(
+            this::readCopy, this::dataWasModified, this::validate, this::commit, removal());
     }
 
     /**

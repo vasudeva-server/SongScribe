@@ -38,7 +38,7 @@ public class TempoChangeDialog extends AttachmentDialog<Tempo> {
 
     private final TempoSection tempoSection;
 
-    public TempoChangeDialog(MainFrame mainFrame, DialogOps<@Nullable Tempo, Tempo> ops) {
+    public TempoChangeDialog(MainFrame mainFrame, DialogOps<? extends @Nullable Tempo, Tempo> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE), ops);
 
         tempoSection = new TempoSection(bindings(), List.of("tempochanges", "tempos"));

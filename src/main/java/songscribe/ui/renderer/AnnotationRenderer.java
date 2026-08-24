@@ -82,7 +82,7 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
             var xSs = decorationLayout.xSs();
             var baselineYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants) + ascentSs;
 
-            g2.drawString(attachment.getAnnotation().getText(), (float) xSs, (float) baselineYSs);
+            g2.drawString(attachment.getAnnotation().text(), (float) xSs, (float) baselineYSs);
         }
     }
 }

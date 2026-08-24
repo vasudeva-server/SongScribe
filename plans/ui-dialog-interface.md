@@ -332,10 +332,11 @@ none states its binding twice and none constructs the dialog.
 | 3 | mid-line signature double-click | `editKeyChange(frame, line, signature)` | the clicked `KeyChangeElement`'s own key, read off the element | `insertKeyChange` ⚠ |
 | 4 | `KeyChangeAction.insertionPointChosen` | `addKeyChange(frame, line, index)` | `line.keyAt(index)` | `insertKeyChange` |
 
-Inside, a private `Binding` enum — `LINE_KEY`, `EXISTING_SIGNATURE`, `NEW_POSITION` —
-carries which entry point built the controller. `read()` switches on all three;
-`validate` and `commit` branch on line-key against mid-line, which is where the fit
-function, the refusal message and the commit method vary together.
+Inside, the controller holds a `KeyChangeSite` — a `Line`, an index, and a `Binding` of
+`LINE_KEY`, `EXISTING_SIGNATURE` or `NEW_POSITION` — naming which entry point built it.
+`read()` is the site's `keyInEffect()`; `validate` and `commit` branch on line-key against
+mid-line, which is where the fit function, the refusal message and the commit method vary
+together.
 `changeLineKey` and `insertKeyChange` are private methods of this class:
 `ScoreViewController` declares neither, and `AccidentalRestatements.confirm` is parented
 on `getMainFrame()`. Both are `void` — the boolean saying "the notator cancelled at the

@@ -80,9 +80,9 @@ class TempoSectionTest extends UnitTest {
         tempoSection.setTempo(tempo);
         var gathered = tempoSection.getTempo();
 
-        assertThat(gathered.getVisibleTempo()).isEqualTo(tempo.getVisibleTempo());
-        assertThat(gathered.getTempoType()).isEqualTo(tempo.getTempoType());
-        assertThat(gathered.getMarking()).isEqualTo(tempo.getMarking());
+        assertThat(gathered.visibleTempo()).isEqualTo(tempo.visibleTempo());
+        assertThat(gathered.tempoType()).isEqualTo(tempo.tempoType());
+        assertThat(gathered.marking()).isEqualTo(tempo.marking());
     }
 
     @Test

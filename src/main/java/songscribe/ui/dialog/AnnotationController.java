@@ -41,10 +41,10 @@ import songscribe.ui.component.MainFrame;
  * arrives: the non-editable combo offers only non-blank items, and its {@code Other…} prompt
  * refuses a blank entry before this controller ever sees the value.
  */
-public final class AnnotationController extends AttachmentDialogController<@Nullable Annotation, Annotation> {
+public final class AnnotationController extends AttachmentDialogController<Annotation> {
 
-    public AnnotationController(MainFrame mainFrame, AttachmentTarget target) {
-        super(mainFrame, target);
+    public AnnotationController(AttachmentTarget target) {
+        super(target);
     }
 
     @Override

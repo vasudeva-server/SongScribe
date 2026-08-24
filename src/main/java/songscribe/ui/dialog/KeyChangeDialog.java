@@ -26,7 +26,6 @@ import songscribe.dom.Key;
 import songscribe.ui.KeyCellRenderer;
 import songscribe.ui.binding.Controls;
 import songscribe.binding.Property;
-import songscribe.binding.ValueProperty;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -34,9 +33,10 @@ import songscribe.util.UIUtils;
  * Names the key a change establishes: one combo over the fifteen key signatures, opened on the key
  * already in effect where the change is bound.
  *
- * <p><b>OK stays disabled until the notator picks a different key</b>, so this dialog commits a
- * change or nothing. The entry it opens on is the one entry OK refuses; choosing it is choosing
- * nothing, which is what Cancel is for.
+ * <p><b>OK stays enabled throughout</b>, including on the key it opened on. Committing that key
+ * would write a change that changes nothing, and what refuses it is
+ * {@link DialogController#dataWasModified} — asked before anything is judged or written, rather
+ * than a disabled button — so pressing OK on an untouched dialog closes it and writes nothing.
  *
  * <p><b>It cannot tell the four key-editing gestures apart, and does not need to.</b> A line's own
  * key and a key signature standing in the middle of a line are one {@link Key} in and one
@@ -50,15 +50,8 @@ import songscribe.util.UIUtils;
  */
 public class KeyChangeDialog extends StandardDialog<Key, Key> {
 
-    /** The notator's current choice, which is what OK is measured against. */
+    /** The notator's current choice, which is what a commit is measured against. */
     private final Property<Key> selectedKey;
-
-    /**
-     * The key the combo opened on. Starts at the model's first signature, which is also what the
-     * combo starts on, so a dialog that has not yet been populated offers no change and OK is
-     * unavailable — the same state {@link #populate} then re-establishes for the real key.
-     */
-    private final ValueProperty<Key> keyInEffect = new ValueProperty<>(Key.allSignatures().getFirst());
 
     public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE), ops);
@@ -71,26 +64,18 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyCellRenderer());
         UIUtils.forceLightModeCombo(keysCombo);
-
-        // Committing the key already in effect would write a change that changes nothing, so OK is
-        // unavailable until the notator picks a different one. Stated as a validity condition
-        // rather than by setting the button, because StandardDialog binds the button to the
-        // conjunction of these — a second writer would fight that binding.
-        requireValid(bindings().computed(() -> !selectedKey.get().equals(keyInEffect.get())));
     }
 
     /**
      * {@inheritDoc}
      *
-     * <p>Both properties are written, so the two agree and the dialog opens offering no change.
-     * Nothing has to disable OK afterwards: the validity condition is a derivation over these two
-     * values, so it re-answers on its own however the combo came to hold what it holds.
+     * <p>The combo opens on the key already in effect, so a dialog the notator leaves alone
+     * gathers that key and the commit refuses it.
      *
      * @param values the key in effect where the change is bound
      */
     @Override
     protected void populate(Key values) {
-        keyInEffect.set(values);
         selectedKey.set(values);
     }
 
@@ -101,7 +86,7 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
      * empty and a non-empty combo always carries a selection — which is what lets the property
      * answer a {@link Key} rather than something possibly absent.
      *
-     * @return the key the notator chose
+     * @return the key the notator chose, which is the key in effect until they choose another
      */
     @Override
     protected Key gather() {

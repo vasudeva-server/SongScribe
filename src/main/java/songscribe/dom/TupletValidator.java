@@ -560,7 +560,7 @@ public final class TupletValidator {
 
         var tempoChange = element.findAttachment(TempoChangeAttachment.class);
 
-        return tempoChange != null && tempoChange.getTempo().getTempoType() != runningBeat;
+        return tempoChange != null && tempoChange.getTempo().tempoType() != runningBeat;
     }
 
     /** Whether the span crosses a barline, a repeat, or a breath mark it may not contain. */

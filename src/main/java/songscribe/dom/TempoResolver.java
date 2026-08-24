@@ -93,7 +93,7 @@ public final class TempoResolver {
         }
 
         return new BeatAt(
-            song.getTempo().getTempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
+            song.getTempo().tempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
     }
 
     /**
@@ -114,7 +114,7 @@ public final class TempoResolver {
         var tempoChange = element.findAttachment(TempoChangeAttachment.class);
 
         if (tempoChange != null) {
-            return tempoChange.getTempo().getTempoType();
+            return tempoChange.getTempo().tempoType();
         }
 
         return null;

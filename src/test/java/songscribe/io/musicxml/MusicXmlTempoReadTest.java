@@ -72,17 +72,17 @@ class MusicXmlTempoReadTest extends UnitTest {
     void testHiddenTempoWithNoDescriptionIsShownWithItsBeatAndBpmKept() throws Exception {
         var tempo = parse(scoreWithMeasureBody(hiddenMetronome(""))).getTempo();
 
-        assertThat(tempo.getMarking()).isEqualTo(new TempoMarking.Metronome(""));
+        assertThat(tempo.marking()).isEqualTo(new TempoMarking.Metronome(""));
 
         // The repair touches the marking and nothing else, so the beat and the BPM survive it.
-        assertThat(tempo.getVisibleTempo()).isEqualTo(BPM);
-        assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
+        assertThat(tempo.visibleTempo()).isEqualTo(BPM);
+        assertThat(tempo.tempoType()).isEqualTo(Duration.CROTCHET);
     }
 
     @Test
     void testHiddenTempoWithADescriptionStaysTextOnly() throws Exception {
         var tempo = parse(scoreWithMeasureBody(hiddenMetronome(DESCRIPTION))).getTempo();
 
-        assertThat(tempo.getMarking()).isEqualTo(new TempoMarking.TextOnly(DESCRIPTION));
+        assertThat(tempo.marking()).isEqualTo(new TempoMarking.TextOnly(DESCRIPTION));
     }
 }

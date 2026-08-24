@@ -158,14 +158,14 @@ public record MetronomeContent(
     public static MetronomeContent forTempo(Tempo tempo, Font font) {
         var builder = new Builder(font);
 
-        switch (tempo.getMarking()) {
+        switch (tempo.marking()) {
             case TempoMarking.Metronome metronome -> {
-                builder.appendNote(tempo.getTempoType().getNote());
+                builder.appendNote(tempo.tempoType().getNote());
                 // The "=" and the BPM/description are separate items because they are drawn as
                 // two separate strings at two positions.
                 builder.appendText(EQUALS_STR);
                 builder.appendText(
-                    bpmWithDescription(tempo.getVisibleTempo(), metronome.description()));
+                    bpmWithDescription(tempo.visibleTempo(), metronome.description()));
             }
             case TempoMarking.TextOnly textOnly -> builder.appendText(textOnly.description());
         }

@@ -362,10 +362,10 @@ public final class StaffElementIO {
                     return null;
                 }
 
-                var a = annotationReader.endElement11(qName);
+                var read = annotationReader.endElement11(qName);
 
-                if (a != null) {
-                    element.addAttachment(new AnnotationAttachment(element, a));
+                if (read != null) {
+                    read.attachTo(element);
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.LYRIC) {

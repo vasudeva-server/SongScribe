@@ -54,8 +54,8 @@ import songscribe.ui.component.InputUtils;
  * note types and the checkbox label are the same for every caller, so the panel holds both.
  *
  * <p>The note-type combo and the BPM spinner stay enabled while the checkbox is selected.
- * {@link Tempo#getTempoType()} is the beat that beams group against and that tuplets are measured
- * in, and {@link Tempo#getRealTempo()} drives MIDI playback. Neither depends on the metronome mark
+ * {@link Tempo#tempoType()} is the beat that beams group against and that tuplets are measured
+ * in, and {@link Tempo#realTempo()} drives MIDI playback. Neither depends on the metronome mark
  * being drawn.
  *
  * <p><strong>The description combo and the checkbox cannot both say "nothing".</strong> A checked
@@ -164,10 +164,10 @@ class TempoSection extends JPanel {
      * @effects writes all four controls
      */
     void setTempo(Tempo tempo) {
-        var marking = tempo.getMarking();
+        var marking = tempo.marking();
 
-        tempoType.set(tempo.getTempoType());
-        visibleTempo.set(tempo.getVisibleTempo());
+        tempoType.set(tempo.tempoType());
+        visibleTempo.set(tempo.visibleTempo());
         tempoDescription.set(marking.description());
         showOnlyDescription.set(marking instanceof TempoMarking.TextOnly);
     }

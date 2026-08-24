@@ -56,7 +56,7 @@ public final class MidiEventFactory {
         Tempo tempo,
         int tempoChangePercent
     ) throws InvalidMidiDataException {
-        addTempoEvent(track, ticks, (tempo.getRealTempo() * tempoChangePercent) / PERCENT);
+        addTempoEvent(track, ticks, (tempo.realTempo() * tempoChangePercent) / PERCENT);
     }
 
     /**

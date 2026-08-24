@@ -34,8 +34,8 @@ import songscribe.util.Copyable;
  * nothing here is re-read while it is up.
  *
  * <p>{@link SongSettingsOutput} is the answering half, and carries the same three things the
- * dialog can edit. The fourth component here is the lyrics context, which the dialog reads to
- * build its previews and never writes back.
+ * dialog can edit. The last two components here — the line width and the lyrics context — are
+ * read-only: the dialog measures its previews against them and never writes them back.
  *
  * @param metadata     the song's descriptive metadata, split across the Title and Attribution tabs
  * @param fonts        the document's fonts. The dialog edits six of the eight roles and copies the
@@ -58,16 +58,15 @@ public record SongSettingsInput(
     /**
      * {@inheritDoc}
      *
-     * <p>{@link DocumentFonts} and {@link Tempo} are the two mutable components, so they are the
-     * two that are rebuilt; the metadata and the lyrics context are records of immutable values and
-     * the width is an immutable {@link Ss}.
+     * <p>{@link DocumentFonts} is the one mutable component, so it is the one that is rebuilt;
+     * every other component is a value the document can safely share.
      *
-     * @return an input whose fonts and tempo the document does not share, so the Fonts and Music
-     *         tabs edit this dialog's own values until OK
+     * @return an input whose fonts the document does not share, so the Fonts tab edits this
+     *         dialog's own values until OK
      */
     @Override
     public SongSettingsInput copy() {
         return new SongSettingsInput(
-            metadata, new DocumentFonts(fonts), tempo.copy(), lineWidthSs, lyrics);
+            metadata, new DocumentFonts(fonts), tempo, lineWidthSs, lyrics);
     }
 }

@@ -57,7 +57,7 @@ public class FontDialog extends StandardDialog<FontChoice, Font> {
     }
 
     public static Font showDialog(MainFrame mainFrame, Font initialFont) {
-        var controller = new FontDialogController(mainFrame, initialFont);
+        var controller = new FontDialogController(initialFont);
         var dialog = new FontDialog(mainFrame, controller.ops());
         dialog.setVisible(true);
         return controller.getSelectedFont();

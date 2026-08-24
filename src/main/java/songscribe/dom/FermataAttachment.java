@@ -64,7 +64,7 @@ public final class FermataAttachment extends Attachment {
     }
 
     @Override
-    public Attachment copy(StaffElement newOwner) {
+    protected Attachment createCopy(StaffElement newOwner) {
         return new FermataAttachment(newOwner);
     }
 

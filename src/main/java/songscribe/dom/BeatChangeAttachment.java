@@ -56,14 +56,16 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Copies this beat change onto a new owner. Deliberately <em>not</em> routed through
+     * {@inheritDoc}
+     *
+     * <p>Deliberately <em>not</em> routed through
      * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
      * is no position to validate from. The clipboard is the only caller that copies a beat
      * change into a different context, and paste re-validates the tuplets it carries in
      * {@code PasteSpanReconciliation}.
      */
     @Override
-    public Attachment copy(StaffElement newOwner) {
+    protected Attachment createCopy(StaffElement newOwner) {
         return new BeatChangeAttachment(newOwner, beatChange);
     }
 

@@ -30,102 +30,67 @@ import songscribe.util.Copyable;
  * A piece of text placed above or below a note — {@code dolce}, {@code cresc.}, {@code Fine}.
  *
  * <p>Annotation text is expected to be non-blank. That is guaranteed by the UI, not by this
- * class: the annotation combo offers only non-blank items, and its {@code Other…} prompt
- * refuses a blank entry. This class does not enforce the expectation — it logs a warning if
+ * type: the annotation combo offers only non-blank items, and its {@code Other…} prompt
+ * refuses a blank entry. This type does not enforce the expectation — it logs a warning if
  * it is given blank text and stores it anyway. A blank annotation read from a file is dropped
  * by the reader rather than attached, since it has nothing to draw.
+ *
+ * <p><strong>An annotation is a value.</strong> It is immutable and it compares by value, so a
+ * caller holding one cannot be surprised by a change made elsewhere, and a controller can tell a
+ * gathered annotation from the one already on the element. Whoever wants a different annotation
+ * builds one; {@link AnnotationAttachment#setAnnotation} is how an element takes it.
+ *
+ * <p><strong>Where an annotation sits is not part of it.</strong> A hand-placed vertical offset
+ * belongs to the attachment holding it, as {@link LineElement#getUserYOffsetSs()}, the same field
+ * every other attachment uses. So editing an annotation cannot move it, and moving one cannot
+ * change what it says.
+ *
+ * @param text      the text to display; expected to be non-blank
+ * @param alignment how the text sits against the note it is attached to
+ * @param placement whether the text sits above the staff or below it
  */
-public class Annotation implements Copyable<Annotation> {
+public record Annotation(String text, LeftCenterRight alignment, AboveBelow placement)
+    implements Copyable<Annotation> {
 
     private static final Logger LOG = LoggerFactory.getLogger(Annotation.class);
 
-    private AboveBelow placement = AboveBelow.ABOVE;
-    private String annotation;
-    private LeftCenterRight alignment = LeftCenterRight.LEFT;
+    /** How an annotation sits against its note when nothing states an alignment. */
+    public static final LeftCenterRight DEFAULT_ALIGNMENT = LeftCenterRight.LEFT;
+
+    /** Which side of the staff an annotation sits on when nothing states a placement. */
+    public static final AboveBelow DEFAULT_PLACEMENT = AboveBelow.ABOVE;
 
     /**
-     * User's manual vertical offset from the layout-calculated position.
-     * <p>
-     * Final Y position = calculated position + userYOffsetSs
-     * <p>
-     * Default is 0 (no user adjustment). Positive values move down, negative up.
+     * @log warn if {@code text} is blank; the blank text is stored anyway
      */
-    private double userYOffsetSs = 0;
-
-    /**
-     * @param annotation the text to display; expected to be non-blank
-     * @log warn if {@code annotation} is blank; the blank text is stored anyway
-     */
-    public Annotation(String annotation) {
-        warnIfBlank(annotation);
-        this.annotation = annotation;
+    public Annotation {
+        warnIfBlank(text);
     }
 
     /**
-     * @param annotation the text to display; expected to be non-blank
-     * @param alignment  how the text sits against the note it is attached to
-     * @log warn if {@code annotation} is blank; the blank text is stored anyway
+     * An annotation at the defaults, which is what a reader builds before applying whatever the
+     * document went on to state.
+     *
+     * @param text the text to display; expected to be non-blank
      */
-    public Annotation(String annotation, LeftCenterRight alignment) {
-        this(annotation);
-        this.alignment = alignment;
+    public Annotation(String text) {
+        this(text, DEFAULT_ALIGNMENT, DEFAULT_PLACEMENT);
     }
 
-    /**
-     * @return the text to display, whatever this annotation was given
-     */
-    public String getText() {
-        return annotation;
-    }
-
-    private static void warnIfBlank(String annotation) {
-        if (annotation.isBlank()) {
+    private static void warnIfBlank(String text) {
+        if (text.isBlank()) {
             LOG.warn("Annotation text must not be blank");
         }
     }
 
     /**
-     * @return how the text sits against the note it is attached to
-     */
-    public LeftCenterRight getAlignment() {
-        return alignment;
-    }
-
-    public void setAlignment(LeftCenterRight alignment) {
-        this.alignment = alignment;
-    }
-
-    /**
-     * @return whether the text sits above the staff or below it
-     */
-    public AboveBelow getPlacement() {
-        return placement;
-    }
-
-    public void setPlacement(AboveBelow placement) {
-        this.placement = placement;
-    }
-
-    public double getUserYOffsetSs() {
-        return userYOffsetSs;
-    }
-
-    public void setUserYOffsetSs(double userYOffsetSs) {
-        this.userYOffsetSs = userYOffsetSs;
-    }
-
-    /**
-     * Returns a deep copy of this annotation, so mutating the copy (e.g. dragging it to a
-     * new vertical position) never affects the original.
+     * {@inheritDoc}
      *
-     * @return an annotation with the same text, alignment, placement and offset, sharing no state
-     *         with this one
+     * @return {@code this}. Every component is immutable, so an annotation holds no state for a
+     *         copy to separate.
      */
     @Override
     public Annotation copy() {
-        var copy = new Annotation(annotation, alignment);
-        copy.placement = placement;
-        copy.userYOffsetSs = userYOffsetSs;
-        return copy;
+        return this;
     }
 }

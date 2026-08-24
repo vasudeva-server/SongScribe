@@ -53,7 +53,7 @@ public abstract class AttachmentDialog<C extends Copyable<C>> extends StandardDi
      * @param title     the window title
      * @param ops       the controller's four operations, already bound to the element being edited
      */
-    protected AttachmentDialog(MainFrame mainFrame, String title, DialogOps<@Nullable C, C> ops) {
+    protected AttachmentDialog(MainFrame mainFrame, String title, DialogOps<? extends @Nullable C, C> ops) {
         super(mainFrame, title, ops);
     }
 

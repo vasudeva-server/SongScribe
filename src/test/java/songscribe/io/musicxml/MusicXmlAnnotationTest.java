@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import org.audiveris.proxymusic.AboveBelow;
 import org.audiveris.proxymusic.LeftCenterRight;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -42,6 +43,10 @@ import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
  * they do. Both cases come from the enum itself, so a constant added to either one reaches these
  * tests without an edit here.
  *
+ * <p>Where the annotation sits is here too, and it is not on the annotation: a hand-placed
+ * vertical offset belongs to the attachment, so the writer takes it from there and the reader has
+ * to put it back there. Nothing in either type makes those two agree.
+ *
  * <p>There is no case for a {@code <words>} that carries no {@code halign}. The writer sets the
  * attribute on every annotation it writes, and a document SongScribe did not write is refused
  * before any mapping runs, so no reader can meet one.
@@ -50,33 +55,69 @@ class MusicXmlAnnotationTest extends UnitTest {
 
     private static final String ANNOTATION_TEXT = "dolce";
 
+    /**
+     * A hand-placed offset, in whole staff spaces. Whole because {@code relative-y} is written and
+     * read in tenths of a staff space rounded to an integer, so a fractional offset would be
+     * asserting a precision the format does not promise.
+     */
+    private static final double USER_Y_OFFSET_SS = 3;
+
     @ParameterizedTest
     @EnumSource(LeftCenterRight.class)
     void testAnAnnotationKeepsItsAlignmentThroughAWriteAndARead(LeftCenterRight alignment) throws Exception {
-        var annotation = new Annotation(ANNOTATION_TEXT, alignment);
+        var annotation = new Annotation(ANNOTATION_TEXT, alignment, Annotation.DEFAULT_PLACEMENT);
 
         var restored = annotationOf(roundTrip(songWith(annotation)));
 
-        assertThat(restored.getText()).isEqualTo(ANNOTATION_TEXT);
-        assertThat(restored.getAlignment()).isEqualTo(alignment);
+        assertThat(restored.text()).isEqualTo(ANNOTATION_TEXT);
+        assertThat(restored.alignment()).isEqualTo(alignment);
     }
 
     @ParameterizedTest
     @EnumSource(AboveBelow.class)
     void testAnAnnotationKeepsItsPlacementThroughAWriteAndARead(AboveBelow placement) throws Exception {
-        var annotation = new Annotation(ANNOTATION_TEXT);
-        annotation.setPlacement(placement);
+        var annotation = new Annotation(ANNOTATION_TEXT, Annotation.DEFAULT_ALIGNMENT, placement);
 
-        assertThat(annotationOf(roundTrip(songWith(annotation))).getPlacement()).isEqualTo(placement);
+        assertThat(annotationOf(roundTrip(songWith(annotation))).placement()).isEqualTo(placement);
     }
 
-    /** A one-line song whose only note carries {@code annotation}. */
+    @Test
+    void testAHandPlacedVerticalOffsetSurvivesAWriteAndARead() throws Exception {
+        var song = songWith(new Annotation(ANNOTATION_TEXT), USER_Y_OFFSET_SS);
+
+        assertThat(attachmentOf(roundTrip(song)).getUserYOffsetSs()).isEqualTo(USER_Y_OFFSET_SS);
+    }
+
+    /** A one-line song whose only note carries {@code annotation}, at no offset. */
     private static Song songWith(Annotation annotation) {
+        return songWith(annotation, 0);
+    }
+
+    /**
+     * @param annotation    the annotation the song's only note carries
+     * @param userYOffsetSs where its attachment sits, in staff spaces
+     * @return a one-line song whose only note carries that annotation there
+     */
+    private static Song songWith(Annotation annotation, double userYOffsetSs) {
         return buildSong(line -> {
             var note = crotchet();
             line.addElement(note);
-            note.addAttachment(new AnnotationAttachment(note, annotation));
+
+            var attachment = new AnnotationAttachment(note, annotation);
+            attachment.setUserYOffsetSs(userYOffsetSs);
+            note.addAttachment(attachment);
         });
+    }
+
+    /**
+     * @param song a song built by {@link #songWith}, or one read back from such a song
+     * @return the annotation attachment on that song's only note
+     */
+    private static AnnotationAttachment attachmentOf(Song song) {
+        var attachment = song.getLine(0).getElement(0).findAttachment(AnnotationAttachment.class);
+        assertThat(attachment).isNotNull();
+
+        return attachment;
     }
 
     /**
@@ -84,9 +125,6 @@ class MusicXmlAnnotationTest extends UnitTest {
      * @return the annotation on that song's only note
      */
     private static Annotation annotationOf(Song song) {
-        var attachment = song.getLine(0).getElement(0).findAttachment(AnnotationAttachment.class);
-        assertThat(attachment).isNotNull();
-
-        return attachment.getAnnotation();
+        return attachmentOf(song).getAnnotation();
     }
 }

@@ -91,7 +91,7 @@ final class DirectionBuilder {
      * unreachable; the guard keeps the builder null-safe.
      */
     static @Nullable Direction buildTempoDirection(BuildContext context, Tempo tempo) {
-        var beatUnit = BeatUnitMapping.forDuration(tempo.getTempoType());
+        var beatUnit = BeatUnitMapping.forDuration(tempo.tempoType());
 
         if (beatUnit == null) {
             return null;
@@ -101,7 +101,7 @@ final class DirectionBuilder {
         var direction = factory.createDirection();
         direction.getDirectionType().add(buildMetronomeDirectionType(factory, tempo, beatUnit));
 
-        var description = tempo.getMarking().description();
+        var description = tempo.marking().description();
 
         if (!description.isEmpty()) {
             direction.getDirectionType().add(buildWordsDirectionType(factory, description));
@@ -110,7 +110,7 @@ final class DirectionBuilder {
         // <sound tempo> is write-forward only; the reader recovers the visible tempo from
         // <metronome>/<per-minute> and ignores this playback value.
         var sound = factory.createSound();
-        sound.setTempo(BigDecimal.valueOf(tempo.getRealTempo()));
+        sound.setTempo(BigDecimal.valueOf(tempo.realTempo()));
         direction.setSound(sound);
 
         return direction;
@@ -139,7 +139,7 @@ final class DirectionBuilder {
             ObjectFactory factory, Tempo tempo, BeatUnitMapping.BeatUnitEntry beatUnit) {
         var metronome = factory.createMetronome();
 
-        if (tempo.getMarking() instanceof TempoMarking.TextOnly) {
+        if (tempo.marking() instanceof TempoMarking.TextOnly) {
             metronome.setPrintObject(YesNo.NO);
         }
 
@@ -147,7 +147,7 @@ final class DirectionBuilder {
         addDots(factory, metronome.getBeatUnitDot(), beatUnit.dotCount());
 
         var perMinute = factory.createPerMinute();
-        perMinute.setValue(Integer.toString(tempo.getVisibleTempo()));
+        perMinute.setValue(Integer.toString(tempo.visibleTempo()));
         metronome.setPerMinute(perMinute);
 
         var directionType = factory.createDirectionType();
@@ -317,8 +317,16 @@ final class DirectionBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * Builds the {@code <direction>} for {@code element}'s {@link AnnotationAttachment}.
+     * Builds the annotation {@code <direction placement="above|below">} for {@code element}, to be
+     * placed immediately before the annotated {@code <note>}: a single
+     * {@code <direction-type><words halign="…" justify="…" relative-y="…">text</words>}.
+     * {@code halign} and {@code justify} share the one alignment token, and {@code relative-y}
+     * carries where the attachment sits. {@code default-y} (the computed base position) is
+     * write-forward only and intentionally omitted; the reader recovers the annotation from
+     * {@code placement} + {@code halign} + {@code relative-y} and binds it to the next note.
      *
+     * @param context the builder context
+     * @param element the staff element whose annotation is being written
      * @return the direction, or {@code null} when the element carries no annotation or the
      *         annotation has no text — an annotation with nothing to draw is not written, so a
      *         reload does not have to decide what an empty {@code <words>} means
@@ -333,39 +341,25 @@ final class DirectionBuilder {
 
         var annotation = annotationAttachment.getAnnotation();
 
-        if (annotation.getText().isBlank()) {
+        if (annotation.text().isBlank()) {
             return null;
         }
 
-        return buildAnnotationDirection(context, annotation);
-    }
-
-    /**
-     * Builds an annotation {@code <direction placement="above|below">} to be placed immediately
-     * before the annotated {@code <note>}: a single
-     * {@code <direction-type><words halign="…" justify="…" relative-y="…">text</words>} from
-     * {@code getText()} / {@code getAlignment()} / {@code getUserYOffsetSs()}.
-     * {@code halign} and {@code justify} share the one alignment token. {@code default-y} (the
-     * computed base position) is write-forward only and intentionally omitted; the reader
-     * recovers the annotation from {@code placement} + {@code halign} + {@code relative-y} and
-     * binds it to the next note.
-     */
-    static Direction buildAnnotationDirection(BuildContext context, Annotation annotation) {
         var factory = context.factory();
-        var alignment = annotation.getAlignment();
+        var alignment = annotation.alignment();
 
         var words = factory.createFormattedTextId();
-        words.setValue(annotation.getText());
+        words.setValue(annotation.text());
         words.setHalign(alignment);
         words.setJustify(alignment);
-        words.setRelativeY(MusicXmlUnits.ssAsTenths(annotation.getUserYOffsetSs()));
+        words.setRelativeY(MusicXmlUnits.ssAsTenths(annotationAttachment.getUserYOffsetSs()));
 
         var directionType = factory.createDirectionType();
         directionType.getWordsOrSymbol().add(words);
 
         var direction = factory.createDirection();
         direction.getDirectionType().add(directionType);
-        direction.setPlacement(annotation.getPlacement());
+        direction.setPlacement(annotation.placement());
 
         return direction;
     }

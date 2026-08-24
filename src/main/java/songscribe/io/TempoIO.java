@@ -57,12 +57,16 @@ public final class TempoIO {
 
         private static final Logger LOG = LoggerFactory.getLogger(TempoReader.class);
 
-        @Nullable
-        private Tempo tempo = null;
+        // Whether a tempo element is open. A Tempo is a value built once, at the closing tag,
+        // so there is no half-built instance to stand in for this.
+        private boolean inTempo = false;
         private int pos10 = 0;
 
-        // The two values the file states separately, held until the closing tag, because a
-        // TempoMarking is built from both at once and neither tag is guaranteed to arrive.
+        // Every value the file states separately, held until the closing tag. A tempo is built
+        // from all of them at once, and no tag is guaranteed to arrive, so each starts at the
+        // default a tempo has when nothing states one.
+        private int visibleTempo = Tempo.DEFAULT_BPM;
+        private Duration tempoType = Tempo.DEFAULT_TYPE;
         private String description = "";
         private boolean hideMetronome = false;
 
@@ -89,7 +93,9 @@ public final class TempoIO {
          */
         private void startElement(String qName, String tempoTag) {
             if (qName.equals(tempoTag)) {
-                tempo = new Tempo();
+                inTempo = true;
+                visibleTempo = Tempo.DEFAULT_BPM;
+                tempoType = Tempo.DEFAULT_TYPE;
                 description = "";
                 hideMetronome = false;
                 lastTag = null;
@@ -124,12 +130,12 @@ public final class TempoIO {
          * values the file stated separately. See {@link TempoMarking#fromFile}.
          *
          * @return the tempo just read, or {@code null} when no tempo element was opened
-         * @effects sets the tempo's marking
+         * @effects closes the open tempo element
          * @log warn when it shows a tempo the file asked to hide
          */
         @Nullable
         private Tempo finishTempo() {
-            if (tempo == null) {
+            if (!inTempo) {
                 return null;
             }
 
@@ -139,8 +145,8 @@ public final class TempoIO {
                 LOG.warn("Showing a hidden tempo that carries no description");
             }
 
-            tempo.setMarking(read.marking());
-            return tempo;
+            inTempo = false;
+            return new Tempo(visibleTempo, tempoType, read.marking());
         }
 
         @Nullable
@@ -175,7 +181,7 @@ public final class TempoIO {
          */
         @Nullable
         private Tempo endTempoChild(String qName) throws SAXException {
-            if (tempo == null) {
+            if (!inTempo) {
                 return null;
             }
 
@@ -185,8 +191,8 @@ public final class TempoIO {
 
                 switch (lastTag) {
                     case XML_POS -> pos10 = Integer.parseInt(str);
-                    case XML_VISIBLE_TEMPO -> tempo.setVisibleTempo(Integer.parseInt(str));
-                    case XML_TEMPO_TYPE -> tempo.setTempoType(resolveTempoDuration(str));
+                    case XML_VISIBLE_TEMPO -> visibleTempo = Integer.parseInt(str);
+                    case XML_TEMPO_TYPE -> tempoType = resolveTempoDuration(str);
                     case XML_TEMPO_DESCRIPTION -> description = str;
                     case XML_DONT_SHOW_TEMPO -> hideMetronome = true;
                     default -> { }

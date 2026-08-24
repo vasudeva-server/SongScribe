@@ -63,6 +63,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.io.DocumentValidation;
+import songscribe.io.ReadAnnotation;
 
 /**
  * Maps the first {@code <part>} of an unmarshalled {@code <score-partwise>} onto the
@@ -720,7 +721,7 @@ final class MeasureMapper {
      * logged rather than silent.
      */
     private static void resolveAnnotations(List<ChildSite> sites) {
-        Annotation pending = null;
+        ReadAnnotation pending = null;
 
         for (var site : sites) {
             if (site.child instanceof Direction direction) {
@@ -741,7 +742,7 @@ final class MeasureMapper {
             var host = site.annotationHost;
 
             if (host != null && pending != null) {
-                host.addAttachment(new AnnotationAttachment(host, pending));
+                pending.attachTo(host);
                 pending = null;
             }
         }
@@ -758,12 +759,12 @@ final class MeasureMapper {
      * its presence is the unambiguous discriminator, and a words-only direction without
      * it is a tempo description rather than a phantom annotation.
      *
-     * @return the annotation the direction describes, or {@code null} when it carries none or
-     *         no text
+     * @return the annotation the direction describes and where it sits, or {@code null} when it
+     *         carries none or no text
      * @log warn if the direction's words carry no value or a blank one
      */
     @Nullable
-    private static Annotation annotationOf(Direction direction) {
+    private static ReadAnnotation annotationOf(Direction direction) {
         var content = readDirection(direction);
         var placement = content.placement();
         var words = content.words();
@@ -781,18 +782,14 @@ final class MeasureMapper {
             return null;
         }
 
-        var annotation = new Annotation(text);
-        var halign = words.getHalign();
-
-        // Only what the document actually carried is applied, so an absent halign keeps
+        // Only what the document actually carried is applied, so an absent halign takes
         // Annotation's own default rather than a second copy of it here.
-        if (halign != null) {
-            annotation.setAlignment(halign);
-        }
+        var halign = words.getHalign();
+        var alignment = halign == null ? Annotation.DEFAULT_ALIGNMENT : halign;
 
-        annotation.setPlacement(placement);
-        annotation.setUserYOffsetSs(ProxyMusicAccess.tenthsToSs(words.getRelativeY()));
-        return annotation;
+        return new ReadAnnotation(
+            new Annotation(text, alignment, placement),
+            ProxyMusicAccess.tenthsToSs(words.getRelativeY()));
     }
 
     /**

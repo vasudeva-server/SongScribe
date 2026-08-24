@@ -66,14 +66,13 @@ class AnnotationIOTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("legacyAlignmentCases")
     void testEachLegacyNumberReadsAsTheAlignmentItNames(LegacyAlignmentCase testCase) {
-        assertThat(readAligned(testCase.number()).getAlignment()).isEqualTo(testCase.expected());
+        assertThat(readAligned(testCase.number()).alignment()).isEqualTo(testCase.expected());
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("unusableAlignmentCases")
     void testAnAlignmentNamingNoAlignmentLeavesTheDefault(UnusableAlignmentCase testCase) {
-        assertThat(readAligned(testCase.text()).getAlignment())
-            .isEqualTo(new Annotation(ANNOTATION_TEXT).getAlignment());
+        assertThat(readAligned(testCase.text()).alignment()).isEqualTo(Annotation.DEFAULT_ALIGNMENT);
     }
 
     @Test
@@ -118,6 +117,21 @@ class AnnotationIOTest extends UnitTest {
      * @return the annotation the closing tag answers, or {@code null} when it answers none
      */
     private static @Nullable Annotation readAnnotation(String text, @Nullable String alignment) {
+        var read = readAnnotationAndOffset(text, alignment);
+
+        return read == null ? null : read.annotation();
+    }
+
+    /**
+     * Feeds the same element as {@link #readAnnotation} and answers what the reader answers whole.
+     *
+     * @param text the value of the {@code name} tag
+     * @param alignment the value of the {@code alignment} tag, or {@code null} to write no
+     *        {@code alignment} tag at all
+     * @return the annotation and its offset, or {@code null} when the closing tag answers none
+     */
+    private static @Nullable ReadAnnotation readAnnotationAndOffset(
+            String text, @Nullable String alignment) {
         var reader = new AnnotationIO.AnnotationReader();
         reader.startElement11(AnnotationIO.XML_ANNOTATION);
 

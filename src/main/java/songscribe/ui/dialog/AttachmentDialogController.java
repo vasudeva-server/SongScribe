@@ -56,13 +56,23 @@ import songscribe.util.Copyable;
  * static to observe; that was the reason its first version gave, and a production class shaped for
  * a test is what {@code plans/test-only-surface.md} bans everywhere else.
  *
- * @param <I> what {@link #read()} answers — the attachment's value type, {@code @Nullable} because
- *            an element may carry none yet, which is what an Add gesture opens on
- * @param <O> what {@link #commit(Object)} writes — the same value type as {@code I}, but never
- *            {@code null}: OK always gathers a concrete value from the controls
+ * <p><strong>Sealed</strong>, so the set of attachment controllers is a closed domain and a fourth
+ * one has to be named here rather than appearing unannounced.
+ *
+ * <p><strong>One value type, not two.</strong> A controller in this family shows and writes the
+ * same kind of thing — an {@code Annotation}, a {@code BeatChange}, a {@code Tempo} — so the
+ * family names it once. What {@link #read()} answers is {@code @Nullable T}, because an element
+ * may carry none yet, which is what an Add gesture opens on; what {@link #commit(Object)} writes
+ * is {@code T}, never null, because OK always gathers a concrete value from the controls. Stating
+ * it once is what makes {@link #dataWasModified} a real comparison: two independent parameters
+ * would let a subclass name unrelated types, and the comparison would then silently answer
+ * "changed" for every value.
+ *
+ * @param <T> the attachment's value type
  */
-public abstract class AttachmentDialogController<I extends @Nullable Copyable<I>, O>
-    extends DialogController<I, O> {
+public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
+    extends DialogController<@Nullable T, T>
+    permits AnnotationController, BeatChangeController, TempoChangeController {
 
     /**
      * Which of the three commits is being performed, so each subclass can name the undo step with
@@ -72,8 +82,7 @@ public abstract class AttachmentDialogController<I extends @Nullable Copyable<I>
 
     private final AttachmentTarget target;
 
-    protected AttachmentDialogController(MainFrame mainFrame, AttachmentTarget target) {
-        super(mainFrame);
+    protected AttachmentDialogController(AttachmentTarget target) {
         this.target = target;
     }
 
@@ -124,6 +133,28 @@ public abstract class AttachmentDialogController<I extends @Nullable Copyable<I>
         var field = elementField();
 
         line.withModification(opLabel(op), () -> line.modifyElement(elementIndex, field, mutator));
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Answered by comparing {@code values} with the attachment's current value, which the
+     * family's single type parameter makes a real comparison rather than one between unrelated
+     * types.
+     *
+     * <p>An element carrying nothing yet reads {@code null}, which no gathered value equals, so an
+     * Add always writes.
+     *
+     * <p>Without this the commit would reach {@link Line#modifyElement}, which records
+     * unconditionally: an unchanged OK would add an undo step and dirty the document. For a
+     * beat-defining attachment it would also re-validate every tuplet from the element forward
+     * under {@code STRICT}, which can drop one that a lenient file load accepted.
+     *
+     * @implSpec Compares with {@code equals}, which every value type in this family defines.
+     */
+    @Override
+    protected boolean dataWasModified(T values) {
+        return !values.equals(read());
     }
 
     /**
@@ -252,14 +283,14 @@ public abstract class AttachmentDialogController<I extends @Nullable Copyable<I>
     }
 
     private static AnnotationDialog annotationDialog(MainFrame mainFrame, AttachmentTarget target) {
-        return new AnnotationDialog(mainFrame, new AnnotationController(mainFrame, target).ops());
+        return new AnnotationDialog(mainFrame, new AnnotationController(target).ops());
     }
 
     private static BeatChangeDialog beatChangeDialog(MainFrame mainFrame, AttachmentTarget target) {
-        return new BeatChangeDialog(mainFrame, new BeatChangeController(mainFrame, target).ops());
+        return new BeatChangeDialog(mainFrame, new BeatChangeController(target).ops());
     }
 
     private static TempoChangeDialog tempoChangeDialog(MainFrame mainFrame, AttachmentTarget target) {
-        return new TempoChangeDialog(mainFrame, new TempoChangeController(mainFrame, target).ops());
+        return new TempoChangeDialog(mainFrame, new TempoChangeController(target).ops());
     }
 }
