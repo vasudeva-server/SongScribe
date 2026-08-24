@@ -47,8 +47,8 @@ does the same work twice.
 
 **Propose the list first and wait for the user.** Every test — new, added to an
 existing class, or rewritten — goes into one table before any test code is
-written, giving its justification and what design change would make it
-unnecessary. Proposed deletions go in the same table. Format and rationale:
+written, giving the promise it checks and which kind of test it is. Proposed
+deletions go in the same table. Format and rationale:
 *Propose the tests before writing them* in
 [design.md](/Users/aparajita/.claude/guides/design.md).
 
