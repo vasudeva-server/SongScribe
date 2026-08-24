@@ -46,9 +46,9 @@ import songscribe.dom.StaffElement;
  *   <li>note-with-Lyric(extend = CONTINUE) → continues current EXTENDER silently (cross-line
  *       carrier); emits no lyric box</li>
  *   <li>note-with-no-Lyric + active EXTENDER → continues current EXTENDER</li>
- *   <li>rest-with-no-Lyric + active EXTENDER → breaks EXTENDER (ends at rest left edge)</li>
- *   <li>rest-with-Lyric(extend = START/CONTINUE) + active EXTENDER → continues EXTENDER through
- *       rest</li>
+ *   <li>rest + active EXTENDER → continues EXTENDER through the rest, which bears a chain but
+ *       never a syllable ({@link songscribe.dom.ElementType#bearsSyllableText()}), exactly as a
+ *       barline, a breath mark or a key change does</li>
  *   <li>rest-with-Lyric(extend = STOP) + active EXTENDER → ends EXTENDER the same way as the
  *       note case above, anchored to the rest's notehead-equivalent right edge</li>
  *   <li>note-with-Lyric(extend = NONE, text) + active EXTENDER → EXTENDER ends at start of this
@@ -139,20 +139,15 @@ public final class LyricLayoutBuilder {
             }
 
             if (column.isRest()) {
-                // Rest with extending lyric (START/CONTINUE): extender flows through.
-                // Rest with STOP lyric: extender ends at the rest's notehead-equivalent right edge
-                // (LilyPond LyricExtender minimum-length rule, see MIN_MELISMA_LENGTH_SS).
-                // Rest without extending lyric: extender (if active) ends at rest's left edge.
-                if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.START) {
-                    continue;
-                }
-
+                // A rest carries a melisma or a hyphen onward but never a syllable of its own
+                // (ElementType.bearsSyllableText), so it emits no box and cannot end a chain by
+                // standing in it. The one thing it can do to an active extender is close it with
+                // a STOP carrier, which ends past the rest's notehead-equivalent right edge on
+                // the LilyPond LyricExtender minimum-length rule (see MIN_MELISMA_LENGTH_SS).
                 if (extend == Lyric.Extend.STOP) {
                     state.closeExtenderPastHead(connectors, activeVerse, column.getNoteheadRightEdgeXSs());
-                    continue;
                 }
 
-                state.closeExtender(connectors, activeVerse, column.getLeftEdgeXSs());
                 continue;
             }
 
@@ -316,7 +311,7 @@ public final class LyricLayoutBuilder {
      * Grace notes: the grace and its host are treated as one unioned column for lyric layout — the
      * grace carries the lyric, the host never does. The offset from the grace's origin comes from
      * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
-     * reads to reserve the neighbour space, so the box is drawn where space was reserved. The pair's
+     * reads to reserve the neighbor space, so the box is drawn where space was reserved. The pair's
      * own melisma is part of what that offset places, so whether the pair carries one is derived from
      * {@code hostLyric} — the host's lyric for this verse — and passed along, as is
      * {@code graceUnionWidthSs}, the union as this line was actually spaced, which is the one input
@@ -358,7 +353,7 @@ public final class LyricLayoutBuilder {
      * host.
      * <p>
      * Measuring needs a host the union really ends at, which is what pairing establishes: an
-     * unpaired grace's neighbour is an ordinary note carrying a lyric of its own, not the far edge of
+     * unpaired grace's neighbor is an ordinary note carrying a lyric of its own, not the far edge of
      * a union. An unpaired grace therefore keeps the ideal width — which is also the width
      * {@link HorizontalSpacingCalculator} reserved against, since the reservation path treats the
      * next column as the grace's host whether or not the two are paired, so the box still lands where
@@ -392,12 +387,36 @@ public final class LyricLayoutBuilder {
     }
 
     /**
+     * Whether a syllable can be written on the column at {@code index} — the columns' way of
+     * asking {@link StaffElement#canBearSyllable}, which states the rule, and which
+     * {@link songscribe.dom.Line#canBearSyllableAt} asks of a line instead.
+     *
+     * <p>Asked of the columns for the reason {@link #isHostOfPairedGraceColumn} is: the neighbor
+     * it needs is the column in front, so a run of elements belonging to no line — a clipboard
+     * fragment, a projected insertion — gets the same answer as a live line.
+     *
+     * @param columns the columns being laid out
+     * @param index   the column to ask about
+     * @return {@code true} when a syllable may be written on that column's element
+     */
+    private static boolean columnCanBearSyllable(List<ElementColumn> columns, int index) {
+        var predecessor = index >= 1 ? columns.get(index - 1).getElement() : null;
+        return columns.get(index).getElement().canBearSyllable(predecessor);
+    }
+
+    /**
      * Emits a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER} starting at the syllable end
-     * and walking forward from the START column, extending only through elements that explicitly
-     * carry {@link Lyric.Extend#CONTINUE} or {@link Lyric.Extend#STOP}. The extender ends at the
-     * right edge of the last such element, or at the START element's own right edge if none
-     * follow. A leading continuation (extender carried in from the previous line, with no START
-     * column on this line) extends from x = 0 through the leading run of CONTINUE/STOP markers.
+     * and walking forward from the START column, extending through elements that explicitly carry
+     * {@link Lyric.Extend#CONTINUE} or {@link Lyric.Extend#STOP} and over the ones that bear a
+     * chain without ever taking a syllable — a rest, a barline, a breath mark, a key change. The
+     * extender ends at the right edge of the last carrier, or at the START element's own right
+     * edge if none follow. A leading continuation (extender carried in from the previous line,
+     * with no START column on this line) extends from x = 0 through the leading run of
+     * CONTINUE/STOP markers.
+     *
+     * <p>Passing over those columns is what keeps this walk saying what the main loop says, where
+     * a column with no lyric leaves an active extender running. Stopping at the first one would
+     * cut a melisma short at the barline before the line end.
      */
     private static void emitDanglingExtender(
         List<? super LyricConnectorLayout> connectors,
@@ -422,7 +441,11 @@ public final class LyricLayoutBuilder {
             var extend = lyric != null ? lyric.extend() : null;
 
             if (extend != Lyric.Extend.CONTINUE && extend != Lyric.Extend.STOP) {
-                break;
+                if (column.getElement().getType().bearsSyllableText()) {
+                    break;
+                }
+
+                continue;
             }
 
             endXSs = column.getRightEdgeXSs();
@@ -437,10 +460,14 @@ public final class LyricLayoutBuilder {
     }
 
     /**
-     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_HYPHEN} centered between the
-     * syllable end and the next eligible element's left edge. The lyric editor prevents
-     * a hyphen-opening syllable from being entered without a following eligible element
-     * on the line, so finding none here indicates a layout invariant violation.
+     * Emits a {@link LyricConnectorLayout.Kind#DANGLING_HYPHEN} centered between the syllable end
+     * and the left edge of the next column that could hold the word's next syllable
+     * ({@link #columnCanBearSyllable}). A barline, a rest or a key change standing in between is
+     * passed over, and so is the host of a paired grace note, whose syllable belongs to the grace:
+     * the hyphen belongs between two syllables, so anchoring it to something that can never carry
+     * one would pull it back from the word it continues into. The lyric editor prevents a
+     * hyphen-opening syllable from being entered without a following eligible element on the line,
+     * so finding none here indicates a layout invariant violation.
      */
     private static void emitDanglingHyphen(
         List<? super LyricConnectorLayout> connectors,
@@ -451,7 +478,7 @@ public final class LyricLayoutBuilder {
         for (var i = state.pendingHyphenColumnIndex + 1; i < columns.size(); i++) {
             var column = columns.get(i);
 
-            if (column.getElement().isEligibleForLyric(verse)) {
+            if (columnCanBearSyllable(columns, i)) {
                 connectors.add(new LyricConnectorLayout(
                     state.pendingHyphenStartXSs,
                     column.getLeftEdgeXSs(),

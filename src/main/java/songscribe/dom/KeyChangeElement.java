@@ -20,6 +20,8 @@
 
 package songscribe.dom;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -43,11 +45,13 @@ public class KeyChangeElement extends StructuralElement {
     private Key key;
 
     /**
-     * The key this element changes <em>from</em>, when it was built to be measured off a line —
-     * see {@link #forMeasurement}. Null on every element that belongs to a document, which reads
-     * the key it changes from off the line it sits on instead.
+     * The key this element changes <em>from</em>, for as long as it sits on no line — see
+     * {@link #forMeasurement}. Read only while {@link #getParentLine()} is null: an element that
+     * belongs to a document reads the key it changes from off its line every time, so this can
+     * never pin a stale width on one. Null on an element that was never given a key to measure
+     * against, which is every element built to be committed rather than measured.
      */
-    private final @Nullable Key measurementPreviousKey;
+    private @Nullable Key detachedPreviousKey;
 
     /**
      * @param key the key taking effect here; never null
@@ -55,38 +59,32 @@ public class KeyChangeElement extends StructuralElement {
     public KeyChangeElement(Key key) {
         super(ElementType.KEY_CHANGE);
         this.key = key;
-        measurementPreviousKey = null;
+        detachedPreviousKey = null;
     }
 
-    private KeyChangeElement(Key key, Key measurementPreviousKey) {
+    private KeyChangeElement(Key key, Key detachedPreviousKey) {
         super(ElementType.KEY_CHANGE);
         this.key = key;
-        this.measurementPreviousKey = measurementPreviousKey;
-    }
-
-    private KeyChangeElement(KeyChangeElement source) {
-        super(source);
-        key = source.key;
-        measurementPreviousKey = source.measurementPreviousKey;
+        this.detachedPreviousKey = detachedPreviousKey;
     }
 
     /**
-     * Returns a key signature built to be <em>measured</em> rather than stored: one that reports
-     * {@link #getContentWidthSs()} against the stated {@code previousKey} instead of resolving it
-     * from a line it does not sit on.
+     * Returns a key signature built to be <em>measured</em> rather than stored: one that can
+     * report its {@link #extent()} while it sits on no line, by being told the key it changes
+     * from instead of resolving one.
      *
-     * <p>This is what lets an insertion be sized before it is committed. The key an inserted
-     * signature will cancel is fixed by the elements <em>before</em> the insertion point, and an
-     * insertion does not move those, so the caller can read it off the unmodified line
+     * <p>This is what lets an edit be sized before it is committed. The key an inserted signature
+     * will cancel is fixed by the elements <em>before</em> the insertion point, and an insertion
+     * does not move those, so the caller can read it off the unmodified line
      * ({@code line.keyAt(insertionIndex - 1)}) and hand it here.
      *
-     * <p>Never add one of these to a line. Its previous key is a snapshot taken when it was built,
-     * where an element in a document re-reads its own each time; adding one would pin a width that
-     * stops tracking the line around it. Build a plain {@link #KeyChangeElement(Key)} to commit.
+     * <p>Adding one to a line is harmless but pointless: once it has a line, the line is what it
+     * reads, and the key handed here is never consulted again. Build a plain
+     * {@link #KeyChangeElement(Key)} to commit.
      *
      * @param key         the key that would take effect at the measured position
      * @param previousKey the key in effect immediately before that position
-     * @return a detached element that reports the drawn width of that change
+     * @return a detached element that reports the drawn extent of that change
      */
     public static KeyChangeElement forMeasurement(Key key, Key previousKey) {
         return new KeyChangeElement(key, previousKey);
@@ -114,10 +112,30 @@ public class KeyChangeElement extends StructuralElement {
         return !precedingType.isBarLine() && !precedingType.isRepeat();
     }
 
-    @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public KeyChangeElement clone() {
-        return new KeyChangeElement(this);
+        var copy = new KeyChangeElement(key);
+        copy.copyStateFrom(this);
+
+        return copy;
+    }
+
+    /**
+     * Copies the key this element establishes, and the key it was told to measure against while
+     * detached ({@link #forMeasurement}).
+     *
+     * <p>The key is this element's whole reason to exist and nothing else on the line records
+     * it, so an in-place restore that left it behind would undo a key edit into an element
+     * still establishing the key the edit gave it.
+     *
+     * @param source the key signature whose key to take; always a {@code KeyChangeElement},
+     *               because a copy names an element of the same class
+     */
+    @Override
+    protected void copySubtypeStateFrom(StaffElement source) {
+        var sourceSignature = (KeyChangeElement) source;
+        key = sourceSignature.key;
+        detachedPreviousKey = sourceSignature.detachedPreviousKey;
     }
 
     /**
@@ -128,43 +146,84 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Returns the drawn width of the key change this element makes: the accidentals
-     * {@link Key#accidentalsFrom} lays out between the key in effect immediately before this
-     * element and this element's own key.
+     * Returns what this key signature draws and how wide it is — the pair of keys the change runs
+     * between, which is the smallest thing that can answer either question.
      *
-     * <p>Zero when this element re-states the key already in effect, because nothing is drawn.
+     * <p>The key changed from is the line's, whenever this element is on one: the position
+     * invariant guarantees an element before it to read the key from, and re-reading it each time
+     * is what keeps the extent tracking the line around it. An element on no line reports against
+     * the key it was told when {@link #forMeasurement} built it, which is what lets an edit be
+     * sized before it is committed.
      *
-     * <p>The key changed from comes from one of three places, in this order: the snapshot an
-     * element built by {@link #forMeasurement} carries; otherwise the line this element sits on,
-     * where the position invariant guarantees an element before it to read the key from; otherwise
-     * C major, which is the only defined answer when nothing states what precedes it, and yields
-     * this signature's own accidentals with no cancellation. That last case is reachable only from
-     * a preview of an element that is on no line and was not built to be measured — a clipboard
-     * fragment, say. A change that cancels draws wider than it reports there, so an edit must not
-     * be gated on it; build the element with {@link #forMeasurement} to gate on a real width.
+     * <p>See {@code docs/key-signatures.md} for the cancellation policy the accidentals follow.
      *
-     * @return the laid-out width of this key change, in staff spaces
+     * @return the extent of the change this element makes
+     * @throws IllegalStateException if this element is on no line and was not built by
+     *     {@link #forMeasurement}, so nothing states the key it changes from. A width guessed
+     *     there would be too narrow for every change that cancels, and would be written into the
+     *     document as though it were measured.
+     */
+    public KeySignatureExtent extent() {
+        return new KeySignatureExtent(previousKey(), key);
+    }
+
+    /**
+     * Returns the accidentals this key change draws, in the order they are laid out: the
+     * cancelling naturals the policy calls for, if any, followed by the new key's own
+     * accidentals.
+     *
+     * @return {@link #extent()}'s accidentals, left to right; empty when this element re-states
+     *     the key already in effect, because a change to the same key draws nothing
+     * @throws IllegalStateException under {@link #extent()}'s condition
+     */
+    public List<Key.DrawnAccidental> drawnAccidentals() {
+        return extent().accidentals();
+    }
+
+    /**
+     * Returns the drawn width of the key change this element makes: the room
+     * {@link #drawnAccidentals()} takes.
+     *
+     * @return {@link #extent()}'s width in staff spaces; zero when this element re-states the key
+     *     already in effect, because nothing is drawn
+     * @throws IllegalStateException under {@link #extent()}'s condition
      */
     @Override
     public double getContentWidthSs() {
-        return key.widthSsFrom(previousKey());
+        return extent().widthSs();
     }
 
-    /** Resolves the key this element changes from, per {@link #getContentWidthSs()}'s three cases. */
+    /**
+     * Returns the same width {@link #getContentWidthSs()} reports. A key signature draws nothing
+     * but its accidentals — no stem, no flag, no dots — so the glyph run and the content are the
+     * same extent, and the type's own width is only the floor described in
+     * {@code ElementType.computeKeySignatureBoundsSs}.
+     *
+     * @return the laid-out width of this key change, in staff spaces
+     * @throws IllegalStateException under {@link #extent()}'s condition
+     */
+    @Override
+    public double getGlyphWidthSs() {
+        return getContentWidthSs();
+    }
+
+    /** Resolves the key this element changes from, per {@link #extent()}'s two cases. */
     private Key previousKey() {
-        var measured = measurementPreviousKey;
-
-        if (measured != null) {
-            return measured;
-        }
-
         var line = getParentLine();
 
-        if (line == null) {
-            return Key.NO_ACCIDENTALS;
+        if (line != null) {
+            return line.keyAt(line.getElementIndex(this) - 1);
         }
 
-        return line.keyAt(line.getElementIndex(this) - 1);
+        var detached = detachedPreviousKey;
+
+        if (detached == null) {
+            throw new IllegalStateException(
+                "key signature for " + key + " is on no line and was not told the key it changes"
+                    + " from; build it with forMeasurement to measure it before it is committed");
+        }
+
+        return detached;
     }
 
     /**

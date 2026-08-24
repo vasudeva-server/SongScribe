@@ -109,9 +109,10 @@ final class PreviewElementInserter {
             return;
         }
 
-        // A grace note may never be replaced — ignore the click.
+        // A grace note, a key signature and the barline a key signature sits behind may never be
+        // replaced — ignore the click.
         if (PreviewElementManager.isXPosSsMatchesElement()
-                && PreviewElementManager.isGraceNoteAt(line, PreviewElementManager.getCurrentXIndex())) {
+                && !line.canReplaceElementAt(PreviewElementManager.getCurrentXIndex())) {
             return;
         }
 
@@ -339,13 +340,13 @@ final class PreviewElementInserter {
         var repairsDeferred = GraceModeManager.deferInsertionRepairs();
 
         if (!repairsDeferred) {
-            line.repairNeighborsBeforeInsertion(xIndex);
+            line.repairNeighborsBeforeInsertion(xIndex, List.of(previewElement));
         }
 
         line.addElement(xIndex, previewElement);
 
         if (!repairsDeferred) {
-            line.repairNeighborsAfterInsertion(xIndex);
+            line.repairNeighborsAfterInsertion(xIndex, previewElement);
         }
 
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
@@ -416,7 +417,7 @@ final class PreviewElementInserter {
         // x position), then override with the preview's note-entry attributes.
         var existing = line.getElement(elementIndex);
         var previewType = previewElement.getType();
-        var replacement = new StaffElement(previewType, existing);
+        var replacement = StaffElement.convertedFrom(previewType, existing);
         replacement.setDotCount(previewElement.getDotCount());
         replacement.setAccidental(previewElement.getAccidental());
         replacement.setAccidentalInParentheses(previewElement.isAccidentalInParentheses());

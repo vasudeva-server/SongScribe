@@ -257,7 +257,7 @@ public class LineTrackBuilder {
                 if (lineKey != null) {
                     MidiEventFactory.addKeySignatureEvent(track, ticks, lineKey);
                 }
-            } else if (element.getType() == ElementType.KEY_CHANGE) {
+            } else if (element.getType().isKeyChange()) {
                 MidiEventFactory.addKeySignatureEvent(
                     track, ticks, ((KeyChangeElement) element).getKey());
             }

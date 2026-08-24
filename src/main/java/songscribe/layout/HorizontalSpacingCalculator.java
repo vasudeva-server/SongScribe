@@ -215,19 +215,20 @@ public final class HorizontalSpacingCalculator {
     /**
      * Calculates minimum spacing between columns based on geometric extents.
      *
-     * <p>The result is an origin-to-origin delta, and what it guarantees is a constant:
-     * {@link #MIN_COLUMN_GAP_SS} of clear space between the two columns' facing ink, whatever
-     * either column holds. That is the promise a caller relies on at the floor — not the number
-     * itself, which is whatever the pair's extents make it.
+     * <p>The result is an origin-to-origin delta, and what it guarantees is a constant amount of
+     * clear space between the two columns' facing ink, whatever either column holds — see
+     * {@link #minimumInkGapSs} for which constant. That is the promise a caller relies on at the
+     * floor, not the number itself, which is whatever the pair's extents make it.
      *
-     * <p>A mid-line {@link KeyChangeElement} is an ordinary column here and gets
-     * the same promise on both sides. Its position invariant fixes what those sides are: a barline
-     * or repeat before it, and (except at the end of a line) a note after it. So the barline's ink
-     * clears the first accidental by {@link #MIN_COLUMN_GAP_SS}, and the last accidental clears the
-     * following note's leftmost ink — its accidental when it has one — by the same. The key
-     * signature's contribution is its <em>drawn</em> width, the accidentals
-     * {@code Key#accidentalsFrom} lays out for the change it makes, so a wider change pushes the note further
-     * rather than letting it overlap the naturals.
+     * <p>A mid-line {@link KeyChangeElement}'s position invariant fixes what its two sides are: a
+     * barline or repeat before it, and (except at the end of a line) a note after it. Ahead of it
+     * the floor is the key-signature padding, which is also that gap's rest — the accidentals sit
+     * against their barline at an exact distance rather than merely clearing it. Behind it the
+     * ordinary floor applies, so the last accidental clears the following note's leftmost ink — its
+     * accidental when it has one — by {@link #MIN_COLUMN_GAP_SS}. The key signature's contribution
+     * is its <em>drawn</em> width, the accidentals {@code Key#accidentalsFrom} lays out for the
+     * change it makes, so a wider change pushes the note further rather than letting it overlap the
+     * naturals.
      *
      * @param prevColumn Previous column
      * @param currColumn Current column
@@ -238,10 +239,137 @@ public final class HorizontalSpacingCalculator {
         ElementColumn currColumn) {
 
         // Distance from previous column's center to current column's center
-        // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
+        // = previous column's right extent + minimum ink gap + abs(current column's left extent)
         return rightExtentFacingSs(prevColumn, currColumn)
-            + MIN_COLUMN_GAP_SS
+            + GapKind.of(prevColumn, currColumn).minimumInkGapSs()
             + Math.abs(currColumn.getLeftExtentSs());
+    }
+
+    /**
+     * What kind of gap sits between two adjacent columns, and everything that kind decides.
+     *
+     * <p>Four questions have to be answered about every gap — how far apart the pair rests, how
+     * close their ink may ever come, whether the gap takes a share of the lyric lift, and how it
+     * behaves under compression. Each is a function of the same fact, <em>what kind of pair is
+     * this</em>, so the classification is made once here and the four answers hang off it. Asking
+     * the question separately at each of the four points is how a kind gets added to three of them
+     * and missed in the fourth, which produces a spring that disagrees with itself and shows up
+     * only as spacing that is subtly wrong under compression.
+     *
+     * <p>Adding a kind is one constant plus its four answers; the switches below are exhaustive,
+     * so the compiler names every answer still owed.
+     */
+    private enum GapKind {
+
+        /**
+         * A grace note and the note it decorates. A fixed absolute gap that never varies with the
+         * song's line rest — the grace always packs against its host at the same distance
+         * (refs #418) — and it takes no lyric lift, since that fixed ideal must not grow with the
+         * line's syllables. It still compresses, bounded by {@link #graceCompressionFloorSs}.
+         */
+        GRACE_TO_HOST,
+
+        /**
+         * A barline and the mid-line key signature standing behind it. The two are one typeset
+         * unit, so the accidentals stand a fixed padding behind their barline rather than a
+         * musical rest away from it — the same padding a cautionary puts between its barline and
+         * its own accidentals, so a key change reads the same wherever it falls. That padding is
+         * this gap's floor as well as its rest, which freezes the gap: the accidentals stand at
+         * that exact distance on a crowded line and an empty one alike.
+         */
+        BARLINE_TO_KEY_SIGNATURE,
+
+        /**
+         * A gap internal to one beam group, flanked by two notes both shorter than an eighth. It
+         * packs proportionally tighter than a normal gap, and keeps that reduction as its solver
+         * weight, so it stays proportionally tighter under compression and not only at rest.
+         */
+        TIGHT_BEAM,
+
+        /** Every other pair: a full line rest, freely compressible, taking its share of the lift. */
+        NORMAL;
+
+        /**
+         * Classifies the gap between two adjacent columns.
+         *
+         * <p>A key signature's position invariant guarantees a barline or repeat in front of it,
+         * so the pair is named by {@code curr} alone.
+         *
+         * @param prev the column on the left of the gap
+         * @param curr the column on the right of the gap
+         * @return the kind of gap between them
+         */
+        static GapKind of(ElementColumn prev, ElementColumn curr) {
+            if (prev.isGraceNote()) {
+                return GRACE_TO_HOST;
+            }
+
+            if (curr.isKeyChange()) {
+                return BARLINE_TO_KEY_SIGNATURE;
+            }
+
+            if (isTightBeamGap(prev, curr)) {
+                return TIGHT_BEAM;
+            }
+
+            return NORMAL;
+        }
+
+        /**
+         * Returns the whitespace this kind of gap rests at, excluding the left column's ink.
+         *
+         * @param lineRestSs the song's line rest
+         * @return the resting whitespace in staff spaces; a fixed amount for the two pairs that
+         *     are one typeset unit, and a share of {@code lineRestSs} for the rest
+         */
+        double restSs(double lineRestSs) {
+            return switch (this) {
+                case GRACE_TO_HOST -> GRACE_HOST_REST_SS;
+                case BARLINE_TO_KEY_SIGNATURE -> StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+                case TIGHT_BEAM -> BEAM_GROUP_INTERNAL_REST_FACTOR * lineRestSs;
+                case NORMAL -> lineRestSs;
+            };
+        }
+
+        /**
+         * Returns the closest this kind of gap ever lets the two columns' facing ink come.
+         *
+         * @return the clear space owed between the facing ink, in staff spaces
+         */
+        double minimumInkGapSs() {
+            return switch (this) {
+                case BARLINE_TO_KEY_SIGNATURE -> StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+                case GRACE_TO_HOST, TIGHT_BEAM, NORMAL -> MIN_COLUMN_GAP_SS;
+            };
+        }
+
+        /**
+         * Returns whether this kind of gap is held out of the lyric lift — the widening a line's
+         * syllables ask of the gaps between them.
+         *
+         * @return {@code true} for a gap whose ideal is fixed, so that widening it would move the
+         *     pair apart from a distance the engraving rule pinned
+         */
+        boolean isLiftExempt() {
+            return switch (this) {
+                case GRACE_TO_HOST, BARLINE_TO_KEY_SIGNATURE -> true;
+                case TIGHT_BEAM, NORMAL -> false;
+            };
+        }
+
+        /**
+         * Returns the solver weight this kind of gap carries, which is also the factor the lyric
+         * lift scales its share by, so a tight gap stays proportionally tight rather than being
+         * levelled up.
+         *
+         * @return the weight; {@link Spring#NORMAL_WEIGHT} for every kind but a tight beam gap
+         */
+        double weight() {
+            return switch (this) {
+                case TIGHT_BEAM -> BEAM_GROUP_INTERNAL_REST_FACTOR;
+                case GRACE_TO_HOST, BARLINE_TO_KEY_SIGNATURE, NORMAL -> Spring.NORMAL_WEIGHT;
+            };
+        }
     }
 
     /**
@@ -283,19 +411,20 @@ public final class HorizontalSpacingCalculator {
      * (Ss) between the two columns' origins, i.e. the value that would be added to
      * {@code prev.getXSs()}.
      * <p>
-     * Grace and glissando are folded in here, so a {@code Spring} needs no post-processing. A
-     * normal or beam-internal base rest is derived from the song's line rest by a reducing
-     * {@code factor} (see {@link #restFactorFor}); at the {@code 2.5} default line rest the factors
-     * reproduce the legacy absolute gaps ({@code 2.5} normal, {@code 1.5} tight beam). The grace
-     * gap is a fixed absolute distance that never scales with the line rest.
+     * Grace, key signature and glissando are folded in here, so a {@code Spring} needs no
+     * post-processing.
      *
-     * <p>The base rest is {@code prevRight + GRACE_HOST_REST_SS} when {@code prev} is a grace note,
-     * and otherwise {@code prev}'s right extent excluding augmentation dots plus the line rest,
-     * reduced to 0.6× within a beam group whose members are all sixteenths or shorter. The strut is
-     * the largest of four floors: the note-collision floor, the syllable-collision floor where
-     * either column bears a syllable, the glissando reservation where {@code prev} has one, and the
-     * grace compression floor where {@code prev} is a grace note. Compliance is
-     * {@code max(0, rest − strut)}, so a gap whose rest does not clear its strut starts frozen.
+     * <p>The base rest is {@code prevRight} plus whatever {@link GapKind} gives the pair, which is
+     * a reducing factor of the song's line rest for an ordinary or tight-beam gap and a fixed
+     * distance that never scales with it for the two pairs that are one typeset unit. At the
+     * {@code 2.5} default line rest the factors reproduce the legacy absolute gaps ({@code 2.5}
+     * normal, {@code 1.5} tight beam). The strut is the largest of four floors: the note-collision
+     * floor, the syllable-collision floor where either column bears a syllable, the glissando
+     * reservation where {@code prev} has one, and the grace compression floor where {@code prev}
+     * is a grace note.
+     * Compliance is {@code max(0, rest − strut)}, so a gap whose rest does not clear its strut
+     * starts frozen — which is how a key signature keeps an exact distance from its barline, its
+     * note-collision floor being that same padding.
      *
      * <p>{@code prevRight} is {@code rightExtentFacingSs(prev, curr)} — {@code prev}'s full right
      * extent, except that a grace note's flag is not charged when it hangs clear of {@code curr}'s
@@ -343,7 +472,8 @@ public final class HorizontalSpacingCalculator {
         @Nullable ElementColumn beforePrev,
         @Nullable ElementColumn afterCurr) {
 
-        var restSs = baseRestSs(prev, curr, lineRestSs);
+        var gapKind = GapKind.of(prev, curr);
+        var restSs = leftInkSs(prev, curr) + gapKind.restSs(lineRestSs);
         var strutSs = Math.max(
             calculateMinimumColumnSpacingSs(prev, curr),
             Math.max(
@@ -354,20 +484,13 @@ public final class HorizontalSpacingCalculator {
                         graceCompressionFloorSs(prev, restSs),
                         hairpinReservationFloorSs(line, prev, curr)))));
 
-        // A grace→host gap takes no lyric lift: its ideal is a fixed distance that must not grow
-        // with the line's syllables. It still compresses, bounded by the floor above. A tight
-        // beam-internal gap (both notes shorter than an eighth) keeps its reduction factor as the
-        // solver weight, so it stays proportionally tighter than a normal gap under compression, not
-        // only at rest.
-        var liftExempt = prev.isGraceNote();
-        var weight = isTightBeamGap(prev, curr) ? BEAM_GROUP_INTERNAL_REST_FACTOR : Spring.NORMAL_WEIGHT;
-
         // The gap's glyph-ink component becomes the spring's level offset, so the whitespace-aware
         // solver levels the visual gap (rest minus ink) rather than the origin-to-origin delta. The
         // weight matches the reducing factor applied to the line rest in the base rest, so
         // levelOffset + weight × lineRest reproduces the base rest exactly — whitespace levelling is
         // a strict generalisation of the rest model, not a second spacing scheme.
-        return Spring.of(restSs, strutSs, weight, liftExempt, leftInkSs(prev, curr));
+        return Spring.of(
+            restSs, strutSs, gapKind.weight(), gapKind.isLiftExempt(), leftInkSs(prev, curr));
     }
 
     /**
@@ -534,14 +657,14 @@ public final class HorizontalSpacingCalculator {
      * and otherwise a full line rest, so any other last element stops one line rest short of the
      * margin instead of sitting flush against it (refs #617).
      *
-     * <p>A cautionary key signature is drawn in that same trailing space when the next line begins
-     * in a different key, so the gap widens to hold it: the reservation is the larger of the line
-     * rest and the cautionary's width plus
-     * {@link StaffHeaderMetrics#CAUTIONARY_RIGHT_MARGIN_SS}. It is a maximum
-     * rather than a sum because the two occupy the same run — the cautionary is drawn <em>into</em>
-     * the trailing gap, not after it. The two clauses never both bind: only the song's last line
-     * carries the auto-maintained terminal, and only a line with a line after it leads into a
-     * cautionary.
+     * <p>A line that leads into a {@link CautionaryKeySignature} takes that cautionary's
+     * {@link CautionaryKeySignature#reservationSs() run} as its whole trailing gap, in place of the
+     * two clauses above — the cautionary is drawn <em>into</em> the trailing space rather than after
+     * it, and its own lead-in already carries whatever separation the last element is owed. Taking
+     * the larger of the two instead would leave a narrow cautionary further from its barline than
+     * {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}. Only the song's last line carries the
+     * auto-maintained terminal, and only a line with a line after it leads into a cautionary, so
+     * the terminal clause and this one never compete.
      *
      * @param lastColumn the chain's last column
      * @param line       the line being solved (for the song's line rest)
@@ -551,37 +674,20 @@ public final class HorizontalSpacingCalculator {
      */
     private static double trailingReservationSs(ElementColumn lastColumn, Line line, LineKeys keys) {
         var song = line.getSong();
+        var lineRestSs = song.getDefaultRestLengthSs();
+        var lastElement = lastColumn.getElement();
+        var cautionary = CautionaryKeySignature.of(keys, lastElement, lineRestSs);
+
+        if (cautionary != null) {
+            return lastColumn.getRightExtentSs() + cautionary.reservationSs();
+        }
+
         // The song's own terminal-identity test, not a bare type check: a barline that merely looks
         // like a terminal — one ending a non-last line, or a projected clone that is not the line's
         // element — is not pinned flush-right, so it still owes the trailing rest.
-        var nonTerminalGapSs = song.isAutoMaintainedTerminal(lastColumn.getElement(), line)
-            ? 0.0
-            : song.getDefaultRestLengthSs();
-        var trailingGapSs = Math.max(nonTerminalGapSs, cautionaryReservationSs(keys));
+        var trailingGapSs = song.isAutoMaintainedTerminal(lastElement, line) ? 0.0 : lineRestSs;
 
         return lastColumn.getRightExtentSs() + trailingGapSs;
-    }
-
-    /**
-     * Returns the run the cautionary key signature at the end of a line occupies — its drawn width
-     * plus the margin it keeps from the staff's right edge — or zero when no cautionary is drawn
-     * there.
-     *
-     * <p>What is drawn is {@link Key#accidentalsFrom}'s answer for the pair of keys, never a second reading
-     * of the cancellation policy, so the space reserved here and the accidentals
-     * {@code KeySignatureRenderer} paints cannot disagree. Zero covers both "no next line" and
-     * "the next line is in the same key" — the margin is part of the cautionary's run, so a line
-     * that draws no cautionary must not be charged for it either.
-     */
-    private static double cautionaryReservationSs(LineKeys keys) {
-        var nextRunningKey = keys.nextRunningKey();
-
-        if (nextRunningKey == null || keys.keyAtEndOfLine().equals(nextRunningKey)) {
-            return 0.0;
-        }
-
-        return nextRunningKey.widthSsFrom(keys.keyAtEndOfLine())
-            + StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS;
     }
 
     /**
@@ -877,23 +983,6 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the ideal (uncompressed) delta-X for a pair: the previous column's right extent plus
-     * the pair's share of the line rest ({@code factor × lineRestSs}, see {@link #restFactorFor}).
-     * A grace→host pair is the exception — it takes a fixed {@link #GRACE_HOST_REST_SS} gap that
-     * never scales with the line rest.
-     */
-    private static double baseRestSs(ElementColumn prev, ElementColumn curr, double lineRestSs) {
-        if (prev.isGraceNote()) {
-            // Grace note → host note: a fixed absolute gap that never varies with the song's line
-            // rest — the grace note always packs against its host at the same distance (refs #418).
-            return leftInkSs(prev, curr) + GRACE_HOST_REST_SS;
-        }
-
-        var gapSs = isBeamInternalGap(prev, curr) ? beamInternalGapSs(prev, curr, lineRestSs) : lineRestSs;
-        return leftInkSs(prev, curr) + gapSs;
-    }
-
-    /**
      * Returns the glyph-ink component a gap starting at {@code prev} carries: the span from
      * {@code prev}'s origin to its right ink edge. This is the non-whitespace part of the gap's base
      * rest, and the part {@link SpringSpacer} excludes from whitespace levelling. A grace
@@ -911,18 +1000,20 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the reducing factor applied to the line rest for this pair's base rest: a tight-beam
-     * gap packs proportionally tighter than a normal gap, which takes the full line rest (factor
-     * {@code 1}). Mirrors the branch selection in {@link #baseRestSs}, and is the factor the lyric
-     * lift scales each gap's share of the lift by, so tight gaps stay proportionally tight. Grace
-     * gaps are excluded from the lift, so they never reach this method through that path.
+     * Returns the reducing factor applied to the line rest for this pair's base rest, which is
+     * {@link GapKind#weight()} — the same value the solver uses, so the reduction is applied
+     * identically at rest and under compression.
+     *
+     * <p>This is also the factor the lyric lift scales each gap's share of the lift by, so tight
+     * gaps stay proportionally tight. Grace and key-signature gaps are held out of the lift
+     * ({@link GapKind#isLiftExempt()}), so they never reach this method through that path.
+     *
+     * @param prev the column on the left of the gap
+     * @param curr the column on the right of the gap
+     * @return the factor; {@code 1} for a gap that takes the full line rest
      */
     public static double restFactorFor(ElementColumn prev, ElementColumn curr) {
-        if (isTightBeamGap(prev, curr)) {
-            return BEAM_GROUP_INTERNAL_REST_FACTOR;
-        }
-
-        return Spring.NORMAL_WEIGHT;
+        return GapKind.of(prev, curr).weight();
     }
 
     /**
@@ -935,9 +1026,8 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Returns whether the gap takes the tight beam-internal reduction: internal to one beam group
-     * and flanked by two notes both shorter than an eighth (sixteenths or faster). This is the single
-     * condition behind both the reduced base rest ({@link #restFactorFor}) and the solver weight
-     * ({@link #buildSpring}), so the reduction is applied identically at rest and under compression.
+     * and flanked by two notes both shorter than an eighth (sixteenths or faster). This is the
+     * condition behind {@link GapKind#TIGHT_BEAM}.
      */
     private static boolean isTightBeamGap(ElementColumn prev, ElementColumn curr) {
         return isBeamInternalGap(prev, curr) && bothShorterThanEighth(prev, curr);
@@ -1189,23 +1279,6 @@ public final class HorizontalSpacingCalculator {
     // ==========================================================================
     // Beam Group Spacing
     // ==========================================================================
-
-    /**
-     * Returns the comfortable internal gap between two adjacent beamed columns.
-     * The longer note of the pair governs the gap: a pair touching an eighth note (or longer)
-     * packs at the default note-to-note gap, while the tighter beam-internal gap applies only
-     * when both notes are shorter than an eighth (sixteenths or faster). {@link LayoutEngine#beamCount}
-     * returns 1 for an eighth note (quaver) and a larger value for shorter notes (refs #418).
-     *
-     * @param prev       Previous beamed column
-     * @param curr       Current beamed column
-     * @param lineRestSs The song's line rest, scaled by the beam-internal factor when both notes
-     *                   are shorter than an eighth
-     * @return Internal gap in ss
-     */
-    private static double beamInternalGapSs(ElementColumn prev, ElementColumn curr, double lineRestSs) {
-        return bothShorterThanEighth(prev, curr) ? BEAM_GROUP_INTERNAL_REST_FACTOR * lineRestSs : lineRestSs;
-    }
 
     /**
      * Returns whether both beamed columns are shorter than an eighth note (sixteenths or faster),

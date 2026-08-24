@@ -98,7 +98,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var noteX = resolveBarXSs(g2, element, invariants, frame);
+        var noteX = frame.resolveElementXSs(element, invariants);
 
         try (var _ = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(noteX, invariants.getMiddleLineYSs());
@@ -122,7 +122,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
         var bottomY = STAFF_HALF_HEIGHT_SS;
 
         switch (noteType) {
-            case SINGLE_BARLINE -> drawBar(g2, 0, thin, topY, bottomY);
+            case SINGLE_BARLINE -> drawSingleBarLine(g2, 0, 0);
 
             case DOUBLE_BARLINE -> {
                 drawBar(g2, 0, thin, topY, bottomY);
@@ -184,6 +184,26 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     }
 
     /**
+     * Draws a thin single barline spanning the staff, with its left edge at {@code xSs}.
+     *
+     * <p>This is the one definition of what a single barline looks like, so a barline drawn from
+     * something other than an element — the barline a {@code CautionaryKeySignature} draws at the
+     * end of a line — cannot come out a different thickness or height from an element's.
+     *
+     * @param g2            Graphics context, in staff-space units
+     * @param xSs           Left edge X coordinate of the barline
+     * @param middleLineYSs Y coordinate of the staff's middle line, which the bar is centered on
+     */
+    public static void drawSingleBarLine(Graphics2D g2, double xSs, double middleLineYSs) {
+        drawBar(
+            g2,
+            xSs,
+            LineThickness.THIN_BARLINE_SS,
+            middleLineYSs - STAFF_HALF_HEIGHT_SS,
+            middleLineYSs + STAFF_HALF_HEIGHT_SS);
+    }
+
+    /**
      * Draws a single barline as a filled rectangle.
      *
      * @param g2      Graphics context (translated to middle line)
@@ -221,28 +241,4 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
         }
     }
 
-    // ==========================================================================
-    // Coordinate Helpers
-    // ==========================================================================
-
-    /**
-     * Resolves the X coordinate for a barline/repeat from the layout result,
-     * snapped to device pixels for crisp rendering.
-     */
-    private static double resolveBarXSs(
-        Graphics2D g2,
-        StaffElement note,
-        LineInvariants invariants,
-        ElementFrame frame
-    ) {
-        double noteX;
-
-        if (frame.hasOverrideElementX()) {
-            noteX = frame.overrideElementXSs();
-        } else {
-            noteX = invariants.getLayoutResult().getElementXSs(note);
-        }
-
-        return noteX;
-    }
 }

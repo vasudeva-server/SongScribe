@@ -284,7 +284,7 @@ public enum Key implements Copyable<Key> {
     /**
      * Returns how wide the drawn change from {@code sourceKey} into this key is: the sum of every
      * accidental's advance and leading gap. It excludes
-     * {@link StaffHeaderMetrics#CAUTIONARY_RIGHT_MARGIN_SS}, which is the caller's to add.
+     * {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}, which is the caller's to add.
      *
      * @param sourceKey the key in effect before the change
      * @return the laid-out width in staff spaces; zero when {@code sourceKey} is this key, and

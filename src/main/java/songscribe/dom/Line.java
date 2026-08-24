@@ -423,6 +423,37 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * Returns the key this line will leave off in once {@code [begin, end]} is removed from it:
+     * the last key signature surviving after the range, and otherwise the key in effect
+     * immediately before it.
+     *
+     * <p>This is what a deletion needs and {@link #keyAtEndOfLineUnder(int, Key)} cannot give.
+     * Removing a mid-line key signature moves the key every following line inherits, so the
+     * deletion owes the same cross-line accidental reconciliation an inserted key signature owes
+     * — {@code AccidentalReconciliation.linesInheriting} takes this key as its starting point.
+     * See {@code docs/key-signatures.md}.
+     *
+     * <p>A deletion that removes no key signature answers with the key the line already leaves
+     * off in, so its caller derives an empty reach and reconciles nothing downstream. That is why
+     * the reach is computed unconditionally rather than behind a "does the range hold a key
+     * signature" test.
+     *
+     * @param begin the first element index the deletion removes, already widened to
+     *     {@link #effectiveRange}
+     * @param end the last element index the deletion removes, inclusive
+     * @return the key in effect after this line's last element once the range is gone; never null
+     */
+    public Key keyAtEndOfLineAfterRemoving(int begin, int end) {
+        var survivingKey = lastKeyChangeKeyFrom(end + 1);
+
+        if (survivingKey != null) {
+            return survivingKey;
+        }
+
+        return begin > 0 ? keyAt(begin - 1) : getRunningKey();
+    }
+
+    /**
      * Returns the key the last {@link KeyChangeElement} on this line establishes.
      *
      * <p>Null says the line changes key nowhere along its length, so the key it leaves off in is
@@ -684,6 +715,62 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * An element and the X position it lands at, bound together so an insertion cannot pair them
+     * up wrongly. Two parallel lists would have to agree in length and in order, and a caller
+     * that got either wrong would place every element after the mismatch at the wrong position —
+     * a visibly wrong line with nothing near the insertion to explain it.
+     *
+     * @param element     the element to insert
+     * @param xPositionSs where it lands, in staff spaces
+     */
+    public record PlacedElement(StaffElement element, double xPositionSs) {}
+
+    /**
+     * Inserts {@code run} at {@code index} as one run: positions each element, adds them in
+     * order, repairs the seams the run breaks on either side, and pushes the tail over to make
+     * room.
+     *
+     * <p><b>This is the whole of a multi-element insertion, and it exists so that no caller
+     * assembles one out of parts.</b> The four steps are not independent — {@link
+     * LyricRun#repairNeighborsBeforeInsertion} reads pre-insertion indices, so it must run before
+     * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} keys its
+     * two halves off opposite ends of the run, so it must run after the last. A caller that
+     * open-codes the sequence can leave out a step, and leaving one out shows up as a glissando
+     * pointing at a barline or a melisma pointing at an element that is no longer the host,
+     * neither of which fails anywhere near the insertion.
+     *
+     * <p>Must be called inside a modification bracket, so the whole run and its repairs are one
+     * undo step.
+     *
+     * @param index the index the first element lands at
+     * @param run the elements to insert with the positions they land at, in the order they land;
+     *            must not be empty
+     * @param tailShiftPx how far to move every element after the run, in pixels; may be negative
+     *                    where the insertion replaces something wider than itself
+     * @effects mutates this line and records the insertion, the repairs and the shift into the
+     *          open modification bracket
+     */
+    public void insertRun(int index, List<PlacedElement> run, int tailShiftPx) {
+        var elements = run.stream().map(PlacedElement::element).toList();
+        repairNeighborsBeforeInsertion(index, elements);
+
+        var insertedCount = run.size();
+
+        for (var i = 0; i < insertedCount; i++) {
+            var placed = run.get(i);
+            placed.element().setXOffsetPx(ScaleContext.ssToRoundedPx(placed.xPositionSs()));
+            addElement(index + i, placed.element());
+        }
+
+        repairNeighborsAfterInsertion(index, elements);
+
+        for (var i = index + insertedCount; i < effectiveElementCount(); i++) {
+            var element = getElement(i);
+            element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
+        }
+    }
+
+    /**
      * Replaces the element at {@code index}, guarded on two fronts: the incoming element may
      * not be a {@code FINAL_DOUBLE_BARLINE} unless it lands in the terminal position, and the
      * element being displaced may not be the auto-maintained terminal unless the replacement is
@@ -877,6 +964,29 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * The index of the last note on this line.
+     *
+     * <p>Answers how far along a line an edit can still govern a pitch. A key change past this
+     * index reaches no note, so it says nothing the next line's own key does not say, and the
+     * cautionary already draws that key at this line's end. See {@code docs/key-signatures.md}.
+     *
+     * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
+     * terminal is a barline or a repeat, so a scan for a note stops before it either way.
+     *
+     * @return the last note's element index, or -1 when this line holds no note
+     * @invariant the result is always below {@link #effectiveElementCount()}
+     */
+    public int lastNoteIndex() {
+        for (var scanIndex = elements.size() - 1; scanIndex >= 0; scanIndex--) {
+            if (elements.get(scanIndex).getType().isNote()) {
+                return scanIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
      * Returns {@code element}'s position in this line, or -1 when it is not in this line.
      * A null element is not in any line, so it too resolves to -1 — matching
      * {@code ArrayList.indexOf}, which this replaced.
@@ -989,13 +1099,117 @@ public class Line implements LyricRun, SpanLookup {
             return false;
         }
 
-        if (getElement(index).getType() != ElementType.KEY_CHANGE) {
+        if (!getElement(index).getType().isKeyChange()) {
             return false;
         }
 
         var precedingType = getElement(index - 1).getType();
 
         return precedingType.isBarLine() || precedingType.isRepeat();
+    }
+
+    /**
+     * Whether the element at {@code index} is a mid-line key signature.
+     *
+     * <p>The barline in front of it is not tested. This reports what stands at {@code index}, so a
+     * key signature that reached the line by any route answers {@code true} — testing for the
+     * barline would make a refusal depend on the pair rule in {@code docs/key-signatures.md}
+     * rather than help keep it.
+     *
+     * @param index element index; out of range yields false
+     * @return {@code true} when a {@link KeyChangeElement} stands at {@code index}
+     */
+    public boolean isKeyChangeAt(int index) {
+        return hasIndex(index) && getElement(index).getType().isKeyChange();
+    }
+
+    /**
+     * Whether the element at {@code index} is the barline or repeat a key signature sits behind —
+     * the same pair {@link #isKeyChangeAt} names from the key signature's side, seen from the
+     * barline's.
+     *
+     * @param index element index; out of range yields false
+     * @return {@code true} when a key signature stands at {@code index + 1} and {@code index}
+     *     holds the barline or repeat it sits behind
+     */
+    private boolean isKeyChangeBarlineAt(int index) {
+        return isKeyChangeBehindBarline(index + 1);
+    }
+
+    /**
+     * Whether the element at {@code index} may be replaced in place — clicked through with
+     * another element in note entry, which swaps the new element in and keeps the index.
+     *
+     * <p>Two things are refused, both because they are half of a pair that only means anything
+     * whole: a <b>grace note</b>, which belongs to the host that follows it, and either half of a
+     * <b>key signature and the barline it sits behind</b> — the pair rule in
+     * {@code docs/key-signatures.md}, which {@link #effectiveBegin} deletes whole for the same
+     * reason.
+     *
+     * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
+     * the element's place, while an insertion lands in front of it.
+     * {@link #canInsertElementAt} is the insertion-side question.
+     *
+     * @param index element index; out of range yields true, since nothing stands there to
+     *     protect and the caller's own bounds decide what happens next
+     * @return {@code true} when note entry may write over the element at {@code index}
+     */
+    public boolean canReplaceElementAt(int index) {
+        if (!hasIndex(index)) {
+            return true;
+        }
+
+        return !getElement(index).getType().isGraceNote()
+            && !isKeyChangeAt(index)
+            && !isKeyChangeBarlineAt(index);
+    }
+
+    /**
+     * Whether an element may be inserted in front of the element at {@code index} — the sibling
+     * of {@link #canReplaceElementAt}, which answers whether the element at {@code index} may be
+     * written over instead.
+     *
+     * <p>Every way content lands on a line by pointing at it asks this, whatever is being placed:
+     * note entry, a pasted fragment and a mid-line key signature alike. Two slots are refused,
+     * both because they sit <em>inside</em> a pair that only means anything adjacent:
+     *
+     * <ul>
+     *   <li>in front of a <b>mid-line key signature</b>, which is the gap between it and the
+     *       barline it stands behind. Anything landing there leaves the key signature preceded by
+     *       something other than a barline, breaking {@link KeyChangeElement}'s position
+     *       invariant — see {@code docs/key-signatures.md}.</li>
+     *   <li>in front of the <b>host of a paired grace note</b>, which is the gap between the
+     *       grace note and the note it decorates. The two mean nothing apart, so nothing goes
+     *       between them.</li>
+     * </ul>
+     *
+     * <p>Says nothing about which of the remaining slots a particular operation wants. That is
+     * each operation's own rule, and it is asked separately — a key signature is never the first
+     * element on a line, for instance, which this does not know or care about.
+     *
+     * @param index the slot an element would be inserted at, so that it lands in front of the
+     *     element currently at {@code index}; out of range — including
+     *     {@link #effectiveElementCount()}, the slot past the last element — yields true, since
+     *     nothing stands there to be split
+     * @return {@code true} when an element may be inserted at {@code index}
+     */
+    public boolean canInsertElementAt(int index) {
+        return !isKeyChangeAt(index) && !isHostOfPairedGraceNote(index);
+    }
+
+    /**
+     * Whether a syllable may be written on the element at {@code index} — this line's way of
+     * asking {@link StaffElement#canBearSyllable}, which states the rule and which
+     * {@code LyricLayoutBuilder} asks of the columns it is laying out instead.
+     *
+     * <p>Does not vary by verse: an element that can hold a syllable can hold one in every verse.
+     *
+     * @param index element index
+     * @return {@code true} when a syllable may be written on the element at {@code index}
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     */
+    public boolean canBearSyllableAt(int index) {
+        return getElement(index).canBearSyllable(index >= 1 ? getElement(index - 1) : null);
     }
 
     /**

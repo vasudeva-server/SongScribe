@@ -110,38 +110,33 @@ public final class LayoutHitTester {
      * The cautionary warns the performer about the key the next line begins in, so double-clicking
      * it edits that line's key where the change is visible, rather than reopening {@code line}'s
      * own key a second time. This returns {@code null}, and nothing is drawn to click on, when
-     * {@code line} is the song's last line or the two lines' running keys agree —
-     * {@link Key#widthSsFrom} answers zero in both cases.
+     * {@code line} is the song's last line or the two lines' running keys agree — the two cases
+     * {@link CautionaryKeySignature#of(Line)} answers {@code null} for.
+     * <p>
+     * The target is the run of accidentals and not the barline ahead of it: a line that ends in a
+     * barline of its own draws no barline for the cautionary, and clicking the line's own barline
+     * must go on selecting that element rather than opening a key dialog.
      * <p>
      * The rect tested is the one rendering draws, including its
-     * {@link LayoutResult#overflowsStaffWidth() overflow} placement: on a line whose content
-     * overflows the staff, the run sits one line rest past the rightmost solved column rather than
-     * pinned to the margin, and this target follows it there.
+     * {@link LayoutResult#overflowsStaffWidth() overflow} placement, because both read the same
+     * {@link CautionaryKeySignature#placeIn}.
      *
      * @param mouseXSs mouse X coordinate, in staff-space units
      * @param line     the line whose end is being tested for its cautionary
      * @return the following line, or {@code null} when no cautionary is drawn or {@code mouseXSs}
-     *         falls outside its drawn run
+     *         falls outside its drawn run of accidentals
      */
     public @Nullable Line hitTestCautionaryKeyEdit(double mouseXSs, Line line) {
-        var nextKey = line.nextLineRunningKey();
+        var cautionary = CautionaryKeySignature.of(line);
 
-        if (nextKey == null) {
-            return null;
-        }
-
-        var widthSs = nextKey.widthSsFrom(line.keyAtEndOfLine());
-
-        if (widthSs == 0) {
+        if (cautionary == null) {
             return null;
         }
 
         var song = line.getSong();
-        var startXSs = layoutResult.overflowsStaffWidth()
-            ? layoutResult.contentRightEdgeSs() + song.getDefaultRestLengthSs()
-            : song.getLineWidthSs() - StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS - widthSs;
+        var startXSs = cautionary.placeIn(layoutResult, song.getLineWidthSs()).accidentalsXSs();
 
-        if (mouseXSs < startXSs || mouseXSs > startXSs + widthSs) {
+        if (mouseXSs < startXSs || mouseXSs > startXSs + cautionary.accidentalsWidthSs()) {
             return null;
         }
 
@@ -374,7 +369,7 @@ public final class LayoutHitTester {
                     // way, so a preview of the hovered element's own type still lands exactly
                     // on it.
                     return centeredInRoomSs(
-                        elementX, elementX + element.getType().getElementWidthSs(), previewElement);
+                        elementX, elementX + element.getGlyphWidthSs(), previewElement);
                 }
             }
         }
@@ -443,7 +438,7 @@ public final class LayoutHitTester {
                 // The room starts at the last element's drawn right edge, measured the same way as
                 // the between-elements case below: past the glyph, but not past its flag or dots.
                 return centeredInRoomSs(
-                    lastColumn.getXSs() + lastElement.getType().getElementWidthSs(), boundarySs, previewElement);
+                    lastColumn.getXSs() + lastElement.getGlyphWidthSs(), boundarySs, previewElement);
             }
 
             return naturalXSs;
@@ -464,8 +459,10 @@ public final class LayoutHitTester {
         // which is that element's drawn left edge. Extents are deliberately not consulted: a flag,
         // dot or accidental does not shrink the room, but the glyphs themselves do — starting the
         // room at the previous element's own origin would center the preview over that element's
-        // notehead rather than in the space beside it (refs #689).
-        var roomStartSs = prevColumn.getXSs() + prevElement.getType().getElementWidthSs();
+        // notehead rather than in the space beside it (refs #689). The width is the element's, not
+        // its type's: a mid-line key signature's type width is only a one-accidental floor, so the
+        // room would otherwise start inside the signature and the marker land on its accidentals.
+        var roomStartSs = prevColumn.getXSs() + prevElement.getGlyphWidthSs();
 
         return centeredInRoomSs(roomStartSs, currColumn.getXSs(), previewElement);
     }
@@ -482,7 +479,7 @@ public final class LayoutHitTester {
      * element sitting well off center.
      */
     private static double centeredInRoomSs(double roomStartSs, double roomEndSs, StaffElement previewElement) {
-        var previewWidthSs = previewElement.getType().getElementWidthSs();
+        var previewWidthSs = previewElement.getGlyphWidthSs();
         return roomStartSs + (roomEndSs - roomStartSs - previewWidthSs) / 2;
     }
 }

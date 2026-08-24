@@ -1368,13 +1368,11 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private int findNextEligibleIndex() {
-        return LyricTargetResolver.findNextEligibleIndex(
-            line, line.getElementIndex(element), activeVerse);
+        return LyricTargetResolver.findNextEligibleIndex(line, line.getElementIndex(element));
     }
 
     private int findPreviousEligibleIndex() {
-        return LyricTargetResolver.findPreviousEligibleIndex(
-            line, line.getElementIndex(element), activeVerse);
+        return LyricTargetResolver.findPreviousEligibleIndex(line, line.getElementIndex(element));
     }
 
     private void handleHyphen() {
@@ -1577,8 +1575,7 @@ public final class LyricEditor extends MyJTextField {
             logState("startMelismaOnNextElement done, carrier at " + nextIndex);
         }
 
-        openIndexOrDismiss(
-            LyricTargetResolver.findNextEligibleIndex(line, nextIndex, activeVerse));
+        openIndexOrDismiss(LyricTargetResolver.findNextEligibleIndex(line, nextIndex));
     }
 
     /**

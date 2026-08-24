@@ -1403,8 +1403,9 @@ public final class Song implements Disposable {
      * Restores the key invariant after {@code mutation} — line 0 establishing a key of its own,
      * and every later line's inherited key matching the key at the end of the line before it.
      *
-     * <p>The cases are enumerated rather than the propagation run unconditionally, so that an
-     * ordinary note or lyric edit does not walk the line list.
+     * <p>{@link #keyMoveOf} decides whether the mutation moves a key at all, so that an ordinary
+     * note or lyric edit does not walk the line list. Only the line-list mutations are switched on
+     * here, for the repair they owe on top of the propagation every key move owes.
      *
      * <p>Package-private rather than private because {@link Line#applyChange} owes the same
      * maintenance on its suspended-tracking branch, where the mutator runs without reaching
@@ -1413,10 +1414,7 @@ public final class Song implements Disposable {
      */
     void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
         switch (mutation) {
-            case LineInsertion insertion -> {
-                repairLineZeroKey(startingKeyBefore);
-                propagateInheritedKeysFrom(insertion.lineIndex());
-            }
+            case LineInsertion _ -> repairLineZeroKey(startingKeyBefore);
             case LineDeletion deletion -> {
                 // A line out of the song inherits from nothing, so it must not go on answering
                 // with what it inherited while it was in one. Dropping the entry also bounds the
@@ -1424,42 +1422,141 @@ public final class Song implements Disposable {
                 // would keep it reachable for the song's whole life after that record is gone.
                 inheritedKeys.remove(deletion.deletedLine());
                 repairLineZeroKey(startingKeyBefore);
-                propagateInheritedKeysFrom(deletion.lineIndex());
-            }
-            case LineKeyChange change -> propagateInheritedKeysAfter(change.line());
-            case ElementInsertion insertion -> {
-                if (changesKey(insertion.element())) {
-                    propagateInheritedKeysAfter(insertion.line());
-                }
-            }
-            case ElementDeletion deletion -> {
-                if (changesKey(deletion.deletedElement())) {
-                    propagateInheritedKeysAfter(deletion.line());
-                }
-            }
-            case ElementReplacement replacement -> {
-                if (changesKey(replacement.oldElement()) || changesKey(replacement.newElement())) {
-                    propagateInheritedKeysAfter(replacement.line());
-                }
-            }
-            case ElementRangeDeletion rangeDeletion -> {
-                if (rangeDeletion.deletedElements().stream().anyMatch(Song::changesKey)) {
-                    propagateInheritedKeysAfter(rangeDeletion.line());
-                }
-            }
-            case ElementModification modification -> {
-                if (changesKey(modification.beforeElement()) || changesKey(modification.afterElement())) {
-                    propagateInheritedKeysAfter(modification.line());
-                }
             }
             default -> {
-                // Nothing else can move a key.
+                // Only a change to which lines exist can leave line 0 without a key of its own.
             }
+        }
+
+        var keyMove = keyMoveOf(mutation);
+
+        if (keyMove != null) {
+            propagateInheritedKeysFrom(keyMove.inheritedFromIndex());
         }
     }
 
+    /**
+     * Where a mutation's key move begins, as the two line indices the move is felt from.
+     *
+     * <p>They differ because a line's own key and the key it inherits are separate storage: a line
+     * given a key of its own starts running in it immediately while still inheriting what it always
+     * did, and a mid-line key signature moves neither of that line's two keys — only the key it
+     * leaves off in, which the line after it inherits.
+     *
+     * @param inheritedFromIndex the first line whose <em>inherited</em> key the move can change,
+     *                           which is where {@link #propagateInheritedKeysFrom} starts
+     * @param runningFromIndex   the first line whose <em>running</em> key the move can change,
+     *                           which is where {@link #keyMoveReach} starts drawing differently
+     */
+    private record KeyMove(int inheritedFromIndex, int runningFromIndex) {}
+
+    /**
+     * Returns where {@code mutation}'s key move begins, or null when it moves no key.
+     *
+     * <p>This is the one enumeration of the mutations that can move a key.
+     * {@link #maintainKeyInvariant} reads it to bring the inherited keys back up to date, and
+     * {@link #keyMoveReach} reads it to say which lines now draw something different. A second
+     * enumeration would drift out of step with this one, and the drift would show as a line
+     * rendering the key it was in before the edit, with nothing to explain it.
+     *
+     * @param mutation the mutation just applied, or about to be replayed
+     * @return where the move begins, or {@code null} when {@code mutation} moves no key — which
+     *     is every mutation not listed here, and every listed one that carried no key signature
+     *     or names a line no longer in this song
+     */
+    private @Nullable KeyMove keyMoveOf(Mutation mutation) {
+        return switch (mutation) {
+            // A line arriving at or leaving an index changes what the line now at that index
+            // inherits, and therefore what it runs in: both start there.
+            case LineInsertion insertion -> new KeyMove(insertion.lineIndex(), insertion.lineIndex());
+            case LineDeletion deletion -> new KeyMove(deletion.lineIndex(), deletion.lineIndex());
+            case LineKeyChange change -> ownKeyMove(change.line());
+            case ElementInsertion insertion -> midLineKeyMove(
+                insertion.line(),
+                changesKey(insertion.element()));
+            case ElementDeletion deletion -> midLineKeyMove(
+                deletion.line(),
+                changesKey(deletion.deletedElement()));
+            case ElementReplacement replacement -> midLineKeyMove(
+                replacement.line(),
+                changesKey(replacement.oldElement()) || changesKey(replacement.newElement()));
+            case ElementRangeDeletion rangeDeletion -> midLineKeyMove(
+                rangeDeletion.line(),
+                rangeDeletion.deletedElements().stream().anyMatch(Song::changesKey));
+            case ElementModification modification -> midLineKeyMove(
+                modification.line(),
+                changesKey(modification.beforeElement()) || changesKey(modification.afterElement()));
+            default -> null;
+        };
+    }
+
+    /**
+     * The move a change to {@code line}'s own key makes: the line runs in the new key from its own
+     * start, while what it inherits is untouched, so the inheritance walk begins after it.
+     *
+     * @param line the line whose own key changed
+     * @return the move, or null when {@code line} is not in this song and so moves nothing
+     */
+    private @Nullable KeyMove ownKeyMove(Line line) {
+        var lineIndex = indexOfLine(line);
+        return lineIndex < 0 ? null : new KeyMove(lineIndex + 1, lineIndex);
+    }
+
+    /**
+     * The move a mid-line key signature written into or taken out of {@code line} makes: the line's
+     * own two keys stand, and only the key it leaves off in moves, so both walks begin after it.
+     *
+     * @param line the line the mutation touched
+     * @param movesKey whether the elements the mutation carried were key signatures at all
+     * @return the move, or null when the mutation carried no key signature or {@code line} is not
+     *         in this song
+     */
+    private @Nullable KeyMove midLineKeyMove(Line line, boolean movesKey) {
+        if (!movesKey) {
+            return null;
+        }
+
+        var lineIndex = indexOfLine(line);
+        return lineIndex < 0 ? null : new KeyMove(lineIndex + 1, lineIndex + 1);
+    }
+
+    /**
+     * Returns the lines {@code mutation}'s key move changes the drawn key content of: every line
+     * whose running key it moved, and the line before the first of those, whose cautionary key
+     * signature depicts the boundary the move created. Empty when the mutation moves no key.
+     *
+     * <p>A view holding per-line geometry needs this. A line's header signature and the spacing
+     * around it are solved from the key that line runs in, and the room kept clear at its end is
+     * solved from the cautionary it leads into — so a key move leaves stale geometry on lines no
+     * mutation names, and the line ahead of the move is one of them. See
+     * {@code docs/key-signatures.md}.
+     *
+     * <p>Asked after the mutation has been applied, so the answer describes the document as it now
+     * stands, which is what a stale view has to be brought up to.
+     *
+     * <p>A line insertion or deletion answers here too, but no view need ask: it changes which
+     * lines exist, which costs a rebuild of every line rather than an invalidation of some.
+     *
+     * @param mutation the mutation to ask about
+     * @return the lines, in song order, or empty when {@code mutation} moves no key
+     */
+    public List<Line> keyMoveReach(Mutation mutation) {
+        var keyMove = keyMoveOf(mutation);
+
+        if (keyMove == null) {
+            return List.of();
+        }
+
+        var firstIndex = Math.max(keyMove.runningFromIndex() - 1, 0);
+        var lastIndex = firstKeyedLineFrom(keyMove.inheritedFromIndex()) - 1;
+
+        return firstIndex > lastIndex
+            ? List.of()
+            : List.copyOf(lines.subList(firstIndex, lastIndex + 1));
+    }
+
     private static boolean changesKey(StaffElement element) {
-        return element.getType() == ElementType.KEY_CHANGE;
+        return element.getType().isKeyChange();
     }
 
     /**
@@ -1505,15 +1602,10 @@ public final class Song implements Disposable {
         firstLine.setKey(materialized);
     }
 
-    private void propagateInheritedKeysAfter(Line line) {
-        propagateInheritedKeysFrom(lines.indexOf(line) + 1);
-    }
-
     /**
      * Reassigns the inherited key of every line from {@code firstAffectedLineIndex} forward,
-     * stopping after the first line that establishes a key of its own: that line's running key
-     * cannot have moved, so nothing past it can either. A song with a key on every line therefore
-     * costs one step.
+     * stopping after the first line that establishes a key of its own. A song with a key on every
+     * line therefore costs one step.
      */
     private void propagateInheritedKeysFrom(int firstAffectedLineIndex) {
         // A document under construction may not have put line 0 in a key yet, and until it does
@@ -1523,15 +1615,42 @@ public final class Song implements Disposable {
             return;
         }
 
-        // Line 0 inherits nothing, so propagation always starts at line 1 or later.
-        for (var lineIndex = Math.max(firstAffectedLineIndex, 1); lineIndex < lines.size(); lineIndex++) {
-            var line = lines.get(lineIndex);
-            inheritedKeys.put(line, lines.get(lineIndex - 1).keyAtEndOfLine());
+        // Line 0 inherits nothing, so propagation always starts at line 1 or later. The line the
+        // walk stops at is reassigned before it stops: its own key overrides what it inherits, so
+        // the entry is never read, but leaving it stale would leave the map disagreeing with the
+        // document.
+        var firstIndex = Math.max(firstAffectedLineIndex, 1);
+        var lastIndex = Math.min(firstKeyedLineFrom(firstIndex), lines.size() - 1);
 
-            if (line.getKey() != null) {
-                return;
+        for (var lineIndex = firstIndex; lineIndex <= lastIndex; lineIndex++) {
+            inheritedKeys.put(lines.get(lineIndex), lines.get(lineIndex - 1).keyAtEndOfLine());
+        }
+    }
+
+    /**
+     * Returns the index of the first line at or after {@code fromIndex} that establishes a key of
+     * its own, or {@link #lineCount()} when none does.
+     *
+     * <p>This is the stopping rule the whole feature runs on — <em>forward to the first line with
+     * its own key</em> — in one place: that line's running key cannot have moved, so nothing past
+     * it can either. The scan starts at line 1 whatever it is asked for, because line 0 always
+     * establishes a key of its own and so is never the line a forward walk stops at.
+     *
+     * <p>See {@code docs/key-signatures.md}.
+     *
+     * @param fromIndex where to start looking; clamped up to 1, since line 0 always establishes
+     *                  its own key and so is never where a forward walk stops
+     * @return that line's index, or {@link #lineCount()} when no line at or after
+     *     {@code fromIndex} establishes a key of its own
+     */
+    private int firstKeyedLineFrom(int fromIndex) {
+        for (var lineIndex = Math.max(fromIndex, 1); lineIndex < lines.size(); lineIndex++) {
+            if (lines.get(lineIndex).getKey() != null) {
+                return lineIndex;
             }
         }
+
+        return lines.size();
     }
 
     /**

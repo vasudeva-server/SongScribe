@@ -124,6 +124,16 @@ public final class StaffElementFactory {
         return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
     }
 
+    /**
+     * A mid-line key signature establishing {@code key}.
+     *
+     * @param key the key it establishes
+     * @return the key signature
+     */
+    public static KeyChangeElement keyChange(Key key) {
+        return new KeyChangeElement(key);
+    }
+
     public static StaffElement createNote(int staffPosition, boolean upper) {
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(staffPosition);

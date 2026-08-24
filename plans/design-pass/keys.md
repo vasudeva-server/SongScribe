@@ -175,8 +175,8 @@ and it does not have to happen in one pass or before anything else:
   and `changeLineKey`/`insertKeyChange` sit there rather than on
   `ScoreViewController`. What is left for this read is what those two methods
   *do* — the fit calculation, the accidental reconciliation, the restatement
-  prompt and the implicit barline — and whether two commit routes plus item 6's
-  third one are the right decomposition.
+  prompt and the implicit barline — and whether the three commit routes are the
+  right decomposition.
 
 ### Group C — items this pass surfaced along the way
 
@@ -331,8 +331,8 @@ starting it, not a reason to hold it back.
    hands the dialog a `Key` directly. `keyAt` now has no caller wanting the
    inclusive bound, so this item can start.
 
-   **This item does not fix item 6.** `keyAt`'s bound decides what the dialog
-   opens on; `insertKeyChange` decides what OK writes.
+   **Item 6 is a separate question.** `keyAt`'s bound decides what the dialog
+   opens on; the commit route the binding picks decides what OK writes.
 
    **Also found:** `LyricRun.getElement` is contracted as `/** The element at
    {@code index}. */` with no range, no `@return` and no `@throws`. `Line`'s
@@ -340,35 +340,34 @@ starting it, not a reason to hold it back.
    inheritance from the field's type rather than by promise. Any caller guarding
    `elementCount()` is guessing. Fix alongside `keyAt`'s contract; the two are
    read together.
-6. **Nothing can change an existing mid-line key signature's key.** Surfaced by
-   the `ui/dialog` read, not by the enum conversion. Double-clicking a mid-line
-   key signature opens the dialog on that signature's own key and then *inserts a
-   second signature in front of it*. The score reads `♯♯♯ ♭♭`; the second
-   signature has the last word, so the music from there on stays in the old key
-   and the edit reads as clutter that did nothing. No stray barline appears —
-   `insertKeyChange` adds one only where the position does not already follow
-   a barline, and an existing signature always does. `KeyChangeElement.setKey`
-   has no caller outside its own class.
+6. ✅ **Changing an existing mid-line key signature's key.** *Done.*
+   Double-clicking a mid-line key signature changes that signature's key in
+   place. `KeyChangeDialogController.changeMidLineKey` is the third commit
+   route, alongside `changeLineKey` and `insertKeyChange`, and
+   `Binding.EXISTING_SIGNATURE` reaches it from `editKeyChange`.
 
-   It silently damages documents, so it is a fix rather than a cleanup. It needs
-   a third commit route, which is why item 4 cannot absorb it:
+   The element keeps its identity and its index, so nothing on the line moves
+   and no barline is involved. The signature's column is re-solved against the
+   new key on the next layout pass, exactly as a line-key change's header is,
+   so a key drawing more or fewer accidentals needs no position bookkeeping.
 
-   - `changeMidLineKey(Line, int elementIndex, Key)` on
-     `KeyChangeDialogController`, alongside `changeLineKey` and
-     `insertKeyChange`, which item 4 moved there. It reconciles the
-     accidentals the key move affects, raises the one restatement prompt, changes
-     the element's key in place inside one modification bracket, and **re-spaces
-     the line**, because the new signature may be wider or narrower than the old.
-   - a `KeyEditFitCalculator.midLineKeyChangeSwapFits(…)` variant. The existing
-     `midLineKeyChangeFits` measures a line with a column *added*, which is the wrong
-     measurement for a swap.
-   - `KeyChangeDialogController.editKeyChange`, item 4's entry point for this
-     gesture, routed to the new commit instead of to `insertKeyChange`.
+   The mutation is `modifyElement(index, ElementField.KEY, …)`, a field added
+   for it: `Song.maintainKeyInvariant` already re-derives inherited keys off an
+   `ElementModification`, so the change propagates through undo and redo as
+   well as forward.
 
-   Call it ~200 lines of new domain code, none of it a variant of what item 4
-   writes. Item 5 does not fix it, and no test covers it — what guards the
-   current behaviour is `insertKeyChange`'s contract, which states that it
-   inserts.
+   The accidental reconciliation is the reach every key-moving edit has, run
+   through `KeyChangeReconciliation`. The host line is projected as a
+   *replacement* — a signature for the new key where the old one stands — so
+   the notes after it resolve against the key that will be in effect there.
+
+   `KeyEditFitCalculator.midLineKeyChangeSwapFits` is the fit measurement:
+   it replaces the signature's column rather than adding one, which
+   `midLineKeyChangeInsertionFits` cannot do without refusing a swap for want of room
+   the line already has. Writing it removed `holdsKeySignatureFrom`, whose
+   question `Line.keyAtEndOfLineUnder` already answers.
+
+   Not verified: there is no test suite, and the app has not been run.
 
 ## Commits
 

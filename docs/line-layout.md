@@ -83,25 +83,29 @@ A key signature is not only a header fixture. A `KeyChangeElement` is an ordinar
 
 **Rules**:
 
-1. **Width**: the column's right extent is the change's *drawn* width — the accidentals `Key.accidentalsFrom` lays out between the key in effect immediately before the element and the element's own key — not a per-type constant. A change that cancels the previous signature is wider than one that does not, and the spacing reflects that.
-2. **Minimum spacing**: `HorizontalSpacingCalculator.calculateMinimumColumnSpacingSs` gives it the same promise it gives every column — `MIN_COLUMN_GAP_SS` of clear space between facing ink on each side. The barline before it clears the first accidental by that gap; the last accidental clears the following note's leftmost ink (its accidental when it has one) by the same.
+1. **Width**: the column's right extent is the change's *drawn* width — the accidentals its `KeySignatureExtent` lays out between the key in effect immediately before the element and the element's own key — not a per-type constant. A change that cancels the previous signature is wider than one that does not, and the spacing reflects that.
+2. **Spacing behind the barline**: the barline and the key signature are one typeset unit, so that gap is `HorizontalSpacingCalculator.GapKind.BARLINE_TO_KEY_SIGNATURE`, whose rest *and* floor are both `StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS`. The gap is therefore frozen: the accidentals stand that exact distance behind their barline on a crowded line and an empty one alike, and the gap takes no share of the lyric lift.
+3. **Spacing in front of the following note**: an ordinary gap. The last accidental clears the following note's leftmost ink (its accidental when it has one) by `MIN_COLUMN_GAP_SS` at the floor, resting a full line rest away.
 
 ```
-[Barline] -- MIN_COLUMN_GAP_SS --> [♮♮♮ ♯♯] -- MIN_COLUMN_GAP_SS --> [Note]
-             cancellation naturals ─┘   └─ new signature
+[Barline] -- KEY_SIGNATURE_PADDING_SS --> [♮♮♮ ♯♯] -- line rest --> [Note]
+                    cancellation naturals ─┘   └─ new signature
 ```
 
 ### Example 1b: Cautionary key signature at the end of a line
 
 **Scenario**: The next line begins in a different key
 
-**Rule**: A cautionary key signature is drawn in the trailing space at the end of the line, warning the performer what the next line starts in. Layout reserves room for it in `HorizontalSpacingCalculator.trailingReservationSs`: the trailing gap past the last column becomes the larger of the line rest and the cautionary's width plus `StaffHeaderMetrics.CAUTIONARY_RIGHT_MARGIN_SS`. The larger, not the sum — the cautionary is drawn *into* the trailing gap, not after it.
+**Rule**: A cautionary key signature is drawn in the trailing space at the end of the line, warning the performer what the next line starts in. Layout reserves room for it in `HorizontalSpacingCalculator.trailingReservationSs`, and the span reserved is `CautionaryKeySignature.reservationSs()` — the lead-in, the barline the cautionary may draw for itself, the accidentals, and the trailing `StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS`.
+
+That span is the *whole* of the trailing gap, not a floor under it. The lead-in already carries whatever separation the last element is owed, so taking the larger of this and the ordinary line rest would push a narrow cautionary off its padding and leave the signature further from its barline than `KEY_SIGNATURE_PADDING_SS`.
 
 The keys compared are the **running** keys on each side of the boundary: `Line.keyAtEndOfLine()` (which accounts for a mid-line change) against `Line.nextLineRunningKey()`. A null answer from the latter — the song's last line — means there is nothing to warn about, so nothing is drawn and nothing is reserved.
 
 ```
-[... notes ...] --- max(line rest, cautionary + RIGHT_MARGIN_SS) --> | staff right margin
-                                   [♭♭♭] ─┘
+[... notes ...] -- line rest --> | -- PADDING --> [♭♭♭] -- PADDING --> | staff right margin
+                        cautionary's own barline ─┘
+                        (drawn only when the line does not already end in one)
 ```
 
 ### Example 1c: What a key change costs, and where it is checked

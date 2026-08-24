@@ -24,10 +24,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
@@ -162,6 +164,28 @@ public final class InsertionSpacingCalculator {
         public FragmentInsertionResult {
             cloneXPositionsSs = List.copyOf(cloneXPositionsSs);
             projectedColumns = List.copyOf(projectedColumns);
+        }
+
+        /**
+         * Pairs each of {@code fragment}'s elements with the position solved for it, ready for
+         * {@link Line#insertRun}. The pairing is made here because this is where both halves were
+         * produced together, so no caller has to keep two lists in step.
+         *
+         * @param fragment the same fragment this result was calculated for, in the same order
+         * @return the elements with their positions, in fragment order
+         * @throws IllegalArgumentException if {@code fragment} is not the length this result was
+         *     calculated for, which means it is not the fragment these positions describe
+         */
+        public List<Line.PlacedElement> place(List<? extends StaffElement> fragment) {
+            if (fragment.size() != cloneXPositionsSs.size()) {
+                throw new IllegalArgumentException(
+                    "fragment of " + fragment.size() + " elements does not match "
+                        + cloneXPositionsSs.size() + " solved positions");
+            }
+
+            return IntStream.range(0, fragment.size())
+                .mapToObj(i -> new Line.PlacedElement(fragment.get(i), cloneXPositionsSs.get(i)))
+                .toList();
         }
 
         /**
@@ -498,10 +522,24 @@ public final class InsertionSpacingCalculator {
         var fragmentStart = columns.size();
         var activeVerse = line.getSong().getActiveVerse();
 
+        // A key signature's width depends on the key it cancels as well as the key it establishes,
+        // and a fragment element sits on no line to read that from. The projected sequence is what
+        // knows it: the key in effect just before the insertion point, moved on by each key
+        // signature the fragment itself carries. Each one is measured through a stand-in told that
+        // key, so a pasted or inserted signature reserves the room its naturals actually need.
+        var runningKey = insertIndex >= 1 ? line.keyAt(insertIndex - 1) : line.getRunningKey();
+
         for (var element : fragment) {
+            var measured = element;
+
+            if (element instanceof KeyChangeElement keySignature) {
+                measured = KeyChangeElement.forMeasurement(keySignature.getKey(), runningKey);
+                runningKey = keySignature.getKey();
+            }
+
             columns.add(columnBuilder != null
-                ? columnBuilder.buildDetachedColumn(element, activeVerse)
-                : createLightweightColumn(element));
+                ? columnBuilder.buildDetachedColumn(measured, activeVerse)
+                : createLightweightColumn(measured));
         }
 
         for (var i = successorIndex; i < effectiveCount; i++) {

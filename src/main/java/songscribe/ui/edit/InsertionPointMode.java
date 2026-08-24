@@ -21,8 +21,12 @@
 package songscribe.ui.edit;
 
 import java.awt.MouseInfo;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.MouseEvent;
 
+import javax.swing.JLayeredPane;
 import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
@@ -32,6 +36,8 @@ import songscribe.dom.ViewPx;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.InsertionPointModeDidChangeNotification;
+import songscribe.ui.component.InsertionPointOverlay;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.InsertionMarkerOverlay;
 import songscribe.ui.component.score.LineComponent;
@@ -45,8 +51,8 @@ import songscribe.util.UIUtils;
  *
  * <h2>What a client is entitled to</h2>
  * A client that successfully enters the mode is called back <b>exactly once</b> on
- * {@link Client#insertionPointModeDidEnd}: with {@link EndReason#PLACED} for the placement
- * it completed, or with {@link EndReason#CANCELLED} when the user abandoned it. Never both,
+ * {@link Client#insertionPointModeDidEnd}: with an {@link Outcome.Placed} carrying the point it
+ * completed on, or with {@link Outcome#CANCELLED} when the user abandoned it. Never both,
  * never twice, never neither — every way out of the mode routes through the single
  * {@link #exit} funnel, and the mode is already inactive when the call arrives.
  *
@@ -63,13 +69,16 @@ import songscribe.util.UIUtils;
  * <h2>What the mode owns and what it does not</h2>
  * The mode owns the tracked {@code (LineComponent, index)} pair, the mouse and keyboard
  * handling that moves it, the {@link InsertionMarkerOverlay} that draws it, and cancellation.
- * It owns the geometry of <em>where on a line an insertion point exists at all</em>: nothing
- * can go into the staff header or past the staff's right edge, whoever is placing it.
+ * It owns <em>where on a line an insertion point exists at all</em>, whoever is placing: the
+ * staff header and the region past the staff's right edge are its own rules, and the slots
+ * inside a pair are {@link Line#canInsertElementAt}'s, which note entry asks too.
+ *
+ * <p>It also owns the {@link InsertionPointOverlay} banner naming the pending operation: the
+ * mode raises it on entry and takes it down on exit, so a client supplies only the wording
+ * ({@link Client#overlayText}) and never the layered-pane plumbing or the ordering it needs.
  *
  * <p>It does not own which of the remaining indices are legal — that is the client's
- * predicate — nor what is inserted, nor any operation-specific chrome such as paste's
- * {@code PasteOverlay} banner, which its client adds on entry and removes when told the mode
- * ended.
+ * predicate — nor what is inserted.
  *
  * <h2>Cross-cutting effects</h2>
  * Entering and leaving post {@link InsertionPointModeDidChangeNotification}, which is what
@@ -93,6 +102,17 @@ public final class InsertionPointMode {
     public interface Client {
 
         /**
+         * What the mode's banner says while this client's placement is pending — the operation
+         * being placed and how to complete or abandon it.
+         *
+         * <p>Asked once, on entry. The wording is the only part of the banner a client owns;
+         * raising it, positioning it and taking it back down are the mode's.
+         *
+         * @return the banner's title and hint, already localized
+         */
+        InsertionPointOverlay.Text overlayText();
+
+        /**
          * Whether {@code index} is a legal insertion point for this client.
          *
          * <p>Consulted on every mouse move, so it must be cheap and must not mutate anything.
@@ -109,9 +129,13 @@ public final class InsertionPointMode {
         /**
          * Places whatever this client is placing at the point the user picked.
          *
-         * <p>{@code index} is one {@link #acceptsInsertionIndex} accepted. The client is free
-         * to do the whole operation here, dialogs and modification brackets included; the mode
-         * has not torn anything down yet, so its chrome is still on screen.
+         * <p>{@code index} is one {@link #acceptsInsertionIndex} accepted. The mode has torn
+         * nothing down yet — the banner and the marker are both still on screen — because a
+         * client that answers {@link Placement#DECLINED} keeps placing. A client whose work
+         * runs a modal dialog therefore has a choice to make: an error the user can retry from
+         * belongs here, under a banner that still tells the truth, while a dialog that takes
+         * over the operation belongs in {@link #insertionPointModeDidEnd}, after the banner is
+         * gone. Paste does the first; a key change does the second.
          *
          * @param line the line the user picked
          * @param index the accepted insertion index within {@code line}
@@ -121,13 +145,15 @@ public final class InsertionPointMode {
         Placement insertionPointChosen(Line line, int index);
 
         /**
-         * Reports that the placement is over, once and only once, after the mode has already
-         * gone inactive and dropped its tracked point. This is where a client tears down
-         * whatever it put up in order to enter.
+         * Hands the placement over, once and only once, after the mode has already gone
+         * inactive, dropped its tracked point and taken its banner down. This is where a client
+         * undoes whatever it did of its own in order to enter, and where it runs any part of the
+         * operation that must not share the screen with the banner — which is why the point is
+         * handed over here rather than left for the client to have remembered.
          *
-         * @param reason whether the mode ended on a completed placement or a cancellation
+         * @param outcome the point the client completed on, or {@link Outcome#CANCELLED}
          */
-        void insertionPointModeDidEnd(EndReason reason);
+        void insertionPointModeDidEnd(Outcome outcome);
     }
 
     /** What a client did with the index it was offered. */
@@ -139,13 +165,32 @@ public final class InsertionPointMode {
         DECLINED
     }
 
-    /** Why the mode ended. */
-    public enum EndReason {
-        /** A client completed a placement. */
-        PLACED,
+    /**
+     * How a placement ended: {@link Placed}, carrying the point the user settled on, or
+     * {@link #CANCELLED}. A completed placement without a point, and a cancellation with one, are
+     * both unwriteable, so a client that acts on the point after the banner is down cannot reach
+     * for one that was never chosen.
+     */
+    public sealed interface Outcome {
 
-        /** The user abandoned the placement — Escape, a click off any line, or backgrounding. */
-        CANCELLED
+        /**
+         * The one cancellation, since a cancellation carries nothing that could distinguish two
+         * of them: the user abandoned the placement — Escape, a click off any line, or the app
+         * being backgrounded.
+         */
+        Outcome CANCELLED = new Cancelled();
+
+        /**
+         * The placement a client completed, on the point it was offered and accepted.
+         *
+         * @param line  the line the user picked
+         * @param index the insertion index within {@code line}, the element the placement lands
+         *              in front of
+         */
+        record Placed(Line line, int index) implements Outcome {}
+
+        /** An abandoned placement. Use {@link #CANCELLED} rather than constructing one. */
+        record Cancelled() implements Outcome {}
     }
 
     /** The index that means "nothing is tracked", so Return has nowhere to place. */
@@ -170,6 +215,14 @@ public final class InsertionPointMode {
     private LineComponent targetLineComponent = null;
 
     private int targetIndex = NO_INDEX;
+
+    // The banner naming the pending operation, and the layered-pane bounds listener that keeps
+    // it full-bleed. Both are created in enter() and torn down in exit().
+    @Nullable
+    private InsertionPointOverlay overlay = null;
+
+    @Nullable
+    private ComponentListener overlayBoundsListener = null;
 
     // The insertion-point marker. One instance for the lifetime of this mode (and thus of
     // the owning ScoreView) — retargeted and shown/hidden below rather than recreated.
@@ -248,14 +301,15 @@ public final class InsertionPointMode {
      *
      * <p>At most one placement is pending at a time: a second client asking while one is
      * already running is refused rather than displacing it, and is told so by the return value
-     * so it can skip whatever it was going to put on screen. A refused client gets no
-     * callbacks at all — the exactly-once promise covers clients that actually entered.
+     * so it can skip whatever else entering would have committed it to. A refused client gets no
+     * callbacks at all — the exactly-once promise covers clients that actually entered, which is
+     * why a client with nothing of its own to set up may ignore the answer.
      *
      * <p>{@link #syncTargetToMouse()} shows the marker on the spot when a target is already
      * resolvable (the pointer is already over a line), by routing through {@link #updateTarget},
-     * the same path a real {@code mouseMoved} takes. A client that adds chrome of its own must
-     * add it <em>after</em> this call returns: a full-bleed overlay added first would be the
-     * topmost hit and would shadow the score from {@link UIUtils#getComponentUnderMouse}.
+     * the same path a real {@code mouseMoved} takes. The banner goes up only after that: a
+     * full-bleed overlay added first would be the topmost hit and would shadow the score from
+     * {@link UIUtils#getComponentUnderMouse}.
      *
      * @param client the operation the chosen index will be reported to
      * @return {@code true} if the mode entered, {@code false} if a placement was already pending
@@ -268,7 +322,60 @@ public final class InsertionPointMode {
         this.client = client;
         setActive(true);
         syncTargetToMouse();
+        raiseOverlay(client.overlayText());
         return true;
+    }
+
+    /**
+     * Puts the banner up over the whole window, above the score.
+     *
+     * <p>No layout manager runs over a {@link JLayeredPane} child, so the pane's size is tracked
+     * here instead and the overlay re-anchored on every resize; the overlay positions the pill
+     * within those bounds itself.
+     */
+    private void raiseOverlay(InsertionPointOverlay.Text text) {
+        var layeredPane = MainFrame.getInstance().getLayeredPane();
+        var newOverlay = new InsertionPointOverlay(scoreView, text);
+        overlay = newOverlay;
+
+        var newOverlayBoundsListener = new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                newOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
+            }
+        };
+        overlayBoundsListener = newOverlayBoundsListener;
+
+        layeredPane.addComponentListener(newOverlayBoundsListener);
+        newOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
+        layeredPane.add(newOverlay, JLayeredPane.PALETTE_LAYER);
+
+        layeredPane.revalidate();
+        layeredPane.repaint();
+    }
+
+    /**
+     * Takes the banner and its bounds listener back down, whether the placement was made or
+     * abandoned. Both are dropped from the fields first, so a second call finds nothing to
+     * remove rather than removing a later placement's overlay.
+     */
+    private void dropOverlay() {
+        var layeredPane = MainFrame.getInstance().getLayeredPane();
+        var boundsListener = overlayBoundsListener;
+        overlayBoundsListener = null;
+
+        if (boundsListener != null) {
+            layeredPane.removeComponentListener(boundsListener);
+        }
+
+        var currentOverlay = overlay;
+        overlay = null;
+
+        if (currentOverlay != null) {
+            layeredPane.remove(currentOverlay);
+            layeredPane.revalidate();
+            layeredPane.repaint();
+        }
     }
 
     /**
@@ -296,20 +403,20 @@ public final class InsertionPointMode {
 
     /**
      * Abandons the pending placement without choosing anything: Escape, a click off any line,
-     * or the app being backgrounded. The client is told {@link EndReason#CANCELLED}. No-op
+     * or the app being backgrounded. The client is told {@link Outcome#CANCELLED}. No-op
      * when no placement is pending.
      */
     public void cancel() {
         if (active) {
-            exit(EndReason.CANCELLED);
+            exit(Outcome.CANCELLED);
         }
     }
 
     /**
      * The single teardown funnel every exit routes through: reset the flag and post the
      * notification (via {@link #setActive}), drop the tracked insertion point (via
-     * {@link #clearTarget}, which also hides the marker), and only then tell the client the
-     * mode ended.
+     * {@link #clearTarget}, which also hides the marker), take the banner down (via
+     * {@link #dropOverlay}), and only then tell the client the mode ended.
      *
      * <p>The client reference is taken and cleared before the callback, so the mode is fully
      * idle by the time the client runs — a client that re-enters from its own teardown starts
@@ -320,14 +427,15 @@ public final class InsertionPointMode {
      * placement pending, or a client would never hear that its placement ended and would leave
      * its chrome up for good. Mirrors {@code GraceModeManager.finish(boolean)}.
      */
-    private void exit(EndReason reason) {
+    private void exit(Outcome outcome) {
         var endingClient = client;
         client = null;
         setActive(false);
         clearTarget();
+        dropOverlay();
 
         if (endingClient != null) {
-            endingClient.insertionPointModeDidEnd(reason);
+            endingClient.insertionPointModeDidEnd(outcome);
         }
     }
 
@@ -435,6 +543,13 @@ public final class InsertionPointMode {
         // effectiveElementCount(), so no clamping is needed.
         var index = layoutResult.findInsertionIndex(mouseXSs, line);
 
+        // A slot inside a pair — between a key signature and its barline, or between a grace
+        // note and its host — is not an insertion point for anyone, whoever is placing.
+        if (!line.canInsertElementAt(index)) {
+            clearTarget();
+            return;
+        }
+
         // An index this client will not take is not a tracked point: hiding the marker is
         // what tells the user the position is unavailable, and it is what keeps place()
         // from ever handing the client an index it rejected.
@@ -469,8 +584,10 @@ public final class InsertionPointMode {
             return;
         }
 
-        if (currentClient.insertionPointChosen(line, targetIndex) == Placement.COMPLETED) {
-            exit(EndReason.PLACED);
+        var chosenIndex = targetIndex;
+
+        if (currentClient.insertionPointChosen(line, chosenIndex) == Placement.COMPLETED) {
+            exit(new Outcome.Placed(line, chosenIndex));
         }
     }
 }

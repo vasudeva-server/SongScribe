@@ -130,7 +130,7 @@ public final class KeyEditFitCalculator {
      * @throws IndexOutOfBoundsException if {@code insertionIndex} is below 1 or above
      *                                   {@link Line#effectiveElementCount()}
      */
-    public static boolean midLineKeyChangeFits(
+    public static boolean midLineKeyChangeInsertionFits(
         Line line, int insertionIndex, Key key, LyricRenderMetrics lyricRenderMetrics) {
 
         if (insertionIndex < 1 || insertionIndex > line.effectiveElementCount()) {
@@ -140,13 +140,48 @@ public final class KeyEditFitCalculator {
         }
 
         var columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
-        var endKey = holdsKeySignatureFrom(line, insertionIndex) ? line.keyAtEndOfLine() : key;
 
         return chainFits(
             line,
             columnsWithKeySignature(line, insertionIndex, key, columnBuilder),
             line.getRunningKey(),
-            endKey,
+            line.keyAtEndOfLineUnder(insertionIndex, key),
+            columnBuilder);
+    }
+
+    /**
+     * Returns whether every line a mid-line key change touches still fits once the key signature
+     * already standing at {@code signatureIndex} on {@code line} establishes {@code key} instead of
+     * the key it establishes now.
+     * <p>
+     * A swap, not an insertion, which is why {@link #midLineKeyChangeInsertionFits} is the wrong
+     * measurement for it: that one measures the line with a column <em>added</em>, and would refuse
+     * a swap for want of room the line already has. The signature's own column is measured against
+     * the new key, so it may come out wider or narrower than the one it replaces; no barline is
+     * ever part of this edit, because {@link KeyChangeElement}'s position invariant guarantees the
+     * one in front of it is already there.
+     * <p>
+     * The line's header is untouched — a mid-line change starts part-way along — but the key the
+     * line leaves off in moves when no later key signature overrides it, and the following lines
+     * are then re-keyed exactly as {@link #lineKeyChangeFits} describes.
+     *
+     * @param line               the line the key signature stands on
+     * @param signatureIndex     its index on {@code line}
+     * @param key                the key it would establish instead
+     * @param lyricRenderMetrics metrics for measuring the affected lines' syllables
+     * @return {@code true} when every affected line still solves feasibly against its song's line
+     *         width
+     */
+    public static boolean midLineKeyChangeSwapFits(
+        Line line, int signatureIndex, Key key, LyricRenderMetrics lyricRenderMetrics) {
+
+        var columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
+
+        return chainFits(
+            line,
+            columnsWithSwappedKeySignature(line, signatureIndex, key, columnBuilder),
+            line.getRunningKey(),
+            line.keyAtEndOfLineUnder(signatureIndex + 1, key),
             columnBuilder);
     }
 
@@ -254,17 +289,6 @@ public final class KeyEditFitCalculator {
         return song.getLine(lineIndex + 1);
     }
 
-    /** Whether {@code line} already holds a key signature at or after {@code fromIndex}. */
-    private static boolean holdsKeySignatureFrom(Line line, int fromIndex) {
-        for (var index = fromIndex; index < line.elementCount(); index++) {
-            if (line.getElement(index) instanceof KeyChangeElement) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
      * Builds {@code line}'s columns as the editor would leave them with a key signature for
      * {@code key} spliced in at {@code insertionIndex} — the same columns
@@ -300,13 +324,60 @@ public final class KeyEditFitCalculator {
         Key key,
         ElementColumnBuilder columnBuilder) {
 
-        var activeVerse = line.getSong().getActiveVerse();
-
         if (KeyChangeElement.needsBarlineBefore(line, insertionIndex)) {
-            columns.add(columnBuilder.buildDetachedColumn(ElementType.SINGLE_BARLINE.newInstance(), activeVerse));
+            columns.add(columnBuilder.buildDetachedColumn(
+                ElementType.SINGLE_BARLINE.newInstance(), line.getSong().getActiveVerse()));
         }
 
-        columns.add(columnBuilder.buildDetachedColumn(
-            KeyChangeElement.forMeasurement(key, line.keyAt(insertionIndex - 1)), activeVerse));
+        columns.add(keySignatureColumn(line, insertionIndex, key, columnBuilder));
+    }
+
+    /**
+     * Builds {@code line}'s columns as the editor would leave them with the key signature standing
+     * at {@code signatureIndex} establishing {@code key} instead — every other column exactly as
+     * the committed layout builds it.
+     *
+     * @param line           the line as it stands, unmodified
+     * @param signatureIndex the index of the key signature whose key is being swapped
+     * @param key            the key it would establish instead
+     * @param columnBuilder  the builder the committed layout would use, so the projected columns
+     *                       are measured on the same terms
+     * @return the projected columns, in element order
+     */
+    private static List<ElementColumn> columnsWithSwappedKeySignature(
+        Line line, int signatureIndex, Key key, ElementColumnBuilder columnBuilder) {
+
+        var elementCount = line.elementCount();
+        var columns = new ArrayList<ElementColumn>(elementCount);
+
+        for (var index = 0; index < elementCount; index++) {
+            columns.add(index == signatureIndex
+                ? keySignatureColumn(line, signatureIndex, key, columnBuilder)
+                : columnBuilder.buildColumn(line.getElement(index), line, index));
+        }
+
+        return columns;
+    }
+
+    /**
+     * The column a key signature for {@code key} occupies at {@code index} on {@code line},
+     * measured against the key in effect immediately before that index — the key it cancels.
+     * <p>
+     * The one measurement both edits need: an insertion does not move the elements before it and a
+     * swap replaces one column in place, so in either case the cancelled key is settled on the
+     * line as it stands.
+     *
+     * @param line          the line as it stands, unmodified
+     * @param index         where the key signature would stand
+     * @param key           the key it would establish
+     * @param columnBuilder the builder to measure with
+     * @return the column that key signature would occupy
+     */
+    private static ElementColumn keySignatureColumn(
+        Line line, int index, Key key, ElementColumnBuilder columnBuilder) {
+
+        return columnBuilder.buildDetachedColumn(
+            KeyChangeElement.forMeasurement(key, line.keyAt(index - 1)),
+            line.getSong().getActiveVerse());
     }
 }

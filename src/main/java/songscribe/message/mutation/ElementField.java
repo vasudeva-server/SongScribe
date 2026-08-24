@@ -76,7 +76,16 @@ public enum ElementField {
     ANNOTATION,
 
     /** The syllable relation on one or more of the element's lyrics was changed. */
-    LYRIC;
+    LYRIC,
+
+    /**
+     * A mid-line key signature's key was changed. Emitted by {@code KeyChangeDialogController}.
+     *
+     * <p>{@code Song.maintainKeyInvariant} re-derives what every following line inherits off the
+     * resulting {@link ElementModification}, so this field is what keeps a key edit propagating
+     * through undo and redo as well as forward.
+     */
+    KEY;
 
     /**
      * Fields that change an element's effective duration. {@code Line.modifyElement} removes any

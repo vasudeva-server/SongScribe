@@ -35,26 +35,38 @@ import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.FlatClientProperties;
 
-import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 
 /**
- * Pill shown over the score while paste mode is active, naming the mode and its
- * exits. Added directly to {@link MainFrame}'s {@link JLayeredPane} by
- * {@code PasteModeManager} — never as the glass pane, which {@link ActivationGate}
+ * Pill shown over the score while the user is picking an insertion point, naming the
+ * operation and its exits. Added directly to {@link MainFrame}'s {@link JLayeredPane} by
+ * {@code InsertionPointMode} — never as the glass pane, which {@link ActivationGate}
  * owns exclusively.
+ * <p>
+ * The wording is the placing client's: {@link Text} carries the title and the hint, so the
+ * pill says "Paste content" for a clipboard fragment and "Insert key change" for a key
+ * signature without this component knowing either operation.
  * <p>
  * Deliberately has no mouse listeners: a listener-free component is never selected
  * as an AWT mouse-event target, so clicks (including ones over the pill) fall through
- * to the score underneath, exactly as paste-mode placement requires.
+ * to the score underneath, exactly as insertion-point placement requires.
  * <p>
- * Bounds are set externally by the owning {@code PasteModeManager} (there is no layout
- * manager for a {@link JLayeredPane} child). This component in turn positions the pill
- * itself: centered over the score's visible viewport, sized to the pill's Swing-computed
- * preferred size, recomputed in {@link #doLayout}.
+ * Bounds are set externally by {@code InsertionPointMode} (there is no layout manager for
+ * a {@link JLayeredPane} child). This component in turn positions the pill itself: centered
+ * over the score's visible viewport, sized to the pill's Swing-computed preferred size,
+ * recomputed in {@link #doLayout}.
  */
-public final class PasteOverlay extends JComponent {
+public final class InsertionPointOverlay extends JComponent {
+
+    /**
+     * What the pill says. Both strings are already localized — a client hands over the
+     * resolved text, not a key.
+     *
+     * @param title the operation being placed, in bold on the first line
+     * @param hint how to complete or abandon it, on the second line
+     */
+    public record Text(String title, String hint) {}
 
     // Vertical offset from the viewport's top edge down to the pill's top edge.
     private static final int TOP_MARGIN_PX = 10;
@@ -62,12 +74,12 @@ public final class PasteOverlay extends JComponent {
     private final ScoreView scoreView;
     private final Pill pill;
 
-    public PasteOverlay(ScoreView scoreView) {
+    public InsertionPointOverlay(ScoreView scoreView, Text text) {
         this.scoreView = scoreView;
         setOpaque(false);
         setLayout(null);
 
-        pill = new Pill();
+        pill = new Pill(text);
         add(pill);
     }
 
@@ -96,21 +108,21 @@ public final class PasteOverlay extends JComponent {
         private static final int VERTICAL_PADDING_PX = 8;
         private static final int LINE_GAP_PX = 4;
 
-        Pill() {
+        Pill(Text text) {
             setOpaque(false);
             setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
             setBorder(BorderFactory.createEmptyBorder(
                 VERTICAL_PADDING_PX, HORIZONTAL_PADDING_PX, VERTICAL_PADDING_PX, HORIZONTAL_PADDING_PX));
 
-            var foreground = FlatLafProps.getColor(FlatLafKey.PASTE_OVERLAY_FOREGROUND);
+            var foreground = FlatLafProps.getColor(FlatLafKey.INSERTION_POINT_OVERLAY_FOREGROUND);
 
-            var titleLabel = new JLabel(Strings.get(Strings.PASTE_MODE_TITLE));
+            var titleLabel = new JLabel(text.title());
             titleLabel.putClientProperty(FlatClientProperties.STYLE_CLASS, "medium");
             titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(foreground);
             titleLabel.setAlignmentX(CENTER_ALIGNMENT);
 
-            var hintLabel = new JLabel(Strings.get(Strings.PASTE_MODE_HINT));
+            var hintLabel = new JLabel(text.hint());
             hintLabel.putClientProperty(FlatClientProperties.STYLE_CLASS, "small");
             hintLabel.setForeground(foreground);
             hintLabel.setAlignmentX(CENTER_ALIGNMENT);
@@ -127,8 +139,8 @@ public final class PasteOverlay extends JComponent {
             try {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                var arcPx = FlatLafProps.getInt(FlatLafKey.PASTE_OVERLAY_ARC);
-                g2.setColor(FlatLafProps.getColor(FlatLafKey.PASTE_OVERLAY_BACKGROUND));
+                var arcPx = FlatLafProps.getInt(FlatLafKey.INSERTION_POINT_OVERLAY_ARC);
+                g2.setColor(FlatLafProps.getColor(FlatLafKey.INSERTION_POINT_OVERLAY_BACKGROUND));
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), arcPx, arcPx);
             } finally {
                 g2.dispose();

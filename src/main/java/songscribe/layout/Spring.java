@@ -34,9 +34,10 @@ package songscribe.layout;
  *       at every compression level, not just at rest. The strut still clamps the result, so a hard
  *       collision floor always wins over the reduction.</li>
  *   <li>{@code liftExempt} — a gap that takes no share of the lyric lift and imposes no lyric
- *       requirement of its own ({@link LyricLift#applyLyricLift}). Used for grace-host pairs, whose
- *       ideal is a fixed distance that must not grow with the line's syllables. It says nothing
- *       about compression: an exempt gap water-fills and gives down to its strut like any other.</li>
+ *       requirement of its own ({@link LyricLift#applyLyricLift}). Used for grace-host pairs and for
+ *       a mid-line key signature behind its barline, whose ideals are fixed distances that must not
+ *       grow with the line's syllables. It says nothing about compression: an exempt gap water-fills
+ *       and gives down to its strut like any other.</li>
  *   <li>{@code levelOffsetSs} — the part of this gap the solver excludes from whitespace levelling:
  *       the previous column's glyph ink at the start of the gap, plus any optical-spacing
  *       correction. Under compression the gap levels to {@code levelOffset + weight × U}, so gaps

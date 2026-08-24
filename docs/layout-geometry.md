@@ -115,11 +115,16 @@ Each `Spring` governs the delta-X between one adjacent column pair, `prev` to `c
 
 ```
   base rest  ┌ grace note prev ──▶ prevRight + GRACE_HOST_REST_SS     (fixed, never scales)
+             ├ key change curr ──▶ rightExtentExclAug + KEY_SIGNATURE_PADDING_SS
+             │                                                     (fixed, never scales)
              ├ same beam group ──▶ rightExtentExclAug + factor × lineRest  (0.6× both ≤16th,
              │                                                              else 1.0×)
              └ otherwise ────────▶ rightExtentExclAug + lineRest                      (1.0×)
 
-  strut = max( note-collision floor    prevRight + MIN_COLUMN_GAP_SS + |currLeft|
+  strut = max( note-collision floor    prevRight + minInkGap + |currLeft|
+                                                  where minInkGap = KEY_SIGNATURE_PADDING_SS
+                                                    when curr is a key change, else
+                                                    MIN_COLUMN_GAP_SS
              , syllable-collision floor prevSyl/2 + prev.minCollisionGapToNextSyllable
                                                   + currSyl/2   (either bears a syllable;
                                                     floor = 1 space, or bare hyphen if hyphenated)
@@ -132,6 +137,10 @@ Each `Spring` governs the delta-X between one adjacent column pair, `prev` to `c
                                                                 (only when prev has a hairpin ending at curr) )
 
   compliance = max(0, rest − strut)     ← rest ≤ strut ⇒ the gap starts frozen
+
+  A barline→key-change gap is frozen by construction: rest and floor are both
+  KEY_SIGNATURE_PADDING_SS, and the gap is lift-exempt, so the accidentals stand that exact
+  distance behind their barline on every line. See docs/key-signatures.md.
 
   prevRight = rightExtentFacingSs(prev, curr) — prev's full right extent, except that a grace
               note's flag is not charged when it hangs clear of curr's left-facing band

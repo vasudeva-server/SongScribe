@@ -726,7 +726,7 @@ public class LayoutEngine {
 
                     // The quanted beam position is authoritative: express the resulting
                     // stem length as a delta from the standard stem length so
-                    // NoteRenderer.renderStem reproduces exactly this tip.
+                    // StaffElementRenderer.renderStem reproduces exactly this tip.
                     var lengtheningSs = Math.max(0.0, stemLenSs - MIN_STEM_SS);
                     var forcedShorteningSs = Math.max(0.0, MIN_STEM_SS - stemLenSs);
 
@@ -738,7 +738,7 @@ public class LayoutEngine {
                     var stubRight = BeamMath.stubRight(line, i, beamStart, beamEnd);
 
                     // How far back French beaming pulls the drawn stem. Resolved here rather
-                    // than in NoteRenderer so the per-paint path stays a field read, matching
+                    // than in StaffElementRenderer so the per-paint path stays a field read, matching
                     // stubRight above.
                     var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
 

@@ -239,7 +239,7 @@ public final class NoteGeometry {
     /**
      * Computes the base stem geometry for a note type and direction.
      * This is the shared anchor selection and positioning logic used by both
-     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
+     * {@code StaffElementRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
      *
      * @param noteType  The note type (determines anchor and stem length)
      * @param direction UP for stem-up, DOWN for stem-down
@@ -751,7 +751,7 @@ public final class NoteGeometry {
     }
 
     // ==========================================================================
-    // Helpers (also used by NoteRenderer for drawing)
+    // Helpers (also used by StaffElementRenderer for drawing)
     // ==========================================================================
 
     /**

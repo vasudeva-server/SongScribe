@@ -27,7 +27,7 @@ do not paraphrase it away.
 > MANDATORY: Read these two files in full before reporting anything, and follow
 > them for every finding:
 >
-> - `.claude/skills/check/reference/findings.md`
+> - `check-findings.md`
 > - `.claude/skills/check/reference/design-flaws.md`
 >
 > MANDATORY: Read `~/.claude/guides/design.md` before reporting. Each of its

@@ -34,7 +34,7 @@ DO NOT run any other commands or skills on your own volition.
 These files govern every phase. Read them yourself before launching agents; do
 not paraphrase them into prompts.
 
-- **`reference/findings.md`** — how findings must be written, and the rule that
+- **`reference/check-findings.md`** — how findings must be written, and the rule that
   a defect outside the review target is still a defect.
 - **`reference/design-flaws.md`** — how to tell a symptom from its cause, what
   may never be proposed, how to report a design finding without arguing against
@@ -253,7 +253,7 @@ get it confirmed before writing it.
 2. **Fix every remaining finding immediately** — every finding from every axis,
    including minor and low-confidence ones, **and including findings in code
    outside the review target** (see *Findings Outside the Review Target* in
-   `findings.md`). Do not ask any questions about these. Apply approved design
+   `check-findings.md`). Do not ask any questions about these. Apply approved design
    and contract changes here too, along with the test changes they enable.
 3. **Do not paper over a declined finding.** If the user declined the structural
    fix, apply only the fixes that stand on their own. Where the only available
@@ -265,12 +265,12 @@ get it confirmed before writing it.
    (unit only) to confirm green.
 5. **Summarize** what was fixed, leading with the design and contract changes if
    any were approved, then grouped by axis. Write the summary in plain language
-   per `findings.md` — for each fix, say what the code or test did before, what
+   per `check-findings.md` — for each fix, say what the code or test did before, what
    it does now, and what that means in practice.
 
 ### Path B: Interactive mode (default)
 
-1. **Write findings** to `plans/findings.md`, overwriting any existing content,
+1. **Write findings** to `plans/check-findings.md`, overwriting any existing content,
    in a single organized document, in this order:
 
    - any concrete **production bug**, first;
@@ -293,12 +293,12 @@ get it confirmed before writing it.
    Rewrite every agent finding in your own words before writing it. Do not pass
    an agent's text through untouched — the agents write for other agents; you
    write for a person who has not read the code or the tests. Apply
-   `findings.md` to each one: where it is, what the code does now, what's wrong
+   `check-findings.md` to each one: where it is, what the code does now, what's wrong
    in plain terms, and what you would change. If you cannot explain a finding
    plainly, you do not understand it well enough to report it — either dig in
    until you can, or drop it.
 
-   Once the file is written, tell the user it's ready at `plans/findings.md`
+   Once the file is written, tell the user it's ready at `plans/check-findings.md`
    and move straight into clarifying questions below — do not also paste the
    findings into chat.
 

@@ -516,8 +516,10 @@ public final class PreviewElementManager {
             return null;
         }
 
-        // A grace note may never be replaced, so it never shows the red replacement highlight.
-        if (isGraceNoteAt(currentPreviewLine.getLine(), currentXIndex)) {
+        // An element that may not be replaced never shows the red replacement highlight.
+        var line = currentPreviewLine.getLine();
+
+        if (line != null && !line.canReplaceElementAt(currentXIndex)) {
             return null;
         }
 
@@ -549,17 +551,6 @@ public final class PreviewElementManager {
     // ==========================================================================
     // Private Helpers
     // ==========================================================================
-
-    /**
-     * Returns whether the element at {@code elementIndex} on {@code line} is a grace note.
-     * Grace notes may never be replaced by clicking through them with another preview
-     * element, so this gates both the ghost preview visibility and the click handler.
-     */
-    static boolean isGraceNoteAt(@Nullable Line line, int elementIndex) {
-        return line != null
-            && line.hasIndex(elementIndex)
-            && line.getElement(elementIndex).getType().isGraceNote();
-    }
 
     // ==========================================================================
     // Delegation Entry Points (called from LineComponent mouse handlers)
@@ -650,14 +641,12 @@ public final class PreviewElementManager {
 
         var previewElement = EditModeManager.getPreviewElement();
 
-        // Hide the preview element when the mouse is in the gap between an existing grace/host
-        // pair — no element type may be inserted there, since it would break the pairing. Gated on
-        // elementAtX < 0 so a click directly on the host's own head still replaces it normally;
-        // only a plain gap-insert at the host's slot is blocked. isHostOfPairedGraceNote (unlike
-        // isInsideGraceHostPair) does not also match the grace note's own slot, so inserting
-        // immediately before the grace note — including when it is the line's first element —
-        // remains allowed.
-        if (previewElement != null && (elementAtX < 0) && line.isHostOfPairedGraceNote(xIndex)) {
+        // Hide the preview element where no element type may be inserted, because the insert
+        // would land inside a pair and break it — the rule every placement path shares, in
+        // Line.canInsertElementAt. Gated on elementAtX < 0 so a click directly on a head still
+        // takes the replacement path, which canReplaceElementAt rules on below; only a plain
+        // gap-insert is blocked here.
+        if (previewElement != null && (elementAtX < 0) && !line.canInsertElementAt(xIndex)) {
             if (currentPreviewLine == lc) {
                 clearPreviewElement();
             }
@@ -679,9 +668,10 @@ public final class PreviewElementManager {
         // getHoveredElementLocation, so newXMatch stays raw for the over-element-head check.
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
-        // A grace note may never be replaced by clicking through it with another element.
-        // Hide the ghost preview over it; handleClick separately ignores the click.
-        var graceNoteBlocked = isGraceNoteAt(line, elementAtX);
+        // Some elements may never be replaced by clicking through them with another element —
+        // a grace note, a key signature, the barline a key signature sits behind. Hide the ghost
+        // preview over them; handleClick separately ignores the click.
+        var replacementBlocked = !line.canReplaceElementAt(elementAtX);
 
         // Split the five tracked fields by what they affect. The insertion index alone is
         // position: the glyphs the renderers would emit are identical, so the overlay only needs
@@ -710,9 +700,9 @@ public final class PreviewElementManager {
 
         // Always show the ghost preview — even when hovering over an existing element head.
         // The preview shows the user what pitch/type will replace the existing element.
-        // Exceptions: breath marks must follow a note or rest, and grace notes may never
-        // be replaced, so suppress the ghost in either case.
-        var previewElementVisible = !breathMarkBlocked && !graceNoteBlocked;
+        // Exceptions: breath marks must follow a note or rest, and some elements may never be
+        // replaced, so suppress the ghost in either case.
+        var previewElementVisible = !breathMarkBlocked && !replacementBlocked;
         EditModeManager.setPreviewElementVisible(previewElementVisible);
 
         // Rests snap to their default staff position; pitched notes follow the mouse Y

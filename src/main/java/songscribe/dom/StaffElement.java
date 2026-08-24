@@ -29,7 +29,17 @@ import org.jspecify.annotations.Nullable;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.SMuFLGlyph;
 
-public class StaffElement extends LineElement implements Cloneable {
+/**
+ * An element occupying a column of a staff line: a note, a rest, a barline, a breath mark, a
+ * mid-line key signature. Abstract, and instantiated only through one of its leaves —
+ * {@link NoteElement} for a note, {@link StructuralElement} for everything non-sounding,
+ * {@link KeyChangeElement} for a key signature — so that the class always matches the
+ * {@link ElementType}, which {@link ElementType#newInstance()} is the general way to get right.
+ *
+ * <p>Abstract for {@link #copySubtypeStateFrom}'s sake: a subtype that adds state must be made to
+ * say how that state is copied, and a root that is also a leaf has no way to demand it.
+ */
+public abstract class StaffElement extends LineElement implements Cloneable {
 
     protected @Nullable Slide slide;
 
@@ -97,20 +107,43 @@ public class StaffElement extends LineElement implements Cloneable {
     @Nullable
     private ElementType type;
 
-    protected StaffElement() {
-    }
-
-    public StaffElement(ElementType noteType) {
+    protected StaffElement(ElementType noteType) {
         type = noteType;
     }
 
     /**
-     * Creates a note of the target type, copying only applicable attributes from the source.
-     * Uses a whitelist strategy: new attributes added to Note in the future default to
-     * missing (visible, safe) rather than stale (invisible, potentially corrupt).
+     * Returns an element of {@code targetType} carrying the attributes of {@code source} that
+     * still apply under that type — what a type-change action leaves standing when the notator
+     * turns a crotchet into a quaver, a note into a rest, or a barline into a repeat.
+     *
+     * <p>Uses a whitelist: an attribute added to an element in the future defaults to missing
+     * (visible, safe) rather than stale (invisible, potentially corrupt).
+     *
+     * <p>A factory rather than a constructor because the class of the result follows
+     * {@code targetType} rather than the class of {@code source} — a rest is a
+     * {@link StructuralElement} and a key signature a {@link KeyChangeElement} however the
+     * element it displaces was built. {@link ElementType#newInstance()} is what settles that,
+     * so the conversion and the type registry cannot disagree about which class a type gets.
+     *
+     * @param targetType the type the returned element is of
+     * @param source the element being converted, left untouched
+     * @return a detached element of {@code targetType}, in no line
+     * @invariant the returned element's class is the one {@link ElementType#newInstance()} gives
+     *     for {@code targetType}
      */
-    public StaffElement(ElementType targetType, StaffElement source) {
-        type = targetType;
+    public static StaffElement convertedFrom(ElementType targetType, StaffElement source) {
+        var converted = targetType.newInstance();
+        converted.applyConversionFrom(source);
+
+        return converted;
+    }
+
+    /**
+     * Copies onto this freshly built element the attributes of {@code source} that apply under
+     * this element's own type. See {@link #convertedFrom}, which is the only caller.
+     */
+    private void applyConversionFrom(StaffElement source) {
+        var targetType = getType();
 
         // Always copy
         xOffset = source.xOffset;
@@ -140,20 +173,23 @@ public class StaffElement extends LineElement implements Cloneable {
         }
     }
 
-    protected StaffElement(StaffElement note) {
-        copyStateFrom(note);
-    }
-
     /**
      * Copies all cloneable state from {@code source} onto this element,
      * replacing the existing state while preserving this element's identity.
      * <p>
-     * This is the single authoritative field list for element state copying:
-     * the copy constructor (and therefore {@link #clone()}) delegates here, so
-     * the three paths cannot drift. Undo replay of an
+     * This is the single authoritative field list for element state copying, together with the
+     * {@link #copySubtypeStateFrom} it ends by calling. {@link #clone()} builds a bare element
+     * and copies through here rather than through a copy constructor of its own, so there is
+     * one field list per class and no second one to drift from it. Undo replay of an
      * {@code ElementModification} restores in place through this method — a
      * swap via {@code setElement} would leave stale references inside span
      * records still sitting on the undo/redo stacks.
+     * <p>
+     * Final so that every subtype's state travels by that one route: an override could copy
+     * the subtype's fields and leave the base ones behind.
+     *
+     * @param source an element of this element's own class, whose state to take
+     * @effects replaces this element's state; leaves its identity and its parent line alone
      */
     public final void copyStateFrom(StaffElement source) {
         type = source.type;
@@ -185,7 +221,23 @@ public class StaffElement extends LineElement implements Cloneable {
         // Deep-copy lyrics (Lyric is an immutable record)
         lyrics.clear();
         lyrics.addAll(source.lyrics);
+
+        copySubtypeStateFrom(source);
     }
+
+    /**
+     * Copies onto this element the state {@code source} carries beyond
+     * {@link #copyStateFrom}'s field list. Empty in a subtype that adds none.
+     *
+     * <p>Abstract so that a subtype adding state has to say how it travels. Both copy paths —
+     * {@link #clone()} and undo replay of an {@code ElementModification} — go through
+     * {@link #copyStateFrom}, so a subtype that answered here with silence would get an
+     * identity-preserving restore that quietly dropped that state, which reaches the notator as
+     * an element still holding the value the undone edit gave it.
+     *
+     * @param source an element of this element's own class, whose subtype state to copy
+     */
+    protected abstract void copySubtypeStateFrom(StaffElement source);
 
     public ElementType getType() {
         if (type == null) {
@@ -195,14 +247,36 @@ public class StaffElement extends LineElement implements Cloneable {
         return type;
     }
 
-    @SuppressWarnings("MethodDoesntCallSuperMethod")
+    /**
+     * Returns a detached copy of this element: same class, same state, in no line.
+     *
+     * <p>Every implementation builds a bare element of its own class and fills it in through
+     * {@link #copyStateFrom}, so the state a copy carries is stated once per class rather than
+     * once per copy path.
+     *
+     * @return the copy, in no line whatever line this element is in
+     */
     @Override
-    public StaffElement clone() {
-        return new StaffElement(this);
-    }
+    public abstract StaffElement clone();
 
     public int getDefaultDuration() {
         return getType().getDefaultDuration();
+    }
+
+    /**
+     * Returns the distance in staff spaces from this element's origin to the right edge of the
+     * glyph it draws — the notehead alone for a note, excluding stem, flag and augmentation dots.
+     *
+     * <p>The instance-level counterpart of {@link ElementType#getElementWidthSs()}, and the answer
+     * every caller wants: a type knows one width, and for a mid-line key signature that width is
+     * only a floor, since what a key signature draws depends on the key it establishes and the key
+     * it cancels. Both the spacing column and the click hit rect read this, so a key signature is
+     * as wide to the mouse as it is on the staff.
+     *
+     * @return the right edge of this element's glyph, measured from its origin, in staff spaces
+     */
+    public double getGlyphWidthSs() {
+        return getType().getElementWidthSs();
     }
 
     // ========================================================================
@@ -508,6 +582,29 @@ public class StaffElement extends LineElement implements Cloneable {
         return getType().isGraceNote() && hasGlissando();
     }
 
+    /**
+     * Whether a syllable can be written on this element, given what stands in front of it.
+     *
+     * <p>Two things have to hold, and this is the only place they are stated together. The type
+     * must be one a syllable can be sung on ({@link ElementType#bearsSyllableText()}), and this
+     * element must not be the host of a paired grace note — a host's syllable belongs to the
+     * grace note in front of it, so the host takes none of its own.
+     *
+     * <p>The predecessor is a parameter rather than something this element looks up, because the
+     * two callers reach it differently and both are legitimate: {@link Line#canBearSyllableAt}
+     * reads the line, while {@code LyricLayoutBuilder} reads the columns it is laying out, so
+     * that a run of elements belonging to no line — a clipboard fragment, a projected insertion —
+     * gets the same answer as a live line.
+     *
+     * @param predecessor the element immediately in front of this one, or {@code null} when this
+     *     element is first in its line or run, which pairs it with no grace note
+     * @return {@code true} when a syllable may be written on this element
+     */
+    public boolean canBearSyllable(@Nullable StaffElement predecessor) {
+        return getType().bearsSyllableText()
+            && (predecessor == null || !predecessor.isPairedGraceNote());
+    }
+
     public void setGlissando() {
         slide = new Glissando();
     }
@@ -555,19 +652,6 @@ public class StaffElement extends LineElement implements Cloneable {
     public @Nullable Lyric getLyricForVerse(int verse) {
         var index = indexOfLyricForVerse(verse);
         return index < 0 ? null : lyrics.get(index);
-    }
-
-    /**
-     * An element is eligible to carry a lyric in {@code verse} if it is a non-rest, or a
-     * rest that already carries a non-blank lyric in that verse.
-     */
-    public boolean isEligibleForLyric(int verse) {
-        if (!getType().isRest()) {
-            return true;
-        }
-
-        var lyric = getLyricForVerse(verse);
-        return lyric != null && !lyric.text().isBlank();
     }
 
     /** Returns an unmodifiable view of all lyrics attached to this element. */

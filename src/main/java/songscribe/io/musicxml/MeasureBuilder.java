@@ -326,7 +326,7 @@ final class MeasureBuilder {
                     measure = openMeasure(context, state, measures);
                     output.measureAfter = measure;
                 }
-            } else if (type == ElementType.KEY_CHANGE) {
+            } else if (type.isKeyChange()) {
                 // The key takes effect here, so its <key> goes in this measure's <attributes>.
                 // KeyChangeElement's position invariant puts a barline immediately before this
                 // element, and that barline opened the measure we are in — so the <attributes>

@@ -21,7 +21,10 @@
 package songscribe.ui.component;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import javax.swing.JComponent;
 
@@ -110,6 +113,7 @@ import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
+import songscribe.ui.edit.KeyChangeReconciliation;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.ElementSelection;
@@ -530,16 +534,21 @@ public final class ScoreViewController {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
             var spans = mutatedSpans(message);
+            var keyMoveReach = keyMoveReach(message);
 
             for (var linePanel : staffPanel.getLinePanels()) {
                 var line = linePanel.getLine();
 
-                if (targetLine == null || line == targetLine || spanReaches(spans, line)) {
+                if (targetLine == null
+                    || line == targetLine
+                    || spanReaches(spans, line)
+                    || keyMoveReach.contains(line)) {
                     linePanel.getLineComponent().invalidateLayout();
 
-                    // With no span in the notification the named line is the only one that can
-                    // match, so the panels after it have nothing left to be checked against.
-                    if (targetLine != null && spans.isEmpty()) {
+                    // With neither a span nor a key move in the notification the named line is
+                    // the only one that can match, so the panels after it have nothing left to
+                    // be checked against.
+                    if (targetLine != null && spans.isEmpty() && keyMoveReach.isEmpty()) {
                         break;
                     }
                 }
@@ -591,6 +600,40 @@ public final class ScoreViewController {
         }
 
         return spans == null ? List.of() : spans;
+    }
+
+    /**
+     * Every line whose drawn key content this notification's mutations moved, or an empty set
+     * when none of them moves a key.
+     * <p>
+     * A key move is the one edit whose layout effect is not the line the mutation names. It runs
+     * forward through every line that inherits the moved key — each of whose headers is solved
+     * from the key it runs in — and back one line, whose trailing space is solved from the
+     * cautionary it leads into. Without this the line before the change redraws its cautionary
+     * from the live document while keeping the spacing it was solved with, and an inheriting line
+     * goes on drawing the key it was in before the edit.
+     * <p>
+     * {@link Song#keyMoveReach} is the one answer; this only unions it over the batch. A set
+     * rather than a list because two mutations in one batch — a key change and the accidental
+     * restatements it forces — routinely reach the same lines, and because the panel loop below
+     * asks membership rather than order.
+     */
+    private static Set<Line> keyMoveReach(SongDidChangeNotification message) {
+        Set<Line> reach = null;
+
+        for (var mutation : message.getMutations()) {
+            var lines = message.getSong().keyMoveReach(mutation);
+
+            if (!lines.isEmpty()) {
+                if (reach == null) {
+                    reach = Collections.newSetFromMap(new IdentityHashMap<>());
+                }
+
+                reach.addAll(lines);
+            }
+        }
+
+        return reach == null ? Set.of() : reach;
     }
 
     /**
@@ -820,9 +863,9 @@ public final class ScoreViewController {
         // Asked before the bracket opens, and before the clipboard is written: cancelling must
         // leave both the clipboard and the score untouched, exactly as declining the ending
         // confirm above does.
-        var decision = confirmDeletionRestatements(line, begin, end);
+        var confirmed = reconcileAndConfirmDeletion(line, begin, end);
 
-        if (decision.isCancelled()) {
+        if (confirmed.isCancelled()) {
             return;
         }
 
@@ -837,7 +880,7 @@ public final class ScoreViewController {
         // One bracket for the deletion — the confirms above already ran, so
         // deleteElementRange performs no further confirmation. The Cut action's op-name
         // (Tier A) names this outermost step, so the inner range delete passes no label.
-        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null, decision));
+        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null, confirmed));
 
         // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
@@ -930,9 +973,9 @@ public final class ScoreViewController {
                 }
             }
 
-            var decision = confirmDeletionRestatements(line, begin, end);
+            var confirmed = reconcileAndConfirmDeletion(line, begin, end);
 
-            if (decision.isCancelled()) {
+            if (confirmed.isCancelled()) {
                 return;
             }
 
@@ -952,7 +995,7 @@ public final class ScoreViewController {
             // deleteElementRange's own bracket nests inside the one opened here and passes a
             // null label, since the op name is captured only at the outermost bracket.
             song.withModification(deleteLabel,
-                () -> deleteElementRange(line, begin, end, null, decision));
+                () -> deleteElementRange(line, begin, end, null, confirmed));
         } else if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
@@ -1167,19 +1210,80 @@ public final class ScoreViewController {
     }
 
     /**
-     * Asks whether a deletion of {@code [begin, end]} should also take away the later notes that
-     * restate the accidentals it removes. Callers must run this <b>before</b> opening a
-     * modification bracket, and must abandon the deletion entirely when the answer is Cancel.
+     * Reconciles a deletion of {@code [begin, end]} over every line it reaches and asks whether it
+     * should also take away the later notes that restate the accidentals it removes. Callers must
+     * run this <b>before</b> opening a modification bracket, and must abandon the deletion entirely
+     * when the answer is Cancel.
      *
      * <p>The range is widened exactly as {@link #deleteElementRange} widens it — a paired grace
-     * note before the range does not survive its host, and a trailing breath mark goes with the
-     * range — so the accidentals offered are the ones the deletion really removes.
+     * note before the range does not survive its host, and a trailing breath mark, or the barline a
+     * key signature sits behind, goes with the range — so the accidentals offered are the ones the
+     * deletion really removes.
+     *
+     * <p><b>The reach is more than this line.</b> A deletion that takes a mid-line key signature
+     * with it moves the key every following line inherits, so it owes the same cross-line
+     * reconciliation an inserted key signature owes, ending where the inheritance chain does. A
+     * deletion that removes no key signature leaves the line's end key where it was, so
+     * {@link AccidentalReconciliation#linesInheriting} reaches nothing and the reach is this line
+     * alone — which is why it is computed unconditionally rather than behind a test for what the
+     * range holds. See {@code docs/key-signatures.md}.
+     *
+     * <p>One dialog covers the whole of it: the elements going away and the accidentals the
+     * reconciliation clears on every reached line are asked about together.
      */
-    private AccidentalRestatements.Decision confirmDeletionRestatements(Line line, int begin, int end) {
+    private KeyChangeReconciliation.Confirmed reconcileAndConfirmDeletion(Line line, int begin, int end) {
         var bounds = line.effectiveRange(begin, end);
+        var tail = AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineAfterRemoving(bounds.begin(), bounds.end()));
 
-        return AccidentalRestatements.confirm(
-            score, line, AccidentalRestatements.inDeletedRange(line, bounds.begin(), bounds.end()));
+        return KeyChangeReconciliation.confirm(
+            score,
+            List.of(new AccidentalRestatements.EditedLine(
+                line, AccidentalRestatements.inDeletedRange(line, bounds.begin(), bounds.end()))),
+            removal -> reconcileDeletion(line, bounds, tail, removal));
+    }
+
+    /**
+     * Reconciles a deletion's whole reach: the host line as a removal, then every line inheriting
+     * from it.
+     *
+     * <p>The {@link KeyChangeReconciliation.ReachReconciler} for a deletion, so it runs once to
+     * find what to ask about and again under the answer, and must therefore read the lines as they
+     * still stand.
+     *
+     * @param line the line the deletion happens on
+     * @param bounds the range it really covers, already widened by {@link Line#effectiveRange}
+     * @param tail the lines inheriting from {@code line}
+     * @param removal the restatements the notator accepted, or
+     *     {@link AccidentalReconciliation.RestatementRemoval#NONE} on the first pass
+     * @return one entry per line, host first
+     */
+    private static List<AccidentalReconciliation.ReconciledLine> reconcileDeletion(
+        Line line,
+        Line.EffectiveRange bounds,
+        List<AccidentalReconciliation.ModifiedLine> tail,
+        AccidentalReconciliation.RestatementRemoval removal) {
+
+        // The paired grace note immediately before the range does not survive this deletion
+        // either (deleteNote removes it with its host), so an explicit accidental on it is
+        // removed content and changes the context arriving at the boundary — the same reason,
+        // and the same compensation, that tryInsertFragment applies for spacing.
+        var hostChanges = AccidentalReconciliation.reconcile(
+            new AccidentalReconciliation.InsertionRegion(
+                line,
+                bounds.begin(),
+                new InsertionSpacingCalculator.DeletedRange(bounds.begin(), bounds.end()),
+                List.of(),
+                List.of(),
+                List.of()),
+            removal);
+
+        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
+
+        reconciled.add(new AccidentalReconciliation.ReconciledLine(line, hostChanges));
+        reconciled.addAll(AccidentalReconciliation.reconcileModification(tail, removal));
+
+        return reconciled;
     }
 
     /**
@@ -1193,35 +1297,20 @@ public final class ScoreViewController {
      * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
      * the op-name is captured only at the outermost bracket — so callers that already
      * name their step pass {@code null}.
-     */
-    private void deleteElementRange(
-        Line line, int begin, int end, @Nullable String label, AccidentalRestatements.Decision decision) {
-
-        deleteElementRange(line, begin, end, label, decision, true);
-    }
-
-    /**
-     * As {@link #deleteElementRange(Line, int, int, String, AccidentalRestatements.Decision)}, but
-     * with the accidental reconciliation suppressible. Only {@link #tryInsertFragment} passes
-     * false: a paste-replace is one mutation, already reconciled as a whole, so its deletion must
-     * not reconcile a second time. The flag lives on an overload rather than on the five-argument
-     * signature so that the callers who delete for their own sake do not have to state a value they
-     * do not care about.
+     * <p>
+     * The accidental reconciliation is the caller's, in {@code confirmed}: it has to be run and
+     * asked about before any bracket opens, and a paste-replace — one mutation, reconciled as a
+     * whole — passes {@link KeyChangeReconciliation.Confirmed#PROCEED} so its deletion reconciles
+     * nothing a second time.
      */
     private void deleteElementRange(
         Line line,
         int begin,
         int end,
         @Nullable String label,
-        AccidentalRestatements.Decision decision,
-        boolean reconcileAccidentals) {
+        KeyChangeReconciliation.Confirmed confirmed) {
 
-        // The paired grace note immediately before the range does not survive this deletion
-        // either (deleteNote removes it with its host), so an explicit accidental on it is
-        // removed content and changes the context arriving at the boundary — the same reason,
-        // and the same compensation, that tryInsertFragment applies for spacing.
         var deleteBounds = line.effectiveRange(begin, end);
-        var reconciledBegin = deleteBounds.begin();
 
         // Deletion is not fit-gated and must not become so, and it cannot need to be: a
         // materialization can only arise from a staff position carrying an explicit accidental in
@@ -1229,17 +1318,12 @@ public final class ScoreViewController {
         // note lacking its own accidental needs fixing). So removing k accidental-carrying notes
         // frees k noteheads plus k accidental glyphs and adds back at most k accidental glyphs —
         // the line can never get wider.
-        var accidentalChanges = reconcileAccidentals
-            ? AccidentalReconciliation.reconcile(
-                new AccidentalReconciliation.InsertionRegion(
-                    line,
-                    reconciledBegin,
-                    new InsertionSpacingCalculator.DeletedRange(reconciledBegin, deleteBounds.end()),
-                    List.of(),
-                    List.of(),
-                    List.of()),
-                decision.removal())
-            : List.<AccidentalReconciliation.AccidentalChange>of();
+        var accidentalChanges = confirmed.hostChanges();
+
+        // The host line's changes are recorded here, by commitDeletionAccidentals, because its
+        // note indices have to be captured against the pre-removal line. Saying so once keeps the
+        // reconciliation from recording them a second time in either branch below.
+        var reconciliation = confirmed.withHostRecordedByCaller();
 
         // When the element immediately before the selection is a paired grace note,
         // deleteNote must remove it along with the first selected note — a non-contiguous
@@ -1249,7 +1333,7 @@ public final class ScoreViewController {
                 // Recorded before the removal so undo, which replays in reverse, restores the
                 // accidentals once the elements are back at the indices they were recorded at.
                 commitDeletionAccidentals(line, accidentalChanges);
-                AccidentalRestatements.commitOtherLines(decision, line);
+                KeyChangeReconciliation.commit(reconciliation);
                 deleteSelection(begin, end, line);
             });
         } else {
@@ -1272,7 +1356,7 @@ public final class ScoreViewController {
             line.withOptionallyNamedModification(label, () -> {
                 // Recorded before the removal, for the reason given in the other branch.
                 commitDeletionAccidentals(line, accidentalChanges);
-                AccidentalRestatements.commitOtherLines(decision, line);
+                KeyChangeReconciliation.commit(reconciliation);
 
                 // Clean up the element before the range: its glissando has nothing left to
                 // point at. Recorded like every other change here — stripping it raw would
@@ -1523,7 +1607,7 @@ public final class ScoreViewController {
             // are one mutation — so the range delete must not reconcile again.
             deleteElementRange(
                 line, deleteRange.begin(), deleteRange.end(), null,
-                AccidentalRestatements.Decision.PROCEED, false);
+                KeyChangeReconciliation.Confirmed.PROCEED);
 
             // The deletion may have removed elements before the range too (a paired
             // grace note cascade), so re-derive the insertion index from what survived.
@@ -1531,12 +1615,11 @@ public final class ScoreViewController {
         }
 
         var clones = instantiated.elements();
-        var cloneCount = clones.size();
 
-        // Repair the lyric seams around the insertion point, mirroring the
-        // single-note insert path in PreviewElementManager. The successor half runs after
-        // the clones are in, against the last of them rather than the first.
-        line.repairNeighborsBeforeInsertion(insertAt);
+        // The trailing shift is re-derived from the successor's captured target X so it stays
+        // correct after the deletion gap-fill. With no successor there is nothing after the
+        // fragment to move, and insertRun's shift loop has no elements to reach.
+        var tailShiftPx = successor != null ? successorTargetXPx - successor.getXOffsetPx() : 0;
 
         // Hard ordering constraint: every clone must be inserted before the first
         // addPastedSpan. Adding a span re-parents only the span, not its
@@ -1547,35 +1630,17 @@ public final class ScoreViewController {
         // hairpin merge in addPastedSpan reads those same indices, so it
         // would mis-measure what to absorb for exactly the same reason.
         //
-        // line.addElement additionally drops the spans the inserted element types
-        // invalidate, each by its own rule: the ending's barline/repeat-aware one,
-        // which is more precise than the straddle test PasteSpanReconciliation
-        // applies to the other span kinds, so endings are left to it; and the tie's
-        // separator rule. Its tuplet removal is now redundant but harmless — the
-        // reconciliation above already removed a straddled tuplet, so findTupletAt
-        // finds nothing. Its tie removal is not redundant: the reconciliation judges
-        // only ties with both endpoints in this line, leaving a tie that straddles a
-        // line boundary to this sweep, which resolves it against the receiving line.
-        for (var k = 0; k < cloneCount; k++) {
-            var clone = clones.get(k);
-            clone.setXOffsetPx(ScaleContext.ssToRoundedPx(result.cloneXPositionsSs().get(k)));
-            line.addElement(insertAt + k, clone);
-        }
-
-        line.adjustSyllablesForSuccessorAfterInsertion(insertAt + cloneCount - 1);
-
-        // Apply the single trailing shift to every surviving element after the
-        // fragment, mirroring the single-note insert path. The delta is re-derived
-        // from the successor's captured target X so it stays correct after the
-        // deletion gap-fill.
-        if (successor != null) {
-            var tailShiftPx = successorTargetXPx - successor.getXOffsetPx();
-
-            for (var i = insertAt + cloneCount; i < line.effectiveElementCount(); i++) {
-                var element = line.getElement(i);
-                element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
-            }
-        }
+        // The addElement inside insertRun additionally drops the spans the inserted
+        // element types invalidate, each by its own rule: the ending's
+        // barline/repeat-aware one, which is more precise than the straddle test
+        // PasteSpanReconciliation applies to the other span kinds, so endings are left
+        // to it; and the tie's separator rule. Its tuplet removal is now redundant but
+        // harmless — the reconciliation above already removed a straddled tuplet, so
+        // findTupletAt finds nothing. Its tie removal is not redundant: the
+        // reconciliation judges only ties with both endpoints in this line, leaving a
+        // tie that straddles a line boundary to this sweep, which resolves it against
+        // the receiving line.
+        line.insertRun(insertAt, result.place(clones), tailShiftPx);
 
         // A pasted tuplet the destination's beat context rejects is dropped here
         // (#604): after the clones are in, so every index resolves against the final

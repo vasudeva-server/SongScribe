@@ -275,7 +275,7 @@ public class VerticalStackingCalculator {
      * {@link NoteAttachedStacker#seedNoteBounds()}).
      * <p>
      * Grace notes and notes without accidentals are skipped — they return {@code null}
-     * from {@link NoteRenderer#getAccidentalBoundsSs}.
+     * from {@link StaffElementRenderer#getAccidentalBoundsSs}.
      *
      * @param columns          element columns with X positions already set
      * @param structuralExtents the structural-layer extents to seed into

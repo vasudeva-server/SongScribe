@@ -20,6 +20,8 @@
 
 package songscribe.ui.renderer;
 
+import songscribe.dom.StaffElement;
+
 /**
  * Per-element rendering state, built fresh for each element a {@code LineRenderer}
  * visits (and shared for line-level passes via {@link #LINE_LEVEL}).
@@ -83,5 +85,26 @@ public record ElementFrame(
     /** Returns whether a preview shift is active (i.e. {@link #previewShiftFromIndex} is non-negative). */
     public boolean hasPreviewShift() {
         return previewShiftFromIndex >= 0;
+    }
+
+    /**
+     * Returns the X at which {@code element} is drawn, in staff spaces: this frame's override
+     * when it carries one — the position an insertion preview is being dragged through — and the
+     * element's solved position otherwise.
+     *
+     * <p>Every renderer that draws an element at a horizontal position asks this, so a preview
+     * moves all of them together. The value is returned exactly as laid out, with no
+     * device-pixel snapping.
+     *
+     * @param element    the element being drawn
+     * @param invariants the line invariants carrying the solved layout
+     * @return the element's X in staff spaces
+     */
+    public double resolveElementXSs(StaffElement element, LineInvariants invariants) {
+        if (hasOverrideElementX()) {
+            return overrideElementXSs;
+        }
+
+        return invariants.getLayoutResult().getElementXSs(element);
     }
 }

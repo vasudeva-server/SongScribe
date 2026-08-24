@@ -48,15 +48,15 @@ These are the cases most likely to expose a wiring mistake.
 - [x] **`SongSettingsDialog`'s cross-tab lyrics-fit failure.** Set a lyrics
       font on the Music/Title tab that would overflow a line carrying
       lyrics; confirm the refusal message appears and nothing commits.
-- [ ] **Add-vs-Modify button label** on each of the three attachment dialogs
+- [x] **Add-vs-Modify button label** on each of the three attachment dialogs
       (`AnnotationDialog`, `BeatChangeDialog`, `TempoChangeDialog`): opening
       on an empty slot shows "Add"; opening on an existing attachment shows
       "Modify" (or equivalent OK-button wording).
-- [ ] **Remove button** on each of the three attachment dialogs. It is now
+- [x] **Remove button** on each of the three attachment dialogs. It is now
       rendered by `StandardDialog` itself (`ops.remove() != null`). Confirm
       it appears only when there is something to remove, and that pressing
       it removes the attachment in one undo step.
-- [ ] **`SongSettingsDialog.show(Section)`** opens the right tab with the
+- [x] **`SongSettingsDialog.show(Section)`** opens the right tab with the
       right field focused, for each caller/section that opens it directly
       (not just the default entry point).
 

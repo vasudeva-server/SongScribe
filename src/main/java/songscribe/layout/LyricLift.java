@@ -89,8 +89,9 @@ public final class LyricLift {
         for (var i = 0; i < springs.size(); i++) {
             var spring = springs.get(i);
 
-            // A lift-exempt gap (grace→host) never lifts: it keeps its default rest and imposes no lyric
-            // requirement, so it neither spikes nor drives the line-wide even lift.
+            // A lift-exempt gap (grace→host, barline→key signature) never lifts: it keeps its fixed
+            // rest and imposes no lyric requirement, so it neither spikes nor drives the line-wide
+            // even lift.
             if (spring.liftExempt()) {
                 requirementsSs[i] = NO_LYRIC_REQUIREMENT_SS;
                 continue;

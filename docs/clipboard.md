@@ -351,18 +351,26 @@ one client of the mode; mid-line key signatures are another
 (`docs/key-signatures.md`). Nothing in the mode knows about clipboards, and nothing
 in `PasteModeManager` knows how a mouse position becomes an index.
 
+A rule that holds for every client lives in the mode, not in each client's
+predicate — that is why `PasteModeManager.acceptsInsertionIndex` can honestly answer
+`true` for everything it is asked. The staff header, the region past the staff's
+right edge, and the gap between a mid-line key signature and its barline are all gone
+before the client is consulted.
+
 ```
   PasteModeManager (the client)              InsertionPointMode (the interaction)
   ─────────────────────────────              ────────────────────────────────────
       Cmd+V, no selection
             │
             └── enter() ────────────────────> enter(client) ──> ACTIVE
-                   │ (only if entry succeeded)      │            [all actions disabled,
-                   └─> raise PasteOverlay banner    │             preview suppressed]
+                                                    │  ├─> overlayText() ──> raise the banner
+                                                    │            [all actions disabled,
+                                                    │             preview suppressed]
                                                     │
                                              mouseMoved on a line
                                                     │  ├─> header / past right edge ⇒ clear
                                                     │  ├─> findInsertionIndex → index
+                                                    │  ├─> inside a key-change pair ⇒ clear
               acceptsInsertionIndex(line, i) <──────┤  ├─> client rejects it     ⇒ clear
                    (paste: always true)             │  └─> track (lc, i), retarget marker
                                                     │
@@ -379,8 +387,10 @@ in `PasteModeManager` knows how a mouse position becomes an index.
                                                     ├ click outside any line
                                                     └ app backgrounded  ─> exit(CANCELLED)
                                                     │
+                                       (banner and its ComponentListener come down here)
+                                                    │
               insertionPointModeDidEnd(reason) <────┘
-                   └─> take the banner and its ComponentListener back down
+                   └─> nothing: paste raises no chrome of its own
 
         While ACTIVE, presses on a line are inert — no line select, no lyric select, no
         pitch drag — so the click that follows is always a placement or a cancel.
@@ -391,14 +401,14 @@ in `PasteModeManager` knows how a mouse position becomes an index.
 | Transition | Owner |
 |---|---|
 | enter / refuse a second client | `InsertionPointMode.enter(Client)` |
-| the paste banner going up | `PasteModeManager.enter()` |
-| mouse tracking, header and right-edge exclusion, marker retargeting | `InsertionPointMode.updateTarget` |
+| the banner going up, and its wording | `InsertionPointMode.enter(Client)`, from the client's `overlayText()` |
+| mouse tracking, marker retargeting, and the exclusions that hold for every client — header, past the right edge, inside a barline-plus-key-change pair | `InsertionPointMode.updateTarget` |
 | which of the remaining indices are legal | the client's `acceptsInsertionIndex` |
 | click / Return resolving to a chosen index | `InsertionPointMode.mouseClicked` / `place` |
 | inserting the fragment, and whether the point is retryable | `PasteModeManager.insertionPointChosen` |
 | Escape, click-off-line, backgrounding | `InsertionPointMode.cancel` |
 | the single teardown funnel | `InsertionPointMode.exit` |
-| the paste banner coming down | `PasteModeManager.insertionPointModeDidEnd` |
+| the banner coming down | `InsertionPointMode.exit` |
 
 ### State and the single `exit()` funnel
 
@@ -406,18 +416,17 @@ in `PasteModeManager` knows how a mouse position becomes an index.
 flag, `isInProgress()`, and a static `instance` backing a static `isActive()` for
 callers (`UIAction`, `ScoreViewController.handlePasteboardOp`) that don't hold a
 reference. At most one placement is pending application-wide — a second client
-asking while one is running is refused, and told so by `enter`'s return value so it
-doesn't put chrome on screen that nothing will take down.
+asking while one is running is refused, and told so by `enter`'s return value.
 
 There are five distinct ways out — a completed placement, Escape, a click outside
 any line, the app being backgrounded, and (for paste) a "line full" answer, which
 leaves you in place so that's *not* an exit — and every real exit routes through one
 private `exit(EndReason)`: reset the `active` flag and post
 `InsertionPointModeDidChangeNotification(false)`, drop the tracked insertion point
-and hide the marker, then call the client's `insertionPointModeDidEnd`. Nothing
-open-codes any of those steps outside `exit()` — a missed step is invisible: the
-marker left painted with no placement pending, or a client never told its placement
-ended and leaving its banner up for good.
+and hide the marker, take the banner down, then call the client's
+`insertionPointModeDidEnd`. Nothing open-codes any of those steps outside `exit()` —
+a missed step is invisible: the marker or the banner left painted over a score with
+no placement pending, or a client never told its placement ended.
 
 **The client's entitlement is exactly one end-of-placement report** — `PLACED` or
 `CANCELLED`, never both, never twice, never neither, and always after the mode has
@@ -466,19 +475,24 @@ states.
 
 ### Overlay: layered pane, not the glass pane
 
-The `PasteOverlay` pill (naming the mode and its exits) is added directly to
-`MainFrame`'s `JLayeredPane` (`PALETTE_LAYER`) by `PasteModeManager.enter()`, and
-removed only in `insertionPointModeDidEnd`. It belongs to the client rather than to
-`InsertionPointMode` because its text names *the operation*, not the interaction.
+The `InsertionPointOverlay` pill (naming the operation and its exits) is added directly
+to `MainFrame`'s `JLayeredPane` (`PALETTE_LAYER`) by `InsertionPointMode.enter()`, and
+removed in `exit()`. The mode owns it; the client owns only its wording, which it hands
+over as an `InsertionPointOverlay.Text` (title and hint) from `overlayText()` — paste
+says "Paste content", a mid-line key signature says "Insert key change". The banner
+goes up *after* `syncTargetToMouse()`, because a full-bleed layered-pane child added
+first would be the topmost hit and would shadow the score from
+`UIUtils.getComponentUnderMouse`.
+
 It is deliberately **not** installed as the glass pane:
 `ActivationGate` calls `frame.setGlassPane` exactly once at startup, caches that
 pane in its own static field, and never re-reads `frame.getGlassPane()` —
 swapping the glass pane out from under it would leave the gate toggling a
 detached component, so a click meant to reactivate a backgrounded app would fall
 through to the score and place the pending paste. Because a `JLayeredPane` child
-gets no layout, `PasteModeManager` tracks the pane's size itself with a
+gets no layout, `InsertionPointMode` tracks the pane's size itself with a
 `ComponentListener` added on `enter()` and removed alongside the banner, keeping
-the overlay full-bleed through window resizes. `PasteOverlay` itself has no mouse
+the overlay full-bleed through window resizes. `InsertionPointOverlay` itself has no mouse
 listeners — AWT never selects a listener-free component as a mouse-event target,
 so every click (including one landing on the pill) passes through to the score
 underneath, which is exactly what placement-by-click requires.

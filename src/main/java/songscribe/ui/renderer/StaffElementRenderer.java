@@ -29,6 +29,7 @@ import java.util.EnumMap;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LineThickness;
 import songscribe.hit.HitTarget;
@@ -54,7 +55,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  *   <li>Ledger lines (for notes above/below staff)</li>
  * </ul>
  */
-public final class NoteRenderer implements ElementRenderer<StaffElement> {
+public final class StaffElementRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
     // Constants
     // ==========================================================================
@@ -81,18 +82,18 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     private static final double STEM_ARC_RATIO = 0.615;
 
     // Singleton instance
-    private static final NoteRenderer INSTANCE = new NoteRenderer();
+    private static final StaffElementRenderer INSTANCE = new StaffElementRenderer();
 
     /**
      * Private constructor - use {@link #getInstance()}.
      */
-    private NoteRenderer() {
+    private StaffElementRenderer() {
     }
 
     /**
      * Returns the singleton instance.
      */
-    public static NoteRenderer getInstance() {
+    public static StaffElementRenderer getInstance() {
         return INSTANCE;
     }
 
@@ -117,24 +118,6 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Selects the X coordinate for a note, preferring the frame's override X
-     * (insertion note preview) over the layout result position (laid-out song
-     * notes). The value is returned exactly as-is — no device-pixel snapping is
-     * applied here.
-     */
-    private static double resolveNoteXSs(
-        StaffElement note,
-        LineInvariants invariants,
-        ElementFrame frame
-    ) {
-        if (frame.hasOverrideElementX()) {
-            return frame.overrideElementXSs();
-        }
-
-        return invariants.getLayoutResult().getElementXSs(note);
-    }
-
     @Override
     public void render(
         LineInvariants invariants,
@@ -142,29 +125,46 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         StaffElement element,
         Graphics2D g2
     ) {
-        var noteType = element.getType();
+        var elementType = element.getType();
 
-        // Delegate to specialized renderers for non-note types
-        if (noteType.isRest()) {
+        if (elementType.isRest()) {
             RestRenderer.getInstance().render(invariants, frame, element, g2);
             return;
         }
 
-        if (noteType.isBarLine() || noteType.isRepeat()) {
+        if (elementType.isBarLine() || elementType.isRepeat()) {
             BarRenderer.getInstance().render(invariants, frame, element, g2);
             return;
         }
 
-        if (noteType == ElementType.BREATH_MARK) {
+        if (elementType.isBreathMark()) {
             renderBreathMark(element, g2, invariants, frame);
             return;
         }
 
-        // Standard note rendering (including grace notes)
+        if (element instanceof KeyChangeElement keyChange) {
+            KeySignatureRenderer.getInstance().renderMidLine(invariants, frame, keyChange, g2);
+            return;
+        }
+
+        renderNote(element, g2, invariants, frame);
+    }
+
+    // ==========================================================================
+    // Note Rendering
+    // ==========================================================================
+
+    /** Draws a note or a grace note: its head, its ledger lines and its accidental. */
+    private void renderNote(
+        StaffElement element,
+        Graphics2D g2,
+        LineInvariants invariants,
+        ElementFrame frame
+    ) {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for insertion notes, black for song notes)
         try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = resolveNoteXSs(element, invariants, frame);
+            var noteX = frame.resolveElementXSs(element, invariants);
             var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
@@ -187,7 +187,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var noteX = resolveNoteXSs(element, invariants, frame);
+        var noteX = frame.resolveElementXSs(element, invariants);
 
         // Derived from the element's staff position — half a staff space above the top staff
         // line — rather than written out again here. The hit rect is built from that same staff

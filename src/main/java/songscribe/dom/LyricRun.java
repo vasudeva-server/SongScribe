@@ -310,45 +310,96 @@ public interface LyricRun {
     }
 
     /**
-     * Breaks the lyric chains that a bare element about to be inserted at
-     * {@code insertionIndex} interrupts — the syllabic chain on the predecessor and the
-     * melisma chain running through it. Must be called inside a modification bracket,
-     * <em>before</em> {@link Line#addElement(int, StaffElement)}, while the pre-insertion
-     * indices still hold.
+     * Breaks the lyric chains that the run about to be inserted at {@code insertionIndex}
+     * interrupts — the syllabic chain on the predecessor and the melisma chain running through
+     * it. Must be called inside a modification bracket, <em>before</em>
+     * {@link Line#addElement(int, StaffElement)}, while the pre-insertion indices still hold.
+     *
+     * <p>A run every element of which carries the chains onward without ever taking a syllable —
+     * a barline, a breath mark, a key change, a rest — breaks nothing and is left alone. That is
+     * {@link ElementType#interruptsLyricChain()}'s answer, and the run is judged by it as a
+     * whole: one interrupting element in it breaks the chains for the run.
      *
      * <p>Only the predecessor half of the repair belongs here. The rest runs after the
      * insertion — see {@link #repairNeighborsAfterInsertion} — so an insertion path calls
      * this, inserts, then calls that. A path that inserts first and records later wants
      * {@link #repairNeighborsAfterUntrackedInsertion} instead, which does both halves in
      * post-insertion indices.
+     *
+     * @param insertionIndex the index the first element of the run will land at
+     * @param insertedRun the run about to be inserted, in the order it lands; must not be empty
      */
-    default void repairNeighborsBeforeInsertion(int insertionIndex) {
+    default void repairNeighborsBeforeInsertion(int insertionIndex, List<? extends StaffElement> insertedRun) {
+        if (!interruptsLyricChains(insertedRun)) {
+            return;
+        }
+
         adjustSyllablesForNeighborChange(insertionIndex - 1, null);
         adjustExtendsForInsertion(insertionIndex);
     }
 
     /**
-     * Repairs what the element just inserted at {@code insertedIndex} could only disturb once
-     * it was in the list: the successor's syllabic chain, a connecting glissando on the
-     * predecessor left with no valid target, and the grace-host melisma of a pair the
+     * Repairs the neighbors of a single element just inserted at {@code insertedIndex}.
+     *
+     * @param insertedIndex the index the element landed at
+     * @param inserted the element that landed there
+     */
+    default void repairNeighborsAfterInsertion(int insertedIndex, StaffElement inserted) {
+        repairNeighborsAfterInsertion(insertedIndex, List.of(inserted));
+    }
+
+    /**
+     * Whether inserting {@code run} breaks the lyric chains that ran across the position it
+     * lands at. One interrupting element is enough: the chains cannot pass through a run that
+     * holds a syllable slot arriving empty, or a repeat.
+     *
+     * @param run the elements being inserted, in any order; must not be empty
+     * @return {@code true} when the run breaks a word or a melisma spanning its position
+     */
+    private static boolean interruptsLyricChains(List<? extends StaffElement> run) {
+        return run.stream().anyMatch(element -> element.getType().interruptsLyricChain());
+    }
+
+    /**
+     * Repairs what the run of elements just inserted at {@code firstInsertedIndex} could only
+     * disturb once it was in the list: the successor's syllabic chain, a connecting glissando on
+     * the predecessor left with no valid target, and the grace-host melisma of a pair the
      * insertion landed inside. The predecessor half of the repair runs before the insertion —
      * see {@link #repairNeighborsBeforeInsertion}.
      *
-     * <p>Must be called inside a modification bracket, <em>after</em>
-     * {@link Line#addElement(int, StaffElement)}.
+     * <p><b>The two halves key off opposite ends of the run.</b> The successor's chain is broken
+     * by the <em>last</em> element inserted, because that is the one now standing in front of it.
+     * The glissando and the melisma are broken by the <em>first</em>, because that is the one now
+     * standing behind the predecessor. A path that inserts more than one element and passes a
+     * single index therefore repairs one half against the wrong element, which is why the whole
+     * run is a parameter rather than each caller's own arithmetic.
+     *
+     * <p>The successor's chain, like the predecessor's, survives a run that interrupts nothing —
+     * see {@link #repairNeighborsBeforeInsertion}. The glissando and the melisma do not read that
+     * rule: they are about which element a pairing points at, not about who a syllable's
+     * neighbors are, and a barline standing between a note and its glissando target orphans it
+     * however transparent it is to a word.
+     *
+     * <p>Must be called inside a modification bracket, <em>after</em> every
+     * {@link Line#addElement(int, StaffElement)} of the run.
+     *
+     * @param firstInsertedIndex the index the first element of the run landed at
+     * @param insertedRun the run that landed there, in the order it landed; must not be empty
      */
-    default void repairNeighborsAfterInsertion(int insertedIndex) {
-        adjustSyllablesForSuccessorAfterInsertion(insertedIndex);
+    default void repairNeighborsAfterInsertion(int firstInsertedIndex, List<? extends StaffElement> insertedRun) {
+        if (interruptsLyricChains(insertedRun)) {
+            adjustSyllablesForSuccessorAfterInsertion(firstInsertedIndex + insertedRun.size() - 1);
+        }
 
         // A connecting glissando joins a note to the note that immediately follows it.
         // Inserting another pitched note simply re-targets it, but inserting anything else
-        // (rest, breath mark, grace note) leaves it with no valid target, so remove it from
-        // the preceding note.
-        if (!getElement(insertedIndex).getType().isPitchedNote() && insertedIndex > 0) {
-            var precedingElement = getElement(insertedIndex - 1);
+        // (rest, breath mark, grace note, barline, key signature) leaves it with no valid
+        // target, so remove it from the preceding note.
+        if (!getElement(firstInsertedIndex).getType().isPitchedNote() && firstInsertedIndex > 0) {
+            var precedingElement = getElement(firstInsertedIndex - 1);
 
             if (precedingElement.hasGlissando()) {
-                modifyElement(insertedIndex - 1, ElementField.SLIDE, precedingElement::removeSlide);
+                modifyElement(firstInsertedIndex - 1, ElementField.SLIDE, precedingElement::removeSlide);
             }
         }
 
@@ -358,8 +409,8 @@ public interface LyricRun {
         // ordinary note free to take a syllable of its own — so re-establish the melisma against
         // the new host. The non-pitched case fell through the glissando strip above and no
         // longer reads as paired.
-        if (isPairedGraceNote(insertedIndex - 1)) {
-            syncGraceHostMelisma(insertedIndex - 1);
+        if (isPairedGraceNote(firstInsertedIndex - 1)) {
+            syncGraceHostMelisma(firstInsertedIndex - 1);
         }
     }
 
@@ -380,9 +431,14 @@ public interface LyricRun {
      * hold while the inserted element is in the list.
      */
     default void repairNeighborsAfterUntrackedInsertion(int insertedIndex) {
-        adjustSyllablesForNeighborChange(insertedIndex - 1, null);
-        adjustExtends(insertedIndex - 1, insertedIndex + 1);
-        repairNeighborsAfterInsertion(insertedIndex);
+        var insertedRun = List.of(getElement(insertedIndex));
+
+        if (interruptsLyricChains(insertedRun)) {
+            adjustSyllablesForNeighborChange(insertedIndex - 1, null);
+            adjustExtends(insertedIndex - 1, insertedIndex + 1);
+        }
+
+        repairNeighborsAfterInsertion(insertedIndex, insertedRun);
     }
 
     /**

@@ -71,7 +71,7 @@ public final class TerminalMaintainer {
      */
     private static StaffElement terminalElementReplacing(ElementType type, StaffElement displaced) {
         requireValidTerminal(type);
-        return new StaffElement(type, displaced);
+        return StaffElement.convertedFrom(type, displaced);
     }
 
     private static void requireValidTerminal(ElementType type) {

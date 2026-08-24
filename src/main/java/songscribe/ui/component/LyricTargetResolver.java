@@ -44,36 +44,20 @@ public final class LyricTargetResolver {
      */
     public static int resolveLyricTarget(Line line, int index) {
         var targetIndex = line.isHostOfPairedGraceNote(index) ? index - 1 : index;
-        return isLyricTargetEligible(line, targetIndex) ? targetIndex : -1;
-    }
-
-    /**
-     * Returns true when {@code index} is a structurally valid lyric target: a pitched note,
-     * rest, or grace note that is NOT the host of a paired grace note. This is the single
-     * source of truth for the host-block rule used by action enablement, gesture target
-     * resolution, and editor navigation.
-     */
-    public static boolean isLyricTargetEligible(Line line, int index) {
-        if (line.isHostOfPairedGraceNote(index)) {
-            return false;
-        }
-
-        var type = line.getElement(index).getType();
-        return type.isPitchedNote() || type.isRest() || type.isGraceNote();
+        return line.canBearSyllableAt(targetIndex) ? targetIndex : -1;
     }
 
     /**
      * Returns the index Tab (and every other forward move) should carry the lyric editor to
      * from {@code currentIndex}, or -1 when the line has no eligible element left. Eligibility
-     * is {@link #isLyricTargetEligible} plus the element accepting a lyric in {@code verse}.
-     * The line's auto-maintained terminal barline is excluded via
-     * {@link Line#effectiveElementCount()}.
+     * is {@link Line#canBearSyllableAt}. The line's auto-maintained terminal barline is
+     * excluded via {@link Line#effectiveElementCount()}.
      */
-    public static int findNextEligibleIndex(Line line, int currentIndex, int verse) {
+    public static int findNextEligibleIndex(Line line, int currentIndex) {
         var count = line.effectiveElementCount();
 
         for (var i = currentIndex + 1; i < count; i++) {
-            if (isLyricTargetEligible(line, i) && line.getElement(i).isEligibleForLyric(verse)) {
+            if (line.canBearSyllableAt(i)) {
                 return i;
             }
         }
@@ -86,9 +70,9 @@ public final class LyricTargetResolver {
      * {@code currentIndex}, or -1 when there is no eligible element before it. Eligibility is
      * the same test {@link #findNextEligibleIndex} applies.
      */
-    public static int findPreviousEligibleIndex(Line line, int currentIndex, int verse) {
+    public static int findPreviousEligibleIndex(Line line, int currentIndex) {
         for (var i = currentIndex - 1; i >= 0; i--) {
-            if (isLyricTargetEligible(line, i) && line.getElement(i).isEligibleForLyric(verse)) {
+            if (line.canBearSyllableAt(i)) {
                 return i;
             }
         }

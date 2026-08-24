@@ -26,6 +26,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
@@ -33,6 +34,7 @@ import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffHeaderMetrics;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -190,6 +192,17 @@ public final class ElementColumn {
      */
     public boolean isGraceNote() {
         return element.getType().isGraceNote();
+    }
+
+    /**
+     * Returns whether this column represents a mid-line key change — the run of accidentals a
+     * {@link KeyChangeElement} draws. A caller spacing the gap in front of one relies on the
+     * barline the pair rule in {@code docs/key-signatures.md} puts there.
+     *
+     * @return {@code true} when this column's element is a mid-line key signature
+     */
+    public boolean isKeyChange() {
+        return element.getType().isKeyChange();
     }
 
     /**
@@ -368,10 +381,8 @@ public final class ElementColumn {
      * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
      * Only valid after X position has been set by the spacing calculator.
      * <p>
-     * Agrees with {@link NoteGeometry#getNoteheadCenterXSs} for every type now
-     * that both derive from the same per-type width, {@link ElementType#getElementWidthSs()}.
-     * Previously this one used the black-notehead constant, so the two drifted apart on any type
-     * whose head is not a black notehead — a whole note most visibly (refs #694).
+     * Agrees with {@link NoteGeometry#getNoteheadCenterXSs} for every type, because both derive
+     * from the same per-type width, {@link ElementType#getElementWidthSs()}.
      */
     public double getNoteheadCenterXSs() {
         return xSs + noteheadWidthSs / 2.0;

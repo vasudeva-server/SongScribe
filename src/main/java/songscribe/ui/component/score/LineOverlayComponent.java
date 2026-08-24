@@ -59,7 +59,7 @@ import songscribe.util.UIUtils;
  * This class registers <b>no</b> mouse or mouse-motion listeners, and subclasses must not
  * either: a listener-free component is never selected as an AWT mouse-event target, so clicks
  * over an overlay fall through to the {@link LineComponent} beneath, exactly as note placement
- * and selection require. {@code PasteOverlay} documents the same requirement.
+ * and selection require. {@code InsertionPointOverlay} documents the same requirement.
  */
 public abstract class LineOverlayComponent extends JComponent {
 

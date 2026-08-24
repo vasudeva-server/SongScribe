@@ -33,12 +33,12 @@ import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
-import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.KeyEditFitCalculator;
+import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.edit.AccidentalRestatements;
+import songscribe.ui.edit.KeyChangeReconciliation;
 import songscribe.util.UIUtils;
 
 /**
@@ -61,11 +61,11 @@ import songscribe.util.UIUtils;
  * {@link Line#keyAt} from its inclusive bound: the one binding that needs the key of a signature
  * sitting <em>on</em> the bound index reads it off the element.
  *
- * <p><strong>Two commit routes, not three.</strong> A line's own key is changed in place; a
- * mid-line key signature is <em>inserted</em>. Both mid-line bindings take the insert, which is
- * why editing an existing signature adds a second one in front of it rather than changing it —
- * a known defect this class does not fix. See {@link #insertKeyChange} and
- * {@code plans/design-pass/keys.md} group C item 6.
+ * <p><strong>One commit route per binding.</strong> A line's own key and an existing mid-line key
+ * signature are both changed <em>in place</em>; a key signature at a position that has none is
+ * <em>inserted</em>. The two mid-line routes are separate because a swap and an insertion are
+ * different edits all the way down — different fit measurement, different projection for the
+ * accidental reconciliation, and different mutations — and only the insertion can owe a barline.
  *
  * <p><strong>An edit that cannot be drawn is refused before it is written.</strong> A key change
  * claims horizontal space on every line it re-keys, not only the one it is made on, and
@@ -91,8 +91,9 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     /**
      * What the dialog is bound to, which is the whole of what varies between the gestures.
      *
-     * <p>The two mid-line constants differ only in where the key already in effect is read from.
-     * They commit identically — see {@link #insertKeyChange}.
+     * <p>The two mid-line constants differ in where the key already in effect is read from and in
+     * which route commits: {@link #changeMidLineKey} swaps the key on a signature that is already
+     * there, {@link #insertKeyChange} writes a new one.
      */
     private enum Binding {
 
@@ -135,9 +136,7 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     /**
      * Opens the dialog on the key {@code signature} establishes.
      *
-     * <p><strong>OK inserts a second key signature in front of this one rather than changing
-     * it</strong> — the defect described on {@link #insertKeyChange}. This entry point exists
-     * as the gesture's own route regardless, because it is the one that will carry the fix.
+     * <p>OK changes that signature's key in place — see {@link #changeMidLineKey}.
      *
      * <p>Opens nothing when {@code signature} is not an element of {@code line}, beeping instead:
      * the notator double-clicked a key signature and the program failed to find it, which is worth
@@ -212,12 +211,16 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      *
      * <p>Refuses a key change that will not fit, and takes no other view of the notator's choice.
      *
-     * <p>Which measurement runs follows the binding. A line's own key is measured with
-     * {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole inheritance chain the
-     * change re-keys and the cautionary it creates on the line before it. A mid-line key signature
-     * is measured with {@link KeyEditFitCalculator#midLineKeyChangeFits}, which additionally holds the
-     * column the signature occupies and the barline {@link #insertKeyChange} inserts alongside
-     * it. Neither is a partial query and neither half is available on its own.
+     * <p>Which measurement runs follows the binding, one per commit route. A line's own key is
+     * measured with {@link KeyEditFitCalculator#lineKeyChangeFits}, which walks the whole
+     * inheritance chain the change re-keys and the cautionary it creates on the line before it. A
+     * <em>new</em> mid-line signature is measured with
+     * {@link KeyEditFitCalculator#midLineKeyChangeInsertionFits}, which additionally holds the column the
+     * signature occupies and the barline {@link #insertKeyChange} inserts alongside it. An
+     * <em>existing</em> one is measured with {@link KeyEditFitCalculator#midLineKeyChangeSwapFits},
+     * which replaces that column rather than adding one — measuring a swap as an insertion would
+     * refuse it for want of room the line already has. None is a partial query and no half of one
+     * is available on its own.
      *
      * <p>Reading the two refusals apart matters: they name different lines. See
      * {@link #lineKeyRefusal()}.
@@ -230,15 +233,19 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     protected ValidationResult validate(Key values) {
         var lyricRenderMetrics = requireScoreView().getLyricRenderMetrics();
 
-        if (binding == Binding.LINE_KEY) {
-            return refusalUnless(
+        return switch (binding) {
+            case LINE_KEY -> refusalUnless(
                 KeyEditFitCalculator.lineKeyChangeFits(line, values, lyricRenderMetrics),
                 lineKeyRefusal());
-        }
 
-        return refusalUnless(
-            KeyEditFitCalculator.midLineKeyChangeFits(line, elementIndex, values, lyricRenderMetrics),
-            keySignatureRefusal());
+            case EXISTING_SIGNATURE -> refusalUnless(
+                KeyEditFitCalculator.midLineKeyChangeSwapFits(line, elementIndex, values, lyricRenderMetrics),
+                keySignatureRefusal());
+
+            case NEW_POSITION -> refusalUnless(
+                KeyEditFitCalculator.midLineKeyChangeInsertionFits(line, elementIndex, values, lyricRenderMetrics),
+                keySignatureRefusal());
+        };
     }
 
     /**
@@ -254,10 +261,10 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      */
     @Override
     protected void commit(Key values) {
-        if (binding == Binding.LINE_KEY) {
-            changeLineKey(values);
-        } else {
-            insertKeyChange(values);
+        switch (binding) {
+            case LINE_KEY -> changeLineKey(values);
+            case EXISTING_SIGNATURE -> changeMidLineKey(values);
+            case NEW_POSITION -> insertKeyChange(values);
         }
     }
 
@@ -289,37 +296,80 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
     private void changeLineKey(Key key) {
         var reach = AccidentalReconciliation.lineKeyChangeReach(line, key);
 
-        // Pure and pre-mutation, so the removals it would make can be read off it and asked about
-        // before anything is written.
-        var reconciled = AccidentalReconciliation.reconcileModification(
-            reach, AccidentalReconciliation.RestatementRemoval.NONE);
+        var confirmed = KeyChangeReconciliation.confirm(
+            getMainFrame(),
+            List.of(),
+            removal -> AccidentalReconciliation.reconcileModification(reach, removal));
 
-        var decision = AccidentalRestatements.confirm(
-            getMainFrame(), AccidentalRestatements.accidentalsClearedBy(reconciled));
-
-        if (decision.isCancelled()) {
+        if (confirmed.isCancelled()) {
             return;
         }
 
-        // Reconciled a second time only when the answer moves the result: accepted restatements
-        // are cleared by the same walk everything else travels.
-        var accidentalChanges = decision.answer() == AccidentalRestatements.Answer.YES
-            ? AccidentalReconciliation.reconcileModification(reach, decision.removal())
-            : reconciled;
-
-        var reconciledLines = reach.stream()
-            .map(AccidentalReconciliation.ModifiedLine::line)
-            .toList();
-
         withModification(lineKeyLabel(), () -> {
-            for (var reconciledLine : accidentalChanges) {
-                AccidentalMaterializer.commit(reconciledLine.line(), reconciledLine.changes());
-            }
-
-            // The accepted restatements sitting past the reach's end, which no line of the reach
-            // reconciles.
-            AccidentalRestatements.commitOtherLines(decision, reconciledLines);
+            KeyChangeReconciliation.commit(confirmed);
             line.setKey(key);
+        });
+    }
+
+    /**
+     * Changes the key the key signature at the bound index establishes, reconciling the accidentals
+     * the change moves.
+     *
+     * <p><b>It edits in place.</b> The element keeps its identity and its index, so nothing on the
+     * line moves and no barline is involved — the one the position invariant puts in front of it is
+     * already there. The signature's column is re-solved against the new key on the next layout
+     * pass, exactly as a line-key change's header is, so a key that draws more or fewer accidentals
+     * needs no position bookkeeping here.
+     *
+     * <p>The reach is the same one every key-moving edit has: this line from the signature's index
+     * forward, then every line inheriting from it, up to the first with a key of its own. The
+     * signature's own line is reconciled as a <em>replacement</em> — the projection carries a
+     * signature for the new key where the old one stands — because the notes after it have to
+     * resolve against the key that will be in effect there, not the one that is. One restatement
+     * prompt covers the whole reach, raised before the modification bracket opens; cancelling it
+     * leaves nothing mutated and no undo step. See {@code docs/key-signatures.md}.
+     *
+     * <p><b>The fit check runs first</b>, in {@link #validate}, so a change that will be refused for
+     * want of room never asks about accidentals it will never apply.
+     *
+     * @param key the key the bound signature is to establish instead
+     */
+    private void changeMidLineKey(Key key) {
+        var signature = boundSignature();
+
+        // A swap, described to the reconciliation as what it is: the old signature removed and one
+        // for the new key put in its place. Empty prior accidentals because the replacement has no
+        // source context — nothing is being pasted — and a key signature carries no accidental of
+        // its own to materialize in any case.
+        var region = new AccidentalReconciliation.InsertionRegion(
+            line,
+            elementIndex,
+            new InsertionSpacingCalculator.DeletedRange(elementIndex, elementIndex),
+            List.of(KeyChangeElement.forMeasurement(key, line.keyAt(elementIndex - 1))),
+            List.of(),
+            List.of());
+
+        // A key signature already standing after this one still has the last word on the key the
+        // line leaves off in, so the new key reaches the next line only when none does.
+        var tail = AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineUnder(elementIndex + 1, key));
+
+        var confirmed = KeyChangeReconciliation.confirm(
+            getMainFrame(), List.of(), removal -> reconcileRegion(region, tail, removal));
+
+        if (confirmed.isCancelled()) {
+            return;
+        }
+
+        withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY), () -> {
+            // Applied before the key moves, as every reconciliation is: the changes name live notes
+            // resolved against the key still in effect.
+            KeyChangeReconciliation.commit(confirmed);
+
+            // ElementField.KEY is what carries the change past this line: Song.maintainKeyInvariant
+            // re-derives every following line's inherited key off the resulting mutation, on undo
+            // and redo as well as forward.
+            line.modifyElement(elementIndex, ElementField.KEY, () -> signature.setKey(key));
         });
     }
 
@@ -328,14 +378,10 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
      * the {@link ElementType#SINGLE_BARLINE} the chosen position needs when it does not already
      * follow a barline or repeat.
      *
-     * <p><b>It inserts. It does not edit.</b> Both mid-line bindings arrive here, so a
-     * {@link Binding#EXISTING_SIGNATURE} commit adds a second key signature immediately in front of
-     * the one the notator double-clicked instead of changing it — and since the existing signature
-     * still has the last word, the music from there on stays in the old key. No stray barline
-     * appears, because a position that already follows a key signature already follows a barline.
-     * Nothing in the program can change an existing mid-line key signature's key; the fix needs a
-     * third commit route, costed in {@code plans/design-pass/keys.md} group C item 6. This contract
-     * is what guards that defect from being mistaken for the intended behaviour.
+     * <p><b>It inserts. It does not edit.</b> Only {@link Binding#NEW_POSITION} arrives here. A
+     * signature already standing at the bound index is changed in place by
+     * {@link #changeMidLineKey}, which is a different edit rather than a variant of this one: it
+     * moves no element, owes no barline, and is measured as a swap.
      *
      * <p><b>The barline is what keeps {@link KeyChangeElement}'s position invariant true
      * without restricting where the user may click.</b> A position that already follows a barline
@@ -388,83 +434,51 @@ public final class KeyChangeDialogController extends DialogController<Key, Key> 
         // accidentals because these elements have no source context — nothing is being pasted.
         var region = new AccidentalReconciliation.InsertionRegion(
             line, elementIndex, null, inserted, List.of(), List.of());
-        var hostChanges = AccidentalReconciliation.reconcile(
-            region, AccidentalReconciliation.RestatementRemoval.NONE);
 
         // The tail: an existing key signature already standing after the insertion point still has
         // the last word on the key this line leaves off in, so the inserted key reaches the next
         // line only when none does.
         var tail = AccidentalReconciliation.linesInheriting(
             line, line.keyAtEndOfLineUnder(elementIndex, key));
-        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
 
-        reconciled.add(new AccidentalReconciliation.ReconciledLine(line, hostChanges));
-        reconciled.addAll(AccidentalReconciliation.reconcileModification(
-            tail, AccidentalReconciliation.RestatementRemoval.NONE));
+        var confirmed = KeyChangeReconciliation.confirm(
+            getMainFrame(), List.of(), removal -> reconcileRegion(region, tail, removal));
 
-        // One prompt for the whole edit, head and tail together, before any bracket opens.
-        var decision = AccidentalRestatements.confirm(
-            getMainFrame(), AccidentalRestatements.accidentalsClearedBy(reconciled));
-
-        if (decision.isCancelled()) {
+        if (confirmed.isCancelled()) {
             return;
         }
 
-        var accidentalChanges = decision.answer() == AccidentalRestatements.Answer.YES
-            ? withRemovalApplied(region, tail, decision.removal())
-            : reconciled;
-        var reconciledLines = reconciled.stream()
-            .map(AccidentalReconciliation.ReconciledLine::line)
-            .toList();
-
         var spacing = InsertionSpacingCalculator.calculateFragmentInsertion(
             line, inserted, elementIndex, null, null, requireScoreView().getLyricRenderMetrics());
-        var insertedCount = inserted.size();
 
         withModification(Strings.get(Strings.ACTION_EDIT_OP_ADD_KEY), () -> {
             // Applied before the elements land, as every reconciliation is: the changes name live
             // notes and their pre-insertion positions.
-            for (var reconciledLine : accidentalChanges) {
-                AccidentalMaterializer.commit(reconciledLine.line(), reconciledLine.changes());
-            }
+            KeyChangeReconciliation.commit(confirmed);
 
-            AccidentalRestatements.commitOtherLines(decision, reconciledLines);
-
-            // The lyric seams on either side of the insertion, repaired as they are for any
-            // other bare element: the half that reads pre-insertion indices runs first, the
-            // half that reads the successor runs once every element is in.
-            line.repairNeighborsBeforeInsertion(elementIndex);
-
-            for (var i = 0; i < insertedCount; i++) {
-                var element = inserted.get(i);
-                element.setXOffsetPx(ScaleContext.ssToRoundedPx(spacing.cloneXPositionsSs().get(i)));
-                line.addElement(elementIndex + i, element);
-            }
-
-            line.adjustSyllablesForSuccessorAfterInsertion(elementIndex + insertedCount - 1);
-
-            var tailShiftPx = ScaleContext.ssToRoundedPx(spacing.shiftForSubsequentElementsSs());
-
-            for (var i = elementIndex + insertedCount; i < line.effectiveElementCount(); i++) {
-                var element = line.getElement(i);
-                element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
-            }
+            line.insertRun(
+                elementIndex,
+                spacing.place(inserted),
+                ScaleContext.ssToRoundedPx(spacing.shiftForSubsequentElementsSs()));
         });
     }
 
     /**
-     * Re-runs an inserted key signature's reconciliation with the restatements the notator accepted
-     * folded in, head and tail alike.
+     * Reconciles a mid-line key edit's whole reach: the host line projected as {@code region} says
+     * — an insertion for a new signature, a replacement for a changed one — then every line
+     * inheriting from it.
      *
-     * <p>Only reached on {@link AccidentalRestatements.Answer#YES}: the removal is what changes the
-     * result, so a No answer keeps the reconciliation already computed rather than repeating it.
+     * <p>The {@link KeyChangeReconciliation.ReachReconciler} for both mid-line routes, so it runs
+     * once to find what to ask about and again under the answer, and must therefore read the lines
+     * as they still stand.
      *
-     * @param region the host line's insertion, exactly as first reconciled
-     * @param tail the lines inheriting from the host, exactly as first reached
-     * @param removal the accepted restatements and the staff positions they suppress
-     * @return one entry per line, host first, in the same order as the original reconciliation
+     * @param region the host line's projection
+     * @param tail the lines inheriting from the host
+     * @param removal the restatements the notator accepted, or
+     *     {@link AccidentalReconciliation.RestatementRemoval#NONE} on the first pass
+     * @return one entry per line, host first
      */
-    private static List<AccidentalReconciliation.ReconciledLine> withRemovalApplied(
+    private static List<AccidentalReconciliation.ReconciledLine> reconcileRegion(
         AccidentalReconciliation.InsertionRegion region,
         List<AccidentalReconciliation.ModifiedLine> tail,
         AccidentalReconciliation.RestatementRemoval removal) {

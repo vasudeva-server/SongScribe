@@ -37,21 +37,21 @@ import org.jspecify.annotations.Nullable;
  */
 public class StructuralElement extends StaffElement {
 
-    StructuralElement() {
-    }
-
     public StructuralElement(ElementType noteType) {
         super(noteType);
     }
 
-    StructuralElement(StaffElement note) {
-        super(note);
-    }
-
-    @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public StructuralElement clone() {
-        return new StructuralElement(this);
+        var copy = new StructuralElement(getType());
+        copy.copyStateFrom(this);
+
+        return copy;
+    }
+
+    /** A non-sounding element carries no state beyond {@link StaffElement#copyStateFrom}'s field list. */
+    @Override
+    protected void copySubtypeStateFrom(StaffElement source) {
     }
 
     @Override

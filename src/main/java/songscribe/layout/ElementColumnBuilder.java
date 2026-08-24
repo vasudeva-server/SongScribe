@@ -28,7 +28,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
@@ -58,7 +57,7 @@ public class ElementColumnBuilder {
 
     /**
      * Grace notehead width (ss) — the regular black notehead at {@link ElementType#GRACE_NOTE_SCALE},
-     * which is exactly what {@code NoteRenderer.renderNoteHead} paints for a grace note (the
+     * which is exactly what {@code StaffElementRenderer.renderNoteHead} paints for a grace note (the
      * {@code NOTEHEAD_BLACK} glyph in the grace-scaled font).
      *
      * <p>Deliberately <em>not</em> SMuFL's {@code noteheadBlackSmall}: Bravura's {@code *Small}
@@ -301,12 +300,7 @@ public class ElementColumnBuilder {
         // Non-note elements (rests, barlines, breath marks, repeats) use their
         // actual visual width — they have no dots or flags.
         if (!type.isNote()) {
-            // A key signature is the one non-note type whose width is not a property of the type:
-            // what it draws depends on the key it establishes and the key it cancels, so it comes
-            // from the element. Every other non-note element reports exactly its type's width.
-            return element instanceof KeyChangeElement keySignature
-                ? keySignature.getContentWidthSs()
-                : type.getElementWidthSs();
+            return element.getGlyphWidthSs();
         }
 
         // Element head right edge — per type, so a whole note is measured as a whole note and a

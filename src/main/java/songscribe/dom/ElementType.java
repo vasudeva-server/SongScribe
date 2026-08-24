@@ -66,7 +66,7 @@ public enum ElementType {
     REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
 
     // Half a staff space above the top staff line. This is the single source for where a
-    // breath mark sits: NoteRenderer.renderBreathMark() derives the glyph's Y from it and the
+    // breath mark sits: StaffElementRenderer.renderBreathMark() derives the glyph's Y from it and the
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
     BREATH_MARK("Breath mark", 0, -5),
 
@@ -220,7 +220,7 @@ public enum ElementType {
      * caller that means a particular key sets it.
      */
     private StaffElement createDefaultInstance() {
-        if (this == KEY_CHANGE) {
+        if (isKeyChange()) {
             return new KeyChangeElement(Key.NO_ACCIDENTALS);
         }
 
@@ -228,7 +228,7 @@ public enum ElementType {
             return new StructuralElement(this);
         }
 
-        return new StaffElement(this);
+        return new NoteElement(this);
     }
 
     public StaffElement getInstance() {
@@ -444,7 +444,7 @@ public enum ElementType {
     }
 
     public boolean isNonDuration() {
-        return isBarLine() || isRepeat() || isBreathMark() || this == KEY_CHANGE;
+        return isBarLine() || isRepeat() || isBreathMark() || isKeyChange();
     }
 
     /**
@@ -465,11 +465,61 @@ public enum ElementType {
      * staff position inherits, but it does not close a measure, bound an ending or pick a glyph.
      */
     public boolean cancelsAccidentals() {
-        return isBarLine() || isRepeat() || this == KEY_CHANGE;
+        return isBarLine() || isRepeat() || isKeyChange();
+    }
+
+    /**
+     * @return {@code true} for the mid-line key signature type
+     */
+    public boolean isKeyChange() {
+        return this == KEY_CHANGE;
     }
 
     public boolean isGraceNote() {
         return this == GRACE_QUAVER;
+    }
+
+    /**
+     * Whether a syllable can be written on an element of this type. A syllable is sung on a
+     * pitch, so only a note or a grace note can hold one; a rest cannot, and neither can any
+     * structural marker.
+     *
+     * <p>This is the type half of "is this a place a syllable can go". The other half is the
+     * grace-host pairing, which is a fact about an element's neighbors rather than its type and
+     * lives in {@link StaffElement#canBearSyllable}, which states the two halves together.
+     *
+     * @return {@code true} for notes and grace notes
+     */
+    public boolean bearsSyllableText() {
+        return isNote();
+    }
+
+    /**
+     * Whether a lyric chain — a hyphenated word, or a melisma — carries on across an element of
+     * this type. A repeat ends a section, so nothing runs through it; everything else carries a
+     * chain on. See {@code docs/lyrics.md}.
+     *
+     * @return {@code true} for every type but a repeat
+     */
+    private boolean bearsLyricChain() {
+        return !isRepeat();
+    }
+
+    /**
+     * Whether writing an element of this type into a line breaks the lyric chains that ran
+     * across the position it lands at.
+     *
+     * <p>An element that carries a chain onward but can never take a syllable of its own — a
+     * rest, a barline, a breath mark, a key change — is transparent: the word and the melisma
+     * run through it exactly as they did before it arrived. Everything else interrupts, for one
+     * of two opposite reasons. A note or a grace note is a syllable slot arriving empty, so the
+     * word it lands inside can no longer be sung as one word. A repeat carries nothing at all.
+     *
+     * @return {@code true} when an inserted element of this type breaks a word or a melisma
+     *     spanning its position
+     */
+    public boolean interruptsLyricChain() {
+        return bearsSyllableText() || !bearsLyricChain();
     }
 
     public boolean isBreathMark() {
@@ -497,7 +547,7 @@ public enum ElementType {
      * signature selected together with its barline still leaves the action enabled.
      */
     public boolean canCarryAnnotation() {
-        return !isBreathMark() && this != KEY_CHANGE;
+        return !isBreathMark() && !isKeyChange();
     }
 
     /**
@@ -546,7 +596,7 @@ public enum ElementType {
             return Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK;
         }
 
-        if (this == KEY_CHANGE) {
+        if (isKeyChange()) {
             return Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE;
         }
 
@@ -570,7 +620,7 @@ public enum ElementType {
      * @return {@code true} for grace notes, breath marks and key signatures
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == BREATH_MARK || this == KEY_CHANGE;
+        return isGraceNote() || this == BREATH_MARK || isKeyChange();
     }
 
     /**

@@ -39,6 +39,7 @@ import songscribe.dom.Tie;
 import songscribe.engraving.LineThickness;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
+import songscribe.layout.CautionaryKeySignature;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.FlatLafKey;
@@ -60,7 +61,7 @@ import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.renderer.LyricConnectorRenderer;
 import songscribe.ui.renderer.LyricTextRenderer;
-import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.StaffElementRenderer;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.renderer.SongTempoMarkRenderer;
@@ -280,13 +281,13 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders notes using NoteRenderer.
+     * Renders notes using StaffElementRenderer.
      *
      * @param g2        Graphics context
      * @param invariants       Line invariants
      */
     private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
-        var noteRenderer = NoteRenderer.getInstance();
+        var noteRenderer = StaffElementRenderer.getInstance();
         var line = invariants.requireCurrentLine();
         var layoutResult = invariants.getLayoutResult();
 
@@ -489,36 +490,22 @@ class LineRenderer {
      * Renders the cautionary key change at the end of a line — the warning to the performer
      * that the next line starts in a different key.
      * <p>
-     * The two keys compared are the <em>running</em> keys, not the lines' own keys: the key
-     * this line leaves off in ({@link Line#keyAtEndOfLine()}, which accounts for a key
-     * signature part-way through it) against the key the next line begins in
-     * ({@link Line#nextLineRunningKey()}, which resolves an inherited key). Comparing the lines'
-     * own keys would miss a mid-line change and would report a change on every line that
-     * merely inherits.
-     * <p>
-     * The last line has no next line to warn about, so nothing is drawn there — the same null
-     * answer {@code HorizontalSpacingCalculator.trailingReservationSs} reserves nothing for, so
-     * what is drawn and what layout kept clear for it are decided from one source.
+     * Which lines end in one, and what the cautionary then draws, is
+     * {@link CautionaryKeySignature#of(Line)}'s answer — the same one
+     * {@code HorizontalSpacingCalculator.trailingReservationSs} reserves room against, so what is
+     * drawn and what layout kept clear for it are decided from one source.
      *
      * @param g2  Graphics context
      * @param invariants Line invariants
      */
     private void renderKeyChanges(Graphics2D g2, LineInvariants invariants) {
-        var line = invariants.requireCurrentLine();
-        var nextRunningKey = line.nextLineRunningKey();
+        var cautionary = CautionaryKeySignature.of(invariants.requireCurrentLine());
 
-        if (nextRunningKey == null) {
+        if (cautionary == null) {
             return;
         }
 
-        // Delegate to KeySignatureRenderer, which draws nothing when the keys match.
-        KeySignatureRenderer.getInstance().renderKeyChange(
-            g2,
-            line.keyAtEndOfLine(),
-            nextRunningKey,
-            invariants.getSong().getLineWidthSs(),
-            invariants
-        );
+        KeySignatureRenderer.getInstance().renderCautionary(g2, cautionary, invariants);
     }
 
     /**

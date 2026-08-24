@@ -529,11 +529,11 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 >   two-argument `trailingReservationSs` and three-argument `solveLine` are unchanged for callers
 >   and resolve the real next line; the pre-check passes a hypothetical key instead. That is what
 >   lets `cautionaryFits` run the identical solve rather than a parallel one.
-> - **`cautionaryFitsSs` / `keySignatureFitsSs` are named `cautionaryFits` / `midLineKeyChangeFits`.**
+> - **`cautionaryFitsSs` / `keySignatureFitsSs` are named `cautionaryFits` / `midLineKeyChangeInsertionFits`.**
 >   The `Ss` suffix marks a spatial value (`docs/unit-conversion.md`); these return booleans. Both
 >   also derive the staff margin from `line.getSong().getLineWidthSs()` rather than taking it as a
 >   parameter, following `InsertionSpacingCalculator.hasRoomForGraceNote`, which keeps
->   `midLineKeyChangeFits` inside the four-parameter limit.
+>   `midLineKeyChangeInsertionFits` inside the four-parameter limit.
 > - **The reservation tests went to `HorizontalSpacingCalculatorSpringTest`, not
 >   `HorizontalSpacingCalculatorTest`.** Every existing `trailingReservationSs` and `solveLine` case
 >   already lives there; `HorizontalSpacingCalculatorTest` states in its own Javadoc that it holds
@@ -555,7 +555,7 @@ Replace their uses in `Song`'s initialization (`Song.java:275`, `:282-283`) with
 >   previous line's cautionary accepts an edit that then overflows somewhere else. `cautionaryFits`
 >   was therefore folded into **`lineKeyChangeFits(Line, Key, LyricRenderMetrics)`**, which walks
 >   the inheritance chain — the same forward walk `Song`'s propagation makes, stopping at the first
->   line with a key of its own — and measures every line it re-keys. `midLineKeyChangeFits` walks it
+>   line with a key of its own — and measures every line it re-keys. `midLineKeyChangeInsertionFits` walks it
 >   too, because a mid-line change moves the key its line leaves off in. Neither half can now be
 >   called without the other; the class exposes no partial query.
 > - **The keys a solve reads off a line became `songscribe.layout.LineKeys`** — header key, key at
@@ -1265,7 +1265,7 @@ Once the user picks an index, show the dialog. Contract the predicate as its own
 
 - Changing a line's key when that line did **not** previously have one creates a cautionary on the previous line, and — through inheritance — re-keys the header of every line that inherits from it. Call `lineKeyChangeFits(Line, Key, LyricRenderMetrics)` before accepting; if it fails, alert and reject the modification.
   
-- Adding a mid-line key signature must fit on its line, and moves the key its line leaves off in. Call `midLineKeyChangeFits` before accepting; if it fails, alert and reject. The barline Phase 12c auto-inserts is already inside that measurement.
+- Adding a mid-line key signature must fit on its line, and moves the key its line leaves off in. Call `midLineKeyChangeInsertionFits` before accepting; if it fails, alert and reject. The barline Phase 12c auto-inserts is already inside that measurement.
   
 - **Neither name is `…Ss`-suffixed and neither is a partial query.** Phase 6 folded the cautionary check into `lineKeyChangeFits`, which walks the whole inheritance chain, after finding that a check covering only the previous line's cautionary accepts an edit that then overflows elsewhere. Read Phase 6's closing notes before calling either; the class exposes no half of the check on its own.
   

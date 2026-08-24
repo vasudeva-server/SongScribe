@@ -69,7 +69,11 @@ public final class ElementHitGeometry {
         boolean expandToMinimum) {
 
         var elementType = element.getType();
-        var naturalWidthSs = elementType.getElementWidthSs();
+
+        // From the element, not from its type: a mid-line key signature's type width is only a
+        // floor, and a hit rect built from it would leave every accidental past the first
+        // unclickable.
+        var naturalWidthSs = element.getGlyphWidthSs();
         var naturalHeightSs = elementType.getFullElementHeightSs();
 
         // Layout space puts the staff midline at Y = 0, so the note's Y is its staff position

@@ -64,11 +64,20 @@ public final class StaffHeaderMetrics {
     public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
 
     /**
-     * Gap between the last drawn accidental of a cautionary key change and the right edge of the
-     * staff line it sits at the end of. Not a LilyPond port — this program's own margin, {@value}
-     * staff spaces, being 5px at 8 px/ss.
+     * Padding around a key signature that stands behind a barline: between that barline and the
+     * signature's first accidental, and — for a cautionary, which also ends the staff line — between
+     * its last accidental and the staff's right edge. Both a mid-line key change and a cautionary
+     * are a barline followed by a run of accidentals, so both clear their barline by this distance
+     * and a key change reads the same wherever it falls.
+     * <p>
+     * The staff header's own signature is not one of these: nothing stands behind it but the clef,
+     * which is {@link #CLEF_GAP_SS} away.
+     * <p>
+     * Not a LilyPond port — this program's own padding, {@value} staff spaces, and the same on both
+     * sides of a cautionary so the signature reads as one unit rather than as a run that leans
+     * toward one of its neighbours.
      */
-    public static final double CAUTIONARY_RIGHT_MARGIN_SS = 0.625;
+    public static final double KEY_SIGNATURE_PADDING_SS = 0.75;
 
     /**
      * Gap from the key signature's right edge to the first note.

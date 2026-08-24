@@ -109,7 +109,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         // Center the marker on the head the insertion X was computed for, measured per type rather
         // than with the black-notehead constant (refs #694).
         var xSs = layoutResult.calculateInsertionXSs(targetIndex, 0, previewElement, domLine, true)
-            + previewElement.getType().getElementWidthSs() / 2;
+            + previewElement.getGlyphWidthSs() / 2;
 
         var middleLineYSs = line.getMiddleLineYSs();
         var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);

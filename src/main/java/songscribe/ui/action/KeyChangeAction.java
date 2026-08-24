@@ -21,10 +21,12 @@ package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
+import songscribe.ui.component.InsertionPointOverlay;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.KeyChangeDialogController;
 import songscribe.ui.edit.EditModeManager;
@@ -35,10 +37,18 @@ import songscribe.ui.edit.InsertionPointMode;
  *
  * <p>Invoking the action does not open a dialog — it enters {@link InsertionPointMode}, the same
  * "click to place" interaction a paste with no selection uses, with this action as the client.
- * The index the user settles on is one {@link #acceptsInsertionIndex} accepted, and the dialog
- * opens on it. There is no position guard on the action itself: every position rule this
- * operation has lives in that predicate, where the user sees it as a marker that appears and
- * disappears rather than as a command that will not run.
+ * The mode raises the banner {@link #overlayText} names and tracks the marker; the index the
+ * user settles on is one {@link #acceptsInsertionIndex} accepted. There is no position guard on
+ * the action itself: every position rule this operation has lives in that predicate, where the
+ * user sees it as a marker that appears and disappears rather than as a command that will not
+ * run.
+ *
+ * <p>The two halves are strictly sequential, and the dialog is the second one: picking the point
+ * only accepts it ({@link #insertionPointChosen}), and the dialog opens from
+ * {@link #insertionPointModeDidEnd}, which hands the point back once the mode has taken its
+ * banner and marker down. Opening it from the callback that chose the point would put a modal
+ * dialog in front of a banner still reading "Click or Return to insert, Esc to cancel", telling
+ * the user to do something the dialog no longer lets them do.
  *
  * <p>See {@code docs/key-signatures.md} for what a mid-line key change means, and
  * {@link KeyChangeElement}'s position invariant for why some positions are refused.
@@ -74,6 +84,16 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
     // -------------------------------------------------------------------------
 
     /**
+     * @return the key-change banner's wording
+     */
+    @Override
+    public InsertionPointOverlay.Text overlayText() {
+        return new InsertionPointOverlay.Text(
+            Strings.get(Strings.INSERTION_MODE_KEY_CHANGE_TITLE),
+            Strings.get(Strings.INSERTION_MODE_KEY_CHANGE_HINT));
+    }
+
+    /**
      * Whether a key change may be written at {@code index} on {@code line}.
      *
      * <p>Three positions are refused; every other index the mode's own geometry offers is taken.
@@ -82,19 +102,21 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      *   <li><b>Index 0.</b> A {@link KeyChangeElement} is never the first element of a line —
      *       its position invariant — and a key change there would only restate what the line's
      *       header already says.</li>
-     *   <li><b>The end of the line</b> — the index of its last element,
-     *       {@code effectiveElementCount() - 1}, and the position past it,
-     *       {@code effectiveElementCount()}. A key change at the first governs the single element
-     *       that follows it and one at the second governs nothing at all; either way the next
-     *       line's own key states the change better, and it is drawn where a reader expects it.
-     *       Both are refused, because a rule that turned away the position governing one element
-     *       while taking the one governing none would be answering a question it had not asked.</li>
-     *   <li><b>Every index touching a key change already on the line</b>: immediately before the
-     *       barline it sits behind, between that barline and it, and immediately after it. The
-     *       barline and the key signature are one unit — {@link Line#effectiveBegin} deletes them
-     *       together — so all three go, not only the two that touch the key signature. Refusing
-     *       only those two would still let a second barline-plus-key be dropped directly in front
-     *       of the first.</li>
+     *   <li><b>Every index past the line's last note</b>, {@link Line#lastNoteIndex()}. A key
+     *       change there governs no note on this line, so it says nothing the next line's own key
+     *       does not say, and the cautionary already draws that key at this line's end. The test
+     *       is the last note rather than the last element, because what a key change is worth is
+     *       the pitches it moves: the index of the last note is taken, and the positions before a
+     *       trailing barline, a trailing rest, or the end of the line are refused alike. A line
+     *       holding no note at all offers no position.</li>
+     *   <li><b>The two indices flanking a key change already on the line</b>: immediately before
+     *       the barline it sits behind, and immediately after it. The barline and the key
+     *       signature are one unit — {@link Line#effectiveBegin} deletes them together — so the
+     *       position in front of the pair goes as well as the one behind it, or a second
+     *       barline-plus-key could be dropped directly in front of the first. The third index of
+     *       that neighborhood, the gap inside the pair, is {@link Line#canInsertElementAt}'s and
+     *       is refused before this predicate ever sees it: nothing goes there, whoever is
+     *       placing.</li>
      * </ul>
      *
      * <p>Out-of-range indices answer {@code false} rather than throwing: the predicate is asked on
@@ -106,40 +128,19 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      */
     @Override
     public boolean acceptsInsertionIndex(Line line, int index) {
-        var effectiveCount = line.effectiveElementCount();
-
-        if (index <= 0 || index >= effectiveCount - 1) {
-            return false;
-        }
-
-        for (var pairIndex = index - 1; pairIndex <= index + 1; pairIndex++) {
-            if (holdsKeySignature(line, pairIndex)) {
-                return false;
-            }
-        }
-
-        return true;
+        return index > 0
+            && index <= line.lastNoteIndex()
+            && !line.isKeyChangeAt(index - 1)
+            && !line.isKeyChangeAt(index + 1);
     }
 
     /**
-     * Whether the element at {@code index} is a key change. The barline in front of it is not
-     * tested: an index adjacent to a key signature is refused however that key signature got
-     * there, and testing for the barline would make the refusal depend on an invariant this
-     * predicate exists to keep rather than to rely on.
-     */
-    private static boolean holdsKeySignature(Line line, int index) {
-        return index >= 0
-            && index < line.effectiveElementCount()
-            && line.getElement(index).getType() == ElementType.KEY_CHANGE;
-    }
-
-    /**
-     * Opens the key dialog on the position the user picked.
+     * Accepts the position the user picked and ends the placement. The dialog opens from
+     * {@link #insertionPointModeDidEnd}, not here — see the class contract for why. Nothing is
+     * recorded: the mode hands the point back with the outcome.
      *
-     * <p>Always completes the placement. Cancelling the dialog is a decision about the key
-     * change, not about the position — the same reading paste gives a declined
-     * ending-invalidation confirm — so the placement ends either way and a second key change
-     * starts from the action again.
+     * <p>Always completes the placement: every index that reaches this method is one the
+     * predicate accepted, and nothing else about a key change can refuse a position.
      *
      * @param line the line the user picked
      * @param index the accepted insertion index within {@code line}
@@ -147,15 +148,24 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      */
     @Override
     public InsertionPointMode.Placement insertionPointChosen(Line line, int index) {
-        KeyChangeDialogController.addKeyChange(getMainFrame(), line, index);
         return InsertionPointMode.Placement.COMPLETED;
     }
 
     /**
-     * Nothing to take down. This client raises no chrome of its own — the insertion marker is the
-     * mode's and the dialog is modal — so both ways out of the mode leave nothing behind.
+     * Opens the key dialog on the point the placement completed on, now that the mode's banner
+     * and marker are down. A cancelled placement opens nothing.
+     *
+     * <p>Cancelling the dialog is a decision about the key change, not about the position, so
+     * nothing reopens: a second key change starts from the action again.
+     *
+     * @param outcome the point the placement completed on, or
+     *     {@link InsertionPointMode.Outcome#CANCELLED}
+     * @effects opens the key dialog on a completed placement
      */
     @Override
-    public void insertionPointModeDidEnd(InsertionPointMode.EndReason reason) {
+    public void insertionPointModeDidEnd(InsertionPointMode.Outcome outcome) {
+        if (outcome instanceof InsertionPointMode.Outcome.Placed placed) {
+            KeyChangeDialogController.addKeyChange(getMainFrame(), placed.line(), placed.index());
+        }
     }
 }

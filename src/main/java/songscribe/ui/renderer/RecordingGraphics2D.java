@@ -71,7 +71,7 @@ import songscribe.util.GraphicUtils;
  * <p>
  * This exists so nothing has to compose ink bounds by hand. Hand-composed bounds would duplicate
  * every decision the renderers make — stem direction, ledger-line count, which accidental glyph,
- * the early delegation {@code NoteRenderer.render} does for rests, bar lines, repeats and breath
+ * the early delegation {@code StaffElementRenderer.render} does for rests, bar lines, repeats and breath
  * marks — and would silently under-report, clipping visible artwork, the moment the two drift.
  * Running the real renderers cannot drift.
  * <p>

@@ -15,8 +15,8 @@ Consequences for any code that touches verses:
 - Verse indices are 1-based (`Lyric.FIRST_VERSE`). Verse 0 does not exist.
 - Code that iterates verses is iterating *available languages*, not rows to
   paint. Pass the verse index explicitly (`getLyricForVerse`,
-  `isEligibleForLyric`, `LyricConnectorLayout.verseIndex`) rather than defaulting
-  to 1 — the active verse will not always be 1.
+  `LyricConnectorLayout.verseIndex`) rather than defaulting to 1 — the active
+  verse will not always be 1.
 
 ## Where the active verse lives
 
@@ -87,6 +87,51 @@ call site — the write would escape the mutation bracket and undo would not see
 one (`Fragment.capture`): it ends every chain that would otherwise point at an
 element the run no longer contains. It is composed from the deletion repairs, since
 "everything around this run is gone" is exactly what a deletion produces.
+
+## What a chain runs through
+
+Two facts about an element's type decide where a syllable can go and how far a
+chain reaches, and everything about lyric chains and element types is one of
+them:
+
+- **bears syllable text** (`ElementType.bearsSyllableText()`) — a note or a
+  grace note. Only these. A syllable is sung on a pitch, so a rest cannot hold
+  one and neither can any structural marker.
+- **bears a lyric chain** — everything but a repeat. A rest, a barline, a breath
+  mark and a key change all carry a melisma or a hyphenated word onward without
+  ever taking a syllable of their own. A repeat ends a section, so nothing runs
+  through it. This one has no public predicate of its own; it is read only
+  through `interruptsLyricChain()` below.
+
+The type is only half of "can a syllable go here". The other half is the
+grace-host pairing — a note with a paired grace note in front of it takes no
+syllable, because that syllable is the grace's. `StaffElement.canBearSyllable`
+states the two halves together, taking the element in front as a parameter, and
+that is what every caller asks: `Line.canBearSyllableAt` supplies the neighbor
+from a line, and `LyricLayoutBuilder` supplies it from the columns it is laying
+out, so a run of elements belonging to no line — a clipboard fragment, a
+projected insertion — gets the same answer as a live line.
+
+**Inserting an element breaks the chains around it only when it interrupts
+them** — `ElementType.interruptsLyricChain()`, which is the pair read together.
+An element that carries a chain on but can never take a syllable is transparent:
+the word and the melisma are left exactly as they were. Everything else
+interrupts, for one of two opposite reasons. A note or a grace note is a syllable
+slot that arrived empty, so the word can no longer be sung as one word. A repeat
+carries nothing at all.
+
+`LyricRun`'s two insertion repairs read that rule, and they judge the whole run
+at once: one interrupting element in it breaks the chains for the run. The
+glissando strip and the grace-host melisma sync in the same repair do not read
+it — they are about which element a pairing points at rather than about who a
+syllable's neighbors are, and a barline standing between a note and its
+glissando target orphans it however transparent it is to a word.
+
+Layout says the same thing, and has to: a column that bears no syllable leaves an
+active extender running and a pending hyphen open, so a melisma is drawn straight
+through a rest, a barline and a key change. The two walks that close out the end
+of a line — `LyricLayoutBuilder.emitDanglingExtender` and `emitDanglingHyphen` —
+pass over those columns for the same reason.
 
 ## The editor's chain rewrites live on `LyricChainEditor`
 

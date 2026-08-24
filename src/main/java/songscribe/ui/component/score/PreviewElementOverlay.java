@@ -33,7 +33,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.DisplayList;
 import songscribe.ui.renderer.FermataRenderer;
-import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.StaffElementRenderer;
 import songscribe.ui.renderer.RecordingGraphics2D;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -192,7 +192,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
         recorder.reset();
         GraphicUtils.setRenderingHints(recorder);
 
-        NoteRenderer.getInstance().render(invariants, frame, previewElement, recorder);
+        StaffElementRenderer.getInstance().render(invariants, frame, previewElement, recorder);
 
         // The override X remains set, so the decoration renderers place themselves against the
         // same origin as the note head.

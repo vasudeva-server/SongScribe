@@ -20,17 +20,9 @@
 
 package songscribe.ui.edit;
 
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
-import javax.swing.JLayeredPane;
-
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.dom.Line;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.PasteOverlay;
+import songscribe.ui.component.InsertionPointOverlay;
 import songscribe.ui.component.ScoreView;
 import songscribe.undo.UndoController;
 
@@ -40,24 +32,17 @@ import songscribe.undo.UndoController;
  * {@link InsertionPointMode}'s, and this class is one of its clients.
  *
  * <p>Cmd+V with no selection calls {@link #enter()}, which puts the score into the
- * insertion-point mode and raises the paste-mode banner. A click, or Return over a tracked
- * point, calls {@code tryInsertFragment}: {@code LINE_FULL} shows an error dialog and declines
- * the point, leaving the mode live for another try, while {@code INSERTED} and {@code CANCELLED}
- * complete it. Escape, a click outside any line, or the app being backgrounded cancel it
- * instead. In every one of those cases the banner comes down in
- * {@link #insertionPointModeDidEnd}, the mode's single end-of-placement callback.
+ * insertion-point mode; the mode raises the banner {@link #overlayText} names. A click, or
+ * Return over a tracked point, calls {@code tryInsertFragment}: {@code LINE_FULL} shows an
+ * error dialog and declines the point, leaving the mode live for another try, while
+ * {@code INSERTED} and {@code CANCELLED} complete it. Escape, a click outside any line, or the
+ * app being backgrounded cancel it instead.
  *
  * <p>Every index the mode's geometry yields is a valid paste index, so
  * {@link #acceptsInsertionIndex} accepts them all — see its contract for why that is a real
  * rule and not a missing one.
  *
  * <p>See section 5 of {@code docs/clipboard.md} for the full state diagram.
- *
- * <p>"Overlay" means two different things here, deliberately kept distinct: the paste-mode
- * <b>overlay</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
- * hosted on {@link MainFrame}'s {@link JLayeredPane} and owned by this class, while the
- * insertion-point <b>marker</b> is a {@code LineOverlayComponent} in page space owned by
- * {@link InsertionPointMode}.
  */
 public final class PasteModeManager implements InsertionPointMode.Client {
 
@@ -65,54 +50,19 @@ public final class PasteModeManager implements InsertionPointMode.Client {
     private final ScoreView scoreView;
     private final InsertionPointMode insertionPointMode;
 
-    // The banner and the layered-pane bounds listener it needs while a paste is pending.
-    // Both are created in enter() and torn down in insertionPointModeDidEnd().
-    @Nullable
-    private PasteOverlay overlay = null;
-
-    @Nullable
-    private ComponentListener overlayBoundsListener = null;
-
     public PasteModeManager(ScoreView scoreView, InsertionPointMode insertionPointMode) {
         this.scoreView = scoreView;
         this.insertionPointMode = insertionPointMode;
     }
 
     /**
-     * Starts a paste placement: enters {@link InsertionPointMode} and raises the paste-mode
-     * banner over the score. Called from {@code handlePaste}'s no-selection branch, so the
-     * clipboard is already known non-empty and the score already has focus.
-     *
-     * <p>The banner goes up only after the mode has entered, and only when it entered on this
-     * call — a full-bleed layered-pane child added first would shadow the score from the
-     * mode's under-the-pointer lookup, and a banner raised while some other client's placement
-     * is already pending would never come down.
+     * Starts a paste placement by entering {@link InsertionPointMode}. Called from
+     * {@code handlePaste}'s no-selection branch, so the clipboard is already known non-empty
+     * and the score already has focus. No-op when some other client's placement is already
+     * pending.
      */
     public void enter() {
-        if (!insertionPointMode.enter(this)) {
-            return;
-        }
-
-        var layeredPane = MainFrame.getInstance().getLayeredPane();
-        var newOverlay = new PasteOverlay(scoreView);
-        overlay = newOverlay;
-
-        // No layout manager runs over a JLayeredPane child — track the pane's size
-        // ourselves so the overlay stays anchored full-bleed through window resizes.
-        var newOverlayBoundsListener = new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                newOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
-            }
-        };
-        overlayBoundsListener = newOverlayBoundsListener;
-
-        layeredPane.addComponentListener(newOverlayBoundsListener);
-        newOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
-        layeredPane.add(newOverlay, JLayeredPane.PALETTE_LAYER);
-
-        layeredPane.revalidate();
-        layeredPane.repaint();
+        insertionPointMode.enter(this);
     }
 
     // -------------------------------------------------------------------------
@@ -120,10 +70,19 @@ public final class PasteModeManager implements InsertionPointMode.Client {
     // -------------------------------------------------------------------------
 
     /**
+     * @return the paste-mode banner's wording
+     */
+    @Override
+    public InsertionPointOverlay.Text overlayText() {
+        return new InsertionPointOverlay.Text(
+            Strings.get(Strings.INSERTION_MODE_PASTE_TITLE),
+            Strings.get(Strings.INSERTION_MODE_PASTE_HINT));
+    }
+
+    /**
      * Accepts every index the mode offers. A fragment may be pasted before any element of a
-     * line, including before the first and after the last, so paste adds nothing to the
-     * geometric rule the mode already applies — the header and the region past the staff's
-     * right edge are excluded there, and everything left over is a paste target.
+     * line, including before the first and after the last, so paste adds nothing to the rules
+     * the mode already applies for every client; everything they leave over is a paste target.
      *
      * <p>Whether the fragment actually fits is not decided here: it depends on the fragment's
      * width, which is measured by {@code tryInsertFragment} once a point has been chosen, and
@@ -177,28 +136,14 @@ public final class PasteModeManager implements InsertionPointMode.Client {
     }
 
     /**
-     * Takes the paste-mode banner and its bounds listener back down, whether the paste was
-     * placed or abandoned. Both are dropped from the fields first, so a second call — which the
-     * mode's exactly-once promise rules out, but which costs nothing to survive — finds nothing
-     * to remove rather than removing someone else's overlay.
+     * Nothing to take down, and nothing left to do with the point. Paste raises no chrome of its
+     * own — the banner and the insertion marker are both the mode's — and it inserts the fragment
+     * in {@link #insertionPointChosen}, where an error the user can retry from still has the
+     * banner behind it.
+     *
+     * @param outcome ignored; paste has already acted on the point by the time this arrives
      */
     @Override
-    public void insertionPointModeDidEnd(InsertionPointMode.EndReason reason) {
-        var layeredPane = MainFrame.getInstance().getLayeredPane();
-        var boundsListener = overlayBoundsListener;
-        overlayBoundsListener = null;
-
-        if (boundsListener != null) {
-            layeredPane.removeComponentListener(boundsListener);
-        }
-
-        var currentOverlay = overlay;
-        overlay = null;
-
-        if (currentOverlay != null) {
-            layeredPane.remove(currentOverlay);
-            layeredPane.revalidate();
-            layeredPane.repaint();
-        }
+    public void insertionPointModeDidEnd(InsertionPointMode.Outcome outcome) {
     }
 }
