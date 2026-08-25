@@ -66,14 +66,13 @@ final class PreviewElementInserter {
      * when an existing note occupies the locked insertion slot.
      */
     static void handleClick(LineComponent lc, boolean forceInsert) {
-        if (!PreviewElementManager.shouldHandlePreviewElement(lc)) {
+        if (!PreviewElementManager.isPreviewClickTarget(lc)) {
             return;
         }
 
-        // Only handle if this line has the preview element
         var line = lc.getLine();
 
-        if (PreviewElementManager.getCurrentInsertionLine() != lc || line == null) {
+        if (line == null) {
             return;
         }
 
@@ -116,8 +115,8 @@ final class PreviewElementInserter {
             return;
         }
 
-        // shouldHandlePreviewElement (checked at entry) guarantees a preview element;
-        // this guard proves that to the null-checker before deriving the op-name.
+        // isPreviewClickTarget (checked at entry) guarantees a preview element; this guard
+        // proves that to the null-checker before deriving the op-name.
         if (previewElement == null) {
             return;
         }

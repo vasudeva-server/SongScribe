@@ -53,4 +53,18 @@ public final class SongSettingsOpenAction extends DialogOpenAction<SongSettingsD
             Flag.DISABLE_WHEN_PLAYING
         );
     }
+
+    /**
+     * Opens a fresh Song Settings dialog on {@code section}'s tab. The dialog serves one
+     * opening and is disposed on close, which is why it is built per call rather than held.
+     * <p>
+     * The caller must have established that the song is not playing. The action's
+     * {@link Flag#DISABLE_WHEN_PLAYING} greys out the menu item; it does not reach this entry
+     * point, and the dialog it opens is modal.
+     *
+     * @param section the tab to open on
+     */
+    public void openAt(SongSettingsDialog.Section section) {
+        open(dialog -> dialog.show(section));
+    }
 }

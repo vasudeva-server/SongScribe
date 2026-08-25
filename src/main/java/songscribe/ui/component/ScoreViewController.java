@@ -1017,12 +1017,12 @@ public final class ScoreViewController {
      * <p>
      * Every notation object that can be directly selected is deleted here, each through the
      * tracked removal API that owns it, so Delete and the object's own toolbar toggle can
-     * never disagree. The remaining variants are deliberately a no-op rather than falling
-     * through to the whole-line delete.
+     * never disagree. The two remaining selectable kinds are deliberately a no-op rather than
+     * falling through to the whole-line delete.
      * <p>
      * {@link #handleDelete} carries the diagram of how a keystroke reaches each arm below.
      */
-    private void deleteSelectedTarget(Line line, HitTarget target) {
+    private void deleteSelectedTarget(Line line, HitTarget.Selectable target) {
         switch (target) {
             case HitTarget.Slide(var slideElement) -> {
                 var elementIndex = line.getElementIndex(slideElement);
@@ -1096,14 +1096,12 @@ public final class ScoreViewController {
             // what Delete should do with it. A `default` would answer "nothing" silently, which
             // is the failure mode SelectionCoordinator.isSelected avoids for the same reason.
             //
-            // A note is selected as an index range rather than a target, so it never arrives
-            // here at all — the range branch in handleDelete owns it. A grace-note glissando is
-            // not selectable, and the staff line and a lyric are handled by handleDelete before
-            // it reaches here.
-            case HitTarget.Element _,
-                 HitTarget.GraceGlissando _,
-                 HitTarget.StaffLine _,
-                 HitTarget.Lyric _ -> {
+            // The staff line and a lyric are both selectable, and handleDelete owns each: it
+            // deletes the whole line for the one and the syllable for the other before reaching
+            // here. Every kind that is not selectable at all — a note head, which is selected as
+            // an index range, a grace-note glissando and the attribution — is excluded by the
+            // parameter type instead of by an arm.
+            case HitTarget.StaffLine _, HitTarget.Lyric _ -> {
             }
         }
     }

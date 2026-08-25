@@ -38,16 +38,14 @@ import org.jspecify.annotations.Nullable;
  * <h2>How overlapping regions resolve</h2>
  *
  * <p>Rule: of all regions whose shape contains the point, the highest priority wins.
- * Equal priorities are broken by <b>smallest bounding-box area</b>. The priorities, highest
- * first, are {@code LYRIC}, {@code ARTICULATION}/{@code ATTACHMENT}, {@code ACCIDENTAL},
- * {@code ELEMENT}, {@code SLIDE}, {@code HAIRPIN}, {@code ENDING}, {@code TIE}, {@code BEAM},
- * {@code STAFF_LINE}. So a click that lands inside an ending's box and a tie's bounding box but
- * on neither a notehead nor an articulation resolves to the tie, the higher of the two.
+ * Equal priorities are broken by <b>smallest bounding-box area</b>. {@link HitPriority}
+ * declares the order. So a click that lands inside an ending's box and a tie's bounding box
+ * but on neither a notehead nor an articulation resolves to the tie, the higher of the two.
  *
  * <p>The area tiebreak is why a note head sitting inside an ending's box needs no
- * hand-ordering of registrations: {@code ELEMENT} already outranks {@code ENDING}. The
- * tiebreak matters within a band — two articulations whose boxes overlap resolve to the
- * smaller one. Insertion order carries no meaning at all.
+ * hand-ordering of registrations: a note head already outranks an ending. The tiebreak
+ * matters within a band — two articulations whose boxes overlap resolve to the smaller one.
+ * Insertion order carries no meaning at all.
  *
  * @see HitPriority
  */
@@ -143,8 +141,11 @@ public final class HitRegistry {
 
     // Higher priority wins; equal priority is broken by smaller bounding-box area.
     private static boolean winsOver(HitRegion region, double area, HitRegion best, double bestArea) {
-        if (region.priority() != best.priority()) {
-            return region.priority() > best.priority();
+        var rank = region.priority().rank();
+        var bestRank = best.priority().rank();
+
+        if (rank != bestRank) {
+            return rank > bestRank;
         }
 
         return area < bestArea;
@@ -159,16 +160,15 @@ public final class HitRegistry {
         private final List<HitRegion> regions = new ArrayList<>();
 
         /**
-         * Registers one clickable area.
+         * Registers one clickable area. How it resolves against overlapping areas, and whether
+         * {@link #hitTestHover} scans it, both follow from {@code target}.
          *
-         * @param shapeSs       the clickable area in layout space
-         * @param target        what a click inside {@code shapeSs} selects
-         * @param priority      see {@link HitPriority}
-         * @param hoverTestable whether the region takes part in {@link #hitTestHover}
+         * @param shapeSs the clickable area in layout space
+         * @param target  what a click inside {@code shapeSs} addresses
          * @return this builder, for chaining
          */
-        public Builder add(Shape shapeSs, HitTarget target, int priority, boolean hoverTestable) {
-            regions.add(new HitRegion(shapeSs, target, priority, hoverTestable));
+        public Builder add(Shape shapeSs, HitTarget target) {
+            regions.add(new HitRegion(shapeSs, target));
             return this;
         }
 

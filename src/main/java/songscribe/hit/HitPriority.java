@@ -21,11 +21,14 @@
 package songscribe.hit;
 
 /**
- * Priorities for the regions registered in a {@link HitRegistry}. Higher wins: of all
- * regions whose shape contains the click point, the one with the greatest priority is
- * the hit, and equal priorities are broken by smallest bounding-box area.
+ * How the regions registered in a {@link HitRegistry} resolve against one another. Higher
+ * {@link #rank()} wins: of all regions whose shape contains the click point, the one with the
+ * greatest rank is the hit, and equal ranks are broken by smallest bounding-box area.
  *
- * <p>Two parts of this ordering are deliberate and must not be reordered:
+ * <p>Each {@link HitTarget} kind names its own constant, so a region's rank follows from what
+ * it is and is never chosen at a registration site.
+ *
+ * <p>Constants are declared highest rank first, and two parts of that order are deliberate:
  *
  * <ol>
  *   <li>{@link #LYRIC} &gt; {@link #ELEMENT} &gt; {@link #SLIDE} &gt; {@link #HAIRPIN}
@@ -37,57 +40,77 @@ package songscribe.hit;
  *       notes and markings it spans.</li>
  * </ol>
  *
- * <p>Values are spaced so a kind can be slotted between two existing ones without
- * renumbering.
+ * <p>Rank rather than declaration order carries the comparison, because three kinds share a
+ * rank on purpose and fall to the area tiebreak. Ranks are spaced so a kind can be slotted
+ * between two existing ones without renumbering.
  */
-public final class HitPriority {
+public enum HitPriority {
 
     /** A lyric syllable box. */
-    public static final int LYRIC = 100;
+    LYRIC(100),
 
     /** A staccato, accent, tenuto and the like. Above {@link #TIE} by design. */
-    public static final int ARTICULATION = 90;
+    ARTICULATION(90),
 
     /** A fermata, dynamic, metronome or similar attached marking. Above {@link #TIE} by design. */
-    public static final int ATTACHMENT = 90;
+    ATTACHMENT(90),
 
     /**
      * A trill and its wavy-line extension. Ranks with the other note-attached markings: the
      * stacker gives it a reservation of its own, so it overlaps neither of them.
      */
-    public static final int TRILL = 90;
+    TRILL(90),
 
     /** A note's accidental — above the note so the sub-element stays reachable. */
-    public static final int ACCIDENTAL = 85;
+    ACCIDENTAL(85),
 
     /** A note head. */
-    public static final int ELEMENT = 80;
+    ELEMENT(80),
 
     /** A glissando or fall. */
-    public static final int SLIDE = 70;
+    SLIDE(70),
 
     /** A crescendo or diminuendo. */
-    public static final int HAIRPIN = 60;
+    HAIRPIN(60),
 
     /** A volta / ending bracket. Below {@link #ELEMENT}, so notes inside it stay clickable. */
-    public static final int ENDING = 50;
+    ENDING(50),
 
     /**
      * A tuplet bracket and number. Above {@link #TIE} — the bracket's box is a real
      * reservation rather than an over-covering hull — and below {@link #ELEMENT}, so the
      * notes it spans stay clickable, for the same reason as {@link #ENDING}.
      */
-    public static final int TUPLET = 45;
+    TUPLET(45),
 
     /** A tie or slur, whose hit shape is a bounding box that over-covers what it spans. */
-    public static final int TIE = 40;
+    TIE(40),
 
     /** A beam group. */
-    public static final int BEAM = 30;
+    BEAM(30),
+
+    /**
+     * The attribution block above the first staff line. It outranks only {@link #STAFF_LINE},
+     * the fallback: the stacker places the block clear of the system extents, so nothing
+     * overlaps it today, and ranking it below every kind that names a specific piece of
+     * notation means any overlap that ever arises resolves to the more precise target rather
+     * than to the block.
+     */
+    ATTRIBUTION(20),
 
     /** The staff line itself — the fallback when nothing on the line was hit. */
-    public static final int STAFF_LINE = 10;
+    STAFF_LINE(10);
 
-    private HitPriority() {
+    private final int rank;
+
+    HitPriority(int rank) {
+        this.rank = rank;
+    }
+
+    /**
+     * @return this kind's resolution rank, greater beating lesser
+     */
+    public int rank() {
+        return rank;
     }
 }

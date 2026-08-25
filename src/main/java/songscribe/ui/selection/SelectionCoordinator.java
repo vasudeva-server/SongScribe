@@ -270,7 +270,7 @@ public final class SelectionCoordinator implements Disposable {
      * further to clear. The caller is responsible for having activated the target's line
      * first.
      */
-    public void select(HitTarget target) {
+    public void select(HitTarget.Selectable target) {
         selected = new Selection.Target(target);
     }
 
@@ -446,8 +446,7 @@ public final class SelectionCoordinator implements Disposable {
      * A whole-line selection reads as {@link HitTarget.StaffLine} here rather than as null.
      * Callers that mean "a decoration is selected" want {@link #hasDecorationSelection}.
      */
-    @Nullable
-    public HitTarget getSelectedTarget() {
+    public HitTarget.@Nullable Selectable getSelectedTarget() {
         return (selected instanceof Selection.Target(var target)) ? target : null;
     }
 
@@ -471,8 +470,10 @@ public final class SelectionCoordinator implements Disposable {
      * alone would report the tie selected on every line in the song.
      * <p>
      * The switch is exhaustive on purpose. A {@code default} arm would silently answer
-     * {@code false} for a variant added later, which is exactly how the staff line went
-     * unanswered before it was folded in.
+     * {@code false} for a kind added later, which is exactly how the staff line went
+     * unanswered before it was folded in. Every {@link HitTarget.Selectable} shares one answer,
+     * so they share one arm; a kind that is not {@code Selectable} has to be named, because
+     * whether it can ever read as selected is the decision the arm records.
      */
     public boolean isSelected(HitTarget target, int lineIndex) {
         if (target instanceof HitTarget.Tie(var tie)) {
@@ -493,19 +494,13 @@ public final class SelectionCoordinator implements Disposable {
                 // skips this scan.
                 yield range != null && range.contains(range.line().getElementIndex(element));
             }
-            case HitTarget.Lyric _ -> isSelectedTarget(target);
-            case HitTarget.Slide _ -> isSelectedTarget(target);
-            case HitTarget.GraceGlissando _ -> isSelectedTarget(target);
-            case HitTarget.Hairpin _ -> isSelectedTarget(target);
-            case HitTarget.Ending _ -> isSelectedTarget(target);
-            case HitTarget.StaffLine _ -> isSelectedTarget(target);
-            case HitTarget.Articulation _ -> isSelectedTarget(target);
-            case HitTarget.Attachment _ -> isSelectedTarget(target);
-            case HitTarget.Accidental _ -> isSelectedTarget(target);
             case HitTarget.Tie _ -> throw new AssertionError("HitTarget.Tie is handled above the gate");
-            case HitTarget.Beam _ -> isSelectedTarget(target);
-            case HitTarget.Trill _ -> isSelectedTarget(target);
-            case HitTarget.Tuplet _ -> isSelectedTarget(target);
+
+            // A grace-note glissando is refused with an explanation and the attribution is a
+            // double-click target only, so neither can be what a Selection.Target holds.
+            case HitTarget.GraceGlissando _, HitTarget.Attribution _ -> false;
+
+            case HitTarget.Selectable _ -> isSelectedTarget(target);
         };
     }
 
@@ -563,11 +558,10 @@ public final class SelectionCoordinator implements Disposable {
      * e.g. after an undo/redo that removed the selected notation outright. No-op if the
      * current selection is still valid, or if it is not a target.
      * <p>
-     * One rule covers every {@link HitTarget} variant, rather than one arm per variant.
-     * {@link HitTarget#owner()} names the element the target hangs off, so walking to the
-     * root of the parent chain and asking {@link #isOnLine} whether that root is still on
-     * the line answers for an articulation on a note, a tie, a hairpin and a note itself
-     * alike.
+     * One rule covers every kind a selection can hold, rather than one arm per kind.
+     * {@link HitTarget.Selectable#owner()} names the element the target hangs off, so walking
+     * to the root of the parent chain and asking {@link #isOnLine} whether that root is still
+     * on the line answers for an articulation on a note, a tie and a hairpin alike.
      *
      * @return whether the selection was cleared
      */

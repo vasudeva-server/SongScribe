@@ -111,13 +111,14 @@ public abstract class BaseTitleComponent extends ScoreComponent {
      * that swallows clicks aimed at the staff below it. The gesture reveals what is
      * already on the page; it is not the way to put something there.
      * <p>
-     * The dialog is built by {@code SONG_SETTINGS_ACTION} so the gesture and the menu item
-     * build it the one way, and it is shown and dropped: a dialog serves one opening and is
-     * disposed on close. That action constant is populated by {@code Actions.initialize},
-     * which has run before any score component is inside a visible {@code ScoreView}; it
-     * is deliberately not null-guarded, so a startup-ordering regression fails loudly
-     * rather than becoming a gesture that silently does nothing. The gesture's playback
-     * condition is applied by the caller and is deliberately not re-derived here.
+     * The dialog is opened through {@code SONG_SETTINGS_ACTION.openAt}, so the gesture and the
+     * menu item go through the one opening path, and it is shown and dropped: a dialog serves
+     * one opening and is disposed on close. That action constant is populated by
+     * {@code Actions.initialize}, which has run before any score component is inside a
+     * visible {@code ScoreView}; it is deliberately not null-guarded, so a
+     * startup-ordering regression fails loudly rather than becoming a gesture that silently
+     * does nothing. The gesture's playback condition is applied by the caller and is
+     * deliberately not re-derived here.
      */
     @Override
     public boolean openEditor() {
@@ -125,7 +126,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return false;
         }
 
-        Actions.SONG_SETTINGS_ACTION.newDialog().show(editorSection());
+        Actions.SONG_SETTINGS_ACTION.openAt(editorSection());
         return true;
     }
 

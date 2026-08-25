@@ -20,6 +20,7 @@
 package songscribe.ui.action;
 
 import java.awt.event.ActionEvent;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
@@ -87,6 +88,22 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
      * reached both from the menu action and from {@code MainFrame.handlePrefs()}.
      */
     public void open() {
+        open(dialog -> dialog.setVisible(true));
+    }
+
+    /**
+     * Shows this action's dialog through {@code show} rather than through a plain
+     * {@code setVisible}, so a subclass offering a dialog-specific opening — landing on a
+     * particular tab, say — keeps the already-open check, the tracking and the release that
+     * {@link #open()} performs, instead of building and showing a window of its own.
+     * <p>
+     * {@code show} is the only step that varies. It receives a dialog that has never been
+     * shown, and must put it on screen; it must not retain it, since a dialog serves one
+     * opening and is disposed on close.
+     *
+     * @param show puts the freshly built dialog on screen
+     */
+    protected void open(Consumer<? super T> show) {
         var current = openDialog;
 
         if (current != null && current.isShowing()) {
@@ -96,7 +113,7 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
         var dialog = newDialog();
         openDialog = dialog;
-        dialog.setVisible(true);
+        show.accept(dialog);
 
         // A modal show returns only once the window is gone, and a show cancelled by getData()
         // never put one up. Either way the dialog is spent, so let go of it rather than hold a
@@ -107,12 +124,13 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
     }
 
     /**
-     * Builds a new dialog. The caller shows it and drops it: a dialog serves one opening and
-     * is disposed on close, so nothing may hold one past that.
+     * Builds a new dialog. Reachable only through {@link #open(Consumer)}, which shows it and
+     * drops it: a dialog serves one opening and is disposed on close, so nothing may hold one
+     * past that.
      *
      * @return a dialog that has never been shown
      */
-    public T newDialog() {
+    protected T newDialog() {
         return dialogFactory.apply(getMainFrame());
     }
 }

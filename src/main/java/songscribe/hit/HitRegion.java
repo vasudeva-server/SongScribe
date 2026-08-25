@@ -35,13 +35,27 @@ import java.awt.Shape;
  * spaces relative to the staff midline, positive downward. A click point is converted
  * into that space once, at query time.
  *
- * @param shapeSs       the clickable area, in layout space (staff spaces)
- * @param target        what a click inside {@code shapeSs} selects
- * @param priority      resolution rank among overlapping regions; see {@link HitPriority}
- * @param hoverTestable whether this region takes part in the mouse-move query
- *                      ({@link HitRegistry#hitTestHover}). Stated explicitly at each
- *                      registration site rather than inferred from {@code priority}, so
- *                      that a later priority change cannot silently alter which regions
- *                      the hover path scans.
+ * <p>How the region resolves against the ones it overlaps, and whether the mouse-move query
+ * scans it, both follow from what it addresses rather than from anything chosen where it is
+ * registered — so two regions addressing the same kind can never disagree about either.
+ *
+ * @param shapeSs the clickable area, in layout space (staff spaces)
+ * @param target  what a click inside {@code shapeSs} addresses
  */
-public record HitRegion(Shape shapeSs, HitTarget target, int priority, boolean hoverTestable) {}
+public record HitRegion(Shape shapeSs, HitTarget target) {
+
+    /**
+     * @return the resolution rank of the kind this region addresses; see {@link HitPriority}
+     */
+    public HitPriority priority() {
+        return target.priority();
+    }
+
+    /**
+     * @return {@code true} when this region takes part in the mouse-move query,
+     *         {@link HitRegistry#hitTestHover}
+     */
+    public boolean hoverTestable() {
+        return target.hoverTestable();
+    }
+}

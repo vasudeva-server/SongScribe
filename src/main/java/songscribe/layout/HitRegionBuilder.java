@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Articulation;
 import songscribe.dom.Attachment;
+import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
@@ -43,7 +44,6 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.LineThickness;
-import songscribe.hit.HitPriority;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 
@@ -55,35 +55,41 @@ import songscribe.hit.HitTarget;
  * {@code add} calls:
  *
  * <pre>
- *   LAYOUT SOURCE                                 TARGET                    PRIORITY
+ *   LAYOUT SOURCE                                 TARGET
  *
- *   Line elements + element columns          ──▶  Element                   ELEMENT
+ *   Line elements + element columns          ──▶  Element
  *     (via ElementHitGeometry, expanded)
- *   LayoutResult.getLyricBoxes               ──▶  Lyric                     LYRIC
- *     (+ lyric row top, midline-relative)              (hover-testable)
- *   decorationLayouts ▸ Hairpin              ──▶  Hairpin                   HAIRPIN
- *   decorationLayouts ▸ Ending               ──▶  Ending                    ENDING
- *   LayoutResult.getSlideLayout ▸ glissando  ──▶  Slide / GraceGlissando    SLIDE
+ *   LayoutResult.getLyricBoxes               ──▶  Lyric
+ *     (+ lyric row top, midline-relative)
+ *   decorationLayouts ▸ Hairpin              ──▶  Hairpin
+ *   decorationLayouts ▸ Ending               ──▶  Ending
+ *   LayoutResult.getSlideLayout ▸ glissando  ──▶  Slide / GraceGlissando
  *     (four-point strip)
- *   LayoutResult.getSlideLayout ▸ fall       ──▶  Slide / GraceGlissando    SLIDE
+ *   LayoutResult.getSlideLayout ▸ fall       ──▶  Slide / GraceGlissando
  *     (glyph bounding box)
- *   decorationLayouts ▸ Articulation         ──▶  Articulation              ARTICULATION
- *   decorationLayouts ▸ five Attachment      ──▶  Attachment                ATTACHMENT
+ *   decorationLayouts ▸ Articulation         ──▶  Articulation
+ *   decorationLayouts ▸ five Attachment      ──▶  Attachment
  *     subtypes, each registered explicitly
- *   decorationLayouts ▸ Trill                ──▶  Trill                     TRILL
+ *   decorationLayouts ▸ Trill                ──▶  Trill
  *     (X narrowed to the drawn ink:
  *      tr glyph ∪ wavy line)
- *   decorationLayouts ▸ Tuplet               ──▶  Tuplet                    TUPLET
+ *   decorationLayouts ▸ Tuplet               ──▶  Tuplet
  *     (number ink box, plus the sloped
  *      bracket quad when bracketed)
- *   NoteGeometry.getAccidentalBoundsSs       ──▶  Accidental                ACCIDENTAL
+ *   NoteGeometry.getAccidentalBoundsSs       ──▶  Accidental
  *     (+ note center, midline-relative)
- *   LayoutResult.TieLayout control points     ──▶  Tie                      TIE
+ *   LayoutResult.TieLayout control points    ──▶  Tie
  *     (control-point bounding box)
- *   LayoutResult.BeamLayout ▸ stems           ──▶  Beam                     BEAM
+ *   LayoutResult.BeamLayout ▸ stems          ──▶  Beam
  *     (whole-group bounding box)
- *   staff header extent — no layout map      ──▶  StaffLine                 STAFF_LINE
+ *   decorationLayouts ▸ Attribution          ──▶  Attribution
+ *     (first line only; drawn box)
+ *   staff header extent — no layout map      ──▶  StaffLine
  * </pre>
+ *
+ * <p>How each region resolves against the ones it overlaps, and whether the mouse-move query
+ * scans it, are properties of the target kind and are declared on {@link HitTarget}. Nothing
+ * here chooses either.
  *
  * <p><b>Registration happens at layout, never at render.</b> Everything here is built from data
  * the layout pipeline has already produced, so a line's hit geometry exists from the moment its
@@ -149,6 +155,7 @@ public final class HitRegionBuilder {
         addAccidentals(line, layoutResult, builder);
         addTies(line, layoutResult, builder);
         addBeams(line, layoutResult, builder);
+        addAttribution(layoutResult, builder);
         addStaffLine(line, builder);
 
         return builder.build();
@@ -172,16 +179,12 @@ public final class HitRegionBuilder {
             var rectSs = new Rectangle2D.Double();
             ElementHitGeometry.elementHitRectSs(
                 layoutResult.getElementXSs(element), element, rectSs, true);
-            addRegion(builder, rectSs, new HitTarget.Element(element), HitPriority.ELEMENT, false);
+            addRegion(builder, rectSs, new HitTarget.Element(element));
         }
     }
 
     /**
      * Registers each laid-out lyric syllable box.
-     * <p>
-     * Lyrics are the only kind that sets {@code hoverTestable}. The mouse-move path suppresses
-     * the preview element over lyric text, and it fires on every pixel of pointer motion, so it
-     * must be able to ask about lyrics alone rather than resolving the whole registry.
      */
     private static void addLyrics(
         Line line,
@@ -199,29 +202,20 @@ public final class HitRegionBuilder {
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {
                 var rectSs = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
-                addRegion(builder, 
-                    rectSs, new HitTarget.Lyric(element, box.verseIndex()), HitPriority.LYRIC, true);
+                addRegion(builder, rectSs, new HitTarget.Lyric(element, box.verseIndex()));
             }
         }
     }
 
     private static void addHairpins(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Hairpin>getDecorationLayoutsByType(Hairpin.class)) {
-            addRegion(builder, 
-                decorationHitRectSs(entry.getValue()),
-                new HitTarget.Hairpin(entry.getKey()),
-                HitPriority.HAIRPIN,
-                false);
+            addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Hairpin(entry.getKey()));
         }
     }
 
     private static void addEndings(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Ending>getDecorationLayoutsByType(Ending.class)) {
-            addRegion(builder, 
-                decorationHitRectSs(entry.getValue()),
-                new HitTarget.Ending(entry.getKey()),
-                HitPriority.ENDING,
-                false);
+            addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Ending(entry.getKey()));
         }
     }
 
@@ -251,7 +245,7 @@ public final class HitRegionBuilder {
 
             // A fall is one glyph that cannot overlap anything else, so its drawn box is exact.
             if (fallBoundsSs != null) {
-                addRegion(builder, fallBoundsSs, target, HitPriority.SLIDE, false);
+                addRegion(builder, fallBoundsSs, target);
                 continue;
             }
 
@@ -261,18 +255,14 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            addRegion(builder, glissandoStripSs(glissando), target, HitPriority.SLIDE, false);
+            addRegion(builder, glissandoStripSs(glissando), target);
         }
     }
 
     /** Registers each articulation's expanded hit rect. */
     private static void addArticulations(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Articulation>getDecorationLayoutsByType(Articulation.class)) {
-            addRegion(builder, 
-                decorationHitRectSs(entry.getValue()),
-                new HitTarget.Articulation(entry.getKey()),
-                HitPriority.ARTICULATION,
-                false);
+            addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Articulation(entry.getKey()));
         }
     }
 
@@ -305,11 +295,7 @@ public final class HitRegionBuilder {
         HitRegistry.Builder builder) {
 
         for (var entry : layoutResult.<T>getDecorationLayoutsByType(type)) {
-            addRegion(builder, 
-                decorationInkRectSs(entry.getValue()),
-                new HitTarget.Attachment(entry.getKey()),
-                HitPriority.ATTACHMENT,
-                false);
+            addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attachment(entry.getKey()));
         }
     }
 
@@ -340,7 +326,7 @@ public final class HitRegionBuilder {
                 layout.ySs(),
                 rightXSs - glyphLeftXSs,
                 layout.heightSs() + layout.marginSs());
-            addRegion(builder, rectSs, new HitTarget.Trill(trill), HitPriority.TRILL, false);
+            addRegion(builder, rectSs, new HitTarget.Trill(trill));
         }
     }
 
@@ -386,7 +372,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            addRegion(builder, shapeSs, new HitTarget.Tuplet(tuplet), HitPriority.TUPLET, false);
+            addRegion(builder, shapeSs, new HitTarget.Tuplet(tuplet));
         }
     }
 
@@ -417,7 +403,7 @@ public final class HitRegionBuilder {
                 noteCenterYSs + boundsSs.topSs(),
                 boundsSs.widthSs(),
                 boundsSs.botSs() - boundsSs.topSs());
-            addRegion(builder, rectSs, new HitTarget.Accidental(element), HitPriority.ACCIDENTAL, false);
+            addRegion(builder, rectSs, new HitTarget.Accidental(element));
         }
     }
 
@@ -439,7 +425,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tie), HitPriority.TIE, false);
+            addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tie));
         }
     }
 
@@ -455,11 +441,22 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            addRegion(builder, 
-                beamGroupRectSs(line, beam, beamLayout, layoutResult),
-                new HitTarget.Beam(beam),
-                HitPriority.BEAM,
-                false);
+            addRegion(builder, beamGroupRectSs(line, beam, beamLayout, layoutResult), new HitTarget.Beam(beam));
+        }
+    }
+
+    /**
+     * Registers the attribution block, which appears in exactly one line's decoration layouts —
+     * the first, the only line {@code VerticalStackingCalculator.stackAttribution} places it on —
+     * so the loop needs no line-index test.
+     * <p>
+     * The rect is the drawn box with nothing added: {@value Attribution#ATTRIBUTION_MARGIN_BOTTOM_SS}
+     * staff spaces of blank air sit directly above the staff, and folding that into the clickable
+     * area would take clicks aimed at the music.
+     */
+    private static void addAttribution(LayoutResult layoutResult, HitRegistry.Builder builder) {
+        for (var entry : layoutResult.<Attribution>getDecorationLayoutsByType(Attribution.class)) {
+            addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attribution());
         }
     }
 
@@ -476,7 +473,7 @@ public final class HitRegionBuilder {
             -STAFF_HIT_RADIUS_SS,
             headerRightEdgeSs,
             2 * STAFF_HIT_RADIUS_SS);
-        addRegion(builder, rectSs, new HitTarget.StaffLine(), HitPriority.STAFF_LINE, false);
+        addRegion(builder, rectSs, new HitTarget.StaffLine());
     }
 
     // ==========================================================================
@@ -674,14 +671,8 @@ public final class HitRegionBuilder {
      * through untouched: a closed path has no single pair of far edges to extend, and the two
      * that exist — a glissando strip and a sloped tuplet bracket — are generous shapes already.
      */
-    private static void addRegion(
-        HitRegistry.Builder builder,
-        Shape shapeSs,
-        HitTarget target,
-        int priority,
-        boolean hoverTestable) {
-
-        builder.add(inclusiveOf(shapeSs), target, priority, hoverTestable);
+    private static void addRegion(HitRegistry.Builder builder, Shape shapeSs, HitTarget target) {
+        builder.add(inclusiveOf(shapeSs), target);
     }
 
     /** @see #addRegion */

@@ -51,6 +51,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.AttachmentDialogController;
 import songscribe.ui.dialog.KeyChangeDialogController;
+import songscribe.ui.dialog.SongSettingsDialog;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.InsertionPointMode;
@@ -766,9 +767,9 @@ public class LineComponent extends ScoreComponent
         //
         // This guard is the one that protects the lyric branch, handleClick, isWithinHeaderX
         // and PreviewElementManager.handleClick — none of which go near the double-click
-        // gesture. isSelectionActive's own playback test, in isStaffEditGesture below, asks the
-        // sequencer a different question, as that method's Javadoc explains; the two reads look
-        // like duplicates, but this is the load-bearing one.
+        // gesture. isSelectionActive's own playback test, which gates the three notation
+        // gestures below, asks the sequencer a different question, as that method's Javadoc
+        // explains; the two reads look like duplicates, but this is the load-bearing one.
         if (PlaybackController.isPlaying()) {
             return;
         }
@@ -795,26 +796,42 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // Both double-click-to-edit gestures ask about the same point, so it is resolved once
-        // here and shared, as hitTestViewPoint's own contract asks and as mousePressed already
-        // does with its cascade result. The shared gate is hoisted for the same reason: it
-        // answers one question about the event, not one per gesture, and pinning line to a
-        // local here is what lets both gestures take it as a plain non-null argument.
+        // All four double-click-to-edit gestures ask about the same point, so it is resolved
+        // once here and shared, as hitTestViewPoint's own contract asks and as mousePressed
+        // already does with its cascade result. Pinning line to a local here is what lets the
+        // three that act on notation take it as a plain non-null argument.
+        //
+        // Shift belongs on the outer gate rather than inside any one gesture: shift+click
+        // extends the selection, and every gesture below runs before the selection handler sees
+        // the click, so any of them claiming a shift+double-click would discard the selection
+        // the user was building.
+        //
+        // isSelectionActive gates only the three that act on notation. It requires SELECT mode —
+        // a plain double-click in SELECT mode, or one in EDIT mode only once mousePressed has
+        // already switched permanently to SELECT, which Alt does anywhere and a plain click does
+        // on the staff lines in the clef/key signature column — and it additionally rules out
+        // playback. The attribution runs outside it on purpose; see its own method.
         var clickedLine = line;
 
-        if (isStaffEditGesture(e) && clickedLine != null) {
+        if (UIUtils.isLeftDoubleClick(e) && !e.isShiftDown() && clickedLine != null) {
             var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
-            if (editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
+            if (editDoubleClickedAttribution(clickHit)) {
                 return;
             }
 
-            if (editDoubleClickedAttachment(clickHit, clickedLine)) {
-                return;
-            }
+            if (selectionHandler.isSelectionActive(e)) {
+                if (editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
+                    return;
+                }
 
-            if (editDoubleClickedKeySignature(e, clickedLine)) {
-                return;
+                if (editDoubleClickedAttachment(clickHit, clickedLine)) {
+                    return;
+                }
+
+                if (editDoubleClickedKeySignature(e, clickedLine)) {
+                    return;
+                }
             }
         }
 
@@ -831,26 +848,6 @@ public class LineComponent extends ScoreComponent
         }
 
         PreviewElementManager.handleClick(this);
-    }
-
-    /**
-     * Answers whether {@code e} is a staff double-click-to-edit gesture.
-     * <p>
-     * The button-and-count test comes from {@link songscribe.util.UIUtils#isLeftDoubleClick};
-     * this method adds the staff conditions on top: shift exclusion and
-     * {@code isSelectionActive}. The gesture is a plain double-click in SELECT mode; in EDIT
-     * mode it needs {@link #mousePressed} to have already switched permanently to SELECT mode
-     * by the time the click arrives, which Alt does anywhere and a plain click does on the
-     * staff lines in the clef/key signature column. {@code isSelectionActive} is the gate for
-     * exactly those cases, and additionally rules out playback. Shift is excluded separately:
-     * shift+click extends the selection, and callers run this before the selection handler sees
-     * the click, so without the guard a shift+double-click would discard the selection the user
-     * was building.
-     */
-    private boolean isStaffEditGesture(MouseEvent e) {
-        return UIUtils.isLeftDoubleClick(e)
-            && !e.isShiftDown()
-            && selectionHandler.isSelectionActive(e);
     }
 
     /**
@@ -876,8 +873,8 @@ public class LineComponent extends ScoreComponent
      * Opens the lyric editor on the double-clicked element {@code clickHit} resolved to,
      * returning true when it did.
      * <p>
-     * The staff-line route into {@link #isStaffEditGesture} never reaches the editor,
-     * since no element sits in the clef/key signature column for {@code clickHit} to resolve to.
+     * The staff-line route that makes selection active never reaches the editor, since no
+     * element sits in the clef/key signature column for {@code clickHit} to resolve to.
      */
     private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit, Line line) {
         var view = getScoreView();
@@ -905,6 +902,41 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
+     * Opens Song Settings on its Attribution tab when the double-click landed on the attribution
+     * block, returning true when it opened.
+     * <p>
+     * This runs outside the {@code isSelectionActive} test the three notation gestures sit
+     * behind, on purpose, so the gesture works in EDIT mode as well as SELECT. That matches the
+     * title and the subtitle, which reach the same dialog from any mode through
+     * {@link ScoreComponent#openEditor}. It is still inside the shift exclusion, like every
+     * other gesture there.
+     * <p>
+     * The preview element takes precedence: the attribution's bottom edge can reach down into
+     * the insertable pitch range, and claiming the click there would make those staff positions
+     * unreachable in EDIT mode. Within that band the click belongs to the preview and the block
+     * is not double-clickable; above it the preview is already cleared and the dialog opens.
+     * <p>
+     * Answering false is safe. When the hit was not the attribution nothing has been claimed,
+     * and when the preview owns the click, letting it fall through to
+     * {@link PreviewElementManager#handleClick} is exactly the intended outcome. This probe
+     * cannot lean on the reason {@link #editDoubleClickedAttachment} gives — it runs outside
+     * {@code isSelectionActive}, so selection need not be active and {@code handleClick} need
+     * not consume the click.
+     */
+    private boolean editDoubleClickedAttribution(@Nullable HitTarget clickHit) {
+        if (!(clickHit instanceof HitTarget.Attribution)) {
+            return false;
+        }
+
+        if (PreviewElementManager.isPreviewClickTarget(this)) {
+            return false;
+        }
+
+        Actions.SONG_SETTINGS_ACTION.openAt(SongSettingsDialog.Section.ATTRIBUTION);
+        return true;
+    }
+
+    /**
      * Opens the edit dialog for the double-clicked attachment {@code clickHit} resolved to,
      * returning true when one opened.
      * <p>
@@ -916,8 +948,9 @@ public class LineComponent extends ScoreComponent
      * <p>
      * Answering false is safe even when the click really did land on an attachment.
      * {@link #mouseClicked} hands the click to {@code handleClick} next, which consumes every
-     * click while selection is active — and {@link #isStaffEditGesture}, already true
-     * to have got here, says it is. So nothing is inserted at the click point either way.
+     * click while selection is active — and the {@code isSelectionActive} test this runs
+     * inside, already true to have got here, says it is. So nothing is inserted at the click
+     * point either way.
      */
     private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit, Line line) {
         if (!(clickHit instanceof HitTarget.Attachment(var attachment))) {

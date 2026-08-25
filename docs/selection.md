@@ -125,6 +125,26 @@ element the rectangle stood for.
 - **A mid-line key signature's accidentals** edit that change directly, as an
   ordinary column hit-tested like any other.
 
-These are edit targets, not selection targets. What happens once one resolves —
-opening a dialog, routing a commit, reporting a refusal — belongs to the
-controller, not to hit-testing. See [key-signatures.md](key-signatures.md).
+What happens once one resolves — opening a dialog, routing a commit, reporting a
+refusal — belongs to the controller, not to hit-testing. See
+[key-signatures.md](key-signatures.md).
+
+## An edit target need not be a selection target
+
+Addressing something with a click and selecting it are separate questions, and a
+target answers them independently. The three key targets above answer only the
+first, and so does the attribution block above the first staff: double-clicking
+it opens the song's settings, while pressing it selects nothing and leaves the
+rubber band armed exactly as the empty space around it does.
+
+The two kinds are reached differently and that difference is not incidental. The
+key targets are resolved by asking the layout directly, so they never enter the
+registry of clickable areas at all. The attribution block is in that registry,
+because it has to resolve against the notation it could overlap — which is a
+question only the registry can answer, and one the layout cannot.
+
+Being in the registry is therefore not what makes something selectable. The
+vocabulary of clickable things separates the two: only a kind declared selectable
+can become the selection, so the selection and delete paths are typed to accept
+nothing else and never have to rule a kind out. Adding a new clickable thing that
+is edited rather than selected costs no decision on either path.

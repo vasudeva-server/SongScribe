@@ -30,8 +30,7 @@ import songscribe.ui.component.ScoreViewController;
 public class MusicSelectionDidChangeNotification extends Message {
 
     private final int selectionSize;
-    @Nullable
-    private final HitTarget selectedTarget;
+    private final HitTarget.@Nullable Selectable selectedTarget;
     private final ScoreView scoreView;
 
     public MusicSelectionDidChangeNotification(ScoreView scoreView) {
@@ -52,7 +51,7 @@ public class MusicSelectionDidChangeNotification extends Message {
      * Returns the score's single selected target when the message was posted, or null if
      * nothing was selected by identity.
      */
-    public @Nullable HitTarget getSelectedTarget() {
+    public HitTarget.@Nullable Selectable getSelectedTarget() {
         return selectedTarget;
     }
 

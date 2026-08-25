@@ -46,10 +46,12 @@ import songscribe.message.mutation.Mutation;
  * range" stop being rules anyone enforces and become what one field means.
  * <p>
  * <b>Why {@code HitTarget} is wrapped rather than extended.</b> {@link HitTarget}'s contract is
- * "a thing a click resolves to", and {@link HitTarget#owner()} answers for every variant of it.
- * A {@code Range} is neither: {@code HitRegistry.hitTest} can never produce one, and it owns no
- * single element. Adding it there would put an unreachable arm in every switch on the registry
- * and renderer path, so it is composed in here instead.
+ * "a thing a click resolves to", and {@link HitTarget.Selectable#owner()} answers for every kind
+ * a press can select. A {@code Range} is neither: {@code HitRegistry.hitTest} can never produce
+ * one, and it owns no single element. Adding it there would put an unreachable arm in every
+ * switch on the registry and renderer path, so it is composed in here instead. A target this
+ * record can hold is narrowed to {@code Selectable} for the same reason from the other side:
+ * a kind a press never selects cannot be stored, so nothing downstream has to rule it out.
  * <p>
  * <b>Why the variants are immutable records.</b> With immutable variants, "the selection
  * changed" and "the field was assigned" are the same event, which is the entire payoff — there
@@ -256,5 +258,5 @@ public sealed interface Selection {
      * have one source of truth for it rather than two that can disagree — and because
      * {@link HitTarget.StaffLine} names the line as a whole and has no owner to ask.
      */
-    record Target(HitTarget target) implements Selection { }
+    record Target(HitTarget.Selectable target) implements Selection { }
 }

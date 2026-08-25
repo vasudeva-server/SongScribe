@@ -859,6 +859,30 @@ public final class PreviewElementManager {
     }
 
     /**
+     * Returns whether the preview element owns a click on {@code lc} right now.
+     * <p>
+     * The preview element is not a hit region, so a competing click gesture cannot ask the hit
+     * registry whether it owns a click there — it has to ask here instead. Ownership is all this
+     * settles: {@link PreviewElementInserter#handleClick} is the only thing that may act on a
+     * click it owns, and it may still decline that click for reasons of its own — a position the
+     * auto-maintained terminal blocks, an element that may not be replaced, a cancelled
+     * confirmation. A competing gesture must stand down either way, since the alternative is two
+     * gestures both believing the click is theirs.
+     * <p>
+     * The answer is point-dependent, not merely mode-dependent: {@link #trackMouse} clears the
+     * preview outside {@link Staff#MIN_STAFF_POSITION_SP} .. {@link Staff#MAX_STAFF_POSITION_SP},
+     * so the same line can answer differently from one click to the next depending on where
+     * within it the pointer lands.
+     *
+     * @param lc the line the click landed on
+     * @return {@code true} when the preview element is live on {@code lc}, so the click is the
+     *         inserter's to answer
+     */
+    static boolean isPreviewClickTarget(LineComponent lc) {
+        return shouldHandlePreviewElement(lc) && hasPreviewElement(lc);
+    }
+
+    /**
      * Restores the preview element from the current mouse position on the given line.
      * Called when state changes (mode, playback, Alt key) may affect preview element visibility.
      */

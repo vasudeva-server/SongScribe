@@ -28,8 +28,13 @@ import songscribe.dom.StaffElement;
 /**
  * The complete vocabulary of things a click on a staff line can address.
  *
- * <p>Every target names what it selects <b>by object reference</b>, never by position
- * in the line. An index-addressed target goes silently wrong on mutation: select
+ * <p>Addressing something and selecting it are different questions, and {@link Selectable}
+ * is which of the two a kind answers. A kind outside it can be resolved to and acted on —
+ * a double-click opens an editor, say — but can never become the selection, so the
+ * selection and delete paths never see one.
+ *
+ * <p>Every {@code Selectable} names what it selects <b>by object reference</b>, never by
+ * position in the line. An index-addressed target goes silently wrong on mutation: select
  * element 5, delete element 2, and index 5 now names a different but perfectly live
  * element — nothing dangles, the selection simply points at the wrong note. Identity
  * addressing removes that failure mode rather than trying to detect it. Where an index
@@ -42,21 +47,53 @@ import songscribe.dom.StaffElement;
 public sealed interface HitTarget {
 
     /**
-     * The element this target hangs off, used by the selection layer's single liveness
-     * rule — walk the parent chain and check that the element is still on a line. Every
-     * variant answers this in one line, so revalidation needs no per-variant switch.
-     *
-     * @return the owning element, or {@code null} for {@link StaffLine}, which addresses
-     *         the staff line itself rather than anything on it
+     * @return how a region addressing this kind resolves against the regions it overlaps
      */
-    @Nullable LineElement owner();
+    HitPriority priority();
 
-    /** A note head. */
+    /**
+     * Whether a region addressing this kind takes part in the mouse-move query,
+     * {@link HitRegistry#hitTestHover}.
+     * <p>
+     * Lyrics are the only kind that does. The mouse-move path suppresses the preview element
+     * over lyric text and fires on every pixel of pointer motion, so it must be able to ask
+     * about lyrics alone rather than resolving the whole registry.
+     *
+     * @return {@code true} for the kinds the hover query scans
+     */
+    default boolean hoverTestable() {
+        return false;
+    }
+
+    /**
+     * The kinds a press can make the selection.
+     *
+     * <p>A kind outside this interface is addressable but never selected, which is what makes
+     * the selection layer's liveness rule total: it holds only a {@code Selectable}, so
+     * {@link #owner()} is answerable for whatever it holds.
+     */
+    sealed interface Selectable extends HitTarget {
+
+        /**
+         * The element this target hangs off, used by the selection layer's single liveness
+         * rule — walk the parent chain and check that the element is still on a line. Every
+         * variant answers this in one line, so revalidation needs no per-variant switch.
+         *
+         * @return the owning element, or {@code null} for {@link StaffLine}, which addresses
+         *         the staff line itself rather than anything on it
+         */
+        @Nullable LineElement owner();
+    }
+
+    /**
+     * A note head. Addressable but not {@link Selectable}: a note is selected as an index
+     * range rather than as a target, so a press on one produces a {@code Selection.Range}.
+     */
     record Element(StaffElement element) implements HitTarget {
 
         @Override
-        public StaffElement owner() {
-            return element;
+        public HitPriority priority() {
+            return HitPriority.ELEMENT;
         }
     }
 
@@ -66,7 +103,17 @@ public sealed interface HitTarget {
      * @param element the element the syllable is attached to
      * @param verse   zero-based verse index
      */
-    record Lyric(StaffElement element, int verse) implements HitTarget {
+    record Lyric(StaffElement element, int verse) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.LYRIC;
+        }
+
+        @Override
+        public boolean hoverTestable() {
+            return true;
+        }
 
         @Override
         public StaffElement owner() {
@@ -75,17 +122,34 @@ public sealed interface HitTarget {
     }
 
     /** A glissando or fall drawn from {@code owner}. */
-    record Slide(StaffElement owner) implements HitTarget {}
+    record Slide(StaffElement owner) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.SLIDE;
+        }
+    }
 
     /**
      * A glissando owned by a grace note. Grace-note slides are not selectable; this
      * variant exists so the click can be reported and answered with an explanation
      * rather than silently ignored.
      */
-    record GraceGlissando(StaffElement owner) implements HitTarget {}
+    record GraceGlissando(StaffElement owner) implements HitTarget {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.SLIDE;
+        }
+    }
 
     /** A crescendo or diminuendo. */
-    record Hairpin(songscribe.dom.Hairpin hairpin) implements HitTarget {
+    record Hairpin(songscribe.dom.Hairpin hairpin) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.HAIRPIN;
+        }
 
         @Override
         public LineElement owner() {
@@ -94,7 +158,12 @@ public sealed interface HitTarget {
     }
 
     /** A volta / ending bracket. */
-    record Ending(songscribe.dom.Ending ending) implements HitTarget {
+    record Ending(songscribe.dom.Ending ending) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.ENDING;
+        }
 
         @Override
         public LineElement owner() {
@@ -103,7 +172,12 @@ public sealed interface HitTarget {
     }
 
     /** The staff line itself, selectable only from its header region at the left. */
-    record StaffLine() implements HitTarget {
+    record StaffLine() implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.STAFF_LINE;
+        }
 
         @Override
         public @Nullable LineElement owner() {
@@ -112,7 +186,12 @@ public sealed interface HitTarget {
     }
 
     /** A staccato, accent, tenuto and the like. */
-    record Articulation(songscribe.dom.Articulation articulation) implements HitTarget {
+    record Articulation(songscribe.dom.Articulation articulation) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.ARTICULATION;
+        }
 
         @Override
         public LineElement owner() {
@@ -121,7 +200,12 @@ public sealed interface HitTarget {
     }
 
     /** A fermata, dynamic, tempo change, beat change or annotation. */
-    record Attachment(songscribe.dom.Attachment attachment) implements HitTarget {
+    record Attachment(songscribe.dom.Attachment attachment) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.ATTACHMENT;
+        }
 
         @Override
         public LineElement owner() {
@@ -136,10 +220,21 @@ public sealed interface HitTarget {
      * selectable at all: an accidental is not a {@code LineElement} but a field on its
      * note, so neither an element reference nor an index can name it on its own.
      */
-    record Accidental(StaffElement owner) implements HitTarget {}
+    record Accidental(StaffElement owner) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.ACCIDENTAL;
+        }
+    }
 
     /** A tie or slur curve. */
-    record Tie(songscribe.dom.Tie tie) implements HitTarget {
+    record Tie(songscribe.dom.Tie tie) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.TIE;
+        }
 
         @Override
         public LineElement owner() {
@@ -148,7 +243,12 @@ public sealed interface HitTarget {
     }
 
     /** A beam group. */
-    record Beam(songscribe.dom.Beam beam) implements HitTarget {
+    record Beam(songscribe.dom.Beam beam) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.BEAM;
+        }
 
         @Override
         public LineElement owner() {
@@ -157,7 +257,12 @@ public sealed interface HitTarget {
     }
 
     /** A trill — the {@code tr} glyph together with its wavy-line extension, if any. */
-    record Trill(songscribe.dom.Trill trill) implements HitTarget {
+    record Trill(songscribe.dom.Trill trill) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.TRILL;
+        }
 
         @Override
         public LineElement owner() {
@@ -166,11 +271,33 @@ public sealed interface HitTarget {
     }
 
     /** A tuplet bracket and its number, or the number alone when the group is beamed. */
-    record Tuplet(songscribe.dom.Tuplet tuplet) implements HitTarget {
+    record Tuplet(songscribe.dom.Tuplet tuplet) implements Selectable {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.TUPLET;
+        }
 
         @Override
         public LineElement owner() {
             return tuplet;
+        }
+    }
+
+    /**
+     * The attribution block drawn above the first staff line. It is the one target in this
+     * interface that is not notation. It exists so a double-click can be resolved to it, and
+     * it is not {@link Selectable}: the block is edited in Song Settings, never on the page.
+     *
+     * <p>It carries no reference to the block it addresses, for the same reason
+     * {@link StaffLine} carries none: a song holds exactly one attribution, so naming it
+     * would say nothing the song does not already answer.
+     */
+    record Attribution() implements HitTarget {
+
+        @Override
+        public HitPriority priority() {
+            return HitPriority.ATTRIBUTION;
         }
     }
 }

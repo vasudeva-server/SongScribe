@@ -271,10 +271,7 @@ class LineSelectionHandler {
         // Every variant is spelled out rather than defaulted: what a click does to a newly
         // selectable kind of notation is a decision, and a default arm would make it silently.
         pressHandled = switch (hitTarget) {
-            case null -> {
-                lc.repaint();
-                yield false;
-            }
+            case null -> false;
 
             case HitTarget.Lyric(var element, var verse) -> selectLyric(element, verse);
 
@@ -301,15 +298,23 @@ class LineSelectionHandler {
             case HitTarget.Beam beam -> selectTarget(beam);
             case HitTarget.Trill trill -> selectTarget(trill);
             case HitTarget.Tuplet tuplet -> selectTarget(tuplet);
+
+            // A double-click target only, never selected: a press over the attribution does
+            // exactly what a press over the empty space above the staff does. Yielding false is
+            // also what leaves the rubber band armed there, unchanged from before the block was
+            // registered.
+            case HitTarget.Attribution _ -> false;
         };
 
         // A band is possible only after a genuine miss — a stem, the space around a glyph,
         // anywhere the registry has no region — and only where there is something to sweep.
         bandArmed = !pressHandled && hasSweepableColumns();
 
-        if (pressHandled) {
-            lc.repaint();
-        }
+        // Unconditional, so that "the press changed what is selected" and "the press selected
+        // nothing" repaint alike. Which arm produced the answer must not decide it: a target
+        // that yields false is indistinguishable on screen from a miss, and registering a new
+        // kind of region turns misses into hits without changing what the user sees.
+        lc.repaint();
     }
 
     /**
@@ -478,7 +483,7 @@ class LineSelectionHandler {
      * The registration is what makes the selected line resolvable: activating an unregistered
      * index would leave the selection pointing at a line nothing can answer for.
      */
-    private boolean selectTarget(HitTarget target) {
+    private boolean selectTarget(HitTarget.Selectable target) {
         var scoreView = lc.getScoreView();
         var coordinator = scoreView.getSelectionCoordinator();
 
