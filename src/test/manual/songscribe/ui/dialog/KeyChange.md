@@ -1,6 +1,7 @@
 # Key Change
 
-Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `KeyCellRenderer`
+Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `KeyCellRenderer`,
+`UIUtils.fitPopupToScreen`
 
 ## The combo opens on the key in effect
 
@@ -11,30 +12,39 @@ Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `Key
 3. Open it at a position with no signature on it. The combo shows the key inherited
    at that position.
 
+## The popup fits the display
+
+4. Open the combo. The popup fits entirely on screen, clear of the menu bar and
+   the Dock, and does not cover the whole display.
+5. It scrolls whenever it cannot show all fifteen at once, and opens with the key
+   in effect visible without scrolling to it.
+6. Drag the dialog to a second monitor of a different height and open the combo
+   again. The number of keys shown follows that monitor.
+
 ## An unchanged OK writes nothing
 
-4. OK is enabled the moment the dialog opens, and stays enabled whatever is chosen.
-5. On a line that already establishes a key of its own, press OK without touching
+7. OK is enabled the moment the dialog opens, and stays enabled whatever is chosen.
+8. On a line that already establishes a key of its own, press OK without touching
    the combo. The dialog closes, the score is unchanged, Undo offers no new step,
    and the title bar shows no unsaved-changes mark on an otherwise clean document.
-   Check 10 is the one line where this is not so.
-6. Reopen it, choose a different key, choose the original back, and press OK. Same
+   Check 13 is the one line where this is not so.
+9. Reopen it, choose a different key, choose the original back, and press OK. Same
    result: no undo step, no change.
-7. Choose a different key and press OK. The score shows that signature and Undo
-   offers exactly one new step.
+10. Choose a different key and press OK. The score shows that signature and Undo
+    offers exactly one new step.
 
 ## An existing mid-line signature is changed in place
 
-8. Double-click a key signature standing in the middle of a line, choose a
-   different key and press OK. That signature carries the new key; no second
-   signature and no extra barline appear in front of it, and the notes after it
-   read in the new key.
-9. Do the same where the line after it inherits its key. That line's header
-   changes to the new key as well, and one Undo takes both lines back.
+11. Double-click a key signature standing in the middle of a line, choose a
+    different key and press OK. That signature carries the new key; no second
+    signature and no extra barline appear in front of it, and the notes after it
+    read in the new key.
+12. Do the same where the line after it inherits its key. That line's header
+    changes to the new key as well, and one Undo takes both lines back.
 
 ## A line that inherits its key can take one of its own
 
-10. Open the dialog on the header of a line that inherits its key, leave the combo
+13. Open the dialog on the header of a line that inherits its key, leave the combo
     on the key it already shows, and press OK. The score is unchanged to look at,
     but Undo offers one new step named *Add Key Change* — the line now establishes that
     key rather than following the line before it. Changing the earlier line's key

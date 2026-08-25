@@ -59,6 +59,8 @@ import javax.swing.ListCellRenderer;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.Border;
+import javax.swing.event.PopupMenuEvent;
+import javax.swing.event.PopupMenuListener;
 import javax.swing.text.JTextComponent;
 
 import com.formdev.flatlaf.FlatClientProperties;
@@ -369,6 +371,46 @@ public final class UIUtils {
         );
     }
 
+    /**
+     * Makes {@code combo}'s popup show as many rows as the display it opens on has room for and
+     * scroll through the rest, in place of Swing's fixed eight. Eight knows nothing about how
+     * tall a row is, so it asks a short display for more vertical space than it has while leaving
+     * a tall one under-used.
+     *
+     * <p>The count is measured against the usable bounds of the display rather than its full
+     * height, because that is the rectangle Swing itself measures the popup against; a taller
+     * popup would only be clamped and re-centred over the whole display.
+     *
+     * <p>It is recomputed each time the popup opens, so it follows the window to another monitor
+     * and answers to a resolution change.
+     *
+     * @param combo        the combo to size
+     * @param cellHeightPx the height of every one of {@code combo}'s cells, in pixels, as its
+     *                     renderer fixes it. A renderer whose cells vary in height has no single
+     *                     row height, and a combo using one is not sized here.
+     * @effects installs a {@link PopupMenuListener} on {@code combo} that sets its maximum row
+     *          count each time the popup is about to open
+     */
+    public static void fitPopupToScreen(JComboBox<?> combo, int cellHeightPx) {
+        combo.addPopupMenuListener(new PopupMenuListener() {
+            @Override
+            public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+                var usableHeight = getScreenBounds(getParentWindow(combo)).height;
+                combo.setMaximumRowCount(Math.max(1, usableHeight / cellHeightPx));
+            }
+
+            @Override
+            public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
+                // The next opening measures again, so a closing popup leaves nothing to undo.
+            }
+
+            @Override
+            public void popupMenuCanceled(PopupMenuEvent e) {
+                // The next opening measures again, so a cancelled popup leaves nothing to undo.
+            }
+        });
+    }
+
     public static void initToolbarButton(
         AbstractButton button,
         Dimension buttonSize
@@ -444,7 +486,7 @@ public final class UIUtils {
     }
 
     // Position the dialog at 3/8 of the way down the parent window (or screen if no
-    // parent), centered horizontally, clamped to the screen bounds with a 20px margin.
+    // parent), centered horizontally, clamped to the usable screen area with a 20px margin.
     public static void positionDialog(JDialog dialog, @Nullable Component parent) {
         var window = getParentWindow(parent);
         var screen = getScreenBounds(window);
@@ -468,15 +510,38 @@ public final class UIUtils {
         return parent != null ? SwingUtilities.getWindowAncestor(parent) : null;
     }
 
+    /**
+     * Returns the usable bounds of the display {@code window} occupies: the display's own bounds
+     * less the space the desktop reserves along its edges — the macOS menu bar and Dock, a
+     * Windows taskbar.
+     *
+     * <p>Usable rather than full bounds because everything placed against a display has to share
+     * it with those reservations, and because it is the rectangle Swing measures its own popups
+     * against. Sizing against anything larger is overruled rather than honoured.
+     *
+     * @param window the window whose display to measure, or {@code null} to measure the default
+     *               display. A window not yet made displayable is on no display and measures the
+     *               default one too.
+     * @return the usable bounds, in screen coordinates
+     */
     static Rectangle getScreenBounds(@Nullable Window window) {
-        if (window != null) {
-            return window.getGraphicsConfiguration().getBounds();
+        var configuration = window == null ? null : window.getGraphicsConfiguration();
+
+        if (configuration == null) {
+            configuration = GraphicsEnvironment.getLocalGraphicsEnvironment()
+                .getDefaultScreenDevice()
+                .getDefaultConfiguration();
         }
 
-        return GraphicsEnvironment.getLocalGraphicsEnvironment()
-            .getDefaultScreenDevice()
-            .getDefaultConfiguration()
-            .getBounds();
+        var bounds = configuration.getBounds();
+        var insets = Toolkit.getDefaultToolkit().getScreenInsets(configuration);
+
+        bounds.x += insets.left;
+        bounds.y += insets.top;
+        bounds.width -= insets.left + insets.right;
+        bounds.height -= insets.top + insets.bottom;
+
+        return bounds;
     }
 
     /**

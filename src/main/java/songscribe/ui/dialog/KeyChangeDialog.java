@@ -64,6 +64,10 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
         keysCombo.setRenderer(new KeyCellRenderer());
         UIUtils.forceLightModeCombo(keysCombo);
+
+        // A key cell is a staff-height glyph, so eight of them — Swing's fixed default — overflow
+        // a short display and under-fill a tall one.
+        UIUtils.fitPopupToScreen(keysCombo, KeyCellRenderer.cellHeightPx());
     }
 
     /**
