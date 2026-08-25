@@ -11,7 +11,7 @@ failures this skill exists to avoid.
 | Axis | Model | Input | Covers |
 |---|---|---|---|
 | Design | opus | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
-| Contract & API | opus | production scope | depth earned by fan-in; contract stated / complete / derived from the domain; naming; signature quality; test-only surface |
+| Contract & API | opus | production scope, plus the doc scope when it is non-empty | depth earned by fan-in; contract stated / complete / derived from the domain; contract duplicated into prose; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
 | Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
 
@@ -191,6 +191,11 @@ the contract is judged against the domain. Read `.claude/guides/contracts.md` an
 the **Writing a Contract in Javadoc** and **Signature Rules for Contracts**
 sections of `.claude/rules/java.md` before reporting.
 
+Where a doc scope came with the code, it is part of this axis's material, not
+background: a contract restated in prose is a second copy of the promise, and
+rule 11 below is where that is judged. `docs/` and `plans/` are the only places
+a stale contract can sit without the compiler or a reference lookup reaching it.
+
 ### Does it earn a contract, and does it have one?
 
 1. **Depth follows fan-in** — how many callers rely on the promise times how
@@ -247,6 +252,21 @@ relationships. Report the specific clause a caller cannot find:
 11. **A rule spanning subsystems belongs in `docs/`**, with the method's Javadoc
     linking to it rather than paraphrasing it. The paraphrase is the copy that
     goes stale.
+
+    The converse is the same finding, and is the one you will actually meet: a
+    passage in `docs/` or `plans/` stating a promise about one member is that
+    member's contract written where nothing can keep it honest, and a claim
+    appearing in both a Javadoc and a doc is one copy too many whichever was
+    written first. **Start from whichever side you were given.** A Javadoc naming
+    no doc is not evidence that no second copy exists — paraphrasing *instead of*
+    linking is precisely what leaves no link to follow, so this defect conceals
+    itself from a search that begins at the link. Where the doc scope is
+    non-empty, read each passage against the contracts of the members it
+    discusses, matching on the claim rather than on the wording; a duplicate
+    survives being reworded and a verbatim clause is the end of the range, not
+    the test for it. The fix is to cut the prose back to what no contract can
+    hold — which piece owns what, and why the set is complete — and have the
+    Javadoc link to it.
 
 ### Names
 

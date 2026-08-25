@@ -136,11 +136,14 @@ Resolution steps:
 
 ### Partitioning the resolved scope
 
-After resolving the scope in any mode, split it into two subsets:
+After resolving the scope in any mode, split it into three subsets:
 
 - **Production scope** — all non-test source files (`.java`, `.kt` that do not
   end in `Test.java`).
 - **Test scope** — all `*Test.java` files.
+- **Doc scope** — every changed `docs/*.md` and `plans/*.md`, plus every
+  `docs/*.md` named by a Javadoc anywhere in the production scope. Mode B
+  resolves no changed files, so there the scope is the named docs alone.
 
 For each test in the test scope, identify its **production counterpart** (e.g.
 `StringUtilsTest` → `songscribe.util.StringUtils`) using Serena per
@@ -148,7 +151,13 @@ For each test in the test scope, identify its **production counterpart** (e.g.
 Javadoc, the class Javadoc, and any `docs/*.md` they link to. The Test
 Conformance axis is given the contract, not just the class.
 
-Either scope may be empty. If both are empty, say so and stop.
+The doc scope is collected because a contract can be duplicated into prose, and
+prose is where that copy survives: nothing compiles it, no reference lookup finds
+it, and a changed method leaves it standing and wrong. Markdown is otherwise
+invisible to this skill — a changed `docs/*.md` sits in the diff and belongs to
+neither of the other two subsets.
+
+Any scope may be empty. If all three are empty, say so and stop.
 
 ## Phase 2: Launch the Axes in Parallel
 
@@ -160,7 +169,7 @@ reviewed.
 | Axis | Model | Runs when |
 |---|---|---|
 | Design | opus | any scope is non-empty |
-| Contract & API | opus | production scope non-empty, and no `--tests-only` |
+| Contract & API | opus | production or doc scope non-empty, and no `--tests-only` |
 | Correctness & Efficiency | sonnet | production scope non-empty, and no `--tests-only` |
 | Test Conformance | sonnet | test scope non-empty |
 
@@ -168,7 +177,11 @@ Give the Design agent the tests as well when the test scope is non-empty: a test
 that strains is evidence about the production design, and that diagnosis is this
 axis's job.
 
-With both scopes populated that is four agents in one message.
+Give the Contract & API agent the doc scope as well when it is non-empty. A
+promise stated in two places is one finding, and that axis is the only one
+holding both copies — see rule 11 in `reference/axes.md`.
+
+With every scope populated that is four agents in one message.
 
 Design and Contract & API run on opus by design. Root-cause analysis and
 contract judgment are the two axes where a smaller model reliably returns a
