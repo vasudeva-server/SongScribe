@@ -148,9 +148,7 @@ public final class LayoutHitTester {
      * bounded by that element's own rendered accidentals is the mid-line double-click target for
      * editing it.
      * <p>
-     * Delegates to {@link #findElementAtXSs}, so the same column bounds spacing solved apply; a
-     * key signature carries no leading accidental of its own, so {@link ColumnSpan#HEAD} and
-     * {@link ColumnSpan#FULL_INK} agree for it and the choice between them is immaterial here.
+     * Delegates to {@link #findElementAtXSs}, so the same column bounds spacing solved apply.
      *
      * @param mouseXSs mouse X coordinate, in staff-space units
      * @param line     the line to search
@@ -158,7 +156,7 @@ public final class LayoutHitTester {
      *         {@code mouseXSs} does not fall within a mid-line key signature's column
      */
     public @Nullable KeyChangeElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
-        var index = findElementAtXSs(mouseXSs, line, ColumnSpan.FULL_INK);
+        var index = findElementAtXSs(mouseXSs, line);
 
         if (index < 0) {
             return null;
@@ -176,11 +174,9 @@ public final class LayoutHitTester {
      * Returns the index of the element whose column contains {@code mouseXSs}, or {@code -1} if
      * none.
      * <p>
-     * Only the horizontal (X) dimension is checked; Y position is ignored. The left bound of the
-     * hit zone depends on {@code span}: {@link ColumnSpan#HEAD} starts at the glyph body
-     * ({@link ElementColumn#getXSs()}), excluding a leading accidental; {@link ColumnSpan#FULL_INK}
-     * starts at the column's full drawn ink ({@link ElementColumn#getLeftEdgeXSs()}), enclosing the
-     * accidental. Both spans share the same right bound, {@link ElementColumn#getRightEdgeXSs()}.
+     * Only the horizontal (X) dimension is checked; Y position is ignored. The hit zone is the
+     * glyph body, {@link ElementColumn#getXSs()} to {@link ElementColumn#getRightEdgeXSs()}, so a
+     * leading accidental is not part of the element it belongs to as far as this is concerned.
      * <p>
      * Columns are checked in element order and the first match wins, so on an overlap — a grace
      * note's column can overlap its host's when the host's flag is discounted (refs #560) — the
@@ -192,10 +188,9 @@ public final class LayoutHitTester {
      *
      * @param mouseXSs Mouse X coordinate in staff-space units
      * @param line     The line containing the elements
-     * @param span     Which horizontal slice of each column counts as a hit
      * @return Element index, or {@code -1} if mouseXSs is not within any element column's bounds
      */
-    public int findElementAtXSs(double mouseXSs, Line line, ColumnSpan span) {
+    public int findElementAtXSs(double mouseXSs, Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = layoutResult.getElementColumn(element);
@@ -204,9 +199,7 @@ public final class LayoutHitTester {
                 continue;
             }
 
-            var leftBoundSs = span == ColumnSpan.HEAD ? column.getXSs() : column.getLeftEdgeXSs();
-
-            if (mouseXSs < leftBoundSs) {
+            if (mouseXSs < column.getXSs()) {
                 break;
             }
 
@@ -245,7 +238,7 @@ public final class LayoutHitTester {
         }
 
         // Check each element to see if mouse is within its head bounds
-        var elementAtX = findElementAtXSs(mouseXSs, line, ColumnSpan.HEAD);
+        var elementAtX = findElementAtXSs(mouseXSs, line);
 
         if (elementAtX >= 0 && elementAtX < elementCount) {
             return elementAtX;

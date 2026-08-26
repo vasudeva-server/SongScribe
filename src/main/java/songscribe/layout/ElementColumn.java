@@ -342,16 +342,25 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the absolute left edge X position.
-     * Only valid after X position has been set by the spacing calculator.
+     * The left edge of everything this column draws, which is further left than the glyph body
+     * whenever the element carries a leading accidental.
+     * <p>
+     * Callers wanting the note itself rather than what is drawn with it want {@link #getXSs},
+     * the glyph origin.
+     *
+     * @return the absolute X of the leftmost drawn ink, in staff spaces; meaningful only after
+     *         the spacing calculator has assigned this column its X
      */
     public double getLeftEdgeXSs() {
         return xSs + leftExtentSs;
     }
 
     /**
-     * Returns the absolute right edge X position.
-     * Only valid after X position has been set by the spacing calculator.
+     * The right edge of everything this column draws, enclosing augmentation dots and a fall
+     * where the element carries them.
+     *
+     * @return the absolute X of the rightmost drawn ink, in staff spaces; meaningful only after
+     *         the spacing calculator has assigned this column its X
      */
     public double getRightEdgeXSs() {
         return xSs + rightExtentSs;

@@ -32,7 +32,6 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
-import songscribe.layout.ColumnSpan;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
@@ -628,7 +627,7 @@ public final class PreviewElementManager {
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXSs, line, ColumnSpan.HEAD);
+        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXSs, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).

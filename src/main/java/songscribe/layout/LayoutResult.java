@@ -772,9 +772,11 @@ public final class LayoutResult {
 
     /**
      * Delegates to {@link LayoutHitTester#findElementAtXSs}.
+     *
+     * @return the element index, or {@code -1} when no element's glyph body contains the X
      */
-    public int findElementAtXSs(double mouseXSs, Line line, ColumnSpan span) {
-        return hitTester.findElementAtXSs(mouseXSs, line, span);
+    public int findElementAtXSs(double mouseXSs, Line line) {
+        return hitTester.findElementAtXSs(mouseXSs, line);
     }
 
     /**

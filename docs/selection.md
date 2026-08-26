@@ -1,14 +1,20 @@
 # Drag Selection
 
-Why a rubber-band selection on a staff snaps to whole columns rather than
-tracking the mouse pixel for pixel, and why its vertical position never affects
-what gets selected.
+Which piece of a rubber-band drag decides what, and why the gesture's vertical
+position never affects what gets selected.
 
-## The band is the smallest interval covering two contributions
+## Two pieces, and one of them owns both answers
 
 A drag has two horizontal positions: the anchor, fixed where the mouse went down,
-and the lead, which follows the mouse. **Each contributes either a single point or
-a whole column's width**, depending on whether it currently falls inside a column.
+and the lead, which follows the mouse. The **band** is the interval between them,
+and it is nothing else — neither end widens out to the notation under it, so the
+band's edge tracks the mouse continuously, including while the mouse is inside a
+column.
+
+The **reach** is what the drag is allowed to select, and how far across the staff
+its edges may travel. Those two questions have one answer between them, derived
+once per drag event from the line and its layout, because stating them separately
+is what lets a painted band lie over notation that then refuses to highlight.
 
 ```
       col 2            col 3                col 4
@@ -17,92 +23,42 @@ a whole column's width**, depending on whether it currently falls inside a colum
    L2       R2      L3       R3          L4       R4
         gap              gap
 
-anchor inside col 3  →  contributes [L3, R3]
+        ▲ anchor                   ▲ lead
+        └────────── band ──────────┘
 
-  lead in a gap       → point       band = [L3, lead]
-  lead inside col 4   → [L4, R4]    band = [L3, R4]
-  lead left of col 2  → point       band = [lead, R3]
-  lead inside col 2   → [L2, R2]    band = [L2, R3]
-
-selected = every sweepable column whose extent overlaps the band
+col 2   band starts inside it, past L2  →  selected
+col 3   band covers it                  →  selected
+col 4   band stops short of L4          →  not selected
 ```
 
-A column's extent is its full ink, with a leading accidental enclosed on the left
-and augmentation dots or a fall enclosed on the right.
+So the band decides nothing on its own. A band edge resting mid-column is not an
+in-between state: the column it is standing in is already wholly selected, because
+membership is touching the ink rather than enclosing it.
 
-That single rule produces all three behaviours below; none of them is coded
-separately.
+The song's auto-maintained terminal is left out of every drag by being absent from
+the reach. It is not a member because it was never collected, and the edges stop
+where the collection runs out — one fact, not a membership rule and a travel limit
+that have to be kept agreeing with each other.
 
-**Snap on entry, hold inside.** Moving through a gap, the lead contributes a
-point, so the band's edge tracks the mouse continuously. The moment the mouse
-enters a column the contribution becomes that column's *whole* width, so the band
-snaps out to its far edge and then holds there, neither growing nor shrinking as
-the mouse moves around within the column. On leaving, the contribution reverts to
-a point and tracking resumes from wherever the mouse already is — so the band
-never snaps backward over ground it just covered. This is the feel of
-double-click-drag text selection: the selection jumps by whole words once a word
-has been entered.
+## Only the horizontal position matters, once the gesture has started
 
-**Reversal is correct for free.** The anchor's column contributes its full width
-for the whole drag, whichever way the mouse later goes, so the contributing edge
-simply flips from one side of that column to the other as the drag crosses it. The
-anchor column is never lost along the way.
+The mouse's vertical position is never consulted while a drag is under way. A note
+on a high ledger line, a rest and a barline are swept identically by a band at the
+same horizontal position, however far above or below the staff the mouse has
+moved — including off the staff entirely, up in the tempo band or down in the
+lyrics. The gesture ends only on release.
 
-## Only the horizontal position matters
-
-The mouse's vertical position is never consulted. A note on a high ledger line, a
-rest and a barline are swept identically by a band at the same horizontal
-position, however far above or below the staff the mouse is — including while the
-mouse is off the staff entirely, up in the tempo band or down in the lyrics. The
-gesture ends only on release.
+The press that starts it is the exception, and it is a different question. A band
+spans the staff and sweeps by horizontal position alone, so a gesture beginning
+off the staff is one the user has no way to aim; a press only arms a band if it
+lands within the staff, both staff lines included. The line component is far
+taller than its staff, and the clickable regions inside it are only as tall as
+what they draw, so without that test a press in the empty space above the staff
+would arm a band from anywhere at all — including horizontal positions the drag is
+not allowed to reach.
 
 The band's own vertical extent comes from staff geometry, straddling the top and
 bottom staff lines, never from where the mouse happens to be.
-
-## What the leading edge can reach
-
-The lead is clamped, before the band is computed, to the stretch of staff a
-selection may cover: on the left, just clear of the staff header, since a press
-there selects the staff lines rather than sweeping; on the right, the
-auto-maintained terminal's left edge, or the end of the staff on a line without
-one.
-
-The limits are the *staff*, not the music on it — the band reaches bare staff on
-either side of the notes. Dragging on into the margin therefore adds nothing once
-the edge has clamped, and **no amount of dragging can make the band touch the
-terminal**, which is enforced by the clamp rather than by testing each element
-during the sweep.
-
-The anchor is *not* clamped: a press in a leading gap keeps its raw position, so
-the empty-band phase — a band that paints but selects nothing until it first
-overlaps a column — behaves the same whichever side of the content the press
-started on.
-
-**A press only arms a band where there is something to select.** On an empty line,
-or one holding nothing but the terminal, the press leaves the band unarmed and the
-drag is a complete no-op. A rubber band swept across bare staff would tell the
-user the gesture is doing something it cannot do.
-
-## Band geometry is held in staff spaces
-
-The anchor and lead are stored as staff-space values, and the pixel rectangle used
-for painting is re-derived from them on every paint rather than computed once and
-cached.
-
-That is what lets a zoom change mid-drag repaint correctly: staff-space
-coordinates describe a position in the music, not a position on screen, so they
-stay valid across a zoom. A stored pixel rectangle would keep painting the drag's
-old screen extent over content that has since moved and rescaled underneath it.
-
-## One overlap tie-break
-
-Column extents are ordered and normally do not overlap, but a grace note's extent
-can legitimately overlap its host's. In that sliver the lower index wins — the
-grace note, which always precedes its host.
-
-This only affects which column the *lead* snaps to inside the sliver; it does not
-change what ends up selected, since the band still overlaps the host's extent
-either way. Only the painted band's exact edge differs, by a fraction of a glyph.
 
 ## Double-click edits a key
 

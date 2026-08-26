@@ -26,16 +26,13 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
+import songscribe.engraving.Staff;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
-import songscribe.layout.ColumnSpan;
-import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.LayoutResult;
+import songscribe.layout.SweepRange;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.Mode;
@@ -48,8 +45,9 @@ import songscribe.ui.playback.PlayThread;
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
  * <p>
- * Each {@code LineComponent} owns one instance. Drag state (rectangle, start point)
- * lives here; mouse event handlers in {@code LineComponent} delegate to this class.
+ * Each {@code LineComponent} owns one instance. Drag state — whether a press armed, whether it
+ * grew into a drag, and the two horizontal positions a band spans — lives here; mouse event
+ * handlers in {@code LineComponent} delegate to this class.
  * <p>
  * Hit testing itself lives in the line's {@link HitRegistry}, built at layout time. This
  * class only converts the click point into the registry's coordinate space and acts on the
@@ -57,18 +55,6 @@ import songscribe.ui.playback.PlayThread;
  * another tester here.
  */
 class LineSelectionHandler {
-
-    /**
-     * The gap the band's leading edge keeps from the staff header, so a sweep never touches it.
-     * <p>
-     * There is no matching gap on the right: the auto-maintained terminal is right-aligned with
-     * the end of the staff, so the leading edge stopping at its left ink edge already leaves no
-     * reachable staff beyond it.
-     * <p>
-     * Document pixels rather than view pixels: the reachable range is then the same music at
-     * every zoom, which is the whole reason the band's endpoints are held in staff spaces.
-     */
-    private static final double HEADER_GAP_PX = 1.0;
 
     private final LineComponent lc;
 
@@ -86,10 +72,7 @@ class LineSelectionHandler {
     /** What the press landed on, or null if it landed on nothing. */
     private @Nullable HitTarget pressTarget = null;
 
-    /**
-     * The band's fixed end, in line-local staff spaces, captured on press. Never clamped, so a
-     * press in a leading gap or in the header keeps its raw x.
-     */
+    /** The band's fixed end, in line-local staff spaces, captured on press. */
     private double anchorXSs = 0.0;
 
     /** The band's moving end, in line-local staff spaces, as of the last drag event. */
@@ -108,25 +91,49 @@ class LineSelectionHandler {
     }
 
     /**
-     * The band's horizontal extent, in line-local staff spaces, with {@code leftSs <= rightSs}.
+     * The band's horizontal extent, in line-local staff spaces.
      * <p>
      * A band has no vertical extent of its own. It always spans the staff, which is line
      * geometry rather than anything the drag decides, so {@link LineComponent#getStaffTopYSs}
      * and {@link LineComponent#getStaffBottomYSs} answer for that instead.
+     * <p>
+     * Build one with {@link #spanning}, which orders the two ends. The canonical constructor
+     * takes them already ordered and is not the way to turn a pair of drag positions into a band.
+     *
+     * @invariant {@code leftSs <= rightSs}
      */
-    record SelectionBand(double leftSs, double rightSs) {}
+    record SelectionBand(double leftSs, double rightSs) {
+
+        /**
+         * The band covering both {@code anchorSs} and {@code leadSs}, in either order.
+         *
+         * @return the band, whichever direction the drag was drawn in
+         */
+        static SelectionBand spanning(double anchorSs, double leadSs) {
+            return new SelectionBand(
+                Math.min(anchorSs, leadSs), Math.max(anchorSs, leadSs));
+        }
+    }
 
     /**
-     * The live selection band, or {@code null} when no drag is in progress.
+     * The live selection band, or {@code null} when no drag is in progress or the line's layout
+     * went stale under it.
      * <p>
      * Derived on every call rather than stored, and left in staff spaces rather than converted
      * to pixels. Staff spaces name a position in the music, so a zoom mid-drag re-renders the
      * band over the same music at the new scale instead of leaving a stale pixel rectangle
      * behind. The one conversion to pixels happens at paint time, in
      * {@link LineRenderer#renderSelectionBand}.
+     *
+     * @return the band to paint, or {@code null} when there is nothing to paint
      */
     @Nullable SelectionBand getSelectionBand() {
-        return dragging ? computeBand() : null;
+        if (!dragging) {
+            return null;
+        }
+
+        var sweepRange = sweepRange();
+        return sweepRange == null ? null : bandWithin(sweepRange);
     }
 
     // ======================================================================
@@ -134,12 +141,14 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Hit-tests the given point, in view pixels, against everything clickable on this line,
-     * or {@code null} if the point lands on nothing.
+     * Hit-tests the given point, in view pixels, against everything clickable on this line.
      * <p>
      * A single press needs more than one answer about the same point — whether it landed on
      * the staff lines, and whether it landed on an ending. Callers should run this once and
      * examine the result rather than asking several times about the same point.
+     *
+     * @return what the point landed on, or {@code null} when it landed on nothing clickable or
+     *         this component has no line to test against
      */
     @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
         var registry = readyRegistry();
@@ -152,11 +161,13 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns this line's hit registry with its layout brought up to date, or {@code null}
-     * if this component has no line to hit-test.
+     * This line's hit registry with its layout brought up to date.
      * <p>
      * The layout is ensured here, since the registry is built as part of it: without this a
      * query could answer from the regions of a stale layout.
+     *
+     * @return the registry, or {@code null} when this component has no line to hit-test or its
+     *         layout could not be brought up to date
      */
     private @Nullable HitRegistry readyRegistry() {
         if (lc.getLine() == null) {
@@ -181,12 +192,18 @@ class LineSelectionHandler {
      * element hit rects are both staff spaces, so rounding through whole document pixels on
      * the way would only cost precision — half a document pixel, which the zoom multiplies
      * back into visible slop.
+     *
+     * @return the same distance in staff spaces
      */
     private double toSs(int viewPx) {
         return lc.getViewScale().toSs(new ViewPx(viewPx)).value();
     }
 
-    /** The X of a view-pixel point in the registry's line-local staff spaces. */
+    /**
+     * The X of a view-pixel point in the registry's line-local staff spaces.
+     *
+     * @return the point's X in staff spaces, measured from the start of the line
+     */
     double layoutXSs(Point viewPoint) {
         return toSs(viewPoint.x);
     }
@@ -194,6 +211,8 @@ class LineSelectionHandler {
     /**
      * The Y of a view-pixel point in the registry's layout space, whose origin is the
      * staff midline rather than the top of this component.
+     *
+     * @return the point's Y in staff spaces, negative above the midline and positive below
      */
     private double layoutYSs(Point viewPoint) {
         return toSs(viewPoint.y) - lc.getMiddleLineYSs();
@@ -208,6 +227,8 @@ class LineSelectionHandler {
      * {@code mouseMoved} asks this on every pixel of pointer motion, which is the whole
      * reason the registry offers a hover query rather than leaving callers to filter a full
      * resolution afterwards.
+     *
+     * @return the lyric under the point, or {@code null} when the point is not over one
      */
     HitTarget.@Nullable Lyric hitTestLyricViewPoint(Point viewPoint) {
         var registry = readyRegistry();
@@ -226,10 +247,12 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns whether the given point, in view pixels, is horizontally within the staff
-     * header, regardless of its Y. Unlike the registry's staff-line region, which is bounded
+     * Whether the given point, in view pixels, is horizontally within the staff header,
+     * regardless of its Y. Unlike the registry's staff-line region, which is bounded
      * vertically too, this covers the whole header column, since no element can be inserted
      * anywhere in it.
+     *
+     * @return true when the point's X falls in the header
      */
     boolean isWithinHeaderX(Point viewPoint) {
         return isWithinHeaderXSs(layoutXSs(viewPoint));
@@ -318,7 +341,15 @@ class LineSelectionHandler {
 
         // A band is possible only after a genuine miss — a stem, the space around a glyph,
         // anywhere the registry has no region — and only where there is something to sweep.
-        bandArmed = !pressHandled && hasSweepableColumns();
+        //
+        // The staff test is what confines a sweep to the music. The component is much taller than
+        // the staff, and the regions inside it are only as tall as what they draw, so a press in
+        // the empty space above the staff or down in the lyric row misses everything however far
+        // left or right it is. Without this, such a press over the header or over the terminal
+        // would arm a band anchored where a drag is not allowed to reach.
+        bandArmed = !pressHandled
+            && isWithinStaffY(e.getPoint())
+            && hasSweepableColumns();
 
         // Unconditional, so that "the press changed what is selected" and "the press selected
         // nothing" repaint alike. Which arm produced the answer must not decide it: a target
@@ -346,6 +377,10 @@ class LineSelectionHandler {
      * <p>
      * Takes the already-computed cascade result for this press, so an element head over the lyric
      * still wins and falls through to normal EDIT-mode handling.
+     *
+     * @param target what this press landed on, or {@code null} when it landed on nothing
+     * @return true when a lyric was selected, so the press is finished; false to fall through to
+     *         normal EDIT-mode handling
      */
     boolean handleEditModePress(@Nullable HitTarget target) {
         if (MidiController.isPlaying()) {
@@ -384,7 +419,12 @@ class LineSelectionHandler {
         // line vertically and keeps tracking x until release.
         leadXSs = toSs(Math.clamp(e.getX(), 0, lc.getWidth() - 1));
 
-        calculateLineSelectionFromDrag(computeBand());
+        var sweepRange = sweepRange();
+
+        if (sweepRange != null) {
+            selectSweptColumns(sweepRange, bandWithin(sweepRange));
+        }
+
         lc.repaint();
     }
 
@@ -476,6 +516,9 @@ class LineSelectionHandler {
      * Unlike every other target, a lyric names the line it belongs to, so the coordinator
      * resolves and activates that line itself: there is no registration this can find missing,
      * and it always succeeds.
+     *
+     * @return true, always — the constant result is what distinguishes a lyric from every other
+     *         target, which can fail on an unregistered line
      */
     @SuppressWarnings("SameReturnValue")
     private boolean selectLyric(StaffElement element, int verse) {
@@ -487,11 +530,13 @@ class LineSelectionHandler {
 
     /**
      * Makes {@code target} — a decoration, a note's accidental, or the staff line itself —
-     * the sole selection, returning false when this line is not registered with the
-     * coordinator.
+     * the sole selection.
      * <p>
      * The registration is what makes the selected line resolvable: activating an unregistered
      * index would leave the selection pointing at a line nothing can answer for.
+     *
+     * @return true when the target became the selection; false when this line is not registered
+     *         with the coordinator, in which case nothing was selected
      */
     private boolean selectTarget(HitTarget.Selectable target) {
         var scoreView = lc.getScoreView();
@@ -546,9 +591,13 @@ class LineSelectionHandler {
     }
 
     /**
-     * Selects {@code element} and plays it if it is a pitched note, returning false when it
-     * is not on this component's line. Targets name elements by identity; the index the
-     * selection range is built from is derived here, at the point of use.
+     * Selects {@code element} and plays it if it is a pitched note.
+     * <p>
+     * Targets name elements by identity; the index the selection range is built from is derived
+     * here, at the point of use.
+     *
+     * @return true when the element became the selection; false when it is not on this
+     *         component's line
      */
     private boolean selectAndPlayElement(StaffElement element) {
         var line = lc.getLine();
@@ -593,12 +642,25 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Returns whether the given X, in staff-space units, is within this line's staff
-     * header (clef + optional key signature). Clicks at or before that X select the
-     * staff lines.
+     * Whether the given X, in staff-space units, is within this line's staff header (clef +
+     * optional key signature). Clicks at or before that X select the staff lines.
+     *
+     * @return true when the X falls in the header
      */
     private boolean isWithinHeaderXSs(double xSs) {
         return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, lc.getLine());
+    }
+
+    /**
+     * Whether a press at this point may grow into a band, as far as the staff is concerned.
+     * <p>
+     * The band spans the staff and sweeps by horizontal position alone, so a gesture that starts
+     * off the staff would be one the user has no way to aim. Both staff lines count as on it.
+     *
+     * @return true when the point's Y lies on the staff, its top and bottom lines included
+     */
+    private boolean isWithinStaffY(Point viewPoint) {
+        return Math.abs(layoutYSs(viewPoint)) <= Staff.STAFF_HALF_SS;
     }
 
     /**
@@ -607,189 +669,74 @@ class LineSelectionHandler {
      * An empty line and a line holding only the song's auto-maintained terminal both answer
      * false. There is nothing to select on either, so the press does not arm and the drag is a
      * no-op rather than a band swept across bare staff.
+     *
+     * @return true when a drag on this line could select something
      */
     private boolean hasSweepableColumns() {
-        var line = lc.getLine();
-
-        return line != null && line.effectiveElementCount() > 0;
-    }
-
-    /** {@link #HEADER_GAP_PX} in staff spaces. */
-    private static double headerGapSs() {
-        return ScaleContext.pxToSs(HEADER_GAP_PX);
+        return sweepRange() != null;
     }
 
     /**
-     * The leftmost x, in line-local staff spaces, the band's leading edge may reach: clear of the
-     * staff header, whose own press selects the staff lines rather than sweeping.
-     */
-    private static double sweepLeftLimitSs(Line line) {
-        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + headerGapSs();
-    }
-
-    /**
-     * The rightmost x, in line-local staff spaces, the band's leading edge may reach: the left
-     * ink edge of the auto-maintained terminal's column, or the end of the staff when the line
-     * carries no terminal.
+     * What this line's current layout lets a drag reach and select.
      * <p>
-     * Stopping at the terminal is what keeps it out of every selection (issue #713) — the scan in
-     * {@link #calculateLineSelectionFromDrag} would otherwise be the only thing excluding an
-     * element the band visibly covers.
+     * Rebuilt on every ask rather than captured on press: a line's content can change under a
+     * live drag, and re-deriving is what keeps a gesture reading the layout in front of it
+     * instead of one that has been replaced.
      *
-     * @param sweepableCount this line's sweepable column count, which is also the terminal's own
-     *                       element index when the line carries one
+     * @return the range, or {@code null} when this component has no line, has no layout, or the
+     *         line holds nothing a drag could select
      */
-    private static double sweepRightLimitSs(
-        Line line, LayoutResult layoutResult, int sweepableCount) {
+    private @Nullable SweepRange sweepRange() {
+        var line = lc.getLine();
+        var layoutResult = lc.getLayoutResult();
 
-        var staffEndXSs = line.getSong().getLineWidthSs();
-
-        if (sweepableCount == line.elementCount()) {
-            return staffEndXSs;
-        }
-
-        // At this point terminalColumn should never be null, but getElementColumn()
-        // is Nullable, so we have to provide a fallback.
-        var terminalColumn = layoutResult.getElementColumn(line.getElement(sweepableCount));
-        return terminalColumn == null ? staffEndXSs : terminalColumn.getLeftEdgeXSs();
-    }
-
-    /**
-     * The sweepable column containing {@code xSs}, or {@code null} if that x lands in a gap,
-     * past the last column, or inside the song's auto-maintained terminal.
-     * <p>
-     * Recomputed on every call rather than resolved once on press: a mid-drag re-layout would
-     * otherwise leave a stale {@link ElementColumn} behind, and there would be an invalidation
-     * path to maintain. Spans overlap only at a grace-host boundary (the #560 flag discount);
-     * the hit tester's first-match-wins order gives that sliver to the grace note.
-     */
-    private @Nullable ElementColumn columnAt(
-        double xSs, LayoutResult layoutResult, Line line, int sweepableCount) {
-
-        var elementIndex = layoutResult.findElementAtXSs(xSs, line, ColumnSpan.FULL_INK);
-
-        if (elementIndex < 0 || elementIndex >= sweepableCount) {
+        if (line == null || layoutResult == null) {
             return null;
         }
 
-        return layoutResult.getElementColumn(line.getElement(elementIndex));
+        return SweepRange.of(line, layoutResult);
     }
 
     /**
-     * What one end of the band contributes to it: the whole span of the column that end landed
-     * in, or the bare point when it landed in a gap.
+     * The band the current anchor and lead describe, brought inside what {@code sweepRange}
+     * allows.
+     * <p>
+     * Each end is a bare mouse position, never widened out to the column it happens to land in,
+     * so the band's edge follows the mouse continuously across a column rather than jumping to
+     * the column's far side. Both ends are clamped, so no press position can anchor a band
+     * somewhere a drag could not have taken its leading edge.
+     *
+     * @return the band, whichever direction the drag was drawn in
      */
-    private static SelectionBand contributionAt(double xSs, @Nullable ElementColumn column) {
-        if (column == null) {
-            return new SelectionBand(xSs, xSs);
-        }
-
-        return new SelectionBand(column.getLeftEdgeXSs(), column.getRightEdgeXSs());
+    private SelectionBand bandWithin(SweepRange sweepRange) {
+        return SelectionBand.spanning(sweepRange.clamp(anchorXSs), sweepRange.clamp(leadXSs));
     }
 
     /**
-     * The band spanned by the current anchor and leading edges: the smallest interval containing
-     * both of their contributions.
+     * Replaces the selection with the columns the band touches, anchored at the first of them.
      * <p>
-     * A contribution is the whole span of the column that end lands in, or the bare point when it
-     * lands in a gap. That one rule produces every required behavior — the band snaps out to a
-     * column's far extent the moment the mouse enters it and holds there, resumes tracking
-     * continuously on the way out, covers the anchor's column from the very first movement, and
-     * keeps the anchor column enclosed when the drag reverses across it.
-     * <p>
-     * The leading edge is clamped to the sweepable range — the full staff between the header and
-     * the terminal, not merely the content within it, so the band reaches the bare staff on either
-     * side of the music. The anchor is deliberately not clamped, so a press in a leading gap or in
-     * the header keeps its raw x.
-     */
-    private SelectionBand computeBand() {
-        var line = lc.getLine();
-        var layoutResult = lc.getLayoutResult();
-        var rawBand = new SelectionBand(
-            Math.min(anchorXSs, leadXSs), Math.max(anchorXSs, leadXSs));
-
-        // A press only arms a band where there is something to sweep, so a line with no sweepable
-        // column cannot reach this. It is still guarded rather than assumed: the line's content
-        // can change under a live drag, and this is the one path that would then reach for a
-        // column that no longer exists.
-        if (line == null || layoutResult == null) {
-            return rawBand;
-        }
-
-        var sweepableCount = line.effectiveElementCount();
-
-        if (sweepableCount == 0) {
-            return rawBand;
-        }
-
-        var clampedLeadXSs = Math.clamp(
-            leadXSs,
-            sweepLeftLimitSs(line),
-            sweepRightLimitSs(line, layoutResult, sweepableCount));
-        var anchor = contributionAt(
-            anchorXSs, columnAt(anchorXSs, layoutResult, line, sweepableCount));
-        var lead = contributionAt(
-            clampedLeadXSs, columnAt(clampedLeadXSs, layoutResult, line, sweepableCount));
-
-        return new SelectionBand(
-            Math.min(anchor.leftSs(), lead.leftSs()),
-            Math.max(anchor.rightSs(), lead.rightSs()));
-    }
-
-    /**
-     * Replaces the selection with the elements the band covers, anchored at the first
-     * of them.
-     * <p>
-     * The anchor is {@code begin} whichever direction the band was drawn in, and whatever the
+     * The anchor is the first column whichever direction the band was drawn in, and whatever the
      * press point landed on. It is the fixed point every later Shift+click and Shift+arrow
      * extends from, and nothing but a new plain click or drag may move it (issue #748).
      * <p>
-     * An element is swept iff its column's full-ink span overlaps the band. Vertical position is
-     * not consulted anywhere, so a note four ledger lines up, a rest and a barline are all swept
-     * identically. The scan's {@code 0 .. effectiveElementCount() - 1} bound <b>is</b> the
-     * terminal-exclusion rule of issue #713; there is no per-element terminal check alongside it.
+     * Which columns those are is {@code sweepRange}'s answer, not this method's — including the
+     * exclusion of the auto-maintained terminal (issue #713), which is a consequence of the range
+     * not holding it rather than a check made here.
      * <p>
-     * The whole range is computed before anything is selected, so a drag event assigns the
-     * selection exactly once no matter how many elements it sweeps.
+     * The whole range is resolved before anything is selected, so a drag event assigns the
+     * selection exactly once no matter how many columns it touches.
      */
-    private void calculateLineSelectionFromDrag(SelectionBand band) {
-        var scoreView = lc.getScoreView();
-        var line = lc.getLine();
-        var layoutResult = lc.getLayoutResult();
-
-        if (line == null || layoutResult == null) {
-            return;
-        }
-
-        var coordinator = scoreView.getSelectionCoordinator();
+    private void selectSweptColumns(SweepRange sweepRange, SelectionBand band) {
+        var coordinator = lc.getScoreView().getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
 
-        var sweepableCount = line.effectiveElementCount();
-        var begin = -1;
-        var end = -1;
+        var touched = sweepRange.overlapping(band.leftSs(), band.rightSs());
 
-        for (var elementIndex = 0; elementIndex < sweepableCount; elementIndex++) {
-            var column = layoutResult.getElementColumn(line.getElement(elementIndex));
-
-            if (column == null) {
-                continue;
-            }
-
-            if (column.getLeftEdgeXSs() <= band.rightSs()
-                && column.getRightEdgeXSs() >= band.leftSs()) {
-                if (begin == -1) {
-                    begin = elementIndex;
-                }
-
-                end = elementIndex;
-            }
-        }
-
-        if (begin == -1) {
+        if (touched == null) {
             coordinator.clearActiveSelection();
             return;
         }
 
-        coordinator.selectRange(begin, end);
+        coordinator.selectRange(touched.begin(), touched.end());
     }
 }
