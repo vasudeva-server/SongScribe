@@ -55,11 +55,10 @@ import songscribe.util.UIUtils;
  *       map them onto this component's own top-left origin.</li>
  * </ul>
  *
- * <h2>Deliberate omissions</h2>
- * This class registers <b>no</b> mouse or mouse-motion listeners, and subclasses must not
- * either: a listener-free component is never selected as an AWT mouse-event target, so clicks
- * over an overlay fall through to the {@link LineComponent} beneath, exactly as note placement
- * and selection require. {@code InsertionPointOverlay} documents the same requirement.
+ * <h2>No mouse listeners</h2>
+ * This class registers no mouse or mouse-motion listeners: a listener-free component is never
+ * selected as an AWT mouse-event target, so clicks over an overlay fall through to the
+ * {@link LineComponent} beneath, exactly as note placement and selection require.
  */
 public abstract class LineOverlayComponent extends JComponent {
 

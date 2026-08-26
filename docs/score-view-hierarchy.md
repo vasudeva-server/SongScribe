@@ -28,68 +28,78 @@ the page. That is what makes hit resolution below need care.
 Outside the page, the main window is an ordinary border layout — toolbar above,
 this scroll pane in the middle, status bar below.
 
-## Two dispatch routes, deliberately
+## One dispatch route
 
-Most components in the tree have no mouse listeners of their own, so the toolkit
-retargets a click that lands on one of them up to the nearest ancestor that does:
-the page, whose input handler is where component double-clicks are resolved.
+Every score component registers as its own mouse listener and handles its own
+clicks. A click is never handed to an ancestor that then has to work out where it
+really landed: the toolkit picks the deepest component under the point that has
+listeners, and that component decides what the click means.
 
-**A staff line is the deliberate exception.** It registers as its own listener and
-consumes its clicks, so a click on a staff never reaches the page's handler and
-cannot be dispatched twice — once by the line and once as a component
-double-click.
+That scan walks past a listener-free sibling covering the point rather than
+stopping at it, which is how a click over an overlay reaches the score component
+beneath: an overlay carries no mouse listeners of its own, for the reason each
+overlay class's Javadoc states. The overlays are siblings of the score column
+positioned over the page, so this is the ordinary case rather than a corner one,
+and the toolkit's scan relies on it.
+
+A score component registers its mouse listener once, in its constructor —
+see `ScoreComponent`'s class Javadoc for how a detached component (a preview
+drawn inside a dialog) still receives events but acts on none of them.
+
+A click that reaches the page landed on no score component. It does what a score
+component does when nothing on it was editable — see `ScoreComponent.clicked`
+for the exact rule, including how a double-click behaves.
 
 ```
- double-click on the score
+ click on the score
         │
         ▼
  the toolkit picks the deepest component that HAS listeners
+ (walking past overlays, which have none)
         │
-        ├── a staff line ──▶ handles it itself: grace mode, paste placement,
-        │                    playback guard, lyric, staff-edit gesture,
-        │                    attachment — consumed, never seen by the page
+        ├── a score component ──▶ handles it itself
+        │      │
+        │      ├── title / subtitle ──▶ double-click opens settings
+        │      │                        at that field
+        │      ├── a staff line ──────▶ grace mode, paste placement,
+        │      │                        playback guard, lyric, staff-edit
+        │      │                        gesture, attachment, attribution
+        │      └── nothing editable ──▶ cancel a pending placement, deselect
         │
-        └── the page ──────▶ left double-click, not playing?
-                                  │
-                                  ├── no ──▶ cancel a pending placement,
-                                  │          deselect, take focus
-                                  │
-                                  └── yes ─▶ resolve the target BY BOUNDS
-                                                │
-                                                ├── title / subtitle ──▶ open
-                                                │   settings at that field
-                                                └── anything else ──▶ deselect
+        └── the page ───────────▶ the click was on no component:
+                                  cancel a pending placement, deselect,
+                                  take focus
 ```
-
-## Resolving by bounds, not by stacking
-
-The page re-resolves the click target itself rather than trusting the component
-the event arrived on — that component is only ever the page, since that is what
-the listener walk retargeted to.
-
-Resolution descends the tree testing each child's own bounds, examining **every**
-child that contains the point rather than stopping at the topmost. A stacking-order
-lookup would answer with an overlay and never reach the score component beneath
-it, silently ending the gesture wherever an overlay happened to cover a title.
-Because the overlays are siblings rather than descendants, that is a real
-possibility rather than a hypothetical one, and resolving by bounds steps past
-them.
-
-No overlay reaches the title band today, so nothing in the running application
-exercises it; a test is what keeps a future one from quietly breaking the gesture.
 
 ## Editing text by double-clicking it
 
-The title and the subtitle share one settings tab but are edited in different
-fields, so each names its own section. The section chooses both the tab and the
-field the caret lands in, so double-clicking a piece of text opens the dialog on
-that very text.
+Two routes open the song's settings on a double-click, and they answer different
+questions.
 
-A title component is sized to exactly the text it draws, so it needs no hit
-testing — but by the same token an **empty** title or subtitle has no bounds and
-so no hit area. Double-clicking where a missing subtitle would go does nothing;
-that field is reached through the menu instead.
+**A component whose bounds *are* its text needs no hit testing.** The title and
+the subtitle share one settings tab but are edited in different fields, so each
+names its own section. The section chooses both the tab and the field the caret
+lands in, so double-clicking a piece of text opens the dialog on that very text.
+
+Because a title component is sized to exactly the text it draws, an **empty**
+title or subtitle has no bounds and so no hit area. Double-clicking where a
+missing subtitle would go does nothing; that field is reached through the menu
+instead.
 
 This is deliberate. A phantom target for empty text would put an invisible
 click-swallowing strip above every score. The gesture reveals what is already on
 the page rather than being the way to put something there.
+
+**A region drawn inside another component's bounds does need it.** The song's
+attribution block reaches the very same dialog, but it is not a component of its
+own: it is drawn inside the first staff line's component, and the line resolves it
+through the registry of clickable areas. The block can overlap the notation, and
+only the registry can settle which of the two owns the point.
+
+Two consequences follow that a reader cannot derive from the route itself. The
+attribution gesture works in edit mode as well as select mode, matching the title
+and the subtitle. And where the block hangs down into the range in which a note
+could be inserted, the pending note wins, so those staff positions stay reachable.
+
+Being addressable by a click is a separate question from being selectable; see
+[selection.md](selection.md).

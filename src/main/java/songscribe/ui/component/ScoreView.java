@@ -718,6 +718,24 @@ public final class ScoreView
     }
 
     @Override
+    public void takeFocus() {
+        requestFocusInWindow();
+    }
+
+    @Override
+    public void cancelPlacementAndDeselect() {
+        var insertionPointMode = EditModeManager.getInsertionPointMode();
+
+        if (insertionPointMode.isInProgress()) {
+            insertionPointMode.cancel();
+        }
+
+        if (selectionCoordinator.isInSelectMode()) {
+            deselect();
+        }
+    }
+
+    @Override
     public void selectionChanged() {
         MessageCenter.post(new MusicSelectionDidChangeNotification(this));
     }

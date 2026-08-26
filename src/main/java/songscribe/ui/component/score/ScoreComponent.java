@@ -24,6 +24,8 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.JComponent;
 
 import org.jspecify.annotations.Nullable;
@@ -34,7 +36,9 @@ import songscribe.dom.ViewPx;
 import songscribe.error.RuntimeError;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.util.GraphicUtils;
+import songscribe.util.UIUtils;
 
 /**
  * Abstract base class for score rendering components.
@@ -44,11 +48,76 @@ import songscribe.util.GraphicUtils;
  *   <li>Antialiasing setup in {@link #paintComponent(Graphics)}</li>
  *   <li>Template method pattern via {@link #render(Graphics2D)}</li>
  *   <li>Margin system integration via layout constants</li>
+ *   <li>Mouse dispatch via the {@link #clicked}, {@link #pressed}, {@link #released},
+ *       {@link #entered} and {@link #exited} hooks</li>
  * </ul>
  * <p>
  * Subclasses must implement {@link #render(Graphics2D)} to perform their specific rendering.
+ * <p>
+ * A component registers its mouse listener once, in its constructor, so AWT always
+ * delivers a click straight to the component under the pointer and nothing has to search
+ * the containment tree by bounds. A detached component (dialog previews, exporters) still
+ * receives events, but each hook reads a null {@code scoreView} and does nothing.
  */
 public abstract class ScoreComponent extends JComponent {
+
+    private final MouseAdapter mouseAdapter = new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            var view = scoreView;
+
+            if (view == null || !UIUtils.isLeftClick(e)) {
+                return;
+            }
+
+            clicked(e, view);
+        }
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            var view = scoreView;
+
+            if (view == null || !UIUtils.isLeftClick(e)) {
+                return;
+            }
+
+            view.takeFocus();
+            pressed(e, view);
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            var view = scoreView;
+
+            if (view == null) {
+                return;
+            }
+
+            released(e, view);
+        }
+
+        @Override
+        public void mouseEntered(MouseEvent e) {
+            var view = scoreView;
+
+            if (view == null) {
+                return;
+            }
+
+            entered(e, view);
+        }
+
+        @Override
+        public void mouseExited(MouseEvent e) {
+            var view = scoreView;
+
+            if (view == null) {
+                return;
+            }
+
+            exited(e, view);
+        }
+    };
 
     /** Reference to the song model. */
     @Nullable
@@ -76,6 +145,7 @@ public abstract class ScoreComponent extends JComponent {
      */
     protected ScoreComponent() {
         setOpaque(false);
+        addMouseListener(mouseAdapter);
     }
 
     /**
@@ -90,8 +160,9 @@ public abstract class ScoreComponent extends JComponent {
     }
 
     /**
-     * Sets the owning {@link ScoreView}. On-score components are given one; detached
-     * previews are not, so they fall back to {@link ViewScale#IDENTITY}.
+     * Sets the owning {@link ScoreView}, attaching this component to it. On-score
+     * components are given one; detached previews are not, so they fall back to
+     * {@link ViewScale#IDENTITY}.
      *
      * @param scoreView the owning score view
      */
@@ -294,18 +365,110 @@ public abstract class ScoreComponent extends JComponent {
     /**
      * Opens the editor for what this component displays, answering whether one opened.
      * <p>
-     * Called by {@code ScoreInputHandler} when a left double-click outside playback
-     * lands on this component. The default answers false, so a component that displays
-     * nothing editable needs no override and the click falls through to the score
-     * view's normal handling.
+     * Called by {@link #clicked} on a left double-click outside playback. The default
+     * answers false, so a component that displays nothing editable needs no override and
+     * the click falls through to the score view's normal handling.
      * <p>
-     * Takes no click point: a component's bounds are its hit area. Should a component
-     * ever need to distinguish where on itself it was clicked, the conversion from the
-     * dispatching {@code ScoreView}'s coordinates into component coordinates belongs at
-     * the dispatch site, so that no override can get the coordinate space wrong.
+     * Takes no click point: a component's bounds are its hit area. A component that needs
+     * to distinguish where on itself it was clicked overrides {@link #clicked} instead,
+     * which receives the event in this component's own coordinate space.
+     *
+     * @return {@code true} if an editor opened, {@code false} if this component has
+     *         nothing to edit
+     * @effects opens an editor, which for most components is a modal dialog
      */
-    public boolean openEditor() {
+    protected boolean openEditor() {
         return false;
+    }
+
+    /**
+     * Reacts to a left-button click on this component.
+     * <p>
+     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
+     * so that attachment is a precondition carried by the signature: no override can be
+     * reached while this component is detached, and none has to test for it.
+     * <p>
+     * The default opens this component's editor on a left double-click outside playback,
+     * and otherwise cancels pending input and clears the selection. A double-click
+     * arrives as two clicks, and the first of them takes the cancel-and-deselect path in
+     * full, so a double-click always clears the selection before an editor opens.
+     * <p>
+     * A component overrides this rather than {@link #openEditor()} when it needs the
+     * click point, or when it wants a different order of gestures.
+     *
+     * @param e    the click, in this component's coordinate space
+     * @param view the score view this component is attached to
+     * @effects by default, opens an editor or clears the selection
+     */
+    protected void clicked(MouseEvent e, ScoreView view) {
+        // Playback state is read from the playback controller rather than from the
+        // sequencer because the action layer's DISABLE_WHEN_PLAYING flag does not reach
+        // a mouse handler.
+        if (UIUtils.isLeftDoubleClick(e) && !PlaybackController.isPlaying() && openEditor()) {
+            return;
+        }
+
+        view.cancelPlacementAndDeselect();
+    }
+
+    /**
+     * Reacts to a left-button press on this component, after the score view has already
+     * been given focus.
+     * <p>
+     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
+     * so that attachment is a precondition carried by the signature. Does nothing by
+     * default.
+     *
+     * @param e    the press, in this component's coordinate space
+     * @param view the score view this component is attached to
+     */
+    protected void pressed(MouseEvent e, ScoreView view) {
+        // Nothing by default.
+    }
+
+    /**
+     * Reacts to a mouse release on this component.
+     * <p>
+     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
+     * so that attachment is a precondition carried by the signature. Unlike
+     * {@link #clicked} and {@link #pressed}, this is not filtered by button: a release of
+     * any button reaches it. Does nothing by default.
+     *
+     * @param e    the release, in this component's coordinate space
+     * @param view the score view this component is attached to
+     */
+    protected void released(MouseEvent e, ScoreView view) {
+        // Nothing by default.
+    }
+
+    /**
+     * Reacts to the pointer entering this component.
+     * <p>
+     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
+     * so that attachment is a precondition carried by the signature. Unlike
+     * {@link #clicked} and {@link #pressed}, this is not filtered by button: an enter
+     * carries no button at all. Does nothing by default.
+     *
+     * @param e    the enter, in this component's coordinate space
+     * @param view the score view this component is attached to
+     */
+    protected void entered(MouseEvent e, ScoreView view) {
+        // Nothing by default.
+    }
+
+    /**
+     * Reacts to the pointer leaving this component.
+     * <p>
+     * {@code view} is the owning view rather than a read of the {@code scoreView} field,
+     * so that attachment is a precondition carried by the signature. Unlike
+     * {@link #clicked} and {@link #pressed}, this is not filtered by button: an exit
+     * carries no button at all. Does nothing by default.
+     *
+     * @param e    the exit, in this component's coordinate space
+     * @param view the score view this component is attached to
+     */
+    protected void exited(MouseEvent e, ScoreView view) {
+        // Nothing by default.
     }
 
 }

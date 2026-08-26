@@ -48,9 +48,9 @@ import songscribe.ui.FlatLafProps;
  * pill says "Paste content" for a clipboard fragment and "Insert key change" for a key
  * signature without this component knowing either operation.
  * <p>
- * Deliberately has no mouse listeners: a listener-free component is never selected
- * as an AWT mouse-event target, so clicks (including ones over the pill) fall through
- * to the score underneath, exactly as insertion-point placement requires.
+ * Carries no mouse listeners: a listener-free component is never selected as an AWT
+ * mouse-event target, so clicks (including ones over the pill) fall through to the score
+ * underneath, exactly as insertion-point placement requires.
  * <p>
  * Bounds are set externally by {@code InsertionPointMode} (there is no layout manager for
  * a {@link JLayeredPane} child). This component in turn positions the pill itself: centered

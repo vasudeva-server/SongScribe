@@ -31,6 +31,10 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Callback interface for ScoreInputHandler to communicate with ScoreView.
+ * <p>
+ * {@link #takeFocus()} and {@link #cancelPlacementAndDeselect()} also carry a second
+ * contract: {@code ScoreComponent} calls both directly on the concrete {@code ScoreView},
+ * outside this interface entirely.
  */
 public interface InputHandlerCallback {
 
@@ -38,14 +42,44 @@ public interface InputHandlerCallback {
 
     Mode getMode();
 
-    @SuppressWarnings("UnusedReturnValue")
-    boolean requestFocusInWindow();
+
 
     @Nullable Window getWindow();
 
     SelectionCoordinator getSelectionCoordinator();
 
     void selectionChanged();
+
+    /**
+     * Gives the score view focus, in response to a press anywhere on the score surface.
+     * <p>
+     * A press on the score always gives the score focus, with no exceptions, which is why
+     * callers do this before any mode or state guard: without it a user who was typing in
+     * the lyric editor and presses back onto the score would have score key bindings typed
+     * into the lyric instead. The lyric editor still takes focus on the double-click path,
+     * which opens the editor after this has run.
+     *
+     * @effects requests focus for the score view; touches no selection or edit-mode state
+     */
+    void takeFocus();
+
+    /**
+     * Cancels a pending insertion-point placement and clears the selection — what a click
+     * nothing else claimed does.
+     * <p>
+     * A click reaches this whether it landed on the view's own background or on a score
+     * component that opened no editor, so both routes leave the view in the same state.
+     * When no placement is in progress and the view is not in select mode, it does nothing.
+     * <p>
+     * The selection is cleared directly rather than by posting a deselect command: that
+     * command's handler acts only while the score holds focus, an arbitration the menu
+     * action and the Escape key need because they fire while something else may hold focus.
+     * A click on the score is itself proof of the target, so it needs none.
+     *
+     * @effects cancels the insertion-point placement when one is in progress; clears the
+     *          selection when the view is in select mode; leaves focus alone
+     */
+    void cancelPlacementAndDeselect();
 
     /**
      * Extends the active element selection to {@code targetIndex}, keeping the anchor

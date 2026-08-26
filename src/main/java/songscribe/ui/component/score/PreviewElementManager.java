@@ -727,7 +727,7 @@ public final class PreviewElementManager {
 
     /**
      * Handles a click on the preview element, performing the appropriate action
-     * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
+     * (append, insert, or modify). Called from {@code LineComponent.clicked()}.
      */
     public static void handleClick(LineComponent lc) {
         handleClick(lc, false);

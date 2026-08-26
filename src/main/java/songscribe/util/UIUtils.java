@@ -173,6 +173,19 @@ public final class UIUtils {
     //
 
     /**
+     * Answers whether button 1 is involved in {@code e} — true for a left-button press,
+     * release, click, or drag, not only a click.
+     * <p>
+     * Modifiers are deliberately not consulted, on the same terms {@link
+     * #isLeftDoubleClick} states them: each caller adds the modifier policy it wants.
+     *
+     * @return {@code true} when button 1 is involved in {@code e}
+     */
+    public static boolean isLeftClick(MouseEvent e) {
+        return SwingUtilities.isLeftMouseButton(e);
+    }
+
+    /**
      * Answers whether {@code e} is a left-button click with a click count of
      * {@value #DOUBLE_CLICK_COUNT}.
      * <p>

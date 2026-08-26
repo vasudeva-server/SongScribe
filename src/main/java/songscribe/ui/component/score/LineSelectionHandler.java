@@ -253,20 +253,30 @@ class LineSelectionHandler {
         var scoreView = lc.getScoreView();
         var range = scoreView.getSelectionCoordinator().getRange();
 
-        // Don't clear selection on shift+click (preserve for extend)
-        if (!e.isShiftDown() || range == null) {
-            scoreView.clearSelection();
-        }
+        // Extend is the sole reason to keep an existing selection through a press, so it is
+        // the sole exception to clearing: every press that is not one starts over. It needs
+        // all three conditions. Shift alone is not enough because only HitTarget.Element
+        // supports extend — handleClick resolves it via elementIndexOf — so shift over any
+        // other target, Attribution included, would otherwise preserve a selection nothing
+        // could extend, leaving the press with no visible effect. And the range must belong
+        // to the line just clicked, since an index computed against this line's elements
+        // means something different on the line the range actually names.
+        var isExtend = e.isShiftDown()
+            && hitTarget instanceof HitTarget.Element
+            && range != null
+            && range.line() == lc.getLine();
 
-        // Select the hit element immediately on press.
-        // This prevents rubber-band drag from starting on selectable elements.
-        // Shift+click on a note head is handled in handleClick for extend-selection.
-        if (e.isShiftDown() && hitTarget instanceof HitTarget.Element) {
+        if (isExtend) {
             // pressHandled stays false so the click that follows can extend the range (#748).
             // bandArmed was cleared at the top of this method and nothing since could have set
             // it, so returning here is what keeps this gesture from ever sweeping a band.
             return;
         }
+
+        scoreView.clearSelection();
+
+        // Select the hit element immediately on press.
+        // This prevents rubber-band drag from starting on selectable elements.
 
         // Every variant is spelled out rather than defaulted: what a click does to a newly
         // selectable kind of notation is a decision, and a default arm would make it silently.

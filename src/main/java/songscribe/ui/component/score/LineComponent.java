@@ -73,7 +73,7 @@ import songscribe.util.UIUtils;
  * </ul>
  */
 public class LineComponent extends ScoreComponent
-    implements MouseMotionListener, MouseListener {
+    implements MouseMotionListener {
 
     // ==========================================================================
     // Functional Interface for Selection State
@@ -174,7 +174,7 @@ public class LineComponent extends ScoreComponent
     /**
      * Element index hit by the most recent press, or -1 when that press hit no element.
      * {@link NoteDragHandler} computes this on press and discards it on release, so it is
-     * captured in {@link #mouseReleased} for {@link #mouseClicked} — which runs next — to
+     * captured in {@link #released} for {@link #clicked} — which runs next — to
      * reuse instead of scanning the line's elements a second time for the same point.
      */
     private int pressHitIndex = -1;
@@ -193,7 +193,6 @@ public class LineComponent extends ScoreComponent
      */
     public LineComponent() {
         addMouseMotionListener(this);
-        addMouseListener(this);
     }
 
     /**
@@ -721,7 +720,7 @@ public class LineComponent extends ScoreComponent
         }
 
         // While a placement is pending, a drag must not rubber-band a new selection. The press
-        // that would start one is already suppressed (see mousePressed), so a drag here would
+        // that would start one is already suppressed (see pressed), so a drag here would
         // band from a stale press point, and any selection it made would be replaced by the
         // placement that follows anyway.
         if (getInsertionPointMode().isInProgress()) {
@@ -739,11 +738,7 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    public void mouseClicked(MouseEvent e) {
-        if (e.getButton() != MouseEvent.BUTTON1) {
-            return;
-        }
-
+    protected void clicked(MouseEvent e, ScoreView view) {
         // Grace mode handles its own click logic. Returns true to consume the event.
         if (getGraceModeManager().mouseClicked(this, e)) {
             return;
@@ -756,10 +751,10 @@ public class LineComponent extends ScoreComponent
         }
 
         // A click does nothing at all while the song is playing, mirroring the guard in
-        // mousePressed: everything below opens an editor, opens a modal dialog or inserts an
+        // pressed: everything below opens an editor, opens a modal dialog or inserts an
         // element, and DISABLE_WHEN_PLAYING does not reach a mouse handler.
         //
-        // Read from PlaybackController rather than the sequencer, for the reason mousePressed
+        // Read from PlaybackController rather than the sequencer, for the reason pressed
         // gives. The only playback check below is the selection handler's, which asks whether
         // the sequencer object is currently running — a different question during the window
         // between a playback transition and the sequencer following it, and one that now gates
@@ -784,12 +779,12 @@ public class LineComponent extends ScoreComponent
             // should insert an element or re-resolve the click to a note.
             if (UIUtils.isLeftDoubleClick(e)
                 && line != null
-                && getScoreView().getActiveLyricEditor() == null) {
+                && view.getActiveLyricEditor() == null) {
                 var element = lyricHit.element();
                 var lyric = element.getLyricForVerse(lyricHit.verse());
 
                 if (lyric != null && !lyric.text().isBlank()) {
-                    LyricEditor.deselectAndOpenOn(getScoreView(), line, line.getElementIndex(element));
+                    LyricEditor.deselectAndOpenOn(view, line, line.getElementIndex(element));
                 }
             }
 
@@ -797,23 +792,22 @@ public class LineComponent extends ScoreComponent
         }
 
         // All four double-click-to-edit gestures ask about the same point, so it is resolved
-        // once here and shared, as hitTestViewPoint's own contract asks and as mousePressed
+        // once here and shared, as hitTestViewPoint's own contract asks and as pressed
         // already does with its cascade result. Pinning line to a local here is what lets the
         // three that act on notation take it as a plain non-null argument.
         //
-        // Shift belongs on the outer gate rather than inside any one gesture: shift+click
-        // extends the selection, and every gesture below runs before the selection handler sees
-        // the click, so any of them claiming a shift+double-click would discard the selection
-        // the user was building.
+        // No modifier gates this: a double-click always means "edit this," regardless of
+        // which keys happen to be down, so shift+double-click on a selectable element opens
+        // its editor exactly like a plain double-click would.
         //
         // isSelectionActive gates only the three that act on notation. It requires SELECT mode —
-        // a plain double-click in SELECT mode, or one in EDIT mode only once mousePressed has
+        // a plain double-click in SELECT mode, or one in EDIT mode only once pressed has
         // already switched permanently to SELECT, which Alt does anywhere and a plain click does
         // on the staff lines in the clef/key signature column — and it additionally rules out
         // playback. The attribution runs outside it on purpose; see its own method.
         var clickedLine = line;
 
-        if (UIUtils.isLeftDoubleClick(e) && !e.isShiftDown() && clickedLine != null) {
+        if (UIUtils.isLeftDoubleClick(e) && clickedLine != null) {
             var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
             if (editDoubleClickedAttribution(clickHit)) {
@@ -821,7 +815,7 @@ public class LineComponent extends ScoreComponent
             }
 
             if (selectionHandler.isSelectionActive(e)) {
-                if (editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
+                if (!e.isShiftDown() && editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
                     return;
                 }
 
@@ -908,8 +902,7 @@ public class LineComponent extends ScoreComponent
      * This runs outside the {@code isSelectionActive} test the three notation gestures sit
      * behind, on purpose, so the gesture works in EDIT mode as well as SELECT. That matches the
      * title and the subtitle, which reach the same dialog from any mode through
-     * {@link ScoreComponent#openEditor}. It is still inside the shift exclusion, like every
-     * other gesture there.
+     * {@link ScoreComponent#openEditor}.
      * <p>
      * The preview element takes precedence: the attribution's bottom edge can reach down into
      * the insertable pitch range, and claiming the click there would make those staff positions
@@ -947,7 +940,7 @@ public class LineComponent extends ScoreComponent
      * answers false for those and the attachment is simply left selected.
      * <p>
      * Answering false is safe even when the click really did land on an attachment.
-     * {@link #mouseClicked} hands the click to {@code handleClick} next, which consumes every
+     * {@link #clicked} hands the click to {@code handleClick} next, which consumes every
      * click while selection is active — and the {@code isSelectionActive} test this runs
      * inside, already true to have got here, says it is. So nothing is inserted at the click
      * point either way.
@@ -1011,19 +1004,7 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    public void mousePressed(MouseEvent e) {
-        if (e.getButton() != MouseEvent.BUTTON1) {
-            return;
-        }
-
-        // A click on the score always gives the score focus, with no exceptions — hence
-        // before every mode guard below. LineComponent consumes its own clicks and mouse
-        // events do not bubble, so ScoreInputHandler.mouseClicked never runs for a click on
-        // a line. Without this, a user who was typing in the lyric editor and clicks back
-        // onto a line would have score key bindings typed into the lyric instead. The lyric
-        // editor still takes focus on the double-click path, which opens later.
-        getScoreView().requestFocusInWindow();
-
+    protected void pressed(MouseEvent e, ScoreView view) {
         if (getGraceModeManager().mousePressed(this, e)) {
             return;
         }
@@ -1066,11 +1047,10 @@ public class LineComponent extends ScoreComponent
         // The cascade walks every element in the line, so it runs exactly once per press: this one
         // result feeds the mode switch, the EDIT-mode selection path, the pitch-drag handler and
         // the press dispatch, all below. This is the only handler that needs the whole cascade —
-        // mouseMoved and mouseClicked ask about lyrics alone.
+        // mouseMoved and clicked ask about lyrics alone.
         var pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
 
-        if (scoreView != null
-            && scoreView.getMode() == Mode.EDIT
+        if (view.getMode() == Mode.EDIT
             && (e.isAltDown() || pressHit instanceof HitTarget.StaffLine)) {
             Actions.SELECT_MODE_ACTION.perform(this);
         }
@@ -1079,8 +1059,7 @@ public class LineComponent extends ScoreComponent
         // is. The mode is re-checked because an alt+click or a staff-line hit above may have just
         // switched us to SELECT, where the selection handler below handles lyrics along with
         // everything else.
-        if (scoreView != null
-            && scoreView.getMode() == Mode.EDIT
+        if (view.getMode() == Mode.EDIT
             && selectionHandler.handleEditModePress(pressHit)) {
             return;
         }
@@ -1098,9 +1077,9 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    public void mouseReleased(MouseEvent e) {
+    protected void released(MouseEvent e, ScoreView view) {
         // Capture before handleRelease() clears it. Refreshed on every release, so
-        // mouseClicked can never read a value left over from an earlier press.
+        // clicked can never read a value left over from an earlier press.
         pressHitIndex = noteDragHandler.isDragActive() ? noteDragHandler.getDragElementIndex() : -1;
 
         if (getGraceModeManager().mouseReleased(this, e)) {
@@ -1116,12 +1095,12 @@ public class LineComponent extends ScoreComponent
     }
 
     @Override
-    public void mouseEntered(MouseEvent e) {
+    protected void entered(MouseEvent e, ScoreView view) {
         PreviewElementManager.mouseEnteredLine(this);
     }
 
     @Override
-    public void mouseExited(MouseEvent e) {
+    protected void exited(MouseEvent e, ScoreView view) {
         getInsertionPointMode().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
     }

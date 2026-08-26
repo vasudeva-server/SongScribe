@@ -117,15 +117,12 @@ public abstract class BaseTitleComponent extends ScoreComponent {
      * {@code Actions.initialize}, which has run before any score component is inside a
      * visible {@code ScoreView}; it is deliberately not null-guarded, so a
      * startup-ordering regression fails loudly rather than becoming a gesture that silently
-     * does nothing. The gesture's playback condition is applied by the caller and is
-     * deliberately not re-derived here.
+     * does nothing. The gesture's playback condition is applied by {@link ScoreComponent}'s
+     * own click handling before this method is reached and is deliberately not re-derived
+     * here.
      */
     @Override
-    public boolean openEditor() {
-        if (song == null) {
-            return false;
-        }
-
+    protected boolean openEditor() {
         Actions.SONG_SETTINGS_ACTION.openAt(editorSection());
         return true;
     }
