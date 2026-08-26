@@ -18,10 +18,11 @@ is committed — that dashboard is what lets a cleared context resume mid-step.
 | 2 | [PixelDistance](#-phase-2-pixeldistance) | ⏸️ Blocked by 1b | — |
 | 3 | [TextMeasurement](#-phase-3-textmeasurement) | ⏸️ Blocked by 1b, 2 | — |
 | 4 | [Dissolve MyFontUtils](#-phase-4-dissolve-myfontutils) | ⏸️ Blocked by 1b, 3 | — |
-| 5 | [Rename to DocumentScale](#-phase-5-rename-to-documentscale) | ⏸️ Blocked by 1b, 2, 3, 4 | — |
-| 6 | [Contracts spanning classes](#-phase-6-contracts-spanning-classes) | ⏸️ Blocked by 1b, 2, 3, 4, 5 | — |
-| 7 | [FontDescription tests](#-phase-7-fontdescription-tests) | ⏸️ Blocked by 4, 5 | — |
-| 8 | [Gate](#-phase-8-gate) | ⏸️ Blocked by 1b, 2, 3, 4, 5, 6, 7 | — |
+| 5a | [Rename to DocumentScale — code](#-phase-5a-rename-to-documentscale--code) | ⏸️ Blocked by 1b, 2, 3, 4 | — |
+| 5b | [Rename to DocumentScale — prose](#-phase-5b-rename-to-documentscale--prose) | ⏸️ Blocked by 5a | — |
+| 6 | [Contracts spanning classes](#-phase-6-contracts-spanning-classes) | ⏸️ Blocked by 1b, 2, 3, 4, 5b | — |
+| 7 | [FontDescription tests](#-phase-7-fontdescription-tests) | ⏸️ Blocked by 4, 5b | — |
+| 8 | [Gate](#-phase-8-gate) | ⏸️ Blocked by 1b, 2, 3, 4, 5b, 6, 7 | — |
 
 A phase that both moves code and rewrites existing prose is split — the code half
 runs on Sonnet, the prose half on Opus. Rewriting a Javadoc or a design document
@@ -388,41 +389,92 @@ This phase gives each a home and deletes the file.
 
 ---
 
-## ⏸️ Phase 5: Rename to DocumentScale
+## ⏸️ Phase 5a: Rename to DocumentScale — code
 
 **Status:** Blocked  <br>
 **BlockedBy:** 1b, 2, 3, 4  <br>
-**Files:** src/main/java/songscribe/  <br>
-**Recommended model/effort:** Sonnet, low — a single IDE rename across roughly 25 files.
+**Files:** src/main/java/songscribe/, src/test/java/songscribe/  <br>
+**Recommended model/effort:** Sonnet, low — one IDE rename across roughly 25 files, then a compile.
 
-Runs last so each importing file is touched once, after `ScaleContext`'s content
-is final.
+Runs after phases 1b–4 so each importing file is touched once, with
+`ScaleContext`'s content already final. The test tree is in scope:
+`src/test/java/songscribe/e2e/E2ETest.java` and
+`src/test/java/songscribe/io/musicxml/MusicXmlRoundTripSupport.java` both call
+`ScaleContext`, and the IDE rename covers them.
+
+Touch no Markdown and no Javadoc prose in this phase. Phase 5b owns both.
 
 ### Tasks
 
 1. Rename the file and class `src/main/java/songscribe/dom/ScaleContext.java` to
    `DocumentScale` with `jet_brains_rename`, passing
    `rename_in_comments: false`. The `{@link}` and `{@code}` references rename on
-   their own; a repo-wide textual sweep damages unrelated prose.
-2. Confirm no `ScaleContext` references survive by running
-   `jet_brains_find_symbol` for the old name. A reference in a Markdown file
-   under `docs/` or `.claude/` is not renamed by the IDE — fix those by hand, and
-   check `docs/zoom.md` and `.claude/guides/spatial-units.md` in particular.
-3. Update the class Javadoc's opening sentence so it names the class as the fixed
-   authoring scale that `songscribe.ui.ViewScale` folds zoom on top of. State it
-   in the present tense; do not record that the class was formerly called
-   something else.
-4. Run `./scripts/compile.sh --test` and fix every error before committing. A
+   their own; the option is a repo-wide textual sweep that damages unrelated
+   prose.
+2. Confirm no Java reference to the old name survives by running
+   `jet_brains_find_symbol` for `ScaleContext` across both trees. Markdown is not
+   renamed by the IDE and is phase 5b's — do not fix it here.
+3. Run `./scripts/compile.sh --test` and fix every error before committing. A
    rename that compiles is a rename that took; a failure means the IDE missed a
-   reference, most likely in a string or a file the rename did not treat as
+   reference, most likely in a string literal or a file it did not treat as
    source. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
+
+---
+
+## ⏸️ Phase 5b: Rename to DocumentScale — prose
+
+**Status:** Blocked  <br>
+**BlockedBy:** 5a  <br>
+**Files:** src/main/java/songscribe/dom/DocumentScale.java, specs/184-pagination.md, specs/184b-page-setup.md, plans/design-pass-register.md, .claude/skills/design-pass/SKILL.md  <br>
+**Recommended model/effort:** Opus, high — one Javadoc rewrite under the no-history rule, plus prose the IDE cannot rename because renaming the word is not always the right edit.
+
+Phase 5a renamed the class `ScaleContext` to `DocumentScale` in both source
+trees. Four non-Java files still name the old class, and one Javadoc sentence
+still describes it as a context.
+
+**Read `~/.claude/rules/development.md` §"No history in comments" before task 1.**
+A comment describes the code as it is now — never what it was or what changed.
+The tells are "no longer", "used to", "previously", "formerly", "now called X
+instead of Y", and any note that something was renamed. Strip a sentence of
+tense: if it only makes sense as a story about how the code got here, it does not
+go in the file.
+
+### Tasks
+
+1. In `src/main/java/songscribe/dom/DocumentScale.java`, rewrite the class
+   Javadoc's opening sentence so it names the class as the fixed authoring scale
+   that `songscribe.ui.ViewScale` folds the current zoom on top of. Nothing in
+   the file may record that the class was ever called anything else.
+2. In `specs/184-pagination.md:221` and `specs/184b-page-setup.md:43` and `:47`,
+   replace `ScaleContext` with `DocumentScale`. Read each sentence before editing
+   it: `184b-page-setup.md:43` argues that the class "already lives in `dom`",
+   which stays true, and `:47` names it as where an inches-to-pixels conversion
+   is available, which also stays true. These are open specs, so state them as
+   currently true rather than annotating that a rename happened.
+3. In `specs/184b-page-setup.md:47`, the phrase "at the `PageModel` seam" uses
+   "seam" for a code boundary. `~/.claude/guides/vocabulary.md` bans that sense
+   outright, and `.claude/guides/vocabulary.md` approves only "lyric seam" and
+   "beams at the seams" — neither applies. Name what the boundary does instead:
+   `PageModel` is where physical units convert to document pixels.
+4. In `plans/design-pass-register.md`, row 1's *Where* column names
+   `ScaleContext` as one of this pass's target types. Change it to
+   `DocumentScale` so the row names types that exist.
+5. In `.claude/skills/design-pass/SKILL.md:69`, the sentence "so a row reading
+   `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` is four files in a package"
+   quotes register row 1 as its worked example. Change `ScaleContext` to
+   `DocumentScale` so the example matches the register.
+6. Run `./scripts/compile.sh --test` and fix every error before committing.
+   Javadoc is compiled, so a malformed tag in task 1 fails here. Never
+   `./gradlew`, `gradle`, `javac`, or `java -cp`.
+7. Before committing, re-read every sentence written or changed above and delete
+   any that narrates the rename rather than describing what is true now.
 
 ---
 
 ## ⏸️ Phase 6: Contracts spanning classes
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1b, 2, 3, 4, 5  <br>
+**BlockedBy:** 1b, 2, 3, 4, 5b  <br>
 **Files:** src/main/java/songscribe/font/package-info.java, src/main/java/songscribe/dom/package-info.java, docs/zoom.md, .claude/guides/spatial-units.md  <br>
 **Recommended model/effort:** Opus, high — deciding what a package promises, and what belongs in a guide rather than a Javadoc.
 
@@ -463,7 +515,7 @@ members. This phase covers only what spans classes.
 ## ⏸️ Phase 7: FontDescription tests
 
 **Status:** Blocked  <br>
-**BlockedBy:** 4, 5  <br>
+**BlockedBy:** 4, 5b  <br>
 **Files:** src/test/java/songscribe/font/FontDescriptionTest.java, src/test/java/songscribe/font/package-info.java  <br>
 **Recommended model/effort:** Opus, high — case selection against the testing floor, not case-per-branch.
 
@@ -520,11 +572,11 @@ before writing anything.
 ## ⏸️ Phase 8: Gate
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1b, 2, 3, 4, 5, 6, 7  <br>
+**BlockedBy:** 1b, 2, 3, 4, 5b, 6, 7  <br>
 **Files:** —  <br>
 **Recommended model/effort:** Opus, high — a failure here is information about the design, and diagnosing it is the work.
 
-Phases 1a–7 each compile their own final state, so this phase is not where the
+Phases 1a–7 all compile their own final state, so this phase is not where the
 code first builds. It is the whole-tree gate: the full suite, coverage, and the
 diagrams.
 
