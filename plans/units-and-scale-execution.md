@@ -13,14 +13,21 @@ is committed — that dashboard is what lets a cleared context resume mid-step.
 
 | Phase | Description | Status | Sub-plan |
 |-------|-------------|--------|----------|
-| 1 | [Collapse the document scale](#-phase-1-collapse-the-document-scale) | ⏳ Pending | — |
-| 2 | [PixelDistance](#-phase-2-pixeldistance) | ⏸️ Blocked by 1 | — |
-| 3 | [TextMeasurement](#-phase-3-textmeasurement) | ⏸️ Blocked by 1, 2 | — |
-| 4 | [Dissolve MyFontUtils](#-phase-4-dissolve-myfontutils) | ⏸️ Blocked by 1, 3 | — |
-| 5 | [Rename to DocumentScale](#-phase-5-rename-to-documentscale) | ⏸️ Blocked by 1, 2, 3, 4 | — |
-| 6 | [Contracts spanning classes](#-phase-6-contracts-spanning-classes) | ⏸️ Blocked by 1, 2, 3, 4, 5 | — |
+| 1a | [Collapse the document scale — code](#-phase-1a-collapse-the-document-scale--code) | ⏳ Pending | — |
+| 1b | [Collapse the document scale — prose](#-phase-1b-collapse-the-document-scale--prose) | ⏸️ Blocked by 1a | — |
+| 2 | [PixelDistance](#-phase-2-pixeldistance) | ⏸️ Blocked by 1b | — |
+| 3 | [TextMeasurement](#-phase-3-textmeasurement) | ⏸️ Blocked by 1b, 2 | — |
+| 4 | [Dissolve MyFontUtils](#-phase-4-dissolve-myfontutils) | ⏸️ Blocked by 1b, 3 | — |
+| 5 | [Rename to DocumentScale](#-phase-5-rename-to-documentscale) | ⏸️ Blocked by 1b, 2, 3, 4 | — |
+| 6 | [Contracts spanning classes](#-phase-6-contracts-spanning-classes) | ⏸️ Blocked by 1b, 2, 3, 4, 5 | — |
 | 7 | [FontDescription tests](#-phase-7-fontdescription-tests) | ⏸️ Blocked by 4, 5 | — |
-| 8 | [Gate](#-phase-8-gate) | ⏸️ Blocked by 1, 2, 3, 4, 5, 6, 7 | — |
+| 8 | [Gate](#-phase-8-gate) | ⏸️ Blocked by 1b, 2, 3, 4, 5, 6, 7 | — |
+
+A phase that both moves code and rewrites existing prose is split — the code half
+runs on Sonnet, the prose half on Opus. Rewriting a Javadoc or a design document
+under the "no history in comments" rule in `~/.claude/rules/development.md` is
+where "no longer", "previously" and "now uses X instead of Y" get written, and
+that violation compiles.
 
 **Every phase here ends with `./scripts/compile.sh --test`.** Each re-points its
 own callers, so each leaves a final, compilable state — no phase leans on a later
@@ -34,17 +41,22 @@ Phase 8 is a separate gate: the full unit suite, coverage, and the diagrams.
 
 ---
 
-## ⏳ Phase 1: Collapse the document scale
+## ⏳ Phase 1a: Collapse the document scale — code
 
 **Status:** Pending  <br>
 **BlockedBy:** —  <br>
-**Files:** src/main/java/songscribe/dom/ScaleContext.java, src/main/java/songscribe/util/MyFontUtils.java, src/main/java/songscribe/ui/renderer/LineInvariants.java, src/main/java/songscribe/ui/component/score/LineComponent.java, src/main/java/songscribe/layout/MetronomeContent.java, docs/zoom.md  <br>
-**Recommended model/effort:** Sonnet, medium — deletions with every call site named; no design decisions remain open.
+**Files:** src/main/java/songscribe/dom/ScaleContext.java, src/main/java/songscribe/util/MyFontUtils.java, src/main/java/songscribe/ui/renderer/LineInvariants.java, src/main/java/songscribe/ui/component/score/LineComponent.java  <br>
+**Recommended model/effort:** Sonnet, medium — deletions and re-points with every call site named; no prose is rewritten here and no design decision remains open.
+
+Touch no Javadoc or Markdown in this phase beyond what deleting a member removes
+with it. Phase 1b owns every prose rewrite these deletions imply, including
+`ScaleContext`'s own class Javadoc, which will still describe the singleton
+deleted below when this phase ends. Leaving it stale is correct.
 
 ### Tasks
 
 1. In `src/main/java/songscribe/dom/ScaleContext.java`, delete these members. Each
-   has zero callers, or its callers are re-pointed in tasks 6–7 of this phase:
+   has zero callers, or its callers are re-pointed in task 4 of this phase:
    `INSTANCE` (line 43), the `private volatile double pixelsPerStaffSpace` field
    (48), `getPixelsPerStaffSpace()` (52–54), `setPixelsPerStaffSpace(double)`
    (56–64) including its `pxPerSs <= 0` guard, `getScaleTransform()` (141–143),
@@ -61,29 +73,11 @@ Phase 8 is a separate gate: the full unit suite, coverage, and the diagrams.
 3. Rewrite the three methods that read the deleted field so they read the
    constant instead: `ssToPx` (67–69), `ssToRoundedPx` (72–74), `pxToSs`
    (77–79).
-4. Replace the class Javadoc (30–40). It must state that the document scale is a
-   compile-time constant, and that per-view zoom is `songscribe.ui.ViewScale`'s
-   concern, citing `docs/zoom.md` rather than restating it. Delete the sentence
-   "Currently a singleton; this will evolve to per-view instances when zoom
-   support is added." Write the Javadoc as a description of the code as it now
-   is — no sentence may narrate what changed, per
-   `~/.claude/rules/development.md` §"No history in comments".
-5. Add a paragraph to `inchesToSs`'s Javadoc (line 81–90) stating that the method
-   has no callers today and is retained for page setup, which is where the user's
-   `LengthUnit` choice is going. Mirror the phrasing in
-   `src/main/java/songscribe/util/LengthUnit.java:38–41`. Do not delete the
-   method.
-6. In `src/main/java/songscribe/ui/renderer/LineInvariants.java:227` and
+4. In `src/main/java/songscribe/ui/renderer/LineInvariants.java:227` and
    `src/main/java/songscribe/ui/component/score/LineComponent.java:298`, replace
    `ScaleContext.getPixelsPerStaffSpace()` with
    `ScaleContext.PIXELS_PER_STAFF_SPACE`.
-7. In `src/main/java/songscribe/layout/MetronomeContent.java:53–55`, delete the
-   clause "{@code ScaleContext.setPixelsPerStaffSpace} is never called in
-   production, and zoom is applied by {@code ViewScale} and the paint transform."
-   Keep the zoom-invariance claim in the preceding sentence, restated so it
-   follows from the document scale being a constant. Do not leave a marker that
-   anything was removed.
-8. In `src/main/java/songscribe/util/MyFontUtils.java`, delete
+5. In `src/main/java/songscribe/util/MyFontUtils.java`, delete
    `getFontMetrics(Font)` (446–448) and the `METRICS_GRAPHICS` field with its
    preceding comment (440–444). Their only caller was
    `ScaleContext.fontMaxAscentSs`, deleted in task 1. This retires a second
@@ -91,21 +85,76 @@ Phase 8 is a separate gate: the full unit suite, coverage, and the diagrams.
    `GraphicUtils.MEASURING_GRAPHICS` carries. Leave the rest of the file alone —
    it is phase 4's. Do not hunt for imports the deletion strands; the project
    leaves those to the IDE.
-9. In `docs/zoom.md`, under "Three regimes", state that the document scale is a
-   compile-time constant, so staff spaces and document pixels cannot diverge —
-   replacing the current wording that presents this as a consequence rather than
-   a construction. State it in the present tense; do not narrate the change.
-10. Run `./scripts/compile.sh --test` and fix every error before committing. This
-    phase leaves a final state: every deleted member's callers are re-pointed
-    above, so a failure here is a call site the task list missed, not a
-    half-migrated tree. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
+6. Run `./scripts/compile.sh --test` and fix every error before committing. This
+   phase leaves a final compilable state: every deleted member's callers are
+   re-pointed above, so a failure here is a call site the task list missed, not a
+   half-migrated tree. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
+
+---
+
+## ⏸️ Phase 1b: Collapse the document scale — prose
+
+**Status:** Blocked  <br>
+**BlockedBy:** 1a  <br>
+**Files:** src/main/java/songscribe/dom/ScaleContext.java, src/main/java/songscribe/layout/MetronomeContent.java, docs/zoom.md  <br>
+**Recommended model/effort:** Opus, high — four rewrites of existing prose under a rule whose violation compiles.
+
+Phase 1a deleted `ScaleContext`'s singleton, its mutable `pixelsPerStaffSpace`
+field, that field's public setter and positivity guard, `getScaleTransform()`,
+and `fontMaxAscentSs()`, and renamed the constant
+`DEFAULT_PIXELS_PER_STAFF_SPACE` to `PIXELS_PER_STAFF_SPACE`. The document scale
+is now a compile-time constant. Three documents still describe the world before
+that, and this phase brings them to the present.
+
+**Every task below rewrites text that already exists.** Read
+`~/.claude/rules/development.md` §"No history in comments" before writing a word.
+A comment describes the code as it is now — never what it was, what changed, or
+what was decided. The tells are "no longer", "used to", "previously", "formerly",
+"now uses X instead of Y", "changed to", and any note that something was removed.
+Apply the test: strip the sentence of tense; if it only makes sense as a story
+about how the code got here, it belongs in a commit message, not the file. Where
+a task below quotes a sentence to delete, the quote tells you what to remove — it
+is not material to write about.
+
+### Tasks
+
+1. Replace `src/main/java/songscribe/dom/ScaleContext.java`'s class Javadoc
+   (lines 30–40). It must state that the document scale is a compile-time
+   constant, and that per-view zoom belongs to `songscribe.ui.ViewScale`, citing
+   `docs/zoom.md` rather than restating it. The sentence "Currently a singleton;
+   this will evolve to per-view instances when zoom support is added" goes; that
+   evolution already happened and `ViewScale` is it.
+2. Add a paragraph to `inchesToSs`'s Javadoc (lines 81–90) stating that the
+   method has no callers today and is retained for page setup, where the user's
+   `LengthUnit` choice is going. Read
+   `src/main/java/songscribe/util/LengthUnit.java:38–41` and mirror how it makes
+   the same point about itself — that paragraph is the house style for a
+   deliberately-uncalled member, and it is written in the present tense.
+3. In `src/main/java/songscribe/layout/MetronomeContent.java:53–55`, the class
+   Javadoc justifies its measurements being zoom-invariant by asserting
+   "{@code ScaleContext.setPixelsPerStaffSpace} is never called in production,
+   and zoom is applied by {@code ViewScale} and the paint transform." That
+   assertion existed because the setter existed. Delete it and keep the
+   zoom-invariance claim in the preceding sentence, resting it on the document
+   scale being a constant.
+4. In `docs/zoom.md` under "Three regimes", the line "Because the document scale
+   is fixed, staff spaces and document pixels are two names for the same
+   underlying scale" presents a construction as an observation. State instead
+   that the document scale is a compile-time constant, so the two regimes cannot
+   diverge.
+5. Run `./scripts/compile.sh --test` and fix every error before committing.
+   Javadoc is compiled here, so a `{@link}` to a member phase 1a deleted fails.
+   Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
+6. Before committing, re-read every sentence written or changed in tasks 1–4 and
+   delete any that narrates. A sentence that survives must still say something
+   true about the code with all tense stripped out of it.
 
 ---
 
 ## ⏸️ Phase 2: PixelDistance
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1  <br>
+**BlockedBy:** 1b  <br>
 **Files:** src/main/java/songscribe/dom/PixelDistance.java, src/main/java/songscribe/dom/DocPx.java, src/main/java/songscribe/dom/ViewPx.java, src/main/java/songscribe/dom/ScaleContext.java  <br>
 **Recommended model/effort:** Sonnet, medium — one new interface and two record declarations; the contract is dictated by an existing guide.
 
@@ -154,7 +203,7 @@ rule. This phase states the rule once.
 ## ⏸️ Phase 3: TextMeasurement
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1, 2  <br>
+**BlockedBy:** 1b, 2  <br>
 **Files:** src/main/java/songscribe/font/TextMeasurement.java, src/main/java/songscribe/dom/ScaleContext.java, src/main/java/songscribe/util/GraphicUtils.java, src/main/java/songscribe/dom/AnnotationAttachment.java, src/main/java/songscribe/dom/Tuplet.java, src/main/java/songscribe/layout/LyricRenderMetrics.java, src/main/java/songscribe/layout/MetronomeContent.java, src/main/java/songscribe/layout/EndingBracketGeometry.java, src/main/java/songscribe/layout/stacking/SystemStacker.java, src/main/java/songscribe/ui/renderer/AnnotationRenderer.java, src/main/java/songscribe/ui/renderer/RecordingGraphics2D.java, src/main/java/songscribe/ui/renderer/LyricConnectorRenderer.java, src/main/java/songscribe/ui/component/score/BaseTitleComponent.java, src/main/java/songscribe/ui/KeyCellRenderer.java, src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java  <br>
 **Recommended model/effort:** Opus, high — deciding how the queries group and what each promises is the design work of this plan.
 
@@ -252,7 +301,7 @@ class with one measuring instrument.
 ## ⏸️ Phase 4: Dissolve MyFontUtils
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1, 3  <br>
+**BlockedBy:** 1b, 3  <br>
 **Files:** src/main/java/songscribe/font/InstalledFonts.java, src/main/java/songscribe/font/FontDescription.java, src/main/java/songscribe/font/LocalFonts.java, src/main/java/songscribe/font/MusescoreIconFont.java, src/main/java/songscribe/util/MyFontUtils.java, src/main/java/songscribe/util/UIUtils.java, src/main/java/songscribe/font/DocumentFonts.java, src/main/java/songscribe/font/SourceSans3Font.java, src/main/java/songscribe/smufl/BravuraFont.java, src/main/java/songscribe/dom/Tuplet.java, src/main/java/songscribe/layout/EndingBracketGeometry.java, src/main/java/songscribe/ui/component/StatusBar.java, src/main/java/songscribe/ui/KeyCellRenderer.java, src/main/java/songscribe/ui/KeyDisplay.java, src/main/java/songscribe/ui/dialog/PreferencesDialog.java, src/main/java/songscribe/ui/dialog/SongSettingsTitleTab.java, src/main/java/songscribe/ui/dialog/SongSettingsFontTab.java, src/main/java/songscribe/ui/dialog/SongSettingsAttributionTab.java, src/main/java/songscribe/ui/dialog/fontchooser/FontFamiliesFactory.java, src/main/java/songscribe/ui/dialog/fontchooser/panes/StyleEntry.java  <br>
 **Recommended model/effort:** Opus, high — four new class boundaries and a lifecycle change to the icon font.
 
@@ -342,7 +391,7 @@ This phase gives each a home and deletes the file.
 ## ⏸️ Phase 5: Rename to DocumentScale
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1, 2, 3, 4  <br>
+**BlockedBy:** 1b, 2, 3, 4  <br>
 **Files:** src/main/java/songscribe/  <br>
 **Recommended model/effort:** Sonnet, low — a single IDE rename across roughly 25 files.
 
@@ -373,7 +422,7 @@ is final.
 ## ⏸️ Phase 6: Contracts spanning classes
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1, 2, 3, 4, 5  <br>
+**BlockedBy:** 1b, 2, 3, 4, 5  <br>
 **Files:** src/main/java/songscribe/font/package-info.java, src/main/java/songscribe/dom/package-info.java, docs/zoom.md, .claude/guides/spatial-units.md  <br>
 **Recommended model/effort:** Opus, high — deciding what a package promises, and what belongs in a guide rather than a Javadoc.
 
@@ -471,11 +520,11 @@ before writing anything.
 ## ⏸️ Phase 8: Gate
 
 **Status:** Blocked  <br>
-**BlockedBy:** 1, 2, 3, 4, 5, 6, 7  <br>
+**BlockedBy:** 1b, 2, 3, 4, 5, 6, 7  <br>
 **Files:** —  <br>
 **Recommended model/effort:** Opus, high — a failure here is information about the design, and diagnosing it is the work.
 
-Phases 1–7 each compile their own final state, so this phase is not where the
+Phases 1a–7 each compile their own final state, so this phase is not where the
 code first builds. It is the whole-tree gate: the full suite, coverage, and the
 diagrams.
 
