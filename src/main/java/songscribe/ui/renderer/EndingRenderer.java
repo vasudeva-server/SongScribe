@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.engraving.LineThickness;
+import songscribe.font.TextMeasurement;
 import songscribe.hit.HitTarget;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
@@ -169,7 +170,7 @@ public final class EndingRenderer {
             var label = bracket.label();
             var glyphVector = EndingBracketGeometry.ENDING_FONT.createGlyphVector(
                 g2.getFontRenderContext(), label);
-            var glyphHeightSs = GraphicUtils.inkHeight(glyphVector.getVisualBounds());
+            var glyphHeightSs = TextMeasurement.inkHeight(glyphVector.getVisualBounds());
 
             // Add 1 device-pixel gap between the digit and the period
             var onePixelSs = 1.0 / g2.getTransform().getScaleX();

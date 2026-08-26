@@ -23,7 +23,6 @@ package songscribe.ui.component.score;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import javax.swing.SwingUtilities;
 
@@ -32,7 +31,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.dom.Attribution;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
@@ -283,7 +282,7 @@ public class LineComponent extends ScoreComponent
      * Will be removed when renderers and mouse code are converted.
      */
     public int getMiddleLineYPx() {
-        return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
+        return (int) Math.round(DocumentScale.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
     }
 
     /**
@@ -296,7 +295,7 @@ public class LineComponent extends ScoreComponent
      * rather than re-multiplying the expression inline.
      */
     public double getViewPixelsPerStaffSpace() {
-        return ScaleContext.getPixelsPerStaffSpace() * getViewScale().factor();
+        return DocumentScale.PIXELS_PER_STAFF_SPACE * getViewScale().factor();
     }
 
     /**
@@ -307,7 +306,7 @@ public class LineComponent extends ScoreComponent
      */
     public int staffPositionToYPx(int staffPositionSp) {
         return getMiddleLineYPx()
-            + (int) Math.round(ScaleContext.ssToPx(Staff.spToSs(staffPositionSp)) * getViewScale().factor());
+            + (int) Math.round(DocumentScale.ssToPx(Staff.spToSs(staffPositionSp)) * getViewScale().factor());
     }
 
     /**
@@ -452,8 +451,8 @@ public class LineComponent extends ScoreComponent
             // where the whole block scales uniformly by the view factor.
             var sizePx = pane.getContentSizePx(view.getAttributionFont(), view.getSubAttributionFont());
             attribution.setDimensionsSs(
-                ScaleContext.pxToSs(sizePx.width),
-                ScaleContext.pxToSs(sizePx.height));
+                DocumentScale.pxToSs(sizePx.width),
+                DocumentScale.pxToSs(sizePx.height));
         }
 
         var result = layoutEngine.layout(
@@ -554,9 +553,9 @@ public class LineComponent extends ScoreComponent
                 // Drawn in pixel space outside the ss transform: apply the view factor to the
                 // (zoom-invariant) staff-space positions/size, and bake zoom into the fonts.
                 var factor = getViewScale().factor();
-                var xPx = ScaleContext.ssToPx(layout.xSs()) * factor;
-                var yPx = ScaleContext.ssToPx(layout.ySs() + middleLineYSs) * factor;
-                var widthPx = ScaleContext.ssToPx(layout.widthSs()) * factor;
+                var xPx = DocumentScale.ssToPx(layout.xSs()) * factor;
+                var yPx = DocumentScale.ssToPx(layout.ySs() + middleLineYSs) * factor;
+                var widthPx = DocumentScale.ssToPx(layout.widthSs()) * factor;
                 song.getAttributionPane().render(
                     g2, xPx, yPx, widthPx,
                     zoomedFont(view.getAttributionFont()),

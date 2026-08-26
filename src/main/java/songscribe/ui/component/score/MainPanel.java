@@ -29,7 +29,7 @@ import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.ui.ViewScale;
@@ -147,7 +147,7 @@ public class MainPanel extends JPanel {
 
     /** Spacing between title and score, scaled to the current view zoom. */
     private int scoreMarginTopPx() {
-        return (int) Math.round(ScaleContext.ssToPx(SCORE_MARGIN_TOP_SS) * viewScale().factor());
+        return (int) Math.round(DocumentScale.ssToPx(SCORE_MARGIN_TOP_SS) * viewScale().factor());
     }
 
     /**

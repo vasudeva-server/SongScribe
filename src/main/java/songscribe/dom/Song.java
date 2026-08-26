@@ -710,7 +710,7 @@ public final class Song implements Disposable {
     }
 
     public int getLineWidthPx() {
-        return ScaleContext.ssToRoundedPx(lineWidthSs);
+        return DocumentScale.ssToRoundedPx(lineWidthSs);
     }
 
     public boolean hasBeenDynamicallyLaidOut() {

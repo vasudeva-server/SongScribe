@@ -80,6 +80,6 @@ public abstract sealed class MetronomeAttachment extends Attachment
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(QUARTER_NOTE_HEIGHT_SS);
+        return DocumentScale.ssToPx(QUARTER_NOTE_HEIGHT_SS);
     }
 }

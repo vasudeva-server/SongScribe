@@ -25,7 +25,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.util.GraphicUtils;
+import songscribe.font.TextMeasurement;
 import songscribe.util.GraphicsState;
 
 /**
@@ -77,7 +77,7 @@ public class FootnotesComponent extends ScoreComponent {
             var lineHeight = metrics.getHeight();
 
             // Calculate text width (capped at max width) and derive the centered x position
-            var textWidth = GraphicUtils.getTextBlockWidth(footnotes, g2);
+            var textWidth = TextMeasurement.textBlockWidth(footnotes, g2);
             var x = calculateRenderX(textWidth);
             var y = (float) (getMarginTop() + metrics.getAscent());
 

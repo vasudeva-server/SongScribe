@@ -46,7 +46,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
@@ -1622,7 +1622,7 @@ public final class ScoreViewController {
             ? line.getElement(successorIndex)
             : null;
         var successorTargetXPx = successor != null
-            ? successor.getXOffsetPx() + ScaleContext.ssToRoundedPx(result.shiftForSubsequentElementsSs())
+            ? successor.getXOffsetPx() + DocumentScale.ssToRoundedPx(result.shiftForSubsequentElementsSs())
             : 0;
         var insertAt = insertIndex;
 

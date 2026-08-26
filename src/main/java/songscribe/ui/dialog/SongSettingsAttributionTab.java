@@ -45,7 +45,9 @@ import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.Song;
 import songscribe.dom.SongAttribution;
+import songscribe.font.FontDescription;
 import songscribe.font.FontKey;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.binding.Controls;
@@ -57,7 +59,6 @@ import songscribe.binding.WritableValue;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
 import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
@@ -182,9 +183,9 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         dialogBindings.onNotify(differentDate, this::repackToContent);
 
         dialogBindings.bind(
-            Widgets.labelText(attributionFontLabel), attributionFont, MyFontUtils::getFullFontDescription);
+            Widgets.labelText(attributionFontLabel), attributionFont, FontDescription::full);
         dialogBindings.bind(
-            Widgets.labelText(subAttributionFontLabel), subAttributionFont, MyFontUtils::getFullFontDescription);
+            Widgets.labelText(subAttributionFontLabel), subAttributionFont, FontDescription::full);
 
         // An empty lyricist inherits the composer, so a committed composer is mirrored
         // into a lyricist field the user has left blank.
@@ -400,7 +401,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         for (var label : labels) {
             var insets = label.getInsets();
             var textWidth = (int) Math.ceil(
-                label.getFont().getStringBounds(label.getText(), GraphicUtils.SCREEN_FRC).getWidth()
+                label.getFont().getStringBounds(label.getText(), TextMeasurement.SCREEN_FRC).getWidth()
             );
             width = Math.max(width, textWidth + insets.left + insets.right);
         }

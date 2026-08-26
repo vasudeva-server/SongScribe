@@ -25,11 +25,11 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.font.TextMeasurement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResultBuilder;
@@ -177,7 +177,7 @@ public class SystemStacker {
         var staffPosition = note.getStaffPosition();
         var annotationFont = fonts.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
-        var heightSs = ScaleContext.textHeightSs(annotationFont).value();
+        var heightSs = TextMeasurement.textHeightSs(annotationFont).value();
 
         var elementType = note.getType();
         var anchorWidthSs = elementType.getElementWidthSs();

@@ -28,10 +28,10 @@ import java.awt.geom.Line2D;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import songscribe.font.TextMeasurement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
@@ -169,7 +169,7 @@ public final class LyricConnectorRenderer {
     private GlyphVector getHyphenGlyphVector(Font scaledLyricsFont) {
         return hyphenGlyphVectors.computeIfAbsent(
             scaledLyricsFont,
-            font -> font.createGlyphVector(GraphicUtils.SCREEN_FRC, "-"));
+            font -> font.createGlyphVector(TextMeasurement.SCREEN_FRC, "-"));
     }
 
     private static void drawHyphens(

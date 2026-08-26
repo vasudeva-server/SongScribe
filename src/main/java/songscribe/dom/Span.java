@@ -270,12 +270,12 @@ public abstract class Span extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.ssToPx(getContentWidthSs());
+        return DocumentScale.ssToPx(getContentWidthSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(getContentHeightSs());
+        return DocumentScale.ssToPx(getContentHeightSs());
     }
 
     /**

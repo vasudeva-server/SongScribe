@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
@@ -225,7 +225,7 @@ public final class LineInvariants {
      * the zoomed scale — used only by the stripped-transform lyric path.
      */
     public double getViewPixelsPerStaffSpace() {
-        return ScaleContext.getPixelsPerStaffSpace() * viewScale.factor();
+        return DocumentScale.PIXELS_PER_STAFF_SPACE * viewScale.factor();
     }
 
     /** Returns the view zoom captured for this render pass. */

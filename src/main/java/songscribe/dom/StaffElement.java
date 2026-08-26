@@ -288,16 +288,16 @@ public abstract class StaffElement extends LineElement implements Cloneable {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.ssToPx(getType().getFullElementWidthSs());
+        return DocumentScale.ssToPx(getType().getFullElementWidthSs());
     }
 
     public double getContentCenterX() {
-        return ScaleContext.ssToPx(getType().getFullElementCenterXSs());
+        return DocumentScale.ssToPx(getType().getFullElementCenterXSs());
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(getType().getElementHeightSs(direction));
+        return DocumentScale.ssToPx(getType().getElementHeightSs(direction));
     }
 
     // ========================================================================

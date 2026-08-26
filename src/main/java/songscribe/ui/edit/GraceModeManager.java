@@ -31,7 +31,7 @@ import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.layout.ElementColumnBuilder;
@@ -860,7 +860,7 @@ public final class GraceModeManager {
         }
 
         var graceXSs = layout.getElementXSs(graceNote);
-        return ScaleContext.ssToRoundedPx(graceXSs) - GRACE_SLOP_PX;
+        return DocumentScale.ssToRoundedPx(graceXSs) - GRACE_SLOP_PX;
     }
 
     private int internalGetConnectThresholdPx() {
@@ -881,7 +881,7 @@ public final class GraceModeManager {
         }
 
         var rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
-        return ScaleContext.ssToRoundedPx(rightEdgeSs) + GRACE_SLOP_PX;
+        return DocumentScale.ssToRoundedPx(rightEdgeSs) + GRACE_SLOP_PX;
     }
 
     /**

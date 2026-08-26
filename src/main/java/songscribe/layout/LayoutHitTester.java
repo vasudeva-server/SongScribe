@@ -26,12 +26,10 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.layout.LayoutResult.LyricHit;
 
 /**
@@ -64,8 +62,8 @@ public final class LayoutHitTester {
     public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var rowTopYSs = layoutResult.lyricAreaBaseYSs();
-        var pointXSs = ScaleContext.pxToSs(pointPx.getX());
-        var pointYSs = ScaleContext.pxToSs(pointPx.getY());
+        var pointXSs = DocumentScale.pxToSs(pointPx.getX());
+        var pointYSs = DocumentScale.pxToSs(pointPx.getY());
 
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {

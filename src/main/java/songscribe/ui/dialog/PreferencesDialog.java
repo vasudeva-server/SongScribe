@@ -67,6 +67,7 @@ import com.formdev.flatlaf.extras.FlatSVGIcon;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.font.MusescoreIconFont;
 import songscribe.layout.PageModel;
 import songscribe.midi.MidiEventFactory;
 import songscribe.midi.MidiSequenceBuilder;
@@ -90,7 +91,6 @@ import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.playback.PlaybackVolume;
 import songscribe.util.GraphicUtils;
 import songscribe.util.LengthUnit;
-import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -562,7 +562,7 @@ public class PreferencesDialog extends BaseDialog {
             }
 
             scaleButton.setText("\uEF4E");
-            scaleButton.setFont(MyFontUtils.getIconFont().deriveFont(FlatLafProps.getFloat(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
+            scaleButton.setFont(MusescoreIconFont.font().deriveFont(FlatLafProps.getFloat(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_SIZE)));
             scaleButton.setMargin(FlatLafProps.getInsets(FlatLafKey.DIALOG_PREFERENCES_INSTRUMENTS_PLAY_BUTTON_PADDING));
             UIUtils.setToolTipText(scaleButton, scaleAction);
 

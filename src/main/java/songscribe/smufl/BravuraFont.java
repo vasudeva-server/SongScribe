@@ -25,7 +25,7 @@ import java.awt.Shape;
 import java.awt.font.FontRenderContext;
 import java.awt.geom.AffineTransform;
 
-import songscribe.util.MyFontUtils;
+import songscribe.font.LocalFonts;
 
 /**
  * The Bravura (SMuFL) music font, and the glyph outlines drawn from it.
@@ -74,11 +74,11 @@ public final class BravuraFont {
      * reserved outline) and {@code RenderingUtils} (drawing glyphs) reach the font from their own
      * static initializers, on whatever thread touches them first. An unguarded {@code if (font ==
      * null)} lets two threads enter {@code Font.createFont} at once, and a failure there is not
-     * benign: {@code MyFontUtils.getLocalFont} reports it through {@code RuntimeError.missingResource},
+     * benign: {@link LocalFonts#load} reports it through {@code RuntimeError.missingResource},
      * which shows a fatal dialog and exits.
      */
     private static final class Holder {
-        static final Font INSTANCE = MyFontUtils.getLocalFont(FONT_FILE, SIZE_SS);
+        static final Font INSTANCE = LocalFonts.load(FONT_FILE, SIZE_SS);
     }
 
     /**

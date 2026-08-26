@@ -66,7 +66,7 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.ssToPx(getContentWidthSs());
+        return DocumentScale.ssToPx(getContentWidthSs());
     }
 
     /**
@@ -84,6 +84,6 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(getContentHeightSs());
+        return DocumentScale.ssToPx(getContentHeightSs());
     }
 }

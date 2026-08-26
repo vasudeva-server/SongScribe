@@ -34,8 +34,8 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
-import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
+import songscribe.font.LocalFonts;
+import songscribe.font.TextMeasurement;
 
 /**
  * Layout geometry for {@link Ending} volta brackets.
@@ -51,16 +51,16 @@ public final class EndingBracketGeometry {
     private static final float LABEL_FONT_SCALE = 0.6f;
 
     /** Font for volta bracket labels. */
-    public static final Font ENDING_FONT = MyFontUtils.getLocalFont(
+    public static final Font ENDING_FONT = LocalFonts.load(
         "emmentaler-16.otf", NoteGeometry.MUSIC_FONT_SIZE_SS * LABEL_FONT_SCALE);
 
     /** Cached visual bounds for the "1." label. */
     private static final Rectangle2D LABEL_1_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "1.").getVisualBounds();
+        TextMeasurement.requireVisualBounds("1.", ENDING_FONT);
 
     /** Cached visual bounds for the "2." label. */
     private static final Rectangle2D LABEL_2_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "2.").getVisualBounds();
+        TextMeasurement.requireVisualBounds("2.", ENDING_FONT);
 
     private EndingBracketGeometry() {
     }
@@ -237,7 +237,7 @@ public final class EndingBracketGeometry {
         // Label (e.g. "1." or "2.")
         var labelBounds = labelBoundsSs(bracket.number());
         var labelWidthSs = labelBounds.getWidth();
-        var labelHeightSs = GraphicUtils.inkHeight(labelBounds);
+        var labelHeightSs = TextMeasurement.inkHeight(labelBounds);
         regions.add(new CollisionRegion(
             xBaseSs + Ending.LABEL_X_INSET_SS, 0,
             labelWidthSs, Ending.LABEL_Y_OFFSET_SS + labelHeightSs));

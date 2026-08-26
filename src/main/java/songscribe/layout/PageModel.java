@@ -20,7 +20,7 @@
 package songscribe.layout;
 
 import songscribe.dom.DocPx;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.prefs.PrefsValue;
@@ -131,7 +131,7 @@ public final class PageModel {
 
     /** Default line width in staff spaces, based on the content area width. */
     public static double getDefaultLineWidthSs() {
-        return ScaleContext.pxToSs(getContentAreaWidthPx());
+        return DocumentScale.pxToSs(getContentAreaWidthPx());
     }
 
     private static int inchesToPx(double inches) {

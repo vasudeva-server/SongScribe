@@ -79,12 +79,12 @@ public class Attribution extends LineElement {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.ssToPx(widthSs);
+        return DocumentScale.ssToPx(widthSs);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(heightSs);
+        return DocumentScale.ssToPx(heightSs);
     }
 
     /**

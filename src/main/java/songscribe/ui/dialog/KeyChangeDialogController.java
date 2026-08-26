@@ -31,7 +31,7 @@ import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.KeyChangeSite;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -484,7 +484,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
             line.insertRun(
                 elementIndex,
                 spacing.place(inserted),
-                ScaleContext.ssToRoundedPx(spacing.shiftForSubsequentElementsSs()));
+                DocumentScale.ssToRoundedPx(spacing.shiftForSubsequentElementsSs()));
         });
     }
 

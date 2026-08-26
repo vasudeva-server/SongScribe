@@ -66,7 +66,7 @@ anything.
 Read that row. Its *System* column names the pass; its *Where* column names the
 target, which is **a set of types, not a directory**. The register's *The unit is
 a system, not a package* says why: `dom` is one directory and about ten systems,
-so a row reading `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` is four files in
+so a row reading `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale` is four files in
 a package whose other files belong to other passes.
 
 Resolve *Where* into two lists of paths and confirm every one exists before going
@@ -177,6 +177,14 @@ From step 1's inventory, in this order:
 Each of these is a design change, so **raise it before making it**: file and
 line, the correct structure concretely, the recommendation. Whether to do it now
 is the user's call.
+
+**Lead with two counts.** How many guards the proposal retires — `@Nullable`
+among them — and how many types it introduces to carry an invariant the code
+currently checks at runtime. That pair is the yield the user is deciding on:
+every guard retired is a runtime check the compiler now makes instead, and a
+proposal that introduces types without retiring guards has added structure
+without moving anything. State both before the per-change detail, from step 1's
+inventory of `@Nullable`s and guards.
 
 **Then delete the guards it retired**, and the tests that were pinned to them.
 
@@ -298,6 +306,23 @@ pre-existing. **A failing test means one of three things — code, test, or
 contract** — and weakening a contract to reach green is legitimate only when the
 contract was wrong about the domain, stated explicitly, never decided silently.
 
+**Then the visual gate.** A green suite says nothing about pixels. Where a pass
+moved a measurement, a geometry, or a rendering call site, a regression shows as
+text shifted by a fraction of a pixel, a box clipped at one edge, or a label that
+stopped centring — and nothing in this repo asserts any of that.
+
+**Derive the checklist from the call sites the pass re-pointed, never from a
+stock list.** For each member the pass moved or changed, follow its fan-in from
+step 1 out to the surface that draws it, and write one line naming three things:
+what to open, what to look at, and what a regression looks like there. A pass
+that re-points a glyph-ink query writes "volta bracket labels — the number sits
+inside the bracket, not clipped at its right edge", not "check rendering". A line
+a person cannot act on without reading the diff is not on the list.
+
+**Ask the user to run it, and wait** — the application is never launched without
+their permission. If the pass reached nothing a person can see, say so plainly
+instead of emitting a checklist of things it cannot have broken.
+
 **Commit.**
 
 ## Step 8: Judge the diagrams
@@ -335,11 +360,7 @@ expected, healthy state**. **Never report the percentage.**
 
 ## Step 11: Close out
 
-Re-measure with the **same commands step 0 used** and fill in the *After* column,
-plus types changed, guards retired, contracts written, domain checkpoints raised,
-the triage counts, and elapsed wall clock.
-
-**Then harvest, and delete the record** — `plans/design-pass-register.md` states
+**Harvest, and delete the record** — `plans/design-pass-register.md` states
 why under *The record is working memory*. Two things leave the record first:
 
 1. **Anything a later pass owns** goes to the register's *Carry-forward
@@ -368,10 +389,10 @@ that are over and cannot be asked what they meant. Renumbering would silently
 re-point every one of them at the wrong system. A suffixed row that splits again
 suffixes again: `14b1`, `14b2`.
 
-Then report: what the types now carry that runtime checks used to, what the
-contracts turned out to promise, what the checkpoints changed, tests before and
-after with the triage outcomes, what coverage found, and anything you surfaced
-that is not yours to decide.
+Then report: what the types now carry that runtime checks used to — with step 2's
+two counts as they actually landed — what the contracts turned out to promise,
+what the checkpoints changed, and anything you surfaced that is not yours to
+decide.
 
 ## Things that stay true throughout
 
@@ -427,29 +448,6 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 *Plan* links the step's execution plan once it has one, and is where a resume
 picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
 the step is small enough to hold in one sitting.
-
-## Numbers
-
-| | Before | After |
-|---|---:|---:|
-| Test cases | | |
-| Main LOC | | |
-| Test LOC | | |
-| Ratio | | |
-
-Types changed: · Guards retired: · Contracts written: · Elapsed:
-
-## Domain contracts confirmed
-
-One line per proposal that went to a checkpoint, and what was decided.
-
-## Triage outcome
-
-Kept: · Rewritten: · Discarded: · Added:
-
-## Coverage
-
-Real missing cases (fixed), then uncovered regions left alone with the reason each.
 
 ## Findings claimed
 

@@ -20,7 +20,6 @@
 
 package songscribe.font;
 
-import songscribe.util.MyFontUtils;
 
 /**
  * The Source Sans 3 font family. This is used as the UI font in SongScribe.
@@ -113,7 +112,7 @@ public final class SourceSans3Font {
      * Call {@link #installRemaining()} afterwards to register the other seven faces.
      */
     public static void installRegular() {
-        MyFontUtils.installLocalFont(STYLE_REGULAR);
+        LocalFonts.install(STYLE_REGULAR);
     }
 
     /**
@@ -124,12 +123,12 @@ public final class SourceSans3Font {
      * the family is already known to the graphics environment.
      */
     public static void installRemaining() {
-        MyFontUtils.installLocalFont(STYLE_ITALIC);
-        MyFontUtils.installLocalFont(STYLE_MEDIUM);
-        MyFontUtils.installLocalFont(STYLE_MEDIUM_ITALIC);
-        MyFontUtils.installLocalFont(STYLE_SEMIBOLD);
-        MyFontUtils.installLocalFont(STYLE_SEMIBOLD_ITALIC);
-        MyFontUtils.installLocalFont(STYLE_BOLD);
-        MyFontUtils.installLocalFont(STYLE_BOLD_ITALIC);
+        LocalFonts.install(STYLE_ITALIC);
+        LocalFonts.install(STYLE_MEDIUM);
+        LocalFonts.install(STYLE_MEDIUM_ITALIC);
+        LocalFonts.install(STYLE_SEMIBOLD);
+        LocalFonts.install(STYLE_SEMIBOLD_ITALIC);
+        LocalFonts.install(STYLE_BOLD);
+        LocalFonts.install(STYLE_BOLD_ITALIC);
     }
 }

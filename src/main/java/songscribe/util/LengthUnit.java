@@ -20,6 +20,7 @@
 package songscribe.util;
 
 import songscribe.Strings;
+import songscribe.dom.DocumentScale;
 import songscribe.prefs.PrefsValue;
 
 /**
@@ -28,7 +29,7 @@ import songscribe.prefs.PrefsValue;
  *
  * <p>Inches are the pivot: every conversion here goes through them, because inches are what
  * the layout's own limits are expressed in ({@code PageModel.MIN_LINE_WIDTH_INCHES} and its
- * maximum) and what {@link songscribe.dom.ScaleContext#inchesToSs} takes. Converting a value
+ * maximum) and what {@link DocumentScale#inchesToSs} takes. Converting a value
  * to a unit and back returns it unchanged up to floating-point rounding.
  *
  * <p>This is a display unit, not a layout unit. Staff spaces and pixels — and the rules for

@@ -29,13 +29,14 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 
 import songscribe.Strings;
+import songscribe.font.FontDescription;
 import songscribe.font.FontKey;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 /**
@@ -100,9 +101,9 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
         // the properties these bindings settle.
         var dialogBindings = bindings();
         dialogBindings.bind(Widgets.font(lyricsFontPreview), lyricsFont);
-        dialogBindings.bind(Widgets.labelText(lyricsFontLabel), lyricsFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(Widgets.labelText(lyricsFontLabel), lyricsFont, FontDescription::full);
         dialogBindings.bind(Widgets.font(annotationFontPreview), annotationFont);
-        dialogBindings.bind(Widgets.labelText(annotationFontLabel), annotationFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(Widgets.labelText(annotationFontLabel), annotationFont, FontDescription::full);
 
         build();
     }
@@ -200,7 +201,7 @@ final class SongSettingsFontTab extends BaseDialog.Tab {
                 width = Math.max(width, metrics.stringWidth(line));
             }
 
-            var height = GraphicUtils.getTextBlockHeight(metrics, lines.size());
+            var height = TextMeasurement.textBlockHeight(metrics, lines.size());
 
             return new Dimension(width, height);
         }

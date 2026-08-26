@@ -24,8 +24,8 @@ import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
+import songscribe.font.LocalFonts;
+import songscribe.font.TextMeasurement;
 
 /**
  * Represents a tuplet grouping (triplet, quintuplet, etc.).
@@ -46,7 +46,7 @@ public class Tuplet extends Span {
     public static final float TUPLET_FONT_SIZE_SS = 1.65f;
 
     /** Italic serif font for tuplet numbers. */
-    public static final Font TUPLET_FONT = MyFontUtils.getLocalFont("C059-Italic.otf", TUPLET_FONT_SIZE_SS);
+    public static final Font TUPLET_FONT = LocalFonts.load("C059-Italic.otf", TUPLET_FONT_SIZE_SS);
 
     /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss). */
     public static final double BRACKET_ARM_HEIGHT_SS = 0.7;  // 5.6px
@@ -63,8 +63,8 @@ public class Tuplet extends Span {
     public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
 
     private static double measureNumberInkHeightSs() {
-        var inkHeightSs = GraphicUtils.inkHeight(
-            TUPLET_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "3").getVisualBounds());
+        var inkHeightSs = TextMeasurement.inkHeight(
+            TextMeasurement.requireVisualBounds("3", TUPLET_FONT));
 
         if (inkHeightSs <= 0) {
             throw new IllegalStateException(
@@ -77,13 +77,12 @@ public class Tuplet extends Span {
     /**
      * The measured ink width of {@code grade} drawn as a tuplet number, in staff spaces.
      * <p>
-     * Measured under {@link GraphicUtils#SCREEN_FRC} rather than the paint-time font render
+     * Measured under {@link TextMeasurement#SCREEN_FRC} rather than the paint-time font render
      * context, so it is available before anything is drawn — the number-only tuplet's hit region
      * is the number's ink and nothing else, and hit regions are built at layout time.
      */
     public static double numberInkWidthSs(int grade) {
-        return TUPLET_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, String.valueOf(grade))
-            .getVisualBounds().getWidth();
+        return TextMeasurement.requireVisualBounds(String.valueOf(grade), TUPLET_FONT).getWidth();
     }
 
     /**

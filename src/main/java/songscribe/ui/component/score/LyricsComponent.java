@@ -26,7 +26,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.util.GraphicUtils;
+import songscribe.font.TextMeasurement;
 import songscribe.util.GraphicsState;
 
 /**
@@ -65,7 +65,7 @@ public abstract class LyricsComponent extends ScoreComponent {
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.FONT)) {
             g2.setFont(zoomedFont(getLyricsFont()));
-            return GraphicUtils.getTextBlockWidth(lyrics, g2);
+            return TextMeasurement.textBlockWidth(lyrics, g2);
         }
     }
 

@@ -32,7 +32,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.SlideZone;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -244,7 +244,7 @@ public final class InsertionSpacingCalculator {
     private static double elementXSs(StaffElement element, @Nullable LayoutResult layout) {
         return layout != null
             ? layout.getElementXSs(element)
-            : ScaleContext.pxToSs(element.getXOffsetPx());
+            : DocumentScale.pxToSs(element.getXOffsetPx());
     }
 
     /**

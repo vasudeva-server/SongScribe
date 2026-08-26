@@ -40,11 +40,11 @@ New per-document state on `Song` (all mutation-tracked, see §6):
 | `mirroredMargins` | `boolean` | false |
 | `versoFirst` | `boolean` | false |
 
-- **`PaperSize` must be declared in `songscribe.dom`, not `songscribe.layout`.** `PackageDependencyTest.domMustNotImportLayout` (`src/test/java/songscribe/PackageDependencyTest.java:63`) forbids `dom` → `layout`, and `Song` will hold a `PaperSize` field. `ScaleContext` already lives in `dom` for the same reason, so the inches → px conversion `Song` needs is available there.
+- **`PaperSize` must be declared in `songscribe.dom`, not `songscribe.layout`.** `PackageDependencyTest.domMustNotImportLayout` (`src/test/java/songscribe/PackageDependencyTest.java:63`) forbids `dom` → `layout`, and `Song` will hold a `PaperSize` field. `DocumentScale` already lives in `dom` for the same reason, so the inches → px conversion `Song` needs is available there.
 
 - `PaperSize` replaces `PageModel.Size` and offers a curated portrait-only list: **Letter, Legal, Tabloid, A3, A4, A5, B4, B5** (widths/heights in inches, following the existing `Size(double widthInches, double heightInches)` shape).
 
-- Physical units (inches) are the storage unit for paper geometry, matching the existing `*_INCHES` constants; conversion to `DocPx`/`Ss` happens at the `PageModel` seam as today (`GraphicUtils.Unit.INCH`, `ScaleContext`).
+- Physical units (inches) are the storage unit for paper geometry, matching the existing `*_INCHES` constants; `PageModel` is where physical units convert to document pixels, so conversion to `DocPx`/`Ss` happens there (`GraphicUtils.Unit.INCH`, `DocumentScale`).
 
 - `PrefsKey.PAGE_SIZE` remains, but now means "paper size for **new** documents" (and legacy loads, §5). The `PreferencesDialog` radio group is unchanged apart from label wording if needed. Margins/mirrored get **no** prefs surface — new documents start from the fixed defaults above.
 

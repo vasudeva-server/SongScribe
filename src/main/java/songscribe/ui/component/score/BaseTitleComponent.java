@@ -31,11 +31,11 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Ss;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.Actions;
 import songscribe.ui.dialog.SongSettingsDialog;
-import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
@@ -259,7 +259,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
     /**
      * The component's text measured once — the font's metrics and every wrapped line's
-     * ink, all taken under {@link GraphicUtils#SCREEN_FRC}.
+     * ink, all taken under {@link TextMeasurement#SCREEN_FRC}.
      * <p>
      * Sizing and painting both go through this, which is what makes "the component is
      * exactly as wide as the text it draws" true rather than nearly true. Measuring the
@@ -285,17 +285,17 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
         /** The wrapped lines' own height, before any allowance for overshooting ink. */
         int blockHeightPx() {
-            return GraphicUtils.getTextBlockHeight(metrics, lines.size());
+            return TextMeasurement.textBlockHeight(metrics, lines.size());
         }
 
         /** Room above the first baseline for ink that overshoots the nominal ascent. */
         int topInkPaddingPx() {
-            return GraphicUtils.extraInkAbove(lines.getFirst().ink(), metrics.getAscent());
+            return TextMeasurement.extraInkAbove(lines.getFirst().ink(), metrics.getAscent());
         }
 
         /** Room below the last baseline for ink that overshoots the nominal descent. */
         int bottomInkPaddingPx() {
-            return GraphicUtils.extraInkBelow(lines.getLast().ink(), metrics.getDescent());
+            return TextMeasurement.extraInkBelow(lines.getLast().ink(), metrics.getDescent());
         }
     }
 
@@ -345,13 +345,13 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return cached.measured();
         }
 
-        var metrics = GraphicUtils.fontMetrics(font);
+        var metrics = TextMeasurement.fontMetrics(font);
         var wrapped = StringUtils.wrapText(text, metrics, lineWidthPx);
         var renderedCount = Math.min(wrapped.size(), maxRenderedLines());
         var lines = wrapped
             .subList(0, renderedCount)
             .stream()
-            .map(line -> new MeasuredLine(line, GraphicUtils.visualBounds(line, font)))
+            .map(line -> new MeasuredLine(line, TextMeasurement.visualBounds(line, font)))
             .toList();
         var measured = new MeasuredText(metrics, lines, renderedCount < wrapped.size());
 

@@ -34,6 +34,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.ViewPx;
 import songscribe.error.RuntimeError;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlaybackController;
@@ -294,7 +295,7 @@ public abstract class ScoreComponent extends JComponent {
             return contentXPx;
         }
 
-        var textWidth = GraphicUtils.getTextBlockWidth(text, g2);
+        var textWidth = TextMeasurement.textBlockWidth(text, g2);
         // The measured text width comes from a zoom-scaled font, so center it against the
         // view-scaled (zoomed) line width, not the document-pixel width.
         var lineWidthPx = toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx();

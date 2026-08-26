@@ -20,7 +20,7 @@
 package songscribe.io;
 
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 
 /**
  * Load-time carrier for the four line-level Y position fields that exist only in pre-Phase 11
@@ -35,8 +35,8 @@ record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstS
     // tempo tag are treated as having no tempo offset to migrate (see FormatMigrator).
     static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
         0,
-        ScaleContext.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS),
-        ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS),
-        ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS)
+        DocumentScale.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS),
+        DocumentScale.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS),
+        DocumentScale.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS)
     );
 }

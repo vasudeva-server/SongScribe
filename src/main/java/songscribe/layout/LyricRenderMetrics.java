@@ -28,8 +28,8 @@ import java.util.HashMap;
 import java.util.Map;
 import javax.swing.JTextField;
 
-import songscribe.dom.ScaleContext;
-import songscribe.util.GraphicUtils;
+import songscribe.dom.DocumentScale;
+import songscribe.font.TextMeasurement;
 
 /**
  * Lyrics-font-derived values hoisted to song scope so they are computed once
@@ -37,7 +37,7 @@ import songscribe.util.GraphicUtils;
  * syllable widths and reserving inter-syllable gaps) and the renderers (for drawing).
  *
  * @param lyricsFont       the lyrics font in unscaled (pixel-size) units; used by the
- *                         layout engine with {@link ScaleContext#textWidthSs} to measure
+ *                         layout engine with {@link TextMeasurement#textWidthSs} to measure
  *                         syllable advances in staff-space units
  * @param scaledLyricsFont the lyrics font scaled to staff-space units; used by renderers
  *                         that draw inside the staff-space coordinate transform
@@ -75,9 +75,9 @@ public record LyricRenderMetrics(
     public static LyricRenderMetrics forFont(Font lyricsFont) {
         return new LyricRenderMetrics(
             lyricsFont,
-            ScaleContext.scaleFont(lyricsFont),
-            ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, " ").value(),
+            TextMeasurement.scaleFont(lyricsFont),
+            TextMeasurement.textWidthSs(lyricsFont, "-").value(),
+            TextMeasurement.textWidthSs(lyricsFont, " ").value(),
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
     }
 
@@ -94,7 +94,7 @@ public record LyricRenderMetrics(
             return 0.0;
         }
 
-        return ScaleContext.textWidthSs(lyricsFont, text).value();
+        return TextMeasurement.textWidthSs(lyricsFont, text).value();
     }
 
     /**
@@ -146,12 +146,12 @@ public record LyricRenderMetrics(
             return LyricBoxMetrics.EMPTY;
         }
 
-        var layout = new TextLayout(text, lyricsFont, GraphicUtils.SCREEN_FRC);
+        var layout = new TextLayout(text, lyricsFont, TextMeasurement.SCREEN_FRC);
         var bounds = layout.getBounds();
         return new LyricBoxMetrics(
-            ScaleContext.pxToSs(layout.getAdvance()),
-            ScaleContext.pxToSs(bounds.getX()),
-            ScaleContext.pxToSs(bounds.getX() + bounds.getWidth())
+            DocumentScale.pxToSs(layout.getAdvance()),
+            DocumentScale.pxToSs(bounds.getX()),
+            DocumentScale.pxToSs(bounds.getX() + bounds.getWidth())
         );
     }
 
@@ -176,7 +176,8 @@ public record LyricRenderMetrics(
      * Sizing the editor from ink would clip glyphs mid-edit.
      */
     public double editorBoxHeightSs() {
-        return ScaleContext.fontAscentSs(lyricsFont).value() + ScaleContext.fontDescentSs(lyricsFont).value();
+        return TextMeasurement.fontAscentSs(lyricsFont).value()
+            + TextMeasurement.fontDescentSs(lyricsFont).value();
     }
 
     // ==========================================================================
@@ -209,9 +210,7 @@ public record LyricRenderMetrics(
             return cachedExtent;
         }
 
-        var extent = font
-            .createGlyphVector(GraphicUtils.SCREEN_FRC, LYRIC_EXTENT_REFERENCE)
-            .getVisualBounds();
+        var extent = TextMeasurement.requireVisualBounds(LYRIC_EXTENT_REFERENCE, font);
         lyricExtentCache.put(fontInfo, extent);
         return extent;
     }
@@ -222,7 +221,7 @@ public record LyricRenderMetrics(
      * the height a line's lyric row reserves.
      */
     public static double fontHeightSs(Font font) {
-        return ScaleContext.pxToSs(lyricExtentPx(font).getHeight());
+        return DocumentScale.pxToSs(lyricExtentPx(font).getHeight());
     }
 
     /**
@@ -234,6 +233,6 @@ public record LyricRenderMetrics(
     public static double fontAboveBaselineSs(Font font) {
         // Visual bounds are baseline-relative with Y growing downward, so the ink top edge is
         // a negative offset from the baseline.
-        return ScaleContext.pxToSs(-lyricExtentPx(font).getY());
+        return DocumentScale.pxToSs(-lyricExtentPx(font).getY());
     }
 }

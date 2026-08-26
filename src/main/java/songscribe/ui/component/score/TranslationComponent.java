@@ -26,7 +26,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.util.GraphicUtils;
+import songscribe.font.TextMeasurement;
 import songscribe.util.GraphicsState;
 
 /**
@@ -85,11 +85,11 @@ public class TranslationComponent extends ScoreComponent {
             var headerText = song.isUnofficialTranslation()
                 ? TRANSLATION_HEADER_UNOFFICIAL
                 : TRANSLATION_HEADER_OFFICIAL;
-            maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(headerText, g2));
+            maxWidth = Math.max(maxWidth, TextMeasurement.textBlockWidth(headerText, g2));
 
             // Translation text width
             g2.setFont(lyricsFont);
-            maxWidth = Math.max(maxWidth, GraphicUtils.getTextBlockWidth(translation, g2));
+            maxWidth = Math.max(maxWidth, TextMeasurement.textBlockWidth(translation, g2));
 
             return maxWidth;
         }

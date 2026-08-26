@@ -31,9 +31,11 @@ two kinds of boundary:
 - producing a size or position for a Swing component or the print system;
 - reading pixel input back from the toolkit — mouse points and font metrics.
 
-Toolkit font metrics are always in pixels. Bring them into staff spaces through
-the measurement helpers rather than converting by hand, so text measurement
-crosses the boundary in one place.
+Toolkit font metrics are always in pixels. `TextMeasurement` is that one place:
+every measurement the application takes goes through it, and the staff-space
+values it returns are the only ones a metric ever becomes. Ask it rather than
+converting a metric by hand — a hand conversion is a second crossing, and it
+measures with a different instrument than the paint pass uses.
 
 **Renderers never convert.** The paint transform is applied before any renderer
 runs, so renderer code works entirely in staff spaces. A conversion to pixels
@@ -50,6 +52,16 @@ Which way a value rounds depends on what it is, and the two are never conflated:
 
 There is deliberately no single ambiguous rounding operation, so every call site
 must say which rule it means.
+
+Both rules are carried by `PixelDistance`, the sealed interface that `DocPx` and
+`ViewPx` implement: a size rounds through `ceilPx()`, a position through
+`roundedPx()`. Because the rule lives on the type, a value that is in a pixel
+regime cannot round without choosing one of the two, and a new pixel regime
+would inherit the pair rather than reinvent it.
+
+`Ss` is outside that type by construction, not by omission. Staff spaces have no
+integer form to round to, so a staff-space value has nothing to round until it
+names the pixel regime it is entering — and the rule applies there.
 
 ## Staff spaces hold the truth
 

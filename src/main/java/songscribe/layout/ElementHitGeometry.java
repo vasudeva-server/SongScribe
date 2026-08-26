@@ -22,7 +22,7 @@ package songscribe.layout;
 
 import java.awt.geom.Rectangle2D;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 
 /**
@@ -41,7 +41,7 @@ public final class ElementHitGeometry {
      * Smallest clickable extent of an element, in pixels. Elements narrower or shorter than this
      * are expanded symmetrically up to it so they can still be hit.
      * <p>
-     * A pixel constant is safe to bake into layout geometry because {@link ScaleContext} is a
+     * A pixel constant is safe to bake into layout geometry because {@link DocumentScale} is a
      * fixed document scale: it does not vary with on-screen zoom, so this converts to a constant
      * number of staff spaces.
      */
@@ -86,7 +86,7 @@ public final class ElementHitGeometry {
             return;
         }
 
-        var minHitSizeSs = ScaleContext.pxToSs(MIN_HIT_SIZE_PX);
+        var minHitSizeSs = DocumentScale.pxToSs(MIN_HIT_SIZE_PX);
 
         // Expand symmetrically: distribute the extra width and height evenly on both sides, so
         // the rect stays centered on what is drawn.

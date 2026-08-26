@@ -42,7 +42,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.util.MyFontUtils;
+import songscribe.font.LocalFonts;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
@@ -115,7 +115,7 @@ public final class StatusBar extends JPanel {
         setOpaque(true);
         setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
 
-        accidentalLabel.setFont(MyFontUtils.getLocalFont("Bravura.otf",
+        accidentalLabel.setFont(LocalFonts.load("Bravura.otf",
             (float) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
         ));
         accidentalLabel.setBorder(BorderFactory.createEmptyBorder(

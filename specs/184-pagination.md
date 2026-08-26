@@ -218,7 +218,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
   | `ScoreView.layoutPage` (`1084-1123`) | replaced by per-page layout |
   | `ScoreView.applyZoomPercent` scroll anchoring (`1188-1220`) | must survive page gaps **and page-count change** |
   
-  The remaining `ScaleContext.ssToPx(lineWidthSs)` conversions in `ScoreView` are pure scale, page-independent, and untouched.
+  The remaining `DocumentScale.ssToPx(lineWidthSs)` conversions in `ScoreView` are pure scale, page-independent, and untouched.
   
 - **Scroll anchoring** currently converts a viewport anchor against a single canvas (`convertPoint(viewport, anchorViewportOffset, this)`). It must handle the case where the page **count** changed between anchor capture and restore, not merely the presence of gaps — otherwise the view resolves the anchor against a stale stack and jumps to an unrelated page.
   

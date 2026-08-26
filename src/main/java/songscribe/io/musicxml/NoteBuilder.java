@@ -49,7 +49,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 
@@ -143,7 +143,7 @@ final class NoteBuilder {
         var xOffsetPx = element.getXOffsetPx();
 
         if (xOffsetPx != 0) {
-            pmNote.setRelativeX(MusicXmlUnits.ssAsTenths(ScaleContext.pxToSs(xOffsetPx)));
+            pmNote.setRelativeX(MusicXmlUnits.ssAsTenths(DocumentScale.pxToSs(xOffsetPx)));
         }
 
         // <grace slash="no"/> — no steal-time-following: SongScribe gives grace notes zero

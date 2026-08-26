@@ -38,7 +38,7 @@ import songscribe.dom.Ending;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
@@ -113,7 +113,7 @@ public final class HitRegionBuilder {
      * Full width of a glissando's hit strip, in pixels — deliberately wider than the drawn line
      * so a thin diagonal stays easy to click.
      * <p>
-     * A pixel constant is safe to bake into layout geometry because {@link ScaleContext} is a
+     * A pixel constant is safe to bake into layout geometry because {@link DocumentScale} is a
      * fixed document scale that does not vary with on-screen zoom.
      */
     private static final double SLIDE_HIT_THICKNESS_PX = 8.0;
@@ -619,7 +619,7 @@ public final class HitRegionBuilder {
      * else.
      */
     private static Path2D.Double glissandoStripSs(SlideGeometry.Endpoints endpoints) {
-        var halfHitSs = ScaleContext.pxToSs(SLIDE_HIT_THICKNESS_PX) / 2;
+        var halfHitSs = DocumentScale.pxToSs(SLIDE_HIT_THICKNESS_PX) / 2;
         var cos = Math.cos(endpoints.angle());
         var sin = Math.sin(endpoints.angle());
 
@@ -681,7 +681,7 @@ public final class HitRegionBuilder {
             return shapeSs;
         }
 
-        var marginSs = ScaleContext.pxToSs(INCLUSIVE_EDGE_MARGIN_PX);
+        var marginSs = DocumentScale.pxToSs(INCLUSIVE_EDGE_MARGIN_PX);
 
         return new Rectangle2D.Double(
             rectSs.getX(),

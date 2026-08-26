@@ -40,6 +40,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowEvent;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.util.Arrays;
@@ -52,6 +53,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRootPane;
 import javax.swing.KeyStroke;
@@ -73,6 +75,8 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
+import songscribe.font.LocalFonts;
+import songscribe.font.MusescoreIconFont;
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.AppearanceManager;
 import songscribe.ui.FlatLafKey;
@@ -661,7 +665,24 @@ public final class UIUtils {
      */
     public static void installEagerFonts() {
         SourceSans3Font.installRemaining();
-        MyFontUtils.installLocalFont("TiroBangla-Regular.ttf");
+        LocalFonts.install("TiroBangla-Regular.ttf");
+    }
+
+    /**
+     * The font the current look and feel uses for the named role.
+     *
+     * @param key a {@code UIManager} font key, such as {@code Label.font}
+     * @return the theme's font for {@code key}, or a plain {@code JLabel}'s font when the theme
+     *         declares none — so a caller always has a font it can draw with
+     */
+    public static Font getUIFont(String key) {
+        var font = UIManager.getFont(key);
+
+        if (font == null) {
+            font = new JLabel().getFont();
+        }
+
+        return font;
     }
 
     //
@@ -686,6 +707,26 @@ public final class UIUtils {
     public record TaggedString(String text, @Nullable Font font) {
     }
 
+    /**
+     * The same font drawn {@code shift} pixels below its normal baseline.
+     *
+     * @param font  the font to derive from
+     * @param shift how far down to move the baseline, in pixels; negative raises it
+     * @return the shifted font, or {@code font} itself when {@code shift} is zero
+     */
+    private static Font deriveBaselineShiftedFont(
+        Font font,
+        int shift
+    ) {
+        if (shift == 0) {
+            return font;
+        }
+
+        var transform = new AffineTransform();
+        transform.translate(0, shift);
+        return font.deriveFont(transform);
+    }
+
     public static TaggedString getTaggedString(String taggedText) {
         // If the text starts with "@", use the icon font.
         // If the text starts with "#", use the note font.
@@ -694,7 +735,7 @@ public final class UIUtils {
         Font font = null;
 
         if (text.startsWith("@")) {
-            font = MyFontUtils.getIconFont();
+            font = MusescoreIconFont.font();
         } else if (text.startsWith("#")) {
             font = RenderingUtils.getMusicFont();
         }
@@ -705,7 +746,7 @@ public final class UIUtils {
             if (parts.length > 1) {
                 text = parts[0];
                 var baselineShift = Integer.parseInt(parts[1]);
-                font = MyFontUtils.deriveBaselineShiftedFont(font, baselineShift);
+                font = deriveBaselineShiftedFont(font, baselineShift);
             }
 
             text = text.substring(1);

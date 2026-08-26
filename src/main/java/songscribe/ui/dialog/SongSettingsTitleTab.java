@@ -37,10 +37,11 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.text.JTextComponent;
 
 import songscribe.Strings;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Ss;
+import songscribe.font.FontDescription;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -60,7 +61,6 @@ import songscribe.ui.component.NumericTextField;
 import songscribe.ui.component.score.BaseTitleComponent;
 import songscribe.ui.component.score.SubtitleComponent;
 import songscribe.ui.component.score.TitleComponent;
-import songscribe.util.MyFontUtils;
 import songscribe.util.UIUtils;
 
 
@@ -204,9 +204,9 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         dialogBindings.bind(subtitleRowWidthPx, wrapWidthSs, SongSettingsTitleTab::lineWidthPx);
 
         dialogBindings.bind(Widgets.font(titlePreview), titleFont);
-        dialogBindings.bind(Widgets.labelText(titleFontLabel), titleFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(Widgets.labelText(titleFontLabel), titleFont, FontDescription::full);
         dialogBindings.bind(Widgets.font(subtitlePreview), subtitleFont);
-        dialogBindings.bind(Widgets.labelText(subtitleFontLabel), subtitleFont, MyFontUtils::getFullFontDescription);
+        dialogBindings.bind(Widgets.labelText(subtitleFontLabel), subtitleFont, FontDescription::full);
 
         build();
     }
@@ -246,7 +246,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
      * @return the line width in pixels
      */
     private static int lineWidthPx(Ss lineWidthSs) {
-        return (int) Math.ceil(ScaleContext.ssToPx(lineWidthSs.value()));
+        return (int) Math.ceil(DocumentScale.ssToPx(lineWidthSs.value()));
     }
 
     /**

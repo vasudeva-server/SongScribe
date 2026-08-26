@@ -111,21 +111,21 @@ public abstract class LineElement {
     /**
      * Returns the intrinsic width of this element's content in staff-space units.
      * <p>
-     * Default implementation converts {@link #getContentWidthPx()} via {@link ScaleContext}.
+     * Default implementation converts {@link #getContentWidthPx()} via {@link DocumentScale}.
      * Subclasses computing in staff-space natively should override this.
      */
     public double getContentWidthSs() {
-        return ScaleContext.pxToSs(getContentWidthPx());
+        return DocumentScale.pxToSs(getContentWidthPx());
     }
 
     /**
      * Returns the intrinsic height of this element's content in staff-space units.
      * <p>
-     * Default implementation converts {@link #getContentHeightPx()} via {@link ScaleContext}.
+     * Default implementation converts {@link #getContentHeightPx()} via {@link DocumentScale}.
      * Subclasses computing in staff-space natively should override this.
      */
     public double getContentHeightSs() {
-        return ScaleContext.pxToSs(getContentHeightPx());
+        return DocumentScale.pxToSs(getContentHeightPx());
     }
 
     /**

@@ -55,7 +55,7 @@ import songscribe.FileExtensions;
 import songscribe.Strings;
 import songscribe.dom.DocPx;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
@@ -438,7 +438,7 @@ public final class ScoreView
         var result = SongFileLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
-            var lineWidthInches = ScaleContext.ssToInches(success.song().getLineWidthSs());
+            var lineWidthInches = DocumentScale.ssToInches(success.song().getLineWidthSs());
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
                 result = new SongLoadResult.LineWidthTooLarge(file, lineWidthInches, PageModel.MAX_LINE_WIDTH_INCHES);
@@ -953,7 +953,7 @@ public final class ScoreView
     }
 
     public int getSheetWidthPx() {
-        return ScaleContext.ssToRoundedPx(getSong().getLineWidthSs());
+        return DocumentScale.ssToRoundedPx(getSong().getLineWidthSs());
     }
 
     public int getSheetHeightPx() {
@@ -1005,7 +1005,7 @@ public final class ScoreView
             if (revalidateOnly) {
                 idealSpace = (float) endNote.getContentWidthPx();
             } else {
-                idealSpace = (float) ScaleContext.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace = (float) DocumentScale.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
             }
 
             var lineWidthPx = getSong().getLineWidthPx();

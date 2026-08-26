@@ -31,7 +31,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.font.FontKey;
-import songscribe.util.GraphicUtils;
+import songscribe.font.TextMeasurement;
 import songscribe.util.GraphicsState;
 
 /**
@@ -380,8 +380,8 @@ public class AttributionPane {
         // scale with the view zoom exactly like the (caller-zoomed) fonts do. Keeping
         // them fractional — never rounding to whole pixels — is what stops the line
         // spacing from jumping as the zoom factor sweeps across pixel boundaries.
-        var leadingPx = ScaleContext.ssToPx(LEADING_SS) * zoomFactor;
-        var subAttributionGapPx = ScaleContext.ssToPx(SUB_ATTRIBUTION_GAP_SS) * zoomFactor;
+        var leadingPx = DocumentScale.ssToPx(LEADING_SS) * zoomFactor;
+        var subAttributionGapPx = DocumentScale.ssToPx(SUB_ATTRIBUTION_GAP_SS) * zoomFactor;
 
         // The extra gap sits above the first sub-attribution line, but only when an
         // attribution line precedes it; a sub-attribution line at index 0 has nothing
@@ -402,7 +402,7 @@ public class AttributionPane {
                 offsetPx += subAttributionGapPx;
             }
 
-            var bounds = GraphicUtils.visualBounds(line.text(), font);
+            var bounds = TextMeasurement.visualBounds(line.text(), font);
 
             if (bounds != null) {
                 maxWidthPx = Math.max(maxWidthPx, bounds.getWidth());
@@ -452,9 +452,9 @@ public class AttributionPane {
     /**
      * Measures the rendered line box for {@code font}: the fractional visual (ink)
      * bounds of {@link #LINE_BOX_REFERENCE}, via
-     * {@link GraphicUtils#visualBounds(String, Font)}. The bounds' {@code y} is the
-     * ink top relative to the baseline (negative), so
-     * {@link GraphicUtils#inkHeight(Rectangle2D)} yields the ascent, and the bounds'
+     * {@link TextMeasurement#requireVisualBounds(String, Font)}. The bounds' {@code y} is
+     * the ink top relative to the baseline (negative), so
+     * {@link TextMeasurement#inkHeight(Rectangle2D)} yields the ascent, and the bounds'
      * {@code height} is the full vertical extent used to box every line.
      * <p>
      * The fractional (outline) bounds rather than device-pixel-snapped ones are what
@@ -462,14 +462,8 @@ public class AttributionPane {
      * jump as the zoom factor changes.
      */
     private static LineBox measureLineBox(Font font) {
-        // LINE_BOX_REFERENCE is a non-empty constant, so the bounds are never null.
-        var bounds = GraphicUtils.visualBounds(LINE_BOX_REFERENCE, font);
-
-        if (bounds == null) {
-            return new LineBox(0, 0);
-        }
-
-        return new LineBox(GraphicUtils.inkHeight(bounds), bounds.getHeight());
+        var bounds = TextMeasurement.requireVisualBounds(LINE_BOX_REFERENCE, font);
+        return new LineBox(TextMeasurement.inkHeight(bounds), bounds.getHeight());
     }
 
     /**

@@ -35,10 +35,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.geom.Rectangle2D;
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringReader;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import javax.swing.AbstractButton;
@@ -55,8 +51,6 @@ import javax.swing.MenuElement;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.parsers.SAXParserFactory;
 
 import org.assertj.swing.core.BasicRobot;
 import org.assertj.swing.core.GenericTypeMatcher;
@@ -76,15 +70,12 @@ import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestWatcher;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
-import songscribe.io.SongIO;
 import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.PageModel;
 import songscribe.ui.OptionDialogs;
@@ -510,8 +501,8 @@ public abstract class E2ETest {
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + ScaleContext.ssToRoundedPx(hitRect.x + hitRect.width / 2),
-                locationOnScreen.y + ScaleContext.ssToRoundedPx(centerYSs)
+                locationOnScreen.x + DocumentScale.ssToRoundedPx(hitRect.x + hitRect.width / 2),
+                locationOnScreen.y + DocumentScale.ssToRoundedPx(centerYSs)
             );
         });
         assertThat(result).isNotNull();
@@ -542,7 +533,7 @@ public abstract class E2ETest {
                 var layoutResult = lc.getLayoutResult();
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
                 // Place 30px past the last note
-                xPx = (int) Math.round(ScaleContext.ssToPx(lastXSs)) + 30;
+                xPx = (int) Math.round(DocumentScale.ssToPx(lastXSs)) + 30;
             }
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
@@ -572,7 +563,7 @@ public abstract class E2ETest {
 
             var element = line.getElement(elementIndex);
             var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
-            var xPx = (int) Math.round(ScaleContext.ssToPx(elementXSs)) - 10;
+            var xPx = (int) Math.round(DocumentScale.ssToPx(elementXSs)) - 10;
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
 

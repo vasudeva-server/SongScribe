@@ -20,7 +20,7 @@
 
 package songscribe.ui.dialog.fontchooser;
 
-import songscribe.util.MyFontUtils;
+import songscribe.font.InstalledFonts;
 
 public final class FontFamiliesFactory {
 
@@ -28,7 +28,7 @@ public final class FontFamiliesFactory {
 
     public static FontFamilies create() {
         var fontFamilies = new FontFamilies();
-        var allFonts = MyFontUtils.getAllFonts();
+        var allFonts = InstalledFonts.getAllFonts();
 
         for (var font : allFonts) {
             if (!font.getFamily().startsWith(".")) {

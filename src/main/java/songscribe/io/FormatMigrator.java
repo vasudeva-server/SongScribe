@@ -30,7 +30,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
@@ -102,7 +102,7 @@ public final class FormatMigrator {
      * @param lines The lines with pixel values to convert
      */
     public static void migratePixelsToStaffSpace(List<? extends Line> lines) {
-        var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+        var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
 
         for (var line : lines) {
             // Line-level fields

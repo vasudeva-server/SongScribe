@@ -31,8 +31,7 @@ import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.InputSource;
 
 import songscribe.Constants;
-import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.Trill;
@@ -68,7 +67,7 @@ final class MusicXmlRoundTripSupport {
      * round-trip without rounding loss.  Any integer number of pixels is exact at the
      * default scale (8 px per staff space), so 2 staff spaces = 16 px is a clean choice.
      */
-    static final int X_OFFSET_PX = ScaleContext.ssToRoundedPx(2.0);
+    static final int X_OFFSET_PX = DocumentScale.ssToRoundedPx(2.0);
 
     /**
      * Staff position of C4 — six steps below the B4 origin (staffPosition 0) in the

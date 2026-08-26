@@ -60,6 +60,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.font.TextMeasurement;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -116,12 +117,12 @@ public final class RecordingGraphics2D extends Graphics2D {
      * font units, and a unit here is a quarter of a staff space ({@link BravuraFont#SIZE_SS} is
      * {@value BravuraFont#SIZE_SS} for a one-staff-space em) — so the rounding is coarse in score
      * terms, and the zoom transform applied at replay magnifies it into visible stair-stepping.
-     * {@link GraphicUtils#SCREEN_FRC}
+     * {@link TextMeasurement#SCREEN_FRC}
      * is built from a graphics carrying {@link GraphicUtils#setRenderingHints}, which is also what
      * {@code LineOverlayComponent.paintComponent} applies at replay — so recording and replay
      * agree by construction rather than by two constants happening to match.
      */
-    private static final FontRenderContext RECORDING_FRC = GraphicUtils.SCREEN_FRC;
+    private static final FontRenderContext RECORDING_FRC = TextMeasurement.SCREEN_FRC;
 
     /**
      * Glyph vector creation dominates the cost of recording by orders of magnitude; the rest is

@@ -22,7 +22,7 @@ package songscribe.ui.dialog.fontchooser.panes;
 
 import java.awt.Font;
 
-import songscribe.util.MyFontUtils;
+import songscribe.font.FontDescription;
 
 public final class StyleEntry {
 
@@ -31,7 +31,7 @@ public final class StyleEntry {
 
     public StyleEntry(Font font) {
         this.font = font;
-        name = MyFontUtils.getStyleDescription(font);
+        name = FontDescription.style(font);
     }
 
     public Font getFont() {

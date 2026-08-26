@@ -22,17 +22,17 @@ package songscribe.layout;
 
 import java.awt.Insets;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 
 /** Insets in staff spaces: left, top, right, bottom. */
 public record InsetsSs(double top, double left, double bottom, double right) {
 
     public Insets toInsetsPx() {
         return new Insets(
-            ScaleContext.ssToRoundedPx(top),
-            ScaleContext.ssToRoundedPx(left),
-            ScaleContext.ssToRoundedPx(bottom),
-            ScaleContext.ssToRoundedPx(right)
+            DocumentScale.ssToRoundedPx(top),
+            DocumentScale.ssToRoundedPx(left),
+            DocumentScale.ssToRoundedPx(bottom),
+            DocumentScale.ssToRoundedPx(right)
         );
     }
 }

@@ -23,7 +23,7 @@ package songscribe.ui;
 import java.awt.Font;
 
 import songscribe.dom.DocPx;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
 import songscribe.dom.ViewPx;
 
@@ -31,7 +31,7 @@ import songscribe.dom.ViewPx;
  * Per-view zoom state and the typed conversions across its boundary.
  * <p>
  * The document is authored at a fixed scale
- * ({@link ScaleContext#DEFAULT_PIXELS_PER_STAFF_SPACE} pixels per staff space,
+ * ({@link DocumentScale#PIXELS_PER_STAFF_SPACE} pixels per staff space,
  * i.e. 100% zoom): {@link Ss} staff spaces and {@link DocPx} document pixels
  * both live at that scale. A {@code ViewScale} folds the current on-screen zoom
  * on top of it, converting either regime to {@link ViewPx} view pixels — the
@@ -74,12 +74,12 @@ public final class ViewScale {
 
     /** Converts a staff-space distance to view pixels at the current zoom. */
     public ViewPx toViewPx(Ss ss) {
-        return new ViewPx(ss.value() * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * factor());
+        return new ViewPx(ss.value() * DocumentScale.PIXELS_PER_STAFF_SPACE * factor());
     }
 
     /** Converts a view-pixel distance back to staff spaces at the current zoom. */
     public Ss toSs(ViewPx viewPx) {
-        return new Ss(viewPx.value() / (ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * factor()));
+        return new Ss(viewPx.value() / (DocumentScale.PIXELS_PER_STAFF_SPACE * factor()));
     }
 
     /** Converts a document-pixel distance to view pixels at the current zoom. */

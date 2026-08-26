@@ -703,7 +703,7 @@ public class Line implements LyricRun, SpanLookup {
 
         for (var i = 0; i < insertedCount; i++) {
             var placed = run.get(i);
-            placed.element().setXOffsetPx(ScaleContext.ssToRoundedPx(placed.xPositionSs()));
+            placed.element().setXOffsetPx(DocumentScale.ssToRoundedPx(placed.xPositionSs()));
             addElement(index + i, placed.element());
         }
 

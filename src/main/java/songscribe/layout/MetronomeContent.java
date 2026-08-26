@@ -28,11 +28,11 @@ import songscribe.dom.BeatChange;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.ElementType;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
 import songscribe.error.RuntimeError;
+import songscribe.font.TextMeasurement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -50,9 +50,8 @@ import songscribe.smufl.SMuFLMetadata;
  * description alone. It is not a hidden tempo: {@link #widthSs} is never 0, because that case
  * always carries text and the {@link TempoMarking.Metronome} case always begins with a glyph.
  * <p>
- * Every measurement here is in staff spaces and therefore zoom-invariant:
- * {@code ScaleContext.setPixelsPerStaffSpace} is never called in production, and zoom is
- * applied by {@code ViewScale} and the paint transform.
+ * Every measurement here is in staff spaces and therefore zoom-invariant, the document
+ * scale being a compile-time constant.
  *
  * @param items    the drawable items, left to right, positioned relative to the content's
  *                 top-left corner
@@ -213,14 +212,14 @@ public record MetronomeContent(
 
         private Builder(Font font) {
             this.font = font;
-            scaledFont = ScaleContext.scaleFont(font);
+            scaledFont = TextMeasurement.scaleFont(font);
             // Text sits on the note cap-height baseline, so a marking's silhouette does not
             // change shape when its BPM changes from 120 to 132.
             textBaselineOffsetSs = MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
             // Ascent and descent come from the font, not from the characters, so they are
             // resolved once for every text item in this content.
-            textAscentSs = ScaleContext.fontAscentSs(font).value();
-            textDescentSs = ScaleContext.fontDescentSs(font).value();
+            textAscentSs = TextMeasurement.fontAscentSs(font).value();
+            textDescentSs = TextMeasurement.fontDescentSs(font).value();
         }
 
         private void appendNote(StaffElement note) {
@@ -259,7 +258,7 @@ public record MetronomeContent(
 
             payPendingGap();
 
-            var advanceSs = ScaleContext.textWidthSs(font, text).value();
+            var advanceSs = TextMeasurement.textWidthSs(font, text).value();
             items.add(new TextItem(text, scaledFont, cursorSs, textBaselineOffsetSs));
             // The text hangs from its baseline, so its region starts an ascent above that
             // baseline and reaches a descent below it.

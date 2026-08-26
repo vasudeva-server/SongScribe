@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Attribution;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 
@@ -88,8 +88,8 @@ public interface LineLayoutProvider {
             .getContentSizePx(fonts.getAttributionFont(), fonts.getSubAttributionFont());
 
         attribution.setDimensionsSs(
-            ScaleContext.pxToSs(sizePx.width),
-            ScaleContext.pxToSs(sizePx.height));
+            DocumentScale.pxToSs(sizePx.width),
+            DocumentScale.pxToSs(sizePx.height));
 
         return attribution;
     }

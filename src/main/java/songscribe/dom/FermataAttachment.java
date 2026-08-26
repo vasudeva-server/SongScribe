@@ -86,11 +86,11 @@ public final class FermataAttachment extends Attachment {
 
     @Override
     public double getContentWidthPx() {
-        return ScaleContext.ssToPx(FERMATA_WIDTH_SS);
+        return DocumentScale.ssToPx(FERMATA_WIDTH_SS);
     }
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(FERMATA_HEIGHT_SS);
+        return DocumentScale.ssToPx(FERMATA_HEIGHT_SS);
     }
 }

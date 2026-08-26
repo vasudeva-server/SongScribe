@@ -35,9 +35,9 @@ import javax.swing.ListCellRenderer;
 
 import songscribe.dom.Key;
 import songscribe.error.RuntimeError;
+import songscribe.font.TextMeasurement;
 import songscribe.ui.component.BaseLabel;
-import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
+import songscribe.font.MusescoreIconFont;
 
 /**
  * Renders a key-signature combo or list entry: a MusescoreIcon glyph beside
@@ -47,7 +47,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
 
     private static final float FONT_SIZE_PT = 120f;
 
-    private static final Font FONT = MyFontUtils.getIconFont()
+    private static final Font FONT = MusescoreIconFont.font()
         .deriveFont(FONT_SIZE_PT);
 
     // MusescoreIcon font glyph per key.
@@ -148,7 +148,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
                     );
                 }
 
-                var glyphVector = FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, glyph);
+                var glyphVector = FONT.createGlyphVector(TextMeasurement.SCREEN_FRC, glyph);
                 var visualBounds = glyphVector.getVisualBounds();
                 maxGlyphWidth = Math.max(maxGlyphWidth, visualBounds.getWidth());
                 maxGlyphHeight = Math.max(maxGlyphHeight, visualBounds.getHeight());
@@ -156,7 +156,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
                 var attributed = KeyDisplay.getDisplayName(key);
                 var textLayout = new TextLayout(
                     attributed.getIterator(),
-                    GraphicUtils.SCREEN_FRC
+                    TextMeasurement.SCREEN_FRC
                 );
                 maxLabelWidth = Math.max(
                     maxLabelWidth,

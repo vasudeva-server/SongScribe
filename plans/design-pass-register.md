@@ -107,7 +107,7 @@ splits again suffixes again: 14b1, 14b2.
 | # | System | Where | Status | Notes |
 |---|---|---|---|---|
 | 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
-| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext`; plus `font`, `util` | 🔄 | `.claude/guides/spatial-units.md`, `docs/zoom.md`. Leaf in the model; nothing in `dom` depends on more than these. The read found the text-measurement facility spread across `ScaleContext`, `GraphicUtils` and `MyFontUtils`, so the pass reaches `font` and `util` to collect it. Record: `plans/design-pass/units-and-scale.md`; execution plan: `plans/units-and-scale-execution.md`. |
+| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
 | 2 | Glyph registry | `smufl` | ⏳ | Leaf. |
 | 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
 | 4 | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
@@ -223,6 +223,18 @@ the reason for it is still in hand.
   dead: `UnitTest`, `E2ETest` and `RuntimeErrorTestHelper` call all three. They
   are test-only production surface rather than removable code, and the boundary
   the rewrite installs is what the test bases should be using instead.
+- **→ Pass 18.** `PageModel.getDefaultLineWidthSs():133` routes inches → *whole*
+  pixels → staff spaces: `getContentAreaWidthPx():118` rounds the page width
+  through `roundedPx()` and both margins through `inchesToPx`, and only then does
+  `DocumentScale.pxToSs` divide. `DocumentScale.inchesToSs`'s Javadoc (`:64–70`)
+  warns against that exact path — whole-pixel rounding "can push a line that only
+  just fits past the staff margin" — and names itself the precise pair to use
+  instead. Whether the *default* line width is a place the exact length matters
+  is pass 18's to settle, with page setup in hand.
+- **→ Pass 18.** `PageModel` is Javadoc'd as a "Singleton" at `:30` but is a
+  private-constructor static utility with no instance. It also carries a blanket
+  `@SuppressWarnings("SameReturnValue")` at `:34` over the whole class rather
+  than the two constant-returning accessors that provoke it.
 
 ## Blockers
 

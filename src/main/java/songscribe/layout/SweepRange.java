@@ -26,7 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 
 /**
  * What a rubber-band drag on one line may select, and how far across the staff it may reach.
@@ -121,7 +121,7 @@ public final class SweepRange {
         }
 
         var headerRightEdgeSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line);
-        var leftLimitSs = headerRightEdgeSs + ScaleContext.pxToSs(HEADER_GAP_PX);
+        var leftLimitSs = headerRightEdgeSs + DocumentScale.pxToSs(HEADER_GAP_PX);
 
         return new SweepRange(columns, leftLimitSs, rightLimitSs);
     }

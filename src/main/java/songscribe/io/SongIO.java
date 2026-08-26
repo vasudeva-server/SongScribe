@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,17 +33,15 @@ import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.Strings;
-import songscribe.dom.AttributionFormatter;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFonts;
-import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.PageModel;
 import songscribe.message.SongData;
@@ -432,7 +429,7 @@ public final class SongIO {
                     }
 
                     var line = parsedLines.getLast();
-                    note.setXOffsetPx(ScaleContext.ssToRoundedPx(
+                    note.setXOffsetPx(DocumentScale.ssToRoundedPx(
                         InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null, null)));
                     note.setDirection(StaffElement.defaultDirection(note));
                     line.addElement(note);

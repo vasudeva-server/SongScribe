@@ -24,6 +24,8 @@ import java.awt.Font;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.font.TextMeasurement;
+
 /**
  * Represents a text annotation attachment on a note.
  * <p>
@@ -76,7 +78,7 @@ public final class AnnotationAttachment extends Attachment {
      * @return width in staff-space units
      */
     public double computeContentWidthSs(Font font) {
-        return ScaleContext.textWidthSs(font, annotation.text()).value();
+        return TextMeasurement.textWidthSs(font, annotation.text()).value();
     }
 
     /**
@@ -86,7 +88,7 @@ public final class AnnotationAttachment extends Attachment {
      * @return height in staff-space units
      */
     public double computeContentHeightSs(Font font) {
-        return ScaleContext.textHeightSs(font).value();
+        return TextMeasurement.textHeightSs(font).value();
     }
 
     @Override

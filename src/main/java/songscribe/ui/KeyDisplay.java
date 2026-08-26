@@ -27,7 +27,7 @@ import songscribe.Strings;
 import songscribe.dom.Key;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.RenderingUtils;
-import songscribe.util.MyFontUtils;
+import songscribe.util.UIUtils;
 
 import static java.awt.font.TextAttribute.FONT;
 import static java.awt.font.TextAttribute.TRACKING;
@@ -71,7 +71,7 @@ public final class KeyDisplay {
             return attributed;
         }
 
-        var labelFont = MyFontUtils.getUIFont("Label.font");
+        var labelFont = UIUtils.getUIFont("Label.font");
         attributed.addAttribute(FONT, labelFont);
 
         if (tonicHasAccidental(key)) {

@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.AccidentalMaterializer;
@@ -283,7 +283,7 @@ final class PreviewElementInserter {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(DocumentScale.ssToRoundedPx(insertion.insertedElementXSs()));
         line.addElement(previewElement);
 
         var newLastIndex = line.elementCount() - 1;
@@ -337,7 +337,7 @@ final class PreviewElementInserter {
             return;
         }
 
-        previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(DocumentScale.ssToRoundedPx(insertion.insertedElementXSs()));
 
         // Grace mode inserts its grace note with mutation tracking suspended, so a repair made
         // here would never reach the undo record. It takes the repairs over, running them
@@ -354,7 +354,7 @@ final class PreviewElementInserter {
             line.repairNeighborsAfterInsertion(xIndex, previewElement);
         }
 
-        var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
+        var shift = DocumentScale.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
             var element = line.getElement(i);

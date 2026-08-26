@@ -49,7 +49,7 @@ import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.io.LegacyAccidentals;
 
@@ -169,7 +169,7 @@ final class NoteMapper {
 
         if (relativeXTenths != null) {
             element.setXOffsetPx(
-                ScaleContext.ssToRoundedPx(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE)
+                DocumentScale.ssToRoundedPx(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE)
             );
         }
 

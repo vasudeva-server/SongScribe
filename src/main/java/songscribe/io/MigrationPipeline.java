@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 import songscribe.dom.Line;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 
 /**
@@ -54,14 +54,15 @@ final class MigrationPipeline {
         versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
         versioned(StageId.FINAL_TERMINAL, 2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
         versioned(StageId.PIXELS_TO_SS, 2, 1, ctx -> {
-            var pps = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
             ctx.lineWidthSs /= pps;
             ctx.rowHeightAdjustmentSs /= pps;
             FormatMigrator.migratePixelsToStaffSpace(ctx.lines);
         }),
         new SongMigration(StageId.LINE_WIDTH_FIX,
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
-            ctx -> ctx.lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE));
+            ctx -> ctx.lineWidthSs /= DocumentScale.PIXELS_PER_STAFF_SPACE
+        ));
 
     // Stages that run once ctx.song is set. Only the legacy-lyrics import is conditional; the
     // grace-host melisma repair and syllabic backfill run for every file.

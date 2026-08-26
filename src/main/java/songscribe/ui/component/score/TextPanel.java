@@ -28,7 +28,7 @@ import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.error.RuntimeError;
 import songscribe.ui.ViewScale;
@@ -159,7 +159,7 @@ public class TextPanel extends JPanel {
                 // The union width is measured with zoom-scaled fonts, so center against
                 // the view-scaled (zoomed) line width.
                 var lineWidthPx =
-                    (int) Math.round(ScaleContext.ssToPx(song.getLineWidthSs()) * viewScale().factor());
+                    (int) Math.round(DocumentScale.ssToPx(song.getLineWidthSs()) * viewScale().factor());
                 var contentX = (float) Math.round(
                     (lineWidthPx - unionWidth) / 2
                 );

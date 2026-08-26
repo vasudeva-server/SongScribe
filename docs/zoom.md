@@ -12,8 +12,9 @@ song may choose differently.
 | document pixels | pixels at the fixed document scale, i.e. at 100% zoom |
 | view pixels | on-screen pixels at the view's *current* zoom |
 
-Because the document scale is fixed, staff spaces and document pixels are two
-names for the same underlying scale. A view's zoom is the only thing that folds
+The document scale is a compile-time constant, so the first two regimes cannot
+diverge: document pixels are staff spaces at a fixed factor, and no code path
+can change that factor. A view's zoom is the only thing that folds
 on top, producing view pixels. Each regime is a distinct type, so a value cannot
 cross from one to another without saying so; see
 [spatial-units.md](../.claude/guides/spatial-units.md) for the suffix convention
@@ -89,6 +90,24 @@ Do not route a staff-space destination through document pixels on the way. The
 intermediate step rounds to a whole document pixel, which buys nothing for a
 fractional destination and costs up to half a pixel that the zoom then magnifies
 on screen.
+
+## Text measurement crosses in one place
+
+Font metrics come back from the toolkit in pixels, never in staff spaces. That
+crossing happens in exactly one place — the single measuring facility every
+measurement goes through — and nowhere else divides a metric by the document
+scale by hand. Because it is one place, it is also one instrument: the same
+scratch graphics, carrying the same rendering hints as the paint pass, answers
+every measurement, so text sized for layout and text drawn on screen cannot
+disagree about where a run ends.
+
+Measurement is zoom-free, and the facility takes no view. Text is measured at
+document scale and the result is a staff-space value that holds at any zoom;
+a measurement taken through a zoomed graphics would bake the factor into layout
+and reapply it at the paint transform.
+
+A measurement answers one of three questions, and they are not interchangeable.
+That axis is set out on `TextMeasurement` itself and is not repeated here.
 
 ## Export is zoom-independent by construction
 

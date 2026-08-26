@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Annotation;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.DocumentScale;
 
 public final class AnnotationIO {
 
@@ -99,7 +99,7 @@ public final class AnnotationIO {
 
         // Staff-space coordinate of the legacy Annotation.ABOVE pixel constant (before Phase 1 refactor)
         private static final double LEGACY_ABOVE_SS = -2.0;
-        private static final double LEGACY_ABOVE_PX = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
+        private static final double LEGACY_ABOVE_PX = DocumentScale.PIXELS_PER_STAFF_SPACE * LEGACY_ABOVE_SS;
 
         private boolean inAnnotation = false;
         private String text = "";

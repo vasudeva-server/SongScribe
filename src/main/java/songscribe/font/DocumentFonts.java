@@ -28,7 +28,6 @@ import java.util.function.ToIntFunction;
 
 import songscribe.prefs.Prefs;
 import songscribe.prefs.SystemPrefsKey;
-import songscribe.util.MyFontUtils;
 
 /**
  * Mutable holder for the eight document-level font roles.
@@ -82,7 +81,7 @@ public final class DocumentFonts implements DocumentFontsHolder {
 
     /** Resolves the font by PS name and size, then stores it. Used by the IO load path. */
     public void setFont(FontKey key, String psName, int size) {
-        fonts.put(key, MyFontUtils.createFont(psName, size));
+        fonts.put(key, InstalledFonts.createFont(psName, size));
     }
 
     /**
