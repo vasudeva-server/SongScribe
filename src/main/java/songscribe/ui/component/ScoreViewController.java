@@ -49,6 +49,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.hit.HitTarget;
@@ -860,10 +861,14 @@ public final class ScoreViewController {
             return;
         }
 
+        // Widened once here and passed to both the question and the deletion, so the range the
+        // notator was asked about is the range that goes.
+        var bounds = line.effectiveRange(begin, end);
+
         // Asked before the bracket opens, and before the clipboard is written: cancelling must
         // leave both the clipboard and the score untouched, exactly as declining the ending
         // confirm above does.
-        var confirmed = reconcileAndConfirmDeletion(line, begin, end);
+        var confirmed = reconcileAndConfirmDeletion(line, bounds);
 
         if (confirmed.isCancelled()) {
             return;
@@ -880,7 +885,7 @@ public final class ScoreViewController {
         // One bracket for the deletion — the confirms above already ran, so
         // deleteElementRange performs no further confirmation. The Cut action's op-name
         // (Tier A) names this outermost step, so the inner range delete passes no label.
-        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null, confirmed));
+        score.getSong().withModification(() -> deleteElementRange(line, bounds, null, confirmed));
 
         // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
@@ -919,8 +924,15 @@ public final class ScoreViewController {
      *       to its own field (fermata, dynamic, annotation, beat change, tempo change). An
      *       accidental goes through {@code SelectionActionApplier.apply}, which runs restatements,
      *       reconciliation and the fit gate, and may refuse the deletion outright.
-     *   <li>Otherwise, if {@code canDeleteLine()} allows it, the line itself is removed.
+     *   <li>Otherwise, if {@code canDeleteLine()} allows it, the line itself is removed. Taking a
+     *       line out moves the key every following line inherits, so this branch owes the same
+     *       cross-line reconciliation an inserted key change owes, and removes with it any
+     *       mid-line key change the move strands.
      * </ul>
+     *
+     * <p>The two branches that reconcile — the element range and the line — ask their one question
+     * before opening a bracket, and return without touching the selection when the answer is
+     * Cancel, so a cancelled delete leaves nothing mutated and no undo step.
      *
      * <p>Every branch but the lyric one falls through to the shared tail, which restores the
      * selected action states and deselects the score.
@@ -973,7 +985,10 @@ public final class ScoreViewController {
                 }
             }
 
-            var confirmed = reconcileAndConfirmDeletion(line, begin, end);
+            // Widened once here and passed to both the question and the deletion, so the range the
+            // notator was asked about is the range that goes.
+            var bounds = line.effectiveRange(begin, end);
+            var confirmed = reconcileAndConfirmDeletion(line, bounds);
 
             if (confirmed.isCancelled()) {
                 return;
@@ -995,13 +1010,30 @@ public final class ScoreViewController {
             // deleteElementRange's own bracket nests inside the one opened here and passes a
             // null label, since the op name is captured only at the outermost bracket.
             song.withModification(deleteLabel,
-                () -> deleteElementRange(line, begin, end, null, confirmed));
+                () -> deleteElementRange(line, bounds, null, confirmed));
         } else if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
             var lineIndex = selectionCoordinator.getSelectedLine();
+            var deletedLine = song.getLine(lineIndex);
+            var reach = AccidentalReconciliation.lineDeletionReach(deletedLine);
 
-            song.withModification(OpNames.deleteLineLabel(), () -> song.removeLine(lineIndex));
+            var confirmed = KeyChangeReconciliation.confirm(
+                score,
+                List.of(new AccidentalRestatements.EditedLine(
+                    deletedLine,
+                    AccidentalRestatements.inDeletedRange(
+                        deletedLine, 0, deletedLine.effectiveElementCount() - 1))),
+                reach);
+
+            if (confirmed.isCancelled()) {
+                return;
+            }
+
+            song.withModification(OpNames.deleteLineLabel(), () -> {
+                confirmed.apply();
+                song.removeLine(lineIndex);
+            });
         }
 
         // Restore the pre-selection selected states but not the enabled states — the song
@@ -1213,14 +1245,14 @@ public final class ScoreViewController {
      * run this <b>before</b> opening a modification bracket, and must abandon the deletion entirely
      * when the answer is Cancel.
      *
-     * <p>The range is widened exactly as {@link #deleteElementRange} widens it — a paired grace
+     * <p>The range is widened exactly as {@link Line#deleteRange} widens it — a paired grace
      * note before the range does not survive its host, and a trailing breath mark, or the barline a
      * key signature sits behind, goes with the range — so the accidentals offered are the ones the
      * deletion really removes.
      *
      * <p><b>The reach is more than this line.</b> A deletion that takes a mid-line key signature
      * with it moves the key every following line inherits, so it owes the same cross-line
-     * reconciliation an inserted key signature owes, ending where the inheritance chain does. A
+     * reconciliation an inserted key change owes, ending where the inheritance chain does. A
      * deletion that removes no key signature leaves the line's end key where it was, so
      * {@link AccidentalReconciliation#linesInheriting} reaches nothing and the reach is this line
      * alone — which is why it is computed unconditionally rather than behind a test for what the
@@ -1228,68 +1260,54 @@ public final class ScoreViewController {
      *
      * <p>One dialog covers the whole of it: the elements going away and the accidentals the
      * reconciliation clears on every reached line are asked about together.
+     *
+     * @param line   the line the deletion happens on
+     * @param bounds the range that really goes, already widened by {@link Line#effectiveRange}
+     * @return the notator's answer, the changes to record, and the reach they answer — including
+     *     the key changes the deletion strands, which the caller must remove with it
      */
-    private KeyChangeReconciliation.Confirmed reconcileAndConfirmDeletion(Line line, int begin, int end) {
-        var bounds = line.effectiveRange(begin, end);
-        var tail = AccidentalReconciliation.linesInheriting(
-            line, line.keyAtEndOfLineAfterRemoving(bounds.begin(), bounds.end()));
+    private KeyChangeReconciliation.Confirmed reconcileAndConfirmDeletion(
+        Line line, StaffElementRun.EffectiveRange bounds) {
+
+        // A deletion that takes a key change with it leaves the key that was running before the
+        // range running past it, which can leave a later key change on this same line restating
+        // it. keyAt's bound is inclusive, so it is asked one index below the range; index 0 can
+        // hold no key change, so asking about it is the same question.
+        var keyAfterRemoval = line.keyAt(Math.max(bounds.begin() - 1, 0));
+        var strandedAfter = line.redundantKeyChangeRanges(bounds.end() + 1, keyAfterRemoval);
+
+        // This line reconciled as a removal, so the projection holds neither the range going away
+        // nor the key changes its going away strands further along; then every line that inherits.
+        //
+        // The paired grace note immediately before the range does not survive this deletion
+        // either, so an explicit accidental on it is removed content and changes the context
+        // arriving at the boundary — the same reason, and the same compensation, that
+        // tryInsertFragment applies for spacing. The widening in {@code bounds} already covers it.
+        var reach = new ArrayList<AccidentalReconciliation.ReachedLine>();
+
+        reach.add(AccidentalReconciliation.ReachedLine.receiving(
+            line,
+            new AccidentalReconciliation.Insertion(
+                bounds.begin(),
+                new InsertionSpacingCalculator.DeletedRange(bounds.begin(), bounds.end()),
+                AccidentalReconciliation.ArrivingElements.NONE),
+            strandedAfter));
+
+        reach.addAll(AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineAfterRemoving(bounds.begin(), bounds.end())));
 
         return KeyChangeReconciliation.confirm(
             score,
             List.of(new AccidentalRestatements.EditedLine(
                 line, AccidentalRestatements.inDeletedRange(line, bounds.begin(), bounds.end()))),
-            removal -> reconcileDeletion(line, bounds, tail, removal));
+            reach);
     }
 
     /**
-     * Reconciles a deletion's whole reach: the host line as a removal, then every line inheriting
-     * from it.
-     *
-     * <p>The {@link KeyChangeReconciliation.ReachReconciler} for a deletion, so it runs once to
-     * find what to ask about and again under the answer, and must therefore read the lines as they
-     * still stand.
-     *
-     * @param line the line the deletion happens on
-     * @param bounds the range it really covers, already widened by {@link Line#effectiveRange}
-     * @param tail the lines inheriting from {@code line}
-     * @param removal the restatements the notator accepted, or
-     *     {@link AccidentalReconciliation.RestatementRemoval#NONE} on the first pass
-     * @return one entry per line, host first
-     */
-    private static List<AccidentalReconciliation.ReconciledLine> reconcileDeletion(
-        Line line,
-        Line.EffectiveRange bounds,
-        List<AccidentalReconciliation.ModifiedLine> tail,
-        AccidentalReconciliation.RestatementRemoval removal) {
-
-        // The paired grace note immediately before the range does not survive this deletion
-        // either (deleteNote removes it with its host), so an explicit accidental on it is
-        // removed content and changes the context arriving at the boundary — the same reason,
-        // and the same compensation, that tryInsertFragment applies for spacing.
-        var hostChanges = AccidentalReconciliation.reconcile(
-            new AccidentalReconciliation.InsertionRegion(
-                line,
-                bounds.begin(),
-                new InsertionSpacingCalculator.DeletedRange(bounds.begin(), bounds.end()),
-                List.of(),
-                List.of(),
-                List.of()),
-            removal);
-
-        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
-
-        reconciled.add(new AccidentalReconciliation.ReconciledLine(line, hostChanges));
-        reconciled.addAll(AccidentalReconciliation.reconcileModification(tail, removal));
-
-        return reconciled;
-    }
-
-    /**
-     * Deletes the element range {@code begin} through {@code end} on {@code line} — widened to
-     * {@link Line#effectiveRange}, so an element paired with one the caller named goes with it —
-     * naming the resulting undo step {@code label}. Confirmation-free: callers are
-     * responsible for any ending-invalidation confirm and for clearing the selection before
-     * calling this.
+     * Reconciles the accidentals a deletion of {@code begin} through {@code end} on {@code line}
+     * owes, then deletes that range through {@link Line#deleteRange}, naming the resulting undo
+     * step {@code label}. Confirmation-free: callers are responsible for any ending-invalidation
+     * confirm and for clearing the selection before calling this.
      * <p>
      * When invoked as the outermost modification (delete), {@code label} names the
      * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
@@ -1303,12 +1321,9 @@ public final class ScoreViewController {
      */
     private void deleteElementRange(
         Line line,
-        int begin,
-        int end,
+        StaffElementRun.EffectiveRange range,
         @Nullable String label,
         KeyChangeReconciliation.Confirmed confirmed) {
-
-        var deleteBounds = line.effectiveRange(begin, end);
 
         // Deletion is not fit-gated and must not become so, and it cannot need to be: a
         // materialization can only arise from a staff position carrying an explicit accidental in
@@ -1316,72 +1331,23 @@ public final class ScoreViewController {
         // note lacking its own accidental needs fixing). So removing k accidental-carrying notes
         // frees k noteheads plus k accidental glyphs and adds back at most k accidental glyphs —
         // the line can never get wider.
-        var accidentalChanges = confirmed.hostChanges();
+        var accidentalChanges = confirmed.changesFor(line);
 
-        // The host line's changes are recorded here, by commitDeletionAccidentals, because its
-        // note indices have to be captured against the pre-removal line. Saying so once keeps the
-        // reconciliation from recording them a second time in either branch below.
-        var reconciliation = confirmed.withHostRecordedByCaller();
+        // This line's changes are recorded here, by commitDeletionAccidentals, because its note
+        // indices have to be captured against the pre-removal line.
+        var reconciliation = confirmed.withChangesRecordedByCaller(line);
 
-        // When the element immediately before the selection is a paired grace note,
-        // deleteNote must remove it along with the first selected note — a non-contiguous
-        // operation that cannot be expressed as a single range. Fall back to the per-element loop.
-        if (line.isHostOfPairedGraceNote(begin)) {
-            line.withOptionallyNamedModification(label, () -> {
-                // Recorded before the removal so undo, which replays in reverse, restores the
-                // accidentals once the elements are back at the indices they were recorded at.
-                commitDeletionAccidentals(line, accidentalChanges);
-                KeyChangeReconciliation.commit(reconciliation);
-                deleteSelection(begin, end, line);
-            });
-        } else {
-            // The whole effective range is removed here, both ends included. The grace-note
-            // widening is the other branch's business, so what reaches this one is the range
-            // widened over a breath mark or over the barline a key signature sits behind.
-            var rangeBegin = deleteBounds.begin();
-            var rangeEnd = deleteBounds.end();
+        line.withOptionallyNamedModification(label, () -> {
+            // Recorded before the removal so undo, which replays in reverse, restores the
+            // accidentals once the elements are back at the indices they were recorded at. The
+            // sweep follows in the same bracket and still before the removal itself: every range
+            // it takes stands after this one, so taking them first leaves this range's own indices
+            // where they were.
+            commitDeletionAccidentals(line, accidentalChanges);
+            reconciliation.apply();
 
-            // Shift elements after the selection to fill the gap, mirroring the
-            // per-element xPos adjustment that deleteNote performs.
-            if (rangeEnd < line.effectiveElementCount() - 1) {
-                var shift = line.getElement(rangeBegin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
-
-                for (var i = rangeEnd + 1; i < line.effectiveElementCount(); i++) {
-                    line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
-                }
-            }
-
-            line.withOptionallyNamedModification(label, () -> {
-                // Recorded before the removal, for the reason given in the other branch.
-                commitDeletionAccidentals(line, accidentalChanges);
-                KeyChangeReconciliation.commit(reconciliation);
-
-                // Clean up the element before the range: its glissando has nothing left to
-                // point at. Recorded like every other change here — stripping it raw would
-                // leave undo restoring the deleted notes but not the glissando.
-                if (rangeBegin > 0) {
-                    var prevElement = line.getElement(rangeBegin - 1);
-
-                    if (prevElement.hasGlissando()) {
-                        line.modifyElement(rangeBegin - 1, ElementField.SLIDE, prevElement::removeSlide);
-                    }
-                }
-
-                // Mirror deleteNote: adjust syllable relations and melisma extends
-                // on neighbors before removing. Both helpers require the target
-                // elements to still be present in the list.
-                line.adjustSyllablesForNeighborChange(rangeBegin - 1, line.getElement(rangeBegin));
-
-                // When the range was widened to include a trailing breath mark or a paired
-                // barline, this loop also runs over it. Neither carries lyrics, so
-                // adjustExtendsForDeletion is a harmless no-op for them.
-                for (var i = rangeBegin; i <= rangeEnd; i++) {
-                    line.adjustExtendsForDeletion(i);
-                }
-
-                line.removeRange(rangeBegin, rangeEnd);
-            });
-        }
+            line.deleteRange(range);
+        });
     }
 
     /**
@@ -1396,24 +1362,9 @@ public final class ScoreViewController {
     }
 
     /**
-     * Deletes elements {@code begin} through {@code end} one at a time using
-     * {@link #deleteNote}, which handles the paired-grace-note case. Must be
-     * called inside a modification bracket.
-     */
-    private void deleteSelection(int begin, int end, Line line) {
-        for (var i = end; i >= begin; i--) {
-            var removedCount = deleteNote(i, line);
-
-            // When deleteNote also removes a preceding paired grace note,
-            // skip the extra index so we don't process an already-removed element.
-            i -= (removedCount - 1);
-        }
-    }
-
-    /**
      * The element index a paste effectively starts at: {@code insertIndex} for a pure
      * insertion, or the widened begin of {@code deleteRange} for a paste-replace, since
-     * {@link #deleteElementRange} takes a paired grace note before its range with it.
+     * {@link Line#deleteRange} takes a paired grace note before its range with it.
      */
     private static int pasteDisplacementIndex(
         Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
@@ -1436,17 +1387,31 @@ public final class ScoreViewController {
      * been mutated: the "line full" error is shown, a caller-opened bracket stays
      * empty, and no notification is posted. Callers decide recovery.
      *
-     * <p>{@code CANCELLED} means the user declined the confirm shown when the pasted
-     * content would invalidate a first-second ending. Like {@code LINE_FULL} it leaves
-     * the line untouched.
+     * <p>{@code CANCELLED} means the user declined a confirm — the one shown when the pasted
+     * content would invalidate a first-second ending, or the one asked about the accidental
+     * restatements this paste strands. Like {@code LINE_FULL} it leaves the line untouched.
      *
      * <p>Must be called inside a modification bracket — both paste-replace and
      * paste-mode placement supply their own, so delete + insert form one undo step.
      *
+     * <p><b>A fragment carrying a key change re-keys more than this line.</b> The key it
+     * leaves the destination line in reaches every line inheriting past it, so the paste owes the
+     * same reconciliation and raises the same single restatement prompt a key change written
+     * by hand does, and removes every key change it leaves restating the key already in
+     * effect — one of the fragment's own included — together with the barline behind it. Those
+     * lines are <b>not</b> fit-gated: this gate measures the destination line only, and a line
+     * left overflowing by a key that moved renders overflowing and flagged, which is what the
+     * program does everywhere outside the edits {@code KeyEditFitCalculator} covers.
+     *
      * @param line        The destination line
      * @param insertIndex The index where the fragment's first element will land
      * @param deleteRange The effective range to delete first, or null for pure insertion
-     * @return The outcome: {@code INSERTED}, {@code LINE_FULL}, or {@code EMPTY}
+     * @return {@code EMPTY} when the clipboard holds nothing; {@code LINE_FULL} when the fit gate
+     *     refused the paste; {@code CANCELLED} when the notator declined either confirm; and
+     *     {@code INSERTED} when the paste happened. {@code INSERTED} also covers the case where
+     *     the fragment reduced to nothing because every key change it carried restates the key
+     *     already running here — the gesture is spent and the caller should complete it, even
+     *     though no element was placed. Only {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(
         Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
@@ -1472,13 +1437,36 @@ public final class ScoreViewController {
         var spacingDeleteRange = (widenedDeleteRange != null) ? widenedDeleteRange : deleteRange;
         var spacingInsertIndex = (widenedDeleteRange != null) ? widenedDeleteRange.begin() : insertIndex;
 
+        // The first index this paste leaves standing after itself, and so the first one every
+        // projection below re-reads.
+        var successorIndex =
+            (spacingDeleteRange == null) ? spacingInsertIndex : (spacingDeleteRange.end() + 1);
+
+        // The key the fragment's first element lands in. keyAt's bound is inclusive, so it is
+        // asked one index lower — index 0 can hold no key change, so asking about it is the
+        // same question.
+        var keyAtInsertion = line.keyAt(Math.max(spacingInsertIndex - 1, 0));
+
         // Fresh clones every paste — the stored fragment is never itself inserted.
         // Instantiated before any mutation because the confirms and the reconciliation
         // below decide which of *these* spans survive, and they must read pre-mutation
         // indices off the line. The clones carry no line back-reference until addElement
         // below, so building them early touches nothing — which is also why the fit gate
         // can measure these clones rather than the stored fragment's elements.
-        var instantiated = fragment.instantiate();
+        //
+        // A fragment carries the key it was copied under, so one of its own key changes can
+        // arrive restating the key already running where it lands. It is dropped here rather
+        // than deleted after the insertion, so the reconciliation, the fit measurement and the
+        // span reconciliation below all see the run that actually lands.
+        var instantiated = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
+
+        // A key the fragment brings in reaches the rest of this line and every line inheriting
+        // past it, exactly as a key change written by hand does — this is the reach that edit
+        // owes, and the key changes it strands along the way.
+        var keyAfterFragment = instantiated.keyAtEndUnder(keyAtInsertion);
+        var strandedAfter = line.redundantKeyChangeRanges(successorIndex, keyAfterFragment);
+        var tail = AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineUnder(successorIndex, keyAfterFragment));
 
         // The accidentals this paste must make explicit so no pitch the user did not touch
         // changes. Reconciled against the pre-mutation line and applied *before* the fit
@@ -1491,27 +1479,55 @@ public final class ScoreViewController {
         // for the same single reason spacing uses it: the paired grace note immediately
         // before the range does not survive deleteElementRange, so an explicit accidental
         // on it is removed content and changes the context arriving at the boundary.
+        var reach = new ArrayList<AccidentalReconciliation.ReachedLine>();
+
+        reach.add(AccidentalReconciliation.ReachedLine.receiving(
+            line,
+            new AccidentalReconciliation.Insertion(
+                spacingInsertIndex,
+                spacingDeleteRange,
+                new AccidentalReconciliation.ArrivingElements(
+                    instantiated.elements(), instantiated.priorAccidentals(),
+                    instantiated.spans())),
+            strandedAfter));
+
+        reach.addAll(tail);
+
         // A paste-replace removes the explicit accidentals of the range it overwrites, so it asks
-        // the same question a plain deletion does — before the fit gate, and before anything is
-        // mutated, so Cancel reuses the LINE_FULL contract exactly. A pure insertion removes
-        // nothing and so is never asked.
-        var decision = (spacingDeleteRange == null)
-            ? AccidentalRestatements.Decision.PROCEED
-            : AccidentalRestatements.confirm(
-                score,
+        // the same question a plain deletion does. Folded into the reach's own prompt rather than
+        // raised beside it, so however much of the song this paste re-keys it still asks once —
+        // before the fit gate, and before anything is mutated, so Cancel reuses the LINE_FULL
+        // contract exactly.
+        var overwritten = (spacingDeleteRange == null)
+            ? List.<AccidentalRestatements.EditedLine>of()
+            : List.of(new AccidentalRestatements.EditedLine(
                 line,
                 AccidentalRestatements.inDeletedRange(
-                    line, spacingDeleteRange.begin(), spacingDeleteRange.end()));
+                    line, spacingDeleteRange.begin(), spacingDeleteRange.end())));
 
-        if (decision.isCancelled()) {
+        var confirmed = KeyChangeReconciliation.confirm(score, overwritten, reach);
+
+        if (confirmed.isCancelled()) {
             return FragmentInsertOutcome.CANCELLED;
         }
 
-        var accidentalChanges = AccidentalReconciliation.reconcile(
-            new AccidentalReconciliation.InsertionRegion(
-                line, spacingInsertIndex, spacingDeleteRange, instantiated.elements(),
-                instantiated.priorAccidentals(), instantiated.spans()),
-            decision.removal());
+        // A fragment of nothing but a key change restating the key already running here, and the
+        // barline behind it, leaves nothing to place. What is left of the paste is the deletion a
+        // paste-replace owes, under the reconciliation just confirmed; a pure insertion has
+        // nothing left to do at all. Either way the gesture is spent, not declined.
+        if (instantiated.elements().isEmpty()) {
+            if (spacingDeleteRange != null) {
+                deleteElementRange(
+                    line,
+                    line.effectiveRange(spacingDeleteRange.begin(), spacingDeleteRange.end()),
+                    null,
+                    confirmed);
+            }
+
+            return FragmentInsertOutcome.INSERTED;
+        }
+
+        var accidentalChanges = confirmed.changesFor(line);
 
         // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
         // both live inside the materializer's gate: it applies the accidentals with the plain
@@ -1552,7 +1568,8 @@ public final class ScoreViewController {
                     && line.hasEndingInvalidatedByDeletion(deleteRange.begin(), deleteRange.end());
 
                 if (!deletionAlreadyConfirmed) {
-                    var insertedTypes = fragment.elements().stream().map(StaffElement::getType).toList();
+                    var insertedTypes =
+                        instantiated.elements().stream().map(StaffElement::getType).toList();
 
                     if (line.hasEndingInvalidatedByInsertion(insertIndex, insertedTypes)
                             && !EndingConfirms.confirmInvalidation(score)) {
@@ -1569,9 +1586,19 @@ public final class ScoreViewController {
             return refusal[0];
         }
 
-        // Accepted restatements on later lines join the caller's bracket, so the paste and every
-        // removal it authorized are one undo step.
-        AccidentalRestatements.commitOtherLines(decision, line);
+        // The lines the fragment's key re-keys, and the accepted restatements past them, join the
+        // caller's bracket, so the paste and every removal it authorized are one undo step. This
+        // line is recorded by the gate above, against its pre-mutation indices, so the
+        // reconciliation skips it here rather than recording it twice.
+        var keyReconciliation = confirmed.withChangesRecordedByCaller(line);
+
+        keyReconciliation.commit();
+
+        // The key changes the moved key strands on those lines, in the same bracket. Nothing below
+        // touches them, so their indices are still the ones the reach reported. What the key
+        // strands on this line waits until the paste is done moving it — see the deferred sweep at
+        // the end of this method.
+        keyReconciliation.sweepExcept(line);
 
         // The accidentals are now recorded mutations, deliberately ahead of the deletion below:
         // UndoController replays a step's mutations in reverse, so undo reaches them last, after
@@ -1591,7 +1618,6 @@ public final class ScoreViewController {
         // Capture the successor and its target X before any mutation: the trailing
         // shift was measured against pre-delete positions, and deleteElementRange's
         // gap-fill moves the tail before the clones go in.
-        var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
         var successor = successorIndex < line.effectiveElementCount()
             ? line.getElement(successorIndex)
             : null;
@@ -1604,7 +1630,7 @@ public final class ScoreViewController {
             // This paste has already been reconciled as a whole — the deletion and the insertion
             // are one mutation — so the range delete must not reconcile again.
             deleteElementRange(
-                line, deleteRange.begin(), deleteRange.end(), null,
+                line, line.effectiveRange(deleteRange.begin(), deleteRange.end()), null,
                 KeyChangeReconciliation.Confirmed.PROCEED);
 
             // The deletion may have removed elements before the range too (a paired
@@ -1659,6 +1685,15 @@ public final class ScoreViewController {
         for (var span : reconciliation.fragmentSpans()) {
             line.addPastedSpan(span);
         }
+
+        // The key changes the fragment's key strands on the rest of this line go last, so
+        // every index the paste itself resolves — the successor it measures the trailing shift
+        // from, the span anchors — is still the one it was measured against. Each of these ranges
+        // begins at or past the successor, so all of them moved by exactly what the successor
+        // moved by.
+        var strandedShift = insertAt + clones.size() - successorIndex;
+
+        keyReconciliation.sweepDeferred(line, strandedShift);
 
         return FragmentInsertOutcome.INSERTED;
     }
@@ -1742,96 +1777,5 @@ public final class ScoreViewController {
             score.selectionChanged();
             score.repaint();
         }
-    }
-
-    /**
-     * Deletes the element at {@code xIndex} and, if the preceding element is a
-     * paired grace note, removes that as well. After the primary removal, if the
-     * surviving element at {@code firstDeletedIndex} is a breath mark, it is
-     * cascade-deleted via a recursive call so all gap-fill, glissando, and
-     * syllable/extend logic is reused.
-     *
-     * <p>Reconciles no accidentals: the caller owns that. This is the per-element worker
-     * {@link #deleteSelection} loops over for a range {@link #deleteElementRange} has already
-     * reconciled as a whole, and its own breath-mark cascade below removes an unpitched element
-     * that can never carry an accidental.
-     *
-     * @return the number of elements removed (1 or 2), not counting any
-     *         cascade-deleted trailing breath mark
-     */
-    static int deleteNote(int xIndex, Line line) {
-        // If the preceding note is a paired grace note, it becomes orphaned when
-        // this note is deleted and must be removed along with it.
-        var hasPrecedingPairedGraceNote = line.isHostOfPairedGraceNote(xIndex);
-
-        // Determine the left edge of the deletion — if a paired grace note precedes
-        // the deleted note, it is also being removed, so the gap starts there.
-        var firstDeletedIndex = hasPrecedingPairedGraceNote ? xIndex - 1 : xIndex;
-
-        if (xIndex < (line.effectiveElementCount() - 1)) {
-            var shift =
-                line.getElement(firstDeletedIndex).getXOffsetPx() -
-                    line.getElement(xIndex + 1).getXOffsetPx();
-
-            for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
-                line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
-            }
-        }
-
-        // If the previous note is a paired grace note, it disappears entirely —
-        // no need to strip its glissando separately. Otherwise remove any standalone
-        // incoming glissando from the previous note.
-        if (!hasPrecedingPairedGraceNote && xIndex > 0) {
-            var prevElement = line.getElement(xIndex - 1);
-
-            if (prevElement.hasGlissando()) {
-                line.modifyElement(xIndex - 1, ElementField.SLIDE, prevElement::removeSlide);
-            }
-        }
-
-        // Adjust syllable relations and melisma extends before removing —
-        // both methods require the element at xIndex to still be in the list.
-        // This must run before the hand-back below: it decides whether to break the
-        // predecessor's word by reading the deleted element's own lyric, which the
-        // transfer would have already moved away.
-        line.adjustSyllablesForNeighborChange(firstDeletedIndex - 1, line.getElement(xIndex));
-
-        // Deleting a paired grace note on its own hands its syllable back to the host,
-        // which becomes an ordinary note again and is eligible to carry a lyric. Runs
-        // before adjustExtendsForDeletion so it sees the final lyric state: the transfer
-        // takes the melisma START off the grace and drops the host's STOP carrier, so
-        // there is no longer a chain to unwind.
-        if (line.isPairedGraceNote(xIndex)) {
-            line.transferLyrics(xIndex, xIndex + 1);
-        }
-
-        line.adjustExtendsForDeletion(xIndex);
-
-        // Remove the host note first (higher index), then the orphaned grace note.
-        // Removing the higher index first keeps xIndex - 1 valid.
-        line.removeElement(xIndex);
-
-        int removed;
-
-        if (hasPrecedingPairedGraceNote) {
-            line.removeElement(xIndex - 1);
-            removed = 2;
-        } else {
-            removed = 1;
-        }
-
-        // Cascade-delete a breath mark that immediately follows the deleted element.
-        // After removal the successor lands at firstDeletedIndex. Recurse through
-        // deleteNote (not a bare removeElement) so gap-fill, glissando strip, and
-        // syllable/extend adjustments are reused. The cascade is excluded from
-        // `removed` because deleteSelection's caller loop counts down, so the breath
-        // mark (a higher index, visited on an earlier iteration) is already accounted
-        // for and must not shift the loop's index a second time.
-        if (firstDeletedIndex < line.effectiveElementCount() &&
-                line.getElement(firstDeletedIndex).getType().isBreathMark()) {
-            deleteNote(firstDeletedIndex, line);
-        }
-
-        return removed;
     }
 }

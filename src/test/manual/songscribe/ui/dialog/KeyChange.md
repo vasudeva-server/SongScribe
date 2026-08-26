@@ -49,3 +49,22 @@ Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `Key
     but Undo offers one new step named *Add Key Change* — the line now establishes that
     key rather than following the line before it. Changing the earlier line's key
     afterwards no longer moves this one.
+
+## A key that strands a mid-line signature removes it
+
+Checks 11–14 open `src/test/resources/fixtures/redundant-key-changes.musicxml`, whose
+line 2 is in A♭ and carries a mid-line signature to D♭, and whose line 3 inherits D♭
+and carries a mid-line signature to C.
+
+11. Double-click line 2's header and choose D♭. The mid-line D♭ signature and the
+    barline in front of it disappear, line 2 reads in D♭ throughout, and line 3's
+    header still shows D♭.
+12. Undo check 11. The line key, the mid-line signature and its barline all come
+    back on one Undo, and Redo puts all three away again.
+13. Double-click line 2's mid-line D♭ signature and choose A♭ — the key already in
+    effect in front of it. The signature and its barline disappear rather than the
+    signature being rewritten, and line 3's header changes to A♭.
+14. Write a new key signature into line 2's first measure, choosing D♭. It appears
+    with a barline of its own, and the D♭ signature that was already further along
+    the line disappears with its barline, leaving exactly one D♭ signature on the
+    line.

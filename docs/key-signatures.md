@@ -58,6 +58,15 @@ Its own running key can still move, because it is not keyed — even though the
 mid-line change itself, being an absolute key rather than a transposition, goes on
 drawing the same accidentals regardless.
 
+A keyed line stops the walk because the key it *leaves off in* is unchanged, so
+the line behind it inherits what it always did. **Inserting a line breaks that**,
+and only inserting one: every later line moves down a place, so the line behind
+the arriving one now follows something new. The walk therefore passes through the
+arriving line however it is keyed, and may not stop until one line further on.
+Deleting a line needs no such allowance — the line that takes the gap's place gets
+a new predecessor and is re-derived, and every line behind it goes on following
+what it always followed.
+
 ```
                  line 0   line 1   line 2            line 3   line 4   line 5
 own key:         C        —        —                 —        D        —
@@ -112,6 +121,35 @@ front of it — are asked once each by everything that puts content on a line, s
 note entry and click-placement get the same answer rather than each restating the
 rule. The same closure protects a grace note and the note it decorates: they mean
 nothing apart, so nothing goes between them either.
+
+## A mid-line change never restates the key already in effect
+
+A key change that steps to the key already running into it cancels nothing, and a
+signature that cancels nothing draws nothing. Left in place it would be invisible
+on screen while still sitting in the document — written to file, surviving a
+reload, and going on refusing the positions around it as a pair that draws
+nothing has no business doing. **That state is deliberately not representable**,
+the same way "this line restates the key it already had" is not.
+
+So an edit that would strand one removes it, in the same undo step as the edit
+itself, together with the element it is paired with. **Which element that is, is
+not this rule's to decide** — it is the same pairing a manual deletion uses, which
+is what makes a repeat or a double barline standing in front of a key change go
+exactly as a plain barline does. One rule, not one for the user and another for
+the sweep. The run of elements owns that rule, so a clipboard fragment resolves a
+pair the same way a committed line does.
+
+**Two things enforce the invariant, and it takes both: every edit that moves a
+key, and reading a file.** Neither covers the other. An edit only ever reaches
+what its own key move strands, and a stranding already sitting in an older
+document is invisible for the reason above, so no edit is ever prompted to reach
+it — reading is the only thing that ever sees the whole song at once.
+
+Removing such a change moves the key in effect nowhere, which is what lets the
+whole sweep be planned before the edit commits. What it does move is the
+accidental context, so the notes after the removed pair are reconciled like any
+other pitch the user did not touch — see [clipboard.md](clipboard.md) for that
+reconciliation.
 
 ## What a change draws depends on where it is
 
@@ -192,11 +230,16 @@ reconciliation can span more than one line**, and the user sees one prompt for t
 whole range rather than one per line. See [clipboard.md](clipboard.md) for the
 reconciliation itself.
 
-Four edits move a key and owe that reach: changing a line's own key, writing a
-mid-line change, changing one already written, and deleting one. The sequence the
-reach forces — reconcile the whole range, ask once, reconcile again under the
-answer, record every line reached — is written in one place, and each edit
-supplies only how its own head is handled.
+Six edits move a key and owe that reach, and the interesting member of the set is
+the one that does not: **inserting a line moves no key**, because the new line is
+empty, so it inherits the key running into it and hands that same key straight on.
+Every edit that changes a key, writes or removes one, or brings one in from the
+clipboard is in; an edit that only changes what surrounds a key is not.
+
+The sequence that reach forces is written in one place, and an edit supplies only
+what it does to the line it lands on. Every line of a reach is described the same
+way, so the line the edit lands on and the lines that merely inherit travel in one
+list and no caller has to know which is which.
 
 A deletion computes its reach unconditionally rather than testing what it is about
 to remove. A deletion removing no key change leaves the line's end key where it
@@ -210,10 +253,19 @@ its own line, along with any barline inserted beside it. Before either commits,
 every line the change touches — the inheritance chain again — is measured, and the
 edit is rejected rather than committed and left to overflow.
 
-Every other path keeps the program's ordinary best-effort behaviour: a document
-whose key change stops fitting after a page-size or font change renders
-overflowing and flagged rather than being silently corrected or refused, because
-refusing there would make an existing document unopenable.
+That covers three interactive edits: changing a line's own key, inserting a
+mid-line change, and swapping one already written. Every other path keeps the
+program's ordinary best-effort behaviour: a document whose key change stops
+fitting after a page-size or font change renders overflowing and flagged rather
+than being silently corrected or refused, because refusing there would make an
+existing document unopenable.
+
+**Paste is not gated on the lines it re-keys.** Its own gate measures the line
+actually receiving elements and nothing beyond it, so a line further down the
+inheritance chain that the fragment's key widens falls to the best-effort
+behaviour above. Deleting elements and deleting a line need no gate at all:
+removing content only frees room, so a sweep can never turn an edit that fitted
+into one that does not.
 
 This diverges deliberately from lyric editing, where an edit that leaves a line
 overflowing is allowed to commit — the user may be shortening a syllable to

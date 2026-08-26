@@ -32,7 +32,7 @@ import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
-import static songscribe.io.musicxml.MusicXmlRoundTripSupport.buildSong;
+import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
 
 /**

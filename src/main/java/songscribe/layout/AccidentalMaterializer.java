@@ -167,12 +167,14 @@ public final class AccidentalMaterializer {
 
     /**
      * Records {@code accidentalChanges} as undoable mutations on {@code line}, for an edit that has
-     * nothing to gate: an in-place modification changes no element's index and no element count, so
-     * there is no projection to measure and nothing to roll back.
+     * nothing to gate: it adds no element, so there is no projection to measure and nothing to roll
+     * back. An edit that only frees room — a key move taking away the key changes it strands — has
+     * nothing to gate either.
      *
      * <p>Must be called inside a modification bracket, so the changes coalesce into the same undo
-     * step as the edit that forced them. Unlike {@link #applyIfAccepted}, each note's index is read
-     * at commit time, which is correct precisely because no removal is in play.
+     * step as the edit that forced them, and — like {@link #applyIfAccepted} — before any removal
+     * the same edit performs. That ordering is what lets each note's index be read here at commit
+     * time rather than carried in: the line still stands as the reconciliation read it.
      *
      * @param line              The line being edited
      * @param accidentalChanges The accidentals to add or clear, from

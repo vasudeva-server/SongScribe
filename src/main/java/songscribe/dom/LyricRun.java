@@ -59,14 +59,13 @@ import songscribe.util.LogUtils;
  * run's ends stop being where they were. It simply has no line, and no undo history to
  * record into.
  *
- * <p>Only three things about a run differ between the two, so those are all that is
- * abstract: how to reach an element, how many elements count (two methods — see
- * {@link #effectiveElementCount()}), and what to do with a repair once it has been
- * applied. {@link Line} answers the last one by recording an
- * {@code ElementModification} so the repair can be undone; {@link DetachedLyricRun} answers
- * it by doing nothing, because a detached run is not part of any document. Everything else
- * is shared, so the repair a fragment gets is the same code an edit gets, not a second
- * implementation of the same rules.
+ * <p>Reaching an element and counting the run are {@link StaffElementRun}'s, which this
+ * extends: a run carrying lyric chains is a run of elements first. One thing more differs
+ * between the two, so it is all that is abstract here — what to do with a repair once it has
+ * been applied. {@link Line} answers it by recording an {@code ElementModification} so the
+ * repair can be undone; {@link DetachedLyricRun} answers it by doing nothing, because a
+ * detached run is not part of any document. Everything else is shared, so the repair a
+ * fragment gets is the same code an edit gets, not a second implementation of the same rules.
  *
  * <p><b>Mutation contract:</b> every repair here goes through
  * {@link #modifyElement(int, ElementField, Runnable)}, and on a {@code Line} that method
@@ -74,34 +73,13 @@ import songscribe.util.LogUtils;
  * a modification bracket" notes below are that requirement, and they bind every caller
  * holding a {@code Line}. A {@link DetachedLyricRun} has no bracket to be inside.
  */
-public interface LyricRun {
+public interface LyricRun extends StaffElementRun {
 
     Logger LOG = LoggerFactory.getLogger(LyricRun.class);
 
     // -------------------------------------------------------------------------
     // What a run must answer for itself
     // -------------------------------------------------------------------------
-
-    /** The element at {@code index}. */
-    StaffElement getElement(int index);
-
-    /** The number of elements in this run. */
-    int elementCount();
-
-    /**
-     * The number of elements the run's own content occupies — {@link #elementCount()} less
-     * any trailing element the run maintains for itself rather than holding as content
-     * (a {@link Line}'s auto-maintained terminal barline).
-     */
-    int effectiveElementCount();
-
-    /**
-     * Whether {@code index} addresses an element of this run, and so may be passed to
-     * {@link #getElement}.
-     */
-    default boolean hasIndex(int index) {
-        return index >= 0 && index < elementCount();
-    }
 
     /**
      * Applies {@code mutator} to the element at {@code index} and does whatever the run
@@ -113,20 +91,6 @@ public interface LyricRun {
     // -------------------------------------------------------------------------
     // Chain repair
     // -------------------------------------------------------------------------
-
-    /**
-     * Whether the element at {@code index} is a grace note connected to the note that
-     * follows it, {@code false} when {@code index} is outside the run. The pair carries an
-     * automatic melisma, so the lyric rules have to recognize one; see
-     * {@link #syncGraceHostMelisma}.
-     *
-     * <p>Says nothing about whether the following note is present: a pair whose host lies
-     * past the end of the run still reads as paired, which is what lets
-     * {@link songscribe.ui.clipboard.Fragment#capture} recognize the orphan it has to trim.
-     */
-    default boolean isPairedGraceNote(int index) {
-        return hasIndex(index) && getElement(index).isPairedGraceNote();
-    }
 
     /**
      * Adjusts the syllabic value on the element at {@code prevIndex} when the neighbor

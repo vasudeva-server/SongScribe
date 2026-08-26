@@ -36,6 +36,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tie;
 
 /**
@@ -149,7 +150,7 @@ import songscribe.dom.Tie;
  * <p>Both bounds hold <em>within</em> a line, because the backward scan stays inside it. How far a
  * reconciliation <em>reaches</em> is a separate question, and one edit answers it differently:
  * a key change moves pitches on every line that inherits the key, so it is reconciled over a range
- * of lines — {@link #reconcileModification(List, RestatementRemoval)}, fed by
+ * of lines — {@link #reconcileReach(List, RestatementRemoval)}, fed by
  * {@link #linesInheriting} — ending where the inheritance chain does. Every other edit is a range
  * of one. See {@code docs/key-signatures.md} for the chain and its stopping rule.
  *
@@ -188,64 +189,101 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * An insert, a delete, or a paste-replace, described <em>before</em> any of it happens.
+     * The elements an edit brings onto a line, with what the tie exclusion and the pitch invariant
+     * need in order to leave them sounding as they did where they came from.
      *
-     * @param insertIndex              Index in {@code line} where {@code inserted} will land, and
-     *                                 the first index of {@code deleteRange} when there is one
-     * @param deleteRange              The range this mutation removes, or null when nothing is
-     *                                 removed
-     * @param inserted                 The elements being inserted, in order
-     * @param insertedPriorAccidentals Either <b>empty</b>, or the same size as {@code inserted}.
-     *                                 When the same size, each entry is that element's effective
-     *                                 accidental <em>in its source context</em> (null when it
-     *                                 sounded unaltered there) — the paste case. When
-     *                                 <b>empty</b>, the inserted elements have no source context
-     *                                 and are never materialized against themselves; only the
-     *                                 notes following them are candidates. That is the
-     *                                 fresh-insert case: a note the user is creating has no pitch
-     *                                 it "had", so the invariant does not reach it. "No source
-     *                                 context" is deliberately <em>not</em> encoded as a list of
-     *                                 nulls — null already means "sounded unaltered there", which
-     *                                 is a different claim.
-     * @param insertedSpans            The fragment's own spans (its ties), which are not
-     *                                 yet on the destination line; the tie exclusion needs them,
-     *                                 so that a note arriving already tied is left alone
+     * <p>The three lists travel together because they describe one arriving run, and separating
+     * them at a call site is three same-typed arguments the compiler cannot tell apart.
+     *
+     * @param elements         The elements being inserted, in order
+     * @param priorAccidentals Either <b>empty</b>, or the same size as {@code elements}. When the
+     *                         same size, each entry is that element's effective accidental
+     *                         <em>in its source context</em> (null when it sounded unaltered
+     *                         there) — the paste case. When <b>empty</b>, the arriving elements
+     *                         have no source context and are never materialized against
+     *                         themselves; only the notes following them are candidates. That is
+     *                         the fresh-insert case: a note the user is creating has no pitch it
+     *                         "had", so the invariant does not reach it. "No source context" is
+     *                         deliberately <em>not</em> encoded as a list of nulls — null already
+     *                         means "sounded unaltered there", which is a different claim
+     * @param spans            The arriving run's own spans (its ties), which are not yet on the
+     *                         destination line; the tie exclusion needs them, so that a note
+     *                         arriving already tied is left alone
      */
-    public record InsertionRegion(
-        Line line,
-        int insertIndex,
-        InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
-        List<StaffElement> inserted,
-        List<StaffElement.@Nullable Accidental> insertedPriorAccidentals,
-        List<Span> insertedSpans
-    ) {
-        // Written out rather than compact: NullAway does not carry the type-use @Nullable
-        // annotations from the record header onto the synthesized canonical constructor, so
-        // callers passing a null delete range or a list with null entries are rejected.
-        public InsertionRegion(
-            Line line,
-            int insertIndex,
-            InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
-            List<StaffElement> inserted,
-            List<StaffElement.@Nullable Accidental> insertedPriorAccidentals,
-            List<Span> insertedSpans) {
+    public record ArrivingElements(
+        List<StaffElement> elements,
+        List<StaffElement.@Nullable Accidental> priorAccidentals,
+        List<Span> spans) {
 
-            if (!insertedPriorAccidentals.isEmpty() && (insertedPriorAccidentals.size() != inserted.size())) {
+        /** Nothing arrives: what a pure deletion, or a key change edited in place, brings in. */
+        public static final ArrivingElements NONE =
+            new ArrivingElements(List.of(), List.of(), List.of());
+
+        // Written out rather than compact: NullAway does not carry the type-use @Nullable
+        // annotation from the record header onto the synthesized canonical constructor, so a
+        // caller passing a list with null entries would otherwise be rejected.
+        public ArrivingElements(
+            List<StaffElement> elements,
+            List<StaffElement.@Nullable Accidental> priorAccidentals,
+            List<Span> spans) {
+
+            if (!priorAccidentals.isEmpty() && (priorAccidentals.size() != elements.size())) {
                 throw new IllegalArgumentException(
-                    "insertedPriorAccidentals must be empty or the same size as inserted, but was "
-                        + insertedPriorAccidentals.size() + " for " + inserted.size() + " inserted elements");
+                    "priorAccidentals must be empty or the same size as elements, but was "
+                        + priorAccidentals.size() + " for " + elements.size() + " elements");
             }
 
-            this.line = line;
-            this.insertIndex = insertIndex;
-            this.deleteRange = deleteRange;
-            this.inserted = List.copyOf(inserted);
+            this.elements = List.copyOf(elements);
 
             // List.copyOf rejects nulls, and a null entry here is meaningful ("sounded unaltered
             // in the source context"), so copy through a list that permits them.
-            this.insertedPriorAccidentals =
-                Collections.unmodifiableList(new ArrayList<>(insertedPriorAccidentals));
-            this.insertedSpans = List.copyOf(insertedSpans);
+            this.priorAccidentals =
+                Collections.unmodifiableList(new ArrayList<>(priorAccidentals));
+            this.spans = List.copyOf(spans);
+        }
+
+        /** A fresh insert: elements with no source context, and no spans of their own. */
+        public static ArrivingElements fresh(List<StaffElement> elements) {
+            return new ArrivingElements(elements, List.of(), List.of());
+        }
+    }
+
+    /**
+     * What an edit does to the elements of one line it reaches: puts {@code arriving} in at
+     * {@code index}, having first taken {@code replacedRange} out when there is one.
+     *
+     * @param index         Index in the line where {@code arriving} will land, and the first index
+     *                      of {@code replacedRange} when there is one
+     * @param replacedRange The range the insertion itself replaces, or null for a pure insertion.
+     *                      Distinct from {@link ReachedLine#removedRanges()}, which are the
+     *                      further ranges a moved key strands elsewhere on the same line
+     * @param arriving      The elements coming in; {@link ArrivingElements#NONE} for a pure
+     *                      deletion, which is an insertion of nothing
+     */
+    public record Insertion(
+        int index,
+        InsertionSpacingCalculator.@Nullable DeletedRange replacedRange,
+        ArrivingElements arriving) {
+
+        // Written out rather than compact: NullAway does not carry the type-use @Nullable
+        // annotation from the record header onto the synthesized canonical constructor.
+        @SuppressWarnings("RedundantRecordConstructor")
+        public Insertion(
+            int index,
+            InsertionSpacingCalculator.@Nullable DeletedRange replacedRange,
+            ArrivingElements arriving) {
+
+            this.index = index;
+            this.replacedRange = replacedRange;
+            this.arriving = arriving;
+        }
+
+        /**
+         * The first index the line keeps standing after this insertion, and so the first one the
+         * projection re-reads off the live line.
+         */
+        int successorIndex() {
+            return replacedRange == null ? index : (replacedRange.end() + 1);
         }
     }
 
@@ -264,42 +302,99 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * One line an in-place modification reaches, described <em>before</em> any of it happens.
+     * One line an edit reaches, described <em>before</em> any of it happens.
      *
-     * <p>Two things can move a note's context on a line: a note the user changed there, and the
-     * key the line runs in. Both are stated here, so a modification that moves only the key — a
-     * key change, which reaches every line that inherits it — is the same walk with an empty
-     * change list rather than an algorithm of its own.
+     * <p>Four things can move a note's context on a line, and all four are stated here: a note the
+     * user changed there, the key the line runs in, elements the edit puts in or takes out at one
+     * place, and further ranges the edit removes elsewhere along the line. An edit that does only
+     * one of them is the same description with the rest empty, rather than a second type — which
+     * is what lets the line an edit lands on and the lines it merely re-keys travel in one list,
+     * in song order, with no caller having to know which is which.
      *
-     * @param line       The line, in its pre-modification state
-     * @param changes    Each changed note's intended post-change state on {@code line}; empty for a
-     *                   line the modification re-keys without touching a note on it
-     * @param runningKey The key in effect at the <em>start</em> of {@code line} once the
-     *                   modification commits. Equal to {@link Line#getRunningKey()} unless this
-     *                   modification moves it. A mid-line {@link KeyChangeElement} still
-     *                   overrides it from its own index forward, exactly as it does on the
-     *                   committed line
+     * @param line          The line, in its pre-edit state
+     * @param runningKey    The key in effect at the <em>start</em> of {@code line} once the edit
+     *                      commits. Equal to {@link Line#getRunningKey()} unless this edit moves
+     *                      it. A mid-line {@link KeyChangeElement} still overrides it from its own
+     *                      index forward, exactly as it does on the committed line
+     * @param changes       Each changed note's intended post-change state on {@code line}; empty
+     *                      for a line the edit re-keys without touching a note on it
+     * @param insertion     What the edit puts in and takes out at one place on {@code line}, or
+     *                      null when it changes which elements the line holds nowhere — the
+     *                      ordinary in-place modification, and every line that merely inherits a
+     *                      moved key
+     * @param removedRanges The further inclusive ranges the edit removes from {@code line},
+     *                      ascending and pairwise disjoint, as
+     *                      {@link StaffElementRun#redundantKeyChangeRanges} reports them. A moved
+     *                      key strands every mid-line key change that then restates the key in
+     *                      effect before it, and the edit removes each one together with the
+     *                      element it is paired with, so a re-keyed line and what disappears from
+     *                      it are one description rather than two
      */
-    public record ModifiedLine(Line line, List<IntendedChange> changes, Key runningKey) {
+    public record ReachedLine(
+        Line line,
+        Key runningKey,
+        List<IntendedChange> changes,
+        @Nullable Insertion insertion,
+        List<StaffElementRun.EffectiveRange> removedRanges) {
 
-        public ModifiedLine {
-            changes = List.copyOf(changes);
+        // Written out rather than compact: NullAway does not carry the type-use @Nullable
+        // annotation from the record header onto the synthesized canonical constructor.
+        public ReachedLine(
+            Line line,
+            Key runningKey,
+            List<IntendedChange> changes,
+            @Nullable Insertion insertion,
+            List<StaffElementRun.EffectiveRange> removedRanges) {
+
+            this.line = line;
+            this.runningKey = runningKey;
+            this.changes = List.copyOf(changes);
+            this.insertion = insertion;
+            this.removedRanges = List.copyOf(removedRanges);
         }
 
-        /** A line whose key does not move: the ordinary in-place modification. */
-        public static ModifiedLine of(Line line, List<IntendedChange> changes) {
-            return new ModifiedLine(line, changes, line.getRunningKey());
+        /** A line whose key does not move and whose elements stay: the in-place modification. */
+        public static ReachedLine of(Line line, List<IntendedChange> changes) {
+            return new ReachedLine(line, line.getRunningKey(), changes, null, List.of());
         }
 
-        /** A line a key change re-keys without the user having touched a note on it. */
-        public static ModifiedLine reKeyed(Line line, Key runningKey) {
-            return new ModifiedLine(line, List.of(), runningKey);
+        /**
+         * A line a key change re-keys without the user having touched a note on it, carrying the
+         * key changes {@code runningKey} strands on it.
+         *
+         * <p>The stranding query runs here rather than at each call site, so every reach — and so
+         * every edit that moves a key — carries the removals it owes without a caller having to
+         * know they exist.
+         */
+        public static ReachedLine reKeyed(Line line, Key runningKey) {
+            return new ReachedLine(
+                line, runningKey, List.of(), null, line.redundantKeyChangeRanges(runningKey));
+        }
+
+        /**
+         * A line the edit inserts into, deletes from, or both — the line it lands on.
+         *
+         * <p>Its running key is the line's own: an insert or a delete cannot move the key a line
+         * <em>starts</em> in, only the key it leaves off in, and a mid-line key change the edit
+         * brings in or takes away is carried by {@code insertion} rather than by the running key.
+         *
+         * @param line          the line, in its pre-edit state
+         * @param insertion     what the edit puts in and takes out
+         * @param removedRanges the further ranges a key the edit brings in strands along the same
+         *                      line, all of them at or after {@code insertion}'s successor index
+         * @return the description
+         */
+        public static ReachedLine receiving(
+            Line line, Insertion insertion, List<StaffElementRun.EffectiveRange> removedRanges) {
+
+            return new ReachedLine(
+                line, line.getRunningKey(), List.of(), insertion, removedRanges);
         }
     }
 
     /**
      * The accidentals one line of a modification's range has to change, as
-     * {@link #reconcileModification(List, RestatementRemoval)} returns them. The caller applies
+     * {@link #reconcileReach(List, RestatementRemoval)} returns them. The caller applies
      * each line's changes to that line.
      *
      * @param line    The line the changes sit on
@@ -492,16 +587,51 @@ public final class AccidentalReconciliation {
      *
      * @param line       The line whose own key changes
      * @param runningKey The key {@code line} will run in once the change commits
-     * @return The range, in song order, always starting with {@code line}
+     * @return The range, in song order, always starting with {@code line}. Each entry carries the
+     *         {@link ReachedLine#removedRanges() ranges} the move strands on its line, which the
+     *         caller commits inside the same modification bracket as the key move itself
      */
-    public static List<ModifiedLine> lineKeyChangeReach(Line line, Key runningKey) {
+    public static List<ReachedLine> lineKeyChangeReach(Line line, Key runningKey) {
         var keyAtEndOfLine = line.keyAtEndOfLineUnder(runningKey);
 
-        var reach = new ArrayList<ModifiedLine>();
-        reach.add(ModifiedLine.reKeyed(line, runningKey));
+        var reach = new ArrayList<ReachedLine>();
+        reach.add(ReachedLine.reKeyed(line, runningKey));
         reach.addAll(linesInheriting(line, keyAtEndOfLine));
 
         return reach;
+    }
+
+    /**
+     * Returns the lines a deletion of {@code deletedLine} re-keys: every following line that then
+     * inherits from the line before it, up to where the inheritance chain stops.
+     *
+     * <p>The reach is asked of the <em>deleted</em> line, so what comes back is the lines after it,
+     * carrying the key the line before it leaves off in — which is exactly the key they will
+     * inherit once it is gone. The deleted line is not in the result and needs no reconciliation:
+     * every note on it goes away with it. That is the one reach with no head of its own, and the
+     * reason a key move has to be able to describe itself without one.
+     *
+     * <p><b>Deleting line 0 moves nothing.</b> The line that follows it becomes line 0, and the
+     * song's key invariant materializes the key it was already inheriting as a key of its own, so
+     * it goes on sounding what it sounded and nothing downstream of it moves either.
+     *
+     * <p>Pure and pre-mutation, as every reconciliation input is.
+     *
+     * @param deletedLine the line about to be deleted
+     * @return The lines the deletion re-keys, in song order; empty when {@code deletedLine} is
+     *         line 0. Each entry carries the {@link ReachedLine#removedRanges() ranges} the move
+     *         strands on its line, which the caller commits inside the same modification bracket
+     *         as the deletion itself
+     */
+    public static List<ReachedLine> lineDeletionReach(Line deletedLine) {
+        var song = deletedLine.getSong();
+        var lineIndex = song.indexOfLine(deletedLine);
+
+        if (lineIndex <= 0) {
+            return List.of();
+        }
+
+        return linesInheriting(deletedLine, song.getLine(lineIndex - 1).keyAtEndOfLine());
     }
 
     /**
@@ -523,10 +653,11 @@ public final class AccidentalReconciliation {
      * @param keyAtEndOfLine The key {@code line} will leave off in once the change commits: its
      *                       last mid-line {@link KeyChangeElement}'s key when it holds one, and
      *                       its new running key when it does not
-     * @return One {@link ModifiedLine} per reached line, in song order; empty when the change
-     *         moves nothing downstream or when {@code line} is not in its song
+     * @return One {@link ReachedLine} per reached line, in song order, each carrying the
+     *         {@link ReachedLine#removedRanges() ranges} the change strands on its line; empty
+     *         when the change moves nothing downstream or when {@code line} is not in its song
      */
-    public static List<ModifiedLine> linesInheriting(Line line, Key keyAtEndOfLine) {
+    public static List<ReachedLine> linesInheriting(Line line, Key keyAtEndOfLine) {
         var song = line.getSong();
         var lineIndex = song.indexOfLine(line);
 
@@ -534,7 +665,7 @@ public final class AccidentalReconciliation {
             return List.of();
         }
 
-        var reached = new ArrayList<ModifiedLine>();
+        var reached = new ArrayList<ReachedLine>();
         var runningKey = keyAtEndOfLine;
 
         for (var index = lineIndex + 1; index < song.lineCount(); index++) {
@@ -544,10 +675,12 @@ public final class AccidentalReconciliation {
                 return reached;
             }
 
-            reached.add(ModifiedLine.reKeyed(nextLine, runningKey));
+            reached.add(ReachedLine.reKeyed(nextLine, runningKey));
 
             // A mid-line change on that line fixes the key it leaves off in, so the change stops
-            // propagating there even though the line itself was re-keyed.
+            // propagating there even though the line itself was re-keyed. A stranded key change
+            // among them cannot alter that: it restates the key already in effect, so the line
+            // leaves off in the same key whether or not it survives.
             var lastKeyChangeKey = nextLine.lastKeyChangeKey();
 
             if (lastKeyChangeKey != null) {
@@ -565,31 +698,56 @@ public final class AccidentalReconciliation {
      * <p>Reads the live line and mutates nothing; the caller applies the result before building
      * any projected layout.
      *
-     * @param region The mutation, described before any of it happens
-     * @return The changes to apply, in projected element order (empty when the mutation changes no
+     * @param reached The line and what the edit does to it, described before any of it happens
+     * @return The changes to apply, in projected element order (empty when the edit changes no
      *         pitch)
      */
-    public static List<AccidentalChange> reconcile(InsertionRegion region) {
-        return reconcile(region, RestatementRemoval.NONE);
+    public static List<AccidentalChange> reconcile(ReachedLine reached) {
+        return reconcile(reached, RestatementRemoval.NONE);
     }
 
     /**
-     * As {@link #reconcile(InsertionRegion)}, with the restatements the user accepted for this same
-     * edit folded in: each accepted note on {@code region}'s line is cleared by the returned
+     * As {@link #reconcile(ReachedLine)}, with the restatements the user accepted for this same
+     * edit folded in: each accepted note on {@code reached}'s line is cleared by the returned
      * changes, and materialization is suspended at the removal's staff positions.
      *
-     * @param region  The mutation, described before any of it happens
+     * <p>A {@link ReachedLine#removedRanges() removed range} is left out of the projected sequence
+     * entirely. Both a stranded key change and the element it is paired with answer true to
+     * {@code ElementType.cancelsAccidentals}, so every note after the pair resolved against a
+     * context that pair began; with the pair gone they resolve back to whatever stands earlier on
+     * the line, which moves sounding pitches.
+     *
+     * @param reached The line and what the edit does to it, described before any of it happens
      * @param removal The accepted restatements and the staff positions their acceptance suppresses
      * @return The changes to apply, in projected element order
      */
-    public static List<AccidentalChange> reconcile(InsertionRegion region, RestatementRemoval removal) {
-        var line = region.line();
-        var inserted = region.inserted();
-        var priorAccidentals = region.insertedPriorAccidentals();
+    public static List<AccidentalChange> reconcile(ReachedLine reached, RestatementRemoval removal) {
+        var insertion = reached.insertion();
+
+        return insertion == null
+            ? reconcileInPlace(reached, removal)
+            : reconcileReceiving(reached, insertion, removal);
+    }
+
+    /**
+     * {@link #reconcile(ReachedLine, RestatementRemoval)} for a line the edit changes the elements
+     * of. Everything below the insertion point is projected as it already stands; the arriving
+     * elements go in; the rest of the line follows, less what the edit removes.
+     *
+     * <p>Every removed range lies at or after the insertion's successor index, so none of them can
+     * reach back into the untouched head and the walk's start needs no lowering.
+     */
+    private static List<AccidentalChange> reconcileReceiving(
+        ReachedLine reached, Insertion insertion, RestatementRemoval removal) {
+
+        var line = reached.line();
+        var arriving = insertion.arriving();
+        var inserted = arriving.elements();
+        var priorAccidentals = arriving.priorAccidentals();
         var hasSourceContext = !priorAccidentals.isEmpty();
-        var deleteRange = region.deleteRange();
-        var insertIndex = region.insertIndex();
-        var successorIndex = (deleteRange == null) ? insertIndex : (deleteRange.end() + 1);
+        var insertIndex = insertion.index();
+        var successorIndex = insertion.successorIndex();
+        var strandedIndices = indicesIn(reached.removedRanges());
         var sequence = new ArrayList<ProjectedElement>();
 
         // Everything before the insertion point is behind the walk's start position, so it needs
@@ -606,6 +764,10 @@ public final class AccidentalReconciliation {
         }
 
         for (var i = successorIndex; i < line.effectiveElementCount(); i++) {
+            if (strandedIndices.contains(i)) {
+                continue;
+            }
+
             // An accepted restatement is always later in the song than the accidental it restates,
             // so it can only ever land in this trailing run — never in the untouched head above.
             sequence.add(removal.notes().contains(line.getElement(i))
@@ -613,10 +775,8 @@ public final class AccidentalReconciliation {
                 : ProjectedElement.survivor(line, i));
         }
 
-        // An insert or a delete cannot move the key the line starts in — only a mid-line key
-        // signature it brings in or takes away, which the projection already carries.
         return reconcileSequence(
-            new Projection(line, line.getRunningKey(), sequence, region.insertedSpans(), insertIndex),
+            new Projection(line, reached.runningKey(), sequence, arriving.spans(), insertIndex),
             removal);
     }
 
@@ -655,56 +815,77 @@ public final class AccidentalReconciliation {
     public static List<AccidentalChange> reconcileModification(
         Line line, List<IntendedChange> changes, RestatementRemoval removal) {
 
-        return reconcileModification(List.of(ModifiedLine.of(line, changes)), removal)
-            .getFirst()
-            .changes();
+        return reconcile(ReachedLine.of(line, changes), removal);
     }
 
     /**
-     * Returns the accidentals that must change for an in-place modification spanning a
-     * <em>range</em> of lines to preserve every pitch the user did not change and to strand no
-     * notation it made redundant.
+     * Returns the accidentals that must change for an edit spanning a <em>range</em> of lines to
+     * preserve every pitch the user did not change and to strand no notation it made redundant.
      *
-     * <p>A key change is the modification that needs this: it moves pitches on every line that
-     * inherits the key it changes, and stopping at the line the user clicked on would let notes on
-     * the lines after it change pitch with nothing said. Every other modification is a range of
-     * one, which is what the per-line {@link #reconcileModification(Line, List, RestatementRemoval)}
-     * is — the same walk, called once. {@link #linesInheriting} builds the tail of a key change's
-     * range; its head is the caller's, because a line that receives an inserted key signature is
-     * reconciled by {@link #reconcile(InsertionRegion, RestatementRemoval)} instead.
+     * <p>A key change is the edit that needs this: it moves pitches on every line that inherits
+     * the key it changes, and stopping at the line the user clicked on would let notes on the
+     * lines after it change pitch with nothing said. Every other edit is a range of one, which is
+     * what {@link #reconcile(ReachedLine, RestatementRemoval)} is — the same walk, called once.
+     * {@link #linesInheriting} builds the range beyond the line the edit lands on.
      *
      * <p>The lines are reconciled independently: accidental context resets at a line boundary, so
      * nothing one line's walk decides can reach the next. What crosses the boundary is the key,
-     * and it arrives as each {@link ModifiedLine}'s own {@code runningKey}.
+     * and it arrives as each {@link ReachedLine}'s own {@code runningKey}.
      *
      * <p>Reads the live lines and mutates nothing; the caller applies the result before building
      * any projected layout.
      *
-     * @param lines   The modification's range, in song order, each line in its pre-modification
-     *                state
+     * @param reach   The edit's range, in song order, each line in its pre-edit state
      * @param removal The accepted restatements and the staff positions their acceptance suppresses
-     * @return One entry per line of {@code lines}, in the same order, holding that line's changes
+     * @return One entry per line of {@code reach}, in the same order, holding that line's changes
      *         (empty for a line that needs none)
      */
-    public static List<ReconciledLine> reconcileModification(
-        List<ModifiedLine> lines, RestatementRemoval removal) {
+    public static List<ReconciledLine> reconcileReach(
+        List<ReachedLine> reach, RestatementRemoval removal) {
 
-        var reconciled = new ArrayList<ReconciledLine>(lines.size());
+        var reconciled = new ArrayList<ReconciledLine>(reach.size());
 
-        for (var modified : lines) {
-            reconciled.add(new ReconciledLine(modified.line(), reconcileLine(modified, removal)));
+        for (var reached : reach) {
+            reconciled.add(new ReconciledLine(reached.line(), reconcile(reached, removal)));
         }
 
         return reconciled;
     }
 
-    /** One line of {@link #reconcileModification(List, RestatementRemoval)}'s range. */
-    private static List<AccidentalChange> reconcileLine(
-        ModifiedLine modified, RestatementRemoval removal) {
+    /** Every element index the given inclusive ranges cover, which is what a projection skips. */
+    private static Set<Integer> indicesIn(List<StaffElementRun.EffectiveRange> ranges) {
+        var indices = new HashSet<Integer>();
 
-        var line = modified.line();
-        var changes = modified.changes();
-        var runningKey = modified.runningKey();
+        for (var range : ranges) {
+            for (var index = range.begin(); index <= range.end(); index++) {
+                indices.add(index);
+            }
+        }
+
+        return indices;
+    }
+
+    /**
+     * {@link #reconcile(ReachedLine, RestatementRemoval)} for a line whose elements stay where
+     * they are — a pitch shift, an accidental toggle, or a line that merely inherits a moved key.
+     *
+     * <p>A {@link ReachedLine#removedRanges() removed range} is left out of the projected sequence
+     * entirely. Such a range only ever arrives on a line the edit re-keys, and a moved key starts
+     * the walk at the top of the line, so every omitted index is above the walk's start: positions
+     * below it are unshifted and the start doubles as a position in the shortened sequence, which
+     * is what {@link Projection} takes it for.
+     *
+     * @param reached the line and everything this edit does to it, described pre-edit
+     * @param removal the accepted restatements and the staff positions their acceptance suppresses
+     * @return the changes to apply, in projected element order
+     */
+    private static List<AccidentalChange> reconcileInPlace(
+        ReachedLine reached, RestatementRemoval removal) {
+
+        var line = reached.line();
+        var changes = reached.changes();
+        var runningKey = reached.runningKey();
+        var deletedRanges = reached.removedRanges();
         var removedOnLine = new ArrayList<Integer>();
 
         for (var i = 0; i < line.elementCount(); i++) {
@@ -713,9 +894,12 @@ public final class AccidentalReconciliation {
             }
         }
 
+        var deletedIndices = indicesIn(deletedRanges);
+
         // A moved key moves the context arriving at every note on the line, so the walk starts at
         // the top of it — and the emptiness short-circuit cannot fire, however little else the
-        // modification does here.
+        // edit does here. A line with ranges to remove is always such a line, which is why the
+        // walk start below needs no further lowering to cover them.
         var keyMoved = !runningKey.equals(line.getRunningKey());
 
         if (changes.isEmpty() && removedOnLine.isEmpty() && !keyMoved) {
@@ -738,6 +922,10 @@ public final class AccidentalReconciliation {
         var sequence = new ArrayList<ProjectedElement>();
 
         for (var i = 0; i < line.elementCount(); i++) {
+            if (deletedIndices.contains(i)) {
+                continue;
+            }
+
             var change = changeByIndex.get(i);
 
             if (removal.notes().contains(line.getElement(i))) {

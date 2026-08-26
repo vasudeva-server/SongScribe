@@ -232,40 +232,6 @@ final class MusicXmlRoundTripSupport {
         return count;
     }
 
-    /**
-     * Builds a song whose lines are populated by the given {@link LineBuilder}s.
-     * The default initial line that {@link Song#Song()} installs is replaced by
-     * the caller-supplied lines. Each builder's elements are added to its line
-     * before that line is inserted into the song, so none of the builders run
-     * with their line as the song's last line; the terminal-slot auto-maintenance
-     * therefore does not reorder elements during construction.
-     */
-    @FunctionalInterface
-    interface LineBuilder {
-        void build(Line line);
-    }
-
-    static Song buildSong(LineBuilder... builders) {
-        var song = new Song();
-
-        song.withoutMutationTracking(() -> {
-            song.removeLine(0);
-
-            for (var builder : builders) {
-                var line = new Line(song);
-                builder.build(line);
-                song.addLine(line);
-            }
-
-            // The song's own line 0 was dropped above, so this stands the key invariant back up
-            // exactly as a file load does: a builder that set no key leaves its line in the
-            // document key, and every later line is in the key the line before it ends in.
-            song.rebuildInheritedKeysAfterParsing();
-        });
-
-        return song;
-    }
-
     // -------------------------------------------------------------------------
     // Range-Spans: assertSpanEquals helpers
     //

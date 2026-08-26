@@ -22,6 +22,7 @@ package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +31,13 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
+import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
@@ -266,5 +269,95 @@ public record Fragment(
         }
 
         return new Fragment(clonedElements, priorAccidentals, cloneSpans(spans, originalToClone));
+    }
+
+    /**
+     * This fragment's elements as the {@link StaffElementRun} they are, which is what answers
+     * where its key changes stand and what each of them is paired with.
+     *
+     * <p>{@link DetachedLyricRun} is that run: it is the one implementation over a bare element
+     * list, and {@link #capture} already repairs the captured lyrics through it. Nothing here
+     * mutates, so handing it the live list costs nothing.
+     */
+    private StaffElementRun run() {
+        return new DetachedLyricRun(elements);
+    }
+
+    /**
+     * Returns the key this fragment leaves in effect when its first element lands where
+     * {@code keyAtInsertion} is running: the key its last {@link KeyChangeElement} establishes
+     * when it carries one, and {@code keyAtInsertion} when it does not.
+     *
+     * <p>This is {@link Line#keyAtEndOfLineUnder(Key)} for a run that has not landed on a line,
+     * and it is what tells a paste which key it hands to the rest of the destination line and to
+     * every line inheriting past it.
+     *
+     * @param keyAtInsertion the key in effect immediately before the insertion point
+     * @return the key in effect after this fragment's last element; never null
+     */
+    public Key keyAtEndUnder(Key keyAtInsertion) {
+        var lastKeyChangeKey = run().lastKeyChangeKey();
+
+        return lastKeyChangeKey != null ? lastKeyChangeKey : keyAtInsertion;
+    }
+
+    /**
+     * Returns this fragment with every key change that would land restating the key already
+     * running there removed, each together with the element it is paired with.
+     *
+     * <p>A fragment carries the key it was copied under, not the key it is pasted into, so the
+     * same clipboard content is stranded in one destination and meaningful in another. Removing
+     * such a key change <em>before</em> the clones are inserted rather than after is what keeps a
+     * paste one mutation: the accidental reconciliation, the fit measurement and the span
+     * reconciliation all read the element list, and each of them must see the run that actually
+     * lands.
+     *
+     * <p>What goes with the key change is {@link StaffElementRun}'s to say, asked of this
+     * fragment as the run it is — so a pasted pair is resolved by the rule that resolves a
+     * deleted one, and neither has to be kept in step with the other by hand. In practice that is
+     * the barline in front of it, which {@link #capture} widens a captured range back over
+     * precisely so this fragment holds both. A span with an endpoint on any removed element goes
+     * with it, as it would if the user deleted the same range off a line.
+     *
+     * @param keyAtInsertion the key in effect immediately before the insertion point
+     * @return this fragment when it strands nothing, and a reduced one otherwise — which may hold
+     *     no elements at all, when the whole fragment was one such pair
+     */
+    public Fragment withoutRedundantKeyChanges(Key keyAtInsertion) {
+        var stranded = run().redundantKeyChangeRanges(keyAtInsertion);
+
+        if (stranded.isEmpty()) {
+            return this;
+        }
+
+        var removedIndices = new HashSet<Integer>();
+
+        for (var range : stranded) {
+            for (var index = range.begin(); index <= range.end(); index++) {
+                removedIndices.add(index);
+            }
+        }
+
+        var keptElements = new ArrayList<StaffElement>();
+        var keptAccidentals = new ArrayList<StaffElement.@Nullable Accidental>();
+        var removedElements = new ArrayList<StaffElement>();
+
+        for (var index = 0; index < elements.size(); index++) {
+            if (removedIndices.contains(index)) {
+                removedElements.add(elements.get(index));
+                continue;
+            }
+
+            keptElements.add(elements.get(index));
+            keptAccidentals.add(priorAccidentals.get(index));
+        }
+
+        // StaffElement overrides neither equals nor hashCode, so this compares by identity.
+        var keptSpans = spans.stream()
+            .filter(span -> !removedElements.contains(span.getAnchorElement())
+                && !removedElements.contains(span.getEndElement()))
+            .toList();
+
+        return new Fragment(keptElements, keptAccidentals, keptSpans);
     }
 }

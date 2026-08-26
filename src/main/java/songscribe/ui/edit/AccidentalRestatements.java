@@ -393,9 +393,14 @@ public final class AccidentalRestatements {
      *
      * @param reconciled The key change's reconciliation, from
      *                   {@link AccidentalReconciliation#reconcileModification(List,
-     *                   AccidentalReconciliation.RestatementRemoval)}
+     *                   AccidentalReconciliation.RestatementRemoval)} or from a projection over a
+     *                   line the edit also inserts into, whose changes may name elements that have
+     *                   not landed on it yet
      * @return One {@link EditedLine} per reconciled line, in the same order, naming the notes that
-     *         line loses an accidental from (empty lists included)
+     *         line loses an accidental from (empty lists included). A note the edit is bringing in
+     *         rather than one already standing is left out: an accidental never written into this
+     *         document cannot have been restated in it, so there is nothing to ask about, and such
+     *         a note holds no index on the line to name
      */
     public static List<EditedLine> accidentalsClearedBy(
         List<AccidentalReconciliation.ReconciledLine> reconciled) {
@@ -412,9 +417,18 @@ public final class AccidentalRestatements {
                 }
 
                 var note = change.note();
+                var index = line.getElementIndex(note);
 
-                notes.add(new EditedNote(
-                    line.getElementIndex(note), note.getStaffPosition(), note.getAccidental(), null));
+                // A note the edit is bringing in rather than one already standing — a pasted note
+                // whose accidental its destination makes redundant. An accidental that was never
+                // written into this document cannot have been restated in it, so there is nothing
+                // to ask about, and the note holds no index on this line to name.
+                if (index < 0) {
+                    continue;
+                }
+
+                notes.add(
+                    new EditedNote(index, note.getStaffPosition(), note.getAccidental(), null));
             }
 
             edited.add(new EditedLine(line, notes));

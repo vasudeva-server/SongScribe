@@ -411,8 +411,10 @@ public final class Song implements Disposable {
         lines.addAll(loadedLines);
 
         // The per-mutation propagation hook never ran: parsing is done under suspended tracking,
-        // so no line's key change reached applyChange. One forward pass settles them all.
-        rebuildInheritedKeysAfterParsing();
+        // so no line's key change reached applyChange. And a legacy file predates the rule that no
+        // key change restates the key in effect before it, so that repair belongs to reading
+        // rather than to any edit.
+        settleKeysAfterParsing();
 
         hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
         formatVersion = data.formatVersion();
@@ -1442,24 +1444,32 @@ public final class Song implements Disposable {
         var keyMove = keyMoveOf(mutation);
 
         if (keyMove != null) {
-            propagateInheritedKeysFrom(keyMove.inheritedFromIndex());
+            propagateInheritedKeys(keyMove);
         }
     }
 
     /**
-     * Where a mutation's key move begins, as the two line indices the move is felt from.
+     * Where a mutation's key move begins, as the line indices the move is felt from, and where the
+     * forward walk it starts is first allowed to stop.
      *
-     * <p>They differ because a line's own key and the key it inherits are separate storage: a line
-     * given a key of its own starts running in it immediately while still inheriting what it always
-     * did, and a mid-line key signature moves neither of that line's two keys — only the key it
-     * leaves off in, which the line after it inherits.
+     * <p>The first two differ because a line's own key and the key it inherits are separate
+     * storage: a line given a key of its own starts running in it immediately while still
+     * inheriting what it always did, and a mid-line key change moves neither of that line's two
+     * keys — only the key it leaves off in, which the line after it inherits.
      *
      * @param inheritedFromIndex the first line whose <em>inherited</em> key the move can change,
-     *                           which is where {@link #propagateInheritedKeysFrom} starts
+     *                           which is where {@link #propagateInheritedKeys} starts
      * @param runningFromIndex   the first line whose <em>running</em> key the move can change,
      *                           which is where {@link #keyMoveReach} starts drawing differently
+     * @param firstStoppableIndex the lowest index at which a line establishing a key of its own
+     *                           may stop the walk — see the stopping rule and the exception an
+     *                           insertion makes to it in {@code docs/key-signatures.md}
      */
-    private record KeyMove(int inheritedFromIndex, int runningFromIndex) {}
+    private record KeyMove(int inheritedFromIndex, int runningFromIndex, int firstStoppableIndex) {
+        KeyMove(int inheritedFromIndex, int runningFromIndex) {
+            this(inheritedFromIndex, runningFromIndex, inheritedFromIndex);
+        }
+    }
 
     /**
      * Returns where {@code mutation}'s key move begins, or null when it moves no key.
@@ -1478,8 +1488,12 @@ public final class Song implements Disposable {
     private @Nullable KeyMove keyMoveOf(Mutation mutation) {
         return switch (mutation) {
             // A line arriving at or leaving an index changes what the line now at that index
-            // inherits, and therefore what it runs in: both start there.
-            case LineInsertion insertion -> new KeyMove(insertion.lineIndex(), insertion.lineIndex());
+            // inherits, and therefore what it runs in: both start there. An arriving line also
+            // gives the line behind it a new predecessor, which is why the walk may not stop until
+            // one line further on; a departing one leaves every line behind the gap following what
+            // it always followed.
+            case LineInsertion insertion -> new KeyMove(
+                insertion.lineIndex(), insertion.lineIndex(), insertion.lineIndex() + 1);
             case LineDeletion deletion -> new KeyMove(deletion.lineIndex(), deletion.lineIndex());
             case LineKeyChange change -> ownKeyMove(change.line());
             case ElementInsertion insertion -> midLineKeyMove(
@@ -1559,7 +1573,7 @@ public final class Song implements Disposable {
         }
 
         var firstIndex = Math.max(keyMove.runningFromIndex() - 1, 0);
-        var lastIndex = firstKeyedLineFrom(keyMove.inheritedFromIndex()) - 1;
+        var lastIndex = firstKeyedLineFrom(keyMove.firstStoppableIndex()) - 1;
 
         return firstIndex > lastIndex
             ? List.of()
@@ -1614,11 +1628,12 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Reassigns the inherited key of every line from {@code firstAffectedLineIndex} forward,
-     * stopping after the first line that establishes a key of its own. A song with a key on every
-     * line therefore costs one step.
+     * Reassigns the inherited key of every line from {@code keyMove}'s inherited-from index
+     * forward, stopping after the first line that establishes a key of its own — no earlier than
+     * {@link KeyMove#firstStoppableIndex}. A song with a key on every line therefore costs one
+     * step, or two where a line has just arrived.
      */
-    private void propagateInheritedKeysFrom(int firstAffectedLineIndex) {
+    private void propagateInheritedKeys(KeyMove keyMove) {
         // A document under construction may not have put line 0 in a key yet, and until it does
         // there is no key for any later line to be in either. The load settles the whole list in
         // one pass at the end.
@@ -1630,8 +1645,8 @@ public final class Song implements Disposable {
         // walk stops at is reassigned before it stops: its own key overrides what it inherits, so
         // the entry is never read, but leaving it stale would leave the map disagreeing with the
         // document.
-        var firstIndex = Math.max(firstAffectedLineIndex, 1);
-        var lastIndex = Math.min(firstKeyedLineFrom(firstIndex), lines.size() - 1);
+        var firstIndex = Math.max(keyMove.inheritedFromIndex(), 1);
+        var lastIndex = Math.min(firstKeyedLineFrom(keyMove.firstStoppableIndex()), lines.size() - 1);
 
         for (var lineIndex = firstIndex; lineIndex <= lastIndex; lineIndex++) {
             inheritedKeys.put(lines.get(lineIndex), lines.get(lineIndex - 1).keyAtEndOfLine());
@@ -1697,6 +1712,49 @@ public final class Song implements Disposable {
         for (var lineIndex = 1; lineIndex < lines.size(); lineIndex++) {
             inheritedKeys.put(lines.get(lineIndex), lines.get(lineIndex - 1).keyAtEndOfLine());
         }
+    }
+
+    /**
+     * Removes every mid-line key change that restates the key already in effect before it,
+     * together with the element it is paired with, across every line of a freshly parsed song.
+     *
+     * <p>Reading is one of the two places that rule is enforced — {@code docs/key-signatures.md}
+     * says why it takes both. A file written before the rule existed can carry a stranding no edit
+     * has reached, and nothing on screen says so: a key change that restates the running key draws
+     * no accidentals and occupies no width, yet still refuses the two insertion indices flanking
+     * it and still reaches MusicXML on the next save.
+     *
+     * <p>Removing a stranded key change steps the key to the value it already held, so the chain
+     * {@link #rebuildInheritedKeysAfterParsing()} just settled survives the removal and no second
+     * pass is owed.
+     *
+     * @effects Mutates every line carrying a stranded key change.
+     */
+    private void removeStrandedKeyChangesAfterParsing() {
+        for (var line : lines) {
+            line.deleteRanges(line.redundantKeyChangeRanges(line.getRunningKey()));
+        }
+    }
+
+    /**
+     * Puts a freshly parsed song's keys into the state every edit afterwards assumes: each line's
+     * inherited key derived from the line before it, and no mid-line key change left restating the
+     * key already in effect where it stands.
+     *
+     * <p>This is what a file reader calls once its lines are in place, and it is one call rather
+     * than two because the order is not the reader's to choose — the stranding repair reads each
+     * line's running key, which only the inheritance pass settles. A reader that ran them the
+     * other way round, or dropped the second, would leave a document whose invisible key changes
+     * survive every save, with nothing on screen and nothing in the build to say so.
+     *
+     * <p>Must be called while mutation tracking is still suspended, so the whole of it is silent —
+     * no notification, no undo entry and no {@code modified} flag.
+     *
+     * @effects Mutates every line whose inherited key or stranded key changes need settling.
+     */
+    public void settleKeysAfterParsing() {
+        rebuildInheritedKeysAfterParsing();
+        removeStrandedKeyChangesAfterParsing();
     }
 
     /**

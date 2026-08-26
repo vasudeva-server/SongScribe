@@ -126,12 +126,26 @@ new. Both conditions together are what let a deliberate restatement or a courtes
 accidental survive every edit that does not move its context.
 
 **Reach is the part that surprises.** The backward scan is bounded within a line,
-but how many lines one reconciliation covers is a separate question, and a key
-change answers it differently from every other edit: it runs forward to the first
-line establishing a key of its own, making it the only edit whose reconciliation
-spans more than one line. Accidental context resets at a line boundary — what
-crosses it is the key. Every other edit reaches one line. The user sees one
-prompt per edit, never one per line.
+but how many lines one reconciliation covers is a separate question, and what
+decides it is whether the edit **moves a key** — not which edit it is. Accidental
+context resets at a line boundary; what crosses one is the key. An edit that
+leaves every line running in the key it already ran in reaches one line. An edit
+that moves a key runs forward to the first line establishing a key of its own,
+which is the only way a reconciliation spans more than one line.
+
+A paste is either. A fragment carrying a key change moves the key the destination
+line leaves off in, so that paste reaches the whole inheritance chain past it and
+is reconciled exactly as a key change written by hand is; a fragment carrying none
+reaches its destination line alone. The user sees one prompt for the whole of it
+either way — never one per line, and never a second prompt because the paste both
+overwrote a selection and re-keyed what followed.
+
+A key change the fragment brings in can also arrive stranded, landing where its
+key is already running — see [key-signatures.md](key-signatures.md) for why that
+state is not allowed to exist. **The fragment is reduced before anything measures
+it**, rather than pasted whole and swept afterwards, and that ordering is the
+point: the fit gate, the accidental reconciliation and the span reconciliation all
+read the arriving run, so all three have to see the run that actually lands.
 
 **Order matters against layout.** Accidentals have to be materialized before the
 projected columns used for the fit check are built, because accidental width is a

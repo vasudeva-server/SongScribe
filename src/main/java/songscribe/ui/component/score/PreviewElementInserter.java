@@ -224,8 +224,14 @@ final class PreviewElementInserter {
         // change the context reaching the notes after it (a barline or repeat cancels every prior
         // accidental), so "no accidental" never meant "nothing to reconcile". This pass is cheap —
         // one line's elements, once per insertion — so it is not worth guessing when to skip it.
-        var accidentalChanges = AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
-            line, index, null, List.of(previewElement), List.of(), List.of()));
+        var accidentalChanges = AccidentalReconciliation.reconcile(
+            AccidentalReconciliation.ReachedLine.receiving(
+                line,
+                new AccidentalReconciliation.Insertion(
+                    index,
+                    null,
+                    AccidentalReconciliation.ArrivingElements.fresh(List.of(previewElement))),
+                List.of()));
 
         // The gate runs inside the materializer, with the accidentals applied so the projection
         // measures the right widths, so its result has to escape the lambda through a holder.

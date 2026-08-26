@@ -266,6 +266,11 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * may still normalize the chosen key back to inheritance, which is a fact about storage rather
      * than about what the notator did.
      *
+     * <p>A mid-line key change anywhere in that reach that would then restate the key in effect
+     * before it is removed with its barline, in the same bracket, so one undo takes back the key
+     * and the removals together. The reach carries those ranges, so this route neither looks for
+     * them nor decides anything about them.
+     *
      * <p><b>The fit check runs first</b>, in {@link #validate}. A change that will be refused for
      * not fitting must not first ask the user about accidentals it will never apply.
      *
@@ -274,17 +279,14 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     private void changeLineKey(Key key) {
         var reach = AccidentalReconciliation.lineKeyChangeReach(line, key);
 
-        var confirmed = KeyChangeReconciliation.confirm(
-            getMainFrame(),
-            List.of(),
-            removal -> AccidentalReconciliation.reconcileModification(reach, removal));
+        var confirmed = KeyChangeReconciliation.confirm(getMainFrame(), List.of(), reach);
 
         if (confirmed.isCancelled()) {
             return;
         }
 
         withModification(lineKeyLabel(), () -> {
-            KeyChangeReconciliation.commit(confirmed);
+            confirmed.apply();
             line.setKey(key);
         });
     }
@@ -293,11 +295,18 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * Changes the key the key signature at the bound index establishes, reconciling the accidentals
      * the change moves.
      *
-     * <p><b>It edits in place.</b> The element keeps its identity and its index, so nothing on the
-     * line moves and no barline is involved — the one the position invariant puts in front of it is
+     * <p><b>It edits in place</b>, except when the chosen key is the one already in effect where
+     * the key change stands. The element keeps its identity and its index, so nothing on the line
+     * moves and no barline is involved — the one the position invariant puts in front of it is
      * already there. The signature's column is re-solved against the new key on the next layout
      * pass, exactly as a line-key change's header is, so a key that draws more or fewer accidentals
      * needs no position bookkeeping here.
+     *
+     * <p><b>A key change told to restate the key in front of it is removed instead</b>, together
+     * with the barline it sits behind. It would draw nothing and be invisible on screen while still
+     * sitting in the document, which the invariant in {@code docs/key-signatures.md} forbids — so
+     * the removal is what the notator asked for, and is what this reconciles and commits. The same
+     * goes for any key change further along the line that the new key strands.
      *
      * <p>The reach is the same one every key-moving edit has: this line from the signature's index
      * forward, then every line inheriting from it, up to the first with a key of its own. The
@@ -314,26 +323,45 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      */
     private void changeMidLineKey(Key key) {
         var signature = site.boundSignature();
+        var keyBefore = line.keyAt(elementIndex - 1);
+        var strandsItself = key == keyBefore;
+        var ownRange = line.effectiveRange(elementIndex, elementIndex);
 
-        // A swap, described to the reconciliation as what it is: the old signature removed and one
-        // for the new key put in its place. Empty prior accidentals because the replacement has no
-        // source context — nothing is being pasted — and a key signature carries no accidental of
-        // its own to materialize in any case.
-        var region = new AccidentalReconciliation.InsertionRegion(
-            line,
-            elementIndex,
-            new InsertionSpacingCalculator.DeletedRange(elementIndex, elementIndex),
-            List.of(KeyChangeElement.forMeasurement(key, line.keyAt(elementIndex - 1))),
-            List.of(),
-            List.of());
+        // Every key change further along this line that the new key leaves restating it. Scanning
+        // from past this one is the point: what stands before it is untouched by this edit.
+        var strandedAfter = line.redundantKeyChangeRanges(elementIndex + 1, key);
 
-        // A key signature already standing after this one still has the last word on the key the
-        // line leaves off in, so the new key reaches the next line only when none does.
-        var tail = AccidentalReconciliation.linesInheriting(
-            line, line.keyAtEndOfLineUnder(elementIndex + 1, key));
+        AccidentalReconciliation.Insertion insertion;
 
-        var confirmed = KeyChangeReconciliation.confirm(
-            getMainFrame(), List.of(), removal -> reconcileRegion(region, tail, removal));
+        if (strandsItself) {
+            // A removal, described as one: the key change and its barline go, and nothing takes
+            // their place.
+            insertion = new AccidentalReconciliation.Insertion(
+                ownRange.begin(),
+                new InsertionSpacingCalculator.DeletedRange(ownRange.begin(), ownRange.end()),
+                AccidentalReconciliation.ArrivingElements.NONE);
+        } else {
+            // A swap, described to the reconciliation as what it is: the old key change removed and
+            // one for the new key put in its place. A fresh arrival because the replacement has no
+            // source context — nothing is being pasted — and a key change carries no accidental of
+            // its own to materialize in any case.
+            insertion = new AccidentalReconciliation.Insertion(
+                elementIndex,
+                new InsertionSpacingCalculator.DeletedRange(elementIndex, elementIndex),
+                AccidentalReconciliation.ArrivingElements.fresh(
+                    List.of(KeyChangeElement.forMeasurement(key, keyBefore))));
+        }
+
+        // A key change already standing after this one still has the last word on the key the
+        // line leaves off in, so the new key reaches the next line only when none does. A stranded
+        // one among them says the same thing the new key does, so removing it moves nothing.
+        var reach = new ArrayList<AccidentalReconciliation.ReachedLine>();
+
+        reach.add(AccidentalReconciliation.ReachedLine.receiving(line, insertion, strandedAfter));
+        reach.addAll(AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineUnder(elementIndex + 1, key)));
+
+        var confirmed = KeyChangeReconciliation.confirm(getMainFrame(), List.of(), reach);
 
         if (confirmed.isCancelled()) {
             return;
@@ -341,13 +369,19 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
         withModification(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY), () -> {
             // Applied before the key moves, as every reconciliation is: the changes name live notes
-            // resolved against the key still in effect.
-            KeyChangeReconciliation.commit(confirmed);
+            // resolved against the key still in effect. The sweep goes ahead of the bound key
+            // change, whichever way it goes below, so its own index is still the one this route was
+            // given.
+            confirmed.apply();
 
-            // ElementField.KEY is what carries the change past this line: Song.maintainKeyInvariant
-            // re-derives every following line's inherited key off the resulting mutation, on undo
-            // and redo as well as forward.
-            line.modifyElement(elementIndex, ElementField.KEY, () -> signature.setKey(key));
+            if (strandsItself) {
+                line.deleteRange(ownRange);
+            } else {
+                // ElementField.KEY is what carries the change past this line:
+                // Song.maintainKeyInvariant re-derives every following line's inherited key off the
+                // resulting mutation, on undo and redo as well as forward.
+                line.modifyElement(elementIndex, ElementField.KEY, () -> signature.setKey(key));
+            }
         });
     }
 
@@ -382,6 +416,11 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * the new element and the notes after it resolve against it, while the lines that inherit are
      * reached exactly as they are for a line-key change. See {@code docs/key-signatures.md}.
      *
+     * <p>A key change further along the line, or on a line that inherits, which the inserted key
+     * leaves restating what is already in effect before it is removed with its barline, in this
+     * same bracket. The inserted key change itself can never be one of them: writing the key already
+     * in effect at the bound position changes nothing, and never reaches a commit route.
+     *
      * @param key the key taking effect from the bound position on
      * @throws IndexOutOfBoundsException if the bound index is below
      *                                   {@link Line#FIRST_LEGAL_KEY_CHANGE_INDEX} or above
@@ -407,20 +446,28 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
         inserted.add(new KeyChangeElement(key));
 
-        // The head: the host line reconciled as an insertion, so the projection holds the new key
-        // signature and every note after it resolves against the key it establishes. Empty prior
-        // accidentals because these elements have no source context — nothing is being pasted.
-        var region = new AccidentalReconciliation.InsertionRegion(
-            line, elementIndex, null, inserted, List.of(), List.of());
+        // Every key change further along this line that the inserted key leaves restating it.
+        // Scanning from the insertion point is the point: what stands before it is untouched.
+        var strandedAfter = line.redundantKeyChangeRanges(elementIndex, key);
 
-        // The tail: an existing key signature already standing after the insertion point still has
-        // the last word on the key this line leaves off in, so the inserted key reaches the next
-        // line only when none does.
-        var tail = AccidentalReconciliation.linesInheriting(
-            line, line.keyAtEndOfLineUnder(elementIndex, key));
+        // The line the edit lands on, reconciled as an insertion, so the projection holds the new
+        // key change and every note after it resolves against the key it establishes. A fresh
+        // arrival because these elements have no source context — nothing is being pasted. Then
+        // the lines that inherit: an existing key change already standing after the insertion
+        // point still has the last word on the key this line leaves off in, so the inserted key
+        // reaches the next line only when none does.
+        var reach = new ArrayList<AccidentalReconciliation.ReachedLine>();
 
-        var confirmed = KeyChangeReconciliation.confirm(
-            getMainFrame(), List.of(), removal -> reconcileRegion(region, tail, removal));
+        reach.add(AccidentalReconciliation.ReachedLine.receiving(
+            line,
+            new AccidentalReconciliation.Insertion(
+                elementIndex, null, AccidentalReconciliation.ArrivingElements.fresh(inserted)),
+            strandedAfter));
+
+        reach.addAll(AccidentalReconciliation.linesInheriting(
+            line, line.keyAtEndOfLineUnder(elementIndex, key)));
+
+        var confirmed = KeyChangeReconciliation.confirm(getMainFrame(), List.of(), reach);
 
         if (confirmed.isCancelled()) {
             return;
@@ -431,43 +478,15 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
         withModification(Strings.get(Strings.ACTION_EDIT_OP_ADD_KEY), () -> {
             // Applied before the elements land, as every reconciliation is: the changes name live
-            // notes and their pre-insertion positions.
-            KeyChangeReconciliation.commit(confirmed);
+            // notes and their pre-insertion positions, and the ranges the sweep removes name
+            // pre-insertion indices too.
+            confirmed.apply();
 
             line.insertRun(
                 elementIndex,
                 spacing.place(inserted),
                 ScaleContext.ssToRoundedPx(spacing.shiftForSubsequentElementsSs()));
         });
-    }
-
-    /**
-     * Reconciles a mid-line key edit's whole reach: the host line projected as {@code region} says
-     * — an insertion for a new signature, a replacement for a changed one — then every line
-     * inheriting from it.
-     *
-     * <p>The {@link KeyChangeReconciliation.ReachReconciler} for both mid-line routes, so it runs
-     * once to find what to ask about and again under the answer, and must therefore read the lines
-     * as they still stand.
-     *
-     * @param region the host line's projection
-     * @param tail the lines inheriting from the host
-     * @param removal the restatements the notator accepted, or
-     *     {@link AccidentalReconciliation.RestatementRemoval#NONE} on the first pass
-     * @return one entry per line, host first
-     */
-    private static List<AccidentalReconciliation.ReconciledLine> reconcileRegion(
-        AccidentalReconciliation.InsertionRegion region,
-        List<AccidentalReconciliation.ModifiedLine> tail,
-        AccidentalReconciliation.RestatementRemoval removal) {
-
-        var reconciled = new ArrayList<AccidentalReconciliation.ReconciledLine>();
-
-        reconciled.add(new AccidentalReconciliation.ReconciledLine(
-            region.line(), AccidentalReconciliation.reconcile(region, removal)));
-        reconciled.addAll(AccidentalReconciliation.reconcileModification(tail, removal));
-
-        return reconciled;
     }
 
     /**

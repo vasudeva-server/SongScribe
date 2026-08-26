@@ -75,14 +75,11 @@ import songscribe.message.mutation.TupletRemoval;
  * {@link Song#runningKeyAt}. A line therefore cannot carry a stale inherited key out of the song
  * it was removed from.
  *
- * <p><b>Pairing rule.</b> Some elements cannot outlive their partner: a paired grace note goes
- * with its host, a breath mark with the element it hangs off, and a key signature with the
- * barline it sits behind. A range that names one half of such a pair therefore widens to cover
- * the other, in whichever direction the partner lies — {@link #effectiveBegin},
- * {@link #effectiveEnd} and {@link #effectiveRange} are that widening, and each states only the
- * pairs it resolves rather than restating this rule. The widening is a query, never a mutation:
- * it is what a deletion or a copy really carries away, and therefore also what the selection
- * highlight has to show.
+ * <p><b>Pairing.</b> Which elements cannot outlive their partner, and how a range widens to cover
+ * both, is {@link StaffElementRun}'s — a line is one such run, and a clipboard fragment is
+ * another, so the rule is stated once for both. The widening is a query, never a mutation: it is
+ * what a deletion or a copy really carries away, and therefore also what the selection highlight
+ * has to show.
  */
 public class Line implements LyricRun, SpanLookup {
 
@@ -331,13 +328,6 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * The lowest element index a {@link KeyChangeElement} can occupy. Index 0 is forbidden by
-     * that class's position invariant — a key signature always follows a barline or repeat — so
-     * every backward scan for one stops here rather than at 0.
-     */
-    public static final int FIRST_LEGAL_KEY_CHANGE_INDEX = 1;
-
-    /**
      * Returns the key in effect at {@code elementIndex} within this line: {@link #getRunningKey()},
      * overridden by the last {@link KeyChangeElement} at or before that index.
      *
@@ -429,7 +419,7 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p>This is what a deletion needs and {@link #keyAtEndOfLineUnder(int, Key)} cannot give.
      * Removing a mid-line key signature moves the key every following line inherits, so the
-     * deletion owes the same cross-line accidental reconciliation an inserted key signature owes
+     * deletion owes the same cross-line accidental reconciliation an inserted key change owes
      * — {@code AccidentalReconciliation.linesInheriting} takes this key as its starting point.
      * See {@code docs/key-signatures.md}.
      *
@@ -451,51 +441,6 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         return begin > 0 ? keyAt(begin - 1) : getRunningKey();
-    }
-
-    /**
-     * Returns the key the last {@link KeyChangeElement} on this line establishes.
-     *
-     * <p>Null says the line changes key nowhere along its length, so the key it leaves off in is
-     * whatever it started in. That distinction is what a caller projecting an edit needs and
-     * {@link #keyAtEndOfLine()} cannot give: under a <em>hypothetical</em> running key, a line with
-     * a mid-line change still ends in that change's key, and a line without one ends in the
-     * hypothetical.
-     *
-     * @return the last mid-line key change's key, or null when this line holds no key signature
-     */
-    public @Nullable Key lastKeyChangeKey() {
-        return lastKeyChangeKeyFrom(FIRST_LEGAL_KEY_CHANGE_INDEX);
-    }
-
-    /**
-     * Returns the key the last {@link KeyChangeElement} at or after {@code fromIndex}
-     * establishes, or null when no key signature stands there.
-     *
-     * <p>This is what an edge inserting a key signature at {@code fromIndex} needs and
-     * {@link #lastKeyChangeKey()} cannot give: the key the line will leave off in afterwards is
-     * the inserted one <em>only if</em> no existing key signature already stands after the
-     * insertion point, and this is the question that decides it.
-     *
-     * <p>Indices below {@link #FIRST_LEGAL_KEY_CHANGE_INDEX} are treated as that index rather
-     * than rejected, because no key signature can stand before it —
-     * {@link KeyChangeElement}'s position invariant forbids index 0 — so a lower bound asks
-     * about a stretch of the line that cannot hold an answer.
-     *
-     * @param fromIndex the lowest element index to consider
-     * @return the last key signature's key at or after {@code fromIndex}, or null when there is
-     *         none
-     */
-    public @Nullable Key lastKeyChangeKeyFrom(int fromIndex) {
-        var lowestIndex = Math.max(fromIndex, FIRST_LEGAL_KEY_CHANGE_INDEX);
-
-        for (var scanIndex = elements.size() - 1; scanIndex >= lowestIndex; scanIndex--) {
-            if (elements.get(scanIndex) instanceof KeyChangeElement keySignature) {
-                return keySignature.getKey();
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -878,6 +823,18 @@ public class Line implements LyricRun, SpanLookup {
         return Collections.unmodifiableList(elements.subList(start, end + 1));
     }
 
+    /**
+     * Removes the element at {@code index} and posts a single {@link ElementDeletion} mutation.
+     * <p>
+     * The primitive: it drops the element and repairs nothing around it. An edit deletes through
+     * {@link #deleteRange} instead; this is for replaying a recorded mutation, whose batch already
+     * carries the repairs.
+     *
+     * @param index the index of the element to remove
+     * @throws IllegalStateException if {@code index} is the song-owned terminal element, which no
+     *     removal may take
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     */
     public void removeElement(int index) {
         if (guardsTerminalAt(index)) {
             throw new IllegalStateException(TERMINAL_NOT_REMOVABLE);
@@ -907,9 +864,15 @@ public class Line implements LyricRun, SpanLookup {
     /**
      * Removes all elements in the contiguous range {@code [from, to]} (inclusive)
      * and posts a single {@link ElementRangeDeletion} mutation.
+     * <p>
+     * The primitive: it drops the elements and repairs nothing around them. An edit deletes
+     * through {@link #deleteRange} instead; this is for replaying a recorded mutation, whose batch
+     * already carries the repairs.
      *
      * @param from the index of the first element to remove
      * @param to   the index of the last element to remove (inclusive)
+     * @throws IllegalStateException if the range covers the song-owned terminal element, which no
+     *     removal may take
      */
     public void removeRange(int from, int to) {
         if (IntStream.rangeClosed(from, to).anyMatch(this::guardsTerminalAt)) {
@@ -935,6 +898,202 @@ public class Line implements LyricRun, SpanLookup {
                 elements.subList(from, to + 1).clear();
             }
         );
+    }
+
+    /**
+     * Deletes the elements {@code range} covers and repairs what the removal leaves behind: the
+     * x-offsets of the elements that close the gap, an incoming glissando whose target is going,
+     * and the syllable relations and melisma extends of the neighbors.
+     * <p>
+     * This is the deletion an edit performs. {@link #removeRange} and {@link #removeElement} are
+     * the primitives beneath it, and repair nothing.
+     * <p>
+     * {@code range} comes from {@link #effectiveRange}, which is the only thing that produces one
+     * — so the pairing is resolved once, by the caller, and what arrives here is already what
+     * really goes. A caller that asked the notator about a range asked about this same value.
+     * <p>
+     * A modification bracket must already be open, and this opens none of its own, so a caller
+     * with several ranges to delete puts them all under one undo step. Deleting several ranges on
+     * one line means working from the last to the first: removing an earlier range shifts the
+     * indices of every later one. {@link #deleteRanges} discharges that.
+     * <p>
+     * Reconciles no accidentals and asks nothing. A deletion that moves a key owes a reconciliation
+     * over every line that key reaches, and this line's share of it has to be recorded against the
+     * indices it was computed at, so the caller records it inside the bracket before calling this.
+     *
+     * @param range the range to delete
+     * @effects Posts one {@link ElementRangeDeletion}, or one {@link ElementDeletion} per element
+     *     when a paired grace note at the range's head makes the removal non-contiguous.
+     * @throws IllegalStateException if the song has neither an open modification bracket nor
+     *     suspended mutation tracking, or if {@code range} covers the song-owned terminal element
+     */
+    public void deleteRange(EffectiveRange range) {
+        // A paired grace note at the head of the range hands its syllable back to the note it
+        // decorated, and a pair further along the range does the same — neither of which a single
+        // range removal expresses. Fall back to the per-element loop, which re-derives each
+        // element's own pairing as it reaches it.
+        if (isPairedGraceNote(range.begin())) {
+            deleteRangeElementwise(range.begin(), range.end());
+            return;
+        }
+
+        // The whole range is removed here, both ends included. The grace-note case is the other
+        // branch's business, so what reaches this one is a range widened over a breath mark, or
+        // over the barline a key change sits behind.
+        var rangeBegin = range.begin();
+        var rangeEnd = range.end();
+
+        // Shift elements after the range to fill the gap, mirroring the per-element xPos
+        // adjustment that deleteElement performs.
+        if (rangeEnd < effectiveElementCount() - 1) {
+            var shift = getElement(rangeBegin).getXOffsetPx() - getElement(rangeEnd + 1).getXOffsetPx();
+
+            for (var i = rangeEnd + 1; i < effectiveElementCount(); i++) {
+                getElement(i).setXOffsetPx(getElement(i).getXOffsetPx() + shift);
+            }
+        }
+
+        // Clean up the element before the range: its glissando has nothing left to point at.
+        // Recorded like every other change here — stripping it raw would leave undo restoring the
+        // deleted elements but not the glissando.
+        if (rangeBegin > 0) {
+            var prevElement = getElement(rangeBegin - 1);
+
+            if (prevElement.hasGlissando()) {
+                modifyElement(rangeBegin - 1, ElementField.SLIDE, prevElement::removeSlide);
+            }
+        }
+
+        // Adjust syllable relations and melisma extends on neighbors before removing. Both helpers
+        // require the target elements to still be present in the list.
+        adjustSyllablesForNeighborChange(rangeBegin - 1, getElement(rangeBegin));
+
+        // When the range was widened to include a trailing breath mark or a paired barline, this
+        // loop also runs over it. Neither carries lyrics, so adjustExtendsForDeletion is a
+        // harmless no-op for them.
+        for (var i = rangeBegin; i <= rangeEnd; i++) {
+            adjustExtendsForDeletion(i);
+        }
+
+        removeRange(rangeBegin, rangeEnd);
+    }
+
+    /**
+     * Deletes every range in {@code ranges} through {@link #deleteRange}, working from the last to
+     * the first so that no removal invalidates the indices of one still to come.
+     *
+     * <p>The ordering is the obligation {@link #deleteRange} states and
+     * {@link StaffElementRun#redundantKeyChangeRanges(Key)} repeats, discharged once here rather
+     * than at each caller: a caller that walks the list forward corrupts every range after the
+     * first, and nothing in the types says so.
+     *
+     * @param ranges the ranges to delete, ascending and pairwise disjoint
+     * @throws IllegalStateException if the song has neither an open modification bracket nor
+     *     suspended mutation tracking
+     * @effects Mutates this line, into the open modification bracket, once per range.
+     */
+    public void deleteRanges(List<EffectiveRange> ranges) {
+        for (var i = ranges.size() - 1; i >= 0; i--) {
+            deleteRange(ranges.get(i));
+        }
+    }
+
+    /**
+     * Deletes {@code begin} through {@code end} one element at a time, for the range whose removal
+     * is non-contiguous. The bounds are already widened; each element's own pairing is re-derived
+     * by {@link #deleteElement} as the loop reaches it.
+     */
+    private void deleteRangeElementwise(int begin, int end) {
+        for (var i = end; i >= begin; i--) {
+            var removedCount = deleteElement(i);
+
+            // When deleteElement also removes a preceding paired grace note,
+            // skip the extra index so we don't process an already-removed element.
+            i -= (removedCount - 1);
+        }
+    }
+
+    /**
+     * Deletes the element at {@code index} and, if the preceding element is a paired grace note,
+     * removes that as well. After the primary removal, if the surviving element at the deletion's
+     * left edge is a breath mark, it is cascade-deleted through a recursive call so all gap-fill,
+     * glissando, and syllable/extend logic is reused.
+     *
+     * @return the number of elements removed (1 or 2), not counting any cascade-deleted trailing
+     *     breath mark
+     */
+    private int deleteElement(int index) {
+        // If the preceding note is a paired grace note, it becomes orphaned when
+        // this note is deleted and must be removed along with it.
+        var hasPrecedingPairedGraceNote = isHostOfPairedGraceNote(index);
+
+        // Determine the left edge of the deletion — if a paired grace note precedes
+        // the deleted note, it is also being removed, so the gap starts there.
+        var firstDeletedIndex = hasPrecedingPairedGraceNote ? index - 1 : index;
+
+        if (index < (effectiveElementCount() - 1)) {
+            var shift = getElement(firstDeletedIndex).getXOffsetPx() - getElement(index + 1).getXOffsetPx();
+
+            for (var i = index + 1; i < effectiveElementCount(); i++) {
+                getElement(i).setXOffsetPx(getElement(i).getXOffsetPx() + shift);
+            }
+        }
+
+        // If the previous note is a paired grace note, it disappears entirely —
+        // no need to strip its glissando separately. Otherwise remove any standalone
+        // incoming glissando from the previous note.
+        if (!hasPrecedingPairedGraceNote && index > 0) {
+            var prevElement = getElement(index - 1);
+
+            if (prevElement.hasGlissando()) {
+                modifyElement(index - 1, ElementField.SLIDE, prevElement::removeSlide);
+            }
+        }
+
+        // Adjust syllable relations and melisma extends before removing —
+        // both methods require the element at index to still be in the list.
+        // This must run before the hand-back below: it decides whether to break the
+        // predecessor's word by reading the deleted element's own lyric, which the
+        // transfer would have already moved away.
+        adjustSyllablesForNeighborChange(firstDeletedIndex - 1, getElement(index));
+
+        // Deleting a paired grace note on its own hands its syllable back to the host,
+        // which becomes an ordinary note again and is eligible to carry a lyric. Runs
+        // before adjustExtendsForDeletion so it sees the final lyric state: the transfer
+        // takes the melisma START off the grace and drops the host's STOP carrier, so
+        // there is no longer a chain to unwind.
+        if (isPairedGraceNote(index)) {
+            transferLyrics(index, index + 1);
+        }
+
+        adjustExtendsForDeletion(index);
+
+        // Remove the host note first (higher index), then the orphaned grace note.
+        // Removing the higher index first keeps index - 1 valid.
+        removeElement(index);
+
+        int removed;
+
+        if (hasPrecedingPairedGraceNote) {
+            removeElement(index - 1);
+            removed = 2;
+        } else {
+            removed = 1;
+        }
+
+        // Cascade-delete a breath mark that immediately follows the deleted element.
+        // After removal the successor lands at firstDeletedIndex. Recurse through
+        // deleteElement (not a bare removeElement) so gap-fill, glissando strip, and
+        // syllable/extend adjustments are reused. The cascade is excluded from
+        // `removed` because deleteRangeElementwise's loop counts down, so the breath
+        // mark (a higher index, visited on an earlier iteration) is already accounted
+        // for and must not shift the loop's index a second time.
+        if (firstDeletedIndex < effectiveElementCount() &&
+                getElement(firstDeletedIndex).getType().isBreathMark()) {
+            deleteElement(firstDeletedIndex);
+        }
+
+        return removed;
     }
 
     @Override
@@ -1044,11 +1203,6 @@ public class Line implements LyricRun, SpanLookup {
         return getElement(candidateIndex).getType().isGraceNote() ? candidateIndex : -1;
     }
 
-    /** Returns true when the element at {@code index} is the host of a paired grace note. */
-    public boolean isHostOfPairedGraceNote(int index) {
-        return index >= 1 && isPairedGraceNote(index - 1);
-    }
-
     /**
      * Returns whether the element at {@code index} and the one following it are both notes at the
      * same pitch — the span a connecting glissando may never cover, since there is no distance for
@@ -1078,34 +1232,6 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         return element.getPitch() == follower.getPitch();
-    }
-
-    /**
-     * Whether the element at {@code index} is a key signature sitting behind the barline or
-     * repeat immediately before it — the one bidirectional pair on a line, since a key change
-     * belongs at the head of a measure (see {@link KeyChangeElement}'s position invariant).
-     * <p>
-     * The barline is tested rather than assumed. The invariant makes the test hold for every
-     * key signature a document of this program's own making can contain, and re-testing it
-     * here is what keeps the widening from reaching past a key signature that arrived any
-     * other way.
-     *
-     * @param index element index; out of range, or 0, yields false — index 0 has nothing
-     *     before it to pair with
-     * @return {@code true} when {@code index} and {@code index - 1} are such a pair
-     */
-    private boolean isKeyChangeBehindBarline(int index) {
-        if (index < 1 || index >= effectiveElementCount()) {
-            return false;
-        }
-
-        if (!getElement(index).getType().isKeyChange()) {
-            return false;
-        }
-
-        var precedingType = getElement(index - 1).getType();
-
-        return precedingType.isBarLine() || precedingType.isRepeat();
     }
 
     /**
@@ -1212,95 +1338,6 @@ public class Line implements LyricRun, SpanLookup {
         return getElement(index).canBearSyllable(index >= 1 ? getElement(index - 1) : null);
     }
 
-    /**
-     * The last element a range ending at {@code end} really covers — see the pairing rule in
-     * this class's Javadoc. Two elements after {@code end} belong to it: a breath mark, which
-     * is positionally attached to the element before it, and a key signature whose barline is
-     * the element at {@code end}. Pure query — mutates nothing.
-     *
-     * @param end the last element the caller named
-     * @return {@code end} extended past the element paired with it, or {@code end} unchanged
-     *     when nothing after it is paired with it; never less than {@code end}
-     */
-    public int effectiveEnd(int end) {
-        if (end + 1 < effectiveElementCount() && getElement(end + 1).getType().isBreathMark()) {
-            return end + 1;
-        }
-
-        if (isKeyChangeBehindBarline(end + 1)) {
-            return end + 1;
-        }
-
-        return end;
-    }
-
-    /**
-     * The first element a range beginning at {@code begin} really covers — see the pairing rule
-     * in this class's Javadoc. Two elements before {@code begin} belong to it: a paired grace
-     * note, which cannot outlive its host, and the barline a key signature at {@code begin}
-     * sits behind. Pure query — mutates nothing.
-     * <p>
-     * <b>The barline case is a decision, not a symmetry.</b> A key signature cannot outlive its
-     * barline, but a barline can outlive its key: deleting the key alone would leave a valid
-     * line. The pair goes whole so that a barline the insertion flow added only to host a key
-     * does not linger once the key is gone. The cost is the other case — a barline the user
-     * placed themselves goes with the key that happened to follow it, merging two measures.
-     * The notator is not prompted about that: {@code Selection.Range.contains} widens over the
-     * same pairs, so selecting either half draws both as selected and the deletion takes what
-     * was already shown going. Neither half of that reasoning is redundant; the backward
-     * extension is not derivable from the forward one.
-     * <p>
-     * This is also why no deletion can leave a key signature at index 0: reaching index 0 takes
-     * deleting the barline in front of it, which carries the key signature along. A separate
-     * index-0 guard would be dead code.
-     *
-     * @param begin the first element the caller named
-     * @return {@code begin} extended back over the element paired with it, or {@code begin}
-     *     unchanged when nothing before it is paired with it; never greater than {@code begin}
-     */
-    public int effectiveBegin(int begin) {
-        if (isHostOfPairedGraceNote(begin)) {
-            return begin - 1;
-        }
-
-        return beginIncludingKeyChangeBarline(begin);
-    }
-
-    /**
-     * {@code begin} extended back over the barline a key signature at {@code begin} sits behind,
-     * or {@code begin} unchanged when no key signature stands there. Pure query — mutates
-     * nothing.
-     *
-     * <p>This is the barline half of {@link #effectiveBegin} on its own, for the caller that owes
-     * that widening but not the grace-note one: a <b>copy</b>. A key signature captured without
-     * the barline in front of it is a clipboard fragment that violates
-     * {@link KeyChangeElement}'s position invariant wherever it lands, so a copy must take
-     * both. A paired grace note is the opposite case — it cannot outlive its host, so a copy
-     * beginning at a host simply leaves the grace note behind rather than reaching back for it.
-     *
-     * @param begin the first element the caller named
-     * @return {@code begin - 1} when a key signature at {@code begin} sits behind a barline,
-     *     otherwise {@code begin}; never greater than {@code begin}
-     */
-    public int beginIncludingKeyChangeBarline(int begin) {
-        return isKeyChangeBehindBarline(begin) ? begin - 1 : begin;
-    }
-
-    /** The inclusive element range a deletion or a copy actually covers. */
-    public record EffectiveRange(int begin, int end) {}
-
-    /**
-     * The range a deletion or copy of {@code begin} through {@code end} actually covers, widened
-     * at both ends by {@link #effectiveBegin} and {@link #effectiveEnd}. Every query that asks
-     * about a deletion must ask about this range, not the caller's raw selection.
-     *
-     * @param begin the first element the caller named
-     * @param end   the last element the caller named
-     * @return the widened range, which always contains {@code [begin, end]}
-     */
-    public EffectiveRange effectiveRange(int begin, int end) {
-        return new EffectiveRange(effectiveBegin(begin), effectiveEnd(end));
-    }
 
     public double getLyricsYPosSs() {
         return lyricsYPosSs;
