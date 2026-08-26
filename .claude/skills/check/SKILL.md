@@ -240,6 +240,17 @@ naming, structure, fixtures, and assertion style. **If any test being written or
 `.claude/guides/testing-e2e.md` in full — on top of, not instead of, the two
 guides above.
 
+### Every question names the finding it comes from
+
+**Open the question text with the finding's number from
+`plans/check-findings.md`**, e.g. "Finding 3". Do NOT restate the finding
+in the question. This applies to every AskUserQuestion this phase sends: 
+clarifying questions, questionable findings, and the approval list alike.
+
+Where a question covers more than one finding, name them all. Where it covers
+none — a genuine ambiguity the review raised no finding about — say that instead
+of inventing a number.
+
 ### Two kinds of finding require explicit approval, in both paths
 
 1. **Design findings** — per *Approval* in `design-flaws.md`. Present the flaw,
