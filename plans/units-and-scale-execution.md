@@ -453,9 +453,12 @@ compiles.
    saying so explicitly.
 3. Run `./scripts/test.sh FontDescriptionTest`. Read failures for location; do
    not rerun with extra flags, and do not assume any failure is pre-existing.
-4. The full unit suite is the user's to start — `.claude/hooks/no-full-test-suite.sh`
-   denies a run naming no class or more than four. Ask the user to run it; do not
-   attempt it.
+4. Stop and ask the user to run the full unit suite, then wait for the result
+   before continuing. `.claude/hooks/no-full-test-suite.sh` denies a run naming
+   no class or more than four; the suite is the user's to start. State what this
+   plan changed and which packages it can reach — `dom`, `font`, `layout`,
+   `util`, `ui`, `io`, `smufl` — so the decision is informed. Never attempt the
+   suite in any form, including naming classes four at a time.
 5. Run `./scripts/coverage.sh unit FontDescriptionTest` once. For each unexecuted
    region ask exactly one question: does it correspond to a missing contract
    case, or to implementation the contract promises nothing about? The first
