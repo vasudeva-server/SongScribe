@@ -31,7 +31,7 @@ import songscribe.util.UIUtils;
  * The {@link SongSettingsDialog} Music tab: the song's tempo.
  *
  * <p>There is no key control here. A song has no key of its own — every line carries one, set
- * from the score. See {@code docs/key-signatures.md}.
+ * from the score. See {@code docs/key-changes.md}.
  *
  * <p>Nothing on this tab can be wrong. The controls are a note-value combo, a bounded spinner, a
  * description combo and a checkbox, so every state they can reach describes a tempo — which is why

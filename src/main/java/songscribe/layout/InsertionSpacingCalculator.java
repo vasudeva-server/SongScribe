@@ -525,16 +525,16 @@ public final class InsertionSpacingCalculator {
         // A key signature's width depends on the key it cancels as well as the key it establishes,
         // and a fragment element sits on no line to read that from. The projected sequence is what
         // knows it: the key in effect just before the insertion point, moved on by each key
-        // signature the fragment itself carries. Each one is measured through a stand-in told that
+        // change the fragment itself carries. Each one is measured through a stand-in told that
         // key, so a pasted or inserted signature reserves the room its naturals actually need.
         var runningKey = insertIndex >= 1 ? line.keyAt(insertIndex - 1) : line.getRunningKey();
 
         for (var element : fragment) {
             var measured = element;
 
-            if (element instanceof KeyChangeElement keySignature) {
-                measured = KeyChangeElement.forMeasurement(keySignature.getKey(), runningKey);
-                runningKey = keySignature.getKey();
+            if (element instanceof KeyChangeElement keyChange) {
+                measured = KeyChangeElement.forMeasurement(keyChange.getKey(), runningKey);
+                runningKey = keyChange.getKey();
             }
 
             columns.add(columnBuilder != null

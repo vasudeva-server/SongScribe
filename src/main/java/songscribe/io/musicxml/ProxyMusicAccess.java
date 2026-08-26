@@ -231,7 +231,7 @@ final class ProxyMusicAccess {
      *
      * <p>Absence cannot take a fallback the way {@link #integer(BigInteger, int)} allows:
      * {@code 0} is C major, a real key, so substituting it for a missing element would give
-     * the line a key signature the document never stated.
+     * the line a key the document never stated.
      */
     static @Nullable Integer keyFifths(Key key) {
         var fifths = key.getFifths();

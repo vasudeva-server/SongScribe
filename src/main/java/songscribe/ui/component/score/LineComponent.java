@@ -823,7 +823,7 @@ public class LineComponent extends ScoreComponent
                     return;
                 }
 
-                if (editDoubleClickedKeySignature(e, clickedLine)) {
+                if (editDoubleClickedKeyChange(e, clickedLine)) {
                     return;
                 }
             }
@@ -835,7 +835,7 @@ public class LineComponent extends ScoreComponent
 
         // Nothing is inserted anywhere in the clef/key signature column. mouseMoved
         // normally clears the preview there, but it cannot when the header widens under
-        // a stationary mouse — a key signature change leaves a stale preview inside the
+        // a stationary mouse — a key change leaves a stale preview inside the
         // header with no mouse movement to re-clear it.
         if (selectionHandler.isWithinHeaderX(e.getPoint())) {
             return;
@@ -954,22 +954,22 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Opens the key signature dialog for whichever of the three key edit targets the double-click
+     * Opens the key change dialog for whichever of the three key edit targets the double-click
      * landed on, returning true when one opened.
      * <p>
-     * The targets are the line's header, a key signature standing in the middle of the line, and
+     * The targets are the line's header, a key change standing in the middle of the line, and
      * the cautionary drawn at the line's end — which edits the <em>next</em> line's key, not this
      * line's, because that is the change it renders. Each is asked of {@link LayoutResult}, so the
      * rects tested are the ones drawn, including the cautionary's overflow placement.
      * <p>
      * The three occupy disjoint horizontal runs — the header precedes every column, a mid-line
-     * signature owns a solved column, and the cautionary sits past the last one — so the order
+     * key change owns a solved column, and the cautionary sits past the last one — so the order
      * they are tried in cannot change which target a point resolves to. It is cheapest-first.
      * <p>
      * Answering false is safe for the same reason {@link #editDoubleClickedAttachment} gives:
      * {@code handleClick} consumes the click next, so nothing is inserted at the click point.
      */
-    private boolean editDoubleClickedKeySignature(MouseEvent e, Line line) {
+    private boolean editDoubleClickedKeyChange(MouseEvent e, Line line) {
         var ready = readyLayout();
 
         if (ready == null) {
@@ -986,10 +986,10 @@ public class LineComponent extends ScoreComponent
             return true;
         }
 
-        var midLineKeySignature = layoutResult.hitTestMidLineKeyEdit(mouseXSs, line);
+        var midLineKeyChange = layoutResult.hitTestMidLineKeyEdit(mouseXSs, line);
 
-        if (midLineKeySignature != null) {
-            KeyChangeDialogController.editKeyChange(mainFrame, line, midLineKeySignature);
+        if (midLineKeyChange != null) {
+            KeyChangeDialogController.editKeyChange(mainFrame, line, midLineKeyChange);
             return true;
         }
 

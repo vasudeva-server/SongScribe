@@ -59,17 +59,17 @@ class StrandedKeyChangeTest extends UnitTest {
     /** The key every fixture here starts in, and the one a restatement restates. */
     private static final Key RUNNING_KEY = Key.NO_ACCIDENTALS;
 
-    /** A key {@link #RUNNING_KEY} is not, so a signature establishing it is never stranded. */
+    /** A key {@link #RUNNING_KEY} is not, so a key change establishing it is never stranded. */
     private static final Key OTHER_KEY = Key.TWO_SHARPS;
 
     /** A third key, so a case needing two changes has two that differ from each other. */
     private static final Key THIRD_KEY = Key.THREE_FLATS;
 
-    /** The index of the sole mid-line signature in the two-element-preamble fixtures. */
-    private static final int FIRST_SIGNATURE_INDEX = 2;
+    /** The index of the sole mid-line key change in the two-element-preamble fixtures. */
+    private static final int FIRST_KEY_CHANGE_INDEX = 2;
 
-    /** The index of a second mid-line signature, three elements past the first. */
-    private static final int SECOND_SIGNATURE_INDEX = 5;
+    /** The index of a second mid-line key change, three elements past the first. */
+    private static final int SECOND_KEY_CHANGE_INDEX = 5;
 
     /**
      * One list of elements to scan, and what
@@ -77,7 +77,7 @@ class StrandedKeyChangeTest extends UnitTest {
      *
      * @param description the case, which doubles as the parameterized display name
      * @param elements    the elements to scan
-     * @param fromIndex   the lowest index to count a signature at
+     * @param fromIndex   the lowest index to count a key change at
      * @param keyInEffect the key in effect at {@code fromIndex}
      * @param expected    the indices the scan must report, ascending
      */
@@ -101,8 +101,8 @@ class StrandedKeyChangeTest extends UnitTest {
      *
      * @param description the case, which doubles as the parameterized display name
      * @param elements    the elements to scan
-     * @param fromIndex   the lowest index to count a signature at
-     * @param expected    the key the last signature at or after {@code fromIndex} establishes, or
+     * @param fromIndex   the lowest index to count a key change at
+     * @param expected    the key the last key change at or after {@code fromIndex} establishes, or
      *                    null when none stands there
      */
     private record LastKeyCase(
@@ -119,11 +119,11 @@ class StrandedKeyChangeTest extends UnitTest {
     }
 
     /**
-     * One kind of element a mid-line key signature may stand behind, all of which the pair rule
+     * One kind of element a mid-line key change may stand behind, all of which the pair rule
      * treats alike.
      *
      * @param description the case, which doubles as the parameterized display name
-     * @param barline     the element standing in front of the signature
+     * @param barline     the element standing in front of the key change
      */
     private record BarlineCase(String description, StaffElement barline) {
 
@@ -133,13 +133,13 @@ class StrandedKeyChangeTest extends UnitTest {
         }
     }
 
-    /** A run of {@code note, barline, signature}, which is the shortest legal placement. */
-    private static List<StaffElement> signatureRun(Key key) {
+    /** A run of {@code note, barline, key change}, which is the shortest legal placement. */
+    private static List<StaffElement> keyChangeRun(Key key) {
         return List.of(crotchet(), singleBarline(), keyChange(key));
     }
 
-    /** Two such runs back to back, so the second signature is measured against the first. */
-    private static List<StaffElement> twoSignatureRuns(Key first, Key second) {
+    /** Two such runs back to back, so the second key change is measured against the first. */
+    private static List<StaffElement> twoKeyChangeRuns(Key first, Key second) {
         return List.of(
             crotchet(), singleBarline(), keyChange(first),
             crotchet(), singleBarline(), keyChange(second));
@@ -148,44 +148,44 @@ class StrandedKeyChangeTest extends UnitTest {
     static Stream<StrandedCase> strandedCases() {
         return Stream.of(
             new StrandedCase(
-                "a signature that changes the key is not stranded",
-                signatureRun(OTHER_KEY), 1, RUNNING_KEY, List.of()),
+                "a key change that changes the key is not stranded",
+                keyChangeRun(OTHER_KEY), 1, RUNNING_KEY, List.of()),
             new StrandedCase(
-                "a signature restating the key in effect is stranded",
-                signatureRun(RUNNING_KEY), 1, RUNNING_KEY, List.of(FIRST_SIGNATURE_INDEX)),
+                "a key change restating the key in effect is stranded",
+                keyChangeRun(RUNNING_KEY), 1, RUNNING_KEY, List.of(FIRST_KEY_CHANGE_INDEX)),
             new StrandedCase(
-                "a signature restating what an earlier signature established is stranded",
-                twoSignatureRuns(OTHER_KEY, OTHER_KEY), 1, RUNNING_KEY,
-                List.of(SECOND_SIGNATURE_INDEX)),
+                "a key change restating what an earlier key change established is stranded",
+                twoKeyChangeRuns(OTHER_KEY, OTHER_KEY), 1, RUNNING_KEY,
+                List.of(SECOND_KEY_CHANGE_INDEX)),
             new StrandedCase(
                 "consecutive restatements are all reported, since the tracked key never advances "
                     + "past a stranded one",
-                twoSignatureRuns(RUNNING_KEY, RUNNING_KEY), 1, RUNNING_KEY,
-                List.of(FIRST_SIGNATURE_INDEX, SECOND_SIGNATURE_INDEX)),
+                twoKeyChangeRuns(RUNNING_KEY, RUNNING_KEY), 1, RUNNING_KEY,
+                List.of(FIRST_KEY_CHANGE_INDEX, SECOND_KEY_CHANGE_INDEX)),
             new StrandedCase(
-                "a signature below fromIndex is neither reported nor allowed to move the "
+                "a key change below fromIndex is neither reported nor allowed to move the "
                     + "tracked key",
-                twoSignatureRuns(OTHER_KEY, RUNNING_KEY), SECOND_SIGNATURE_INDEX - 1, RUNNING_KEY,
-                List.of(SECOND_SIGNATURE_INDEX)),
+                twoKeyChangeRuns(OTHER_KEY, RUNNING_KEY), SECOND_KEY_CHANGE_INDEX - 1, RUNNING_KEY,
+                List.of(SECOND_KEY_CHANGE_INDEX)),
             new StrandedCase(
-                "the first signature is measured against keyInEffect, not against the key the "
+                "the first key change is measured against keyInEffect, not against the key the "
                     + "list opens in",
-                signatureRun(OTHER_KEY), 1, OTHER_KEY, List.of(FIRST_SIGNATURE_INDEX)));
+                keyChangeRun(OTHER_KEY), 1, OTHER_KEY, List.of(FIRST_KEY_CHANGE_INDEX)));
     }
 
     static Stream<LastKeyCase> lastKeyCases() {
         return Stream.of(
             new LastKeyCase(
-                "the last signature's key, with earlier ones ignored",
-                twoSignatureRuns(OTHER_KEY, THIRD_KEY), 0, THIRD_KEY),
+                "the last key change's key, with earlier ones ignored",
+                twoKeyChangeRuns(OTHER_KEY, THIRD_KEY), 0, THIRD_KEY),
             new LastKeyCase(
-                "a signature standing at fromIndex itself counts",
-                signatureRun(OTHER_KEY), FIRST_SIGNATURE_INDEX, OTHER_KEY),
+                "a key change standing at fromIndex itself counts",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX, OTHER_KEY),
             new LastKeyCase(
-                "null when every signature is below fromIndex",
-                signatureRun(OTHER_KEY), FIRST_SIGNATURE_INDEX + 1, null),
+                "null when every key change is below fromIndex",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX + 1, null),
             new LastKeyCase(
-                "null for a run holding no signature at all",
+                "null for a run holding no key change at all",
                 List.of(crotchet(), singleBarline(), crotchet()), 0, null));
     }
 
@@ -229,37 +229,46 @@ class StrandedKeyChangeTest extends UnitTest {
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("barlineCases")
-    void testARangeTakesTheBarlineTheStrandedSignatureStandsBehind(BarlineCase testCase) {
+    void testARangeTakesTheBarlineTheStrandedKeyChangeStandsBehind(BarlineCase testCase) {
         var line = lineHolding(
             List.of(crotchet(), testCase.barline(), keyChange(RUNNING_KEY)));
 
         assertThat(line.redundantKeyChangeRanges(RUNNING_KEY))
             .containsExactly(
-                new StaffElementRun.EffectiveRange(FIRST_SIGNATURE_INDEX - 1, FIRST_SIGNATURE_INDEX));
+                new StaffElementRun.EffectiveRange(
+                    FIRST_KEY_CHANGE_INDEX - 1,
+                    FIRST_KEY_CHANGE_INDEX
+                ));
     }
 
     @Test
     void testRangesAreMeasuredAgainstTheKeyPassedInRatherThanTheLinesOwn() {
-        var line = lineHolding(signatureRun(OTHER_KEY));
+        var line = lineHolding(keyChangeRun(OTHER_KEY));
 
         assertThat(line.redundantKeyChangeRanges(line.getRunningKey()))
-            .as("the signature changes the key the line actually runs in, so nothing is stranded")
+            .as("the key change changes the key the line actually runs in, so nothing is stranded")
             .isEmpty();
 
         assertThat(line.redundantKeyChangeRanges(OTHER_KEY))
-            .as("under the key the caller's edit will leave the line in, the signature restates it")
+            .as("under the key the caller's edit will leave the line in, the key change restates it")
             .containsExactly(
-                new StaffElementRun.EffectiveRange(FIRST_SIGNATURE_INDEX - 1, FIRST_SIGNATURE_INDEX));
+                new StaffElementRun.EffectiveRange(
+                    FIRST_KEY_CHANGE_INDEX - 1,
+                    FIRST_KEY_CHANGE_INDEX
+                ));
     }
 
     @Test
-    void testTheBoundedFormCountsOnlySignaturesAtOrAfterItsIndexAndMayReachOneBelowIt() {
-        var line = lineHolding(twoSignatureRuns(OTHER_KEY, THIRD_KEY));
+    void testTheBoundedFormCountsOnlyKeyChangesAtOrAfterItsIndexAndMayReachOneBelowIt() {
+        var line = lineHolding(twoKeyChangeRuns(OTHER_KEY, THIRD_KEY));
 
-        assertThat(line.redundantKeyChangeRanges(SECOND_SIGNATURE_INDEX, THIRD_KEY))
-            .as("the earlier signature is behind the edit and is not counted, while the later one "
+        assertThat(line.redundantKeyChangeRanges(SECOND_KEY_CHANGE_INDEX, THIRD_KEY))
+            .as("the earlier key change is behind the edit and is not counted, while the later one "
                 + "restates the key the edit leaves in effect and takes its barline with it")
             .containsExactly(
-                new StaffElementRun.EffectiveRange(SECOND_SIGNATURE_INDEX - 1, SECOND_SIGNATURE_INDEX));
+                new StaffElementRun.EffectiveRange(
+                    SECOND_KEY_CHANGE_INDEX - 1,
+                    SECOND_KEY_CHANGE_INDEX
+                ));
     }
 }

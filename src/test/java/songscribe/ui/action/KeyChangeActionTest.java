@@ -38,7 +38,7 @@ import static org.mockito.Mockito.mockStatic;
 
 /**
  * The position policy for a mid-line key change — where the insertion marker appears and where it
- * hides. See {@code docs/key-signatures.md}.
+ * hides. See {@code docs/key-changes.md}.
  */
 class KeyChangeActionTest extends UnitTest {
 
@@ -90,7 +90,7 @@ class KeyChangeActionTest extends UnitTest {
 
         return Stream.of(
             new PositionCase(
-                "index 0 is refused, since a key signature is never a line's first element",
+                "index 0 is refused, since a key change is never a line's first element",
                 threeNotes, 0, false),
             new PositionCase(
                 "the last note's index is accepted, since the change governs that note",
@@ -113,23 +113,23 @@ class KeyChangeActionTest extends UnitTest {
     }
 
     static Stream<PositionCase> existingKeyChangeCases() {
-        // A key signature standing at index 2, behind the barline at index 1.
+        // A key change standing at index 2, behind the barline at index 1.
         var withKeyChange = List.of(
             ElementType.CROTCHET, ElementType.SINGLE_BARLINE, ElementType.KEY_CHANGE,
             ElementType.CROTCHET, ElementType.CROTCHET);
 
         return Stream.of(
             new PositionCase(
-                "the index before the barline the key signature sits behind is refused",
+                "the index before the barline the key change sits behind is refused",
                 withKeyChange, 1, false),
             // The third index of that neighborhood — the gap inside the pair, index 2 — is not
             // this predicate's to refuse. Line.canInsertElementAt refuses it for every operation
             // before any client predicate is asked, and LineTest asserts it there.
             new PositionCase(
-                "the index immediately after the key signature is refused",
+                "the index immediately after the key change is refused",
                 withKeyChange, 3, false),
             new PositionCase(
-                "an index clear of the key signature is accepted",
+                "an index clear of the key change is accepted",
                 withKeyChange, 4, true)
         );
     }

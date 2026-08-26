@@ -79,7 +79,7 @@ public enum ElementField {
     LYRIC,
 
     /**
-     * A mid-line key signature's key was changed. Emitted by {@code KeyChangeDialogController}.
+     * A mid-line key change's key was changed. Emitted by {@code KeyChangeDialogController}.
      *
      * <p>{@code Song.maintainKeyInvariant} re-derives what every following line inherits off the
      * resulting {@link ElementModification}, so this field is what keeps a key edit propagating

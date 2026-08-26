@@ -75,10 +75,10 @@ public enum ElementType {
     DOUBLE_BARLINE("Double barline", 0, 0),
     FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
 
-    // Key signatures. Deliberately placed after the barlines and before the IO aliases: the
+    // Key changes. Deliberately placed after the barlines and before the IO aliases: the
     // three ordinal-range predicates — isNote(), isRest() and isBarLine() — all end before
     // this point, so none of them picks it up.
-    KEY_CHANGE("Key signature", 0, 0),
+    KEY_CHANGE("Key change", 0, 0),
 
     // IO aliases
     SEMIBREVEREST(ElementType.SEMIBREVE_REST),
@@ -213,7 +213,7 @@ public enum ElementType {
     /**
      * Builds the shared instance {@link #getInstance()} hands out and {@link #newInstance()} clones.
      * <p>
-     * The instance's Java class matches the type: a key signature is a {@link KeyChangeElement},
+     * The instance's Java class matches the type: a key change is a {@link KeyChangeElement},
      * so a caller that reaches an element through the type registry gets one it can ask for a key,
      * and a {@code newInstance()} clone is an element the document can hold. It starts in C major —
      * the key that draws nothing — because a default instance states no key of its own and a
@@ -449,7 +449,7 @@ public enum ElementType {
 
     /**
      * Whether this element cancels every accidental written before it, so that a later note at the
-     * same staff position inherits nothing from across it and falls back to the key signature.
+     * same staff position inherits nothing from across it and falls back to the key.
      * Convention: any structural marker cancels. A breath mark deliberately does not — it cancels
      * nothing.
      *
@@ -461,7 +461,7 @@ public enum ElementType {
      * <p>The same {@code isBarLine() || isRepeat()} test appears elsewhere in the codebase for
      * unrelated reasons — closing a MusicXML measure, bounding an ending, choosing a glyph — so
      * this is deliberately narrow rather than a general "is a structural marker". A key change
-     * belongs here, and only here: a new key signature resets what a later note at the same
+     * belongs here, and only here: a new key change resets what a later note at the same
      * staff position inherits, but it does not close a measure, bound an ending or pick a glyph.
      */
     public boolean cancelsAccidentals() {
@@ -469,7 +469,7 @@ public enum ElementType {
     }
 
     /**
-     * @return {@code true} for the mid-line key signature type
+     * @return {@code true} for the mid-line key change type
      */
     public boolean isKeyChange() {
         return this == KEY_CHANGE;
@@ -535,16 +535,16 @@ public enum ElementType {
      *       mark inside the preceding note's markup rather than as an item of its own, and on
      *       reading, the breath-mark element is created as a side effect of finishing that note —
      *       by which point the note has already taken the pending annotation;</li>
-     *   <li>a <b>key signature</b> is an attribute of the measure its preceding barline or repeat
+     *   <li>a <b>key change</b> is an attribute of the measure its preceding barline or repeat
      *       opens, not an item of its own, so there is nothing in the file to hang an annotation
-     *       on. Nothing is lost to the user: selecting a key signature selects that barline or
+     *       on. Nothing is lost to the user: selecting a key change selects that barline or
      *       repeat with it, and the annotation attaches there.</li>
      * </ul>
      *
      * <p>Attaching one anyway would lose it silently on save, so the annotation action disables
      * itself for such an element rather than let the user type text that cannot be stored. The
      * action asks whether <em>any</em> selected element can carry one, which is why a key
-     * signature selected together with its barline still leaves the action enabled.
+     * change selected together with its barline still leaves the action enabled.
      */
     public boolean canCarryAnnotation() {
         return !isBreathMark() && !isKeyChange();
@@ -610,14 +610,14 @@ public enum ElementType {
      * The complement — the elements that can anchor or end an ending — is
      * exactly {@link #isDuration()} (notes and rests).
      * <p>
-     * A key signature is non-content for two reasons that point the same way. It is not
+     * A key change is non-content for two reasons that point the same way. It is not
      * musical content, so it must not help a selection reach the minimum an ending needs;
      * and a key change must not move where an ending anchors, which is what being skipped
      * delivers — the backward walk for the preceding element passes over it and reaches the
      * barline that {@link KeyChangeElement}'s position invariant guarantees behind it, so
      * the bracket lands exactly where it would have had the key change not been there.
      *
-     * @return {@code true} for grace notes, breath marks and key signatures
+     * @return {@code true} for grace notes, breath marks and key changes
      */
     public boolean isNonContentElement() {
         return isGraceNote() || this == BREATH_MARK || isKeyChange();

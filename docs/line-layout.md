@@ -96,7 +96,7 @@ cautionary at the end of the line before it, the header of every line the change
 re-keys, the cautionary at the end of each of *those* lines, and — for a mid-line
 change — the signature's own column plus any barline inserted with it. "Every
 line the change re-keys" is the inheritance chain; see
-[key-signatures.md](key-signatures.md).
+[key-changes.md](key-changes.md).
 
 Those lines are measured by the identical solver the committed layout runs, over
 columns built the same way, so a pre-check cannot disagree with the result. The

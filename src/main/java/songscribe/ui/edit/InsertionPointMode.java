@@ -543,7 +543,7 @@ public final class InsertionPointMode {
         // effectiveElementCount(), so no clamping is needed.
         var index = layoutResult.findInsertionIndex(mouseXSs, line);
 
-        // A slot inside a pair — between a key signature and its barline, or between a grace
+        // A slot inside a pair — between a key change and its barline, or between a grace
         // note and its host — is not an insertion point for anyone, whoever is placing.
         if (!line.canInsertElementAt(index)) {
             clearTarget();

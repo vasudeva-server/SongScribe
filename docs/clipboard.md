@@ -86,11 +86,11 @@ responsibilities are split, and the split is the point: **one piece owns picking
 a spot on a line, another owns what goes there.** Nothing in the first knows
 about clipboards; nothing in the second knows how a mouse position becomes a
 position in the music. Mid-line key changes are a second user of the same
-machinery — see [key-signatures.md](key-signatures.md).
+machinery — see [key-changes.md](key-changes.md).
 
 A rule that holds for *every* kind of placement lives with the interaction rather
 than being restated by each user of it: the staff header, the region past the
-staff's right edge, and the gap between a mid-line key signature and its barline
+staff's right edge, and the gap between a mid-line key change and its barline
 are excluded before the client is ever consulted.
 
 The client is entitled to exactly one end-of-placement report — placed or
@@ -113,7 +113,7 @@ ending a tie is never a candidate either — a tie asserts that two notes are on
 sounding pitch, so the tied note has no pitch of its own to keep.
 
 The comparison is by how a note *sounds*, never by which accidental is written,
-since an absent accidental and an explicit natural sound alike. The key signature
+since an absent accidental and an explicit natural sound alike. The key
 never enters the comparison directly: it is the last fallback of the resolver, so
 resolving before the edit against the source and after against the destination
 compares the two keys implicitly. That is what lets a key change be handled by the
@@ -141,7 +141,7 @@ either way — never one per line, and never a second prompt because the paste b
 overwrote a selection and re-keyed what followed.
 
 A key change the fragment brings in can also arrive stranded, landing where its
-key is already running — see [key-signatures.md](key-signatures.md) for why that
+key is already running — see [key-changes.md](key-changes.md) for why that
 state is not allowed to exist. **The fragment is reduced before anything measures
 it**, rather than pasted whole and swept afterwards, and that ordering is the
 point: the fit gate, the accidental reconciliation and the span reconciliation all

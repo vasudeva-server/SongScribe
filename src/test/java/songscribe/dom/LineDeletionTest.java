@@ -47,14 +47,14 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  */
 class LineDeletionTest extends UnitTest {
 
-    /** The key the fixture line runs in, and the one both its signatures restate. */
+    /** The key the fixture line runs in, and the one both its key changes restate. */
     private static final Key LINE_KEY = Key.NO_ACCIDENTALS;
 
     private static final int FIRST_BARLINE_INDEX = 1;
-    private static final int FIRST_SIGNATURE_INDEX = 2;
+    private static final int FIRST_KEY_CHANGE_INDEX = 2;
     private static final int MIDDLE_NOTE_INDEX = 3;
     private static final int SECOND_BARLINE_INDEX = 4;
-    private static final int SECOND_SIGNATURE_INDEX = 5;
+    private static final int SECOND_KEY_CHANGE_INDEX = 5;
     private static final int LAST_NOTE_INDEX = 6;
 
     /**
@@ -74,8 +74,8 @@ class LineDeletionTest extends UnitTest {
     }
 
     /**
-     * A line in {@link #LINE_KEY} holding {@code note, barline, signature, note, barline,
-     * signature, note} — two complete pairs with a note either side of each.
+     * A line in {@link #LINE_KEY} holding {@code note, barline, key change, note, barline,
+     * key change, note} — two complete pairs with a note either side of each.
      *
      * @return the elements in the order they stand on the line, so a case can name survivors by
      *     the index they were built at
@@ -117,20 +117,20 @@ class LineDeletionTest extends UnitTest {
     static Stream<DeletionCase> deletionCases() {
         return Stream.of(
             new DeletionCase(
-                "naming the signature takes the barline it stands behind",
-                FIRST_SIGNATURE_INDEX, FIRST_SIGNATURE_INDEX,
-                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_SIGNATURE_INDEX,
+                "naming the key change takes the barline it stands behind",
+                FIRST_KEY_CHANGE_INDEX, FIRST_KEY_CHANGE_INDEX,
+                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX,
                     LAST_NOTE_INDEX)),
             new DeletionCase(
-                "naming the barline takes the signature standing behind it",
+                "naming the barline takes the key change standing behind it",
                 FIRST_BARLINE_INDEX, FIRST_BARLINE_INDEX,
-                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_SIGNATURE_INDEX,
+                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX,
                     LAST_NOTE_INDEX)),
             new DeletionCase(
                 "a range naming a note on its own reaches no pair and takes only that note",
                 MIDDLE_NOTE_INDEX, MIDDLE_NOTE_INDEX,
-                List.of(0, FIRST_BARLINE_INDEX, FIRST_SIGNATURE_INDEX, SECOND_BARLINE_INDEX,
-                    SECOND_SIGNATURE_INDEX, LAST_NOTE_INDEX)));
+                List.of(0, FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX, SECOND_BARLINE_INDEX,
+                    SECOND_KEY_CHANGE_INDEX, LAST_NOTE_INDEX)));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -151,8 +151,8 @@ class LineDeletionTest extends UnitTest {
         var line = lineHolding(elements);
 
         line.deleteRanges(List.of(
-            new StaffElementRun.EffectiveRange(FIRST_BARLINE_INDEX, FIRST_SIGNATURE_INDEX),
-            new StaffElementRun.EffectiveRange(SECOND_BARLINE_INDEX, SECOND_SIGNATURE_INDEX)));
+            new StaffElementRun.EffectiveRange(FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX),
+            new StaffElementRun.EffectiveRange(SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX)));
 
         assertThat(elementsOf(line))
             .as("taken in ascending order the first removal would shift the second range onto the "

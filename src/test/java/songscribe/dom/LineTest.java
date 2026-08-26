@@ -155,7 +155,7 @@ class LineTest extends UnitTest {
     ) {}
 
     /**
-     * A line holding both closed pairs: a key signature behind its barline at 1–2, and a grace
+     * A line holding both closed pairs: a key change behind its barline at 1–2, and a grace
      * note with the note it decorates at 4–5.
      */
     private static Line pairedLine() {
@@ -177,9 +177,9 @@ class LineTest extends UnitTest {
         return Stream.of(
             new PositionCase("a note takes an insertion in front of it and a syllable on it",
                 0, true, true),
-            new PositionCase("the barline a key signature stands behind takes an insertion, not a syllable",
+            new PositionCase("the barline a key change stands behind takes an insertion, not a syllable",
                 1, true, false),
-            new PositionCase("the slot in front of a key signature is inside the pair",
+            new PositionCase("the slot in front of a key change is inside the pair",
                 2, false, false),
             new PositionCase("the note after the pair is clear of it",
                 3, true, true),

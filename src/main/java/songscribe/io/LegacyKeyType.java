@@ -82,13 +82,13 @@ enum LegacyKeyType {
     /**
      * Returns the key this type and its sibling {@code <keys>} count encode.
      *
-     * <p>The two tags are an unconstrained pair, so combinations no key signature can have are
+     * <p>The two tags are an unconstrained pair, so combinations no key can have are
      * representable in a {@code .mssw} file and do occur: a named accidental type with a count of
      * 0, and — from a corrupt file — {@link #NONE} with a count. Both mean
      * {@link Key#NO_ACCIDENTALS}: it is what the pair always sounded and drew as, so a file
      * carrying one keeps loading rather than being refused by a migration path.
      *
-     * <p>A count that is negative or too large to be a signature is not normalized, because
+     * <p>A count that is negative or too large to be a key is not normalized, because
      * neither has a reading that preserves what the file meant. Both are rejected — this is the
      * conversion of the tag pair into a domain type, so it either yields a {@link Key} or fails
      * the load.
@@ -97,7 +97,7 @@ enum LegacyKeyType {
      * count cannot reach {@link Key#ofFifths} as an error, because multiplying it by this type's
      * sign lands on a perfectly valid key in the opposite direction — "-3 flats" would load as
      * three sharps. That a count is a magnitude is a fact about this file format, so it is
-     * checked here; the magnitude's limit is a fact about key signatures, so {@code ofFifths}
+     * checked here; the magnitude's limit is a fact about keys, so {@code ofFifths}
      * owns it.
      *
      * @param log             the reader's logger, so the corruption is reported against the
@@ -118,7 +118,7 @@ enum LegacyKeyType {
         } catch (IllegalArgumentException e) {
             throw DocumentValidation.corrupt(
                 log,
-                "Corrupt document: invalid key signature: {} with {} accidentals",
+                "Corrupt document: invalid key: {} with {} accidentals",
                 this,
                 accidentalCount);
         }

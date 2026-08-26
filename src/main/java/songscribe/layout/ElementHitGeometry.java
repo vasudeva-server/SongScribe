@@ -70,7 +70,7 @@ public final class ElementHitGeometry {
 
         var elementType = element.getType();
 
-        // From the element, not from its type: a mid-line key signature's type width is only a
+        // From the element, not from its type: a mid-line key change's type width is only a
         // floor, and a hit rect built from it would leave every accidental past the first
         // unclickable.
         var naturalWidthSs = element.getGlyphWidthSs();

@@ -30,14 +30,14 @@ public final class SongFactory {
     private SongFactory() {}
 
     /**
-     * Adds a note to {@code line}, then a signature establishing {@code key} behind the barline
+     * Adds a note to {@code line}, then a key change establishing {@code key} behind the barline
      * its position invariant requires, then another note — so the line holds a mid-line key
      * change with a note either side of it.
      *
      * @param line the line to populate
-     * @param key the key the signature establishes
+     * @param key the key the key change establishes
      */
-    public static void notesAroundSignature(Line line, Key key) {
+    public static void notesAroundKeyChange(Line line, Key key) {
         line.addElement(crotchet());
         line.addElement(singleBarline());
         line.addElement(keyChange(key));

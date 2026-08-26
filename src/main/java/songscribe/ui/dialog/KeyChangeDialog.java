@@ -30,7 +30,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
 /**
- * Names the key a change establishes: one combo over the fifteen key signatures, opened on the key
+ * Names the key a change establishes: one combo over the fifteen keys, opened on the key
  * already in effect where the change is bound.
  *
  * <p><b>OK stays enabled throughout</b>, including on the key it opened on. Committing that key
@@ -39,7 +39,7 @@ import songscribe.util.UIUtils;
  * than a disabled button — so pressing OK on an untouched dialog closes it and writes nothing.
  *
  * <p><b>It cannot tell the four key-editing gestures apart, and does not need to.</b> A line's own
- * key and a key signature standing in the middle of a line are one {@link Key} in and one
+ * key and a key change standing in the middle of a line are one {@link Key} in and one
  * {@link Key} out either way. Which line, which position, whether the change fits and which route
  * writes it all belong to {@link KeyChangeDialogController}, the only thing that opens this window.
  *
@@ -56,9 +56,9 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
     public KeyChangeDialog(MainFrame mainFrame, DialogOps<Key, Key> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_KEY_CHANGE_TITLE), ops);
 
-        // The fifteen key signatures are the whole domain and never vary by gesture, so the model
+        // The fifteen keys are the whole domain and never vary by gesture, so the model
         // is fixed here and populate() only chooses within it.
-        var keysCombo = new JComboBox<>(Key.allSignatures().toArray(Key[]::new));
+        var keysCombo = new JComboBox<>(Key.allKeys().toArray(Key[]::new));
         selectedKey = Controls.item(keysCombo);
 
         addLabeledField(contentPanel, Strings.get(Strings.LABEL_KEY_SELECT_PROMPT), keysCombo, LabelPosition.TOP);
@@ -86,7 +86,7 @@ public class KeyChangeDialog extends StandardDialog<Key, Key> {
     /**
      * {@inheritDoc}
      *
-     * <p>The combo is built over the whole of {@link Key#allSignatures()}, so its model is never
+     * <p>The combo is built over the whole of {@link Key#allKeys()}, so its model is never
      * empty and a non-empty combo always carries a selection — which is what lets the property
      * answer a {@link Key} rather than something possibly absent.
      *

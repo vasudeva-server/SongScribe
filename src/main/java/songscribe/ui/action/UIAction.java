@@ -619,7 +619,7 @@ public class UIAction extends AbstractAction implements Disposable {
 
     /**
      * Blanket disable while the user is picking an insertion point on a line — a paste
-     * placement, a key-signature placement, or any other client of
+     * placement, a key-change placement, or any other client of
      * {@link InsertionPointMode}. Called first in {@link #updateEnabledState()}'s predicate
      * chain, so no per-action opt-in flag is involved: every action, the placing operation's
      * own shortcut included, is off until the placement is made or abandoned.

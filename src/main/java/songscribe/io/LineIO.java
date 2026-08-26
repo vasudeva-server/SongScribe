@@ -160,7 +160,7 @@ public final class LineIO {
          * calls {@code setKey} with the parsed key and relies on {@code setKey} to normalize it.
          *
          * @param line the line being closed
-         * @throws SAXException if the parsed pair is not a valid key signature
+         * @throws SAXException if the parsed pair is not a valid key
          */
         private void applyParsedKey(Line line) throws SAXException {
             var parsedType = parsedKeyType;

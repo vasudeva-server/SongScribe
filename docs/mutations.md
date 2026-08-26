@@ -49,7 +49,7 @@ in it names the same line — which is the common case, and what lets a view
 invalidate one line rather than the document.
 
 A key change is the exception that shapes the query: it is the one edit whose
-effects reach lines it does not name. See [key-signatures.md](key-signatures.md).
+effects reach lines it does not name. See [key-changes.md](key-changes.md).
 
 ## Recording completeness
 

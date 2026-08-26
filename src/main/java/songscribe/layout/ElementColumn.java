@@ -197,9 +197,9 @@ public final class ElementColumn {
     /**
      * Returns whether this column represents a mid-line key change — the run of accidentals a
      * {@link KeyChangeElement} draws. A caller spacing the gap in front of one relies on the
-     * barline the pair rule in {@code docs/key-signatures.md} puts there.
+     * barline the pair rule in {@code docs/key-changes.md} puts there.
      *
-     * @return {@code true} when this column's element is a mid-line key signature
+     * @return {@code true} when this column's element is a mid-line key change
      */
     public boolean isKeyChange() {
         return element.getType().isKeyChange();

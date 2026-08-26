@@ -1334,7 +1334,7 @@ public final class Song implements Disposable {
      * then records {@code mutation} in the accumulated batch. Under suspended tracking the
      * mutator runs and nothing is recorded.
      *
-     * <p>Every mutation that can move a key — a line's own key, a mid-line key signature, or a
+     * <p>Every mutation that can move a key — a line's own key, a mid-line key change, or a
      * line insertion or deletion that shifts what a line inherits — brings the key invariant
      * back up to date here, after the mutator has run. This is the only place that does it, and
      * that is deliberate: the ten mutators that can carry a key each route through this one
@@ -1463,7 +1463,7 @@ public final class Song implements Disposable {
      *                           which is where {@link #keyMoveReach} starts drawing differently
      * @param firstStoppableIndex the lowest index at which a line establishing a key of its own
      *                           may stop the walk — see the stopping rule and the exception an
-     *                           insertion makes to it in {@code docs/key-signatures.md}
+     *                           insertion makes to it in {@code docs/key-changes.md}
      */
     private record KeyMove(int inheritedFromIndex, int runningFromIndex, int firstStoppableIndex) {
         KeyMove(int inheritedFromIndex, int runningFromIndex) {
@@ -1482,7 +1482,7 @@ public final class Song implements Disposable {
      *
      * @param mutation the mutation just applied, or about to be replayed
      * @return where the move begins, or {@code null} when {@code mutation} moves no key — which
-     *     is every mutation not listed here, and every listed one that carried no key signature
+     *     is every mutation not listed here, and every listed one that carried no key change
      *     or names a line no longer in this song
      */
     private @Nullable KeyMove keyMoveOf(Mutation mutation) {
@@ -1528,12 +1528,12 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The move a mid-line key signature written into or taken out of {@code line} makes: the line's
+     * The move a mid-line key change written into or taken out of {@code line} makes: the line's
      * own two keys stand, and only the key it leaves off in moves, so both walks begin after it.
      *
      * @param line the line the mutation touched
-     * @param movesKey whether the elements the mutation carried were key signatures at all
-     * @return the move, or null when the mutation carried no key signature or {@code line} is not
+     * @param movesKey whether the elements the mutation carried were key changes at all
+     * @return the move, or null when the mutation carried no key change or {@code line} is not
      *         in this song
      */
     private @Nullable KeyMove midLineKeyMove(Line line, boolean movesKey) {
@@ -1554,7 +1554,7 @@ public final class Song implements Disposable {
      * around it are solved from the key that line runs in, and the room kept clear at its end is
      * solved from the cautionary it leads into — so a key move leaves stale geometry on lines no
      * mutation names, and the line ahead of the move is one of them. See
-     * {@code docs/key-signatures.md}.
+     * {@code docs/key-changes.md}.
      *
      * <p>Asked after the mutation has been applied, so the answer describes the document as it now
      * stands, which is what a stale view has to be brought up to.
@@ -1662,7 +1662,7 @@ public final class Song implements Disposable {
      * it can either. The scan starts at line 1 whatever it is asked for, because line 0 always
      * establishes a key of its own and so is never the line a forward walk stops at.
      *
-     * <p>See {@code docs/key-signatures.md}.
+     * <p>See {@code docs/key-changes.md}.
      *
      * @param fromIndex where to start looking; clamped up to 1, since line 0 always establishes
      *                  its own key and so is never where a forward walk stops
@@ -1718,7 +1718,7 @@ public final class Song implements Disposable {
      * Removes every mid-line key change that restates the key already in effect before it,
      * together with the element it is paired with, across every line of a freshly parsed song.
      *
-     * <p>Reading is one of the two places that rule is enforced — {@code docs/key-signatures.md}
+     * <p>Reading is one of the two places that rule is enforced — {@code docs/key-changes.md}
      * says why it takes both. A file written before the rule existed can carry a stranding no edit
      * has reached, and nothing on screen says so: a key change that restates the running key draws
      * no accidentals and occupies no width, yet still refuses the two insertion indices flanking

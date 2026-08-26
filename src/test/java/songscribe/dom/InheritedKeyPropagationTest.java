@@ -35,7 +35,7 @@ import songscribe.dom.SongFactory.LineBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
-import static songscribe.dom.SongFactory.notesAroundSignature;
+import static songscribe.dom.SongFactory.notesAroundKeyChange;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
@@ -50,7 +50,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * <p>The forward walk that re-derives those keys stops at the first line establishing a key of its
  * own, which is sound only while that line keeps the same predecessor. An arriving line is the one
  * thing that breaks it, so the cases cover a line arriving both keyed and inheriting, arriving at
- * index 0, and leaving. See {@code docs/key-signatures.md}.
+ * index 0, and leaving. See {@code docs/key-changes.md}.
  */
 class InheritedKeyPropagationTest extends UnitTest {
 
@@ -60,7 +60,7 @@ class InheritedKeyPropagationTest extends UnitTest {
     /** The key the line under test establishes for itself, in the cases that give it one. */
     private static final Key OWN_KEY = Key.TWO_SHARPS;
 
-    /** The key the line under test leaves off in, by way of a signature partway along it. */
+    /** The key the line under test leaves off in, by way of a key change partway along it. */
     private static final Key MID_LINE_KEY = Key.THREE_FLATS;
 
     /** The key a line standing behind the one under test establishes for itself. */
@@ -110,7 +110,7 @@ class InheritedKeyPropagationTest extends UnitTest {
                 line.setKey(ownKey);
             }
 
-            notesAroundSignature(line, MID_LINE_KEY);
+            notesAroundKeyChange(line, MID_LINE_KEY);
         });
 
         builders.addAll(List.of(followers));

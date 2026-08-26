@@ -131,7 +131,7 @@ public sealed interface Selection {
          * the range names goes wherever its partner goes, so a deletion or a copy of the range
          * carries it along (see {@link Line}'s pairing rule and {@link Line#effectiveRange}).
          * It therefore has to read as selected too, or an operation would take away an element
-         * the user never saw highlighted. Both directions matter — the pair a key signature
+         * the user never saw highlighted. Both directions matter — the pair a key change
          * makes with the barline before it lies backward.
          *
          * <p>The expansion happens here, where a range becomes highlighted columns, and not in

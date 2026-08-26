@@ -78,12 +78,12 @@ element the rectangle stood for.
   rendering actually draws, including the overflow-relative placement an
   overflowing line gives it, so the target follows the glyphs rather than the
   margin.
-- **A mid-line key signature's accidentals** edit that change directly, as an
+- **A mid-line key change's accidentals** edit that change directly, as an
   ordinary column hit-tested like any other.
 
 What happens once one resolves — opening a dialog, routing a commit, reporting a
 refusal — belongs to the controller, not to hit-testing. See
-[key-signatures.md](key-signatures.md).
+[key-changes.md](key-changes.md).
 
 ## An edit target need not be a selection target
 

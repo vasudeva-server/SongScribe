@@ -60,7 +60,7 @@ import songscribe.engraving.StaffHeaderMetrics;
  * falls. The barline is {@link LineThickness#THIN_BARLINE_SS} wide — the same barline an element
  * draws.
  *
- * <p>See {@code docs/key-signatures.md} for what a cautionary is and why it is stored nowhere.
+ * <p>See {@code docs/key-changes.md} for what a cautionary is and why it is stored nowhere.
  *
  * @param previousKey   the key the line leaves off in — the left-hand side of the change
  * @param nextKey       the key the following line begins in, never equal to {@code previousKey}

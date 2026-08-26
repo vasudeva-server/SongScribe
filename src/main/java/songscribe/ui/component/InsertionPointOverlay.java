@@ -46,7 +46,7 @@ import songscribe.ui.FlatLafProps;
  * <p>
  * The wording is the placing client's: {@link Text} carries the title and the hint, so the
  * pill says "Paste content" for a clipboard fragment and "Insert key change" for a key
- * signature without this component knowing either operation.
+ * change without this component knowing either operation.
  * <p>
  * Carries no mouse listeners: a listener-free component is never selected as an AWT
  * mouse-event target, so clicks (including ones over the pill) fall through to the score

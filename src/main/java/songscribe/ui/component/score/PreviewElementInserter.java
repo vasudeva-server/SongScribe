@@ -108,7 +108,7 @@ final class PreviewElementInserter {
             return;
         }
 
-        // A grace note, a key signature and the barline a key signature sits behind may never be
+        // A grace note, a key change and the barline a key change sits behind may never be
         // replaced — ignore the click.
         if (PreviewElementManager.isXPosSsMatchesElement()
                 && !line.canReplaceElementAt(PreviewElementManager.getCurrentXIndex())) {

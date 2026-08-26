@@ -28,16 +28,16 @@ import org.jspecify.annotations.Nullable;
  * A key change written into the middle of a line: one {@link Key}, taking effect at this
  * element's position and holding until the next key change or the end of the song.
  *
- * <p><b>Position invariant.</b> A key signature element is never the element at index 0 of a
+ * <p><b>Position invariant.</b> A key change element is never the element at index 0 of a
  * line, and is always immediately preceded by an element whose {@link ElementType#isBarLine()}
  * or {@link ElementType#isRepeat()} is true. A key change belongs at the head of a measure,
  * and every path that can create one keeps it there: the editing UI inserts a
  * {@link ElementType#SINGLE_BARLINE} when the position the user chose has none, the deletion
- * pairing removes a key signature together with the barline it sits behind, and the MusicXML
+ * pairing removes a key change together with the barline it sits behind, and the MusicXML
  * reader rejects a document whose mid-measure {@code <key>} has no barline before it. Layout,
  * width and MusicXML writing all read the invariant rather than re-checking it.
  *
- * <p>A key signature carries no duration and no pitch, so it inherits
+ * <p>A key change carries no duration and no pitch, so it inherits
  * {@link StructuralElement}'s answers for staff position, dots and accidental.
  */
 public class KeyChangeElement extends StructuralElement {
@@ -69,11 +69,11 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Returns a key signature built to be <em>measured</em> rather than stored: one that can
+     * Returns a key change built to be <em>measured</em> rather than stored: one that can
      * report its {@link #extent()} while it sits on no line, by being told the key it changes
      * from instead of resolving one.
      *
-     * <p>This is what lets an edit be sized before it is committed. The key an inserted signature
+     * <p>This is what lets an edit be sized before it is committed. The key an inserted key change
      * will cancel is fixed by the elements <em>before</em> the insertion point, and an insertion
      * does not move those, so the caller can read it off the unmodified line
      * ({@code line.keyAt(insertionIndex - 1)}) and hand it here.
@@ -91,7 +91,7 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Whether writing a key signature at {@code insertionIndex} on {@code line} needs a barline
+     * Whether writing a key change at {@code insertionIndex} on {@code line} needs a barline
      * placed in front of it for this class's position invariant to hold.
      *
      * <p>Two callers have to agree about this and would otherwise each spell out the test: the fit
@@ -100,7 +100,7 @@ public class KeyChangeElement extends StructuralElement {
      * does not fit, or reserves room for a barline that never arrives — neither of which anything
      * would report.
      *
-     * @param line the line the key signature would be written into
+     * @param line the line the key change would be written into
      * @param insertionIndex the index it would land at, at least
      *     {@link Line#FIRST_LEGAL_KEY_CHANGE_INDEX}
      * @return {@code true} when the element already at {@code insertionIndex - 1} is neither a
@@ -128,14 +128,14 @@ public class KeyChangeElement extends StructuralElement {
      * it, so an in-place restore that left it behind would undo a key edit into an element
      * still establishing the key the edit gave it.
      *
-     * @param source the key signature whose key to take; always a {@code KeyChangeElement},
+     * @param source the key change whose key to take; always a {@code KeyChangeElement},
      *               because a copy names an element of the same class
      */
     @Override
     protected void copySubtypeStateFrom(StaffElement source) {
-        var sourceSignature = (KeyChangeElement) source;
-        key = sourceSignature.key;
-        detachedPreviousKey = sourceSignature.detachedPreviousKey;
+        var sourceKeyChange = (KeyChangeElement) source;
+        key = sourceKeyChange.key;
+        detachedPreviousKey = sourceKeyChange.detachedPreviousKey;
     }
 
     /**
@@ -146,7 +146,7 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Returns what this key signature draws and how wide it is — the pair of keys the change runs
+     * Returns what this key change draws and how wide it is — the pair of keys the change runs
      * between, which is the smallest thing that can answer either question.
      *
      * <p>The key changed from is the line's, whenever this element is on one: the position
@@ -155,7 +155,7 @@ public class KeyChangeElement extends StructuralElement {
      * the key it was told when {@link #forMeasurement} built it, which is what lets an edit be
      * sized before it is committed.
      *
-     * <p>See {@code docs/key-signatures.md} for the cancellation policy the accidentals follow.
+     * <p>See {@code docs/key-changes.md} for the cancellation policy the accidentals follow.
      *
      * @return the extent of the change this element makes
      * @throws IllegalStateException if this element is on no line and was not built by
@@ -194,7 +194,7 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * Returns the same width {@link #getContentWidthSs()} reports. A key signature draws nothing
+     * Returns the same width {@link #getContentWidthSs()} reports. A key change draws nothing
      * but its accidentals — no stem, no flag, no dots — so the glyph run and the content are the
      * same extent, and the type's own width is only the floor described in
      * {@code ElementType.computeKeySignatureBoundsSs}.
@@ -219,7 +219,7 @@ public class KeyChangeElement extends StructuralElement {
 
         if (detached == null) {
             throw new IllegalStateException(
-                "key signature for " + key + " is on no line and was not told the key it changes"
+                "key change for " + key + " is on no line and was not told the key it changes"
                     + " from; build it with forMeasurement to measure it before it is committed");
         }
 

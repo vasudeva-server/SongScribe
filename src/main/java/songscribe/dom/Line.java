@@ -314,7 +314,7 @@ public class Line implements LyricRun, SpanLookup {
     /**
      * Returns the key actually in effect at the <em>start</em> of this line: this line's own key
      * when it has one, and otherwise the key in effect at the end of the previous line, which
-     * accounts for any mid-line key signature that line carried.
+     * accounts for any mid-line key change that line carried.
      *
      * <p>Equals {@link #getKey()} whenever that is non-null. Where it is null the answer comes from
      * {@link Song#runningKeyAt}, which is total — a line that establishes no key and has nothing to
@@ -331,9 +331,9 @@ public class Line implements LyricRun, SpanLookup {
      * Returns the key in effect at {@code elementIndex} within this line: {@link #getRunningKey()},
      * overridden by the last {@link KeyChangeElement} at or before that index.
      *
-     * <p>The bound is <em>inclusive</em>: a key signature at {@code elementIndex} is in effect at
+     * <p>The bound is <em>inclusive</em>: a key change at {@code elementIndex} is in effect at
      * {@code elementIndex}. {@code keyAt(0)} therefore always equals {@link #getRunningKey()},
-     * because index 0 can never hold a key signature — see {@link KeyChangeElement}'s position
+     * because index 0 can never hold a key change — see {@link KeyChangeElement}'s position
      * invariant.
      *
      * <p>The domain is an <em>insertion</em> index, so {@link #elementCount()} is valid and means
@@ -354,8 +354,8 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         for (var scanIndex = Math.min(elementIndex, elements.size() - 1); scanIndex > 0; scanIndex--) {
-            if (elements.get(scanIndex) instanceof KeyChangeElement keySignature) {
-                return keySignature.getKey();
+            if (elements.get(scanIndex) instanceof KeyChangeElement keyChange) {
+                return keyChange.getKey();
             }
         }
 
@@ -394,15 +394,15 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * As {@link #keyAtEndOfLineUnder(Key)}, counting only key signatures at or after
+     * As {@link #keyAtEndOfLineUnder(Key)}, counting only key changes at or after
      * {@code fromIndex}.
      *
-     * <p>The bounded form is what an edit inserting a key signature at {@code fromIndex} needs:
-     * the key it establishes reaches the end of the line only when no existing key signature
+     * <p>The bounded form is what an edit inserting a key change at {@code fromIndex} needs:
+     * the key it establishes reaches the end of the line only when no existing key change
      * already stands after it, and {@code runningKey} is then the inserted key rather than the
      * line's own.
      *
-     * @param fromIndex the lowest element index to count a key signature at
+     * @param fromIndex the lowest element index to count a key change at
      * @param runningKey the key to suppose is in effect from {@code fromIndex} onward
      * @return the key in effect after this line's last element under that supposition; never null
      */
@@ -414,19 +414,19 @@ public class Line implements LyricRun, SpanLookup {
 
     /**
      * Returns the key this line will leave off in once {@code [begin, end]} is removed from it:
-     * the last key signature surviving after the range, and otherwise the key in effect
+     * the last key change surviving after the range, and otherwise the key in effect
      * immediately before it.
      *
      * <p>This is what a deletion needs and {@link #keyAtEndOfLineUnder(int, Key)} cannot give.
-     * Removing a mid-line key signature moves the key every following line inherits, so the
+     * Removing a mid-line key change moves the key every following line inherits, so the
      * deletion owes the same cross-line accidental reconciliation an inserted key change owes
      * — {@code AccidentalReconciliation.linesInheriting} takes this key as its starting point.
-     * See {@code docs/key-signatures.md}.
+     * See {@code docs/key-changes.md}.
      *
-     * <p>A deletion that removes no key signature answers with the key the line already leaves
+     * <p>A deletion that removes no key change answers with the key the line already leaves
      * off in, so its caller derives an empty reach and reconciles nothing downstream. That is why
      * the reach is computed unconditionally rather than behind a "does the range hold a key
-     * signature" test.
+     * change" test.
      *
      * @param begin the first element index the deletion removes, already widened to
      *     {@link #effectiveRange}
@@ -1127,7 +1127,7 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p>Answers how far along a line an edit can still govern a pitch. A key change past this
      * index reaches no note, so it says nothing the next line's own key does not say, and the
-     * cautionary already draws that key at this line's end. See {@code docs/key-signatures.md}.
+     * cautionary already draws that key at this line's end. See {@code docs/key-changes.md}.
      *
      * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
      * terminal is a barline or a repeat, so a scan for a note stops before it either way.
@@ -1235,11 +1235,11 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Whether the element at {@code index} is a mid-line key signature.
+     * Whether the element at {@code index} is a mid-line key change.
      *
      * <p>The barline in front of it is not tested. This reports what stands at {@code index}, so a
-     * key signature that reached the line by any route answers {@code true} — testing for the
-     * barline would make a refusal depend on the pair rule in {@code docs/key-signatures.md}
+     * key change that reached the line by any route answers {@code true} — testing for the
+     * barline would make a refusal depend on the pair rule in {@code docs/key-changes.md}
      * rather than help keep it.
      *
      * @param index element index; out of range yields false
@@ -1250,12 +1250,12 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Whether the element at {@code index} is the barline or repeat a key signature sits behind —
-     * the same pair {@link #isKeyChangeAt} names from the key signature's side, seen from the
+     * Whether the element at {@code index} is the barline or repeat a key change sits behind —
+     * the same pair {@link #isKeyChangeAt} names from the key change's side, seen from the
      * barline's.
      *
      * @param index element index; out of range yields false
-     * @return {@code true} when a key signature stands at {@code index + 1} and {@code index}
+     * @return {@code true} when a key change stands at {@code index + 1} and {@code index}
      *     holds the barline or repeat it sits behind
      */
     private boolean isKeyChangeBarlineAt(int index) {
@@ -1268,8 +1268,8 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p>Two things are refused, both because they are half of a pair that only means anything
      * whole: a <b>grace note</b>, which belongs to the host that follows it, and either half of a
-     * <b>key signature and the barline it sits behind</b> — the pair rule in
-     * {@code docs/key-signatures.md}, which {@link #effectiveBegin} deletes whole for the same
+     * <b>key change and the barline it sits behind</b> — the pair rule in
+     * {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the same
      * reason.
      *
      * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
@@ -1296,21 +1296,21 @@ public class Line implements LyricRun, SpanLookup {
      * written over instead.
      *
      * <p>Every way content lands on a line by pointing at it asks this, whatever is being placed:
-     * note entry, a pasted fragment and a mid-line key signature alike. Two slots are refused,
+     * note entry, a pasted fragment and a mid-line key change alike. Two slots are refused,
      * both because they sit <em>inside</em> a pair that only means anything adjacent:
      *
      * <ul>
-     *   <li>in front of a <b>mid-line key signature</b>, which is the gap between it and the
-     *       barline it stands behind. Anything landing there leaves the key signature preceded by
+     *   <li>in front of a <b>mid-line key change</b>, which is the gap between it and the
+     *       barline it stands behind. Anything landing there leaves the key change preceded by
      *       something other than a barline, breaking {@link KeyChangeElement}'s position
-     *       invariant — see {@code docs/key-signatures.md}.</li>
+     *       invariant — see {@code docs/key-changes.md}.</li>
      *   <li>in front of the <b>host of a paired grace note</b>, which is the gap between the
      *       grace note and the note it decorates. The two mean nothing apart, so nothing goes
      *       between them.</li>
      * </ul>
      *
      * <p>Says nothing about which of the remaining slots a particular operation wants. That is
-     * each operation's own rule, and it is asked separately — a key signature is never the first
+     * each operation's own rule, and it is asked separately — a key change is never the first
      * element on a line, for instance, which this does not know or care about.
      *
      * @param index the slot an element would be inserted at, so that it lands in front of the

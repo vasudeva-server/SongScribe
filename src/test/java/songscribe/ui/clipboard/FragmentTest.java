@@ -42,7 +42,7 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * <p>A fragment carries the key of the line it came from, not the key of the line it is pasted
  * into, so the same clipboard content is stranded in one destination and meaningful in another.
  * Both questions a paste asks about that are here: which key the fragment leaves in effect behind
- * it, and which of its own key signatures arrive restating what is already running.
+ * it, and which of its own key changes arrive restating what is already running.
  *
  * <p>The reduction happens before the clones are inserted rather than after, so the accidental
  * reconciliation, the fit measurement and the span reconciliation all read the run that actually
@@ -53,10 +53,10 @@ class FragmentTest extends UnitTest {
     /** The key running at the insertion point in every case here. */
     private static final Key DESTINATION_KEY = Key.NO_ACCIDENTALS;
 
-    /** The key a fragment's own signature establishes when it is meant to be a real change. */
+    /** The key a fragment's own key change establishes when it is meant to be a real change. */
     private static final Key FRAGMENT_KEY = Key.TWO_SHARPS;
 
-    /** A third key, so a fragment holding two signatures has two that differ. */
+    /** A third key, so a fragment holding two key changes has two that differ. */
     private static final Key LATER_FRAGMENT_KEY = Key.THREE_FLATS;
 
     private static final int STAFF_POSITION = 6;
@@ -68,13 +68,13 @@ class FragmentTest extends UnitTest {
     private static final StaffElement.Accidental TRAILING_PRIOR = StaffElement.Accidental.FLAT;
 
     /**
-     * A fragment of {@code note, barline, signature, note} — the shape {@link Fragment#capture}
-     * produces for a range beginning at a key signature, since it widens back over the barline.
+     * A fragment of {@code note, barline, key change, note} — the shape {@link Fragment#capture}
+     * produces for a range beginning at a key change, since it widens back over the barline.
      *
-     * @param key the key the signature establishes
+     * @param key the key the key change establishes
      * @return the fragment, carrying a span over the pair and a span clear of it
      */
-    private static Fragment fragmentWithSignature(Key key) {
+    private static Fragment fragmentWithKeyChange(Key key) {
         var leading = note(STAFF_POSITION);
         var barline = singleBarline();
         var trailing = note(STAFF_POSITION);
@@ -91,7 +91,7 @@ class FragmentTest extends UnitTest {
     }
 
     @Test
-    void testTheKeyAtTheEndIsTheFragmentsLastSignatureWhenItCarriesOne() {
+    void testTheKeyAtTheEndIsTheFragmentsLastKeyChangeWhenItCarriesOne() {
         var leading = note(STAFF_POSITION);
 
         var fragment = new Fragment(
@@ -104,7 +104,7 @@ class FragmentTest extends UnitTest {
     }
 
     @Test
-    void testTheKeyAtTheEndIsTheInsertionKeyWhenTheFragmentCarriesNoSignature() {
+    void testTheKeyAtTheEndIsTheInsertionKeyWhenTheFragmentCarriesNoKeyChange() {
         var fragment = new Fragment(
             List.of(note(STAFF_POSITION)), Arrays.asList(LEADING_PRIOR), List.of());
 
@@ -113,16 +113,16 @@ class FragmentTest extends UnitTest {
 
     @Test
     void testAFragmentStrandingNothingIsReturnedUnchanged() {
-        var fragment = fragmentWithSignature(FRAGMENT_KEY);
+        var fragment = fragmentWithKeyChange(FRAGMENT_KEY);
 
         assertThat(fragment.withoutRedundantKeyChanges(DESTINATION_KEY))
-            .as("the signature changes the key where it lands, so there is nothing to remove")
+            .as("the key change changes the key where it lands, so there is nothing to remove")
             .isSameAs(fragment);
     }
 
     @Test
-    void testASignatureLandingOnTheKeyAlreadyRunningGoesWithItsBarlineAndEverythingOnThem() {
-        var fragment = fragmentWithSignature(FRAGMENT_KEY);
+    void testAKeyChangeLandingOnTheKeyAlreadyRunningGoesWithItsBarlineAndEverythingOnThem() {
+        var fragment = fragmentWithKeyChange(FRAGMENT_KEY);
         var leading = fragment.elements().getFirst();
         var trailing = fragment.elements().getLast();
 

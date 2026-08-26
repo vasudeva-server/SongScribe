@@ -24,36 +24,34 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Key;
-import songscribe.dom.Line;
-import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
-import static songscribe.dom.SongFactory.notesAroundSignature;
+import static songscribe.dom.SongFactory.notesAroundKeyChange;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
 
 /**
- * Reading is the second place the rule that no key signature restates the key in effect before it
+ * Reading is the second place the rule that no key change restates the key in effect before it
  * is enforced, and the only one that can reach a document written before the rule existed.
  *
- * <p>A file can hold such a signature with nothing on screen to say so: it cancels no accidentals
+ * <p>A file can hold such a key change with nothing on screen to say so: it cancels no accidentals
  * and reserves no width, so it draws nothing, while still refusing the two insertion slots
  * flanking it and still being written out again on the next save. No edit can be relied on to
  * reach it, which is why the repair belongs to the load rather than to any one edit.
  *
  * <p>The songs here are built in memory and written out, because a fixture file on disk cannot
- * carry a stranded signature past the very load that would be under test.
+ * carry a stranded key change past the very load that would be under test.
  */
 class MusicXmlStrandedKeyChangeTest extends UnitTest {
 
     /** The document key, which line 0 establishes. */
     private static final Key DOCUMENT_KEY = Key.NO_ACCIDENTALS;
 
-    /** A key a line establishes for itself, and that a signature on it then restates. */
+    /** A key a line establishes for itself, and that a key change on it then restates. */
     private static final Key OWN_KEY = Key.TWO_SHARPS;
 
-    /** A key a mid-line signature really changes to, and that a later signature then restates. */
+    /** A key a mid-line key change really changes to, and that a later key change then restates. */
     private static final Key CHANGED_KEY = Key.THREE_FLATS;
 
     /** What a line holding a note, a stranded pair and another note is left with. */
@@ -64,7 +62,7 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
     private static final int FOURTH_LINE = 3;
 
     @Test
-    void testASignatureRestatingItsOwnLinesKeyIsGoneWithItsBarlineAfterReading() throws Exception {
+    void testAKeyChangeRestatingItsOwnLinesKeyIsGoneWithItsBarlineAfterReading() throws Exception {
         var written = buildSong(
             line -> {
                 line.setKey(DOCUMENT_KEY);
@@ -72,14 +70,14 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
             },
             line -> {
                 line.setKey(OWN_KEY);
-                notesAroundSignature(line, OWN_KEY);
+                notesAroundKeyChange(line, OWN_KEY);
             });
 
         var read = roundTrip(written);
         var repaired = read.getLine(SECOND_LINE);
 
         assertThat(repaired.lastKeyChangeKey())
-            .as("the signature restated the key its own line establishes, so it drew nothing")
+            .as("the key change restated the key its own line establishes, so it drew nothing")
             .isNull();
         assertThat(repaired.effectiveElementCount())
             .as("the barline it stood behind went with it, leaving the notes either side")
@@ -90,7 +88,7 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
     }
 
     @Test
-    void testNoLineHoldsAStrandedSignatureAfterAReadAndARealChangeSurvivesIt() throws Exception {
+    void testNoLineHoldsAStrandedKeyChangeAfterAReadAndARealChangeSurvivesIt() throws Exception {
         var written = buildSong(
             line -> {
                 line.setKey(DOCUMENT_KEY);
@@ -98,10 +96,10 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
             },
             line -> {
                 line.setKey(OWN_KEY);
-                notesAroundSignature(line, OWN_KEY);
+                notesAroundKeyChange(line, OWN_KEY);
             },
-            line -> notesAroundSignature(line, CHANGED_KEY),
-            line -> notesAroundSignature(line, CHANGED_KEY),
+            line -> notesAroundKeyChange(line, CHANGED_KEY),
+            line -> notesAroundKeyChange(line, CHANGED_KEY),
             line -> line.addElement(crotchet()));
 
         var read = roundTrip(written);

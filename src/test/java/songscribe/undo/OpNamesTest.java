@@ -149,8 +149,8 @@ class OpNamesTest extends UnitTest {
 
     @Test
     void testDeleteLabelIsGenericForAMixOfCategories() {
-        // The pair a key signature's deletion actually produces: Line.effectiveBegin drags the
-        // barline the signature sits behind out with it, and the two are in different
+        // The pair a key change's deletion actually produces: Line.effectiveBegin drags the
+        // barline the key change sits behind out with it, and the two are in different
         // categories.
         var types = List.of(ElementType.SINGLE_BARLINE, ElementType.KEY_CHANGE);
 

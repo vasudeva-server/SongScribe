@@ -7,9 +7,9 @@ Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `Key
 
 1. Open the dialog on a line whose running key is D major. The combo lists all
    fifteen signatures and shows D major.
-2. Open it on a key signature standing in the middle of a line. The combo shows the
-   key that signature carries.
-3. Open it at a position with no signature on it. The combo shows the key inherited
+2. Open it on a key change standing in the middle of a line. The combo shows the
+   key that key change carries.
+3. Open it at a position with no key change on it. The combo shows the key inherited
    at that position.
 
 ## The popup fits the display
@@ -33,11 +33,11 @@ Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `Key
 10. Choose a different key and press OK. The score shows that signature and Undo
     offers exactly one new step.
 
-## An existing mid-line signature is changed in place
+## An existing mid-line key change is changed in place
 
-11. Double-click a key signature standing in the middle of a line, choose a
-    different key and press OK. That signature carries the new key; no second
-    signature and no extra barline appear in front of it, and the notes after it
+11. Double-click a key change standing in the middle of a line, choose a
+    different key and press OK. That key change carries the new key; no second
+    key change and no extra barline appear in front of it, and the notes after it
     read in the new key.
 12. Do the same where the line after it inherits its key. That line's header
     changes to the new key as well, and one Undo takes both lines back.
@@ -50,21 +50,21 @@ Exercises: `KeyChangeDialog`, `KeyChangeDialogController`, `KeyChangeSite`, `Key
     key rather than following the line before it. Changing the earlier line's key
     afterwards no longer moves this one.
 
-## A key that strands a mid-line signature removes it
+## A key that strands a mid-line key change removes it
 
-Checks 11–14 open `src/test/resources/fixtures/redundant-key-changes.musicxml`, whose
-line 2 is in A♭ and carries a mid-line signature to D♭, and whose line 3 inherits D♭
-and carries a mid-line signature to C.
+Checks 14–17 open `src/test/resources/fixtures/redundant-key-changes.musicxml`, whose
+line 2 is in A♭ and carries a mid-line key change to D♭, and whose line 3 inherits D♭
+and carries a mid-line key change to C.
 
-11. Double-click line 2's header and choose D♭. The mid-line D♭ signature and the
+14. Double-click line 2's header and choose D♭. The mid-line D♭ key change and the
     barline in front of it disappear, line 2 reads in D♭ throughout, and line 3's
     header still shows D♭.
-12. Undo check 11. The line key, the mid-line signature and its barline all come
+15. Undo check 14. The line key, the mid-line key change and its barline all come
     back on one Undo, and Redo puts all three away again.
-13. Double-click line 2's mid-line D♭ signature and choose A♭ — the key already in
-    effect in front of it. The signature and its barline disappear rather than the
-    signature being rewritten, and line 3's header changes to A♭.
-14. Write a new key signature into line 2's first measure, choosing D♭. It appears
-    with a barline of its own, and the D♭ signature that was already further along
-    the line disappears with its barline, leaving exactly one D♭ signature on the
+16. Double-click line 2's mid-line D♭ key change and choose A♭ — the key already in
+    effect in front of it. The key change and its barline disappear rather than the
+    key change being rewritten, and line 3's header changes to A♭.
+17. Write a new key change into line 2's first measure, choosing D♭. It appears
+    with a barline of its own, and the D♭ key change that was already further along
+    the line disappears with its barline, leaving exactly one D♭ key change on the
     line.

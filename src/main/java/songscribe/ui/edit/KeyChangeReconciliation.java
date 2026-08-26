@@ -36,7 +36,7 @@ import songscribe.layout.AccidentalReconciliation;
  * <p>Six edits move a key: changing a line's own key, writing a mid-line key change, changing one
  * already written, deleting elements, deleting a line, and pasting a fragment that carries a key
  * change. Each reaches the line it lands on plus every line inheriting from it, up to the first
- * line with a key of its own — the stopping rule in {@code docs/key-signatures.md} — which makes
+ * line with a key of its own — the stopping rule in {@code docs/key-changes.md} — which makes
  * them the only edits in the program whose accidental reconciliation spans more than one line.
  * What they share, and what lives here, is the sequence that reach forces:
  *

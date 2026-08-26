@@ -152,7 +152,7 @@ import songscribe.dom.Tie;
  * a key change moves pitches on every line that inherits the key, so it is reconciled over a range
  * of lines — {@link #reconcileReach(List, RestatementRemoval)}, fed by
  * {@link #linesInheriting} — ending where the inheritance chain does. Every other edit is a range
- * of one. See {@code docs/key-signatures.md} for the chain and its stopping rule.
+ * of one. See {@code docs/key-changes.md} for the chain and its stopping rule.
  *
  * <h2>Pure and pre-mutation</h2>
  * This unit reads the live, unmutated line and <b>mutates nothing</b>. Callers apply the returned
@@ -582,7 +582,7 @@ public final class AccidentalReconciliation {
      * <p>A change to a line's own key moves the key it leaves off in only when it holds no mid-line
      * {@link KeyChangeElement}; one that does fixes its end key, so the change reaches no further
      * than that mid-line change does. That is why the tail is derived here rather than asked of the
-     * caller — but an edit that <em>adds or removes</em> a mid-line key signature moves the end key
+     * caller — but an edit that <em>adds or removes</em> a mid-line key change moves the end key
      * in a way only that edit knows, and calls {@link #linesInheriting} with it directly.
      *
      * @param line       The line whose own key changes
@@ -641,7 +641,7 @@ public final class AccidentalReconciliation {
      * <p>The walk stops at the first line that establishes a key of its own — nothing past such a
      * line can move, because its own running key cannot — and at the first line the change leaves
      * running in the key it already ran in, for the same reason. That is the stopping rule
-     * {@code docs/key-signatures.md} states for the inheritance chain; this is the
+     * {@code docs/key-changes.md} states for the inheritance chain; this is the
      * accidental-reconciliation reach it governs.
      *
      * <p>Pure and pre-mutation, like everything else in this class: the lines are read as they
@@ -649,7 +649,7 @@ public final class AccidentalReconciliation {
      *
      * @param line           The line the key change lands on, which is <b>not</b> in the result —
      *                       its own reconciliation is the caller's, and takes a different shape for
-     *                       an inserted key signature than for a change to the line's own key
+     *                       an inserted key change than for a change to the line's own key
      * @param keyAtEndOfLine The key {@code line} will leave off in once the change commits: its
      *                       last mid-line {@link KeyChangeElement}'s key when it holds one, and
      *                       its new running key when it does not
@@ -1102,9 +1102,9 @@ public final class AccidentalReconciliation {
      * mutation, by scanning back over the projected sequence with the rules
      * {@link StaffElement#findEffectiveAccidental} uses on a real line: stop at any barline or
      * repeat, match an earlier position with the same staff position and a non-null explicit
-     * accidental, and otherwise fall back to the key signature.
+     * accidental, and otherwise fall back to the key.
      *
-     * <p>Which key that is depends on the position, because a mid-line key signature changes it —
+     * <p>Which key that is depends on the position, because a mid-line key change changes it —
      * and it is read off the <em>projected</em> sequence, not off the line, because the mutation
      * being previewed may itself add or remove one. That is what keeps this resolver and
      * {@link StaffElement#findEffectiveAccidental} agreeing about a pitch: a preview and the
@@ -1140,7 +1140,7 @@ public final class AccidentalReconciliation {
             }
         }
 
-        // The scan passed every earlier position without meeting a barrier, and a key signature is
+        // The scan passed every earlier position without meeting a barrier, and a key change is
         // a barrier, so there is none in front of this note: the key the line will run in stands.
         return StaffElement.keyAccidentalFor(projection.runningKey(), target.staffPosition);
     }
@@ -1151,7 +1151,7 @@ public final class AccidentalReconciliation {
      *
      * <p>The mirror of {@link Line#keyAt} over a projection rather than over the live element
      * list, and it has to be — the projection is what the line will hold once the mutation
-     * commits, key signatures added or removed included, and the running key it falls back to is
+     * commits, key changes added or removed included, and the running key it falls back to is
      * the one the mutation leaves the line in rather than the one it starts in.
      *
      * @param projection the mutation being previewed
@@ -1162,8 +1162,8 @@ public final class AccidentalReconciliation {
         var sequence = projection.elements();
 
         for (var scanPosition = position; scanPosition >= 0; scanPosition--) {
-            if (sequence.get(scanPosition).element instanceof KeyChangeElement keySignature) {
-                return keySignature.getKey();
+            if (sequence.get(scanPosition).element instanceof KeyChangeElement keyChange) {
+                return keyChange.getKey();
             }
         }
 

@@ -69,7 +69,7 @@ public class Tie extends Span {
      * <ul>
      *   <li>a final double barline ends the piece, so nothing may sound across it
      *       (refs #527);</li>
-     *   <li>a key signature can alter the pitch class the two notes sit at, so the note
+     *   <li>a key change can alter the pitch class the two notes sit at, so the note
      *       after it may no longer sound what the note before it did — and a tie joins two
      *       notes of the same pitch. The rule excludes every key change rather than only
      *       the ones that happen to touch that pitch class, so that whether a tie survives
@@ -240,7 +240,7 @@ public class Tie extends Span {
         // accidental. Only the written duration is then free to change.
         //
         // Deliberately not a getPitch() comparison against the note at the other end. Pitch
-        // resolves an omitted accidental from the key signature and from what a tie carries
+        // resolves an omitted accidental from the key and from what a tie carries
         // across a barline, neither of which newElement can answer for while it is still
         // outside the line — and neither of which a replacement that leaves the staff position
         // and the accidental alone can have changed.

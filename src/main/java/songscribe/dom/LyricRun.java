@@ -357,7 +357,7 @@ public interface LyricRun extends StaffElementRun {
 
         // A connecting glissando joins a note to the note that immediately follows it.
         // Inserting another pitched note simply re-targets it, but inserting anything else
-        // (rest, breath mark, grace note, barline, key signature) leaves it with no valid
+        // (rest, breath mark, grace note, barline, key change) leaves it with no valid
         // target, so remove it from the preceding note.
         if (!getElement(firstInsertedIndex).getType().isPitchedNote() && firstInsertedIndex > 0) {
             var precedingElement = getElement(firstInsertedIndex - 1);

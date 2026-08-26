@@ -286,7 +286,7 @@ public class Ending extends Span {
 
         // Condition 1 — anchor replaced. A note, barline, or repeat (including
         // REPEAT_LEFT_RIGHT) is a valid anchor; only a non-content, non-barline,
-        // non-repeat type (e.g. clef/key signature) invalidates.
+        // non-repeat type (e.g. clef/key change) invalidates.
         if (oldElement == getAnchorElement()) {
             return (newType.isDuration() || newType.isBarLine() || newType.isRepeat())
                 ? EndingEffect.None.INSTANCE

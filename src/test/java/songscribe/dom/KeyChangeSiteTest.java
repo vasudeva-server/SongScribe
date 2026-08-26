@@ -38,8 +38,8 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * there, and says correctly whether writing a given key there would change anything.
  *
  * <p>All three cases run against <b>one line</b>, keyed so that every place answers a different
- * signature: the line's own key, the key a mid-line signature establishes, and the key running at
- * a position between two signatures. A site reading the wrong place would answer one of the other
+ * key: the line's own key, the key a mid-line key change establishes, and the key running at
+ * a position between two key changes. A site reading the wrong place would answer one of the other
  * two rather than something obviously absent, which is what makes the fixture worth its length.
  *
  * <p>What rides on the answer is what the key dialog opens on and what its OK refuses. The key
@@ -56,17 +56,17 @@ class KeyChangeSiteTest extends UnitTest {
     /** The key the test line's header establishes. */
     private static final Key LINE_KEY = Key.TWO_SHARPS;
 
-    /** The key the signature at {@link #EARLIER_SIGNATURE_INDEX} establishes. */
-    private static final Key EARLIER_SIGNATURE_KEY = Key.THREE_FLATS;
+    /** The key the key change at {@link #EARLIER_KEY_CHANGE_INDEX} establishes. */
+    private static final Key EARLIER_KEY_CHANGE = Key.THREE_FLATS;
 
-    /** The key the signature at {@link #LATER_SIGNATURE_INDEX} establishes. */
-    private static final Key LATER_SIGNATURE_KEY = Key.FOUR_SHARPS;
+    /** The key the key change at {@link #LATER_KEY_CHANGE_INDEX} establishes. */
+    private static final Key LATER_KEY_CHANGE = Key.FOUR_SHARPS;
 
-    private static final int EARLIER_SIGNATURE_INDEX = 1;
-    private static final int LATER_SIGNATURE_INDEX = 3;
+    private static final int EARLIER_KEY_CHANGE_INDEX = 1;
+    private static final int LATER_KEY_CHANGE_INDEX = 3;
 
-    /** A position with no signature on it, between the two signatures. */
-    private static final int BETWEEN_SIGNATURES_INDEX = 2;
+    /** A position with no key change on it, between the two key changes. */
+    private static final int BETWEEN_KEY_CHANGES_INDEX = 2;
 
     /** A key no place on the test line is in, so writing it anywhere is a change. */
     private static final Key UNUSED_KEY = Key.ONE_FLAT;
@@ -96,18 +96,20 @@ class KeyChangeSiteTest extends UnitTest {
             new BindingCase(
                 KeyChangeSite.Binding.LINE_KEY, KeyChangeSite::lineKey, LINE_KEY),
             new BindingCase(
-                KeyChangeSite.Binding.EXISTING_SIGNATURE,
-                line -> KeyChangeSite.existingSignature(line, LATER_SIGNATURE_INDEX),
-                LATER_SIGNATURE_KEY),
+                KeyChangeSite.Binding.EXISTING_KEY_CHANGE,
+                line -> KeyChangeSite.existingKeyChange(line, LATER_KEY_CHANGE_INDEX),
+                LATER_KEY_CHANGE
+            ),
             new BindingCase(
                 KeyChangeSite.Binding.NEW_POSITION,
-                line -> KeyChangeSite.newPosition(line, BETWEEN_SIGNATURES_INDEX),
-                EARLIER_SIGNATURE_KEY)
+                line -> KeyChangeSite.newPosition(line, BETWEEN_KEY_CHANGES_INDEX),
+                EARLIER_KEY_CHANGE
+            )
         );
     }
 
     /**
-     * A line in {@link #LINE_KEY} carrying two mid-line key signatures, so that each place has a
+     * A line in {@link #LINE_KEY} carrying two mid-line key changes, so that each place has a
      * different key in effect at the index it is bound to.
      *
      * @return the line, unattached to a song
@@ -117,9 +119,9 @@ class KeyChangeSiteTest extends UnitTest {
 
         line.setKey(LINE_KEY);
         line.addElement(crotchet());
-        line.addElement(new KeyChangeElement(EARLIER_SIGNATURE_KEY));
+        line.addElement(new KeyChangeElement(EARLIER_KEY_CHANGE));
         line.addElement(crotchet());
-        line.addElement(new KeyChangeElement(LATER_SIGNATURE_KEY));
+        line.addElement(new KeyChangeElement(LATER_KEY_CHANGE));
         line.addElement(crotchet());
 
         return line;

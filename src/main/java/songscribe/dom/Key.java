@@ -29,7 +29,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.Copyable;
 
 /**
- * A key signature, identified by its position on the circle of fifths: negative for a flat key,
+ * A key, identified by its position on the circle of fifths: negative for a flat key,
  * positive for a sharp key, zero for no accidentals.
  *
  * <p>The signed count <em>is</em> the key. It carries the accidental type and how many there are
@@ -80,7 +80,7 @@ public enum Key implements Copyable<Key> {
      * The key a new song's line 0 starts in, and the key assumed for a document that names none.
      *
      * <p>Named separately from the value it holds because it states a policy rather than a
-     * signature: a call site that means "whatever a song starts in" must not read as one that
+     * key: a call site that means "whatever a song starts in" must not read as one that
      * means five flats specifically.
      */
     public static final Key DEFAULT = FIVE_FLATS;
@@ -94,7 +94,7 @@ public enum Key implements Copyable<Key> {
     private static final int[] FLAT_STAFF_POSITIONS = {0, -3, 1, -2, 2, -1, 3};
     private static final int[] SHARP_STAFF_POSITIONS = {-4, -1, -5, -2, 1, -3, 0};
 
-    private static final List<Key> ALL_SIGNATURES = List.of(values());
+    private static final List<Key> ALL_KEYS = List.of(values());
 
     private final int fifths;
     private final int accidentalCount;
@@ -116,7 +116,7 @@ public enum Key implements Copyable<Key> {
      *               a magnitude of at most {@value #MAX_ACCIDENTAL_COUNT}
      * @return the key at that position; never null
      * @throws IllegalArgumentException if {@code |fifths|} exceeds
-     *                                  {@value #MAX_ACCIDENTAL_COUNT}, which no key signature
+     *                                  {@value #MAX_ACCIDENTAL_COUNT}, which no key
      *                                  this program can represent ever does
      */
     public static Key ofFifths(int fifths) {
@@ -127,11 +127,11 @@ public enum Key implements Copyable<Key> {
             );
         }
 
-        return ALL_SIGNATURES.get(fifths + MAX_ACCIDENTAL_COUNT);
+        return ALL_KEYS.get(fifths + MAX_ACCIDENTAL_COUNT);
     }
 
     /**
-     * Returns every key signature, exactly once, in fifths order.
+     * Returns every key, exactly once, in fifths order.
      *
      * <p>The same immutable list is returned on every call, so a caller that holds it — a combo
      * model or a cell renderer's entry list — pays for it once and may keep the reference rather
@@ -139,8 +139,8 @@ public enum Key implements Copyable<Key> {
      *
      * @return every {@link Key}, from {@link #SEVEN_FLATS} to {@link #SEVEN_SHARPS}; immutable
      */
-    public static List<Key> allSignatures() {
-        return ALL_SIGNATURES;
+    public static List<Key> allKeys() {
+        return ALL_KEYS;
     }
 
     /**

@@ -50,7 +50,7 @@ import songscribe.ui.edit.InsertionPointMode;
  * dialog in front of a banner still reading "Click or Return to insert, Esc to cancel", telling
  * the user to do something the dialog no longer lets them do.
  *
- * <p>See {@code docs/key-signatures.md} for what a mid-line key change means, and
+ * <p>See {@code docs/key-changes.md} for what a mid-line key change means, and
  * {@link KeyChangeElement}'s position invariant for why some positions are refused.
  */
 public final class KeyChangeAction extends UIAction implements InsertionPointMode.Client {
@@ -65,7 +65,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
             Strings.get(Strings.ACTION_KEY_CHANGE),
             null,
             0,
-            "key-signature-change",
+            "key-change",
             Strings.get(Strings.ACTION_KEY_CHANGE_TOOLTIP),
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
@@ -111,7 +111,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      *       holding no note at all offers no position.</li>
      *   <li><b>The two indices flanking a key change already on the line</b>: immediately before
      *       the barline it sits behind, and immediately after it. The barline and the key
-     *       signature are one unit — {@link Line#effectiveBegin} deletes them together — so the
+     *       change are one unit — {@link Line#effectiveBegin} deletes them together — so the
      *       position in front of the pair goes as well as the one behind it, or a second
      *       barline-plus-key could be dropped directly in front of the first. The third index of
      *       that neighborhood, the gap inside the pair, is {@link Line#canInsertElementAt}'s and

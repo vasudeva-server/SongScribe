@@ -87,7 +87,7 @@ public final class KeyEditFitCalculator {
      * <p>
      * The lines measured are the one before {@code line} (for the cautionary the change creates at
      * its end), {@code line} itself, and every following line that inherits from it. A line that
-     * holds a mid-line key signature still leaves off in that signature's key, so the chain stops
+     * holds a mid-line key change still leaves off in that key change's key, so the chain stops
      * being re-keyed where the document says it stops.
      *
      * @param line               the line that would establish {@code key}
@@ -103,27 +103,27 @@ public final class KeyEditFitCalculator {
     }
 
     /**
-     * Returns whether every line a mid-line key change touches still fits once a key signature for
+     * Returns whether every line a mid-line key change touches still fits once a key change for
      * {@code key} is inserted into {@code line} at {@code insertionIndex}.
      * <p>
      * The barline the editor inserts when the chosen position has none is part of the measurement,
      * because it is part of the edit: {@link KeyChangeElement}'s position invariant puts a key
-     * signature immediately after a barline or repeat, and the editor keeps it there by inserting a
+     * change immediately after a barline or repeat, and the editor keeps it there by inserting a
      * {@link ElementType#SINGLE_BARLINE} rather than by refusing the position. A check that left
      * that barline out would accept an edit that then overflows by exactly its width.
      * <p>
-     * The spliced signature is measured against the key in effect at {@code insertionIndex - 1} on
+     * The spliced key change is measured against the key in effect at {@code insertionIndex - 1} on
      * the line as it stands, which is the key it will cancel: an insertion does not move the
      * elements before it, so that key is settled before the edit is applied. The line's header is
      * untouched — a mid-line change starts part-way along — but the key the line leaves off in
-     * moves when the insertion is the last key signature on it, and the following lines are then
+     * moves when the insertion is the last key change on it, and the following lines are then
      * re-keyed exactly as {@link #lineKeyChangeFits} describes.
      *
-     * @param line               the line the key signature would be inserted into
-     * @param insertionIndex     the index the key signature would land at; at least 1 and at most
-     *                           {@link Line#effectiveElementCount()}, since a key signature is
+     * @param line               the line the key change would be inserted into
+     * @param insertionIndex     the index the key change would land at; at least 1 and at most
+     *                           {@link Line#effectiveElementCount()}, since a key change is
      *                           never the first element on a line
-     * @param key                the key the inserted signature would establish
+     * @param key                the key the inserted key change would establish
      * @param lyricRenderMetrics metrics for measuring the affected lines' syllables
      * @return {@code true} when every affected line still solves feasibly against its song's line
      *         width
@@ -135,7 +135,7 @@ public final class KeyEditFitCalculator {
 
         if (insertionIndex < 1 || insertionIndex > line.effectiveElementCount()) {
             throw new IndexOutOfBoundsException(
-                "key signature insertion index " + insertionIndex + " out of bounds [1, "
+                "key change insertion index " + insertionIndex + " out of bounds [1, "
                     + line.effectiveElementCount() + ']');
         }
 
@@ -150,38 +150,38 @@ public final class KeyEditFitCalculator {
     }
 
     /**
-     * Returns whether every line a mid-line key change touches still fits once the key signature
-     * already standing at {@code signatureIndex} on {@code line} establishes {@code key} instead of
+     * Returns whether every line a mid-line key change touches still fits once the key change
+     * already standing at {@code keyChangeIndex} on {@code line} establishes {@code key} instead of
      * the key it establishes now.
      * <p>
      * A swap, not an insertion, which is why {@link #midLineKeyChangeInsertionFits} is the wrong
      * measurement for it: that one measures the line with a column <em>added</em>, and would refuse
-     * a swap for want of room the line already has. The signature's own column is measured against
+     * a swap for want of room the line already has. The key change's own column is measured against
      * the new key, so it may come out wider or narrower than the one it replaces; no barline is
      * ever part of this edit, because {@link KeyChangeElement}'s position invariant guarantees the
      * one in front of it is already there.
      * <p>
      * The line's header is untouched — a mid-line change starts part-way along — but the key the
-     * line leaves off in moves when no later key signature overrides it, and the following lines
+     * line leaves off in moves when no later key change overrides it, and the following lines
      * are then re-keyed exactly as {@link #lineKeyChangeFits} describes.
      *
-     * @param line               the line the key signature stands on
-     * @param signatureIndex     its index on {@code line}
+     * @param line               the line the key change stands on
+     * @param keyChangeIndex     its index on {@code line}
      * @param key                the key it would establish instead
      * @param lyricRenderMetrics metrics for measuring the affected lines' syllables
      * @return {@code true} when every affected line still solves feasibly against its song's line
      *         width
      */
     public static boolean midLineKeyChangeSwapFits(
-        Line line, int signatureIndex, Key key, LyricRenderMetrics lyricRenderMetrics) {
+        Line line, int keyChangeIndex, Key key, LyricRenderMetrics lyricRenderMetrics) {
 
         var columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
 
         return chainFits(
             line,
-            columnsWithSwappedKeySignature(line, signatureIndex, key, columnBuilder),
+            columnsWithSwappedKeySignature(line, keyChangeIndex, key, columnBuilder),
             line.getRunningKey(),
-            line.keyAtEndOfLineUnder(signatureIndex + 1, key),
+            line.keyAtEndOfLineUnder(keyChangeIndex + 1, key),
             columnBuilder);
     }
 
@@ -333,26 +333,26 @@ public final class KeyEditFitCalculator {
     }
 
     /**
-     * Builds {@code line}'s columns as the editor would leave them with the key signature standing
-     * at {@code signatureIndex} establishing {@code key} instead — every other column exactly as
+     * Builds {@code line}'s columns as the editor would leave them with the key change standing
+     * at {@code keyChangeIndex} establishing {@code key} instead — every other column exactly as
      * the committed layout builds it.
      *
      * @param line           the line as it stands, unmodified
-     * @param signatureIndex the index of the key signature whose key is being swapped
+     * @param keyChangeIndex the index of the key change whose key is being swapped
      * @param key            the key it would establish instead
      * @param columnBuilder  the builder the committed layout would use, so the projected columns
      *                       are measured on the same terms
      * @return the projected columns, in element order
      */
     private static List<ElementColumn> columnsWithSwappedKeySignature(
-        Line line, int signatureIndex, Key key, ElementColumnBuilder columnBuilder) {
+        Line line, int keyChangeIndex, Key key, ElementColumnBuilder columnBuilder) {
 
         var elementCount = line.elementCount();
         var columns = new ArrayList<ElementColumn>(elementCount);
 
         for (var index = 0; index < elementCount; index++) {
-            columns.add(index == signatureIndex
-                ? keySignatureColumn(line, signatureIndex, key, columnBuilder)
+            columns.add(index == keyChangeIndex
+                ? keySignatureColumn(line, keyChangeIndex, key, columnBuilder)
                 : columnBuilder.buildColumn(line.getElement(index), line, index));
         }
 

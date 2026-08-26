@@ -34,7 +34,7 @@ import java.util.List;
  * <p>Every key signature in the program is one of these. A mid-line key signature
  * ({@link KeyChangeElement#extent()}) reads its previous key off the line it sits on; the
  * cautionary at the end of a line ({@code CautionaryKeySignature}) reads it off the key the line
- * leaves in. See {@code docs/key-signatures.md} for the cancellation policy the accidentals follow.
+ * leaves in. See {@code docs/key-changes.md} for the cancellation policy the accidentals follow.
  *
  * @param previousKey the key in effect immediately before the change — the one whose accidentals
  *                    the cancellation policy may call for naturals against

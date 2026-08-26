@@ -31,9 +31,9 @@ import songscribe.smufl.SMuFLGlyph;
 
 /**
  * An element occupying a column of a staff line: a note, a rest, a barline, a breath mark, a
- * mid-line key signature. Abstract, and instantiated only through one of its leaves —
+ * mid-line key change. Abstract, and instantiated only through one of its leaves —
  * {@link NoteElement} for a note, {@link StructuralElement} for everything non-sounding,
- * {@link KeyChangeElement} for a key signature — so that the class always matches the
+ * {@link KeyChangeElement} for a key change — so that the class always matches the
  * {@link ElementType}, which {@link ElementType#newInstance()} is the general way to get right.
  *
  * <p>Abstract for {@link #copySubtypeStateFrom}'s sake: a subtype that adds state must be made to
@@ -121,7 +121,7 @@ public abstract class StaffElement extends LineElement implements Cloneable {
      *
      * <p>A factory rather than a constructor because the class of the result follows
      * {@code targetType} rather than the class of {@code source} — a rest is a
-     * {@link StructuralElement} and a key signature a {@link KeyChangeElement} however the
+     * {@link StructuralElement} and a key change a {@link KeyChangeElement} however the
      * element it displaces was built. {@link ElementType#newInstance()} is what settles that,
      * so the conversion and the type registry cannot disagree about which class a type gets.
      *
@@ -839,10 +839,10 @@ public abstract class StaffElement extends LineElement implements Cloneable {
      * <ol>
      *   <li>It reaches a <em>barrier</em> — an element whose
      *       {@link ElementType#cancelsAccidentals()} is true — and stops there, falling back to
-     *       the key signature. That method is shared with the projected-layout resolver in
+     *       the key. That method is shared with the projected-layout resolver in
      *       {@code AccidentalReconciliation}, so both agree on what cancels. When the barrier is
      *       itself a {@link KeyChangeElement}, its key <em>is</em> the key in effect at
-     *       {@code index}: a key signature is a barrier, so no later one can sit between the two
+     *       {@code index}: a key change is a barrier, so no later one can sit between the two
      *       or the scan would have stopped at that one first. Reading it off the barrier is what
      *       lets this path — which runs per note, per layout pass and per {@link #getPitch()} —
      *       avoid walking the same elements a second time through {@link Line#keyAt}. A barline
@@ -850,7 +850,7 @@ public abstract class StaffElement extends LineElement implements Cloneable {
      *   <li>It finds an earlier element at the same staff position carrying an explicit
      *       accidental, and returns it. Matching is by staff position, so the scan is
      *       octave-specific, as staff notation requires.</li>
-     *   <li>It runs out of preceding elements and falls back to the key signature.</li>
+     *   <li>It runs out of preceding elements and falls back to the key.</li>
      * </ol>
      *
      * <p>A barrier is <em>escaped</em> when this note ends a tie whose anchor sits before the
@@ -878,8 +878,8 @@ public abstract class StaffElement extends LineElement implements Cloneable {
                     var anchor = tieAnchorBefore(targetLine, tieEndElement, scanIndex);
 
                     if (anchor == null) {
-                        if (element instanceof KeyChangeElement keySignature) {
-                            return keyAccidentalFor(keySignature.getKey(), staffPosition);
+                        if (element instanceof KeyChangeElement keyChange) {
+                            return keyAccidentalFor(keyChange.getKey(), staffPosition);
                         }
 
                         return keyInEffectAt(targetLine, index);
@@ -958,10 +958,10 @@ public abstract class StaffElement extends LineElement implements Cloneable {
     }
 
     /**
-     * Returns the accidental the key signature puts in effect for this note's pitch class at
+     * Returns the accidental the key puts in effect for this note's pitch class at
      * {@code index} within {@code targetLine}.
      *
-     * <p>A line may carry several keys — its own, and one per mid-line key signature — so which
+     * <p>A line may carry several keys — its own, and one per mid-line key change — so which
      * one applies depends on {@code index}. {@link Line#keyAt} answers that; this method turns
      * the answer into an accidental for this note's pitch class.
      *

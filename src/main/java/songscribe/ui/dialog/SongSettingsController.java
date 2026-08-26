@@ -208,7 +208,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
      * {@code docs/mutations.md}.
      *
      * <p>This dialog does not set a key. A song has no key of its own: every line carries one, set
-     * from the score rather than from Song Settings. See {@code docs/key-signatures.md}.
+     * from the score rather than from Song Settings. See {@code docs/key-changes.md}.
      *
      * @param song  the song to apply the tempo to
      * @param tempo the tempo the controls describe

@@ -198,7 +198,7 @@ emitted anyway, because output is for everyone.
 The position invariant for a mid-line key change is **enforced on read**, because
 this is the one entry point that takes input from a file; the editing UI maintains
 the invariant rather than re-checking it. See
-[key-signatures.md](key-signatures.md).
+[key-changes.md](key-changes.md).
 
 ## The parser fetches nothing
 

@@ -42,9 +42,9 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * What a reconciliation does about the elements an edit takes off a line, and how far the deletion
  * of a whole line reaches.
  *
- * <p>A mid-line key signature and the barline it stands behind are both accidental barriers, so
+ * <p>A mid-line key change and the barline it stands behind are both accidental barriers, so
  * every note after the pair resolved against a context the pair began. Removing the pair — which
- * is what an edit does to a key signature its own key move strands — hands those notes back to
+ * is what an edit does to a key change its own key move strands — hands those notes back to
  * whatever stands earlier on the line, and that moves sounding pitches. Each fixture here is that
  * one situation: an explicit accidental before the pair and a bare note at the same staff position
  * after it, so a projection that fails to leave the pair out reports no change where a pitch is
@@ -77,11 +77,11 @@ class AccidentalReconciliationTest extends UnitTest {
     private static final int SHARED_STAFF_POSITION = 6;
 
     private static final int BARLINE_INDEX = 1;
-    private static final int SIGNATURE_INDEX = 2;
+    private static final int KEY_CHANGE_INDEX = 2;
 
     /** The second pair's indices, on the fixture that holds two of them. */
     private static final int SECOND_BARLINE_INDEX = 4;
-    private static final int SECOND_SIGNATURE_INDEX = 5;
+    private static final int SECOND_KEY_CHANGE_INDEX = 5;
 
     /**
      * A line in {@link #KEY_BEFORE} holding {@code note, barline, key change, note}, where the
@@ -108,10 +108,10 @@ class AccidentalReconciliationTest extends UnitTest {
 
     /**
      * A three-line song: line 0 in {@link #PLAIN_KEY}, line 1 in {@link #OTHER_KEY} of its own,
-     * and line 2 inheriting from line 1 while carrying a mid-line signature restating
+     * and line 2 inheriting from line 1 while carrying a mid-line key change restating
      * {@link #PLAIN_KEY}.
      *
-     * <p>That last signature is meaningful while line 1 stands and stranded the moment it goes,
+     * <p>That last key change is meaningful while line 1 stands and stranded the moment it goes,
      * which is the whole of what a line deletion's reach has to notice.
      *
      * @return the song
@@ -139,7 +139,7 @@ class AccidentalReconciliationTest extends UnitTest {
 
         assertThat(AccidentalReconciliation.ReachedLine.reKeyed(line, PLAIN_KEY).removedRanges())
             .as("the key change restates the key the line will run in, so it goes with its barline")
-            .containsExactly(new StaffElementRun.EffectiveRange(BARLINE_INDEX, SIGNATURE_INDEX));
+            .containsExactly(new StaffElementRun.EffectiveRange(BARLINE_INDEX, KEY_CHANGE_INDEX));
 
         assertThat(AccidentalReconciliation.ReachedLine.of(line, List.of()).removedRanges())
             .as("an ordinary in-place modification removes nothing")
@@ -149,7 +149,7 @@ class AccidentalReconciliationTest extends UnitTest {
     @Test
     void testARemovedRangeIsLeftOutOfTheProjectionSoTheNotesAfterItKeepTheirPitch() {
         var line = barrierLine(StaffElement.Accidental.SHARP);
-        var trailingNote = line.getElement(SIGNATURE_INDEX + 1);
+        var trailingNote = line.getElement(KEY_CHANGE_INDEX + 1);
 
         var reconciled = AccidentalReconciliation.reconcileReach(
             List.of(AccidentalReconciliation.ReachedLine.reKeyed(line, PLAIN_KEY)),
@@ -190,8 +190,8 @@ class AccidentalReconciliationTest extends UnitTest {
         line.addElement(keyChange(KEY_BEFORE));
         line.addElement(note(SHARED_STAFF_POSITION));
 
-        var middleNote = line.getElement(SIGNATURE_INDEX + 1);
-        var trailingNote = line.getElement(SECOND_SIGNATURE_INDEX + 1);
+        var middleNote = line.getElement(KEY_CHANGE_INDEX + 1);
+        var trailingNote = line.getElement(SECOND_KEY_CHANGE_INDEX + 1);
 
         // The mid-line key edit that removes the key change it was pointed at, described as the
         // removal it is: the pair goes and nothing takes its place, while the pair further along
@@ -200,10 +200,10 @@ class AccidentalReconciliationTest extends UnitTest {
             line,
             new AccidentalReconciliation.Insertion(
                 BARLINE_INDEX,
-                new InsertionSpacingCalculator.DeletedRange(BARLINE_INDEX, SIGNATURE_INDEX),
+                new InsertionSpacingCalculator.DeletedRange(BARLINE_INDEX, KEY_CHANGE_INDEX),
                 AccidentalReconciliation.ArrivingElements.NONE),
             List.of(new StaffElementRun.EffectiveRange(
-                SECOND_BARLINE_INDEX, SECOND_SIGNATURE_INDEX)));
+                SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX)));
 
         assertThat(AccidentalReconciliation.reconcile(
             reached, AccidentalReconciliation.RestatementRemoval.NONE))
@@ -232,7 +232,7 @@ class AccidentalReconciliationTest extends UnitTest {
             .isEqualTo(PLAIN_KEY);
         assertThat(reach.getFirst().removedRanges())
             .as("under that key the mid-line key change restates what is already in effect")
-            .containsExactly(new StaffElementRun.EffectiveRange(BARLINE_INDEX, SIGNATURE_INDEX));
+            .containsExactly(new StaffElementRun.EffectiveRange(BARLINE_INDEX, KEY_CHANGE_INDEX));
     }
 
     @Test

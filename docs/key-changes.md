@@ -1,4 +1,4 @@
-# Key Signatures
+# Key Changes
 
 How a key reaches a line, what a change to one costs, and why key edits reach
 further than any other edit in the program. For the key-versus-signature naming
@@ -221,7 +221,7 @@ disappears, not as a menu item that will not run.
 ## Changing a key changes pitches
 
 A key change cancels accidentals the way a barline does: a later note at the same
-staff position inherits nothing across it and falls back to the signature.
+staff position inherits nothing across it and falls back to the key.
 
 And because it moves what every uncovered note sounds, it is reconciled like any
 other edit that disturbs accidental context — except in reach. Its reach is the

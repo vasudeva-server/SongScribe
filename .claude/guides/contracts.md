@@ -257,6 +257,6 @@ it. State it, get it agreed, make it its own change. Never adjust one mid-fix to
 turn a test green.
 
 For contracts encoding a musical judgment rather than a mechanical fact —
-tuplets, beaming, ties, melisma placement, key signatures — propose the promise
+tuplets, beaming, ties, melisma placement, key changes — propose the promise
 and get it confirmed before writing it. A confident, plausible, wrong contract is
 worse than none, because everything downstream derives from it.

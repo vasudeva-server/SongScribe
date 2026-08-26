@@ -125,10 +125,10 @@ public final class StaffElementFactory {
     }
 
     /**
-     * A mid-line key signature establishing {@code key}.
+     * A mid-line key change establishing {@code key}.
      *
      * @param key the key it establishes
-     * @return the key signature
+     * @return the key change
      */
     public static KeyChangeElement keyChange(Key key) {
         return new KeyChangeElement(key);

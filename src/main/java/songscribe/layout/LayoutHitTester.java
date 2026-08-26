@@ -163,7 +163,7 @@ public final class LayoutHitTester {
         }
 
         var element = line.getElement(index);
-        return element instanceof KeyChangeElement keySignature ? keySignature : null;
+        return element instanceof KeyChangeElement keyChange ? keyChange : null;
     }
 
     // ==========================================================================
@@ -453,7 +453,7 @@ public final class LayoutHitTester {
         // dot or accidental does not shrink the room, but the glyphs themselves do — starting the
         // room at the previous element's own origin would center the preview over that element's
         // notehead rather than in the space beside it (refs #689). The width is the element's, not
-        // its type's: a mid-line key signature's type width is only a one-accidental floor, so the
+        // its type's: a mid-line key change's type width is only a one-accidental floor, so the
         // room would otherwise start inside the signature and the marker land on its accidentals.
         var roomStartSs = prevColumn.getXSs() + prevElement.getGlyphWidthSs();
 

@@ -116,9 +116,9 @@ public final class OpNames {
      * rather than the generic label.
      *
      * <p>{@code types} is what the user selected, not what the deletion will take: a key
-     * signature drags the barline it sits behind out with it, and that barline is in a
+     * change drags the barline it sits behind out with it, and that barline is in a
      * category of its own. Naming the step from the widened range would report
-     * {@code Delete Elements} for a gesture the user made on one key signature.
+     * {@code Delete Elements} for a gesture the user made on one key change.
      *
      * @param types the types of the elements being deleted, in any order; must not be
      *              empty — a deletion of nothing has no name, and nothing is promised for

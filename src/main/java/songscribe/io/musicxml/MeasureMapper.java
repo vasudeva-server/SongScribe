@@ -27,7 +27,6 @@ import org.audiveris.proxymusic.Attributes;
 import org.audiveris.proxymusic.Barline;
 import org.audiveris.proxymusic.Direction;
 import org.audiveris.proxymusic.FormattedTextId;
-import org.audiveris.proxymusic.LeftCenterRight;
 import org.audiveris.proxymusic.Metronome;
 import org.audiveris.proxymusic.MetronomeNote;
 import org.audiveris.proxymusic.Note;
@@ -42,7 +41,6 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.Annotation;
-import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
@@ -67,7 +65,7 @@ import songscribe.io.ReadAnnotation;
 
 /**
  * Maps the first {@code <part>} of an unmarshalled {@code <score-partwise>} onto the
- * {@link Song}'s {@link Line}s: the line split, the running key signature, the barlines
+ * {@link Song}'s {@link Line}s: the line split, the running key, the barlines
  * and voltas, the measure-level {@code <direction>}s (hairpins, tempo marks, metric
  * modulations, annotations) and the per-note range spans. Each {@code <note>} itself is
  * mapped by {@link NoteMapper}.
@@ -230,7 +228,7 @@ final class MeasureMapper {
      *         converted to its replacement
      * @throws SAXException if the document is corrupt (a tuplet with no valid span,
      *                      a note before any line has been started, a {@code <fifths>} no key
-     *                      signature can hold, or a mid-measure {@code <key>} with no barline
+     *                      can hold, or a mid-measure {@code <key>} with no barline
      *                      before it)
      */
     static boolean map(ScorePartwise score, Song song) throws SAXException {
@@ -315,7 +313,7 @@ final class MeasureMapper {
     }
 
     // -------------------------------------------------------------------------
-    // Lines and key signature
+    // Lines and keys
     // -------------------------------------------------------------------------
 
     /**
@@ -401,7 +399,7 @@ final class MeasureMapper {
             return;
         }
 
-        requireKeySignaturePosition(line);
+        requireKeyChangePosition(line);
         line.addElement(new KeyChangeElement(key));
     }
 
@@ -417,7 +415,7 @@ final class MeasureMapper {
      * @throws SAXException if {@code line} is empty, or its last element is neither a barline nor
      *                      a repeat
      */
-    private static void requireKeySignaturePosition(Line line) throws SAXException {
+    private static void requireKeyChangePosition(Line line) throws SAXException {
         var elementCount = line.elementCount();
 
         if (elementCount == 0) {

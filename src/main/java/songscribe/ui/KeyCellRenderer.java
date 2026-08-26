@@ -76,7 +76,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
         // placed above — reads its glyph off the array its sign selects. Iterating the keys rather
         // than the counts means a key with no glyph is caught here, at class load, instead of as a
         // null cell during a render.
-        for (var key : Key.allSignatures()) {
+        for (var key : Key.allKeys()) {
             if (key == Key.NO_ACCIDENTALS) {
                 continue;
             }
@@ -138,7 +138,7 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
             var maxGlyphHeight = 0.0;
             var maxLabelWidth = 0;
 
-            for (var key : Key.allSignatures()) {
+            for (var key : Key.allKeys()) {
                 var glyph = GLYPHS.get(key);
 
                 if (glyph == null) {

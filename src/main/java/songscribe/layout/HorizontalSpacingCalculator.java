@@ -292,7 +292,7 @@ public final class HorizontalSpacingCalculator {
         /**
          * Classifies the gap between two adjacent columns.
          *
-         * <p>A key signature's position invariant guarantees a barline or repeat in front of it,
+         * <p>A key change's position invariant guarantees a barline or repeat in front of it,
          * so the pair is named by {@code curr} alone.
          *
          * @param prev the column on the left of the gap

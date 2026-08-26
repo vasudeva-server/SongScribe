@@ -34,7 +34,7 @@ import songscribe.util.GraphicsState;
 /**
  * The insertion-point marker: a single rounded vertical line spanning every staff position a
  * note could occupy, shown at the line and index {@code InsertionPointMode} is currently
- * tracking as the placement target — for a paste, a key-signature change, or any other client
+ * tracking as the placement target — for a paste, a key change, or any other client
  * of that mode.
  * <p>
  * Exactly one instance exists for the lifetime of the owning {@link ScoreView}; it is retargeted

@@ -75,7 +75,7 @@ import songscribe.smufl.SMuFLGlyph;
  *       at, and reused when it is already an invisible right barline.</li>
  * </ul>
  *
- * <p>What does <em>not</em> dissolve is the key-signature carry. A MusicXML key persists
+ * <p>What does <em>not</em> dissolve is the key carry. A MusicXML key persists
  * until restated, so which lines and which mid-line key changes emit a {@code <key>} is genuine
  * sequential state about the emitted format, not a streaming workaround — it lives in
  * {@link ScoreState} alongside the measure counter.
@@ -107,7 +107,7 @@ final class MeasureBuilder {
 
     /**
      * The two values a line-by-line build genuinely carries forward: the measure counter
-     * (measure numbers are continuous across lines) and the key signature currently in
+     * (measure numbers are continuous across lines) and the key currently in
      * effect.
      *
      * <p>Measure 1 emits the key the song starts in through the full {@code <attributes>} block;
@@ -136,7 +136,7 @@ final class MeasureBuilder {
     }
 
     /**
-     * Creates the running state for a whole-song build, with the key signature initialized to the
+     * Creates the running state for a whole-song build, with the key initialized to the
      * key {@code song} starts in — the same value measure 1's {@code <attributes>} carries, so the
      * seed and the first written {@code <key>} cannot disagree.
      *
@@ -243,7 +243,7 @@ final class MeasureBuilder {
      * inserts it at index 0 of the first measure, ahead of the {@code <print>}.
      *
      * @param context the shared build context
-     * @param state the running measure counter and key signature, advanced by this call
+     * @param state the running measure counter and key, advanced by this call
      * @param line the line to build measures for
      * @param lineIndex the index of {@code line} within the song
      * @return what the line contributed

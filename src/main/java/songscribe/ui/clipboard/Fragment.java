@@ -100,13 +100,13 @@ public record Fragment(
      * that range.
      *
      * <p>The captured range is first widened at both ends — past a trailing breath mark or a key
-     * signature standing behind a barline ({@link Line#effectiveEnd}), and back over the barline
-     * in front of a key signature ({@link Line#beginIncludingKeyChangeBarline}) — and then
+     * change standing behind a barline ({@link Line#effectiveEnd}), and back over the barline
+     * in front of a key change ({@link Line#beginIncludingKeyChangeBarline}) — and then
      * trimmed of an orphan paired grace note at the tail. When the entire range is that one
      * orphan grace note ({@code begin == end}), the trim drops it entirely and
      * capture returns an empty {@code Fragment}.
      *
-     * <p><b>Widening the head is what keeps a pasted key signature legal.</b> A key signature is
+     * <p><b>Widening the head is what keeps a pasted key change legal.</b> A key change is
      * never the first element on a line and always follows a barline or a repeat
      * ({@link KeyChangeElement}'s position invariant); capturing one without the
      * barline in front of it would put a fragment on the clipboard that violates that invariant
@@ -135,7 +135,7 @@ public record Fragment(
     public static Fragment capture(Line line, int begin, int end) {
         // Not effectiveRange: that also reaches back over a paired grace note, which a copy must
         // not do. A grace note cannot outlive its host, so a capture starting at a host leaves it
-        // behind; a key signature cannot exist without its barline, so a capture starting at one
+        // behind; a key change cannot exist without its barline, so a capture starting at one
         // takes the barline too.
         var effectiveBegin = line.beginIncludingKeyChangeBarline(begin);
         var effectiveEnd = line.effectiveEnd(end);

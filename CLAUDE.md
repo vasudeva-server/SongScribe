@@ -39,7 +39,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](docs/zoom.md).
 - **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Messages](.claude/guides/messages.md) for the conventions, [The Message Bus](docs/messages.md) for how delivery, subscriber lifetime and scopes behave.
 - **Undo — `Mutation` records**, modification brackets, or `SongDidChangeNotification`: [Mutation Framework](docs/mutations.md).
-- **Key signatures** — line keys and inheritance, mid-line key changes, cautionary rendering, or the cancellation policy: [Key Signatures](docs/key-signatures.md).
+- **Key changes** — line keys and inheritance, mid-line key changes, cautionary rendering, or the cancellation policy: [Key Changes](docs/key-changes.md).
 - **`JOptionPane`-based alerts, confirms, or input prompts**: [OptionDialogs](.claude/guides/option-dialogs.md).
 - **Complex dialogs** (`BaseDialog`, `StandardDialog`, tabs, validation/commit lifecycle), **or the controller behind one** (`DialogOps`, `DialogController`, any `*Controller` in `ui/dialog/`): [Dialogs](.claude/guides/dialogs.md). It states what a dialog may and may not touch, which is the rule a controller exists to keep, and that the controller rather than the dialog is what carries tests.
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.claude/guides/prefs.md).

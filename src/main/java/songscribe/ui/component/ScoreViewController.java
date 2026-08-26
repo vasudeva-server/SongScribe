@@ -1247,16 +1247,16 @@ public final class ScoreViewController {
      *
      * <p>The range is widened exactly as {@link Line#deleteRange} widens it — a paired grace
      * note before the range does not survive its host, and a trailing breath mark, or the barline a
-     * key signature sits behind, goes with the range — so the accidentals offered are the ones the
+     * key change sits behind, goes with the range — so the accidentals offered are the ones the
      * deletion really removes.
      *
-     * <p><b>The reach is more than this line.</b> A deletion that takes a mid-line key signature
+     * <p><b>The reach is more than this line.</b> A deletion that takes a mid-line key change
      * with it moves the key every following line inherits, so it owes the same cross-line
      * reconciliation an inserted key change owes, ending where the inheritance chain does. A
-     * deletion that removes no key signature leaves the line's end key where it was, so
+     * deletion that removes no key change leaves the line's end key where it was, so
      * {@link AccidentalReconciliation#linesInheriting} reaches nothing and the reach is this line
      * alone — which is why it is computed unconditionally rather than behind a test for what the
-     * range holds. See {@code docs/key-signatures.md}.
+     * range holds. See {@code docs/key-changes.md}.
      *
      * <p>One dialog covers the whole of it: the elements going away and the accidentals the
      * reconciliation clears on every reached line are asked about together.
@@ -1720,7 +1720,7 @@ public final class ScoreViewController {
 
         // The whole range the replace really removes, widened at both ends exactly as a plain
         // deletion is. Using the raw begin here understated it: the deletion this authorizes also
-        // takes the barline in front of a key signature at begin, so the spacing was measured for
+        // takes the barline in front of a key change at begin, so the spacing was measured for
         // a smaller range than the one that goes.
         var effective = line.effectiveRange(range.begin(), range.end());
         var begin = effective.begin();

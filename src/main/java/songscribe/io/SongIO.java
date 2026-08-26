@@ -200,7 +200,7 @@ public final class SongIO {
          * {@code LineIO} refused to load.
          *
          * @return the document-level key
-         * @throws SAXException if the pair is not a key signature at all
+         * @throws SAXException if the pair is not a key at all
          */
         private Key documentKey() throws SAXException {
             return documentKeyType.keyFor(LOG, documentKeyAccidentalCount);
@@ -216,7 +216,7 @@ public final class SongIO {
          * later keyless line genuinely inherits.
          *
          * @param lines the parsed lines, in document order
-         * @throws SAXException if the document-level key tags are not a key signature
+         * @throws SAXException if the document-level key tags are not a key
          */
         private void applyDocumentKeyToFirstLine(List<Line> lines) throws SAXException {
             if (lines.isEmpty()) {

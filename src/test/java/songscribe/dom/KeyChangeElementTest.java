@@ -50,7 +50,7 @@ class KeyChangeElementTest extends UnitTest {
      */
     private static final Key TARGET_KEY = Key.THREE_FLATS;
 
-    /** One way of copying a key signature, named for the assertion failure message. */
+    /** One way of copying a key change, named for the assertion failure message. */
     private record CopyRoute(String description, UnaryOperator<KeyChangeElement> copy) {}
 
     static Stream<CopyRoute> copyRoutes() {
