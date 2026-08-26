@@ -10,7 +10,10 @@ disable-model-invocation: true
 
 Take one target from *whatever it is now* to *illegal states unrepresentable,
 contracts where fan-in earns them, tests only where the design cannot enforce the
-promise*. One commit per step, resumable across context clears.
+promise*. One stash snapshot per step, resumable across context clears.
+
+**A pass never commits.** It leaves its work in the tree and snapshots each step
+to the stash. Committing is the user's, whenever they choose.
 
 Paths in this file are relative to `.claude/skills/design-pass/`.
 
@@ -27,9 +30,10 @@ at the test step in volume means the earlier steps were skipped.**
 
 ### Doctrine — read before step 2, do not paraphrase
 
-- **`~/.claude/guides/design.md`** — the order of attack, types over tests,
-  boundaries, guards, `@Nullable`, extraction, contract depth, the testing floor.
-  Everything here serves it.
+- **`~/.claude/guides/design.md`** — the architecture gate and the order of
+  attack, class design, types over tests, boundaries, guards, `@Nullable`,
+  scoped globals, extraction, contract depth, the testing floor and the gate
+  that proposes tests before they are written. Everything here serves it.
 - **`.claude/guides/contracts.md`** — the Javadoc form of a contract.
 - **`.claude/guides/testing-common.md`** — where cases come from, triage,
   diagnostics.
@@ -80,7 +84,7 @@ names a whole package, each list is that one directory.
 
 A row marked *(undecomposed)* is a directory nobody has read yet. **Split it on
 the read**, never before: step 1 names the systems the directory actually holds,
-you take one of them, and step 11 rewrites the register's single row into those
+you take one of them, and step 12 rewrites the register's single row into those
 systems. Splitting from a directory listing predicts boundaries instead of
 finding them, which is the error the register exists to avoid.
 
@@ -94,8 +98,8 @@ row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md
    **Resume inside that step, not at the top of it.** A step's row carries a
    *Plan* link once the step has one (see *Steps decompose; the record links
    where*). Open that plan and take the first phase its dashboard does not mark
-   ✅. Restarting a step whose first three phases are already committed redoes
-   work the tree already holds, and the redo is invisible until it conflicts.
+   ✅. Restarting a step whose first three phases are already done redoes work
+   the tree already holds, and the redo is invisible until it conflicts.
 2. **Claim what the register holds for this pass.** Open
    `plans/design-pass-register.md` and read *Carry-forward findings*. Every item
    tagged for this pass **is this pass's work**, established by an earlier pass
@@ -108,9 +112,15 @@ row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md
    An item you conclude this pass should not act on goes **back** to the register
    with what you learned, retagged to whatever will actually reach the code. It is
    never dropped, and whether to act is the user's call, not yours.
-3. **Confirm the tree is clean.** `git status`. Uncommitted work from another
-   task makes the per-step commits wrong; stop and say so.
-4. **Verify the branch.** Feature branches come off `develop`, never `main`.
+3. **Confirm the tree is clean.** `git status`. The pass leaves its own work
+   uncommitted, so anything already in the tree becomes indistinguishable from
+   it; stop and say so.
+4. **Verify the branch, and stop if it is a base branch.** A pass runs on its
+   own branch, off `develop`. If `git rev-parse --abbrev-ref HEAD` says
+   `develop` or `main`, **say so and stop** — do not offer to branch, and do not
+   proceed while waiting for an answer. A pass leaves a large uncommitted tree,
+   and on a base branch that tree is in everyone's way and cannot be set aside
+   without taking the branch with it.
 5. **Capture the baseline into the record's *Before* column**, before touching
    anything. `MAIN` and `TEST` are the two paths from the table, so the same
    commands serve a whole package and a handful of named types alike:
@@ -118,7 +128,7 @@ row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md
    ```bash
    MAIN=(<resolved production paths>)   # files, a directory, or a mix
    TEST=(<resolved test paths>)
-   git rev-parse --short HEAD           # record as the start commit
+   git rev-parse --short HEAD           # the commit the pass starts from
    find "${MAIN[@]}" -name '*.java' | xargs cat | wc -l
    find "${TEST[@]}" -name '*.java' | xargs cat | wc -l
    ```
@@ -155,15 +165,44 @@ named explicitly, and an instruction to report and stop rather than widen the
 search. Include *"Read `.claude/rules/serena.md` and follow it for all Java
 exploration and refactoring."*
 
-**Commit.** Record the inventory in the record file.
+**Snapshot.** Record the inventory in the record file.
 
-## Step 2: Make illegal states unrepresentable
+## Step 2: Class design
+
+**Inline. Never delegated.** Step 1 may be handed to a subagent because it
+reports facts; this step decides what exists, and a hierarchy a subagent decided
+is one nobody can audit afterward.
+
+Against step 1's inventory, three questions:
+
+1. **Does each concept in the target have exactly one type?** A type that is two
+   concepts splits; two types that are one concept dissolve into one; a concept
+   with no type at all is named here. Dissolving `KeyChange` into `Key` is the
+   pattern, and it deleted the whole of a later step's work rather than adding
+   to it.
+2. **What varies?** That is what a hierarchy or interface is shaped around. What
+   was deliberately *not* abstracted is stated too — an absence cannot be
+   approved unless it is named.
+3. **Which type owns each invariant step 1 found uncarried?** That answer is
+   step 3's input. Making an invariant unrepresentable on the wrong type moves
+   the runtime check rather than retiring it.
+
+**Where the answer is "the types are wrong", this is the architecture gate** in
+`design.md`: a summary, a diagram sized to the work, and the two or three forks
+with what each buys and costs. A single coherent proposal leaves the user
+nothing to do but agree. The decision is theirs, and every step below is derived
+from the answer — so a change here is made before step 3 begins, not alongside
+it.
+
+**Snapshot.**
+
+## Step 3: Make illegal states unrepresentable
 
 **Inline. Before any contract is written**, because every invariant a type
 carries is a contract clause that never has to be written and a test that never
 has to exist.
 
-From step 1's inventory, in this order:
+From step 1's inventory, over the type set step 2 settled, in this order:
 
 1. **Closed enums** where the domain is a known finite set currently guarded by a
    validating constructor.
@@ -188,19 +227,20 @@ inventory of `@Nullable`s and guards.
 
 **Then delete the guards it retired**, and the tests that were pinned to them.
 
-**Commit per change or per coherent group.**
+**Snapshot per change or per coherent group.**
 
-## Step 3: Extraction and placement
+## Step 4: Extraction and placement
 
 Domain-defined operations move onto the type that owns them — statable without
 naming any caller, named as a verb on its arguments. A `*Utils` or `*Helper`
 static bag in the target is a finding: its contents are redistributed to the
-types owning the invariants, and anything left that names no owner is a missing
-concept, raised as such.
+types owning the invariants, and anything left that names no owner **goes back
+to step 2** — a concept with no type is a class-design decision, not something
+this step can place.
 
-**Commit.**
+**Snapshot.**
 
-## Step 4: Write the contracts
+## Step 5: Write the contracts
 
 **Inline. Never delegated.** A subagent guessing at a music-notation promise
 produces confident, plausible, wrong Javadoc — worse than none, because
@@ -235,9 +275,9 @@ Three things that are not optional:
 **Do not document a guard no caller can reach.** A `@throws` for an impossible
 condition propagates outward into callers that handle it.
 
-**Commit per class or per coherent group.**
+**Snapshot per class or per coherent group.**
 
-## Step 5: Triage the tests
+## Step 6: Triage the tests
 
 **Inline.** Each existing test resolves against the floor in `design.md`, not
 against a clause count:
@@ -256,6 +296,23 @@ Then **add only the cases the floor calls for and nothing asserts.** A clause
 with no case is not automatically a gap; ask first whether the design already
 enforces it.
 
+**One table, before any test is written or deleted.** Triage and proposal are one
+conversation: a test kept, a test rewritten, a test discarded and a case added
+are four dispositions of one list, and splitting them into two conversations
+hides that a discard and an addition are usually the same case moving.
+
+| Test | Kind | Disposition | Why |
+|---|---|---|---|
+| the promise being checked, in one line | which of the three kinds in `design.md` | keep · rewrite · discard · add | one line |
+
+**A discard is a row whose *Kind* cannot be filled.** It fits none of the three
+kinds, which is why it is going — so the column is the table's own check. A row
+you can justify only by naming a branch, a guard or a private helper is a
+discard, whatever you meant to put in it.
+
+**Then wait.** No `@Test` is written and none is deleted until the user has seen
+the table and had the chance to veto it.
+
 Two traps, both here:
 
 - **Before writing any `@Test`, ask whether it will sit beside a same-shape
@@ -266,14 +323,20 @@ Two traps, both here:
   assert that the table's rows are exactly the domain — a hand-listed table can
   carry that claim for domains it never actually checks.
 
-**Commit per test class or per coherent group.**
+**Snapshot per test class or per coherent group.**
 
-## Step 6: Fix test-only surface
+## Step 7: Fix test-only surface
 
-Each finding is one of three kinds, and the kind decides the fix:
+Each finding is one of four kinds, and the kind decides the fix:
 
 - **Genuinely test-only** — delete it, or restructure the seam so production uses
   it too.
+- **A replaceable process-global** — a setter, a probe or a widened field that
+  lets a test swap something process-wide. The fix is a stack of instances plus
+  an `AutoCloseable` scope, never a setter, per *Scope a global; never swap it*
+  in `design.md`. **Name the production caller that justifies the scope** — the
+  headless converters justified `MessageBusScope` — because a scope only tests
+  push is a test-only injection point in better clothes.
 - **Misnamed internal API** — it takes arguments and returns a value and is
   already a coherent unit. Rename it to its concept and write its contract.
 - **Lifecycle** — a class with `initialize()` and no way back has an incomplete
@@ -284,12 +347,12 @@ Each finding is one of three kinds, and the kind decides the fix:
 from it. When a test cannot arrange the state it needs, the answer is a
 constructor or factory taking that state, used by production too.
 
-**Commit.**
+**Snapshot.**
 
-## Step 7: Compile and run
+## Step 8: Compile and run
 
-Every commit in steps 2 through 6 builds and runs the classes it touched, or
-those commits are unverified. This step is the **full-suite gate**: run
+Every snapshot in steps 2 through 7 builds and runs the classes it touched, or
+that state is unverified. This step is the **full-suite gate**: run
 `./scripts/compile.sh --test`, then `./scripts/test.sh <the target's test
 classes>`. A contract or type change here can break a caller in another package,
 which is what the whole suite is for — and the whole suite is not yours to start.
@@ -323,18 +386,18 @@ a person cannot act on without reading the diff is not on the list.
 their permission. If the pass reached nothing a person can see, say so plainly
 instead of emitting a checklist of things it cannot have broken.
 
-**Commit.**
+**Snapshot.**
 
-## Step 8: Judge the diagrams
+## Step 9: Judge the diagrams
 
 Any diagram in the target's `docs/` document or Javadoc. Keep only what shows
 what prose cannot — a topology, a state machine, a sequence with genuine
 concurrency. A diagram walking through a sequence the contracts already state is
 the contract drawn a second time, and the second copy goes stale.
 
-**Commit** if anything changed.
+**Snapshot** if anything changed.
 
-## Step 9: Coverage — once, scoped
+## Step 10: Coverage — once, scoped
 
 `./scripts/coverage.sh unit <the target's test classes>`. Once, as the closing
 step, never as a target.
@@ -350,15 +413,15 @@ dead-code finding against production.
 
 **You never write a test to turn a region green.**
 
-Re-run the unit suite. **Commit.**
+Re-run the unit suite. **Snapshot.**
 
-## Step 10: Mutation — opportunistic
+## Step 11: Mutation — opportunistic
 
 `./scripts/mutation-test.sh [target]`, only if a specific case is worth
 investigating. Under contract testing a **high surviving-mutant count is the
 expected, healthy state**. **Never report the percentage.**
 
-## Step 11: Close out
+## Step 12: Close out
 
 **Harvest, and delete the record** — `plans/design-pass-register.md` states
 why under *The record is working memory*. Two things leave the record first:
@@ -373,8 +436,9 @@ why under *The record is working memory*. Two things leave the record first:
 2. **Anything about the system's shape** goes to `docs/`, written in this pass
    rather than promised to a later one.
 
-Then flip the register row to ✅, `git rm` the record, and commit the three
-together — the row, the findings, and the deletion are one change.
+Then flip the register row to ✅ and delete the record. The row, the findings and
+the deletion are one change, and they land in the tree beside the pass's own
+work for the user to commit.
 
 **A row you split rewrites itself here.** Where step 1 read an *(undecomposed)*
 directory and named the systems it holds, replace that single row with one row
@@ -389,7 +453,7 @@ that are over and cannot be asked what they meant. Renumbering would silently
 re-point every one of them at the wrong system. A suffixed row that splits again
 suffixes again: `14b1`, `14b2`.
 
-Then report: what the types now carry that runtime checks used to — with step 2's
+Then report: what the types now carry that runtime checks used to — with step 3's
 two counts as they actually landed — what the contracts turned out to promise,
 what the checkpoints changed, and anything you surfaced that is not yours to
 decide.
@@ -404,11 +468,24 @@ decide.
   widened field, no relaxed visibility, no reflection.
 - **Serena's `jet_brains_*` tools for all Java exploration and refactoring**, per
   `.claude/rules/serena.md`.
-- **Commit per step**, each with the record's status change, using the
-  `/commit-commands:commit` skill. An uncommitted step is a lost step.
+- **Never commit.** The pass leaves everything in the working tree; when to
+  commit, and in what shape, is the user's. Do not stage, do not amend, and do
+  not invoke `/commit-commands:commit`.
+- **Snapshot per step**, each with the record's status change. One Bash call,
+  which leaves the working tree untouched:
+
+  ```bash
+  git add -A && git stash store -m "design pass <target>: step N" "$(git stash create)"
+  ```
+
+  `git add -A` is required — `stash create` snapshots the index and tracked
+  files only, so an untracked new file is otherwise lost. **Never snapshot with
+  `git stash push`**, which empties the tree first. Restore with `git stash
+  apply <sha>`, never `pop`: the stash stack is shared with every worktree and
+  another session may be using it. An unsnapshotted step is a lost step.
 - **Steps decompose; the record links where.** A step whose approved work spans
-  more commits than one sitting gets an execution plan in `plans/` via
-  `/make-plan`, and the record's row for that step links it. Step 2 over a
+  more than one sitting gets an execution plan in `plans/` via
+  `/make-plan`, and the record's row for that step links it. Step 3 over a
   package, and any step that turns out to touch tens of files, are the usual
   cases.
 
@@ -417,7 +494,7 @@ decide.
   other — a plan that re-argues a decision drifts from the record, and a record
   that tracks progress drifts from the plan.
 
-  **The plan is deleted with the record at step 11.** It is working memory on the
+  **The plan is deleted with the record at step 12.** It is working memory on the
   same terms, and `plans/design-pass-register.md` states why under *The record is
   working memory*.
 
@@ -435,15 +512,16 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 | Step | Status | Plan | Notes |
 |---|---|---|---|
 | 1 Inventory | ⏳ | — | |
-| 2 Unrepresentable states | ⏳ | — | |
-| 3 Extraction | ⏳ | — | |
-| 4 Contracts | ⏳ | — | |
-| 5 Test triage | ⏳ | — | |
-| 6 Test-only surface | ⏳ | — | |
-| 7 Compile and run | ⏳ | — | |
-| 8 Diagrams | ⏳ | — | |
-| 9 Coverage | ⏳ | — | |
-| 10 Mutation | ⏳ | — | opportunistic |
+| 2 Class design | ⏳ | — | |
+| 3 Unrepresentable states | ⏳ | — | |
+| 4 Extraction | ⏳ | — | |
+| 5 Contracts | ⏳ | — | |
+| 6 Test triage | ⏳ | — | |
+| 7 Test-only surface | ⏳ | — | |
+| 8 Compile and run | ⏳ | — | |
+| 9 Diagrams | ⏳ | — | |
+| 10 Coverage | ⏳ | — | |
+| 11 Mutation | ⏳ | — | opportunistic |
 
 *Plan* links the step's execution plan once it has one, and is where a resume
 picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
@@ -457,5 +535,5 @@ to be. Deleted from the register when claimed.
 ## Findings raised
 
 Anything surfaced that was not this target's to fix. Harvested to the register at
-step 11, before this file is deleted.
+step 12, before this file is deleted.
 ```

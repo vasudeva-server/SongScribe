@@ -1,8 +1,8 @@
 # Classifying a Contract, and the Confirmation Checkpoint
 
-Step 2 writes every contract in the package. Most can be written straight
-through; some may not be decided alone. This file is how to tell them apart and
-what to do with the second kind.
+The contracts step writes every contract the target earns. Most can be written
+straight through; some may not be decided alone. This file is how to tell them
+apart and what to do with the second kind.
 
 The rule this implements is `~/.claude/rules/development.md`:
 
@@ -110,8 +110,8 @@ The four parts and why each is there:
 1. **Proposing** — the promise, stated so a caller could rely on it.
 2. **Today** — what the implementation actually does. When the proposal and the
    implementation agree, say so explicitly; that is a fact the reviewer needs, and
-   it is also your own check against §4.2, since a contract the code cannot
-   violate is describing the code.
+   it is also your own check that the implementation could in principle violate
+   the promise, since a contract the code cannot violate is describing the code.
 3. **Also defensible** — the readings you rejected. Omitting these is what makes
    a wrong contract look right. If you genuinely found no alternative, say that
    rather than leaving the line out.
