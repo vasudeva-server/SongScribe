@@ -22,10 +22,15 @@ is committed — that dashboard is what lets a cleared context resume mid-step.
 | 7 | [FontDescription tests](#-phase-7-fontdescription-tests) | ⏸️ Blocked by 4, 5 | — |
 | 8 | [Gate](#-phase-8-gate) | ⏸️ Blocked by 1, 2, 3, 4, 5, 6, 7 | — |
 
-Do not compile between phases 1 and 5. `~/.claude/rules/development.md` governs:
-the end state is expressed, then built once in phase 8. A failure there is
-information about the design; a failure mid-sweep is noise about a half-migrated
-tree. The per-phase commits are the rollback.
+**Every phase here ends with `./scripts/compile.sh --test`.** Each re-points its
+own callers, so each leaves a final, compilable state — no phase leans on a later
+one to close a half-migrated tree, and none needs an adapter, an overload, or a
+field beside the old one to hold an intermediate state together. What
+`~/.claude/rules/development.md` forbids is inventing that scaffolding so a
+step can compile; nothing here does. Compile, because a phase whose end state is
+final is information you can have for free.
+
+Phase 8 is a separate gate: the full unit suite, coverage, and the diagrams.
 
 ---
 
@@ -90,6 +95,10 @@ tree. The per-phase commits are the rollback.
    compile-time constant, so staff spaces and document pixels cannot diverge —
    replacing the current wording that presents this as a consequence rather than
    a construction. State it in the present tense; do not narrate the change.
+10. Run `./scripts/compile.sh --test` and fix every error before committing. This
+    phase leaves a final state: every deleted member's callers are re-pointed
+    above, so a failure here is a call site the task list missed, not a
+    half-migrated tree. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
 
 ---
 
@@ -134,6 +143,11 @@ rule. This phase states the rule once.
    `ScaleContext` is in the same package, so no import is needed.
 6. Do not rename `roundedPx`/`ceilPx`. Renaming them to `positionPx`/`sizePx` was
    considered and rejected.
+7. Run `./scripts/compile.sh --test` and fix every error before committing. No
+   call site changes in this phase, so a failure means the sealed hierarchy is
+   wrong — a permitted type that does not implement, or a record that still
+   declares a member the interface now provides. Never `./gradlew`, `gradle`,
+   `javac`, or `java -cp`.
 
 ---
 
@@ -229,6 +243,9 @@ class with one measuring instrument.
    more.
 9. Leave `GraphicUtils`'s images, SVG icons, DPI, stroke drawing and screen
    clamping where they are.
+10. Run `./scripts/compile.sh --test` and fix every error before committing. Task
+    7 lists the call sites this phase must re-point; a failure here names one it
+    missed. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
 
 ---
 
@@ -313,6 +330,12 @@ This phase gives each a home and deletes the file.
    this phase failed to move — move them rather than reinstating the file.
 9. Do not hunt for imports left stranded anywhere in this phase; the project
    leaves those to the IDE.
+10. Run `./scripts/compile.sh --test` and fix every error before committing.
+    `src/main/java/songscribe/util/MyFontUtils.java` no longer exists at this
+    point, so any unresolved reference to it is a member task 8's safe-delete
+    should have caught — move it to the home tasks 1–7 give its concept rather
+    than reinstating the file. Never `./gradlew`, `gradle`, `javac`, or
+    `java -cp`.
 
 ---
 
@@ -340,6 +363,10 @@ is final.
    authoring scale that `songscribe.ui.ViewScale` folds zoom on top of. State it
    in the present tense; do not record that the class was formerly called
    something else.
+4. Run `./scripts/compile.sh --test` and fix every error before committing. A
+   rename that compiles is a rename that took; a failure means the IDE missed a
+   reference, most likely in a string or a file the rename did not treat as
+   source. Never `./gradlew`, `gradle`, `javac`, or `java -cp`.
 
 ---
 
@@ -377,6 +404,10 @@ members. This phase covers only what spans classes.
    unless the units types now share an invariant that spans them; `dom` holds
    roughly ten systems and this pass owns one of them, so do not write a package
    contract covering the others.
+6. Run `./scripts/compile.sh --test` and fix every error before committing.
+   `package-info.java` is compiled, so a malformed Javadoc tag or a `{@link}` to
+   a class that no longer exists fails here. Never `./gradlew`, `gradle`,
+   `javac`, or `java -cp`.
 
 ---
 
@@ -428,6 +459,12 @@ before writing anything.
    finding against the API, not a reason to widen it.
 6. Do not write a test for any guard, and do not derive cases by walking
    branches. A case that maps to no promise a caller can rely on does not go in.
+7. Run `./scripts/test.sh FontDescriptionTest` and get it green before
+   committing. It builds both trees itself, so do not compile first. Read
+   failures for location; never rerun with extra flags, and never assume a
+   failure is pre-existing. A failure is one of three things — the code, the
+   test, or the contract — and if it is the contract, say so explicitly rather
+   than quietly weakening it. Never `./gradlew test`.
 
 ---
 
@@ -438,38 +475,36 @@ before writing anything.
 **Files:** —  <br>
 **Recommended model/effort:** Opus, high — a failure here is information about the design, and diagnosing it is the work.
 
-The single compile-and-run gate for the whole plan. Nothing before this phase
-compiles.
+Phases 1–7 each compile their own final state, so this phase is not where the
+code first builds. It is the whole-tree gate: the full suite, coverage, and the
+diagrams.
 
 ### Tasks
 
-1. Run `./scripts/compile.sh --test`. It builds both trees; `--test` is what
-   catches a test class still pinning a member this plan deleted or renamed.
-   Never `./gradlew`, `gradle`, `javac`, or `java -cp`. Report SUCCESS or
-   FAILURE.
+1. Run `./scripts/compile.sh --test` over the finished tree and report SUCCESS or
+   FAILURE. Every phase compiled in isolation; this confirms they compose. Never
+   `./gradlew`, `gradle`, `javac`, or `java -cp`.
 2. Fix every compile error before proceeding. A failure here is one of three
    things — the code, a caller this plan did not account for, or a contract that
    was wrong about the domain. Never weaken a contract to reach green without
    saying so explicitly.
-3. Run `./scripts/test.sh FontDescriptionTest`. Read failures for location; do
-   not rerun with extra flags, and do not assume any failure is pre-existing.
-4. Stop and ask the user to run the full unit suite, then wait for the result
+3. Stop and ask the user to run the full unit suite, then wait for the result
    before continuing. `.claude/hooks/no-full-test-suite.sh` denies a run naming
    no class or more than four; the suite is the user's to start. State what this
    plan changed and which packages it can reach — `dom`, `font`, `layout`,
    `util`, `ui`, `io`, `smufl` — so the decision is informed. Never attempt the
    suite in any form, including naming classes four at a time.
-5. Run `./scripts/coverage.sh unit FontDescriptionTest` once. For each unexecuted
+4. Run `./scripts/coverage.sh unit FontDescriptionTest` once. For each unexecuted
    region ask exactly one question: does it correspond to a missing contract
    case, or to implementation the contract promises nothing about? The first
    amends the contract and its tests; the second is left alone **and the reason
    written down**. A region nothing can reach is a dead-code finding against
    production. Never write a test to turn a region green.
-6. Judge any diagram in `docs/zoom.md`. Keep only what shows what prose cannot —
+5. Judge any diagram in `docs/zoom.md`. Keep only what shows what prose cannot —
    a topology, a state machine, a sequence with genuine concurrency. A diagram
    walking through a sequence the contracts already state is the contract drawn
    twice, and the second copy goes stale.
-7. Ask the user to launch the application and confirm no visible change in text
+6. Ask the user to launch the application and confirm no visible change in text
    rendering: score title and subtitle centring, lyric baselines against the
    inline lyric editor, annotation placement, tuplet numbers, volta bracket
    labels, and the font names shown in Song Settings and the font chooser. This
