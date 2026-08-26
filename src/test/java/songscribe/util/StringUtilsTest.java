@@ -82,7 +82,11 @@ class StringUtilsTest extends UnitTest {
     @MethodSource("wrapCases")
     void testWrapTextKeepsEveryWordInOrder(WrapCase testCase) {
         assertThat(String.join(" ", testCase.wrap()))
-            .isEqualTo(StringUtils.collapseMultipleSpaces(testCase.text().strip()));
+            .isEqualTo(
+                StringUtils.collapseMultipleSpaces(
+                    StringUtils.stripLinefeeds(testCase.text().strip())
+                )
+            );
     }
 
     static Stream<WrapCase> wrapCases() {
@@ -130,7 +134,113 @@ class StringUtilsTest extends UnitTest {
                 20,
                 List.of("")
             ),
-            new WrapCase("empty text yields one empty line", "", 20, List.of(""))
+            new WrapCase("empty text yields one empty line", "", 20, List.of("")),
+            new WrapCase(
+                // Both words fit on one line at this width, so only the break splits them.
+                "a line break ends a line the width would have kept together",
+                "one\ntwo",
+                20,
+                List.of("one", "two")
+            ),
+            new WrapCase(
+                "each hard-broken segment is balance-wrapped on its own",
+                "aaaaaa bbbbbb cc\ndd",
+                13,
+                List.of("aaaaaa", "bbbbbb cc", "dd")
+            ),
+            new WrapCase(
+                "a blank segment between breaks yields no line",
+                "  the   \n\n quick  brown \n",
+                20,
+                List.of("the", "quick brown")
+            ),
+            new WrapCase(
+                "text of nothing but breaks yields one empty line",
+                "\n \n",
+                20,
+                List.of("")
+            )
         );
+    }
+
+    // Budgets the fold is exercised at: one is its minimum, two is the general case. These
+    // are inputs to the operation, not the line caps any particular field happens to use.
+    private static final int ONE_LINE_BUDGET = 1;
+    private static final int TWO_LINE_BUDGET = 2;
+
+    /** Raw text, the line budget it is folded to, and what the fold promises to make of it. */
+    private record FoldCase(String description, String raw, int maxLines, String expected) {}
+
+    static Stream<FoldCase> foldCases() {
+        return Stream.of(
+            new FoldCase(
+                "a blank line is dropped rather than spending the budget on it",
+                "\nOne\nTwo",
+                TWO_LINE_BUDGET,
+                "One\nTwo"
+            ),
+            new FoldCase(
+                "a blank line between two lines is dropped the same way",
+                "One\n\nTwo",
+                TWO_LINE_BUDGET,
+                "One\nTwo"
+            ),
+            new FoldCase(
+                "text ending in a break keeps it, so a break typed at the end of a line survives",
+                "One\n",
+                TWO_LINE_BUDGET,
+                "One\n"
+            ),
+            new FoldCase(
+                "a break past the budget joins its line onto the last one",
+                "One\nTwo\nThree",
+                TWO_LINE_BUDGET,
+                "One\nTwo Three"
+            ),
+            new FoldCase(
+                "a break typed at the end of the last line has no room and is not kept",
+                "One\nTwo\n",
+                TWO_LINE_BUDGET,
+                "One\nTwo"
+            ),
+            new FoldCase(
+                "a one-line budget joins everything onto one line",
+                "One\nTwo\nThree",
+                ONE_LINE_BUDGET,
+                "One Two Three"
+            ),
+            new FoldCase(
+                "text of nothing but whitespace and breaks folds to nothing",
+                "  \n \t \n  ",
+                TWO_LINE_BUDGET,
+                ""
+            )
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("foldCases")
+    void testFoldSurplusLineBreaks(FoldCase testCase) {
+        assertThat(StringUtils.foldSurplusLineBreaks(testCase.raw(), testCase.maxLines()))
+            .isEqualTo(testCase.expected());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("foldCases")
+    void testFoldSurplusLineBreaksIsIdempotent(FoldCase testCase) {
+        var once = StringUtils.foldSurplusLineBreaks(testCase.raw(), testCase.maxLines());
+
+        assertThat(StringUtils.foldSurplusLineBreaks(once, testCase.maxLines())).isEqualTo(once);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("foldCases")
+    void testFoldSurplusLineBreaksReadsEveryLineEndingTheSameWay(FoldCase testCase) {
+        var raw = testCase.raw();
+
+        assertThat(StringUtils.foldSurplusLineBreaks(raw.replace("\n", "\r\n"), testCase.maxLines()))
+            .isEqualTo(testCase.expected());
+        assertThat(StringUtils.foldSurplusLineBreaks(raw.replace("\n", "\r"), testCase.maxLines()))
+            .isEqualTo(testCase.expected());
     }
 }

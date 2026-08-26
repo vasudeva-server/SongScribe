@@ -19,7 +19,6 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -35,6 +34,7 @@ import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.text.JTextComponent;
 
 import songscribe.Strings;
 import songscribe.dom.ScaleContext;
@@ -51,9 +51,10 @@ import songscribe.ui.binding.Timing;
 import songscribe.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.binding.WritableValue;
+import songscribe.ui.component.InputUtils;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
-import songscribe.ui.component.NonBlankTextField;
+import songscribe.ui.component.NonBlankTextArea;
 import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
 import songscribe.ui.component.score.BaseTitleComponent;
@@ -86,7 +87,8 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // over each one.
     private final NumericTextField numberField =
         new NumericTextField(NUMBER_FIELD_COLUMNS, SONG_NUMBER_RANGE);
-    private final NonBlankTextField titleField = new NonBlankTextField(TITLE_FIELD_COLUMNS);
+    private final NonBlankTextArea titleField =
+        new NonBlankTextArea(SongMetadata.MAX_TITLE_LINES, TITLE_FIELD_COLUMNS);
     private final Property<String> number = Controls.text(numberField, Timing.WHILE_TYPING);
     private final Property<String> title =
         Controls.text(titleField, Timing.WHILE_TYPING, SongMetadata::normalizeTitle);
@@ -106,7 +108,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // Subtitle section — field, font-description label, and preview component.
     private final MyJTextField subtitleField = new MyJTextField(TITLE_FIELD_COLUMNS);
     private final Property<String> subtitle =
-        Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeTitle);
+        Controls.text(subtitleField, Timing.WHILE_TYPING, SongMetadata::normalizeSubtitle);
     private final FontSettingRow.DescriptionLabel subtitleFontLabel = FontSettingRow.createFontDescriptionLabel();
     private final SubtitleComponent subtitlePreview = new SubtitleComponent();
 
@@ -150,6 +152,12 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE));
         takeAction = new TakeFirstLyricsWordAction(getMainFrame());
 
+        // Line wrap stays off so the area's visible rows map one-to-one onto the title's
+        // logical lines: the notator sees where the break they typed actually falls,
+        // where a wrapped row would look like a break they did not take. The filter is
+        // what holds the area to that many lines.
+        InputUtils.addMaxLinesFilter(titleField, SongMetadata.MAX_TITLE_LINES);
+
         // Seeded because FontSettingRow.create captures titleFont::get during initContents();
         // populate replaces both on every opening.
         titleFont = new ValueProperty<>(FontSettingRow.defaultFont(FontKey.TITLE));
@@ -176,7 +184,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             wrapWidthSs.get()
         )));
         dialogBindings.bind(Widgets.preview(subtitlePreview), dialogBindings.computed(() -> new BaseTitleComponent.Preview(
-            SongMetadata.normalizeTitle(subtitle.get()),
+            normalizedSubtitle(),
             wrapWidthSs.get()
         )));
 
@@ -184,7 +192,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         // non-empty. The dialog is packed to a fixed height at show time, so re-pack
         // when it crosses that line. Registering the effect after the binding keeps
         // the binding's settling write from re-packing a dialog that is not yet shown.
-        dialogBindings.bind(subtitleEmpty, dialogBindings.computed(() -> SongMetadata.normalizeTitle(subtitle.get()).isEmpty()));
+        dialogBindings.bind(subtitleEmpty, dialogBindings.computed(() -> normalizedSubtitle().isEmpty()));
         dialogBindings.onNotify(subtitleEmpty, this::repackToContent);
 
         // Both rows are as wide as the line the previews wrap at, so the wrap the user
@@ -316,9 +324,9 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         var section = new BaseDialog.TitledSection(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TITLE_OF_SONG)
         );
-        addFilledFieldRow(
+        BaseDialog.addScrolledFieldRow(
             section,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
+            new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE)),
             titleField
         );
 
@@ -351,9 +359,9 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
             Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_SUBTITLE)
         );
 
-        addFilledFieldRow(
+        BaseDialog.addFilledFieldRow(
             section,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_SUBTITLE),
+            new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SUBTITLE)),
             subtitleField
         );
 
@@ -366,25 +374,6 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
         UIUtils.setFlexibleWidth(section);
         return section;
-    }
-
-    // Build the field row by hand so the field stretches to fill the
-    // remaining width. addLabeledField uses a FlowLayout, which would
-    // pin the field to its fixed column width instead.
-    private void addFilledFieldRow(JPanel section, String labelText, JComponent field) {
-        var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
-        var row = new JPanel(new BorderLayout(horizontalGap, 0));
-
-        // Match the leading inset addLabeledField's FlowLayout gives the
-        // number row, whose hgap also pads before the label.
-        row.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
-        row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        var label = new JLabel(labelText);
-        label.setLabelFor(field);
-        row.add(label, BorderLayout.WEST);
-        row.add(field, BorderLayout.CENTER);
-        section.add(row);
     }
 
     Font getTitleFont() {
@@ -400,13 +389,29 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     /**
+     * The subtitle as the score renders it, which is what both the preview and the
+     * collapse test read — one name so neither can normalize a subtitle differently
+     * from the other.
+     *
+     * @return the normalized subtitle
+     */
+    private String normalizedSubtitle() {
+        return SongMetadata.normalizeSubtitle(subtitle.get());
+    }
+
+    /**
      * The two controls a caller can be sent to on this tab.
      * <p>
      * {@link SongSettingsDialog#show} hands one of these straight to
      * {@code showTab} as the caret target, so the section-to-field mapping is an identity
      * a test can assert rather than a chain of enums to follow.
+     *
+     * <p>The title control is the text area itself, not the scroll pane it is shown in:
+     * a viewport takes no caret and no focus.
+     *
+     * @return the control the title is typed into
      */
-    JTextField getTitleField() {
+    JTextComponent getTitleField() {
         return titleField;
     }
 

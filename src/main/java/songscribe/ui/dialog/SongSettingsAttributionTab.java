@@ -34,9 +34,7 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
-import javax.swing.SwingConstants;
 
 import com.formdev.flatlaf.FlatClientProperties;
 import org.jspecify.annotations.Nullable;
@@ -239,34 +237,15 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
 
         var wordsLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_WORDS));
-        wordsLabel.setLabelFor(lyricistField);
         var sourceLabel = new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_SOURCE));
         sourceLabel.setLabelFor(sourceCombo);
 
         // Words label + lyricist field, with the field filling the full row.
-        var lyricistRow = new JPanel(new BorderLayout(horizontalGap, 0));
-        lyricistRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        // Carry the leading gap on the row rather than the label so the label's
-        // width stays exactly the shared column width (it lines up with the
-        // FlowLayout leading gap of the source row below).
-        lyricistRow.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
-        var lyricistScroll = new JScrollPane(lyricistField);
+        BaseDialog.addScrolledFieldRow(section, wordsLabel, lyricistField);
 
-        // BorderLayout.WEST stretches the label to the full height of the
-        // two-row field, so top-align it and nudge it down to sit on the
-        // first text line's baseline: past the scroll pane's border and the
-        // text area's own top inset.
-        wordsLabel.setVerticalAlignment(SwingConstants.TOP);
-        wordsLabel.setBorder(BorderFactory.createEmptyBorder(
-            lyricistScroll.getInsets().top + lyricistField.getInsets().top, 0, 0, 0
-        ));
-
-        // Line up the lyricist field and the source dropdown in one column.
+        // Line up the lyricist field and the source dropdown in one column. After the row
+        // above, which writes the label's geometry as well.
         alignLabelWidths(wordsLabel, sourceLabel);
-
-        lyricistRow.add(wordsLabel, BorderLayout.WEST);
-        lyricistRow.add(lyricistScroll, BorderLayout.CENTER);
-        section.add(lyricistRow);
 
         BaseDialog.addSeparator(section);
 

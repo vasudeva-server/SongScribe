@@ -103,3 +103,18 @@ could be inserted, the pending note wins, so those staff positions stay reachabl
 
 Being addressable by a click is a separate question from being selectable; see
 [selection.md](selection.md).
+
+## One colour for everything the page cannot show
+
+Each text component draws a fixed number of rows and no more. Text past that is
+not shrunk, scrolled or elided: the leading rows draw and the rest does not.
+
+What ties this to the rest of the score is the colour. Clipped title text takes
+**the same colour** as the staff lines of a line holding more than the staff can
+show, because it is the same situation — the page is showing less than the
+document holds. That agreement is the part no single component can state, and it
+is the whole of the signal: there is no alert and no badge.
+
+Because the surplus is never drawn, a text component still sizes to exactly what
+it draws, so everything the previous section says about hit testing holds
+unchanged.

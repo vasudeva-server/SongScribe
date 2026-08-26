@@ -47,7 +47,9 @@ import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.AbstractBorder;
@@ -606,6 +608,74 @@ public abstract class BaseDialog implements Disposable {
         panel.add(label);
         panel.add(field);
         container.add(panel);
+    }
+
+    /**
+     * Adds a {@code label + field} row to {@code container} in which the field fills
+     * the width left over beside the label, where {@link #addLabeledField(JComponent,
+     * JLabel, JComponent)} pins the field to its own column width.
+     *
+     * <p>For a field taller than one row, use {@link #addScrolledFieldRow} instead.
+     *
+     * @param container the container the row is added to
+     * @param label     the row's label, already aligned or width-matched by the caller
+     * @param field     the component that fills the rest of the row
+     * @effects points {@code label} at {@code field} as the control it names, and adds
+     *     the row to {@code container}
+     */
+    public static void addFilledFieldRow(JComponent container, JLabel label, JComponent field) {
+        label.setLabelFor(field);
+        container.add(filledRow(label, field));
+    }
+
+    /**
+     * Adds a {@code label + field} row for a field taller than one row: {@code field} is
+     * put in a scroll pane, which fills the width left over beside the label, and the
+     * label is lined up with the field's first line of text.
+     *
+     * <p>The scroll pane is what makes a taller field usable. A {@link javax.swing.JTextField}
+     * scrolls its own view, but a {@link javax.swing.JTextArea} scrolls only inside a
+     * viewport, so without one a line wider than the row is clipped and unreachable.
+     *
+     * @param container the container the row is added to
+     * @param label     the row's label, already aligned or width-matched by the caller
+     * @param field     the field to scroll and fill the rest of the row with
+     * @effects writes {@code label}'s vertical alignment, border and {@code labelFor}, and
+     *     adds the row to {@code container}. A pass that also writes the label's geometry —
+     *     a shared width-alignment pass, say — must run after this
+     */
+    public static void addScrolledFieldRow(JComponent container, JLabel label, JComponent field) {
+        var scroll = new JScrollPane(field);
+
+        // BorderLayout.WEST stretches a label to the full height of the field beside it,
+        // which would center the text against the middle of a multi-row field. Top-align
+        // it and nudge it down onto the first text line, past the scroll pane's border and
+        // the field's own top inset.
+        label.setVerticalAlignment(SwingConstants.TOP);
+        label.setBorder(BorderFactory.createEmptyBorder(
+            scroll.getInsets().top + field.getInsets().top, 0, 0, 0
+        ));
+
+        // The field, not the scroll pane: a viewport takes no focus and no caret.
+        label.setLabelFor(field);
+        container.add(filledRow(label, scroll));
+    }
+
+    /** A row whose {@code filler} takes all the width the label does not. */
+    private static JPanel filledRow(JLabel label, JComponent filler) {
+        var horizontalGap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP);
+        var row = new JPanel(new BorderLayout(horizontalGap, 0));
+
+        // Carry the leading gap on the row rather than the label so the label's width
+        // stays exactly the shared column width, matching the leading inset
+        // addLabeledField's FlowLayout gives a neighbouring row.
+        row.setBorder(BorderFactory.createEmptyBorder(0, horizontalGap, 0, 0));
+        row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        row.add(label, BorderLayout.WEST);
+        row.add(filler, BorderLayout.CENTER);
+
+        return row;
     }
 
     protected static void addLabelToBox(

@@ -20,6 +20,7 @@
 
 package songscribe.ui.component.score;
 
+import songscribe.dom.SongMetadata;
 import songscribe.dom.Ss;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -32,12 +33,21 @@ import songscribe.ui.dialog.SongSettingsDialog;
  * {@code SongScribe.score.subtitle.gap} FlatLaf property (in staff spaces).
  * When the subtitle is empty the component collapses to {@code (0, 0)} and
  * emits no gap, so songs without a subtitle are not affected.
+ * <p>
+ * The page draws {@value songscribe.dom.SongMetadata#MAX_SUBTITLE_LINES} line of it. A
+ * subtitle too wide to fit on one line is not wrapped onto a second: the first line draws
+ * and the rest does not, in the overflow colour.
  */
 public class SubtitleComponent extends BaseTitleComponent {
 
     @Override
     protected String songText() {
         return getSong().getSubtitle();
+    }
+
+    @Override
+    protected int maxRenderedLines() {
+        return SongMetadata.MAX_SUBTITLE_LINES;
     }
 
     @Override

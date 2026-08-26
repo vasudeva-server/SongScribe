@@ -49,6 +49,11 @@ public final class StringUtils {
     );
 
     public static final Pattern LF_PATTERN = Pattern.compile("\n");
+
+    // Folds foreign line endings to "\n": a CRLF pair and a lone CR alike, so text
+    // pasted from another platform breaks where a natively typed line does.
+    private static final Pattern FOREIGN_LINE_ENDING_PATTERN = Pattern.compile("\r\n?");
+
     public static final Pattern TRIM_END_PATTERN = Pattern.compile("\\s+$");
 
     // Separates words when wrapping. Any whitespace run breaks a line, and the wrapped
@@ -126,6 +131,74 @@ public final class StringUtils {
         return LF_PATTERN.matcher(str).replaceAll(" ");
     }
 
+    /**
+     * Returns {@code text} with its line endings normalized and reduced to at most
+     * {@code maxLines} lines, so text of any shape can be held in a field offering a fixed
+     * number of rows.
+     *
+     * <p>The budget is spent on lines that hold something. A blank line is an artifact of
+     * where the text came from rather than a line anyone asked for, so it is dropped
+     * instead of taking a line — which is what keeps a title pasted with a leading empty
+     * line from arriving as one line instead of two. The lines that survive keep their
+     * order; those past the budget are joined onto the last one with single spaces.
+     *
+     * <p><strong>A trailing blank line is the exception, and is kept while the budget has
+     * room for it.</strong> Pressing Enter at the end of a line leaves the text ending in a
+     * break, and that empty last row is the one the caret is now sitting on. Dropping it
+     * would delete the break the instant it was typed and make the next line unreachable.
+     * Committing that text is what drops it; see {@link songscribe.dom.SongMetadata}.
+     *
+     * @param text     the text to fold
+     * @param maxLines the number of lines the result may occupy; at least 1
+     * @return the folded text
+     * @invariant the result holds at most {@code maxLines - 1} line breaks
+     * @invariant no carriage return survives
+     * @invariant no line of the result is blank, except a trailing one carried over from
+     * {@code text} ending in a line break
+     * @invariant word order and content are unchanged; apart from line endings being
+     * normalized, the only difference is a surplus break becoming a space
+     * @invariant idempotent: folding an already-folded text returns it unchanged
+     */
+    public static String foldSurplusLineBreaks(String text, int maxLines) {
+        var normalized = normalizeLineEndings(text);
+        var lines = new ArrayList<String>();
+
+        for (var segment : LF_PATTERN.split(normalized, -1)) {
+            if (!segment.isBlank()) {
+                lines.add(segment);
+            }
+        }
+
+        // The caret's own row when the text ends in a break, so it is not an artifact.
+        if (normalized.endsWith("\n") && lines.size() < maxLines) {
+            lines.add("");
+        }
+
+        if (lines.size() <= maxLines) {
+            return String.join("\n", lines);
+        }
+
+        // Everything past the budget joins the last line it fits on.
+        var kept = new ArrayList<>(lines.subList(0, maxLines - 1));
+        kept.add(String.join(" ", lines.subList(maxLines - 1, lines.size())));
+
+        return String.join("\n", kept);
+    }
+
+    /**
+     * Returns {@code text} with a CRLF pair and a lone carriage return alike folded to a
+     * single line feed, so text pasted from another platform breaks where natively typed
+     * text does.
+     *
+     * @param text the text to normalize
+     * @return the text with only line feeds as line endings
+     * @invariant no carriage return survives
+     * @invariant idempotent
+     */
+    public static String normalizeLineEndings(String text) {
+        return FOREIGN_LINE_ENDING_PATTERN.matcher(text).replaceAll("\n");
+    }
+
     public static String trimEnd(String str) {
         return TRIM_END_PATTERN.matcher(str).replaceAll("");
     }
@@ -177,32 +250,66 @@ public final class StringUtils {
      * makes it a balance rather than a total: one line left far short costs more than
      * several left slightly short, so the minimum is the even split.
      *
+     * <p>A line break in {@code text} is honored rather than reflowed: it divides the text
+     * into segments, each of which is balance-wrapped on its own and set below the one
+     * before it. A segment holding no words contributes no line, so an author who breaks
+     * twice in a row does not get a blank line out of it.
+     *
      * @param text     the text to wrap; runs of whitespace separate words, and the result
-     *                 carries single spaces between them however they were spaced here
+     *                 carries single spaces between them however they were spaced here,
+     *                 while a line feed ends the line it falls on
      * @param metrics  the metrics of the font the text will be drawn in, which decide
      *                 where the breaks fall
      * @param maxWidth the width in pixels a line may occupy
      * @return the wrapped lines, in order, top to bottom
      * @invariant the result is never empty; text with no words yields one empty line
-     * @invariant no line in the result is empty
+     * @invariant no line in the result is empty, except the single empty line yielded by
+     * text with no words
+     * @invariant a line feed in {@code text} ends a line of the result, unless the stretch
+     * it closes holds no words, in which case it contributes no line. A carriage return is
+     * ordinary whitespace here and ends nothing
      * @invariant a line exceeds {@code maxWidth} only when it holds a single word too wide
      * to fit, which is set on its own line rather than split
-     * @invariant the result uses the fewest lines {@code maxWidth} allows, so balancing
+     * @invariant each segment uses the fewest lines {@code maxWidth} allows, so balancing
      * never costs vertical space
-     * @invariant among equally balanced splits the one with the longest first line wins,
-     * so a centered title is top-heavy rather than bottom-heavy
-     * @invariant joining the result with single spaces yields {@code text} stripped, with
-     * its whitespace runs collapsed — no word is dropped, duplicated or reordered
+     * @invariant among equally balanced splits of a segment the one with the longest first
+     * line wins, so a centered title is top-heavy rather than bottom-heavy
+     * @invariant joining the result with single spaces yields {@code text} with each line
+     * break replaced by a space, stripped, with its whitespace runs collapsed — no word is
+     * dropped, duplicated or reordered
      */
     public static List<String> wrapText(
         String text,
         FontMetrics metrics,
         int maxWidth
     ) {
-        var stripped = text.strip();
+        var lines = new ArrayList<String>();
+
+        for (var segment : LF_PATTERN.split(text, -1)) {
+            lines.addAll(wrapSegment(segment, metrics, maxWidth));
+        }
+
+        if (lines.isEmpty()) {
+            return List.of("");
+        }
+
+        return lines;
+    }
+
+    /**
+     * Balance-wraps one hard-break-free segment.
+     *
+     * @return the segment's lines, or no lines at all when it holds no words
+     */
+    private static List<String> wrapSegment(
+        String segment,
+        FontMetrics metrics,
+        int maxWidth
+    ) {
+        var stripped = segment.strip();
 
         if (stripped.isEmpty()) {
-            return List.of(stripped);
+            return List.of();
         }
 
         var widths = WordWidths.measure(stripped, metrics, maxWidth);

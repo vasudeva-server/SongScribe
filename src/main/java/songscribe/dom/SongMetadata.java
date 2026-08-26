@@ -20,6 +20,8 @@
 
 package songscribe.dom;
 
+import java.util.stream.Collectors;
+
 import songscribe.util.StringUtils;
 
 /**
@@ -34,8 +36,8 @@ import songscribe.util.StringUtils;
  * The compact constructor turns raw widget text (or {@code SongData}) into a cleaned, canonical
  * record, per field:
  * <pre>
- *     title    : stripLinefeeds -> processText(…, true)
- *                  (processText = trim + collapse-spaces + toTypographic + unconditional ă->a)
+ *     title    : {@link #normalizeTitle}     (up to {@value #MAX_TITLE_LINES} lines)
+ *     subtitle : {@link #normalizeSubtitle}  (always {@value #MAX_SUBTITLE_LINES} line)
  *     place    : processText(…, false)  (trim + toTypographic; no ă->a)
  *     year     : trim
  *     number   : trim
@@ -74,13 +76,25 @@ public record SongMetadata(
 ) {
 
     /**
+     * How many lines a title may occupy. Every consumer that lays a title out, filters
+     * input into a title field, or clamps a title on the page reads this rather than
+     * stating a number of its own.
+     */
+    public static final int MAX_TITLE_LINES = 2;
+
+    /**
+     * How many lines a subtitle may occupy. Every consumer that lays a subtitle out or
+     * draws one on the page reads this rather than stating a number of its own.
+     */
+    public static final int MAX_SUBTITLE_LINES = 1;
+
+    /**
      * Compact constructor — normalizes all fields on construction.
      */
     public SongMetadata {
         title = normalizeTitle(title);
         number = number.trim();
-        // subtitle: normalized like the title (strip linefeeds, collapse spaces, trim)
-        subtitle = normalizeTitle(subtitle);
+        subtitle = normalizeSubtitle(subtitle);
         // lyricsSource, unofficialTranslation: as-is
 
         // The credit fields normalize themselves, including the collapse of a words-date
@@ -131,17 +145,69 @@ public record SongMetadata(
     // Normalization helpers
     // -------------------------------------------------------------------------
 
+    private static String normalizeLine(String text) {
+        return StringUtils.processText(text, true);
+    }
+
     /**
-     * Normalizes a title string: strips linefeeds, then applies
-     * {@link StringUtils#processText} (which trims, collapses runs of multiple
-     * spaces, substitutes typographic characters, and strips short-A).
-     * <p>
-     * Public so the song settings dialog can run its live title/subtitle preview
-     * (and its focus-lost field normalization) through the same normalization the
-     * compact constructor applies on commit, preserving preview == render parity.
+     * Normalizes a title, keeping the break a two-line title is written with.
+     *
+     * <p>The text is reduced to at most {@value #MAX_TITLE_LINES} lines by
+     * {@link StringUtils#foldSurplusLineBreaks}, which spends that budget on lines
+     * holding something rather than on whichever break comes first. Each surviving line
+     * is then cleaned the way any single-line field is — trimmed, its space runs
+     * collapsed, its punctuation made typographic, its short-A stripped.
+     *
+     * <p>The blank last line a half-typed title carries is dropped here. The fold keeps
+     * it so the row the caret sits on survives while the user is still typing; a
+     * committed title has no such row.
+     *
+     * <p>The fold happens here, and nowhere downstream, because the compact
+     * constructor runs on every construction path — dialog commit, dialog preview,
+     * loading a file, importing a header, the batch converter. A title of three lines
+     * is therefore unrepresentable in the model, whatever a hand-edited file holds,
+     * and no consumer has to defend against one.
+     *
+     * <p>Public so the song settings dialog can run its live title preview (and its
+     * focus-lost field normalization) through the same normalization the compact
+     * constructor applies on commit, preserving preview == render parity.
+     *
+     * @param text the raw title text
+     * @return the normalized title
+     * @invariant idempotent: normalizing an already-normalized title returns it unchanged
+     * @invariant the result holds at most {@value #MAX_TITLE_LINES} lines
+     * @invariant no line of the result is blank
+     * @invariant no line of the result carries leading or trailing whitespace
+     * @invariant no carriage return survives
+     * @invariant a title of nothing but whitespace yields the empty string
      */
     public static String normalizeTitle(String text) {
-        return StringUtils.processText(StringUtils.stripLinefeeds(text), true);
+        return StringUtils.LF_PATTERN
+            .splitAsStream(StringUtils.foldSurplusLineBreaks(text, MAX_TITLE_LINES))
+            .map(SongMetadata::normalizeLine)
+            .filter(line -> !line.isEmpty())
+            .collect(Collectors.joining("\n"));
+    }
+
+    /**
+     * Normalizes a subtitle, which is always one line.
+     *
+     * <p>A subtitle is folded to {@value #MAX_SUBTITLE_LINES} line rather than merely
+     * stripped of linefeeds, because the fold also removes carriage returns. Stripping
+     * linefeeds alone leaves a bare {@code \r} in the value, which then reaches the
+     * MusicXML credit words and the page.
+     *
+     * <p>Public for the same reason {@link #normalizeTitle} is: the song settings
+     * dialog previews and commits through one normalization, not two.
+     *
+     * @param text the raw subtitle text
+     * @return the normalized subtitle
+     * @invariant idempotent: normalizing an already-normalized subtitle returns it unchanged
+     * @invariant the result is a single line — it holds no line break and no carriage return
+     * @invariant the result carries no leading or trailing whitespace
+     */
+    public static String normalizeSubtitle(String text) {
+        return normalizeLine(StringUtils.foldSurplusLineBreaks(text, MAX_SUBTITLE_LINES));
     }
 
     private static final int LYRICS_TITLE_BUFFER_CAPACITY = 50;

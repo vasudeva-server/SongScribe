@@ -216,7 +216,7 @@ class LineRenderer {
             if (staffSelected) {
                 g2.setColor(ScoreView.getSelectionColor());
             } else if (layoutResult.overflowsStaffWidth()) {
-                g2.setColor(FlatLafProps.getColor(FlatLafKey.SCORE_STAFF_LINE_OVERFLOW_COLOR));
+                g2.setColor(FlatLafProps.getColor(FlatLafKey.SCORE_OVERFLOW_COLOR));
             } else {
                 g2.setColor(RenderingUtils.STAFF_LINE_COLOR);
             }

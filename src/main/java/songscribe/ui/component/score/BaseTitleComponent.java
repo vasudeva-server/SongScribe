@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
@@ -30,6 +31,8 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Ss;
+import songscribe.ui.FlatLafKey;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.action.Actions;
 import songscribe.ui.dialog.SongSettingsDialog;
 import songscribe.util.GraphicUtils;
@@ -39,8 +42,13 @@ import songscribe.util.StringUtils;
 /**
  * Abstract base for title-style text components (title, subtitle).
  * <p>
- * Handles wrap and measurement. Subclasses supply the text via
- * {@link #songText()} and an optional leading gap via {@link #topGapPx()}.
+ * Handles wrap, clamp and measurement. Subclasses supply the text via
+ * {@link #songText()}, the number of lines they render via {@link #maxRenderedLines()},
+ * and an optional leading gap via {@link #topGapPx()}.
+ * <p>
+ * Text that wraps past {@link #maxRenderedLines()} is clipped rather than shrunk: the
+ * leading lines are drawn, the surplus is not, and the drawn block takes the overflow
+ * colour. The component therefore always sizes to exactly what it draws.
  * <p>
  * When {@link #songText()} is non-empty the component stacks {@link #topGapPx()} rows of leading
  * gap above the wrapped text block, so its total height is the gap plus the block, and it
@@ -161,6 +169,21 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     protected abstract String songText();
 
     /**
+     * The greatest number of rendered lines this component draws.
+     * <p>
+     * At or below the cap every wrapped line is drawn in the normal colour. Above it, the
+     * first {@code maxRenderedLines()} lines are drawn, the surplus is not drawn at all,
+     * and every drawn line takes the overflow colour — the whole of the signal that text
+     * is missing.
+     * <p>
+     * Abstract rather than defaulted so a further subclass cannot compile without
+     * deciding what it caps at.
+     *
+     * @return the rendered line cap, at least 1
+     */
+    protected abstract int maxRenderedLines();
+
+    /**
      * Returns the top gap in pixels to prepend before the text block.
      * <p>
      * Default is {@code 0}. Override to insert spacing above this component
@@ -244,9 +267,16 @@ public abstract class BaseTitleComponent extends ScoreComponent {
      * two results would then be painted into bounds sized for the narrower one.
      * <p>
      * {@code lines} is never empty: {@link #measureText} is reached only for non-empty
-     * text, and {@link StringUtils#wrapText} always yields at least one line.
+     * text, {@link StringUtils#wrapText} always yields at least one line, and clamping to
+     * {@link #maxRenderedLines()} cannot empty a non-empty list — which rests on that
+     * method's promise to answer at least 1, since a cap of 0 would empty it and
+     * {@link #topInkPaddingPx} and {@link #bottomInkPaddingPx} index into it unguarded.
+     *
+     * @param clamped whether the wrap produced more lines than {@link #maxRenderedLines()},
+     *                so {@code lines} holds only the leading ones and the block draws in
+     *                the overflow colour
      */
-    private record MeasuredText(FontMetrics metrics, List<MeasuredLine> lines) {
+    private record MeasuredText(FontMetrics metrics, List<MeasuredLine> lines, boolean clamped) {
 
         /** The width of the widest line, and so of the component. */
         int maxWidthPx() {
@@ -270,22 +300,64 @@ public abstract class BaseTitleComponent extends ScoreComponent {
     }
 
     /**
-     * Wraps {@code text} to {@link #lineWidthPx()} and captures each resulting line's ink.
+     * Everything {@link #measureText} reads. Two calls with equal keys must produce equal
+     * measurements, which is what lets the last result be reused.
+     */
+    private record MeasureKey(String text, Font font, int lineWidthPx) {}
+
+    /** A measurement together with the key it was taken under, so the two cannot disagree. */
+    private record Memo(MeasureKey key, MeasuredText measured) {}
+
+    /** The last measurement and its key, or null before the first one. */
+    @Nullable
+    private Memo memo;
+
+    /**
+     * Wraps {@code text} to {@link #lineWidthPx()}, clamps it to {@link #maxRenderedLines()}
+     * and captures each surviving line's ink.
      * <p>
      * {@link #lineWidthPx()} is the width the text is allowed to occupy, not the
      * component's width; the component's width comes from
      * {@link MeasuredText#maxWidthPx()} on the lines produced here.
+     * <p>
+     * The clamp happens before the ink is measured: building a glyph vector for a line
+     * nobody sees is work this method does on every paint and every layout pass.
+     * <p>
+     * The result is memoized under {@link MeasureKey}, which holds every input that can
+     * vary, each derived per call rather than held. <strong>No invalidation hook is needed
+     * or wanted:</strong> a preview moves the text and the width, a metadata edit moves
+     * {@link #songText()}, a font change moves {@link #getFont()}, and zoom moves both the
+     * font and the width. There is no state here to go stale, so do not add a listener to
+     * clear this.
+     * <p>
+     * {@link #maxRenderedLines()} is also read here and is deliberately not in the key: it
+     * is fixed per component class. A subclass whose cap varied over its lifetime would
+     * need it added, since the memo would otherwise answer with a measurement clamped to
+     * the old cap.
      */
     private MeasuredText measureText(String text) {
         var font = zoomedFont(getFont());
+        var lineWidthPx = lineWidthPx();
+        var key = new MeasureKey(text, font, lineWidthPx);
+        var cached = memo;
+
+        if (cached != null && key.equals(cached.key())) {
+            return cached.measured();
+        }
+
         var metrics = GraphicUtils.fontMetrics(font);
-        var lines = StringUtils
-            .wrapText(text, metrics, lineWidthPx())
+        var wrapped = StringUtils.wrapText(text, metrics, lineWidthPx);
+        var renderedCount = Math.min(wrapped.size(), maxRenderedLines());
+        var lines = wrapped
+            .subList(0, renderedCount)
             .stream()
             .map(line -> new MeasuredLine(line, GraphicUtils.visualBounds(line, font)))
             .toList();
+        var measured = new MeasuredText(metrics, lines, renderedCount < wrapped.size());
 
-        return new MeasuredText(metrics, lines);
+        memo = new Memo(key, measured);
+
+        return measured;
     }
 
     @Override
@@ -314,7 +386,15 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             var measured = measureText(text);
             var metrics = measured.metrics();
             g2.setFont(metrics.getFont());
-            g2.setColor(Color.BLACK);
+
+            // The overflow colour is the whole of the signal that the text runs past what
+            // this component draws; there is no alert, and no selection colour on these
+            // components to take precedence over it.
+            g2.setColor(
+                measured.clamped()
+                    ? FlatLafProps.getColor(FlatLafKey.SCORE_OVERFLOW_COLOR)
+                    : Color.BLACK
+            );
 
             // Draw each line, offset by topGapPx so the gap appears above the text block.
             // The component is as wide as its widest line, so each line centers within the

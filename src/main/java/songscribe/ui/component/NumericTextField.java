@@ -67,7 +67,7 @@ public class NumericTextField extends MyJTextField {
      */
     public NumericTextField(int columns, NumericRange range, int maxChars) {
         super(columns);
-        InputUtils.addNumericFilter(this, false, maxChars);
+        InputUtils.addNumericFilter(this, InputUtils.NumericFormat.INTEGER, maxChars);
         this.range = range;
         setInputVerifier(new RangeVerifier());
     }

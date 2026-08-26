@@ -843,7 +843,9 @@ public final class ScoreView
 
     public String getSuggestedFileName() {
         var theSong = getSong();
-        var title = theSong.getTitle();
+        // A title may hold one line break, and a filename may not, so the break
+        // becomes a space here.
+        var title = StringUtils.stripLinefeeds(theSong.getTitle());
         var numberStr = theSong.getNumber();
         var stringBuilder = new StringBuilder(title.length() + 10);
 

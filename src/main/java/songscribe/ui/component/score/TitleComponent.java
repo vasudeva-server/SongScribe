@@ -20,19 +20,25 @@
 
 package songscribe.ui.component.score;
 
+import songscribe.dom.SongMetadata;
 import songscribe.ui.dialog.SongSettingsDialog;
 
 /**
  * Component that renders the song title.
  * <p>
- * The title is centered horizontally and may wrap to multiple lines
- * if it exceeds the line width. Uses the song's title font.
+ * The title is centered horizontally and wraps to at most
+ * {@link SongMetadata#MAX_TITLE_LINES} lines. Uses the song's title font.
  */
 public class TitleComponent extends BaseTitleComponent {
 
     @Override
     protected String songText() {
         return getSong().getNumberedTitle();
+    }
+
+    @Override
+    protected int maxRenderedLines() {
+        return SongMetadata.MAX_TITLE_LINES;
     }
 
     @Override
