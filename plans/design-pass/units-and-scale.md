@@ -8,18 +8,26 @@ Run by `/design-pass 1` — register row `1`, *Units and scale*.
 
 **Status:** 🔄 in progress
 
-| Step | Status | Notes |
-|---|---|---|
-| 1 Inventory | ✅ | 4 types, 19 public members, 0 tests, 0 `@Nullable`, 1 guard (unreachable) |
-| 2 Unrepresentable states | ⏳ | plan approved — see *Decisions* |
-| 3 Extraction | ⏳ | plan approved — see *Decisions* |
-| 4 Contracts | ⏳ | |
-| 5 Test triage | ⏳ | |
-| 6 Test-only surface | ⏳ | |
-| 7 Compile and run | ⏳ | |
-| 8 Diagrams | ⏳ | |
-| 9 Coverage | ⏳ | |
-| 10 Mutation | ⏳ | opportunistic |
+| Step | Status | Plan | Notes |
+|---|---|---|---|
+| 1 Inventory | ✅ | — | 4 types, 19 public members, 0 tests, 0 `@Nullable`, 1 guard (unreachable) |
+| 2 Unrepresentable states | ⏳ | [phases 1–2](../units-and-scale-execution.md) | D1, D3, D4 |
+| 3 Extraction | ⏳ | [phases 3–5](../units-and-scale-execution.md) | D2, D5, D6 |
+| 4 Contracts | ⏳ | [phase 6](../units-and-scale-execution.md) | per-member contracts sit in the phases that create them |
+| 5 Test triage | ⏳ | [phase 7](../units-and-scale-execution.md) | nothing to triage — 0 tests exist |
+| 6 Test-only surface | ✅ | — | none in the target |
+| 7 Compile and run | ⏳ | [phase 8](../units-and-scale-execution.md) | |
+| 8 Diagrams | ⏳ | [phase 8](../units-and-scale-execution.md) | |
+| 9 Coverage | ⏳ | [phase 8](../units-and-scale-execution.md) | |
+| 10 Mutation | ⏳ | — | opportunistic |
+
+Resume by taking the first phase that
+[`plans/units-and-scale-execution.md`](../units-and-scale-execution.md)'s Status
+Dashboard does not mark ✅. Delete that plan with this record at step 11.
+
+All contracts in this target classify as **mechanical** under
+`reference/classification.md` — unit-conversion arithmetic, and AWT's font model
+as an external standard. No domain checkpoint is owed.
 
 ## Numbers
 

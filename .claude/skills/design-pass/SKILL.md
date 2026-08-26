@@ -90,6 +90,12 @@ row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md
 1. **Open the record.** `plans/design-pass/<target>.md`. If it exists, read it
    and resume at the first step not marked ✅ — it is the only memory across a
    context clear. If not, create it from the template at the end of this file.
+
+   **Resume inside that step, not at the top of it.** A step's row carries a
+   *Plan* link once the step has one (see *Steps decompose; the record links
+   where*). Open that plan and take the first phase its dashboard does not mark
+   ✅. Restarting a step whose first three phases are already committed redoes
+   work the tree already holds, and the redo is invisible until it conflicts.
 2. **Claim what the register holds for this pass.** Open
    `plans/design-pass-register.md` and read *Carry-forward findings*. Every item
    tagged for this pass **is this pass's work**, established by an earlier pass
@@ -372,6 +378,20 @@ that is not yours to decide.
   `.claude/rules/serena.md`.
 - **Commit per step**, each with the record's status change, using the
   `/commit-commands:commit` skill. An uncommitted step is a lost step.
+- **Steps decompose; the record links where.** A step whose approved work spans
+  more commits than one sitting gets an execution plan in `plans/` via
+  `/make-plan`, and the record's row for that step links it. Step 2 over a
+  package, and any step that turns out to touch tens of files, are the usual
+  cases.
+
+  The record holds *what was decided*; the plan holds *what is left to do*, one
+  phase at a time, with a dashboard the implementer ticks. Neither restates the
+  other — a plan that re-argues a decision drifts from the record, and a record
+  that tracks progress drifts from the plan.
+
+  **The plan is deleted with the record at step 11.** It is working memory on the
+  same terms, and `plans/design-pass-register.md` states why under *The record is
+  working memory*.
 
 ## The record template
 
@@ -384,18 +404,22 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 
 **Status:** ⏳ not started · 🔄 in progress · ✅ complete
 
-| Step | Status | Notes |
-|---|---|---|
-| 1 Inventory | ⏳ | |
-| 2 Unrepresentable states | ⏳ | |
-| 3 Extraction | ⏳ | |
-| 4 Contracts | ⏳ | |
-| 5 Test triage | ⏳ | |
-| 6 Test-only surface | ⏳ | |
-| 7 Compile and run | ⏳ | |
-| 8 Diagrams | ⏳ | |
-| 9 Coverage | ⏳ | |
-| 10 Mutation | ⏳ | opportunistic |
+| Step | Status | Plan | Notes |
+|---|---|---|---|
+| 1 Inventory | ⏳ | — | |
+| 2 Unrepresentable states | ⏳ | — | |
+| 3 Extraction | ⏳ | — | |
+| 4 Contracts | ⏳ | — | |
+| 5 Test triage | ⏳ | — | |
+| 6 Test-only surface | ⏳ | — | |
+| 7 Compile and run | ⏳ | — | |
+| 8 Diagrams | ⏳ | — | |
+| 9 Coverage | ⏳ | — | |
+| 10 Mutation | ⏳ | — | opportunistic |
+
+*Plan* links the step's execution plan once it has one, and is where a resume
+picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
+the step is small enough to hold in one sitting.
 
 ## Numbers
 

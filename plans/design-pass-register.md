@@ -107,7 +107,7 @@ splits again suffixes again: 14b1, 14b2.
 | # | System | Where | Status | Notes |
 |---|---|---|---|---|
 | 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
-| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` | ⏳ | `.claude/guides/spatial-units.md`, `docs/zoom.md`. Leaf; nothing in the model depends on more than these. |
+| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext`; plus `font`, `util` | 🔄 | `.claude/guides/spatial-units.md`, `docs/zoom.md`. Leaf in the model; nothing in `dom` depends on more than these. The read found the text-measurement facility spread across `ScaleContext`, `GraphicUtils` and `MyFontUtils`, so the pass reaches `font` and `util` to collect it. Record: `plans/design-pass/units-and-scale.md`; execution plan: `plans/units-and-scale-execution.md`. |
 | 2 | Glyph registry | `smufl` | ⏳ | Leaf. |
 | 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
 | 4 | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
