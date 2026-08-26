@@ -1,6 +1,6 @@
 ---
 name: design-pass
-description: Run the design pass over a package or class — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
+description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
 model: opus
 effort: high
 disable-model-invocation: true
@@ -41,39 +41,80 @@ at the test step in volume means the earlier steps were skipped.**
 
 ## Step 0: Resolve, check, resume
 
-`$ARGUMENTS` is a **package or a single class**, dotted, with the `songscribe.`
-prefix implicit — `undo`, `ui.selection`, `dom.Key`, `KeyChangeDialog`.
-**With no argument, ask what to examine rather than guessing.**
+`$ARGUMENTS` is a **row number in the register**, `plans/design-pass-register.md`
+— `0`, `7`, `18`, or a suffixed row a split produced, `14a`. Nothing else is a
+target: the register decides what a pass covers and in what order, so work that
+is not on it gets a row before it gets a pass.
 
-Resolve which kind it is from the last segment: an initial capital is a class,
-anything else a package. A bare class name with no package is located with
-`jet_brains_find_symbol`. Confirm the resolved paths exist before going further,
-and ask rather than guess if the name is ambiguous or matches nothing.
+**A number whose row has been split is not a target.** If `14` now reads `14a`,
+`14b`, `14c`, say so and ask which; taking one on the user's behalf picks a
+system for them.
 
-| Target | Production | Tests |
+**With no argument, take the work already open**, in this order:
+
+1. **A row marked 🔄 resumes.** Its record holds the state; open it and continue
+   at the first step not marked ✅. Where more than one row is 🔄, ask which —
+   two passes open at once is a split the register does not intend.
+2. **Otherwise the first ⏳ row in table order starts.** The ordering is a
+   dependency fact, not a preference, so nothing further down is ready before it.
+   Suffixed rows sort inside their number — `14a`, `14b`, then `15`.
+3. **No ⏳ row left means the regime is done.** Say so; do not invent a target.
+
+Say which row you took, and whether you resumed it or started it, before touching
+anything.
+
+Read that row. Its *System* column names the pass; its *Where* column names the
+target, which is **a set of types, not a directory**. The register's *The unit is
+a system, not a package* says why: `dom` is one directory and about ten systems,
+so a row reading `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` is four files in
+a package whose other files belong to other passes.
+
+Resolve *Where* into two lists of paths and confirm every one exists before going
+further. A bare class name is located with `jet_brains_find_symbol`. Where a row
+names a whole package, each list is that one directory.
+
+| Row says | Production | Tests |
 |---|---|---|
-| package `ui.selection` | `src/main/java/songscribe/ui/selection/` | `src/test/java/songscribe/ui/selection/` |
-| class `dom.Key` | `src/main/java/songscribe/dom/Key.java` | `src/test/java/songscribe/dom/KeyTest.java` |
+| `ui/selection` | `src/main/java/songscribe/ui/selection/` | `src/test/java/songscribe/ui/selection/` |
+| `dom`: `Key`, `KeySignature` | `…/songscribe/dom/Key.java`, `…/dom/KeySignature.java` | `…/test/…/dom/KeyTest.java`, `…/dom/KeySignatureTest.java` |
+
+A row marked *(undecomposed)* is a directory nobody has read yet. **Split it on
+the read**, never before: step 1 names the systems the directory actually holds,
+you take one of them, and step 11 rewrites the register's single row into those
+systems. Splitting from a directory listing predicts boundaries instead of
+finding them, which is the error the register exists to avoid.
 
 Everything below calls the resolved target `<target>`, and its record name is the
-dotted argument with dots as hyphens — `ui-selection.md`, `dom-Key.md`.
+row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md`.
 
 1. **Open the record.** `plans/design-pass/<target>.md`. If it exists, read it
    and resume at the first step not marked ✅ — it is the only memory across a
    context clear. If not, create it from the template at the end of this file.
-2. **Confirm the tree is clean.** `git status`. Uncommitted work from another
+2. **Claim what the register holds for this pass.** Open
+   `plans/design-pass-register.md` and read *Carry-forward findings*. Every item
+   tagged for this pass **is this pass's work**, established by an earlier pass
+   that could not act on it: copy each into the record's *Findings claimed*, and
+   **delete the line from the register**. One list owns a finding at a time, so
+   neither copy can drift from the other.
+
+   Skip this on a resume; a record that already exists has already claimed.
+
+   An item you conclude this pass should not act on goes **back** to the register
+   with what you learned, retagged to whatever will actually reach the code. It is
+   never dropped, and whether to act is the user's call, not yours.
+3. **Confirm the tree is clean.** `git status`. Uncommitted work from another
    task makes the per-step commits wrong; stop and say so.
-3. **Verify the branch.** Feature branches come off `develop`, never `main`.
-4. **Capture the baseline into the record's *Before* column**, before touching
+4. **Verify the branch.** Feature branches come off `develop`, never `main`.
+5. **Capture the baseline into the record's *Before* column**, before touching
    anything. `MAIN` and `TEST` are the two paths from the table, so the same
-   commands serve a package and a single class:
+   commands serve a whole package and a handful of named types alike:
 
    ```bash
-   MAIN=<resolved production path>   # a directory, or one .java file
-   TEST=<resolved test path>
-   git rev-parse --short HEAD        # record as the start commit
-   find "$MAIN" -name '*.java' | xargs cat | wc -l
-   find "$TEST" -name '*.java' | xargs cat | wc -l
+   MAIN=(<resolved production paths>)   # files, a directory, or a mix
+   TEST=(<resolved test paths>)
+   git rev-parse --short HEAD           # record as the start commit
+   find "${MAIN[@]}" -name '*.java' | xargs cat | wc -l
+   find "${TEST[@]}" -name '*.java' | xargs cat | wc -l
    ```
 
    Then `./scripts/test.sh <the target's test classes>` and record the **passing
@@ -81,9 +122,11 @@ dotted argument with dots as hyphens — `ui-selection.md`, `dom-Key.md`.
 
 ## Step 1: Inventory
 
-**Delegatable when the target is a package** — one agent, or one per subpackage
-if it is large. **A single class is never delegated**; it is small enough to read
-directly, and a subagent's summary of it costs more than the file.
+**Delegatable when the row is a whole package** — one agent, or one per
+subpackage if it is large. **A row naming a handful of types is never delegated**;
+it is small enough to read directly, and a subagent's summary of it costs more
+than the files. An *(undecomposed)* row is where delegation earns the most: the
+read has to name the systems the directory holds before one of them can be taken.
 
 Produce:
 
@@ -283,6 +326,35 @@ Re-measure with the **same commands step 0 used** and fill in the *After* column
 plus types changed, guards retired, contracts written, domain checkpoints raised,
 the triage counts, and elapsed wall clock.
 
+**Then harvest, and delete the record** — `plans/design-pass-register.md` states
+why under *The record is working memory*. Two things leave the record first:
+
+1. **Anything a later pass owns** goes to the register's *Carry-forward
+   findings*, tagged with the row that owns it — `**→ Pass 7.**` — with file and
+   line, and stated so a reader who never saw this pass can act on it. Where the
+   owning row may never be scheduled, tag the track that will actually reach the
+   code instead. Nothing speculative, and nothing this pass could have fixed
+   itself: a finding inside your own reach is fixed here, while the reason for it
+   is still in hand.
+2. **Anything about the system's shape** goes to `docs/`, written in this pass
+   rather than promised to a later one.
+
+Then flip the register row to ✅, `git rm` the record, and commit the three
+together — the row, the findings, and the deletion are one change.
+
+**A row you split rewrites itself here.** Where step 1 read an *(undecomposed)*
+directory and named the systems it holds, replace that single row with one row
+per system, ordered by what each takes its types from, and mark ✅ only the one
+this pass took. The names come from the read, so this is the one place the
+register learns something it could not have predicted.
+
+**A split suffixes; it never renumbers.** Row `14` becomes `14a`, `14b`, `14c`,
+and every row below keeps the number it had. A row number is permanent identity —
+carry-forward findings are tagged with it, and those tags are written by passes
+that are over and cannot be asked what they meant. Renumbering would silently
+re-point every one of them at the wrong system. A suffixed row that splits again
+suffixes again: `14b1`, `14b2`.
+
 Then report: what the types now carry that runtime checks used to, what the
 contracts turned out to promise, what the checkpoints changed, tests before and
 after with the triage outcomes, what coverage found, and anything you surfaced
@@ -308,7 +380,7 @@ that is not yours to decide.
 ```markdown
 # Design Pass — `<target>`
 
-Run by `/design-pass <target>`.
+Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 
 **Status:** ⏳ not started · 🔄 in progress · ✅ complete
 
@@ -348,7 +420,13 @@ Kept: · Rewritten: · Discarded: · Added:
 
 Real missing cases (fixed), then uncovered regions left alone with the reason each.
 
+## Findings claimed
+
+Carry-forward items taken from the register at step 0, and what each turned out
+to be. Deleted from the register when claimed.
+
 ## Findings raised
 
-Anything surfaced that was not this target's to fix.
+Anything surfaced that was not this target's to fix. Harvested to the register at
+step 11, before this file is deleted.
 ```

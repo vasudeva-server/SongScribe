@@ -18,9 +18,27 @@ ten of its specifics were wrong, stale or superseded within one pass, while the
 only part that held up was the ordering, because ordering is a dependency fact
 rather than a prediction.
 
-It carries no file lists and no task lists. `/design-pass <target>` owns the
-procedure; the record it keeps at `plans/design-pass/<target>.md` owns the
-detail of one system.
+It carries no file lists and no task lists. `/design-pass <row number>` owns the
+procedure; the record it keeps at `plans/design-pass/<target>.md` owns the detail
+of one system.
+
+**A row number is the only way to start a pass.** `/design-pass 1` takes row 1,
+resolving its *Where* column into the target. Work that is not on this table gets
+a row before it gets a pass, which is what keeps the ordering above true rather
+than aspirational.
+
+## The record is working memory
+
+**A pass's record is deleted when the pass completes.** It exists to survive a
+context clear while the work is open, and nothing else. Once the pass is done,
+git holds what it said, `docs/` holds the design it produced, and a record left
+behind is a second account of the system that drifts from the first.
+
+Two things must leave the record before it goes: anything a **later** pass owns,
+which moves to *Carry-forward findings* below, and anything about the system's
+**shape**, which belongs in `docs/` and is written there inside the pass that
+learned it. A finding that is neither — resolved, or this pass's own — leaves
+with the file.
 
 ## The order, and why
 
@@ -77,23 +95,30 @@ decomposed only where a pass has already read the code. A row still marked
 directory listings would be predicting boundaries before seeing them, which is
 the error this file exists to avoid.
 
+**A split suffixes; it never renumbers.** When a read decomposes row 14, it
+becomes 14a, 14b, 14c, and every row below keeps the number it had. **A row
+number is permanent identity.** *Carry-forward findings* are tagged with it by
+passes that are finished and cannot be asked what they meant, so renumbering
+would re-point every one of those tags at the wrong system. A suffixed row that
+splits again suffixes again: 14b1, 14b2.
+
 ## Register
 
 | # | System | Where | Status | Notes |
 |---|---|---|---|---|
-| 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | 🔄 | Branch `776-key-signature`. **Settles key state wherever it lives, including in `Song` and `Line` — a pass fixes what it reaches, it does not hand its own findings forward.** |
-| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` | ⏳ | `docs/unit-conversion.md`, `docs/zoom.md`. Leaf; nothing in the model depends on more than these. |
+| 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
+| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `ScaleContext` | ⏳ | `.claude/guides/spatial-units.md`, `docs/zoom.md`. Leaf; nothing in the model depends on more than these. |
 | 2 | Glyph registry | `smufl` | ⏳ | Leaf. |
 | 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
 | 4 | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
-| 5 | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | |
-| 6 | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements` | ⏳ | Everything except key state, which pass 0 settles. |
+| 5 | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
+| 6 | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements` | ⏳ | Everything except key state, which pass 0 settled. |
 | 7 | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
 | 8 | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9 | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
 | 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, and the five `*Attachment` types | ⏳ | |
 | 11 | Tempo and beat | `dom`: `Tempo`, `TempoResolver`, `SongTempoMark`, `BeatAt`, `BeatChange` | ⏳ | |
-| 12 | Song | `dom`: `Song`, `SongMetadata`, `Attribution*`, `ModificationSession`, `TerminalMaintainer` | ⏳ | The large model. Decouple from everything above it as far as it will go. |
+| 12 | Song | `dom`: `Song`, `SongMetadata`, `Attribution*`, `ModificationSession`, `TerminalMaintainer` | ⏳ | The large model, less key state, which pass 0 settled. Decouple from everything above it as far as it will go. |
 | 13 | Mutations | `message/mutation` | ⏳ | Shapes follow the model. |
 | 14 | Message bus | `message`, `message/notification`, `message/command` | ⏳ | *(undecomposed)* |
 | 15 | Undo | `undo`, `lifecycle` | ⏳ | Replays mutations. |
@@ -104,7 +129,7 @@ the error this file exists to avoid.
 | 20 | Selection | `ui/selection` | ⏳ | |
 | 21 | Clipboard | `ui/clipboard` | ⏳ | |
 | 22 | Edit modes | `ui/edit` | ⏳ | |
-| 23 | Dialogs | `ui/dialog`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — takes the package as `plans/ui-dialog-interface.md` leaves it. That track deletes `ui/dialog/backend`, so this pass never sees it. |
+| 23 | Dialogs | `ui/dialog`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — takes the package as the finished `ui-dialog-interface` track left it. That track deleted `ui/dialog/backend`, so this pass never sees it. |
 | 24 | Actions | `ui/action` | ⏳ | *(undecomposed)* — 60 files. |
 | 25 | Score components | `ui/component`, `ui/component/score`, `ui/component/toolbar` | ⏳ | *(undecomposed)* |
 | 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
@@ -115,29 +140,6 @@ the error this file exists to avoid.
 
 Legend: ⏳ not started · 🔄 in progress · ✅ complete · ⛔ blocked
 
-## In flight
-
-**Pass 0 — the key system**, on branch `776-key-signature`, last commit
-`24febe64`. Its record is `plans/design-pass/keys.md`: what has been decided,
-what each decision rests on, what is left in what order, and the two things no
-mechanism has verified. Start there, not here.
-
-There is no test suite to run (see *The order, and why*), and a passing compile
-proves integration rather than correctness.
-
-**Only `Key` itself has been through the regime**, and the pass is early rather
-than nearly done. `Key` is now a 15-constant enum identified by its position on
-the circle of fifths, `KeyType` and `KeyMapping` are deleted, and
-`songscribe.io.LegacyKeyType` owns the `.mssw` tag pair. Everything else in the
-key system — `Line`'s key state, `KeyChangeElement`, `KeySignature`, the
-cautionary path, the edit path — is unread.
-
-The next session starts by asking the user for the bugs they have in hand and
-fixing those, then runs the architectural review the record's phase B describes.
-
-Passes 5, 6 and 12 then cover what is left of the elements, `Line` and `Song`:
-everything that is not key state.
-
 ## Carry-forward findings
 
 Facts a completed or in-flight pass established that a later pass owns. Nothing
@@ -145,6 +147,19 @@ speculative belongs here, and nothing that the *current* pass could fix belongs
 here either — a finding inside a pass's own reach is fixed in that pass, while
 the reason for it is still in hand.
 
+- **→ Pass 3.** `StaffHeaderMetrics.accidentalInkBboxSs` is named for a bounding
+  box and returns only its width. The Javadoc now says why the ink extent rather
+  than the advance width is the right measure; the name is what is left wrong.
+- **→ Pass 4.** `ElementLocation.matches(int lineIndex, int elementIndex)` takes
+  two same-typed parameters that transpose silently. Pass 0 built `KeyChangeSite`
+  for the same shape — a place in a line, stated by whoever resolved it — but only
+  for key changes. Whether the general type extends or displaces `ElementLocation`
+  is the open question; `ElementLocation`'s own consumers are hover highlighting.
+- **→ Pass 6.** `StaffElementRun.getElement` is contracted as *"The element at
+  `index`."* — no range, no `@return`, no `@throws`. `Line`'s implementation is a
+  bare `elements.get(index)`, so out of bounds throws by inheritance from the
+  field's type rather than by promise, and any caller guarding on `elementCount()`
+  is guessing.
 - **→ Pass 30.** `strings.properties` has `dialog.song.settings.year` above
   `dialog.converter.converting`, breaking the within-group alphabetical order the
   strings guide requires.
@@ -195,32 +210,22 @@ the reason for it is still in hand.
   `PreferencesDialog.ensureInstrumentsLoaded`, which this pass retires anyway.
   `PreferencesDialog.resetInstrumentsForTesting` is deleted, but the cache it
   reset is untouched and still lives on the dialog.
-- **→ Pass 30, needing Pass 26.** The fatal-error path assumes a display that
-  four of the seven entry points do not have. `RuntimeError.exit` routes
-  unconditionally through `OptionDialogs.showErrorMessageWithString`, i.e. a
-  modal `JOptionPane`, and the only thing that turns it off is
-  `OptionDialogs.setSuppressDialogs` — `public`, documented "for testing", with
-  no production caller. So `ImageConverter`, `PDFConverter`, `MidiConverter` and
-  `SVGConverter` attempt a dialog on any fatal error. That, together with
-  `RuntimeError.setExitHandlerForTesting`/`resetAlertShownForTesting`, is one
-  missing decision wearing three test-shaped disguises: **how does this entry
-  point report and terminate a fatal error?** Answer it once, at the boundary,
-  and all three members stop being back doors. `Converter.run` now installs a
-  non-interactive *publication-error* handler, which is the same question
-  answered for the bus only.
+- **→ The `converter` rewrite.** The fatal-error path assumes a display.
+  `RuntimeError.exit` routes unconditionally through
+  `OptionDialogs.showErrorMessageWithString`, i.e. a modal `JOptionPane`, so any
+  entry point without a screen attempts a dialog on any fatal error. The
+  `songscribe.converter` classes that made this visible are being rewritten and
+  are not themselves a finding; what the rewrite owes is the answer to **how does
+  a non-interactive entry point report and terminate a fatal error?**
+  Answered once at the boundary, three production members stop being back doors:
+  `OptionDialogs.setSuppressDialogs` — `public`, documented "for testing" — and
+  `RuntimeError.setExitHandlerForTesting`/`resetAlertShownForTesting`. None is
+  dead: `UnitTest`, `E2ETest` and `RuntimeErrorTestHelper` call all three. They
+  are test-only production surface rather than removable code, and the boundary
+  the rewrite installs is what the test bases should be using instead.
 
 ## Blockers
 
-**None.**
-
-`dialog-redesign` landed on `develop` and this branch already carries it: the
-merge at `c91c9604` brought in `develop`'s tip `a558c9f7`, so no rebase is owed
-and the `CLAUDE.md` conflict this section used to predict never arises. Verified
-in the code rather than the log — `BaseDialog` exposes `getMainFrame()` and
-`getData()` with no `getScoreView()`/`requireScoreView()`, and no legacy export
-dialog remains in `ui/dialog/`.
-
-Pass 23 and pass 0's `KeyChangeDialog` item are therefore both open. Neither is
-this regime's to start: `plans/ui-dialog-interface.md` owns `ui/dialog`, and its
-Phase 5 owns the `KeyChangeDialog` item, which the pass 0 record carries as group
-C item 4. Pass 23 begins on the package that track leaves behind.
+**None.** Every track that held a pass back has landed on `develop`: the dialog
+redesign, and the `ui-dialog-interface` track that owned `ui/dialog`. Pass 23
+begins on the package that track left behind.
