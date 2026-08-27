@@ -23,3 +23,7 @@ looking is not.
 ## Writing Tests
 
 Before reading, creating, or modifying tests, read the relevant guide (not auto-loaded): [testing-common.md](../guides/testing-common.md), [testing-unit.md](../guides/testing-unit.md), [testing-e2e.md](../guides/testing-e2e.md), [testing-manual.md](../guides/testing-manual.md).
+
+## Spelling
+
+The file header uses "Sri Chinmoy Centre" with British spelling, but *you* should always use "center" in the American spelling.
