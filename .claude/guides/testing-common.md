@@ -21,7 +21,7 @@ decides which tests need rewriting.
 
 **The whole suite runs only when the user asks for it, and only the user can
 start it.** `.claude/hooks/no-full-test-suite.sh` denies a bare
-`./scripts/test.sh`, a bare `unit` or `e2e`, more than four classes in one
+`./scripts/test.sh`, a bare `unit` or `e2e`, more than seven classes in one
 command, a loop driving the script, and Gradle's test tasks. There is no flag or
 sentinel that lifts it: the user runs the suite by typing `!./scripts/test.sh`,
 which the CLI executes directly and no hook sees. Ask for that rather than
