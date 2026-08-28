@@ -72,7 +72,7 @@ public class ElementColumnBuilder {
      * so a regression back to {@code noteheadBlackSmall} fails a test instead of passing unnoticed.
      */
     public static final double GRACE_NOTE_HEAD_WIDTH_SS =
-        SMuFLConstants.NOTE_HEAD_WIDTH_SS * ElementType.GRACE_NOTE_SCALE;
+        SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS * ElementType.GRACE_NOTE_SCALE;
 
     // Non-hyphenated syllables reserve more than the bare space glyph, so consecutive words
     // read as clearly separated rather than crowded.
@@ -329,7 +329,7 @@ public class ElementColumnBuilder {
         // extent, not the comfortable-spacing extent — the next element shifts only when the minimum
         // gap would otherwise be violated (refs #492).
         if (includeAugmentation && element.hasFall()) {
-            var fallAdvanceWidthSs = SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+            var fallAdvanceWidthSs = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
             // The fall anchors after the notehead/dots right edge, not the flag, so compute its
             // extent independently and take the max to avoid stacking it on top of the flag width.
             var fallRightExtentSs = baseRightExtentSs + NoteGeometry.FALL_GAP_SS + fallAdvanceWidthSs;

@@ -21,13 +21,22 @@
 package songscribe.smufl;
 
 /**
- * Engraving defaults from SMuFL metadata, all values in staff spaces.
+ * The whole notehead, on its own arm of {@link Notehead} because a stem never touches it —
+ * excluded from the type {@link SMuFLMetadata#stemAnchors} accepts.
  */
-public record SMuFLData(
-    double beamThickness,
-    double beamSpacing,
-    double repeatBarlineDotSeparation,
-    double legerLineThickness,
-    double legerLineExtension,
-    double tieMidpointThickness
-) {}
+public enum WholeNotehead implements Notehead {
+
+    WHOLE(SMuFLGlyph.NOTEHEAD_WHOLE);
+
+    private final SMuFLGlyph glyph;
+
+    WholeNotehead(SMuFLGlyph glyph) {
+        this.glyph = glyph;
+    }
+
+    /** @return The glyph this notehead is drawn with. */
+    @Override
+    public SMuFLGlyph glyph() {
+        return glyph;
+    }
+}

@@ -216,13 +216,13 @@ public final class SlideGeometry {
         // The glyph bbox is in staff spaces with the renderer's Y-down convention, relative to the
         // glyph origin (the drawString baseline anchor), so translating it by the draw point gives
         // the axis-aligned drawn rect directly.
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
 
         return new Rectangle2D.Double(
-            glyphXSs + bbox.left(),
-            glyphYSs + bbox.top(),
-            bbox.width(),
-            bbox.height()
+            glyphXSs + bbox.leftSs(),
+            glyphYSs + bbox.topSs(),
+            bbox.widthSs(),
+            bbox.heightSs()
         );
     }
 }

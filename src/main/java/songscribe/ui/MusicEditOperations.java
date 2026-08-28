@@ -865,6 +865,15 @@ public final class MusicEditOperations {
             return -1;
         }
 
+        // The split and the end state one repeat structure from its two sides. Replacing
+        // either already refuses a pair that disagrees, so creation refuses it too rather
+        // than making a state the ending could never be edited into.
+        if (!Ending.isValidEnd(
+                line.getElement(rightRepeatIndex).getType(),
+                line.getElement(end).getType())) {
+            return -1;
+        }
+
         // Validate first ending region (between optional leading element and right repeat):
         // one or more content elements, no barlines or repeats
         var firstEndingStart = begin;
@@ -974,34 +983,18 @@ public final class MusicEditOperations {
         return true;
     }
 
-    // Returns the index of the nearest element before selectionBegin that ending
-    // validation treats as content, or -1 when the selection has no such predecessor
-    // on this line.
-    private int indexOfPrecedingContentElement(Line line, int selectionBegin) {
-        for (var i = selectionBegin - 1; i >= 0; i--) {
-            if (!line.getElement(i).getType().isNonContentElement()) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     // Examines the element preceding the selection start and determines what action
     // is needed (none, span extension, or invalid).
     private EndingValidationResult checkPrecedingElement(
         Line line, int selectionBegin, int selectionEnd
     ) {
-        // Grace notes, slides and breath marks are transparent everywhere else in this
-        // validation, so skip back over them to reach the element that actually decides
-        // where the 1st bracket anchors.
-        var precedingElementIndex = indexOfPrecedingContentElement(line, selectionBegin);
+        // Where a bracket anchored here would open is Ending's rule, so that the anchor this
+        // sets and the element layout later draws from cannot drift apart. It answers with
+        // the anchor itself when nothing in front of it is a bar — a note predecessor, or no
+        // predecessor on this line, since an ending never spans lines.
+        var precedingElementIndex = Ending.openingElementIndex(line, selectionBegin);
 
-        if (precedingElementIndex < 0) {
-            // Nothing on this line precedes the selection, so there is no element the
-            // span could be extended onto — an ending never spans lines. Whatever
-            // precedes on earlier lines has already been vetted by the backward scan
-            // for an enclosing repeat.
+        if (precedingElementIndex == selectionBegin) {
             return EndingValidationResult.valid(
                 EndingValidationResult.PrecedingAction.NONE,
                 selectionBegin,
@@ -1010,16 +1003,6 @@ public final class MusicEditOperations {
         }
 
         var precedingType = line.getElement(precedingElementIndex).getType();
-
-        if (precedingType.isDuration()) {
-            // Note/rest predecessor — anchor the 1st bracket to the note at
-            // selectionBegin, whether or not the selection begins with a barline.
-            return EndingValidationResult.valid(
-                EndingValidationResult.PrecedingAction.NONE,
-                selectionBegin,
-                selectionEnd
-            );
-        }
 
         if (precedingType == ElementType.SINGLE_BARLINE
                 || precedingType == ElementType.REPEAT_LEFT

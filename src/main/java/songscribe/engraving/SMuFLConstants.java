@@ -20,7 +20,6 @@
 
 package songscribe.engraving;
 
-import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -41,7 +40,7 @@ public final class SMuFLConstants {
     public static final double LEDGER_LINE_LENGTH_FRACTION = 0.25;
     public static final double TIE_MIDPOINT_THICKNESS_SS;
 
-    // Glyph advance widths
+    // Glyph widths
     /**
      * The width of {@code noteheadBlack} specifically — <em>not</em> "the" notehead width. Use it
      * only for a quantity that really is tied to the black notehead, or as a generic spacing floor.
@@ -51,16 +50,10 @@ public final class SMuFLConstants {
      * noteheadWhole} is wider than {@code noteheadBlack}, so a whole note measured with this
      * constant comes out about half a staff space short (refs #694).
      */
-    public static final double NOTE_HEAD_WIDTH_SS;
-    public static final double G_CLEF_WIDTH_SS;
+    public static final double NOTE_HEAD_INK_WIDTH_SS;
+    public static final double G_CLEF_ADVANCE_WIDTH_SS;
     public static final double REPEAT_DOTS_ADVANCE_WIDTH_SS;
     public static final double AUGMENTATION_DOT_WIDTH_SS;
-
-    // Glyph anchors
-    public static final GlyphAnchors.Anchor NOTEHEAD_BLACK_STEM_UP_SE;
-    public static final GlyphAnchors.Anchor NOTEHEAD_BLACK_STEM_DOWN_NW;
-    public static final GlyphAnchors.Anchor NOTEHEAD_HALF_STEM_UP_SE;
-    public static final GlyphAnchors.Anchor NOTEHEAD_HALF_STEM_DOWN_NW;
 
     // Stem lengths
     /** SMuFL standard stem length in staff-space units. */
@@ -70,23 +63,16 @@ public final class SMuFLConstants {
     public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
 
     static {
-        var defaults = SMuFLMetadata.getEngravingDefaults();
+        var defaults = SMuFLMetadata.engravingDefaults();
 
-        REPEAT_BARLINE_DOT_SEPARATION_SS = defaults.repeatBarlineDotSeparation();
-        LEDGER_LINE_THICKNESS_SS = defaults.legerLineThickness();
-        TIE_MIDPOINT_THICKNESS_SS = defaults.tieMidpointThickness();
+        REPEAT_BARLINE_DOT_SEPARATION_SS = defaults.repeatBarlineDotSeparationSs();
+        LEDGER_LINE_THICKNESS_SS = defaults.legerLineThicknessSs();
+        TIE_MIDPOINT_THICKNESS_SS = defaults.tieMidpointThicknessSs();
 
-        NOTE_HEAD_WIDTH_SS = SMuFLMetadata.noteHeadWidthSs();
-        G_CLEF_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.G_CLEF);
-        REPEAT_DOTS_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.REPEAT_DOTS);
-        AUGMENTATION_DOT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.AUGMENTATION_DOT);
-
-        var blackAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
-        var halfAnchors = SMuFLMetadata.requireAnchors(SMuFLGlyph.NOTEHEAD_HALF);
-        NOTEHEAD_BLACK_STEM_UP_SE = blackAnchors.requireStemUpSE();
-        NOTEHEAD_BLACK_STEM_DOWN_NW = blackAnchors.requireStemDownNW();
-        NOTEHEAD_HALF_STEM_UP_SE = halfAnchors.requireStemUpSE();
-        NOTEHEAD_HALF_STEM_DOWN_NW = halfAnchors.requireStemDownNW();
+        NOTE_HEAD_INK_WIDTH_SS = SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs();
+        G_CLEF_ADVANCE_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.G_CLEF);
+        REPEAT_DOTS_ADVANCE_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.REPEAT_DOTS);
+        AUGMENTATION_DOT_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
     }
 
     private SMuFLConstants() {}

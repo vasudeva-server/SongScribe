@@ -92,7 +92,7 @@ public record MetronomeContent(
      * A dotted note spends two of these: one gap before the dot, one for the dot.
      */
     public static double dotAdvanceWidthSs() {
-        return SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.MET_AUGMENTATION_DOT)
+        return SMuFLMetadata.advanceWidthSs(SMuFLGlyph.MET_AUGMENTATION_DOT)
             * MetronomeAttachment.NOTE_SCALE;
     }
 
@@ -228,10 +228,10 @@ public record MetronomeContent(
 
             var glyph = metronomeGlyphFor(note.getType());
             var baselineOffsetSs =
-                -SMuFLMetadata.requireBBox(glyph).top() * MetronomeAttachment.NOTE_SCALE;
+                -SMuFLMetadata.bboxSs(glyph).topSs() * MetronomeAttachment.NOTE_SCALE;
             var noteStartSs = cursorSs;
             var noteAdvanceSs =
-                SMuFLMetadata.requireAdvanceWidth(glyph) * MetronomeAttachment.NOTE_SCALE;
+                SMuFLMetadata.advanceWidthSs(glyph) * MetronomeAttachment.NOTE_SCALE;
             items.add(new GlyphItem(glyph, cursorSs, baselineOffsetSs));
             cursorSs += noteAdvanceSs;
 

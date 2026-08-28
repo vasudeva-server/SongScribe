@@ -117,7 +117,7 @@ public class SystemStacker {
             systemExtents,
             tempoMark,
             content.regions(),
-            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS,
             content.widthSs(),
             TEMPO_MARGIN_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,

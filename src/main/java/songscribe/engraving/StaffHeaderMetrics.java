@@ -117,7 +117,7 @@ public final class StaffHeaderMetrics {
      * the glyph's bounding-box width, since LilyPond adds no padding of its own.
      * <p>
      * This is deliberately the ink extent, not the font's designed advance width that
-     * {@code SMuFLMetadata.requireAdvanceWidth} reports and the rest of the program uses.
+     * {@link SMuFLMetadata#advanceWidthSs} reports and the rest of the program uses.
      * LilyPond stacks key signature accidentals ink edge to ink edge; swapping in the
      * advance width would change the spacing of every key signature.
      *
@@ -125,7 +125,7 @@ public final class StaffHeaderMetrics {
      * @return the bounding-box width in staff spaces
      */
     public static double accidentalInkBboxSs(SMuFLGlyph glyph) {
-        return SMuFLMetadata.requireBBox(glyph).width();
+        return SMuFLMetadata.bboxSs(glyph).widthSs();
     }
 
     /**

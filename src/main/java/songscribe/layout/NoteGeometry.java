@@ -16,7 +16,7 @@ import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.BBox;
-import songscribe.smufl.GlyphAnchors;
+import songscribe.smufl.Anchor;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -89,12 +89,15 @@ public final class NoteGeometry {
         GLISSANDO_MIN_LENGTH_SS + 2 * GLISSANDO_DRAWN_GAP_SS;
 
     /**
-     * Stem anchor point for small black noteheads (stem-up, south-east corner).
-     * Used for grace notes which use pre-sized small glyphs.
+     * Stem anchor point for a grace note's stem-up south-east corner: the ordinary black
+     * notehead's stem anchor, scaled by {@link ElementType#GRACE_NOTE_SCALE} because a grace
+     * note is an ordinary black notehead drawn at a reduced font size.
      */
-    public static final GlyphAnchors.Anchor STEM_UP_SE_BLACK_SMALL = new GlyphAnchors.Anchor(
-        SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE.x() * ElementType.GRACE_NOTE_SCALE,
-        SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE.y() * ElementType.GRACE_NOTE_SCALE
+    public static final Anchor GRACE_STEM_UP_SE = new Anchor(
+        SMuFLMetadata.stemAnchors(ElementType.GRACE_QUAVER.stemmedNotehead()).stemUpSE().xSs()
+            * ElementType.GRACE_NOTE_SCALE,
+        SMuFLMetadata.stemAnchors(ElementType.GRACE_QUAVER.stemmedNotehead()).stemUpSE().ySs()
+            * ElementType.GRACE_NOTE_SCALE
     );
 
     // ==========================================================================
@@ -116,7 +119,7 @@ public final class NoteGeometry {
      * unbeamed up-stem flag extends further right.
      */
     public static double firstDotXSs(ElementType noteType, boolean beamed, StaffElement.Direction direction) {
-        var obstructionRightSs = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph()).right();
+        var obstructionRightSs = SMuFLMetadata.bboxSs(noteType.notehead().glyph()).rightSs();
 
         if (direction.isUp()) {
             var flagBBox = flagBBoxLocalSs(noteType, StaffElement.Direction.UP, beamed);
@@ -168,7 +171,7 @@ public final class NoteGeometry {
             return baseRightSs;
         }
 
-        var dotRightSs = SMuFLMetadata.requireBBox(SMuFLGlyph.AUGMENTATION_DOT).right();
+        var dotRightSs = SMuFLMetadata.bboxSs(SMuFLGlyph.AUGMENTATION_DOT).rightSs();
         var maxRightSs = new double[]{baseRightSs};
 
         forEachDotPosition(note, beamed, direction, (dotX, yOffset) ->
@@ -247,16 +250,15 @@ public final class NoteGeometry {
      */
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
         var isGrace = noteType.isGraceNote();
-        var anchor = isGrace ? STEM_UP_SE_BLACK_SMALL : stemSideAnchor(noteType, direction);
-        var anchorX = anchor.x();
+        var anchor = isGrace ? GRACE_STEM_UP_SE : stemSideAnchor(noteType, direction);
+        var anchorXSs = anchor.xSs();
 
         // Stem left edge: the anchor marks the stem's RIGHT edge for up-stems (back off a full
         // stem width) and its LEFT edge for down-stems (use the anchor directly). Both leave the
         // stem's outer edge flush with the notehead's outer edge, overlapping inward by its width.
-        var stemLeftX = direction.isUp() ? anchorX - STEM_WIDTH_SS : anchorX;
-        var stemLength = stemLengthSs(noteType);
+        var stemLeftXSs = direction.isUp() ? anchorXSs - STEM_WIDTH_SS : anchorXSs;
 
-        return new StemGeometry(stemLeftX, anchor.y(), stemLength);
+        return new StemGeometry(stemLeftXSs, anchor.ySs(), stemLengthSs(noteType));
     }
 
     /**
@@ -266,14 +268,10 @@ public final class NoteGeometry {
      * {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs} so the anchor lookup is
      * defined once.
      */
-    public static GlyphAnchors.Anchor stemSideAnchor(ElementType noteType, StaffElement.Direction direction) {
-        var isMinim = noteType == ElementType.MINIM;
+    public static Anchor stemSideAnchor(ElementType noteType, StaffElement.Direction direction) {
+        var anchors = SMuFLMetadata.stemAnchors(noteType.stemmedNotehead());
 
-        if (direction.isUp()) {
-            return isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_UP_SE : SMuFLConstants.NOTEHEAD_BLACK_STEM_UP_SE;
-        }
-
-        return isMinim ? SMuFLConstants.NOTEHEAD_HALF_STEM_DOWN_NW : SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW;
+        return direction.isUp() ? anchors.stemUpSE() : anchors.stemDownNW();
     }
 
     /**
@@ -375,11 +373,11 @@ public final class NoteGeometry {
         baseAccidentalWidthsSs = new float[count];
 
         for (var i = 0; i < count; i++) {
-            baseAccidentalWidthsSs[i] = (float) SMuFLMetadata.getAdvanceWidthOrZero(accidentals[i].glyph());
+            baseAccidentalWidthsSs[i] = (float) SMuFLMetadata.advanceWidthSs(accidentals[i].glyph());
         }
 
-        var beginParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-        var endParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
+        var beginParenthesisWidthSs = (float) SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+        var endParenthesisWidthSs = (float) SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
 
         baseAccidentalParenthesisWidthsSs = new float[count];
 
@@ -615,17 +613,17 @@ public final class NoteGeometry {
      * <p>Each side of the base extent runs beyond the notehead bbox by
      * {@link SMuFLConstants#LEDGER_LINE_LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
      *
-     * <p>Every note type passing {@link #noteNeedsLedgerLines} yields a non-null glyph via
-     * {@code requireSMuFLGlyph()}, and {@code bbox.left()} is {@code 0.0} for all noteheads, so no
-     * fallback or left-edge constant is needed.
+     * <p>Every note type passing {@link #noteNeedsLedgerLines} has a notehead, and
+     * {@code bbox.left()} is {@code 0.0} for all noteheads, so no fallback or left-edge constant
+     * is needed.
      */
     public static LedgerLineGeometry getLedgerLineGeometry(StaffElement note) {
         var noteType = note.getType();
-        var bbox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+        var bbox = SMuFLMetadata.bboxSs(noteType.notehead().glyph());
         var direction = effectiveDirection(note);
         var offsetSs = getNoteheadXOffsetSs(noteType, direction);
-        var headLeftSs = offsetSs + bbox.left();
-        var headRightSs = offsetSs + bbox.right();
+        var headLeftSs = offsetSs + bbox.leftSs();
+        var headRightSs = offsetSs + bbox.rightSs();
         var widthSs = headRightSs - headLeftSs;
         var extensionSs = SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION * widthSs;
         var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
@@ -730,24 +728,24 @@ public final class NoteGeometry {
         var stemGeom = computeBaseStemGeometry(noteType, direction);
         var stemLeftXSs = stemGeom.stemLeftXSs();
         var stemTipYSs = stemGeom.stemTipYSs(direction);
-        var flagBBox = SMuFLMetadata.requireBBox(flagGlyph);
+        var flagBBox = SMuFLMetadata.bboxSs(flagGlyph);
 
         if (noteType.isGraceNote()) {
             var scale = (double) ElementType.GRACE_NOTE_SCALE;
             var flagOriginX = getGraceFlagOriginXSs(stemLeftXSs);
 
             return new Rectangle2D.Double(
-                flagOriginX + flagBBox.left() * scale,
-                stemTipYSs + flagBBox.top() * scale,
-                flagBBox.width() * scale,
-                flagBBox.height() * scale);
+                flagOriginX + flagBBox.leftSs() * scale,
+                stemTipYSs + flagBBox.topSs() * scale,
+                flagBBox.widthSs() * scale,
+                flagBBox.heightSs() * scale);
         }
 
         return new Rectangle2D.Double(
-            stemLeftXSs + flagBBox.left(),
-            stemTipYSs + flagBBox.top(),
-            flagBBox.width(),
-            flagBBox.height());
+            stemLeftXSs + flagBBox.leftSs(),
+            stemTipYSs + flagBBox.topSs(),
+            flagBBox.widthSs(),
+            flagBBox.heightSs());
     }
 
     // ==========================================================================
@@ -789,7 +787,7 @@ public final class NoteGeometry {
     }
 
     private static float advancePast(float x, SMuFLGlyph glyph, float scale) {
-        return x + scale * (float) SMuFLMetadata.getAdvanceWidthOrZero(glyph);
+        return x + scale * (float) SMuFLMetadata.advanceWidthSs(glyph);
     }
 
     // ==========================================================================
@@ -821,7 +819,7 @@ public final class NoteGeometry {
 
         // Base (non-grace) bounds: glyphs are laid out at full size.
         walkAccidentalGlyphs(accidentalGlyph, parenthesized, startX, 1f, (glyph, xSs) -> {
-            var shifted = SMuFLMetadata.requireBBox(glyph).translateX(xSs);
+            var shifted = SMuFLMetadata.bboxSs(glyph).translateXSs(xSs);
             accumulator[0] = (accumulator[0] == null) ? shifted : combine.apply(accumulator[0], shifted);
         });
 
@@ -831,6 +829,6 @@ public final class NoteGeometry {
             return null;
         }
 
-        return new AccidentalBounds(box.left(), box.width(), box.top(), box.bottom());
+        return new AccidentalBounds(box.leftSs(), box.widthSs(), box.topSs(), box.bottomSs());
     }
 }

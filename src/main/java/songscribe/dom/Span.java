@@ -287,7 +287,7 @@ public abstract class Span extends LineElement {
         var end = endElement;
 
         if (end == null) {
-            return SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+            return SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS;
         }
 
         return end.getType().getElementWidthSs();

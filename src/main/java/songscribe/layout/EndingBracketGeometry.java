@@ -25,7 +25,6 @@ import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.ElementType;
@@ -69,9 +68,9 @@ public final class EndingBracketGeometry {
      * Computes the bracket ranges for an ending and stores them on it.
      * <p>
      * Determines where each visual bracket starts and ends by examining the
-     * element types (barlines, repeats) in the line. The logic mirrors
-     * {@code EndingRenderer.renderEndings()} to ensure stacking and rendering
-     * use identical positions.
+     * element types (barlines, repeats) in the line. The ranges are stored on the
+     * ending, and both stacking and rendering read them from there rather than
+     * deriving positions of their own.
      *
      * @param ending   the ending to compute ranges for
      * @param line     the line containing the ending
@@ -93,109 +92,112 @@ public final class EndingBracketGeometry {
             return noRanges;
         }
 
-        // Find the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that separates first and second endings
-        var repeatSplitIndex = IntStream.rangeClosed(start, end)
-            .filter(i -> {
-                var t = line.getElement(i).getType();
-                return t == ElementType.REPEAT_RIGHT || t == ElementType.REPEAT_LEFT_RIGHT;
-            })
-            .findFirst()
-            .orElse(-1);
+        // The ending owns which of its elements is the split. Searching for it again here
+        // is what let the two disagree: a scan that includes the anchor takes an anchor
+        // that is itself a repeat for the split, which leaves the first bracket unbuilt
+        // and the second one anchored at the line's left edge.
+        var repeatSplitIndex = ending.getSplitIndex(line);
 
-        if (repeatSplitIndex < 0) {
-            throw Ending.noSplitElementException(start, end);
-        }
-
-        var startElement = line.getElement(start);
-
-        // Adjust start leftward if previous element is a barline or repeat
-        if (start > 0) {
-            var previousElement = line.getElement(start - 1);
-            var prevType = previousElement.getType();
-
-            if (prevType.isBarLine() || prevType.isRepeat()) {
-                --start;
-                startElement = previousElement;
-            }
-        }
-
+        var startElement = line.getElement(ending.getOpeningElementIndex(line));
         var endElement = line.getElement(end);
-        var ranges = new ArrayList<Ending.BracketRange>(2);
-        var repeatX = 0.0;
 
-        // First bracket (anchor up to the split repeat)
-        if (start < repeatSplitIndex) {
-            var startColumn = columnFn.apply(startElement);
-            var x1 = startColumn.getXSs();
-            var startType = startElement.getType();
+        // The split lies strictly between anchor and end, so both brackets always exist.
+        var firstBracket = firstBracketRange(startElement, repeatSplitIndex, line, columnFn);
+        var secondBracket = secondBracketRange(
+            endElement, end, repeatSplitIndex, line, columnFn);
 
-            // For barlines and repeats, align to the governing thin barline center.
-            // For notes/rests, anchor to the element's left extent.
-            if (startType.isBarLine() || startType.isRepeat()) {
-                x1 += startType.endingAnchorXOffsetSs();
-            }
-            else {
-                x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
-            }
-
-            var repeatElementX = columnFn.apply(
-                line.getElement(repeatSplitIndex)).getXSs();
-            var x2 = repeatElementX
-                + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-            repeatX = repeatElementX
-                + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS
-                - LineThickness.VOLTA_BRACKET_SS / 2;
-
-            ranges.add(new Ending.BracketRange(x1, x2, 1, true));
-        }
-
-        // Second bracket (after the split repeat)
-        if (end > repeatSplitIndex) {
-            var endColumn = columnFn.apply(endElement);
-            var x2 = endColumn.getXSs();
-            var endType = endElement.getType();
-
-            // Extend to the next barline/repeat if end element is not one
-            if (!endType.isBarLine() && !endType.isRepeat()
-                && end + 1 < line.elementCount()) {
-                var nextElement = line.getElement(end + 1);
-                var nextType = nextElement.getType();
-
-                if (nextType.isBarLine() || nextType.isRepeat()) {
-                    endType = nextType;
-                    x2 = columnFn.apply(nextElement).getXSs();
-                }
-            }
-
-            boolean hasClosingStroke;
-
-            switch (endType) {
-                case REPEAT_RIGHT, REPEAT_LEFT_RIGHT -> {
-                    x2 += LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-                    hasClosingStroke = true;
-                }
-                case FINAL_DOUBLE_BARLINE -> {
-                    x2 += LineThickness.THIN_BARLINE_SS / 2;
-                    hasClosingStroke = true;
-                }
-                case SINGLE_BARLINE, DOUBLE_BARLINE -> {
-                    x2 += LineThickness.THIN_BARLINE_SS / 2;
-                    hasClosingStroke = false;
-                }
-                case REPEAT_LEFT -> hasClosingStroke = false;
-                default -> {
-                    x2 = endColumn.getRightEdgeXSs() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
-                    hasClosingStroke = false;
-                }
-            }
-
-            ranges.add(new Ending.BracketRange(repeatX, x2, 2, hasClosingStroke));
-        }
-
-        var bracketRanges = List.copyOf(ranges);
+        var bracketRanges = List.of(firstBracket, secondBracket);
         ending.setBracketRanges(bracketRanges);
 
         return bracketRanges;
+    }
+
+    /**
+     * The first bracket: from the element the ending opens on to the split repeat.
+     *
+     * @param startElement     the element the bracket opens on
+     * @param repeatSplitIndex the index of the repeat splitting the two brackets
+     * @param line             the line containing the ending
+     * @param columnFn         supplies an element's column
+     * @return the bracket's range
+     */
+    private static Ending.BracketRange firstBracketRange(
+        StaffElement startElement,
+        int repeatSplitIndex,
+        Line line,
+        Function<? super StaffElement, ElementColumn> columnFn
+    ) {
+        var startColumn = columnFn.apply(startElement);
+        var startType = startElement.getType();
+        double x1;
+
+        // For barlines and repeats, the bar states the anchor its opening arm hangs from.
+        // For notes/rests, anchor to the element's left extent.
+        if (startType.isBarLine() || startType.isRepeat()) {
+            x1 = startColumn.getXSs() + startType.voltaOpeningXOffsetSs();
+        }
+        else {
+            x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
+        }
+
+        var splitElement = line.getElement(repeatSplitIndex);
+        var x2 = columnFn.apply(splitElement).getXSs()
+            + splitElement.getType().voltaClosingXOffsetSs();
+
+        return new Ending.BracketRange(x1, x2, 1, true);
+    }
+
+    /**
+     * The second bracket: from the split repeat to the element the ending closes on.
+     *
+     * @param endElement       the ending's end element
+     * @param end              the end element's index
+     * @param repeatSplitIndex the index of the repeat splitting the two brackets
+     * @param line             the line containing the ending
+     * @param columnFn         supplies an element's column
+     * @return the bracket's range
+     */
+    private static Ending.BracketRange secondBracketRange(
+        StaffElement endElement,
+        int end,
+        int repeatSplitIndex,
+        Line line,
+        Function<? super StaffElement, ElementColumn> columnFn
+    ) {
+        var splitElement = line.getElement(repeatSplitIndex);
+        var x1 = columnFn.apply(splitElement).getXSs()
+            + splitElement.getType().voltaOpeningXOffsetSs();
+
+        var endColumn = columnFn.apply(endElement);
+        var x2 = endColumn.getXSs();
+        var endType = endElement.getType();
+
+        // Extend to the next barline/repeat if end element is not one
+        if (!endType.isBarLine() && !endType.isRepeat()
+            && end + 1 < line.elementCount()) {
+            var nextElement = line.getElement(end + 1);
+            var nextType = nextElement.getType();
+
+            if (nextType.isBarLine() || nextType.isRepeat()) {
+                endType = nextType;
+                x2 = columnFn.apply(nextElement).getXSs();
+            }
+        }
+
+        boolean hasClosingStroke;
+
+        if (endType.isBarLine() || endType.isRepeat()) {
+            x2 += endType.voltaClosingXOffsetSs();
+            hasClosingStroke = endType == ElementType.REPEAT_RIGHT
+                || endType == ElementType.REPEAT_LEFT_RIGHT
+                || endType == ElementType.FINAL_DOUBLE_BARLINE;
+        }
+        else {
+            x2 = endColumn.getRightEdgeXSs() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
+            hasClosingStroke = false;
+        }
+
+        return new Ending.BracketRange(x1, x2, 2, hasClosingStroke);
     }
 
     /**
@@ -215,23 +217,32 @@ public final class EndingBracketGeometry {
     ) {
         var spanWidthSs = bracket.widthSs();
         var bracketThicknessSs = LineThickness.VOLTA_BRACKET_SS;
+        var halfThicknessSs = bracketThicknessSs / 2;
+
+        // The bracket is stroked along the element's Y, and a stroke is centered on its path,
+        // so the bar's ink reaches half a thickness above that Y. Regions describe ink, so
+        // they start there: a region starting at the Y itself leaves that half unreserved,
+        // and a volta with nothing stacked above it is then clipped by exactly that much.
+        var inkTopSs = -halfThicknessSs;
         var regions = new ArrayList<CollisionRegion>(4);
 
         // Horizontal bar
         regions.add(new CollisionRegion(
-            xBaseSs, 0, spanWidthSs, bracketThicknessSs));
+            xBaseSs, inkTopSs, spanWidthSs, bracketThicknessSs));
+
+        // The ticks hang from the bar. Their lower ends are the stroked path's caps, which
+        // drawPath insets so that the ink stops on the endpoint rather than bulging past it.
+        var tickHeightSs = Ending.VOLTA_TICK_HEIGHT_SS + halfThicknessSs;
 
         // Left tick
         regions.add(new CollisionRegion(
-            xBaseSs, 0, bracketThicknessSs,
-            Ending.VOLTA_TICK_HEIGHT_SS));
+            xBaseSs, inkTopSs, bracketThicknessSs, tickHeightSs));
 
         // Right tick (only if there is a closing stroke)
         if (bracket.hasClosingStroke()) {
             regions.add(new CollisionRegion(
-                xBaseSs + spanWidthSs - bracketThicknessSs, 0,
-                bracketThicknessSs,
-                Ending.VOLTA_TICK_HEIGHT_SS));
+                xBaseSs + spanWidthSs - bracketThicknessSs, inkTopSs,
+                bracketThicknessSs, tickHeightSs));
         }
 
         // Label (e.g. "1." or "2.")

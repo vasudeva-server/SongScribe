@@ -1,0 +1,34 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.dom;
+
+import songscribe.smufl.SMuFLGlyph;
+
+/**
+ * An element drawn as a single glyph with nothing attached to it — the rests and the
+ * breath mark.
+ *
+ * <p>The glyph is the whole of the appearance: the element's extent is the glyph's
+ * bounding box, with no stem, ledger line or stroke sequence to add to it.
+ *
+ * @param glyph the glyph the element is drawn with
+ */
+public record GlyphAppearance(SMuFLGlyph glyph) implements ElementAppearance {}

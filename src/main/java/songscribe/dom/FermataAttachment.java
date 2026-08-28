@@ -38,9 +38,9 @@ public final class FermataAttachment extends Attachment {
     private static final double FERMATA_HEIGHT_SS;
 
     static {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.FERMATA_ABOVE);
-        FERMATA_WIDTH_SS = bbox.width();
-        FERMATA_HEIGHT_SS = bbox.height();
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE);
+        FERMATA_WIDTH_SS = bbox.widthSs();
+        FERMATA_HEIGHT_SS = bbox.heightSs();
     }
 
     /**

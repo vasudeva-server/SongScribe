@@ -451,10 +451,10 @@ public final class SlideRenderer {
         double middleLineYSs,
         Color color
     ) {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
-        var glyphXSs = boundsSs.getX() - bbox.left();
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+        var glyphXSs = boundsSs.getX() - bbox.leftSs();
         var glyphYSs = RenderingUtils.layoutYToComponentYSs(
-            boundsSs.getY() - bbox.top(), middleLineYSs);
+            boundsSs.getY() - bbox.topSs(), middleLineYSs);
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);

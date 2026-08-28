@@ -113,19 +113,5 @@ public final class LineThickness {
      */
     public static final double BARLINE_SEPARATION_SS = STAFF_LINE_SS * BARLINE_SEPARATION_MULTIPLIER;
 
-    /**
-     * The X offset of the thin barline center within a REPEAT_RIGHT barline,
-     * relative to the element's layout X position.
-     */
-    public static final double REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS =
-            SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS + BARLINE_SEPARATION_SS + THIN_BARLINE_SS / 2;
-
-    /**
-     * The X offset just past the thick barline of a REPEAT_RIGHT barline,
-     * relative to the element's layout X position.
-     */
-    public static final double REPEAT_RIGHT_AFTER_THICK_X_SS = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
-            + BARLINE_SEPARATION_SS + THIN_BARLINE_SS + BARLINE_SEPARATION_SS + THICK_BARLINE_SS;
-
     private LineThickness() {}
 }

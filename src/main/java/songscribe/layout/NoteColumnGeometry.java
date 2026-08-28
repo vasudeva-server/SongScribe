@@ -77,10 +77,10 @@ public final class NoteColumnGeometry {
         var direction = NoteGeometry.effectiveDirection(note);
 
         // ---- notehead ----
-        var glyph = noteType.requireSMuFLGlyph();
-        var noteheadBBox = SMuFLMetadata.requireBBox(glyph);
+        var glyph = noteType.notehead().glyph();
+        var noteheadBBox = SMuFLMetadata.bboxSs(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
-        var leftSs = offsetX + noteheadBBox.left();
+        var leftSs = offsetX + noteheadBBox.leftSs();
 
         // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(

@@ -357,8 +357,8 @@ public final class RenderingUtils {
      * @return the Y coordinate to pass to {@link #drawBravuraGlyph}
      */
     static double glyphOriginYFromLayoutTop(double layoutTopYSs, SMuFLGlyph glyph) {
-        var bbox = SMuFLMetadata.requireBBox(glyph);
-        return layoutTopYSs - bbox.top();
+        var bbox = SMuFLMetadata.bboxSs(glyph);
+        return layoutTopYSs - bbox.topSs();
     }
 
     /**
@@ -407,12 +407,12 @@ public final class RenderingUtils {
      * @return X offset from note reference point to stem center, in staff spaces
      */
     static double stemCenterXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
-        var anchorX = NoteGeometry.stemSideAnchor(noteType, direction).x();
+        var anchorXSs = NoteGeometry.stemSideAnchor(noteType, direction).xSs();
         var upper = direction.isUp();
 
-        // upper: SE anchor is the stem's right edge; center = anchorX - half stem width
-        // lower: NW anchor is the stem's left edge; center = anchorX + half stem width
+        // upper: SE anchor is the stem's right edge; center = anchorXSs - half stem width
+        // lower: NW anchor is the stem's left edge; center = anchorXSs + half stem width
         var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
-        return upper ? anchorX - halfStemWidthSs : anchorX + halfStemWidthSs;
+        return upper ? anchorXSs - halfStemWidthSs : anchorXSs + halfStemWidthSs;
     }
 }

@@ -22,63 +22,83 @@ package songscribe.dom;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.event.KeyEvent;
-import java.util.Map;
 import javax.swing.KeyStroke;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.error.RuntimeError;
-import songscribe.smufl.BBox;
+import songscribe.smufl.Notehead;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StemmedNotehead;
+import songscribe.smufl.WholeNotehead;
 import songscribe.util.UIUtils;
 
+import static songscribe.engraving.BarStroke.DOTS;
+import static songscribe.engraving.BarStroke.THICK;
+import static songscribe.engraving.BarStroke.THIN;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
 public enum ElementType {
     // Notes
-    SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0),
-    MINIM("Half note", KeyEvent.VK_5, 0, PPQ * 2, 0),
-    CROTCHET("Quarter note", KeyEvent.VK_4, 0, PPQ, 0),
-    QUAVER("Eighth note", KeyEvent.VK_3, 0, PPQ / 2, 0),
-    SEMIQUAVER("Sixteenth note", KeyEvent.VK_2, 0, PPQ / 4, 0),
-    DEMI_SEMIQUAVER("Thirty-second note", KeyEvent.VK_1, 0, PPQ / 8, 0),
+    SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0,
+        new NoteheadAppearance(WholeNotehead.WHOLE)),
+    MINIM("Half note", KeyEvent.VK_5, 0, PPQ * 2, 0,
+        new NoteheadAppearance(StemmedNotehead.HALF)),
+    CROTCHET("Quarter note", KeyEvent.VK_4, 0, PPQ, 0,
+        new NoteheadAppearance(StemmedNotehead.BLACK)),
+    QUAVER("Eighth note", KeyEvent.VK_3, 0, PPQ / 2, 0,
+        new NoteheadAppearance(StemmedNotehead.BLACK)),
+    SEMIQUAVER("Sixteenth note", KeyEvent.VK_2, 0, PPQ / 4, 0,
+        new NoteheadAppearance(StemmedNotehead.BLACK)),
+    DEMI_SEMIQUAVER("Thirty-second note", KeyEvent.VK_1, 0, PPQ / 8, 0,
+        new NoteheadAppearance(StemmedNotehead.BLACK)),
 
     // Rests
-    SEMIBREVE_REST("Whole rest", KeyEvent.VK_6, -1, PPQ * 4, -1),
-    MINIM_REST("Half rest", KeyEvent.VK_5, -1, PPQ * 2, 0),
-    CROTCHET_REST("Quarter rest", KeyEvent.VK_4, -1, PPQ, 0),
-    QUAVER_REST("Eighth rest", KeyEvent.VK_3, -1, PPQ / 2, 0),
-    SEMIQUAVER_REST("Sixteenth rest", KeyEvent.VK_2, -1, PPQ / 4, 0),
-    DEMI_SEMIQUAVER_REST("Thirty-second rest", KeyEvent.VK_1, -1, PPQ / 8, 0),
+    SEMIBREVE_REST("Whole rest", KeyEvent.VK_6, -1, PPQ * 4, -1,
+        new GlyphAppearance(SMuFLGlyph.REST_WHOLE)),
+    MINIM_REST("Half rest", KeyEvent.VK_5, -1, PPQ * 2, 0,
+        new GlyphAppearance(SMuFLGlyph.REST_HALF)),
+    CROTCHET_REST("Quarter rest", KeyEvent.VK_4, -1, PPQ, 0,
+        new GlyphAppearance(SMuFLGlyph.REST_QUARTER)),
+    QUAVER_REST("Eighth rest", KeyEvent.VK_3, -1, PPQ / 2, 0,
+        new GlyphAppearance(SMuFLGlyph.REST_8TH)),
+    SEMIQUAVER_REST("Sixteenth rest", KeyEvent.VK_2, -1, PPQ / 4, 0,
+        new GlyphAppearance(SMuFLGlyph.REST_16TH)),
+    DEMI_SEMIQUAVER_REST("Thirty-second rest", KeyEvent.VK_1, -1, PPQ / 8, 0,
+        new GlyphAppearance(SMuFLGlyph.REST_32ND)),
 
     // Grace notes
-    GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0),
+    GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0,
+        new NoteheadAppearance(StemmedNotehead.BLACK)),
 
     // Repeats
-    REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
-    REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
-    REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
+    REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0,
+        BarAppearance.of(THICK, THIN, DOTS)),
+    REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0,
+        BarAppearance.of(DOTS, THIN, THICK)),
+    REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0,
+        BarAppearance.of(DOTS, THIN, THICK, THIN, DOTS)),
 
     // Half a staff space above the top staff line. This is the single source for where a
     // breath mark sits: StaffElementRenderer.renderBreathMark() derives the glyph's Y from it and the
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
-    BREATH_MARK("Breath mark", 0, -5),
+    BREATH_MARK("Breath mark", 0, -5,
+        new GlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA)),
 
     // Barlines
-    SINGLE_BARLINE("Single barline", 0, 0),
-    DOUBLE_BARLINE("Double barline", 0, 0),
-    FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),
+    SINGLE_BARLINE("Single barline", 0, 0, BarAppearance.of(THIN)),
+    DOUBLE_BARLINE("Double barline", 0, 0, BarAppearance.of(THIN, THIN)),
+    FINAL_DOUBLE_BARLINE("Final double barline", 0, 0, BarAppearance.of(THIN, THICK)),
 
     // Key changes. Deliberately placed after the barlines and before the IO aliases: the
     // three ordinal-range predicates — isNote(), isRest() and isBarLine() — all end before
     // this point, so none of them picks it up.
-    KEY_CHANGE("Key change", 0, 0),
+    KEY_CHANGE("Key change", 0, 0, new KeySignatureAppearance()),
 
     // IO aliases
     SEMIBREVEREST(ElementType.SEMIBREVE_REST),
@@ -113,28 +133,6 @@ public enum ElementType {
         }
     }
 
-    /**
-     * Maps each ElementType to its corresponding SMuFL glyph.
-     * Used for metadata-driven bounds computation and rendering.
-     * Barline and repeat types are absent — they compute bounds from engraving defaults.
-     */
-    private static final Map<ElementType, SMuFLGlyph> SMUFL_GLYPHS = Map.ofEntries(
-        Map.entry(SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE),
-        Map.entry(MINIM, SMuFLGlyph.NOTEHEAD_HALF),
-        Map.entry(CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK),
-        Map.entry(QUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
-        Map.entry(SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
-        Map.entry(DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
-        Map.entry(GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK),
-        Map.entry(SEMIBREVE_REST, SMuFLGlyph.REST_WHOLE),
-        Map.entry(MINIM_REST, SMuFLGlyph.REST_HALF),
-        Map.entry(CROTCHET_REST, SMuFLGlyph.REST_QUARTER),
-        Map.entry(QUAVER_REST, SMuFLGlyph.REST_8TH),
-        Map.entry(SEMIQUAVER_REST, SMuFLGlyph.REST_16TH),
-        Map.entry(DEMI_SEMIQUAVER_REST, SMuFLGlyph.REST_32ND),
-        Map.entry(BREATH_MARK, SMuFLGlyph.BREATH_MARK_COMMA)
-    );
-
     // ========================================================================
     // Geometry constants — canonical definitions; layout/ui reference these
     // ========================================================================
@@ -162,6 +160,7 @@ public enum ElementType {
     private final int defaultStaffPosition;
     @Nullable
     private final ElementType aliasOf;
+    private final ElementAppearance appearance;
     private double fullWidthSs;
     private double baseWidthSs;
     private double fullElementHeightSs;
@@ -176,11 +175,13 @@ public enum ElementType {
         int keyCode,
         int modifiers,
         int defaultDuration,
-        int defaultStaffPosition
+        int defaultStaffPosition,
+        ElementAppearance appearance
     ) {
         this.name = name;
         this.defaultDuration = defaultDuration;
         this.defaultStaffPosition = defaultStaffPosition;
+        this.appearance = appearance;
         aliasOf = null;
 
         if (keyCode != 0) {
@@ -197,13 +198,15 @@ public enum ElementType {
     ElementType(
         @Nullable String name,
         int defaultDuration,
-        int defaultStaffPosition
+        int defaultStaffPosition,
+        ElementAppearance appearance
     ) {
-        this(name, 0, 0, defaultDuration, defaultStaffPosition);
+        this(name, 0, 0, defaultDuration, defaultStaffPosition, appearance);
     }
 
     ElementType(ElementType aliasOf) {
         this.aliasOf = aliasOf;
+        appearance = aliasOf.appearance;
         name = aliasOf.name;
         acceleratorKey = aliasOf.acceleratorKey;
         defaultDuration = aliasOf.defaultDuration;
@@ -280,7 +283,7 @@ public enum ElementType {
      *
      * <p>This is the single source of truth for how wide an element's own glyph is. Anything that
      * needs a notehead width should call this rather than
-     * {@link SMuFLConstants#NOTE_HEAD_WIDTH_SS}, which is the black notehead
+     * {@link SMuFLConstants#NOTE_HEAD_INK_WIDTH_SS}, which is the black notehead
      * specifically and leaves a whole note about half a staff space short (refs #694).
      */
     public double getElementWidthSs() {
@@ -308,20 +311,30 @@ public enum ElementType {
     }
 
     /**
-     * Returns the X offset from this element's layout X to the ending bracket anchor point
-     * (the left vertical stroke of a volta bracket). For barlines and repeats, the anchor
-     * aligns with the center of the governing thin barline; for all other types, returns 0.
+     * The X offset from this element's layout X at which a volta bracket that opens on this
+     * element places its left vertical stroke.
+     *
+     * @return the opening anchor of this type's {@link BarAppearance}, or 0 for a type drawn
+     *     as anything else — a volta opens on the element's own X there
      */
-    public double endingAnchorXOffsetSs() {
-        if (this == REPEAT_LEFT) {
-            // Layout: thick | sep | thin | sep | dots — anchor on the thin barline center
-            return LineThickness.THICK_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS
-                + LineThickness.THIN_BARLINE_SS / 2;
+    public double voltaOpeningXOffsetSs() {
+        if (appearance instanceof BarAppearance bar) {
+            return bar.openingAnchorSs();
         }
 
-        if (isBarLine() || isRepeat()) {
-            // Generic: center on the rightmost thin barline
-            return fullWidthSs - LineThickness.THIN_BARLINE_SS / 2;
+        return 0;
+    }
+
+    /**
+     * The X offset from this element's layout X at which a volta bracket that closes on this
+     * element ends.
+     *
+     * @return the closing anchor of this type's {@link BarAppearance}, or 0 for a type drawn
+     *     as anything else — a volta closes on the element's own X there
+     */
+    public double voltaClosingXOffsetSs() {
+        if (appearance instanceof BarAppearance bar) {
+            return bar.closingAnchorSs();
         }
 
         return 0;
@@ -374,27 +387,35 @@ public enum ElementType {
     }
 
     /**
-     * Returns the SMuFL glyph corresponding to this note type's primary glyph
-     * (notehead, rest, or breath mark).
-     * Returns null for barlines and repeats (they compute bounds from engraving defaults).
+     * How an element of this type is drawn. Every type answers one of the four
+     * {@link ElementAppearance} arms, an alias answering the same one as the type it aliases,
+     * so a caller switching over the result needs no default.
+     *
+     * @return this type's appearance
      */
-    @Nullable
-    public SMuFLGlyph getSMuFLGlyph() {
-        return SMUFL_GLYPHS.get(this);
+    public ElementAppearance appearance() {
+        return appearance;
     }
 
     /**
-     * Returns the SMuFL glyph for this element type, or exits the app if absent
-     * (indicating a broken install missing required metadata).
+     * The notehead this type is drawn with. The receiver must satisfy {@link #isNote()}; no
+     * other type has one.
+     *
+     * @return the notehead of this type's {@link NoteheadAppearance}
      */
-    public SMuFLGlyph requireSMuFLGlyph() {
-        var glyph = SMUFL_GLYPHS.get(this);
+    public Notehead notehead() {
+        return ((NoteheadAppearance) appearance).notehead();
+    }
 
-        if (glyph == null) {
-            throw RuntimeError.missingResource("Missing SMuFL glyph for element type " + this);
-        }
-
-        return glyph;
+    /**
+     * The notehead this type is drawn with, narrowed to the arm a stem attaches to. The
+     * receiver must satisfy {@link #isNoteWithStem()}: this class is where the two facts —
+     * which types carry a stem, and which noteheads take stem anchors — are known together.
+     *
+     * @return this type's notehead as a {@link StemmedNotehead}
+     */
+    public StemmedNotehead stemmedNotehead() {
+        return (StemmedNotehead) notehead();
     }
 
     public boolean isPitchedNote() {
@@ -730,19 +751,35 @@ public enum ElementType {
     // ========================================================================
 
     private static void computeElementBoundsSs() {
-        computeNoteBoundsSs(
-            SEMIBREVE, MINIM, CROTCHET, QUAVER, SEMIQUAVER, DEMI_SEMIQUAVER);
+        for (var type : values()) {
+            if (type.aliasOf != null) {
+                continue;
+            }
 
-        computeGraceNoteBoundsSs(GRACE_QUAVER);
+            switch (type.appearance) {
+                // A stemmed notehead is the only appearance whose bounds reach past the glyph,
+                // so it is the only one that needs the stem and flag.
+                case NoteheadAppearance(StemmedNotehead notehead) -> {
+                    if (type.isGraceNote()) {
+                        computeGraceNoteBoundsSs(type);
+                    } else {
+                        computeStemmedNoteBoundsSs(type, notehead);
+                    }
+                }
 
-        computeGlyphBoundsSs(
-            SEMIBREVE_REST, MINIM_REST, CROTCHET_REST,
-            QUAVER_REST, SEMIQUAVER_REST, DEMI_SEMIQUAVER_REST,
-            BREATH_MARK);
+                // A semibreve carries no stem, so its bounds are its glyph's, exactly as a
+                // rest's are.
+                case NoteheadAppearance(WholeNotehead notehead) ->
+                    computeGlyphBoundsSs(type, notehead.glyph());
 
-        computeBarlineBoundsSs();
-        computeRepeatBoundsSs();
-        computeKeySignatureBoundsSs();
+                case GlyphAppearance(SMuFLGlyph glyph) -> computeGlyphBoundsSs(type, glyph);
+
+                case BarAppearance bar -> type.setSymmetricBounds(
+                    bar.widthSs(), Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
+
+                case KeySignatureAppearance ignored -> computeKeySignatureBoundsSs(type);
+            }
+        }
 
         // Copy bounds to alias types
         for (var type : values()) {
@@ -754,87 +791,62 @@ public enum ElementType {
         validateElementBounds();
     }
 
-    private static void computeNoteBoundsSs(ElementType... types) {
-        for (var type : types) {
-            var glyph = SMUFL_GLYPHS.get(type);
-            var bbox = requireBBox(glyph, type);
-            var anchors = (glyph != null) ? SMuFLMetadata.requireAnchors(glyph) : null;
+    private static void computeStemmedNoteBoundsSs(ElementType type, StemmedNotehead notehead) {
+        var headBBox = SMuFLMetadata.bboxSs(notehead.glyph());
+        var anchors = SMuFLMetadata.stemAnchors(notehead);
+        var headTopSs = headBBox.topSs();
+        var headBottomSs = headBBox.bottomSs();
+        var headRightSs = headBBox.rightSs();
+        var stemUpXSs = anchors.stemUpSE().xSs();
 
-            if (anchors != null && anchors.stemUpSE() != null && anchors.stemDownNW() != null) {
-                // Stemmed note
-                var headTop = bbox.top();
-                var headBottom = bbox.bottom();
-                var headRight = bbox.right();
-                var stemUpX = anchors.requireStemUpSE().x();
-                var stemUpY = anchors.requireStemUpSE().y();
-                var stemDownY = anchors.requireStemDownNW().y();
+        // Stem tip above the notehead for an up-stem, below it for a down-stem.
+        var upTopSs = anchors.stemUpSE().ySs() - SMuFLConstants.STEM_LENGTH_SS;
+        var downBottomSs = anchors.stemDownNW().ySs() + SMuFLConstants.STEM_LENGTH_SS;
 
-                // Width: max of notehead and stem-up flag extent
-                var width = headRight;
-                var flagGlyph = type.getFlagGlyph(StaffElement.Direction.UP);
+        // Width: max of notehead and stem-up flag extent
+        var widthSs = headRightSs;
+        var flagGlyph = type.getFlagGlyph(StaffElement.Direction.UP);
 
-                if (flagGlyph != null) {
-                    var flagBBox = requireBBox(flagGlyph, type);
-                    width = Math.max(width, stemUpX + flagBBox.right());
-                }
-
-                type.fullWidthSs = width;
-                type.baseWidthSs = headRight;
-                type.fullElementHeightSs = headBottom - headTop;
-                type.noteheadTopOffsetSs = headTop;
-
-                // Height up: from top of stem to bottom of notehead
-                var upTop = stemUpY - SMuFLConstants.STEM_LENGTH_SS;
-                type.heightUpSs = headBottom - upTop;
-                type.topOffsetUpSs = upTop;    // stem tip above center (negative)
-
-                // Height down: from top of notehead to bottom of stem
-                var downBottom = stemDownY + SMuFLConstants.STEM_LENGTH_SS;
-                type.heightDownSs = downBottom - headTop;
-                type.topOffsetDownSs = headTop; // notehead top above center (negative)
-            } else {
-                // No stem (semibreve)
-                type.fullWidthSs = bbox.right();
-                type.baseWidthSs = bbox.right();
-                type.fullElementHeightSs = bbox.height();
-                type.noteheadTopOffsetSs = bbox.top();
-                type.heightUpSs = bbox.height();
-                type.heightDownSs = bbox.height();
-                type.topOffsetUpSs = bbox.top();
-                type.topOffsetDownSs = bbox.top();
-            }
+        if (flagGlyph != null) {
+            widthSs = Math.max(widthSs, stemUpXSs + SMuFLMetadata.bboxSs(flagGlyph).rightSs());
         }
+
+        type.fullWidthSs = widthSs;
+        type.baseWidthSs = headRightSs;
+        type.fullElementHeightSs = headBottomSs - headTopSs;
+        type.noteheadTopOffsetSs = headTopSs;
+
+        // Height up: from top of stem to bottom of notehead
+        type.heightUpSs = headBottomSs - upTopSs;
+        type.topOffsetUpSs = upTopSs;      // stem tip above center (negative)
+
+        // Height down: from top of notehead to bottom of stem
+        type.heightDownSs = downBottomSs - headTopSs;
+        type.topOffsetDownSs = headTopSs;  // notehead top above center (negative)
     }
 
     private static void computeGraceNoteBoundsSs(ElementType type) {
-        var headBBox = requireBBox(SMuFLGlyph.NOTEHEAD_BLACK, type);
+        var notehead = type.stemmedNotehead();
+        var headBBox = SMuFLMetadata.bboxSs(notehead.glyph());
         double scale = GRACE_NOTE_SCALE;
 
-        var headBottom = headBBox.bottom() * scale;
-        var headRight = headBBox.right() * scale;
+        var headBottomSs = headBBox.bottomSs() * scale;
+        var headRightSs = headBBox.rightSs() * scale;
 
-        var anchors = SMuFLMetadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
+        var stemUpSE = SMuFLMetadata.stemAnchors(notehead).stemUpSE();
+        var stemUpXSs = stemUpSE.xSs() * scale;
+        var stemUpYSs = stemUpSE.ySs() * scale;
 
-        if (anchors == null || anchors.stemUpSE() == null) {
-            throw RuntimeError.missingResource("Missing stem anchors for NOTEHEAD_BLACK (needed for grace notes)");
-        }
+        var upTopSs = stemUpYSs - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
+        var flagRightSs = SMuFLMetadata.bboxSs(SMuFLGlyph.FLAG_8TH_UP).rightSs() * scale;
+        var widthSs = Math.max(headRightSs, stemUpXSs + flagRightSs);
 
-        var stemUpX = anchors.stemUpSE().x() * scale;
-        var stemUpY = anchors.stemUpSE().y() * scale;
+        var headTopSs = headBBox.topSs() * scale;
 
-        var upTop = stemUpY - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
-        var width = headRight;
-
-        var flagBBox = requireBBox(SMuFLGlyph.FLAG_8TH_UP, type);
-        width = Math.max(width, stemUpX + flagBBox.right() * scale);
-
-        var headTop = headBBox.top() * scale;
-        var height = headBottom - upTop;
-
-        type.setSymmetricBounds(width, height, upTop);
-        type.baseWidthSs = headRight;
-        type.fullElementHeightSs = headBottom - headTop;
-        type.noteheadTopOffsetSs = headTop;
+        type.setSymmetricBounds(widthSs, headBottomSs - upTopSs, upTopSs);
+        type.baseWidthSs = headRightSs;
+        type.fullElementHeightSs = headBottomSs - headTopSs;
+        type.noteheadTopOffsetSs = headTopSs;
     }
 
     /**
@@ -865,47 +877,16 @@ public enum ElementType {
         topOffsetDownSs = source.topOffsetDownSs;
     }
 
-    private static void computeGlyphBoundsSs(ElementType... types) {
-        for (var type : types) {
-            var glyph = SMUFL_GLYPHS.get(type);
-            var bbox = requireBBox(glyph, type);
-            // Width is the glyph's right edge from the origin, not the bbox width, so that
-            // baseWidthSs means the same thing for every glyph-bearing type (see
-            // getElementWidthSs()). The two differ only when bBoxSW's x is non-zero.
-            type.setSymmetricBounds(bbox.right(), bbox.height(), bbox.top());
-        }
-    }
-
-    private static void computeBarlineBoundsSs() {
-        var topOffset = -Staff.STAFF_HEIGHT_SS / 2;
-
-        SINGLE_BARLINE.setSymmetricBounds(LineThickness.THIN_BARLINE_SS, Staff.STAFF_HEIGHT_SS, topOffset);
-        DOUBLE_BARLINE.setSymmetricBounds(
-            2 * LineThickness.THIN_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS, Staff.STAFF_HEIGHT_SS, topOffset);
-        FINAL_DOUBLE_BARLINE.setSymmetricBounds(
-            LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS + LineThickness.BARLINE_SEPARATION_SS,
-            Staff.STAFF_HEIGHT_SS, topOffset);
-    }
-
-    private static void computeRepeatBoundsSs() {
-        var dotsAdvance = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS;
-        var topOffset = -Staff.STAFF_HEIGHT_SS / 2;
-
-        // Match the renderer's actual layout: dots | sep | thin | sep | thick
-        var singleRepeatWidth = dotsAdvance + LineThickness.BARLINE_SEPARATION_SS + LineThickness.THIN_BARLINE_SS
-            + LineThickness.BARLINE_SEPARATION_SS + LineThickness.THICK_BARLINE_SS;
-
-        REPEAT_LEFT.setSymmetricBounds(singleRepeatWidth, Staff.STAFF_HEIGHT_SS, topOffset);
-        REPEAT_RIGHT.setSymmetricBounds(singleRepeatWidth, Staff.STAFF_HEIGHT_SS, topOffset);
-
-        // REPEAT_LEFT_RIGHT shares the thick bar: dots | sep | thin | sep | thick | sep | thin | sep | dots
-        var leftRightWidth = 2 * dotsAdvance + 4 * LineThickness.BARLINE_SEPARATION_SS
-            + 2 * LineThickness.THIN_BARLINE_SS + LineThickness.THICK_BARLINE_SS;
-        REPEAT_LEFT_RIGHT.setSymmetricBounds(leftRightWidth, Staff.STAFF_HEIGHT_SS, topOffset);
+    private static void computeGlyphBoundsSs(ElementType type, SMuFLGlyph glyph) {
+        var bbox = SMuFLMetadata.bboxSs(glyph);
+        // Width is the glyph's right edge from the origin, not the bbox width, so that
+        // baseWidthSs means the same thing for every glyph-bearing type (see
+        // getElementWidthSs()). The two differ only when bBoxSW's x is non-zero.
+        type.setSymmetricBounds(bbox.rightSs(), bbox.heightSs(), bbox.topSs());
     }
 
     /**
-     * Sets {@code KEY_CHANGE}'s bounds to the degenerate case: the narrowest key signature
+     * Sets a key change's bounds to the degenerate case: the narrowest key signature
      * that draws anything, a single accidental, spanning the staff vertically the way a
      * barline does.
      * <p>
@@ -916,24 +897,14 @@ public enum ElementType {
      * floor, so that a caller reasoning from the type alone never over-reserves and
      * {@code validateElementBounds} still has something positive to check.
      */
-    private static void computeKeySignatureBoundsSs() {
+    private static void computeKeySignatureBoundsSs(ElementType type) {
         var narrowestAccidentalSs = Math.min(
             StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_FLAT),
             StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_SHARP)
         );
 
-        KEY_CHANGE.setSymmetricBounds(
-            narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HEIGHT_SS / 2);
-    }
-
-    private static BBox requireBBox(@Nullable SMuFLGlyph glyph, ElementType context) {
-        var bbox = (glyph != null) ? SMuFLMetadata.getBBox(glyph) : null;
-
-        if (bbox == null) {
-            throw RuntimeError.missingResource("Missing SMuFL bounding box for " + glyph + " (needed by " + context + ')');
-        }
-
-        return bbox;
+        type.setSymmetricBounds(
+            narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
     }
 
     private static void validateElementBounds() {

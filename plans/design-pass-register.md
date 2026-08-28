@@ -108,7 +108,7 @@ splits again suffixes again: 14b1, 14b2.
 |---|---|---|---|---|
 | 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
 | 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
-| 2 | Glyph registry | `smufl` | ⏳ | Leaf. |
+| 2 | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
 | 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
 | 4 | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
 | 5 | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
@@ -150,11 +150,37 @@ the reason for it is still in hand.
 - **→ Pass 3.** `StaffHeaderMetrics.accidentalInkBboxSs` is named for a bounding
   box and returns only its width. The Javadoc now says why the ink extent rather
   than the advance width is the right measure; the name is what is left wrong.
+- **→ Pass 3.** `BarStroke` is new and owns the width of a thin bar, a thick bar
+  and repeat dots; `SMuFLConstants` lost its four notehead stem-anchor constants
+  and its static block that computed them; `LineThickness` lost
+  `REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS` and `REPEAT_RIGHT_AFTER_THICK_X_SS`.
+  Open: whether `BarStroke` belongs in `engraving` beside the `LineThickness`
+  that defines the widths it carries, or in `dom` beside the `BarAppearance`
+  that sequences it.
+- **→ Pass 18.** What is drawn for a grace note today is an ordinary
+  `noteheadBlack` at a reduced font size, not `noteheadBlackSmall` — so
+  Bravura's `noteheadBlackSmall` stem anchors do not belong to the glyph the
+  notehead actually uses. The open question is whether grace notes should be
+  drawn with `noteheadBlackSmall` at all, which is a change to the notehead,
+  its flag and its accidentals together, not a one-line fix. The grace stem
+  anchor is derived by scaling in two places, `NoteGeometry.GRACE_STEM_UP_SE`
+  and `ElementType.computeGraceNoteBoundsSs`, with nothing making them agree.
+  `StemmedNotehead.BLACK_SMALL` and `SMuFLGlyph.NOTEHEAD_BLACK_SMALL` are
+  deleted, so re-adding them is part of that future change rather than a
+  prerequisite for it.
 - **→ Pass 4.** `ElementLocation.matches(int lineIndex, int elementIndex)` takes
   two same-typed parameters that transpose silently. Pass 0 built `KeyChangeSite`
   for the same shape — a place in a line, stated by whoever resolved it — but only
   for key changes. Whether the general type extends or displaces `ElementLocation`
   is the open question; `ElementLocation`'s own consumers are hover highlighting.
+- **→ Pass 4.** Inside `ElementType`, each constant now declares an
+  `ElementAppearance` — a sealed type over `NoteheadAppearance`,
+  `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied
+  through the constructor, so the mapping is total by construction and the
+  bounds computation is one exhaustive switch with no lookup that can miss.
+  Open: whether `voltaOpeningXOffsetSs` and `voltaClosingXOffsetSs` belong on
+  `ElementType` at all, or whether an element type owing layout the position
+  of a volta bracket's tick is a dependency that should point the other way.
 - **→ Pass 6.** `StaffElementRun.getElement` is contracted as *"The element at
   `index`."* — no range, no `@return`, no `@throws`. `Line`'s implementation is a
   bare `elements.get(index)`, so out of bounds throws by inheritance from the

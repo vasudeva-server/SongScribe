@@ -23,208 +23,192 @@ package songscribe.smufl;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.EnumMap;
-import java.util.Map;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
 
 /**
- * Lazy singleton that parses bravura_metadata.json and provides typed access
- * to glyph bounding boxes, anchor points, advance widths, and engraving defaults.
- * All spatial values are in staff spaces with Y-down (screen) convention.
+ * What the music font declares about its glyphs, in staff spaces with Y-down (screen)
+ * convention.
+ *
+ * <p>This is the boundary at which font metadata becomes application data, and it converts
+ * rather than checks: every query below is total, because a font that cannot answer one of
+ * them fails the application then, naming what it could not answer. No caller downstream can
+ * hold a glyph whose measurements are unknown, so none has to ask whether they are.
+ *
+ * <p>The first query made reads the font's metadata, and a font that cannot be read or cannot
+ * answer shows a fatal error dialog and terminates the application. Nothing here may
+ * therefore be queried before the application is able to show a dialog, and that reaches
+ * further than it looks: a query from a class's static initializer runs whenever that class
+ * is first touched, so the classes holding glyph constants and rendering shapes carry the
+ * same restriction.
  */
 public final class SMuFLMetadata {
 
     private static final String METADATA_RESOURCE = "/fonts/bravura_metadata.json";
 
-    private final SMuFLData engravingDefaults;
-    private final Map<SMuFLGlyph, BBox> bboxes;
-    private final Map<SMuFLGlyph, GlyphAnchors> anchors;
-    private final Map<SMuFLGlyph, Double> advanceWidths;
+    private final EngravingDefaults engravingDefaults;
+
+    /** Indexed by {@link SMuFLGlyph#ordinal()}. */
+    private final BBox[] bboxesSs;
+
+    /** Indexed by {@link SMuFLGlyph#ordinal()}. */
+    private final double[] advanceWidthsSs;
+
+    /** Indexed by {@link StemmedNotehead#ordinal()}. */
+    private final StemAnchors[] stemAnchors;
 
     private SMuFLMetadata(JsonObject root) {
-        engravingDefaults = parseEngravingDefaults(root.getAsJsonObject("engravingDefaults"));
-        bboxes = parseBBoxes(root.getAsJsonObject("glyphBBoxes"));
-        anchors = parseAnchors(root.getAsJsonObject("glyphsWithAnchors"));
-        advanceWidths = parseAdvanceWidths(root.getAsJsonObject("glyphAdvanceWidths"));
+        engravingDefaults = parseEngravingDefaults(
+                requiredObject(root, "engravingDefaults", "engraving defaults"));
+        bboxesSs = parseBBoxes(
+                requiredObject(root, "glyphBBoxes", "glyph bounding boxes"));
+        advanceWidthsSs = parseAdvanceWidths(
+                requiredObject(root, "glyphAdvanceWidths", "glyph advance widths"));
+        stemAnchors = parseStemAnchors(
+                requiredObject(root, "glyphsWithAnchors", "glyph anchors"));
     }
 
-    @SuppressWarnings("SameReturnValue")
-    private static SMuFLMetadata instance() {
-        return Holder.INSTANCE;
-    }
-
-    /** Width of the standard notehead (noteheadBlack) in staff spaces. */
-    public static double noteHeadWidthSs() {
-        return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).width();
-    }
-
-    /** Height of the standard notehead (noteheadBlack) in staff spaces. */
-    public static double noteHeadHeightSs() {
-        return requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).height();
-    }
-
-    public static SMuFLData getEngravingDefaults() {
-        return instance().engravingDefaults;
+    /** @return The engraving measurements the font sets. */
+    public static EngravingDefaults engravingDefaults() {
+        return Holder.INSTANCE.engravingDefaults;
     }
 
     /**
-     * Returns the bounding box for a glyph, or null if not present in metadata.
-     */
-    @Nullable
-    public static BBox getBBox(SMuFLGlyph glyph) {
-        return instance().bboxes.get(glyph);
-    }
-
-    /**
-     * Returns the anchor points for a glyph, or null if not present in metadata.
-     */
-    @Nullable
-    public static GlyphAnchors getAnchors(SMuFLGlyph glyph) {
-        return instance().anchors.get(glyph);
-    }
-
-    /**
-     * Returns the glyph's advance width in staff spaces, or 0 if the font has no metadata for it.
+     * The box the glyph's ink occupies, relative to the pen origin it draws from.
      *
-     * @return the advance width in staff spaces, or 0 when the font declares none for this glyph
+     * @param glyph the glyph to measure
+     * @return its ink box in staff spaces
      */
-    public static double getAdvanceWidthOrZero(SMuFLGlyph glyph) {
-        var width = instance().advanceWidths.get(glyph);
-
-        return width != null ? width : 0.0;
+    public static BBox bboxSs(SMuFLGlyph glyph) {
+        return Holder.INSTANCE.bboxesSs[glyph.ordinal()];
     }
 
     /**
-     * Returns the bounding box for a glyph, exiting fatally if not present.
-     * Use for well-known glyphs whose metadata is guaranteed by the font.
-     */
-    public static BBox requireBBox(SMuFLGlyph glyph) {
-        return requireMapValue(instance().bboxes, glyph, "bounding box");
-    }
-
-    /**
-     * Returns the anchor points for a glyph, exiting fatally if not present.
-     * Use for well-known glyphs whose metadata is guaranteed by the font.
-     */
-    public static GlyphAnchors requireAnchors(SMuFLGlyph glyph) {
-        return requireMapValue(instance().anchors, glyph, "anchors");
-    }
-
-    /**
-     * Returns the advance width for a glyph, exiting fatally if not present.
-     * Use for well-known glyphs whose metadata is guaranteed by the font.
-     */
-    public static double requireAdvanceWidth(SMuFLGlyph glyph) {
-        return requireMapValue(instance().advanceWidths, glyph, "advance width");
-    }
-
-    /**
-     * Returns the value {@code map} holds for {@code glyph}, exiting fatally if absent.
+     * How far the pen moves after drawing the glyph. This differs from the ink box wherever
+     * the font pads a glyph or designs it to overlap what follows, so it is the measure for
+     * laying glyphs out in sequence and not the measure of where a glyph's ink ends.
      *
-     * <p>{@code map} is expected to hold an entry for every {@link SMuFLGlyph} the font
-     * declares, so a miss is a metadata defect rather than a recoverable condition.
-     * {@link #requireBBox}, {@link #requireAnchors} and {@link #requireAdvanceWidth} are
-     * the instance-bound convenience wrappers; a test reaches this directly with a
-     * caller-supplied map to exercise the fail-loud path without needing a real glyph
-     * absent from Bravura metadata.
-     *
-     * @param map         the metadata map to look up {@code glyph} in
-     * @param glyph       the glyph to look up
-     * @param description the human-readable name of what {@code map} holds, used only in
-     *                     the exit message when {@code glyph} is absent
-     * @return the value {@code map} holds for {@code glyph}; never null
-     * @throws RuntimeException (via {@link RuntimeError#missingResource}) if {@code glyph}
-     *     has no entry in {@code map}
+     * @param glyph the glyph to measure
+     * @return its advance width in staff spaces
      */
-    static <V> V requireMapValue(Map<SMuFLGlyph, V> map, SMuFLGlyph glyph, String description) {
-        var result = map.get(glyph);
+    public static double advanceWidthSs(SMuFLGlyph glyph) {
+        return Holder.INSTANCE.advanceWidthsSs[glyph.ordinal()];
+    }
 
-        if (result == null) {
-            throw RuntimeError.missingResource("missing " + description + " for glyph: " + glyph);
-        }
-
-        return result;
+    /**
+     * Where a stem meets this notehead, in each direction.
+     *
+     * @param notehead the notehead a stem attaches to
+     * @return both of its stem attachment points
+     */
+    public static StemAnchors stemAnchors(StemmedNotehead notehead) {
+        return Holder.INSTANCE.stemAnchors[notehead.ordinal()];
     }
 
     // --- Parsing ---
 
-    private static SMuFLData parseEngravingDefaults(JsonObject obj) {
-        return new SMuFLData(
-                obj.get("beamThickness").getAsDouble(),
-                obj.get("beamSpacing").getAsDouble(),
-                obj.get("repeatBarlineDotSeparation").getAsDouble(),
-                obj.get("legerLineThickness").getAsDouble(),
-                obj.get("legerLineExtension").getAsDouble(),
-                obj.get("tieMidpointThickness").getAsDouble()
+    private static EngravingDefaults parseEngravingDefaults(JsonObject obj) {
+        return new EngravingDefaults(
+                engravingDefault(obj, "repeatBarlineDotSeparation"),
+                engravingDefault(obj, "legerLineThickness"),
+                engravingDefault(obj, "tieMidpointThickness")
         );
     }
 
-    private static Map<SMuFLGlyph, BBox> parseBBoxes(JsonObject obj) {
-        var map = new EnumMap<SMuFLGlyph, BBox>(SMuFLGlyph.class);
+    private static BBox[] parseBBoxes(JsonObject obj) {
+        var glyphs = SMuFLGlyph.values();
+        var boxesSs = new BBox[glyphs.length];
 
-        for (var glyph : SMuFLGlyph.values()) {
-            var entry = obj.getAsJsonObject(glyph.smuflName());
-
-            if (entry != null) {
-                var ne = entry.getAsJsonArray("bBoxNE");
-                var sw = entry.getAsJsonArray("bBoxSW");
-                map.put(glyph, BBox.fromSMuFL(
-                        sw.get(0).getAsDouble(), sw.get(1).getAsDouble(),
-                        ne.get(0).getAsDouble(), ne.get(1).getAsDouble()
-                ));
-            }
+        for (var glyph : glyphs) {
+            var glyphName = glyph.smuflName();
+            var entry = requiredObject(obj, glyphName, "bounding box for " + glyphName);
+            var sw = requiredCorner(entry, "bBoxSW", glyphName);
+            var ne = requiredCorner(entry, "bBoxNE", glyphName);
+            boxesSs[glyph.ordinal()] = BBox.fromSMuFL(
+                    sw.get(0).getAsDouble(), sw.get(1).getAsDouble(),
+                    ne.get(0).getAsDouble(), ne.get(1).getAsDouble());
         }
 
-        return map;
+        return boxesSs;
     }
 
-    private static Map<SMuFLGlyph, GlyphAnchors> parseAnchors(JsonObject obj) {
-        var map = new EnumMap<SMuFLGlyph, GlyphAnchors>(SMuFLGlyph.class);
+    private static double[] parseAdvanceWidths(JsonObject obj) {
+        var glyphs = SMuFLGlyph.values();
+        var widthsSs = new double[glyphs.length];
 
-        for (var glyph : SMuFLGlyph.values()) {
-            var entry = obj.getAsJsonObject(glyph.smuflName());
-
-            if (entry != null) {
-                map.put(glyph, new GlyphAnchors(
-                        parseAnchor(entry, "stemUpSE"),
-                        parseAnchor(entry, "stemDownNW"),
-                        parseAnchor(entry, "cutOutNW"),
-                        parseAnchor(entry, "cutOutSE")
-                ));
-            }
+        for (var glyph : glyphs) {
+            var glyphName = glyph.smuflName();
+            widthsSs[glyph.ordinal()] =
+                    requiredDouble(obj, glyphName, "advance width for " + glyphName);
         }
 
-        return map;
+        return widthsSs;
     }
 
-    private static GlyphAnchors.@Nullable Anchor parseAnchor(JsonObject entry, String key) {
-        var arr = entry.getAsJsonArray(key);
+    private static StemAnchors[] parseStemAnchors(JsonObject obj) {
+        var noteheads = StemmedNotehead.values();
+        var anchors = new StemAnchors[noteheads.length];
 
-        if (arr == null) {
-            return null;
+        for (var notehead : noteheads) {
+            var glyphName = notehead.glyph().smuflName();
+            var entry = requiredObject(obj, glyphName, "anchors for " + glyphName);
+            anchors[notehead.ordinal()] = new StemAnchors(
+                    requiredAnchor(entry, "stemUpSE", glyphName),
+                    requiredAnchor(entry, "stemDownNW", glyphName));
         }
 
-        return GlyphAnchors.Anchor.fromSMuFL(arr.get(0).getAsDouble(), arr.get(1).getAsDouble());
+        return anchors;
     }
 
-    private static Map<SMuFLGlyph, Double> parseAdvanceWidths(JsonObject obj) {
-        var map = new EnumMap<SMuFLGlyph, Double>(SMuFLGlyph.class);
+    private static Anchor requiredAnchor(JsonObject entry, String key, String glyphName) {
+        var coordinates = requiredArray(entry, key, key + " anchor for " + glyphName);
+        return Anchor.fromSMuFL(coordinates.get(0).getAsDouble(), coordinates.get(1).getAsDouble());
+    }
 
-        for (var glyph : SMuFLGlyph.values()) {
-            var width = obj.get(glyph.smuflName());
+    private static JsonArray requiredCorner(JsonObject entry, String key, String glyphName) {
+        return requiredArray(entry, key, key + " corner of the bounding box for " + glyphName);
+    }
 
-            if (width != null) {
-                map.put(glyph, width.getAsDouble());
-            }
+    private static JsonArray requiredArray(JsonObject obj, String key, String what) {
+        var entry = obj.getAsJsonArray(key);
+
+        if (entry == null) {
+            throw missingMetadata(what);
         }
 
-        return map;
+        return entry;
+    }
+
+    private static JsonObject requiredObject(JsonObject obj, String key, String what) {
+        var entry = obj.getAsJsonObject(key);
+
+        if (entry == null) {
+            throw missingMetadata(what);
+        }
+
+        return entry;
+    }
+
+    private static double engravingDefault(JsonObject obj, String key) {
+        return requiredDouble(obj, key, "engraving default " + key);
+    }
+
+    private static double requiredDouble(JsonObject obj, String key, String what) {
+        var value = obj.get(key);
+
+        if (value == null) {
+            throw missingMetadata(what);
+        }
+
+        return value.getAsDouble();
+    }
+
+    private static RuntimeException missingMetadata(String what) {
+        return RuntimeError.missingResource(METADATA_RESOURCE + " declares no " + what);
     }
 
     private static final class Holder {
@@ -234,14 +218,14 @@ public final class SMuFLMetadata {
             var stream = SMuFLMetadata.class.getResourceAsStream(METADATA_RESOURCE);
 
             if (stream == null) {
-                throw new RuntimeException("SMuFL metadata resource not found: " + METADATA_RESOURCE);
+                throw RuntimeError.missingResource(METADATA_RESOURCE + " is not on the classpath");
             }
 
             try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 var root = JsonParser.parseReader(reader).getAsJsonObject();
                 return new SMuFLMetadata(root);
             } catch (IOException e) {
-                throw new RuntimeException("Failed to load SMuFL metadata from " + METADATA_RESOURCE, e);
+                throw RuntimeError.missingResource(METADATA_RESOURCE + " could not be read", e);
             }
         }
     }

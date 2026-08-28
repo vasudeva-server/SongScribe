@@ -23,6 +23,7 @@ package songscribe.error;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntConsumer;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,9 @@ public final class RuntimeError {
     private static final String MISSING_RESOURCE_USER_MESSAGE =
         "A required resource is missing. Please reinstall the application.";
 
+    // The process status a fatal error exits with.
+    private static final int EXIT_STATUS = -1;
+
     // Guards against showing the alert more than once if exit() is called re-entrantly.
     private static final AtomicBoolean ALERT_SHOWN = new AtomicBoolean(false);
 
@@ -55,9 +59,12 @@ public final class RuntimeError {
      *
      * @param message Description of the violated invariant
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     * @throws ExitInProgressError if the fatal-error dialog is already showing
+     * @log writes {@code message} at ERROR, with no stack trace
+     * @effects shows the modal fatal-error dialog and terminates the process
      */
     public static RuntimeException exit(String message) {
-        return exit(message, new RuntimeException((String) null));
+        return logAndExit(message, FATAL_USER_MESSAGE, null);
     }
 
     /**
@@ -69,23 +76,12 @@ public final class RuntimeError {
      * @param message Description of the violated invariant
      * @param cause   the exception that triggered the fatal error
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     * @throws ExitInProgressError if the fatal-error dialog is already showing
+     * @log writes {@code message} at ERROR with {@code cause}'s stack trace
+     * @effects shows the modal fatal-error dialog and terminates the process
      */
     public static RuntimeException exit(String message, Throwable cause) {
         return logAndExit(message, FATAL_USER_MESSAGE, cause);
-    }
-
-    /**
-     * Logs the log message and cause, shows the given user-facing message in the error dialog,
-     * then exits.
-     *
-     * @param logMessage  Description of the violated invariant, written to the log
-     * @param userMessage Message shown to the user in the error dialog
-     * @param cause       the exception that triggered the fatal error
-     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
-     */
-    private static RuntimeException logAndExit(String logMessage, String userMessage, Throwable cause) {
-        LOG.error(logMessage, cause);
-        throw showDialogAndExit(userMessage);
     }
 
     /**
@@ -98,10 +94,13 @@ public final class RuntimeError {
      * @param logMessage  Description of the violated invariant, written to the log
      * @param userMessage Message shown to the user in the error dialog
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     * @throws ExitInProgressError if the fatal-error dialog is already showing
+     * @log writes {@code logMessage} at ERROR, with no stack trace
+     * @effects shows the modal error dialog carrying {@code userMessage} and terminates the
+     *          process
      */
     public static RuntimeException exit(String logMessage, String userMessage) {
-        LOG.error(logMessage);
-        throw showDialogAndExit(userMessage);
+        return logAndExit(logMessage, userMessage, null);
     }
 
     /**
@@ -117,25 +116,33 @@ public final class RuntimeError {
      *
      * @param logMessage Description of the missing resource, written to the log
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     * @throws ExitInProgressError if the fatal-error dialog is already showing
+     * @log writes {@code logMessage} at ERROR, with no stack trace
+     * @effects shows the modal error dialog carrying the canned missing-resource message and
+     *          terminates the process
      */
     public static RuntimeException missingResource(String logMessage) {
-        return exit(logMessage, MISSING_RESOURCE_USER_MESSAGE);
+        return logAndExit(logMessage, MISSING_RESOURCE_USER_MESSAGE, null);
     }
 
     /**
-     * Logs the log message and cause and shows the canned "missing resource, please reinstall"
-     * message in the error dialog, then exits.
+     * Logs the log message and cause and shows the same canned "missing resource, please
+     * reinstall" message as {@link #missingResource(String)}, then exits.
      * <p>
-     * Use this overload when a required application resource is present but unreadable, so the
-     * user hears the same actionable message as for an absent one while the cause still reaches
-     * the log. When the application quits, that log line is the only account of what happened.
+     * Use this overload when the resource is present but unreadable, so that the failure that
+     * proved it — an I/O error, a parse error — reaches the log with its stack trace. The user
+     * sees the same fixed message either way, because reinstalling is the same remedy.
      * <p>
      * Always call as {@code throw RuntimeError.missingResource("reason", cause)} so the compiler
      * and NullAway know the calling code is unreachable after this point.
      *
-     * @param logMessage Description of the unreadable resource, written to the log
-     * @param cause      the exception that made the resource unusable
+     * @param logMessage Description of the missing resource, written to the log
+     * @param cause      the failure that proved the resource unusable
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     * @throws ExitInProgressError if the fatal-error dialog is already showing
+     * @log writes {@code logMessage} at ERROR with {@code cause}'s stack trace
+     * @effects shows the modal error dialog carrying the canned missing-resource message and
+     *          terminates the process
      */
     public static RuntimeException missingResource(String logMessage, Throwable cause) {
         return logAndExit(logMessage, MISSING_RESOURCE_USER_MESSAGE, cause);
@@ -151,14 +158,41 @@ public final class RuntimeError {
         }
     }
 
-    private static RuntimeException showDialogAndExit(String userMessage) {
+    /**
+     * Reports a fatal failure and terminates the process. Every public entry point of this class
+     * reduces to a call on this method.
+     *
+     * @param logMessage  Description of the failure, written to the log
+     * @param userMessage Message shown to the user in the error dialog
+     * @param cause       the failure that triggered the exit, or {@code null} when the caller has
+     *                    no exception to attribute it to
+     * @return never returns; declared as RuntimeException so callers can write {@code return} or
+     *         {@code throw} and keep the code after the call unreachable
+     * @throws ExitInProgressError if the error dialog is already showing, so that the EDT stays
+     *                             free to process it
+     * @log writes {@code logMessage} at ERROR, with {@code cause}'s stack trace when a cause is
+     *      given and no stack trace otherwise
+     * @effects shows the modal error dialog carrying {@code userMessage}, then terminates the
+     *          process with a non-zero status
+     */
+    private static RuntimeException logAndExit(
+        String logMessage,
+        String userMessage,
+        @Nullable Throwable cause
+    ) {
+        if (cause == null) {
+            LOG.error(logMessage);
+        } else {
+            LOG.error(logMessage, cause);
+        }
+
         if (!ALERT_SHOWN.compareAndSet(false, true)) {
             throw new ExitInProgressError();
         }
 
         OptionDialogs.showErrorMessageWithString(null, FATAL_ALERT_TITLE, userMessage);
 
-        exitHandler.accept(-1);
+        exitHandler.accept(EXIT_STATUS);
         throw new AssertionError("unreachable");
     }
 

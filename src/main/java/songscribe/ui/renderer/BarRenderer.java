@@ -23,10 +23,11 @@ package songscribe.ui.renderer;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 
+import songscribe.dom.BarAppearance;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
 
@@ -55,15 +56,6 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
     // Constants
     // ==========================================================================
-
-    /** Half the staff height: distance from middle line to top/bottom staff line. */
-    private static final double STAFF_HALF_HEIGHT_SS = 2.0;
-
-    /**
-     * Y coordinate of the bottom staff line relative to the middle line.
-     * Used as the origin for the repeat dots glyph (SMuFL barline glyph convention).
-     */
-    private static final double BOTTOM_STAFF_LINE_Y_SS = 2.0;
 
     // Singleton instance
     private static final BarRenderer INSTANCE = new BarRenderer();
@@ -107,81 +99,24 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     }
 
     /**
-     * Renders a bar line or repeat sign using drawn primitives.
+     * Renders a bar line or repeat sign by drawing its {@link BarAppearance}'s strokes,
+     * left to right, starting at the element's own origin.
      */
     private void renderBarLineOrRepeat(
         Graphics2D g2,
         ElementType noteType,
         LineInvariants invariants
     ) {
-        var thin = LineThickness.THIN_BARLINE_SS;
-        var thick = LineThickness.THICK_BARLINE_SS;
-        var sep = LineThickness.BARLINE_SEPARATION_SS;
-
-        var topY = -STAFF_HALF_HEIGHT_SS;
-        var bottomY = STAFF_HALF_HEIGHT_SS;
-
-        switch (noteType) {
-            case SINGLE_BARLINE -> drawSingleBarLine(g2, 0, 0);
-
-            case DOUBLE_BARLINE -> {
-                drawBar(g2, 0, thin, topY, bottomY);
-                drawBar(g2, thin + sep, thin, topY, bottomY);
-            }
-
-            case FINAL_DOUBLE_BARLINE -> {
-                drawBar(g2, 0, thin, topY, bottomY);
-                drawBar(g2, thin + sep, thick, topY, bottomY);
-            }
-
-            case REPEAT_LEFT -> {
-                // thick | sep | thin | sep | dots
-                double x = 0;
-                drawBar(g2, x, thick, topY, bottomY);
-                x += thick + sep;
-                drawBar(g2, x, thin, topY, bottomY);
-                x += thin + sep;
-                drawRepeatDots(g2, x);
-            }
-
-            case REPEAT_RIGHT -> drawRightRepeat(g2, 0, thin, thick, topY, bottomY, sep);
-
-            case REPEAT_LEFT_RIGHT -> {
-                // dots | sep | thin | sep | thick | sep | thin | sep | dots
-                var x = drawRightRepeat(g2, 0, thin, thick, topY, bottomY, sep);
-                x += sep;
-                drawBar(g2, x, thin, topY, bottomY);
-                x += thin + sep;
-                drawRepeatDots(g2, x);
-            }
-
-            default -> {
-                // Not a barline or repeat type
-            }
+        if (!(noteType.appearance() instanceof BarAppearance barAppearance)) {
+            return;
         }
+
+        drawStrokes(g2, barAppearance, 0, 0);
     }
 
     // ==========================================================================
     // Drawing Helpers
     // ==========================================================================
-
-    // dots | sep | thin | sep | thick; returns x after the thick bar
-    static double drawRightRepeat(
-        Graphics2D g2,
-        double x,
-        double thin,
-        double thick,
-        double topY,
-        double bottomY,
-        double sep
-    ) {
-        drawRepeatDots(g2, x);
-        x += SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
-        drawBar(g2, x, thin, topY, bottomY);
-        x += thin + sep;
-        drawBar(g2, x, thick, topY, bottomY);
-        return x + thick;
-    }
 
     /**
      * Draws a thin single barline spanning the staff, with its left edge at {@code xSs}.
@@ -195,12 +130,37 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
      * @param middleLineYSs Y coordinate of the staff's middle line, which the bar is centered on
      */
     public static void drawSingleBarLine(Graphics2D g2, double xSs, double middleLineYSs) {
-        drawBar(
-            g2,
-            xSs,
-            LineThickness.THIN_BARLINE_SS,
-            middleLineYSs - STAFF_HALF_HEIGHT_SS,
-            middleLineYSs + STAFF_HALF_HEIGHT_SS);
+        drawStrokes(g2, (BarAppearance) ElementType.SINGLE_BARLINE.appearance(), xSs, middleLineYSs);
+    }
+
+    /**
+     * Draws a barline or repeat sign's strokes left to right, starting at {@code originXSs}
+     * and centered vertically on {@code middleLineYSs}.
+     *
+     * @param g2            Graphics context, in staff-space units
+     * @param appearance    the strokes to draw, left to right
+     * @param originXSs     X coordinate of the left edge of the first stroke
+     * @param middleLineYSs Y coordinate of the staff's middle line, which the strokes are
+     *                      centered on
+     */
+    private static void drawStrokes(
+        Graphics2D g2,
+        BarAppearance appearance,
+        double originXSs,
+        double middleLineYSs
+    ) {
+        var topY = middleLineYSs - Staff.STAFF_HALF_SS;
+        var bottomY = middleLineYSs + Staff.STAFF_HALF_SS;
+        var x = originXSs;
+
+        for (var stroke : appearance.strokes()) {
+            switch (stroke) {
+                case THIN, THICK -> drawBar(g2, x, stroke.widthSs(), topY, bottomY);
+                case DOTS -> drawRepeatDots(g2, x, bottomY);
+            }
+
+            x += stroke.widthSs() + LineThickness.BARLINE_SEPARATION_SS;
+        }
     }
 
     /**
@@ -228,16 +188,14 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
      * The glyph origin is at the bottom staff line (SMuFL barline convention),
      * producing two dots in the inner staff spaces.
      *
-     * @param g2  Graphics context (translated to middle line)
-     * @param xSs Left edge X coordinate for the dots in staff spaces
+     * @param g2   Graphics context (translated to middle line)
+     * @param xSs  Left edge X coordinate for the dots in staff spaces
+     * @param ySs  Y coordinate of the bottom staff line, the glyph's origin
      */
-    private static void drawRepeatDots(Graphics2D g2, double xSs) {
+    private static void drawRepeatDots(Graphics2D g2, double xSs, double ySs) {
         try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
-            g2.drawString(
-                SMuFLGlyph.REPEAT_DOTS.asString(),
-                (float) xSs,
-                (float) BOTTOM_STAFF_LINE_Y_SS);
+            g2.drawString(SMuFLGlyph.REPEAT_DOTS.asString(), (float) xSs, (float) ySs);
         }
     }
 

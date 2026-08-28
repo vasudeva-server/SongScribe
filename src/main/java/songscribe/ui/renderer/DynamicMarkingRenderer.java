@@ -94,9 +94,9 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
         }
 
         var dynamicTopYSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
-        var dynamicBBox = SMuFLMetadata.requireBBox(glyph);
+        var dynamicBBox = SMuFLMetadata.bboxSs(glyph);
         // Layout xSs is already centered over the notehead by the stacking calculator
-        var x = decorationLayout.xSs() - dynamicBBox.left();
+        var x = decorationLayout.xSs() - dynamicBBox.leftSs();
         var y = RenderingUtils.glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
         try (var _ = GraphicsState.save(g2, COLOR)) {

@@ -156,7 +156,7 @@ public final class DynamicAttachment extends Attachment {
 
     /** This dynamic's glyph box, the source of every dimension below. */
     private BBox glyphBBox() {
-        return SMuFLMetadata.requireBBox(type.getGlyph());
+        return SMuFLMetadata.bboxSs(type.getGlyph());
     }
 
     /**
@@ -164,7 +164,7 @@ public final class DynamicAttachment extends Attachment {
      */
     @Override
     public double getContentWidthSs() {
-        return glyphBBox().width();
+        return glyphBBox().widthSs();
     }
 
     /**
@@ -172,7 +172,7 @@ public final class DynamicAttachment extends Attachment {
      */
     @Override
     public double getContentHeightSs() {
-        return glyphBBox().height();
+        return glyphBBox().heightSs();
     }
 
     /**
@@ -182,7 +182,7 @@ public final class DynamicAttachment extends Attachment {
      * {@link #getLeftSideBearingSs()}.
      */
     public double getAdvanceWidthSs() {
-        return SMuFLMetadata.requireAdvanceWidth(type.getGlyph());
+        return SMuFLMetadata.advanceWidthSs(type.getGlyph());
     }
 
     /**
@@ -193,7 +193,7 @@ public final class DynamicAttachment extends Attachment {
      * glyph origin, and hence the advance box.
      */
     public double getLeftSideBearingSs() {
-        return glyphBBox().left();
+        return glyphBBox().leftSs();
     }
 
     /**
@@ -205,6 +205,6 @@ public final class DynamicAttachment extends Attachment {
      * nearly all x-height, so a shared baseline is the only alignment that reads level across them.
      */
     public double getContentBottomSs() {
-        return glyphBBox().bottom();
+        return glyphBBox().bottomSs();
     }
 }

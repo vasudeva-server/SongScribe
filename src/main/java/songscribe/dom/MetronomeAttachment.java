@@ -42,10 +42,10 @@ public abstract sealed class MetronomeAttachment extends Attachment
 
     /** Bounding box of the quarter note metronome glyph (the tallest common tempo note). */
     private static final BBox QUARTER_NOTE_BBOX =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.MET_NOTE_QUARTER_UP);
+        SMuFLMetadata.bboxSs(SMuFLGlyph.MET_NOTE_QUARTER_UP);
 
     /** Content height derived from the quarter note glyph, scaled to metronome note size. */
-    public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.height() * NOTE_SCALE;
+    public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.heightSs() * NOTE_SCALE;
 
     protected MetronomeAttachment(Alignment alignment) {
         setAlignment(alignment);

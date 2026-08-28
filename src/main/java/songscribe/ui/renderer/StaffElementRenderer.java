@@ -24,7 +24,6 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.RoundRectangle2D;
-import java.util.EnumMap;
 
 import org.jspecify.annotations.Nullable;
 
@@ -60,20 +59,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Constants
     // ==========================================================================
 
-    // Note heads by type
-    private static final EnumMap<ElementType, SMuFLGlyph> NOTE_HEAD = new EnumMap<>(ElementType.class);
-
-    static {
-        NOTE_HEAD.put(ElementType.SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE);
-        NOTE_HEAD.put(ElementType.MINIM, SMuFLGlyph.NOTEHEAD_HALF);
-        NOTE_HEAD.put(ElementType.CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(ElementType.QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(ElementType.SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(ElementType.DEMI_SEMIQUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-        NOTE_HEAD.put(ElementType.GRACE_QUAVER, SMuFLGlyph.NOTEHEAD_BLACK);
-    }
-
-
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
     private static final double HALF_BEAM_THICKNESS_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
@@ -95,23 +80,6 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
      */
     public static StaffElementRenderer getInstance() {
         return INSTANCE;
-    }
-
-    /**
-     * Returns the SMuFL glyph for a note type's head.
-     */
-    @Nullable
-    public static SMuFLGlyph getNoteHeadGlyph(ElementType noteType) {
-        return NOTE_HEAD.get(noteType);
-    }
-
-    /**
-     * Returns the note head character string for a note type (Bravura codepoint).
-     */
-    @Nullable
-    public static String getNoteHeadChar(ElementType noteType) {
-        var glyph = NOTE_HEAD.get(noteType);
-        return glyph != null ? glyph.asString() : null;
     }
 
     // ==========================================================================
@@ -216,12 +184,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         LineInvariants invariants
     ) {
         var noteType = note.getType();
-        var glyph = NOTE_HEAD.get(noteType);
-
-        if (glyph == null) {
-            return;
-        }
-
+        var glyph = noteType.notehead().glyph();
         var direction = NoteGeometry.effectiveDirection(note);
 
         // Note: Don't set color here - respect the color set by the caller

@@ -35,6 +35,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.MetronomeContent;
 import songscribe.layout.StaffExtents;
+import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
@@ -46,8 +47,8 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public final class StackingUtils {
 
-    // Note head height from SMuFL noteheadBlack bounding box (staff-space units)
-    private static final double NOTE_HEAD_HEIGHT_SS = SMuFLMetadata.noteHeadHeightSs();
+    private static final double NOTE_HEAD_HEIGHT_SS =
+        SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).heightSs();
 
     static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
 

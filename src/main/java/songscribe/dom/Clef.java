@@ -41,9 +41,9 @@ public class Clef extends LineElement {
     private static final double CONTENT_HEIGHT_SS;
 
     static {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.G_CLEF);
-        CONTENT_WIDTH_SS = bbox.width();
-        CONTENT_HEIGHT_SS = bbox.height();
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.G_CLEF);
+        CONTENT_WIDTH_SS = bbox.widthSs();
+        CONTENT_HEIGHT_SS = bbox.heightSs();
     }
 
     @Override

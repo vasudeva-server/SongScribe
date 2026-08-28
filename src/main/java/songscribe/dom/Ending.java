@@ -156,6 +156,93 @@ public class Ending extends Span {
     }
 
     /**
+     * Returns the index of the element this ending's first bracket opens on: a volta opens on
+     * the bar group that begins its repeated section, so an anchor sitting on a note reaches
+     * back to the bar in front of it.
+     * <p>
+     * Grace notes, slides and breath marks are transparent here, as they are everywhere else
+     * an ending reasons about its neighbours. An anchor that is itself a barline or repeat is
+     * already the opening element, so asking twice gives the same answer as asking once —
+     * which is what lets the editor move a selection's anchor onto the bar at creation and
+     * layout ask again at paint time without walking back a second bar.
+     *
+     * @param line the line this ending belongs to
+     * @return the opening element's index, or the anchor's own index when nothing in front of
+     *     it is a barline or repeat
+     */
+    public int getOpeningElementIndex(Line line) {
+        return openingElementIndex(line, getAnchorElementIndex());
+    }
+
+    /**
+     * Returns the index of the element a bracket anchored at {@code anchorIndex} opens on.
+     * <p>
+     * The static form exists for the editor, which asks the question while deciding where an
+     * ending's anchor belongs — before there is an ending to ask. See
+     * {@link #getOpeningElementIndex} for the rule.
+     *
+     * @param line        the line to search
+     * @param anchorIndex the index a bracket is anchored at
+     * @return the opening element's index, or {@code anchorIndex} when nothing in front of it
+     *     is a barline or repeat
+     */
+    public static int openingElementIndex(Line line, int anchorIndex) {
+        if (!line.hasIndex(anchorIndex)) {
+            return anchorIndex;
+        }
+
+        if (opensOnItsOwn(line.getElement(anchorIndex).getType())) {
+            return anchorIndex;
+        }
+
+        for (var i = anchorIndex - 1; i >= 0; i--) {
+            var type = line.getElement(i).getType();
+
+            if (type.isNonContentElement()) {
+                continue;
+            }
+
+            return opensOnItsOwn(type) ? i : anchorIndex;
+        }
+
+        return anchorIndex;
+    }
+
+    private static boolean opensOnItsOwn(ElementType type) {
+        return type.isBarLine() || type.isRepeat();
+    }
+
+    /**
+     * Whether an ending split by {@code splitType} may end on {@code endType}.
+     * <p>
+     * The split and the end state the same repeat structure from its two sides, so they are
+     * not independent. A {@link ElementType#REPEAT_LEFT_RIGHT} split leaves the second bracket
+     * inside a repeated section, which only a right repeat can close; a
+     * {@link ElementType#REPEAT_RIGHT} split closes its section at the split, so the second
+     * bracket ends wherever a section may end. An end that is a note belongs to neither case:
+     * the bracket stops in mid-air and constrains nothing.
+     *
+     * @param splitType the type of the repeat splitting the two brackets
+     * @param endType   the type of the element the ending ends on
+     * @return whether the pair is a structure an ending may hold
+     */
+    public static boolean isValidEnd(ElementType splitType, ElementType endType) {
+        if (endType.isDuration()) {
+            return true;
+        }
+
+        if (!endType.isBarLine() && !endType.isRepeat()) {
+            return false;
+        }
+
+        if (splitType == ElementType.REPEAT_LEFT_RIGHT) {
+            return endType == ElementType.REPEAT_RIGHT || endType == ElementType.REPEAT_LEFT_RIGHT;
+        }
+
+        return endType.isEndingTerminal();
+    }
+
+    /**
      * Builds the exception thrown when an ending is found to have no REPEAT splitting its
      * two brackets — corrupt state that should have been rejected on import or removed by
      * invalidation. Shared by {@link #getSplitIndex} and the layout-side bracket-range
@@ -208,8 +295,8 @@ public class Ending extends Span {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        // NOTE_HEAD_WIDTH_SS here is a generic minimum-span floor, not the end note's head width.
-        return Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + getEndElementWidthSs());
+        // NOTE_HEAD_INK_WIDTH_SS here is a generic minimum-span floor, not the end note's head width.
+        return Math.max(SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS, endXSs - anchorXSs + getEndElementWidthSs());
     }
 
     @Override
@@ -322,26 +409,23 @@ public class Ending extends Span {
 
         // Condition 3 — end element replaced
         if (oldElement == getEndElement()) {
-            // A note end needs no split compensation, regardless of split type.
-            if (newType.isDuration()) {
-                return EndingEffect.None.INSTANCE;
-            }
-
-            if (!newType.isBarLine() && !newType.isRepeat()) {
+            if (!newType.isDuration() && !newType.isBarLine() && !newType.isRepeat()) {
                 return new EndingEffect.Invalidate(this);
             }
 
-            if (splitEl != null && splitEl.getType() == ElementType.REPEAT_LEFT_RIGHT) {
-                // Split is REPEAT_LEFT_RIGHT: end must remain REPEAT_RIGHT or REPEAT_LEFT_RIGHT
-                return (newType == ElementType.REPEAT_RIGHT || newType == ElementType.REPEAT_LEFT_RIGHT)
-                    ? EndingEffect.None.INSTANCE
-                    : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_RIGHT);
+            var splitType = splitEl == null ? ElementType.REPEAT_RIGHT : splitEl.getType();
+
+            if (isValidEnd(splitType, newType)) {
+                return EndingEffect.None.INSTANCE;
             }
 
-            // Split is REPEAT_RIGHT: end must be isEndingTerminal()
-            return newType.isEndingTerminal()
-                ? EndingEffect.None.INSTANCE
-                : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_LEFT_RIGHT);
+            // The pair is not one an ending may hold, so the split moves to the type that
+            // makes it legal rather than the replacement being refused.
+            var compensatingSplit = splitType == ElementType.REPEAT_LEFT_RIGHT
+                ? ElementType.REPEAT_RIGHT
+                : ElementType.REPEAT_LEFT_RIGHT;
+
+            return new EndingEffect.CompensateSplit(this, compensatingSplit);
         }
 
         return EndingEffect.None.INSTANCE;

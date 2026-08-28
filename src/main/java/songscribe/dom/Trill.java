@@ -36,9 +36,9 @@ public class Trill extends Span {
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
     static {
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-        TRILL_GLYPH_WIDTH_SS = bbox.width();
-        TRILL_GLYPH_HEIGHT_SS = bbox.height();
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);
+        TRILL_GLYPH_WIDTH_SS = bbox.widthSs();
+        TRILL_GLYPH_HEIGHT_SS = bbox.heightSs();
     }
 
     private int yPositionSs = 0;

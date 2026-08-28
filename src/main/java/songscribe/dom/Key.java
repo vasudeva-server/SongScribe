@@ -328,7 +328,7 @@ public enum Key implements Copyable<Key> {
             return 0;
         }
 
-        return SMuFLMetadata.requireBBox(accidentalGlyph()).height();
+        return SMuFLMetadata.bboxSs(accidentalGlyph()).heightSs();
     }
 
     /**

@@ -48,6 +48,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.error.RuntimeErrorTestHelper;
 import songscribe.font.DocumentFonts;
+import songscribe.font.SourceSans3Font;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
@@ -77,10 +78,23 @@ public abstract class UnitTest {
     private static volatile boolean flatLafInstalled = false;
 
     @BeforeAll
-    static void suppressDialogs() throws Exception {
+    static void installErrorHandling() throws Exception {
+        // Not UI setup: a unit test that reaches an alert would otherwise block on a modal
+        // dialog nobody can dismiss, which is a hung suite rather than a failing test.
         OptionDialogs.setSuppressDialogs(true);
         RuntimeErrorTestHelper.install();
+
+        // UIManager is process-global and queued EDT work outlives the test that queued it,
+        // so a control built on the event thread can be built during any test at all. The
+        // properties it reads have to be registered for every class, not only the classes
+        // that build a control themselves.
         installFlatLafDefaults();
+
+        // Likewise global, and likewise unavoidable here: the graphics environment caches the
+        // face it resolves a name to, so once any test has asked for a document font the
+        // answer is fixed for the process. Registering the shipped faces after that point
+        // changes nothing, and every font written to a document is the platform's substitute.
+        SourceSans3Font.install();
 
         if (!bannerShown) {
             bannerShown = true;
@@ -132,9 +146,8 @@ public abstract class UnitTest {
      * making all {@code SongScribe.*} properties available via {@code UIManager}
      * (and therefore via {@link songscribe.ui.FlatLafProps#get}).
      *
-     * <p>Call from a {@code @BeforeAll} method in test classes that need
-     * FlatLaf properties. Safe to call multiple times; only the first
-     * invocation performs the actual setup.
+     * <p>Without it {@code FlatLafProps.get} treats the property as a missing resource and
+     * exits. Safe to call more than once; only the first call does the work.
      */
     protected static void installFlatLafDefaults() throws Exception {
         if (flatLafInstalled) {

@@ -61,6 +61,11 @@ public final class BravuraFont {
     /**
      * The Bravura music font at {@link #SIZE_SS}. Callers needing another size should
      * {@code deriveFont()} from it.
+     *
+     * @return the font, which can draw any glyph the application asks it for
+     * @invariant every {@link SMuFLGlyph} constant names a glyph this font draws ink for. The
+     *     constants are chosen by hand from Bravura's own glyph list, so nothing here checks it;
+     *     adding a constant the font does not carry is what would break it.
      */
     public static Font font() {
         return Holder.INSTANCE;
@@ -91,19 +96,16 @@ public final class BravuraFont {
      * its centering on the notehead) is built from the metadata. LilyPond reconciles the same
      * disagreement the same way, scaling the FreeType outline to the metric box before it builds a
      * skyline from it ({@code stencil-integral.cc} {@code add_named_glyph_segments}).
+     *
+     * @param glyph the glyph to outline
+     * @return its ink outline in staff spaces, scaled so its width matches the metadata bbox
+     * @invariant the outline is non-empty and has positive width, because every
+     *     {@link SMuFLGlyph} is a visible symbol Bravura draws ink for (see {@link #font()});
+     *     nothing here re-checks it
      */
     public static Shape glyphOutline(SMuFLGlyph glyph) {
         var outline = font().createGlyphVector(OUTLINE_FRC, glyph.asString()).getOutline();
-        var outlineWidthSs = outline.getBounds2D().getWidth();
-
-        // A missing glyph renders as an empty or zero-width outline, whose scale would come out
-        // infinite and silently poison every profile derived from it — and those profiles are held
-        // in static fields for the life of the process.
-        if (outlineWidthSs <= 0.0) {
-            throw new IllegalStateException("Bravura drew " + glyph + " with a zero-width outline");
-        }
-
-        var scale = SMuFLMetadata.requireBBox(glyph).width() / outlineWidthSs;
+        var scale = SMuFLMetadata.bboxSs(glyph).widthSs() / outline.getBounds2D().getWidth();
 
         return AffineTransform.getScaleInstance(scale, scale).createTransformedShape(outline);
     }

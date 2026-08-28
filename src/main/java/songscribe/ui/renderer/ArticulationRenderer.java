@@ -51,16 +51,16 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
 
     // SMuFL bbox-derived widths in staff-space units
     private static final double STACCATO_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).left();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_ABOVE).leftSs();
 
     private static final double STACCATO_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE).width();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_ABOVE).widthSs();
 
     private static final double STACCATO_BELOW_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW).left();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_BELOW).leftSs();
 
     private static final double STACCATO_BELOW_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_BELOW).width();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_BELOW).widthSs();
 
     // Singleton instance
     private static final ArticulationRenderer INSTANCE = new ArticulationRenderer();

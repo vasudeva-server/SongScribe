@@ -47,10 +47,10 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
     // SMuFL bbox-derived fermata width in staff-space units
     private static final double FERMATA_BBOX_LEFT_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.FERMATA_ABOVE).left();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE).leftSs();
 
     private static final double FERMATA_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.FERMATA_ABOVE).width();
+        SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE).widthSs();
 
     // Singleton instance
     private static final FermataRenderer INSTANCE = new FermataRenderer();

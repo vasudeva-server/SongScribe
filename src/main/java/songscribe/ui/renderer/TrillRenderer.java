@@ -48,10 +48,10 @@ public final class TrillRenderer {
     // ==========================================================================
 
     // Trill glyph advance width in staff-space units, used to position the wavy line start
-    private static final double TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
+    private static final double TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ORNAMENT_TRILL);
 
     // Wavy line segment width from the advance width of the WIGGLE_TRILL_FASTER glyph
-    static final double WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.WIGGLE_TRILL_FASTER);
+    static final double WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.WIGGLE_TRILL_FASTER);
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
@@ -115,8 +115,8 @@ public final class TrillRenderer {
     ) {
         // SMuFL ornamentTrill glyph origin is at the baseline (bottom of glyph).
         // trillTopYSs is the top, so offset down by the glyph height.
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-        var y = trillTopYSs + bbox.height();
+        var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.ORNAMENT_TRILL);
+        var y = trillTopYSs + bbox.heightSs();
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);

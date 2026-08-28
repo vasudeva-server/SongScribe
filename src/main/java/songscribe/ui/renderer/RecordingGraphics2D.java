@@ -220,21 +220,15 @@ public final class RecordingGraphics2D extends Graphics2D {
      * The size ratio handles the grace-note font for free, matching {@code NoteGeometry}'s
      * {@code GRACE_NOTE_SCALE} without duplicating it.
      */
-    @Nullable
     private static Rectangle2D metadataBoundsSs(SMuFLGlyph glyph, float fontSize) {
-        var bbox = SMuFLMetadata.getBBox(glyph);
-
-        if (bbox == null) {
-            return null;
-        }
-
+        var bbox = SMuFLMetadata.bboxSs(glyph);
         var scale = fontSize / BravuraFont.SIZE_SS;
 
         return new Rectangle2D.Double(
-            bbox.left() * scale,
-            bbox.top() * scale,
-            bbox.width() * scale,
-            bbox.height() * scale);
+            bbox.leftSs() * scale,
+            bbox.topSs() * scale,
+            bbox.widthSs() * scale,
+            bbox.heightSs() * scale);
     }
 
     private static GlyphVector glyphVector(SMuFLGlyph glyph, Font font) {
@@ -294,11 +288,9 @@ public final class RecordingGraphics2D extends Graphics2D {
         var glyph = GLYPHS_BY_STRING.get(str);
 
         if (glyph != null) {
-            var glyphVector = glyphVector(glyph, font);
-            var boundsSs = metadataBoundsSs(glyph, font.getSize2D());
             recordGlyph(
-                glyphVector,
-                boundsSs != null ? boundsSs : fallbackBoundsSs(str, glyphVector),
+                glyphVector(glyph, font),
+                metadataBoundsSs(glyph, font.getSize2D()),
                 x,
                 y);
             return;

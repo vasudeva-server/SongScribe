@@ -47,9 +47,9 @@ public class Articulation extends LineElement {
     private static final double ACCENT_HEIGHT_SS;
 
     static {
-        var staccatoBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-        STACCATO_WIDTH_SS = staccatoBBox.width();
-        STACCATO_HEIGHT_SS = staccatoBBox.height();
+        var staccatoBBox = SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
+        STACCATO_WIDTH_SS = staccatoBBox.widthSs();
+        STACCATO_HEIGHT_SS = staccatoBBox.heightSs();
 
         var accentBounds = AccentShape.accent().getBounds2D();
         ACCENT_WIDTH_SS = accentBounds.getWidth();

@@ -144,7 +144,7 @@ public final class HorizontalSpacingCalculator {
     public static double calculateFirstElementXSs(Key key) {
         if (key.signatureWidthSs() == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS
-                + Math.max(SMuFLConstants.G_CLEF_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
+                + Math.max(SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
         }
 
         return calculateHeaderRightEdgeSs(key)
@@ -158,7 +158,7 @@ public final class HorizontalSpacingCalculator {
      */
     public static double calculateKeySignatureXSs() {
         return LayoutEngine.CLEF_X_POSITION_SS
-            + SMuFLConstants.G_CLEF_WIDTH_SS
+            + SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS
             + StaffHeaderMetrics.CLEF_GAP_SS;
     }
 
@@ -189,7 +189,7 @@ public final class HorizontalSpacingCalculator {
         var keySignatureWidthSs = key.signatureWidthSs();
 
         if (keySignatureWidthSs == 0) {
-            return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_WIDTH_SS;
+            return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS;
         }
 
         return calculateKeySignatureXSs() + keySignatureWidthSs;
