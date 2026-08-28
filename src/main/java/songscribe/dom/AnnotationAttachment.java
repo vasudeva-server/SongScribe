@@ -92,18 +92,6 @@ public final class AnnotationAttachment extends Attachment {
     }
 
     @Override
-    public double getContentWidthPx() {
-        throw new UnsupportedOperationException(
-            "AnnotationAttachment width is font-dependent; use computeContentWidthSs(font) instead.");
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        throw new UnsupportedOperationException(
-            "AnnotationAttachment height is font-dependent; use computeContentHeightSs(font) instead.");
-    }
-
-    @Override
     public double getContentWidthSs() {
         throw new UnsupportedOperationException(
             "AnnotationAttachment width is font-dependent; use computeContentWidthSs(font) instead.");

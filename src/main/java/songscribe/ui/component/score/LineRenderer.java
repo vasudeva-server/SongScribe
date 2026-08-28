@@ -221,7 +221,7 @@ class LineRenderer {
                 g2.setColor(RenderingUtils.STAFF_LINE_COLOR);
             }
 
-            var lineWidth = invariants.getSong().getLineWidthSs();
+            var lineWidth = invariants.getSong().getLineWidthSs().value();
             var middleLineYSs = invariants.getMiddleLineYSs();
             var staffLineThicknessSs = LineThickness.STAFF_LINE_SS;
 
@@ -657,15 +657,17 @@ class LineRenderer {
         var minX = halfStrokeWidthPx;
         var maxX = lc.getWidth() - 1 - halfStrokeWidthPx;
 
-        var left = Math.max(toViewPx(viewScale, band.leftSs()), minX);
-        var right = Math.min(toViewPx(viewScale, band.rightSs()), maxX);
+        // Sub-pixel on purpose: the shape drawn is a RoundRectangle2D.Double, and rounding the
+        // edges would make the band's two axes disagree about where they sit.
+        var left = Math.max(viewScale.toViewPx(band.leftSs()).value(), minX);
+        var right = Math.min(viewScale.toViewPx(band.rightSs()).value(), maxX);
         var width = Math.max(MIN_BAND_WIDTH_PX, right - left);
 
         // The band's vertical extent is the staff's own, not the drag's: it straddles the top
         // and bottom staff lines however the mouse moves. Unlike the horizontal edges, those
         // are well inside the component, so no inset is needed to keep the stroke from clipping.
-        var top = toViewPx(viewScale, lc.getStaffTopYSs());
-        var bottom = toViewPx(viewScale, lc.getStaffBottomYSs());
+        var top = viewScale.toViewPx(lc.getStaffTopYSs()).value();
+        var bottom = viewScale.toViewPx(lc.getStaffBottomYSs()).value();
 
         var roundRect = new RoundRectangle2D.Double(
                 left, top, width, bottom - top, arcPx, arcPx);
@@ -675,17 +677,5 @@ class LineRenderer {
             g2.setColor(ScoreView.getSelectionColor());
             g2.draw(roundRect);
         }
-    }
-
-    /**
-     * A line-local staff-space position as a view-pixel distance at the given zoom.
-     * <p>
-     * The selection band is the one thing this renderer draws outside the staff-space transform,
-     * so it is also the one thing that has to convert for itself. Sub-pixel on purpose: the
-     * shape drawn is a {@link RoundRectangle2D.Double}, and rounding the edges would make the
-     * band's two axes disagree about where they sit.
-     */
-    private static double toViewPx(ViewScale viewScale, double ss) {
-        return viewScale.toViewPx(new Ss(ss)).value();
     }
 }

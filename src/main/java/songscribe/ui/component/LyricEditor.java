@@ -921,14 +921,14 @@ public final class LyricEditor extends MyJTextField {
         var advanceSs = Math.max(boxMetrics.advanceSs(), EMPTY_BOX_MIN_WIDTH_SS);
         var anchor = layoutResult.getLyricAnchor(element, lyricRenderMetrics);
 
-        var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
+        var advanceLeftSs = anchor.centerXSs().value() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.editorBoxHeightSs();
 
         // The editor is a real overlay component positioned in absolute view pixels, so
         // ss→px conversions here honor the current zoom via the view scale (not the
-        // fixed document scale). Sizes round up (ceilPx); positions round to nearest.
+        // fixed document scale). Sizes round up (sizePx); positions round to nearest.
         var viewScale = score.getViewScale();
-        var roundedAdvancePx = viewScale.toViewPx(new Ss(advanceSs)).ceilPx();
+        var roundedAdvancePx = viewScale.toViewPx(new Ss(advanceSs)).sizePx();
         var trailingCaretRoomPx = text.isEmpty()
             ? MIN_TRAILING_CARET_ROOM_PX
             : 0;
@@ -937,16 +937,16 @@ public final class LyricEditor extends MyJTextField {
         // getHeight() = ascent+descent+leading. Adding leading here makes fieldViewSlopPx
         // equal to SELECTION_MARGIN_PX*2, so the selection gets exactly SELECTION_MARGIN_PX
         // pixels of breathing room above and below.
-        var contentHeightPx = viewScale.toViewPx(new Ss(heightSs)).ceilPx()
+        var contentHeightPx = viewScale.toViewPx(heightSs).sizePx()
             + fontMetrics.getLeading();
 
         var insets = getInsets();
 
         // Snap content_left exactly to the advance-origin pixel: JTextField paints there,
         // and any rounding drift would visibly shift the painted text within the box.
-        var contentLeftPx = viewScale.toViewPx(new Ss(advanceLeftSs)).roundedPx();
+        var contentLeftPx = viewScale.toViewPx(new Ss(advanceLeftSs)).positionPx();
 
-        var baselineYPxInt = viewScale.toViewPx(new Ss(anchor.baselineYSs())).roundedPx();
+        var baselineYPxInt = viewScale.toViewPx(anchor.baselineYSs()).positionPx();
         var fieldViewSlopPx = contentHeightPx - fontMetrics.getHeight();
         var contentTopPx = baselineYPxInt - fontMetrics.getAscent() - fieldViewSlopPx / 2;
 
@@ -1002,7 +1002,7 @@ public final class LyricEditor extends MyJTextField {
         var probeSyllabic = deriveProbeSyllabic(intent);
 
         var metrics = score.getLyricRenderMetrics();
-        var marginSs = line.getSong().getLineWidthSs();
+        var marginSs = line.getSong().getLineWidthSs().value();
 
         var index = line.getElementIndex(element);
         var candidate = new Lyric(activeVerse, commitText(), extend, probeSyllabic, intent.wantsCompound());

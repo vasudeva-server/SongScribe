@@ -132,7 +132,7 @@ public final class LayoutHitTester {
         }
 
         var song = line.getSong();
-        var startXSs = cautionary.placeIn(layoutResult, song.getLineWidthSs()).accidentalsXSs();
+        var startXSs = cautionary.placeIn(layoutResult, song.getLineWidthSs().value()).accidentalsXSs();
 
         if (mouseXSs < startXSs || mouseXSs > startXSs + cautionary.accidentalsWidthSs()) {
             return null;
@@ -416,7 +416,7 @@ public final class LayoutHitTester {
             // the line has one, otherwise the staff margin itself. Splitting the remaining room
             // between the last real element and that boundary reads as the preview floating past
             // the end of the line, rather than pinned flush against the boundary (refs #608).
-            var boundarySs = song.getLineWidthSs();
+            var boundarySs = song.getLineWidthSs().value();
             var terminalColumn = line.elementCount() > elementCount
                 ? layoutResult.getElementColumn(line.getElement(elementCount))
                 : null;

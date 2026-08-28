@@ -20,6 +20,8 @@
 
 package songscribe.dom;
 
+import java.awt.Font;
+
 import songscribe.util.GraphicUtils;
 
 /**
@@ -36,22 +38,21 @@ import songscribe.util.GraphicUtils;
  */
 public final class DocumentScale {
 
-    /** Default pixels per staff space, matching the legacy 8px staff line spacing. */
+    /** Pixels per staff space, matching the legacy 8px staff line spacing. */
     public static final double PIXELS_PER_STAFF_SPACE = 8.0;
 
     private DocumentScale() {}
 
-    /** Convert a value in staff-space units to pixels. */
-    public static double ssToPx(double ss) {
-        return PIXELS_PER_STAFF_SPACE * ss;
-    }
-
     /**
-     * Convert a value in staff-space units to document pixels, rounded to the
-     * nearest integer. The value rounds to nearest because it is a position.
+     * Converts a value in staff-space units to document pixels.
+     *
+     * @param ss the distance in staff spaces
+     * @return the same distance as an unrounded {@link DocPx}; ask it for
+     *         {@link DocPx#positionPx()} or {@link DocPx#sizePx()} to reach a
+     *         whole pixel, whichever the value is
      */
-    public static int ssToRoundedPx(double ss) {
-        return new DocPx(ssToPx(ss)).roundedPx();
+    public static DocPx ssToPx(double ss) {
+        return new DocPx(PIXELS_PER_STAFF_SPACE * ss);
     }
 
     /** Convert a value in pixels to staff-space units. */
@@ -63,15 +64,11 @@ public final class DocumentScale {
      * Convert a physical length in inches to staff-space units.
      * <p>
      * Document pixels are the intermediate step, but deliberately an unrounded one.
-     * {@link GraphicUtils#convertToPixels} rounds to a whole pixel, and that is coarse enough
-     * to shift a line width the user never edited onto a neighbouring value — which in turn
-     * can push a line that only just fits past the staff margin. Use this pair wherever the
-     * exact length matters, and {@code convertToPixels} only where a whole pixel count is
-     * genuinely what is wanted.
-     * <p>
-     * <b>Nothing calls this yet.</b> Page setup is where the user's
-     * {@link songscribe.util.LengthUnit} choice is going, and a length the user types in
-     * inches or centimetres reaches the layout through here. Do not remove it as dead code.
+     * Rounding a length to a whole pixel on the way in is coarse enough to shift a line width
+     * the user never edited onto a neighbouring value — which in turn can push a line that
+     * only just fits past the staff margin. Convert through here wherever the exact length
+     * matters, and reach a whole pixel only at the end, by asking the resulting {@link DocPx}
+     * for the count.
      */
     public static double inchesToSs(double inches) {
         return pxToSs(inches * GraphicUtils.getDpi());
@@ -79,6 +76,18 @@ public final class DocumentScale {
 
     /** Convert a value in staff-space units to inches. The inverse of {@link #inchesToSs}. */
     public static double ssToInches(double ss) {
-        return ssToPx(ss) / GraphicUtils.getDpi();
+        return ssToPx(ss).value() / GraphicUtils.getDpi();
+    }
+
+    /**
+     * Re-expresses {@code font}'s point size in staff-space units, for a renderer drawing
+     * inside the staff-space coordinate transform: text set in the returned font comes out
+     * the same visual size as {@code font} would at document scale outside that transform.
+     *
+     * @param font a font whose size is expressed in document pixels
+     * @return the same face and style, sized in staff-space units
+     */
+    public static Font fontSizedInSs(Font font) {
+        return font.deriveFont((float) pxToSs(font.getSize()));
     }
 }

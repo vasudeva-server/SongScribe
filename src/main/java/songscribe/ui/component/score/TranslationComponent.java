@@ -26,7 +26,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.font.TextMeasurement;
+import songscribe.dom.ViewPx;
 import songscribe.util.GraphicsState;
 
 /**
@@ -38,7 +38,7 @@ import songscribe.util.GraphicsState;
 public class TranslationComponent extends ScoreComponent {
 
     /** Vertical spacing for translation block (2 staff lines). */
-    private static final double TRANSLATION_TOP_MARGIN_SS = 2.0;
+    private static final Ss TRANSLATION_TOP_MARGIN_SS = new Ss(2.0);
 
     /** Translation header for official translations. */
     private static final String TRANSLATION_HEADER_OFFICIAL = "Sri Chinmoy's translation:";
@@ -51,14 +51,15 @@ public class TranslationComponent extends ScoreComponent {
      */
     @Override
     public int getMarginTop() {
-        return toViewPx(new Ss(TRANSLATION_TOP_MARGIN_SS)).roundedPx();
+        return toViewPx(TRANSLATION_TOP_MARGIN_SS).positionPx();
     }
 
     /**
      * Calculates the width of the text content.
      *
      * @param g2 Graphics context
-     * @return Text width in pixels
+     * @return the greater of the header's and the translation's widest-line advance, in view
+     *         pixels, or 0 when there is no translation
      */
     public double getTextWidth(Graphics2D g2) {
         if (song == null) {
@@ -85,11 +86,11 @@ public class TranslationComponent extends ScoreComponent {
             var headerText = song.isUnofficialTranslation()
                 ? TRANSLATION_HEADER_UNOFFICIAL
                 : TRANSLATION_HEADER_OFFICIAL;
-            maxWidth = Math.max(maxWidth, TextMeasurement.textBlockWidth(headerText, g2));
+            maxWidth = Math.max(maxWidth, textBlockWidth(headerText, g2));
 
             // Translation text width
             g2.setFont(lyricsFont);
-            maxWidth = Math.max(maxWidth, TextMeasurement.textBlockWidth(translation, g2));
+            maxWidth = Math.max(maxWidth, textBlockWidth(translation, g2));
 
             return maxWidth;
         }
@@ -175,6 +176,8 @@ public class TranslationComponent extends ScoreComponent {
         var lines = translation.split("\n");
         height += textMetrics.getHeight() * lines.length;
 
-        return new Dimension(toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), (int) height);
+        return new Dimension(
+            toViewPx(song.getLineWidthSs()).sizePx(),
+            new ViewPx(height).sizePx());
     }
 }

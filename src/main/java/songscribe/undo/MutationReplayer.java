@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
@@ -230,7 +231,7 @@ public final class MutationReplayer {
 
     private static void applyLayoutField(Song song, LayoutField field, @Nullable Object value) {
         switch (field) {
-            case LINE_WIDTH_SS -> song.setLineWidthSs(cast(value, Double.class));
+            case LINE_WIDTH_SS -> song.setLineWidthSs(new Ss(cast(value, Double.class)));
             case ROW_HEIGHT_ADJUSTMENT_SS -> song.setRowHeightAdjustmentSs(cast(value, Double.class));
         }
     }

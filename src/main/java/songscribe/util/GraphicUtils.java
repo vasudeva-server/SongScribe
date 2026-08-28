@@ -54,7 +54,6 @@ import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.net.URL;
-import java.util.Arrays;
 import javax.imageio.ImageIO;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -79,49 +78,6 @@ public final class GraphicUtils {
                 return foreground != null ? foreground : color;
             }
         );
-
-    public enum Unit {
-        UNDETERMINED(-1),
-        INCH(0),
-        CM(1);
-
-        private final int value;
-
-        Unit(int value) {
-            this.value = value;
-        }
-
-        public int getValue() {
-            return value;
-        }
-
-        public static Unit create(boolean isMetric) {
-            return isMetric ? CM : INCH;
-        }
-
-        public static Unit fromValue(int value) {
-            return Arrays.stream(values())
-                .filter(unit -> unit.value == value)
-                .findFirst()
-                .orElse(UNDETERMINED);
-        }
-
-        public String description() {
-            return switch (this) {
-                case INCH -> "inch";
-                case CM -> "cm";
-                default -> "";
-            };
-        }
-
-        public int convertToPixels(double length) {
-            return GraphicUtils.convertToPixels(length, this);
-        }
-
-        public boolean isMetric() {
-            return this == CM;
-        }
-    }
 
     public static final double CM_PER_INCH = 2.54;
 
@@ -439,34 +395,6 @@ public final class GraphicUtils {
         return new Point2D.Double(
             point.getX() + dxSs / lengthSs * halfWidthSs,
             point.getY() + dySs / lengthSs * halfWidthSs);
-    }
-
-    /**
-     * Takes pixel and returns inches (rounded to 2 decimal places) or mm (rounded to int).
-     */
-    public static double convertFromPixels(int pixels, Unit unit) {
-        var result = (double) pixels / GraphicUtils.getDpi();
-
-        if (unit.isMetric()) {
-            // Round to nearest mm
-            return Math.round(result * CM_PER_INCH * 10) / 10d;
-        }
-
-        // Round to 2 decimal places
-        return Math.round(result * 100) / 100d;
-    }
-
-    /**
-     * Takes inches or mm and returns pixels
-     */
-    public static int convertToPixels(double length, Unit unit) {
-        var result = length * GraphicUtils.getDpi();
-
-        if (unit.isMetric()) {
-            result /= CM_PER_INCH * 10;
-        }
-
-        return (int) Math.round(result);
     }
 
     /**

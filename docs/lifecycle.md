@@ -76,6 +76,11 @@ Two live cases:
   bindings rather than standing free precisely so that last part has an owner:
   one reading anything that outlives the dialog would otherwise keep the dialog
   reachable for the rest of the session.
+- **Long-lived views.** A set of bindings belongs to whatever owns it, and a
+  dialog is only the shortest-lived owner. A view that lives as long as the
+  window owns one the same way, and disposes it when the view is disposed rather
+  than on any close. The ownership rule is what matters, not the kind of owner:
+  every observation has something whose disposal ends it.
 
 ## Four things end a set of registrations
 

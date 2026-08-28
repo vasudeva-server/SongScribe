@@ -705,12 +705,23 @@ public final class Song implements Disposable {
         return defaultRestLengthSs;
     }
 
-    public double getLineWidthSs() {
-        return lineWidthSs;
+    /**
+     * The width of a staff line, typed so callers are handed a staff-space value rather than a
+     * bare number they must remember the unit of.
+     * <p>
+     * The stored field is a {@code double} because the width travels through the mutation
+     * machinery — {@link songscribe.message.mutation.LayoutChange} and the loaded
+     * {@link songscribe.message.SongData} record — as a boxed {@code Double}, so the wrapper is
+     * put on here rather than held.
+     *
+     * @return the staff line width in staff spaces
+     */
+    public Ss getLineWidthSs() {
+        return new Ss(lineWidthSs);
     }
 
     public int getLineWidthPx() {
-        return DocumentScale.ssToRoundedPx(lineWidthSs);
+        return DocumentScale.ssToPx(lineWidthSs).sizePx();
     }
 
     public boolean hasBeenDynamicallyLaidOut() {
@@ -857,8 +868,10 @@ public final class Song implements Disposable {
      * and re-lays out the page for it; writing the width here alone leaves the page laid
      * out for the old one.
      */
-    public void setLineWidthSs(double lineWidth) {
-        mutateLayout(LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidth, () -> lineWidthSs = lineWidth);
+    public void setLineWidthSs(Ss lineWidth) {
+        var lineWidthValueSs = lineWidth.value();
+        mutateLayout(
+            LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidthValueSs, () -> lineWidthSs = lineWidthValueSs);
     }
 
     // -- Setter helpers --
@@ -1889,7 +1902,7 @@ public final class Song implements Disposable {
             }
 
             if (update.getLineWidthSs() != null) {
-                setLineWidthSs(update.getLineWidthSs());
+                setLineWidthSs(new Ss(update.getLineWidthSs()));
             }
         });
     }

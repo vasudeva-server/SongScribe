@@ -26,6 +26,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.font.TextLayout;
 import javax.swing.JComponent;
 
 import org.jspecify.annotations.Nullable;
@@ -288,18 +289,54 @@ public abstract class ScoreComponent extends JComponent {
      *
      * @param text text to measure for centering
      * @param g2   graphics context with font already set
-     * @return X position in pixels
+     * @return the pen origin in view pixels, to be handed straight to
+     *         {@link Graphics2D#drawString(String, float, float)}
      */
     protected float resolveContentX(String text, Graphics2D g2) {
         if (contentXPx >= 0) {
             return contentXPx;
         }
 
-        var textWidth = TextMeasurement.textBlockWidth(text, g2);
+        var textWidth = textBlockWidth(text, g2);
         // The measured text width comes from a zoom-scaled font, so center it against the
         // view-scaled (zoomed) line width, not the document-pixel width.
-        var lineWidthPx = toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx();
+        // A centering bound, not a size: rounding it to a whole pixel would throw away
+        // half a pixel of centering, and drawString takes a float anyway.
+        var lineWidthPx = toViewPx(getSong().getLineWidthSs()).value();
         return (float) ((lineWidthPx - textWidth) / 2);
+    }
+
+    /**
+     * The width of a multi-line text block as its widest line's <em>advance</em>: how far the
+     * pen travels drawing that line, not where its ink lands.
+     * <p>
+     * The advance is what centering needs, because {@code drawString}'s x is the pen origin
+     * too. Centering an ink width against a pen origin displaces the text by the first
+     * glyph's left side bearing, and the result no longer agrees with how the same string
+     * centers in an ordinary Swing label.
+     * <p>
+     * Lives here rather than in {@link TextMeasurement} because it is a paint-time,
+     * view-space measurement: the font it measures in is the zoom-scaled font the caller has
+     * already set on {@code g2}, and the render context is that graphics' own, whereas
+     * {@link TextMeasurement} answers in zoom-free document scale.
+     *
+     * @param text the block, whose lines are separated by {@code \n}; empty lines contribute
+     *             nothing and empty text measures 0
+     * @param g2   the paint-time graphics, with the font to measure in already set
+     * @return the widest line's advance in view pixels
+     */
+    protected static double textBlockWidth(String text, Graphics2D g2) {
+        var context = g2.getFontRenderContext();
+        var font = g2.getFont();
+        var maxWidth = 0d;
+
+        for (var line : text.split("\n")) {
+            if (!line.isEmpty()) {
+                maxWidth = Math.max(maxWidth, new TextLayout(line, font, context).getAdvance());
+            }
+        }
+
+        return maxWidth;
     }
 
     /**

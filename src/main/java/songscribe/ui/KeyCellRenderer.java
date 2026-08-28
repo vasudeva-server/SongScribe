@@ -148,16 +148,12 @@ public class KeyCellRenderer implements ListCellRenderer<Key> {
                     );
                 }
 
-                var glyphVector = FONT.createGlyphVector(TextMeasurement.SCREEN_FRC, glyph);
+                var glyphVector = TextMeasurement.glyphVector(glyph, FONT);
                 var visualBounds = glyphVector.getVisualBounds();
                 maxGlyphWidth = Math.max(maxGlyphWidth, visualBounds.getWidth());
                 maxGlyphHeight = Math.max(maxGlyphHeight, visualBounds.getHeight());
 
-                var attributed = KeyDisplay.getDisplayName(key);
-                var textLayout = new TextLayout(
-                    attributed.getIterator(),
-                    TextMeasurement.SCREEN_FRC
-                );
+                var textLayout = TextMeasurement.textLayout(KeyDisplay.getDisplayName(key));
                 maxLabelWidth = Math.max(
                     maxLabelWidth,
                     (int) Math.ceil(textLayout.getAdvance())

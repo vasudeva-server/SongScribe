@@ -32,6 +32,7 @@ import org.xml.sax.SAXException;
 import songscribe.Constants;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Ss;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.DocumentValidation;
@@ -232,7 +233,7 @@ final class HeaderMapper {
                 // The conversion must not round: the width is a fractional model
                 // value that the writer emits exactly, so rounding here would shift
                 // it on every open.
-                song.setLineWidthSs(MusicXmlUnits.tenthsToExactSs(pageWidth));
+                song.setLineWidthSs(new Ss(MusicXmlUnits.tenthsToExactSs(pageWidth)));
             }
         }
 

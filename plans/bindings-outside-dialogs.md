@@ -26,8 +26,8 @@ when an answer differs, rewrite that phase to state it and delete the entry here
 3. **`Tempo`.** Recommendation: leave it a plain field (Phase 2, task 5). Converting
    it to a record makes it bindable and consistent with `SongMetadata`, but touches
    every tempo mutation site; that count has not been taken.
-4. **Whether Phase 6 lands in this pass.** It is the largest item and deletes the most
-   code. Phases 1–5 stand on their own if it waits.
+4. **Whether Phase 5 lands in this pass.** It is the largest item and deletes the most
+   code. Phases 1–4 stand on their own if it waits.
 
 ## Phase 1 — Owners
 
@@ -97,23 +97,7 @@ Mode has two stores today: the `SELECT`/`EDIT` `ModeAction` pair's selected stat
    the same treatment: a `ValueProperty<Boolean>` on `Actions` that the action's selected
    state binds to.
 
-## Phase 4 — Zoom observability
-
-Reads stay on demand through `ScoreComponent.getViewScale()`; what is added is
-notification, so the effects riding `ZoomDidChangeNotification` become bindings.
-
-1. `ViewScale.zoomPercent` → `ValueProperty<Integer>`; `getZoomPercent`/`setZoomPercent`
-   delegate; publish `ObservableValue<Integer> zoomPercent()`. `ViewScale.IDENTITY` is
-   never written, so its property never notifies.
-2. Convert `ZoomAction.updateEnabledState`, `ZoomStatusBarPanel` and
-   `ScoreView.zoomDidChangeRefreshOverlayBounds` to bindings on that value.
-3. `ScoreView.zoomDidChangeApplyZoom` stays a handler — it performs the change rather
-   than reacting to it.
-4. Delete the handler-priority requirement from `ZoomDidChangeNotification`'s contract
-   and from `docs/zoom.md` once no reader depends on handler ordering. A `computed`
-   derives its dependency order; the priority integer asserts one.
-
-## Phase 5 — Derived values
+## Phase 4 — Derived values
 
 Five hand-rolled caches become `computed`s. Each currently pairs a stored result with a
 manual invalidation and an equality guard against the input it was built from.
@@ -133,7 +117,7 @@ manual invalidation and an equality guard against the input it was built from.
    `applicabilityCache`) → `computed`s over a `ValueProperty<@Nullable Selection>`.
    `Selection` is a sealed interface of two records.
 
-## Phase 6 — Action enablement
+## Phase 5 — Action enablement
 
 `UIAction.updateEnabledState` is a conjunction of fourteen predicates over ten state
 sources, recomputed by twelve `@Handler` methods that each call it with no argument.
@@ -157,14 +141,14 @@ which no notification handler can express.
    Give `MidiController` a `ValueProperty<Boolean>` for it, or state in `computeEnabled`'s
    contract that MIDI availability is read once at binding time.
 
-## Phase 7 — Tests
+## Phase 6 — Tests
 
 Three tests, pending the user's veto; nothing here is written until that is given.
 
 | Test | Kind | What would make it unnecessary |
 |---|---|---|
-| A `computed` over `documentFonts` yields metrics for the current lyrics font after a font replacement | invariant spanning several calls | nothing — this is the promise Phase 5 replaces a manual guard with |
-| An action whose flags exclude playback acquires no dependency on playback state | invariant spanning several calls | nothing — per-action dependency sets are the point of Phase 6 and no type carries them |
+| A `computed` over `documentFonts` yields metrics for the current lyrics font after a font replacement | invariant spanning several calls | nothing — this is the promise Phase 4 replaces a manual guard with |
+| An action whose flags exclude playback acquires no dependency on playback state | invariant spanning several calls | nothing — per-action dependency sets are the point of Phase 5 and no type carries them |
 | `setModified(false)` twice notifies once | invariant spanning several calls | nothing, though `BindingsTest` may already assert this of `ValueProperty`; check before adding |
 
 Two further tests are deliberately absent, and the design is why. Do not add them:

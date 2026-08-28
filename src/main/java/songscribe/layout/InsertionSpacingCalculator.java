@@ -663,7 +663,7 @@ public final class InsertionSpacingCalculator {
     public static boolean hasRoomForGraceNote(
         Line line, int atIndex, @Nullable LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        var staffRightMarginSs = line.getSong().getLineWidthSs();
+        var staffRightMarginSs = line.getSong().getLineWidthSs().value();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var graceNote = ElementType.GRACE_QUAVER.getInstance();
         return calculateInsertion(line, graceNote, atIndex, layout, lyricRenderMetrics)
@@ -685,7 +685,7 @@ public final class InsertionSpacingCalculator {
     public static boolean hasRoomForHostNoteAfterGrace(
         Line line, int graceNoteIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        var staffRightMarginSs = line.getSong().getLineWidthSs();
+        var staffRightMarginSs = line.getSong().getLineWidthSs().value();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var hostNote = ElementType.CROTCHET.getInstance();
         return calculateInsertion(line, hostNote, graceNoteIndex + 1, null, lyricRenderMetrics)
@@ -777,7 +777,7 @@ public final class InsertionSpacingCalculator {
         }
 
         return calculateModification(line, projectedElements, lyricRenderMetrics)
-            .fitsWithinLine(line.getSong().getLineWidthSs());
+            .fitsWithinLine(line.getSong().getLineWidthSs().value());
     }
 
     /**

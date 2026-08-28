@@ -62,6 +62,6 @@ public class SubtitleComponent extends BaseTitleComponent {
      */
     @Override
     protected int topGapPx() {
-        return toViewPx(new Ss(FlatLafProps.getFloat(FlatLafKey.SCORE_SUBTITLE_GAP))).roundedPx();
+        return toViewPx(new Ss(FlatLafProps.getFloat(FlatLafKey.SCORE_SUBTITLE_GAP))).positionPx();
     }
 }

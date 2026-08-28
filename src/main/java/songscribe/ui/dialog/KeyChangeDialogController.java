@@ -484,7 +484,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
             line.insertRun(
                 elementIndex,
                 spacing.place(inserted),
-                DocumentScale.ssToRoundedPx(spacing.shiftForSubsequentElementsSs()));
+                DocumentScale.ssToPx(spacing.shiftForSubsequentElementsSs()).positionPx());
         });
     }
 

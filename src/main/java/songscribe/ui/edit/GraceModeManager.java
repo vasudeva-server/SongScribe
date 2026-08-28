@@ -312,7 +312,7 @@ public final class GraceModeManager {
             graceLineComponent.getLayoutResult(), graceLineComponent.getLyricRenderMetrics()
         );
 
-        if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs())) {
+        if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs().value())) {
             return null;
         }
 
@@ -828,7 +828,7 @@ public final class GraceModeManager {
         var threshold = internalGetCancelThresholdPx();
         // The threshold is a fixed-scale document pixel; convert the view-pixel event x
         // to document pixels before comparing.
-        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).roundedPx();
+        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
         return threshold >= 0 && mouseXDocPx <= threshold;
     }
 
@@ -844,7 +844,7 @@ public final class GraceModeManager {
         var threshold = internalGetConnectThresholdPx();
         // The threshold is a fixed-scale document pixel; convert the view-pixel event x
         // to document pixels before comparing.
-        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).roundedPx();
+        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
         return threshold >= 0 && mouseXDocPx >= threshold;
     }
 
@@ -860,7 +860,7 @@ public final class GraceModeManager {
         }
 
         var graceXSs = layout.getElementXSs(graceNote);
-        return DocumentScale.ssToRoundedPx(graceXSs) - GRACE_SLOP_PX;
+        return DocumentScale.ssToPx(graceXSs).positionPx() - GRACE_SLOP_PX;
     }
 
     private int internalGetConnectThresholdPx() {
@@ -881,7 +881,7 @@ public final class GraceModeManager {
         }
 
         var rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
-        return DocumentScale.ssToRoundedPx(rightEdgeSs) + GRACE_SLOP_PX;
+        return DocumentScale.ssToPx(rightEdgeSs).positionPx() + GRACE_SLOP_PX;
     }
 
     /**

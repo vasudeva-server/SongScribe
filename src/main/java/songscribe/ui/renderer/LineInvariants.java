@@ -54,6 +54,10 @@ import songscribe.ui.component.score.PreviewElementManager;
  * <p>
  * Assembled through {@link Builder}; because every field is final, a renderer cannot
  * observe a half-configured invariants object.
+ * <p>
+ * An instance is valid only for the pass it was built for and must not be stored: the
+ * view's {@link ViewScale} is a value captured at construction, so an instance kept
+ * across a zoom change would keep converting at the old zoom.
  */
 public final class LineInvariants {
 

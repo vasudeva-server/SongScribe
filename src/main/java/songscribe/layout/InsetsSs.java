@@ -24,15 +24,15 @@ import java.awt.Insets;
 
 import songscribe.dom.DocumentScale;
 
-/** Insets in staff spaces: left, top, right, bottom. */
+/** Insets in staff spaces: top, left, bottom, right. */
 public record InsetsSs(double top, double left, double bottom, double right) {
 
     public Insets toInsetsPx() {
         return new Insets(
-            DocumentScale.ssToRoundedPx(top),
-            DocumentScale.ssToRoundedPx(left),
-            DocumentScale.ssToRoundedPx(bottom),
-            DocumentScale.ssToRoundedPx(right)
+            DocumentScale.ssToPx(top).positionPx(),
+            DocumentScale.ssToPx(left).positionPx(),
+            DocumentScale.ssToPx(bottom).positionPx(),
+            DocumentScale.ssToPx(right).positionPx()
         );
     }
 }

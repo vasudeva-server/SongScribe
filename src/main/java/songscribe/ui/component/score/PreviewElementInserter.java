@@ -183,7 +183,7 @@ final class PreviewElementInserter {
             line, element, index, layout, lc.getLyricRenderMetrics());
         var song = line.getSong();
 
-        if (!insertion.fitsWithinLine(song.getLineWidthSs())) {
+        if (!insertion.fitsWithinLine(song.getLineWidthSs().value())) {
             OptionDialogs.showErrorMessage(
                 null,
                 Strings.ALERT_TITLE_INSERT_ERROR,
@@ -283,7 +283,7 @@ final class PreviewElementInserter {
             return;
         }
 
-        previewElement.setXOffsetPx(DocumentScale.ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(DocumentScale.ssToPx(insertion.insertedElementXSs()).positionPx());
         line.addElement(previewElement);
 
         var newLastIndex = line.elementCount() - 1;
@@ -337,7 +337,7 @@ final class PreviewElementInserter {
             return;
         }
 
-        previewElement.setXOffsetPx(DocumentScale.ssToRoundedPx(insertion.insertedElementXSs()));
+        previewElement.setXOffsetPx(DocumentScale.ssToPx(insertion.insertedElementXSs()).positionPx());
 
         // Grace mode inserts its grace note with mutation tracking suspended, so a repair made
         // here would never reach the undo record. It takes the repairs over, running them
@@ -354,7 +354,7 @@ final class PreviewElementInserter {
             line.repairNeighborsAfterInsertion(xIndex, previewElement);
         }
 
-        var shift = DocumentScale.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
+        var shift = DocumentScale.ssToPx(insertion.shiftForSubsequentElementsSs()).positionPx();
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
             var element = line.getElement(i);

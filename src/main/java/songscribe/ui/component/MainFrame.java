@@ -869,10 +869,6 @@ public class MainFrame extends JFrame implements Printable {
         return result;
     }
 
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
-    }
-
     @Nullable
     public File getCurrentFile() {
         return currentFile;

@@ -429,8 +429,8 @@ public final class SongIO {
                     }
 
                     var line = parsedLines.getLast();
-                    note.setXOffsetPx(DocumentScale.ssToRoundedPx(
-                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null, null)));
+                    note.setXOffsetPx(DocumentScale.ssToPx(
+                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null, null)).positionPx());
                     note.setDirection(StaffElement.defaultDirection(note));
                     line.addElement(note);
                 }

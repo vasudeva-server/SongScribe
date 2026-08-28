@@ -1,8 +1,9 @@
 # UI Bindings
 
-`songscribe.binding` is the property graph a dialog wires itself with: values
+`songscribe.binding` is the property graph a component wires itself with: values
 that can be read and observed, values that can be written, and declarative bindings
-between them. It knows nothing about Swing; `songscribe.ui.binding` holds the views
+between them. Dialogs are its most common owner, but nothing about it is
+dialog-specific — a long-lived view owns a `Bindings` the same way. It knows nothing about Swing; `songscribe.ui.binding` holds the views
 over Swing controls, and a view over any other storage — a preference, a model
 object — is a `ViewProperty` built the same way. The package Javadoc states the
 design and each member's contract states its own promises. This guide states the
@@ -36,15 +37,16 @@ depends on it silently keeps what it last saw.
 from a background thread can corrupt a dependency set or lose a notification,
 and nothing reports it.
 
-**A dialog's `Bindings` is disposed when the dialog closes**, which is what
-releases the observations and everything they capture — including the
-observations each `computed` holds on its dependencies, which is why a `computed`
-is created through `Bindings` rather than standing free. See
-[lifecycle](../../docs/lifecycle.md).
+**A `Bindings` is disposed when its owner is**, which is what releases the
+observations and everything they capture — including the observations each
+`computed` holds on its dependencies, which is why a `computed` is created
+through `Bindings` rather than standing free. For a dialog that is when it
+closes; for a view that lives as long as the window, it is when the view is
+disposed. See [lifecycle](../../docs/lifecycle.md).
 
 ## Deriving values
 
-**A `computed` is created through the dialog's `Bindings`, and its body reads its
+**A `computed` is created through its owner's `Bindings`, and its body reads its
 inputs through `ObservableValue`s only.** A direct
 control read — `field.getText()`, `combo.getSelectedItem()` — is invisible to
 the dependency tracker, so the computed acquires no dependency on it, never

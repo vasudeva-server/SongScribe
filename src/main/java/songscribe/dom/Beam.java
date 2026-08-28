@@ -43,16 +43,6 @@ public class Beam extends Span {
     }
 
     @Override
-    public double getContentWidthPx() {
-        return 0;
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return 0;
-    }
-
-    @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(1.0, endXSs - anchorXSs);
     }

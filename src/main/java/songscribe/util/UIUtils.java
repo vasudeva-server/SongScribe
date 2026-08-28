@@ -707,23 +707,17 @@ public final class UIUtils {
     public record TaggedString(String text, @Nullable Font font) {
     }
 
-    /**
-     * The same font drawn {@code shift} pixels below its normal baseline.
-     *
-     * @param font  the font to derive from
-     * @param shift how far down to move the baseline, in pixels; negative raises it
-     * @return the shifted font, or {@code font} itself when {@code shift} is zero
-     */
-    private static Font deriveBaselineShiftedFont(
+    /** Returns {@code font} unchanged when {@code shiftPx} is zero. */
+    private static Font shiftFontBaseline(
         Font font,
-        int shift
+        int shiftPx
     ) {
-        if (shift == 0) {
+        if (shiftPx == 0) {
             return font;
         }
 
         var transform = new AffineTransform();
-        transform.translate(0, shift);
+        transform.translate(0, shiftPx);
         return font.deriveFont(transform);
     }
 
@@ -745,8 +739,8 @@ public final class UIUtils {
 
             if (parts.length > 1) {
                 text = parts[0];
-                var baselineShift = Integer.parseInt(parts[1]);
-                font = deriveBaselineShiftedFont(font, baselineShift);
+                var baselineShiftPx = Integer.parseInt(parts[1]);
+                font = shiftFontBaseline(font, baselineShiftPx);
             }
 
             text = text.substring(1);

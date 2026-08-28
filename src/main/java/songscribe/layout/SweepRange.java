@@ -189,7 +189,7 @@ public final class SweepRange {
         Line line, LayoutResult layoutResult, int sweepableCount) {
 
         if (sweepableCount == line.elementCount()) {
-            return line.getSong().getLineWidthSs();
+            return line.getSong().getLineWidthSs().value();
         }
 
         var terminalColumn = layoutResult.getElementColumn(line.getElement(sweepableCount));

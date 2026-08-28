@@ -146,7 +146,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         var currentPreview = preview;
 
         if (currentPreview != null) {
-            return toViewPx(currentPreview.wrapWidthSs()).roundedPx();
+            return toViewPx(currentPreview.wrapWidthSs()).sizePx();
         }
 
         var theSong = song;
@@ -155,7 +155,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return 0;
         }
 
-        return toViewPx(new Ss(theSong.getLineWidthSs())).roundedPx();
+        return toViewPx(theSong.getLineWidthSs()).sizePx();
     }
 
     /**
@@ -259,7 +259,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
     /**
      * The component's text measured once — the font's metrics and every wrapped line's
-     * ink, all taken under {@link TextMeasurement#SCREEN_FRC}.
+     * ink, all taken through {@link TextMeasurement}.
      * <p>
      * Sizing and painting both go through this, which is what makes "the component is
      * exactly as wide as the text it draws" true rather than nearly true. Measuring the

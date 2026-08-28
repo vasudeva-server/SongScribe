@@ -29,7 +29,7 @@ import songscribe.lifecycle.Disposable;
 import songscribe.binding.Binding.InitialWrite;
 
 /**
- * The set of bindings and effects one dialog declares, and the owner that tears
+ * The set of bindings and effects one owner declares, and the handle that tears
  * them all down together.
  *
  * <p>Declaring a binding here is the alternative to wiring a listener by hand: the
@@ -39,7 +39,7 @@ import songscribe.binding.Binding.InitialWrite;
  * to release them.
  *
  * <p><b>Every binding settles its target immediately.</b> A binding evaluates its
- * source once at registration and writes its target, so a dialog is consistent the
+ * source once at registration and writes its target, so an owner is consistent the
  * moment it has finished declaring itself and never needs an initial synchronization
  * pass. <b>An effect registered with {@link #onNotify} does not run at
  * registration</b>, and a {@link #computed} does not evaluate until something reads
@@ -47,11 +47,12 @@ import songscribe.binding.Binding.InitialWrite;
  *
  * <h2>Lifecycle</h2>
  *
- * <p>A {@code Bindings} belongs to exactly one dialog, which creates it when it is
- * built and calls {@code dispose()} on it when it closes. Dialogs are built per
- * opening and discarded on close, so an undisposed {@code Bindings} keeps its
- * observations — and through them the dialog, its controls and everything they
- * capture — alive past the close. See {@code docs/lifecycle.md}.
+ * <p>A {@code Bindings} belongs to exactly one owner, which creates it when it is
+ * built and calls {@code dispose()} on it when the owner itself is disposed. An
+ * undisposed {@code Bindings} keeps its observations — and through them the owner,
+ * its controls and everything they capture — alive past that point. A dialog is the
+ * shortest-lived owner, built per opening and discarded on close; a view that lives
+ * as long as the window owns one on the same terms. See {@code docs/lifecycle.md}.
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  */

@@ -47,12 +47,12 @@ public class Clef extends LineElement {
     }
 
     @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(CONTENT_WIDTH_SS);
+    public double getContentWidthSs() {
+        return CONTENT_WIDTH_SS;
     }
 
     @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(CONTENT_HEIGHT_SS);
+    public double getContentHeightSs() {
+        return CONTENT_HEIGHT_SS;
     }
 }

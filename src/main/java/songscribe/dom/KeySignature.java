@@ -64,11 +64,6 @@ public class KeySignature extends LineElement {
         return key.signatureWidthSs();
     }
 
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(getContentWidthSs());
-    }
-
     /**
      * Returns the content height in staff-space units.
      *
@@ -80,10 +75,5 @@ public class KeySignature extends LineElement {
     @Override
     public double getContentHeightSs() {
         return key.signatureHeightSs();
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(getContentHeightSs());
     }
 }

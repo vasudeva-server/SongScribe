@@ -15,18 +15,27 @@ public sealed interface PixelDistance permits DocPx, ViewPx {
     double value();
 
     /**
-     * Rounds to the nearest integer pixel. Use for <b>positions</b>
-     * (coordinates), where nearest rounding keeps placement centered.
+     * This distance as a whole-pixel <b>coordinate</b>: where something sits,
+     * not how large it is. The whole pixel nearest the true coordinate is the
+     * one that keeps placement centered, so the error is at most half a pixel
+     * in either direction.
+     *
+     * @return the whole-pixel coordinate this distance names
+     * @invariant the result differs from {@link #value()} by at most 0.5
      */
-    default int roundedPx() {
+    default int positionPx() {
         return (int) Math.round(value());
     }
 
     /**
-     * Rounds up to the next integer pixel. Use for <b>sizes</b> (widths,
-     * heights), so content is never clipped at high zoom.
+     * This distance as a whole-pixel <b>extent</b>: how large something is, not
+     * where it sits. An extent covers every pixel the content touches, so a
+     * fractional pixel counts as a whole one and nothing is clipped.
+     *
+     * @return the whole-pixel extent covering this distance
+     * @invariant the result is never less than {@link #value()}
      */
-    default int ceilPx() {
+    default int sizePx() {
         return (int) Math.ceil(value());
     }
 }

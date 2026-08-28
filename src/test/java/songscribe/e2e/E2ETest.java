@@ -501,8 +501,8 @@ public abstract class E2ETest {
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + DocumentScale.ssToRoundedPx(hitRect.x + hitRect.width / 2),
-                locationOnScreen.y + DocumentScale.ssToRoundedPx(centerYSs)
+                locationOnScreen.x + DocumentScale.ssToPx(hitRect.x + hitRect.width / 2).positionPx(),
+                locationOnScreen.y + DocumentScale.ssToPx(centerYSs).positionPx()
             );
         });
         assertThat(result).isNotNull();
@@ -533,7 +533,7 @@ public abstract class E2ETest {
                 var layoutResult = lc.getLayoutResult();
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
                 // Place 30px past the last note
-                xPx = (int) Math.round(DocumentScale.ssToPx(lastXSs)) + 30;
+                xPx = DocumentScale.ssToPx(lastXSs).positionPx() + 30;
             }
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
@@ -563,7 +563,7 @@ public abstract class E2ETest {
 
             var element = line.getElement(elementIndex);
             var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
-            var xPx = (int) Math.round(DocumentScale.ssToPx(elementXSs)) - 10;
+            var xPx = DocumentScale.ssToPx(elementXSs).positionPx() - 10;
 
             var yPx = lc.staffPositionToYPx(staffPositionSp);
 

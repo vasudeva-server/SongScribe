@@ -24,6 +24,8 @@ import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.swing.Action;
 import javax.swing.JButton;
 import javax.swing.JCheckBoxMenuItem;
@@ -32,11 +34,9 @@ import javax.swing.JPopupMenu;
 import javax.swing.JSlider;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import net.engio.mbassy.listener.Handler;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.notification.ZoomDidChangeNotification;
+import songscribe.binding.Bindings;
 import songscribe.ui.ZoomController;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -70,9 +70,16 @@ public final class ZoomStatusBarPanel extends JPanel {
 
     private final JButton percentButton = new JButton();
     private final JPopupMenu percentMenu = new JPopupMenu();
-    private final JCheckBoxMenuItem[] levelItems = new JCheckBoxMenuItem[ZoomController.ZOOM_LEVEL_PERCENTS.length];
+
+    /** The percent menu's check items, keyed by the stop each one selects. */
+    private final Map<Integer, JCheckBoxMenuItem> levelItems = new LinkedHashMap<>();
+
     private final JSlider zoomSlider =
         new JSlider(ZoomController.MIN_ZOOM_PERCENT, ZoomController.MAX_ZOOM_PERCENT, ZoomController.DEFAULT_ZOOM_PERCENT);
+
+    // The effect that keeps this panel current. Never disposed: the status bar lives for
+    // the process (see docs/lifecycle.md), so there is no retirement to release it at.
+    private final Bindings bindings = new Bindings();
 
     public ZoomStatusBarPanel() {
         super(new FlowLayout(FlowLayout.LEADING, CONTROL_GAP_PX, 0));
@@ -93,21 +100,13 @@ public final class ZoomStatusBarPanel extends JPanel {
         percentButton.addActionListener(event -> percentMenu.show(percentButton, 0, percentButton.getHeight()));
         add(percentButton);
 
-        updateState(ZoomController.getZoomPercent());
-
-        MessageCenter.subscribe(this);
-    }
-
-    @Handler
-    public void zoomDidChange(ZoomDidChangeNotification message) {
-        updateState(message.getNewZoomPercent());
+        var zoomPercent = MainFrame.getInstance().requireScoreView().zoomPercent();
+        updateState(zoomPercent.get());
+        bindings.onNotify(zoomPercent, () -> updateState(zoomPercent.get()));
     }
 
     private void buildPercentMenu() {
-        var levelPercents = ZoomController.ZOOM_LEVEL_PERCENTS;
-
-        for (var i = 0; i < levelPercents.length; i++) {
-            var levelPercent = levelPercents[i];
+        for (var levelPercent : ZoomController.ZOOM_LEVEL_PERCENTS) {
             var item = new JCheckBoxMenuItem(Strings.get(Strings.STATUS_ZOOM_PERCENT, levelPercent));
             item.addActionListener(event -> ZoomController.setZoomPercent(levelPercent));
 
@@ -118,7 +117,7 @@ public final class ZoomStatusBarPanel extends JPanel {
                 .findFirst()
                 .ifPresent(action -> item.setAccelerator(action.getAccelerator()));
 
-            levelItems[i] = item;
+            levelItems.put(levelPercent, item);
             percentMenu.add(item);
         }
     }
@@ -126,12 +125,7 @@ public final class ZoomStatusBarPanel extends JPanel {
     private void updateState(int currentPercent) {
         percentButton.setText(Strings.get(Strings.STATUS_ZOOM_PERCENT, currentPercent) + DROP_DOWN_ARROW);
         zoomSlider.setValue(currentPercent);
-
-        var levelPercents = ZoomController.ZOOM_LEVEL_PERCENTS;
-
-        for (var i = 0; i < levelPercents.length; i++) {
-            levelItems[i].setSelected(levelPercents[i] == currentPercent);
-        }
+        levelItems.forEach((levelPercent, item) -> item.setSelected(levelPercent == currentPercent));
     }
 
     /**

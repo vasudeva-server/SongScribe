@@ -246,7 +246,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
      * @return the line width in pixels
      */
     private static int lineWidthPx(Ss lineWidthSs) {
-        return (int) Math.ceil(DocumentScale.ssToPx(lineWidthSs.value()));
+        return DocumentScale.ssToPx(lineWidthSs.value()).sizePx();
     }
 
     /**

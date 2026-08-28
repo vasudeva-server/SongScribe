@@ -89,7 +89,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
             song.getMetadata(),
             requireScoreView().getDocumentFonts(),
             song.getTempo(),
-            new Ss(song.getLineWidthSs()),
+            song.getLineWidthSs(),
             new LyricsContext(song.getLyricsText(), !song.getTranslatedLyrics().isEmpty())
         );
     }
@@ -176,7 +176,7 @@ public final class SongSettingsController extends DocumentDialogController<SongS
             return true;
         }
 
-        var lineWidthSs = song.getLineWidthSs();
+        var lineWidthSs = song.getLineWidthSs().value();
         var currentMetrics = LyricRenderMetrics.forFont(currentFont);
         var newMetrics = LyricRenderMetrics.forFont(newFont);
 

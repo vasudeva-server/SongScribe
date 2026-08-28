@@ -18,17 +18,16 @@ can change that factor. A view's zoom is the only thing that folds
 on top, producing view pixels. Each regime is a distinct type, so a value cannot
 cross from one to another without saying so; see
 [spatial-units.md](../.claude/guides/spatial-units.md) for the suffix convention
-code follows beneath this.
-
-Both pixel regimes expose the size-rounds-up / position-rounds-to-nearest pair
-from that document. Staff spaces have no integer form at all — they stay
-fractional until they cross into a pixel regime.
+code follows beneath this, and for how a value in either pixel regime reaches a
+whole pixel.
 
 ## Where zoom is applied
 
-Zoom reaches exactly five places: the paint transform, component preferred
-sizes, mouse input, overlay bounds, and page sizing. Nothing else knows zoom
-exists.
+Layout, measurement and the document model are zoom-free by construction. The
+factor enters only where a value crosses out to the toolkit or back in from it,
+which is why it can be applied in one place and why a value carrying it inward is
+a defect rather than a rounding difference: it is scaled twice by the time it is
+drawn.
 
 **The factor is applied once**, at the paint transform. Everything drawn inside
 that transform works in staff spaces and must never multiply by the factor
@@ -64,16 +63,21 @@ Consumers with no view — dialog previews, exporters — read a shared read-onl
 identity scale and render at natural size regardless of what any live view is
 showing.
 
-## One notification, ordered by priority
+## One announcement, two clocks
 
-A zoom change is announced as a single notification. Every reactor is a handler
-of it — applying the change, the status bar, action enablement, the active lyric
-editor, overlay bounds — rather than some being called directly and others going
-through the bus.
+A zoom change is announced once, as a notification. Nothing reacting to a zoom
+change is called directly.
 
-One handler actually applies the change, and it runs at a priority above all the
-others, so every remaining reactor observes the zoom as already applied rather
-than as about to be.
+One handler of that notification actually applies the change, at a priority above
+every other handler, so the rest observe the zoom as already applied rather than
+as about to be. That ordered window is the only reason to be a handler: it is
+where work belongs that has to run *during* the change, before the view has
+settled.
+
+Everything that only wants the settled percentage observes the view's zoom
+property instead. The view reports it last, after re-layout, so an observer reads
+a view whose geometry already reflects the new zoom — which a handler, running
+mid-change, cannot assume.
 
 Zoom state is read and written on the event-dispatch thread only, and nothing is
 synchronized.
@@ -91,23 +95,22 @@ intermediate step rounds to a whole document pixel, which buys nothing for a
 fractional destination and costs up to half a pixel that the zoom then magnifies
 on screen.
 
-## Text measurement crosses in one place
+## Measurement is zoom-free
 
-Font metrics come back from the toolkit in pixels, never in staff spaces. That
-crossing happens in exactly one place — the single measuring facility every
-measurement goes through — and nowhere else divides a metric by the document
-scale by hand. Because it is one place, it is also one instrument: the same
-scratch graphics, carrying the same rendering hints as the paint pass, answers
-every measurement, so text sized for layout and text drawn on screen cannot
-disagree about where a run ends.
+Font metrics come back from the toolkit in pixels. The facility that takes them
+holds no view and is given none, so text is measured at document scale and the
+result holds at every zoom. This is what makes a single layout serve all of them:
+measure through a zoomed graphics and the factor is baked into layout, then
+applied again at the paint transform.
 
-Measurement is zoom-free, and the facility takes no view. Text is measured at
-document scale and the result is a staff-space value that holds at any zoom;
-a measurement taken through a zoomed graphics would bake the factor into layout
-and reapply it at the paint transform.
+The exception is a measurement taken *while painting*, in the coordinate space
+the paint transform has already established — a glyph run positioned against
+device pixels, or text sized in the zoom-scaled font a component drew it with.
+Those answers are correct only for the zoom they were taken at, so they may be
+drawn from and never stored, and nothing they produce may reach layout.
 
-A measurement answers one of three questions, and they are not interchangeable.
-That axis is set out on `TextMeasurement` itself and is not repeated here.
+A measurement also answers one of three questions, and they are not
+interchangeable. That axis is set out on `TextMeasurement` itself.
 
 ## Export is zoom-independent by construction
 

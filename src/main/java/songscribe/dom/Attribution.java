@@ -77,16 +77,6 @@ public class Attribution extends LineElement {
         return heightSs;
     }
 
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(widthSs);
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(heightSs);
-    }
-
     /**
      * Always returns {@code 0.0}. The attribution is always right-aligned to the
      * staff right edge; horizontal position is never user-adjustable.

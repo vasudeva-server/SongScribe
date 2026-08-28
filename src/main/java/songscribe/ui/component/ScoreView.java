@@ -53,6 +53,9 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.FileExtensions;
 import songscribe.Strings;
+import songscribe.binding.Bindings;
+import songscribe.binding.ObservableValue;
+import songscribe.binding.ValueProperty;
 import songscribe.dom.DocPx;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
@@ -163,8 +166,18 @@ public final class ScoreView
     private final Dimension sheetSize = new Dimension();
 
     // Per-view zoom state — the sole source of truth for this view's zoom.
-    // On-score components read it on demand via getViewScale().
-    private final ViewScale viewScale = new ViewScale();
+    // On-score components read it on demand via getViewScale(). ViewScale is a value,
+    // so a zoom change replaces this instance rather than mutating it.
+    private ViewScale viewScale = new ViewScale();
+
+    // The zoom percentage as an observable, for what has to react to a zoom change
+    // rather than read the zoom when it happens to paint. Kept equal to
+    // viewScale.getZoomPercent() by applyZoomPercent, which is the only writer.
+    private final ValueProperty<Integer> zoomPercent = new ValueProperty<>(viewScale.getZoomPercent());
+
+    // Effects this view declares on its own state. Never disposed: every ScoreView lives
+    // for the process (see docs/lifecycle.md), so there is no retirement to release them at.
+    private final Bindings bindings = new Bindings();
 
     // Called when a file is successfully opened (e.g. to update the window title)
     private final @Nullable Consumer<? super File> onFileOpened;
@@ -258,6 +271,7 @@ public final class ScoreView
             setLayout(new BorderLayout());
             setFocusable(true);
             addKeyListener(handler);
+            bindings.onNotify(zoomPercent, this::refreshOverlayBounds);
         }
     }
 
@@ -389,18 +403,6 @@ public final class ScoreView
         return mainPanel;
     }
 
-    void setMainPanel(MainPanel mainPanel) {
-        this.mainPanel = mainPanel;
-    }
-
-    void setScorePanel(JPanel scorePanel) {
-        this.scorePanel = scorePanel;
-    }
-
-    void setScrollPane(JScrollPane scrollPane) {
-        this.scrollPane = scrollPane;
-    }
-
     public boolean isDragDisabled() {
         return dragDisabled;
     }
@@ -438,7 +440,7 @@ public final class ScoreView
         var result = SongFileLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
-            var lineWidthInches = DocumentScale.ssToInches(success.song().getLineWidthSs());
+            var lineWidthInches = DocumentScale.ssToInches(success.song().getLineWidthSs().value());
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
                 result = new SongLoadResult.LineWidthTooLarge(file, lineWidthInches, PageModel.MAX_LINE_WIDTH_INCHES);
@@ -953,7 +955,7 @@ public final class ScoreView
     }
 
     public int getSheetWidthPx() {
-        return DocumentScale.ssToRoundedPx(getSong().getLineWidthSs());
+        return DocumentScale.ssToPx(getSong().getLineWidthSs().value()).sizePx();
     }
 
     public int getSheetHeightPx() {
@@ -974,7 +976,7 @@ public final class ScoreView
             contentHeightDocPx.value(),
             PageModel.getTopMarginPx().value(),
             PageModel.getBottomMarginPx().value()
-        )).roundedPx();
+        )).sizePx();
     }
 
     /**
@@ -1003,9 +1005,10 @@ public final class ScoreView
             float idealSpace;
 
             if (revalidateOnly) {
-                idealSpace = (float) endNote.getContentWidthPx();
+                idealSpace = (float) DocumentScale.ssToPx(endNote.getContentWidthSs()).value();
             } else {
-                idealSpace = (float) DocumentScale.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS) + 20;
+                idealSpace =
+                    (float) DocumentScale.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS).value() + 20;
             }
 
             var lineWidthPx = getSong().getLineWidthPx();
@@ -1075,7 +1078,7 @@ public final class ScoreView
      * to re-lay out the page. Pixels are still where this ends up, but only inside
      * {@link #layoutPage}, at the Swing boundary that actually needs an int.
      */
-    public void updatePageLayout(double lineWidthSs) {
+    public void updatePageLayout(Ss lineWidthSs) {
         getSong().setLineWidthSs(lineWidthSs);
         relayoutPage();
     }
@@ -1096,7 +1099,7 @@ public final class ScoreView
         // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
         // centered for the wrong width at any zoom other than 100% (content against the left
         // edge when zoomed out, clipped on the right when zoomed in).
-        layoutPage(viewScale.toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx());
+        layoutPage(viewScale.toViewPx(getSong().getLineWidthSs()).positionPx());
     }
 
     /**
@@ -1116,14 +1119,14 @@ public final class ScoreView
      */
     @Override
     public Dimension getPreferredSize() {
-        // Sizes round up via ceilPx() so content is never clipped at high zoom; margins round
-        // to nearest via roundedPx(), matching the border layoutPage sets from the same values.
+        // Sizes round up via sizePx() so content is never clipped at high zoom; margins round
+        // to nearest via positionPx(), matching the border layoutPage sets from the same values.
         var contentHeightPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
 
         return new Dimension(
-            viewScale.toViewPx(PageModel.getPageWidthPx()).ceilPx(),
+            viewScale.toViewPx(PageModel.getPageWidthPx()).sizePx(),
             (int) pageHeightForContent(
-                viewScale.toViewPx(PageModel.getPageHeightPx()).ceilPx(),
+                viewScale.toViewPx(PageModel.getPageHeightPx()).sizePx(),
                 contentHeightPx,
                 topMarginPx(),
                 bottomMarginPx()
@@ -1155,12 +1158,12 @@ public final class ScoreView
 
     /** The page's top margin in view pixels at the current zoom. */
     private int topMarginPx() {
-        return viewScale.toViewPx(PageModel.getTopMarginPx()).roundedPx();
+        return viewScale.toViewPx(PageModel.getTopMarginPx()).positionPx();
     }
 
     /** The page's bottom margin in view pixels at the current zoom. */
     private int bottomMarginPx() {
-        return viewScale.toViewPx(PageModel.getBottomMarginPx()).roundedPx();
+        return viewScale.toViewPx(PageModel.getBottomMarginPx()).positionPx();
     }
 
     /**
@@ -1175,11 +1178,9 @@ public final class ScoreView
         var topMarginPx = topMarginPx();
         var bottomMarginPx = bottomMarginPx();
 
-        // getHorizontalMarginPx operates in document space; convert lineWidthPx (view px) to
-        // document px before the call, then convert the resulting margin back to view px.
-        var lineWidthDocPx = viewScale.toDocPx(new ViewPx(lineWidthPx)).roundedPx();
-        var horizontalMarginPx =
-            viewScale.toViewPx(PageModel.getHorizontalMarginPx(lineWidthDocPx)).roundedPx();
+        var horizontalMarginPx = viewScale
+            .toViewPx(PageModel.getHorizontalMarginPx(viewScale.toDocPx(new ViewPx(lineWidthPx))))
+            .positionPx();
         setBorder(BorderFactory.createEmptyBorder(
             topMarginPx,
             horizontalMarginPx,
@@ -1224,9 +1225,28 @@ public final class ScoreView
         }
     }
 
-    /** The per-view zoom state. On-score components read it on demand. */
+    /**
+     * Returns the scale this view currently converts at. On-score components read it on
+     * demand rather than storing it: a zoom change replaces the instance, so a stored
+     * reference reports the zoom it was taken at.
+     *
+     * @return the current scale, never null
+     */
     public ViewScale getViewScale() {
         return viewScale;
+    }
+
+    /**
+     * Returns this view's zoom, as an integer percentage, for what has to react to a
+     * zoom change rather than read the zoom as it paints.
+     *
+     * @return the zoom percentage; it notifies after a zoom change has been applied and
+     *     the view re-laid out, so an observer reads a settled view
+     * @invariant the value equals {@code getViewScale().getZoomPercent()} at every point
+     *     an observer can run.
+     */
+    public ObservableValue<Integer> zoomPercent() {
+        return zoomPercent;
     }
 
     /**
@@ -1246,16 +1266,14 @@ public final class ScoreView
     }
 
     /**
-     * Refreshes every hosted overlay's on-screen bounds against the now-current zoom.
+     * Refreshes every hosted overlay's on-screen bounds against the current zoom.
      * <p>
      * Overlay bounds are pixel-cached ({@link LineOverlayComponent#updateBounds()}) and
      * otherwise only refreshed on the next validation pass or mouse-driven update; without
      * this an overlay (e.g. the hover preview) stays at its pre-zoom screen position until
-     * the mouse moves. Runs after {@link #zoomDidChangeApplyZoom} (default priority is lower
-     * than {@link #ZOOM_APPLY_PRIORITY}), so the zoom is already applied.
+     * the mouse moves.
      */
-    @Handler
-    public void zoomDidChangeRefreshOverlayBounds(ZoomDidChangeNotification message) {
+    private void refreshOverlayBounds() {
         forEachLineOverlay(LineOverlayComponent::updateBounds);
     }
 
@@ -1264,7 +1282,9 @@ public final class ScoreView
      * the viewport around {@code anchorPoint}, a point in this ScoreView's local
      * (content) coordinate space — e.g. the cursor position for wheel/pinch zoom.
      * When {@code anchorPoint} is null, anchors at the viewport's horizontal
-     * center and top edge instead (menu/keyboard zoom).
+     * center and top edge instead (menu/keyboard zoom). A view with no viewport — the
+     * headless converters build one and never call {@link #init()} — takes the zoom and
+     * the re-layout, and has no scroll position to re-anchor.
      * <p>
      * Called only from {@link #zoomDidChangeApplyZoom}, which is this view's own
      * high-priority handler of {@link ZoomDidChangeNotification} — see that message's
@@ -1272,13 +1292,54 @@ public final class ScoreView
      * notification rather than a direct call. On-score components read
      * {@link #getViewScale()} on demand, so nothing is pushed into the tree here.
      * EDT-only, per the {@code ZoomController} contract.
+     *
+     * @effects replaces this view's {@link ViewScale}, re-lays out and repaints the score,
+     *     and then reports the settled zoom through {@link #zoomPercent()}. The report is
+     *     last so that every observer reads a view whose layout already reflects it.
      */
     public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
-        runWithoutViewportBlit(
-            scoreScrollPane -> applyZoomPercentAndReanchor(scoreScrollPane, newPercent, anchorPoint)
-        );
+        var scoreScrollPane = getScoreScrollPane();
+
+        if (scoreScrollPane == null) {
+            applyZoomPercentAndRelayout(newPercent);
+        } else {
+            runWithoutViewportBlit(
+                pane -> applyZoomPercentAndReanchor(pane, newPercent, anchorPoint)
+            );
+        }
 
         repaint();
+        zoomPercent.set(viewScale.getZoomPercent());
+    }
+
+    /**
+     * Replaces this view's {@link ViewScale} with one at {@code newPercent} and re-lays out
+     * the score at it, leaving the scroll position alone.
+     * <p>
+     * This is the whole of a zoom change for a view with no viewport — the headless
+     * converters build one and never call {@link #init()} — and the first half of one for a
+     * view that has a viewport to re-anchor.
+     *
+     * @effects replaces {@link #getViewScale()} and invalidates and re-lays out the score
+     *     tree, so that sizes read after it returns are the ones the new zoom produces
+     */
+    private void applyZoomPercentAndRelayout(int newPercent) {
+        viewScale = viewScale.withZoomPercent(newPercent);
+
+        // Drop every cached pixel size in the score tree first: layoutPage reads
+        // mainPanel's preferred size, and that read must already reflect the new zoom.
+        invalidateTree(this);
+
+        // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
+        // relayoutPage (not updatePageLayout) because zooming is a view-only change with no
+        // business writing to the model at all — the width it lays out for is the model's own.
+        relayoutPage();
+
+        // Force synchronous re-layout so the new (post-zoom) sizes are realized before
+        // anything reads them; plain revalidate() is async and would leave stale sizes.
+        if (scorePanel != null) {
+            scorePanel.invalidate();
+        }
     }
 
     /**
@@ -1320,7 +1381,11 @@ public final class ScoreView
      * Applies {@code newPercent} to this view's {@link ViewScale}, re-lays out the page at
      * the new zoom, and scrolls so that {@code anchorPoint} — in this view's local (content)
      * coordinate space, or the viewport's horizontal center and top edge when null — stays
-     * put on screen. The body of {@link #applyZoomPercent}.
+     * put on screen.
+     * <p>
+     * The anchor is read before {@link #applyZoomPercentAndRelayout} runs, because component
+     * bounds still describe the old zoom at that point and the anchor has to be captured
+     * against them.
      */
     private void applyZoomPercentAndReanchor(
         JScrollPane scoreScrollPane,
@@ -1349,22 +1414,7 @@ public final class ScoreView
         }
 
         var oldPercent = viewScale.getZoomPercent();
-        viewScale.setZoomPercent(newPercent);
-
-        // Drop every cached pixel size in the score tree first: layoutPage reads
-        // mainPanel's preferred size, and that read must already reflect the new zoom.
-        invalidateTree(this);
-
-        // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
-        // relayoutPage (not updatePageLayout) because zooming is a view-only change with no
-        // business writing to the model at all — the width it lays out for is the model's own.
-        relayoutPage();
-
-        // Force synchronous re-layout so the new (post-zoom) sizes are realized before
-        // we read them below; plain revalidate() is async and would leave stale sizes.
-        if (scorePanel != null) {
-            scorePanel.invalidate();
-        }
+        applyZoomPercentAndRelayout(newPercent);
 
         scoreScrollPane.validate();
 

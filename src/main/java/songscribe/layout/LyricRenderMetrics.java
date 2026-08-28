@@ -21,7 +21,6 @@
 package songscribe.layout;
 
 import java.awt.Font;
-import java.awt.font.TextLayout;
 import java.awt.geom.Rectangle2D;
 import java.text.BreakIterator;
 import java.util.HashMap;
@@ -29,6 +28,8 @@ import java.util.Map;
 import javax.swing.JTextField;
 
 import songscribe.dom.DocumentScale;
+import songscribe.dom.Ss;
+import songscribe.font.LyricBoxMetrics;
 import songscribe.font.TextMeasurement;
 
 /**
@@ -75,7 +76,7 @@ public record LyricRenderMetrics(
     public static LyricRenderMetrics forFont(Font lyricsFont) {
         return new LyricRenderMetrics(
             lyricsFont,
-            TextMeasurement.scaleFont(lyricsFont),
+            DocumentScale.fontSizedInSs(lyricsFont),
             TextMeasurement.textWidthSs(lyricsFont, "-").value(),
             TextMeasurement.textWidthSs(lyricsFont, " ").value(),
             LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
@@ -120,39 +121,16 @@ public record LyricRenderMetrics(
     }
 
     /**
-     * Visual layout metrics for a lyric box, all in staff-space units.
-     *
-     * @param advanceSs     cursor-advance width (the layout width used for column placement
-     *                      and centering math)
-     * @param leftBearingSs offset from the advance origin to the leftmost painted pixel;
-     *                      typically 0 or slightly negative for glyphs that overhang to
-     *                      the left of their advance origin
-     * @param rightExtentSs offset from the advance origin to the rightmost painted pixel;
-     *                      may exceed {@code advanceSs} for glyphs that overhang past their
-     *                      advance width
-     */
-    public record LyricBoxMetrics(double advanceSs, double leftBearingSs, double rightExtentSs) {
-        public static final LyricBoxMetrics EMPTY = new LyricBoxMetrics(0.0, 0.0, 0.0);
-    }
-
-    /**
      * Returns advance plus visual left/right extents for {@code text}. Use this when sizing
      * a container that must include glyph overhang (e.g. an in-place editor) so leftmost or
      * rightmost ink pixels are not clipped. Plain layout callers should keep using
      * {@link #lyricBoxWidthSs} since they want advance-only.
+     *
+     * @param text the lyric text; empty yields {@link LyricBoxMetrics#EMPTY}
+     * @return the box's advance and ink extents in staff-space units
      */
     public LyricBoxMetrics lyricBoxMetricsSs(String text) {
-        if (text.isEmpty()) {
-            return LyricBoxMetrics.EMPTY;
-        }
-
-        var layout = new TextLayout(text, lyricsFont, TextMeasurement.SCREEN_FRC);
-        var bounds = layout.getBounds();
-        return new LyricBoxMetrics(
-            DocumentScale.pxToSs(layout.getAdvance()),
-            DocumentScale.pxToSs(bounds.getX()),
-            DocumentScale.pxToSs(bounds.getX() + bounds.getWidth())
-        );
+        return TextMeasurement.lyricBoxMetricsSs(lyricsFont, text);
     }
 
     /**
@@ -174,10 +152,14 @@ public record LyricRenderMetrics(
      * types, and {@link JTextField} lays its own painting out from the font-wide ascent and
      * descent — its baseline lands at {@code insets.top + ascent}, with the descender below.
      * Sizing the editor from ink would clip glyphs mid-edit.
+     *
+     * @return the editor box's height in staff spaces
      */
-    public double editorBoxHeightSs() {
-        return TextMeasurement.fontAscentSs(lyricsFont).value()
-            + TextMeasurement.fontDescentSs(lyricsFont).value();
+    public Ss editorBoxHeightSs() {
+        return new Ss(
+            TextMeasurement.fontAscentSs(lyricsFont).value()
+                + TextMeasurement.fontDescentSs(lyricsFont).value()
+        );
     }
 
     // ==========================================================================
@@ -231,8 +213,6 @@ public record LyricRenderMetrics(
      * included.
      */
     public static double fontAboveBaselineSs(Font font) {
-        // Visual bounds are baseline-relative with Y growing downward, so the ink top edge is
-        // a negative offset from the baseline.
-        return DocumentScale.pxToSs(-lyricExtentPx(font).getY());
+        return DocumentScale.pxToSs(TextMeasurement.inkHeight(lyricExtentPx(font)));
     }
 }

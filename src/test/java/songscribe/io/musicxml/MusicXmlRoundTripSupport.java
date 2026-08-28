@@ -65,9 +65,9 @@ final class MusicXmlRoundTripSupport {
     /**
      * A non-zero X offset (in pixels) that survives the px → ss → tenths → ss → px
      * round-trip without rounding loss.  Any integer number of pixels is exact at the
-     * default scale (8 px per staff space), so 2 staff spaces = 16 px is a clean choice.
+     * fixed document scale (8 px per staff space), so 2 staff spaces = 16 px is a clean choice.
      */
-    static final int X_OFFSET_PX = DocumentScale.ssToRoundedPx(2.0);
+    static final int X_OFFSET_PX = DocumentScale.ssToPx(2.0).positionPx();
 
     /**
      * Staff position of C4 — six steps below the B4 origin (staffPosition 0) in the

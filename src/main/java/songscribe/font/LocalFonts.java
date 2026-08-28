@@ -54,9 +54,10 @@ public final class LocalFonts {
      *                 face at the 1pt size {@code Font.createFont} produces, for a caller that
      *                 derives its own sizes
      * @return the kerned face
-     * @throws songscribe.error.RuntimeError if the file is missing from the classpath or cannot
-     *                                       be read as a font, either of which means a broken
-     *                                       installation
+     * @effects when the file is missing from the classpath or cannot be read as a font — either
+     *          of which means a broken installation — the failure and its cause are logged, shown
+     *          to the user as a fatal error, and the application exits, so the method does not
+     *          return in that case
      */
     public static Font load(String filename, float size) {
         try (
@@ -77,7 +78,7 @@ public final class LocalFonts {
 
             return font;
         } catch (Exception e) {
-            throw RuntimeError.missingResource("Could not load font: " + filename);
+            throw RuntimeError.missingResource("Could not load font: " + filename, e);
         }
     }
 

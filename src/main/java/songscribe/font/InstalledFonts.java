@@ -44,12 +44,14 @@ import songscribe.util.UIUtils;
  * The set of installed faces is read once, on first use, and never re-read: a face installed
  * while the application is running is not seen. Local faces the application ships are registered
  * by {@link LocalFonts} before the first query, so they are part of the set.
+ * <p>
+ * Callable from any thread with no locking on the query path. The system is asked for its faces
+ * inside a holder class, so the JVM's class-initialization lock lets exactly one thread perform
+ * the read, and what it publishes is immutable. This matters because the class is entered both
+ * from the EDT, when the font chooser lists the families, and from the document-load path, when a
+ * stored font name is resolved.
  */
 public final class InstalledFonts {
-
-    private static final Set<String> familyNames = new HashSet<>();
-    private static final Map<String, Font> psFonts = new HashMap<>();
-    private static List<Font> allFonts = List.of();
 
     private InstalledFonts() {}
 
@@ -57,49 +59,20 @@ public final class InstalledFonts {
      * Every installed face, kerned, at the size the system reports it in.
      *
      * @return the installed faces, in the order the graphics environment lists them
-     * @throws songscribe.error.RuntimeError if the system reports no fonts at all, which
-     *                                       leaves the application unable to draw text
+     * @effects when the system reports no fonts at all — which leaves the application unable to
+     *          draw text — the failure is logged, shown to the user as a fatal error, and the
+     *          application exits, so the method does not return in that case
      */
     public static List<Font> getAllFonts() {
-        if (allFonts.isEmpty()) {
-            var fonts = FontUtils.getAllFonts();
-
-            if (fonts == null || fonts.length == 0) {
-                throw RuntimeError.exit(
-                    "Could not load system fonts",
-                    "SongScribe could not load the fonts installed on your system and must quit."
-                );
-            }
-
-            var attributes = new HashMap<TextAttribute, Object>();
-            attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
-            var kernedFonts = new ArrayList<Font>(fonts.length);
-
-            for (var font : fonts) {
-                familyNames.add(font.getFamily());
-
-                // We want kerning to be on for all fonts!
-                var kernedFont = font.deriveFont(attributes);
-                kernedFonts.add(kernedFont);
-                psFonts.put(font.getPSName(), kernedFont);
-            }
-
-            allFonts = List.copyOf(kernedFonts);
-        }
-
-        return allFonts;
+        return Holder.INSTANCE.all();
     }
 
-    @SuppressWarnings("SameReturnValue")
     private static Set<String> getFamilyNames() {
-        getAllFonts();
-        return familyNames;
+        return Holder.INSTANCE.familyNames();
     }
 
-    @SuppressWarnings("SameReturnValue")
     private static Map<String, Font> getPSFonts() {
-        getAllFonts();
-        return psFonts;
+        return Holder.INSTANCE.byPsName();
     }
 
     /**
@@ -219,5 +192,60 @@ public final class InstalledFonts {
         var attributes = new HashMap<TextAttribute, Object>();
         attributes.put(TextAttribute.KERNING, TextAttribute.KERNING_ON);
         return font.deriveFont(attributes);
+    }
+
+    /*
+      Asks the graphics environment for its faces and builds the two indexes over them in the
+      same pass, so the answer is complete before anything can be read from it.
+    */
+    private static Faces readInstalledFaces() {
+        var fonts = FontUtils.getAllFonts();
+
+        if (fonts == null || fonts.length == 0) {
+            throw RuntimeError.exit(
+                "Could not load system fonts",
+                "SongScribe could not load the fonts installed on your system and must quit."
+            );
+        }
+
+        var families = new HashSet<String>();
+        var fontsByPsName = new HashMap<String, Font>();
+        var kernedFonts = new ArrayList<Font>(fonts.length);
+
+        for (var font : fonts) {
+            families.add(font.getFamily());
+            var kernedFont = deriveKernedFont(font);
+            kernedFonts.add(kernedFont);
+            fontsByPsName.put(font.getPSName(), kernedFont);
+        }
+
+        return new Faces(
+            List.copyOf(kernedFonts),
+            Set.copyOf(families),
+            Map.copyOf(fontsByPsName)
+        );
+    }
+
+    /**
+     * The installed faces together with the two indexes over them, so that no query can see one
+     * of the three ahead of the others.
+     *
+     * @param all         every installed face, kerned, in the order the graphics environment
+     *                    lists them
+     * @param familyNames the family name of each installed face
+     * @param byPsName    each installed face under its PostScript name
+     * @invariant all three are immutable, and the values of {@code byPsName} are exactly the
+     *            elements of {@code all}
+     */
+    private record Faces(List<Font> all, Set<String> familyNames, Map<String, Font> byPsName) {}
+
+    /**
+     * Initialization-on-demand holder: the JVM's class-initialization lock makes the read of the
+     * installed faces lazy and thread-safe without synchronizing every query. Both the EDT and
+     * the document-load path reach it, and a partially built index would answer with the wrong
+     * face rather than fail, so the read must happen once.
+     */
+    private static final class Holder {
+        static final Faces INSTANCE = readInstalledFaces();
     }
 }

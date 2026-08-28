@@ -40,7 +40,7 @@ public final class MusescoreIconFont {
     private MusescoreIconFont() {}
 
     /**
-     * The icon font at {@link #SIZE_PT}. Callers needing another size should
+     * The icon font at {@value #SIZE_PT} points. Callers needing another size should
      * {@code deriveFont()} from it.
      *
      * @return the icon font
@@ -53,8 +53,8 @@ public final class MusescoreIconFont {
      * Initialization-on-demand holder: the JVM's class-initialization lock makes this lazy and
      * thread-safe without synchronizing every call. Callers reach the font from their own static
      * initializers, on whatever thread touches them first, and a failure to load it is fatal —
-     * {@link LocalFonts#load} reports it through {@code RuntimeError.missingResource}, which
-     * shows a dialog and exits — so two threads must not enter the load at once.
+     * {@link LocalFonts#load} logs it, shows a dialog and exits — so two threads must not enter
+     * the load at once.
      */
     private static final class Holder {
         static final Font INSTANCE = LocalFonts.load(FONT_FILE, SIZE_PT);

@@ -262,8 +262,8 @@ public class LineComponent extends ScoreComponent
      * The staff's own vertical extent, which anything drawn to straddle it — the selection band
      * above all — takes from here rather than re-deriving from the midline.
      */
-    public double getStaffTopYSs() {
-        return getMiddleLineYSs() - Staff.STAFF_HALF_SS;
+    public Ss getStaffTopYSs() {
+        return new Ss(getMiddleLineYSs() - Staff.STAFF_HALF_SS);
     }
 
     /**
@@ -271,8 +271,8 @@ public class LineComponent extends ScoreComponent
      *
      * @see #getStaffTopYSs
      */
-    public double getStaffBottomYSs() {
-        return getMiddleLineYSs() + Staff.STAFF_HALF_SS;
+    public Ss getStaffBottomYSs() {
+        return new Ss(getMiddleLineYSs() + Staff.STAFF_HALF_SS);
     }
 
     /**
@@ -282,7 +282,7 @@ public class LineComponent extends ScoreComponent
      * Will be removed when renderers and mouse code are converted.
      */
     public int getMiddleLineYPx() {
-        return (int) Math.round(DocumentScale.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
+        return (int) Math.round(DocumentScale.ssToPx(getMiddleLineYSs()).value() * getViewScale().factor());
     }
 
     /**
@@ -306,7 +306,7 @@ public class LineComponent extends ScoreComponent
      */
     public int staffPositionToYPx(int staffPositionSp) {
         return getMiddleLineYPx()
-            + (int) Math.round(DocumentScale.ssToPx(Staff.spToSs(staffPositionSp)) * getViewScale().factor());
+            + (int) Math.round(DocumentScale.ssToPx(Staff.spToSs(staffPositionSp)).value() * getViewScale().factor());
     }
 
     /**
@@ -429,7 +429,7 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        var staffRightMarginSs = song.getLineWidthSs();
+        var staffRightMarginSs = song.getLineWidthSs().value();
         var isLastLine = lineIndex == song.lineCount() - 1;
         var isFirstLine = lineIndex == 0;
         var view = scoreView;
@@ -553,9 +553,9 @@ public class LineComponent extends ScoreComponent
                 // Drawn in pixel space outside the ss transform: apply the view factor to the
                 // (zoom-invariant) staff-space positions/size, and bake zoom into the fonts.
                 var factor = getViewScale().factor();
-                var xPx = DocumentScale.ssToPx(layout.xSs()) * factor;
-                var yPx = DocumentScale.ssToPx(layout.ySs() + middleLineYSs) * factor;
-                var widthPx = DocumentScale.ssToPx(layout.widthSs()) * factor;
+                var xPx = DocumentScale.ssToPx(layout.xSs()).value() * factor;
+                var yPx = DocumentScale.ssToPx(layout.ySs() + middleLineYSs).value() * factor;
+                var widthPx = DocumentScale.ssToPx(layout.widthSs()).value() * factor;
                 song.getAttributionPane().render(
                     g2, xPx, yPx, widthPx,
                     zoomedFont(view.getAttributionFont()),
@@ -602,8 +602,8 @@ public class LineComponent extends ScoreComponent
         var heightSs = result.paintLineHeightSs(getScoreView().getLyricRenderMetrics());
 
         return new Dimension(
-            toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
-            toViewPx(new Ss(heightSs)).ceilPx());
+            toViewPx(song.getLineWidthSs()).sizePx(),
+            toViewPx(heightSs).sizePx());
     }
 
     private double calculateMiddleLineYSs() {

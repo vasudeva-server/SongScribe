@@ -136,7 +136,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
     ) {
         var placement = cautionary.placeIn(
             invariants.getLayoutResult(),
-            invariants.getSong().getLineWidthSs());
+            invariants.getSong().getLineWidthSs().value());
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(RenderingUtils.ELEMENT_COLOR);

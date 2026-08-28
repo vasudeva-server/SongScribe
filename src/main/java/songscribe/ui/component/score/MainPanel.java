@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
+import songscribe.dom.Ss;
 import songscribe.error.RuntimeError;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -56,7 +57,7 @@ public class MainPanel extends JPanel {
     /**
      * Margin from previous section to score top
      */
-    public static final double SCORE_MARGIN_TOP_SS = 1.5;  // 12px
+    public static final Ss SCORE_MARGIN_TOP_SS = new Ss(1.5);
 
     // BoxLayout Y_AXIS sibling stack order (top to bottom):
     //   titleComponent
@@ -147,7 +148,7 @@ public class MainPanel extends JPanel {
 
     /** Spacing between title and score, scaled to the current view zoom. */
     private int scoreMarginTopPx() {
-        return (int) Math.round(DocumentScale.ssToPx(SCORE_MARGIN_TOP_SS) * viewScale().factor());
+        return viewScale().toViewPx(SCORE_MARGIN_TOP_SS).positionPx();
     }
 
     /**

@@ -1550,7 +1550,7 @@ public final class ScoreViewController {
                     line, instantiated.elements(), spacingInsertIndex, spacingDeleteRange, null,
                     score.getLyricRenderMetrics());
 
-                if (!fit.fitsWithinLine(line.getSong().getLineWidthSs())) {
+                if (!fit.fitsWithinLine(line.getSong().getLineWidthSs().value())) {
                     OptionDialogs.showErrorMessage(
                         null,
                         Strings.ALERT_TITLE_INSERT_ERROR,
@@ -1622,7 +1622,7 @@ public final class ScoreViewController {
             ? line.getElement(successorIndex)
             : null;
         var successorTargetXPx = successor != null
-            ? successor.getXOffsetPx() + DocumentScale.ssToRoundedPx(result.shiftForSubsequentElementsSs())
+            ? successor.getXOffsetPx() + DocumentScale.ssToPx(result.shiftForSubsequentElementsSs()).positionPx()
             : 0;
         var insertAt = insertIndex;
 

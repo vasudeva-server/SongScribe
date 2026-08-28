@@ -158,11 +158,10 @@ public class TextPanel extends JPanel {
             if (unionWidth > 0) {
                 // The union width is measured with zoom-scaled fonts, so center against
                 // the view-scaled (zoomed) line width.
-                var lineWidthPx =
-                    (int) Math.round(DocumentScale.ssToPx(song.getLineWidthSs()) * viewScale().factor());
-                var contentX = (float) Math.round(
-                    (lineWidthPx - unionWidth) / 2
-                );
+                // A centering bound, not a size: rounding it to a whole pixel would throw away
+                // half a pixel of centering, and setContentX takes a float anyway.
+                var lineWidthPx = viewScale().toViewPx(song.getLineWidthSs()).value();
+                var contentX = (float) ((lineWidthPx - unionWidth) / 2);
                 underLyricsComponent.setContentX(contentX);
                 banglaLyricsComponent.setContentX(contentX);
                 translationComponent.setContentX(contentX);

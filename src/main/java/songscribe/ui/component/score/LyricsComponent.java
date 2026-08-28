@@ -26,7 +26,6 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 
 import songscribe.dom.Ss;
-import songscribe.font.TextMeasurement;
 import songscribe.util.GraphicsState;
 
 /**
@@ -50,7 +49,7 @@ public abstract class LyricsComponent extends ScoreComponent {
      * Calculates the width of the text content.
      *
      * @param g2 Graphics context
-     * @return Text width in pixels
+     * @return the widest lyric line's advance in view pixels, or 0 when there are no lyrics
      */
     public double getTextWidth(Graphics2D g2) {
         if (song == null) {
@@ -65,7 +64,7 @@ public abstract class LyricsComponent extends ScoreComponent {
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.FONT)) {
             g2.setFont(zoomedFont(getLyricsFont()));
-            return TextMeasurement.textBlockWidth(lyrics, g2);
+            return textBlockWidth(lyrics, g2);
         }
     }
 
@@ -125,6 +124,6 @@ public abstract class LyricsComponent extends ScoreComponent {
         var height = lineHeight * lines.length;
 
         return new Dimension(
-            toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), height + getMarginTop());
+            toViewPx(song.getLineWidthSs()).sizePx(), height + getMarginTop());
     }
 }

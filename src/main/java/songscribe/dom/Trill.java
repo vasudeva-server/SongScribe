@@ -127,14 +127,4 @@ public class Trill extends Span {
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(TRILL_GLYPH_WIDTH_SS, endXSs - anchorXSs + TRILL_GLYPH_WIDTH_SS);
     }
-
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(TRILL_GLYPH_WIDTH_SS);
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(TRILL_GLYPH_HEIGHT_SS);
-    }
 }

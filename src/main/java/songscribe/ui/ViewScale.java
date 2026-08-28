@@ -28,7 +28,7 @@ import songscribe.dom.Ss;
 import songscribe.dom.ViewPx;
 
 /**
- * Per-view zoom state and the typed conversions across its boundary.
+ * A zoom level and the typed conversions across the view boundary it defines.
  * <p>
  * The document is authored at a fixed scale
  * ({@link DocumentScale#PIXELS_PER_STAFF_SPACE} pixels per staff space,
@@ -37,39 +37,62 @@ import songscribe.dom.ViewPx;
  * on top of it, converting either regime to {@link ViewPx} view pixels — the
  * unit Swing components, mouse input, and overlay bounds operate in.
  * <p>
- * A {@code ViewScale} is owned by a single {@code ScoreView} and is the sole
- * source of truth for that view's zoom. Off-score consumers with no view (dialog
- * previews, exporters) read the shared read-only {@link #IDENTITY} instead.
+ * An immutable value: a zoom change produces a new instance through
+ * {@link #withZoomPercent}, so a reference already handed out keeps reporting the
+ * zoom it was taken at. The {@code ScoreView} that owns a zoom holds the current
+ * instance and is the sole source of truth for it; off-score consumers with no
+ * view (dialog previews, exporters) read the shared {@link #IDENTITY} instead.
+ * A stored reference is therefore a snapshot — code that must follow a view's zoom
+ * fetches the view's current instance at use.
  * <p>
- * EDT-only by contract: all reads and writes must occur on the AWT
- * event-dispatch thread. No locking is performed.
+ * EDT-only by contract: all reads must occur on the AWT event-dispatch thread. No
+ * locking is performed.
  */
 public final class ViewScale {
 
     /**
-     * Shared, <b>read-only</b> identity scale (100% zoom). Never mutated: it is
-     * only ever <em>read</em> through the {@code getViewScale()} null fallback of
-     * off-score components, never stored in a mutable field, so no consumer can
-     * change it. Do not call {@link #setZoomPercent} on this instance.
+     * The zoom at which a view renders the document at its authored scale, as a
+     * percentage — and so also the divisor converting any zoom percentage to a
+     * fraction.
+     */
+    private static final int NATURAL_ZOOM_PERCENT = 100;
+
+    /**
+     * Shared identity scale (natural size). Read through the {@code getViewScale()}
+     * null fallback of off-score components; sharing one instance is safe because
+     * the class is immutable.
      */
     public static final ViewScale IDENTITY = new ViewScale();
 
-    /** Divisor converting an integer zoom percentage to a fraction. */
-    private static final double ZOOM_PERCENT_SCALE = 100.0;
+    private final int zoomPercent;
 
-    private int zoomPercent = 100;
+    /** Creates a scale at natural size — the document's own authoring scale. */
+    public ViewScale() {
+        this(NATURAL_ZOOM_PERCENT);
+    }
+
+    private ViewScale(int zoomPercent) {
+        this.zoomPercent = zoomPercent;
+    }
 
     public int getZoomPercent() {
         return zoomPercent;
     }
 
-    public void setZoomPercent(int zoomPercent) {
-        this.zoomPercent = zoomPercent;
+    /**
+     * Returns the scale that converts at {@code zoomPercent}, leaving this one
+     * unchanged.
+     *
+     * @param zoomPercent the zoom of the returned scale, as an integer percentage
+     * @return a scale at {@code zoomPercent}; never this instance
+     */
+    public ViewScale withZoomPercent(int zoomPercent) {
+        return new ViewScale(zoomPercent);
     }
 
-    /** The current zoom as a fraction of the document scale (1.0 at 100%). */
+    /** The current zoom as a fraction of the document scale (1.0 at natural size). */
     public double factor() {
-        return zoomPercent / ZOOM_PERCENT_SCALE;
+        return zoomPercent / (double) NATURAL_ZOOM_PERCENT;
     }
 
     /** Converts a staff-space distance to view pixels at the current zoom. */

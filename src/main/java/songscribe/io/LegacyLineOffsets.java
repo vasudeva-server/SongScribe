@@ -35,8 +35,8 @@ record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstS
     // tempo tag are treated as having no tempo offset to migrate (see FormatMigrator).
     static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
         0,
-        DocumentScale.ssToRoundedPx(Line.BEAT_CHANGE_DEFAULT_Y_SS),
-        DocumentScale.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS),
-        DocumentScale.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS)
+        DocumentScale.ssToPx(Line.BEAT_CHANGE_DEFAULT_Y_SS).positionPx(),
+        DocumentScale.ssToPx(Line.ENDING_DEFAULT_Y_SS).positionPx(),
+        DocumentScale.ssToPx(Line.TRILL_DEFAULT_Y_SS).positionPx()
     );
 }

@@ -100,8 +100,9 @@ public record KeyChangeSite(Line line, int elementIndex, Binding binding) {
      *
      * @return the key in effect at this site; never null, because every position in every line is
      *         in some key
-     * @throws songscribe.error.RuntimeError when the binding is {@link Binding#EXISTING_KEY_CHANGE}
-     *                                       and no key change stands at {@link #elementIndex()}
+     * @effects when the binding is {@link Binding#EXISTING_KEY_CHANGE} and no key change stands at
+     *          {@link #elementIndex()}, the failure is logged, shown to the user as a fatal error,
+     *          and the application exits, so the method does not return in that case
      */
     public Key keyInEffect() {
         return switch (binding) {
@@ -151,8 +152,9 @@ public record KeyChangeSite(Line line, int elementIndex, Binding binding) {
      * anything else there means the line was mutated under a dialog that is modal over it.
      *
      * @return the key change at the bound index
-     * @throws songscribe.error.RuntimeError when no key change stands there, which includes
-     *                                       every binding but {@link Binding#EXISTING_KEY_CHANGE}
+     * @effects when no key change stands there — which includes every binding but
+     *          {@link Binding#EXISTING_KEY_CHANGE} — the failure is logged, shown to the user as a
+     *          fatal error, and the application exits, so the method does not return in that case
      */
     public KeyChangeElement boundKeyChange() {
         if (line.getElement(elementIndex) instanceof KeyChangeElement keyChange) {

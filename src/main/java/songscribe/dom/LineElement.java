@@ -109,36 +109,20 @@ public abstract class LineElement {
     // ========================================================================
 
     /**
-     * Returns the intrinsic width of this element's content in staff-space units.
-     * <p>
-     * Default implementation converts {@link #getContentWidthPx()} via {@link DocumentScale}.
-     * Subclasses computing in staff-space natively should override this.
+     * Returns the intrinsic width of this element's content, in staff spaces.
+     *
+     * @return the width the element draws, in the unit the document model holds its
+     *     dimensions in; a caller needing pixels converts through {@link DocumentScale}
      */
-    public double getContentWidthSs() {
-        return DocumentScale.pxToSs(getContentWidthPx());
-    }
+    public abstract double getContentWidthSs();
 
     /**
-     * Returns the intrinsic height of this element's content in staff-space units.
-     * <p>
-     * Default implementation converts {@link #getContentHeightPx()} via {@link DocumentScale}.
-     * Subclasses computing in staff-space natively should override this.
+     * Returns the intrinsic height of this element's content, in staff spaces.
+     *
+     * @return the height the element draws, in the unit the document model holds its
+     *     dimensions in; a caller needing pixels converts through {@link DocumentScale}
      */
-    public double getContentHeightSs() {
-        return DocumentScale.pxToSs(getContentHeightPx());
-    }
-
-    /**
-     * Returns the intrinsic width of this element's content.
-     * Subclasses must implement based on their specific content.
-     */
-    public abstract double getContentWidthPx();
-
-    /**
-     * Returns the intrinsic height of this element's content.
-     * Subclasses must implement based on their specific content.
-     */
-    public abstract double getContentHeightPx();
+    public abstract double getContentHeightSs();
 
     // ========================================================================
     // Parent/Line Relationships

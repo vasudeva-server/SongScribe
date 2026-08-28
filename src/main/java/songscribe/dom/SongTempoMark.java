@@ -41,15 +41,15 @@ public final class SongTempoMark extends LineElement {
      * {@link Tempo} by the stacker, never cached on the element.
      */
     @Override
-    public double getContentWidthPx() {
+    public double getContentWidthSs() {
         return 0;
     }
 
     /**
-     * Always {@code 0}, for the same reason as {@link #getContentWidthPx()}.
+     * Always {@code 0}, for the same reason as {@link #getContentWidthSs()}.
      */
     @Override
-    public double getContentHeightPx() {
+    public double getContentHeightSs() {
         return 0;
     }
 }

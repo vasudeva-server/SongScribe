@@ -168,6 +168,11 @@ public final class EndingRenderer {
             // Baseline = bracket top + glyph height + visual offset below bracket.
             g2.setFont(EndingBracketGeometry.ENDING_FONT);
             var label = bracket.label();
+            // Deliberately the paint-time render context rather than TextMeasurement's: the
+            // digit-to-period gap below is widened by one device pixel, read from this
+            // graphics' own transform, and the vector is drawn into this same graphics. Both
+            // the gap and the ink must land in the coordinate space this transform defines,
+            // which is the space only this context describes.
             var glyphVector = EndingBracketGeometry.ENDING_FONT.createGlyphVector(
                 g2.getFontRenderContext(), label);
             var glyphHeightSs = TextMeasurement.inkHeight(glyphVector.getVisualBounds());

@@ -33,14 +33,14 @@ import songscribe.dom.Ss;
 public class BanglaLyricsComponent extends LyricsComponent {
 
     /** Vertical spacing for Bangla lyrics (2 staff lines). */
-    private static final double BANGLA_LYRICS_TOP_MARGIN_SS = 2.0;
+    private static final Ss BANGLA_LYRICS_TOP_MARGIN_SS = new Ss(2.0);
 
     /**
      * The top margin in view pixels, recomputed per layout so it tracks the current zoom.
      */
     @Override
     public int getMarginTop() {
-        return toViewPx(new Ss(BANGLA_LYRICS_TOP_MARGIN_SS)).roundedPx();
+        return toViewPx(BANGLA_LYRICS_TOP_MARGIN_SS).positionPx();
     }
 
     @Override

@@ -39,7 +39,7 @@ public class FootnotesComponent extends ScoreComponent {
     /**
      * Minimum margin above footnotes section
      */
-    public static final double FOOTNOTES_MIN_MARGIN_TOP_SS = 5.0;  // 40px
+    public static final Ss FOOTNOTES_MIN_MARGIN_TOP_SS = new Ss(5.0);
     /** Maximum width as fraction of line width. */
     private static final double MAX_WIDTH_PERCENTAGE = 2.0 / 3.0;
 
@@ -49,7 +49,7 @@ public class FootnotesComponent extends ScoreComponent {
      */
     @Override
     public int getMarginTop() {
-        return toViewPx(new Ss(FOOTNOTES_MIN_MARGIN_TOP_SS)).roundedPx();
+        return toViewPx(FOOTNOTES_MIN_MARGIN_TOP_SS).positionPx();
     }
 
     @Override
@@ -73,11 +73,11 @@ public class FootnotesComponent extends ScoreComponent {
             g2.setFont(font);
             g2.setColor(Color.BLACK);
 
-            var metrics = g2.getFontMetrics();
+            var metrics = TextMeasurement.fontMetrics(font);
             var lineHeight = metrics.getHeight();
 
             // Calculate text width (capped at max width) and derive the centered x position
-            var textWidth = TextMeasurement.textBlockWidth(footnotes, g2);
+            var textWidth = textBlockWidth(footnotes, g2);
             var x = calculateRenderX(textWidth);
             var y = (float) (getMarginTop() + metrics.getAscent());
 
@@ -97,8 +97,10 @@ public class FootnotesComponent extends ScoreComponent {
      * The text width is capped at {@code MAX_WIDTH_PERCENTAGE} of the line width before
      * centering, so the returned value is always non-negative.
      *
-     * @param textWidth measured pixel width of the footnote block
-     * @return x coordinate (in pixels) of the left edge of the first drawn character
+     * @param textWidth the footnote block's widest-line advance, in view pixels
+     * @return the pen origin in view pixels, to be handed straight to
+     *         {@link Graphics2D#drawString(String, float, float)}; the ink of the first
+     *         glyph begins at its own left side bearing from there
      */
     private float calculateRenderX(double textWidth) {
         if (song == null) {
@@ -107,7 +109,9 @@ public class FootnotesComponent extends ScoreComponent {
 
         // The text width is measured with a zoom-scaled font, so center against the
         // view-scaled (zoomed) line width.
-        var lineWidthPx = toViewPx(new Ss(song.getLineWidthSs())).roundedPx();
+        // A centering bound, not a size: rounding it to a whole pixel would throw away
+        // half a pixel of centering, and drawString takes a float anyway.
+        var lineWidthPx = toViewPx(song.getLineWidthSs()).value();
         var maxWidth = lineWidthPx * MAX_WIDTH_PERCENTAGE;
         var actualWidth = Math.min(textWidth, maxWidth);
         return (float) ((lineWidthPx - actualWidth) / 2);
@@ -126,12 +130,12 @@ public class FootnotesComponent extends ScoreComponent {
         }
 
         var font = zoomedFont(getFont());
-        var metrics = getFontMetrics(font);
+        var metrics = TextMeasurement.fontMetrics(font);
 
         var lines = footnotes.split("\n");
         var lineHeight = metrics.getHeight();
         var height = getMarginTop() + (lineHeight * lines.length);
 
-        return new Dimension(toViewPx(new Ss(song.getLineWidthSs())).roundedPx(), height);
+        return new Dimension(toViewPx(song.getLineWidthSs()).sizePx(), height);
     }
 }

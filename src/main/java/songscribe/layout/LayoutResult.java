@@ -38,6 +38,7 @@ import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
+import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
@@ -583,8 +584,8 @@ public final class LayoutResult {
      * must have for nothing it draws to be clipped. Use this for sizing, not
      * {@link #lineHeightSs}, which reports measured content only.
      */
-    public double paintLineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        return paintAboveMidlineSs() + paintBelowMidlineSs(lyricRenderMetrics);
+    public Ss paintLineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
+        return new Ss(paintAboveMidlineSs() + paintBelowMidlineSs(lyricRenderMetrics));
     }
 
     /**
@@ -719,7 +720,7 @@ public final class LayoutResult {
         if (!boxes.isEmpty()) {
             var box = boxes.getFirst();
             var centerXSs = box.xSs() + box.widthSs() / 2.0;
-            return new LyricAnchor(centerXSs, baselineYSs);
+            return new LyricAnchor(new Ss(centerXSs), new Ss(baselineYSs));
         }
 
         var column = getElementColumn(element);
@@ -730,7 +731,7 @@ public final class LayoutResult {
         }
 
         var centerXSs = column.getNoteheadCenterXSs();
-        return new LyricAnchor(centerXSs, baselineYSs);
+        return new LyricAnchor(new Ss(centerXSs), new Ss(baselineYSs));
     }
 
     /**
@@ -1085,6 +1086,6 @@ public final class LayoutResult {
      * @param centerXSs    horizontal center of the lyric box (or element column) in staff spaces
      * @param baselineYSs  the line's lyric text baseline Y in staff spaces
      */
-    public record LyricAnchor(double centerXSs, double baselineYSs) {}
+    public record LyricAnchor(Ss centerXSs, Ss baselineYSs) {}
     public record LyricHit(StaffElement element, int verse) {}
 }

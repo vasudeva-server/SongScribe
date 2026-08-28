@@ -169,7 +169,7 @@ public final class LyricConnectorRenderer {
     private GlyphVector getHyphenGlyphVector(Font scaledLyricsFont) {
         return hyphenGlyphVectors.computeIfAbsent(
             scaledLyricsFont,
-            font -> font.createGlyphVector(TextMeasurement.SCREEN_FRC, "-"));
+            font -> TextMeasurement.glyphVector("-", font));
     }
 
     private static void drawHyphens(

@@ -71,8 +71,21 @@ public final class RuntimeError {
      * @return never returns; declared as RuntimeException for use in {@code throw} expressions
      */
     public static RuntimeException exit(String message, Throwable cause) {
-        LOG.error(message, cause);
-        throw showDialogAndExit(FATAL_USER_MESSAGE);
+        return logAndExit(message, FATAL_USER_MESSAGE, cause);
+    }
+
+    /**
+     * Logs the log message and cause, shows the given user-facing message in the error dialog,
+     * then exits.
+     *
+     * @param logMessage  Description of the violated invariant, written to the log
+     * @param userMessage Message shown to the user in the error dialog
+     * @param cause       the exception that triggered the fatal error
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     */
+    private static RuntimeException logAndExit(String logMessage, String userMessage, Throwable cause) {
+        LOG.error(logMessage, cause);
+        throw showDialogAndExit(userMessage);
     }
 
     /**
@@ -107,6 +120,25 @@ public final class RuntimeError {
      */
     public static RuntimeException missingResource(String logMessage) {
         return exit(logMessage, MISSING_RESOURCE_USER_MESSAGE);
+    }
+
+    /**
+     * Logs the log message and cause and shows the canned "missing resource, please reinstall"
+     * message in the error dialog, then exits.
+     * <p>
+     * Use this overload when a required application resource is present but unreadable, so the
+     * user hears the same actionable message as for an absent one while the cause still reaches
+     * the log. When the application quits, that log line is the only account of what happened.
+     * <p>
+     * Always call as {@code throw RuntimeError.missingResource("reason", cause)} so the compiler
+     * and NullAway know the calling code is unreachable after this point.
+     *
+     * @param logMessage Description of the unreadable resource, written to the log
+     * @param cause      the exception that made the resource unusable
+     * @return never returns; declared as RuntimeException for use in {@code throw} expressions
+     */
+    public static RuntimeException missingResource(String logMessage, Throwable cause) {
+        return logAndExit(logMessage, MISSING_RESOURCE_USER_MESSAGE, cause);
     }
 
     /**

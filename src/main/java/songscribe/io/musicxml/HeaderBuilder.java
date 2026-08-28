@@ -302,7 +302,7 @@ final class HeaderBuilder {
      * warning records that a song reached the builder in that state.
      */
     private static double lineWidthSs(Song song) {
-        var lineWidthSs = song.getLineWidthSs();
+        var lineWidthSs = song.getLineWidthSs().value();
 
         if (lineWidthSs > 0) {
             return lineWidthSs;

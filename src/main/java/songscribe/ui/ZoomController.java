@@ -21,6 +21,7 @@
 package songscribe.ui;
 
 import java.awt.Point;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -52,13 +53,13 @@ import songscribe.ui.component.ScoreView;
 public final class ZoomController {
 
     /** Discrete zoom stops, in ascending order, as integer percentages. */
-    public static final int[] ZOOM_LEVEL_PERCENTS = {50, 100, 150, 200, 250, 300, 350, 400, 800};
+    public static final List<Integer> ZOOM_LEVEL_PERCENTS = List.of(50, 100, 150, 200, 250, 300, 350, 400, 800);
 
     /** Lowest selectable zoom percent. */
-    public static final int MIN_ZOOM_PERCENT = ZOOM_LEVEL_PERCENTS[0];
+    public static final int MIN_ZOOM_PERCENT = ZOOM_LEVEL_PERCENTS.getFirst();
 
     /** Highest selectable zoom percent. */
-    public static final int MAX_ZOOM_PERCENT = ZOOM_LEVEL_PERCENTS[ZOOM_LEVEL_PERCENTS.length - 1];
+    public static final int MAX_ZOOM_PERCENT = ZOOM_LEVEL_PERCENTS.getLast();
 
     /** Default zoom percent applied to a freshly opened document. */
     public static final int DEFAULT_ZOOM_PERCENT = 100;
@@ -68,11 +69,8 @@ public final class ZoomController {
      * during Ctrl+wheel/trackpad-pinch zoom. Multiplicative rather than a fixed
      * percent-point step, so the same gesture feels proportionally consistent at
      * any zoom level.
-     * <p>
-     * Package-private so {@code ZoomControllerTest} can derive sub-step rotations
-     * without duplicating the literal.
      */
-    static final double WHEEL_ZOOM_FACTOR_PER_NOTCH = 0.05;
+    private static final double WHEEL_ZOOM_FACTOR_PER_NOTCH = 0.05;
 
     private ZoomController() {}
 
@@ -193,9 +191,11 @@ public final class ZoomController {
      * {@code percent} unchanged when already at or below the minimum. Pure.
      */
     static int nextLevelBelow(int percent) {
-        for (var i = ZOOM_LEVEL_PERCENTS.length - 1; i >= 0; i--) {
-            if (ZOOM_LEVEL_PERCENTS[i] < percent) {
-                return ZOOM_LEVEL_PERCENTS[i];
+        for (var i = ZOOM_LEVEL_PERCENTS.size() - 1; i >= 0; i--) {
+            var levelPercent = ZOOM_LEVEL_PERCENTS.get(i);
+
+            if (levelPercent < percent) {
+                return levelPercent;
             }
         }
 

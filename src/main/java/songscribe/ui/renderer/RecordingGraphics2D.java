@@ -108,23 +108,6 @@ public final class RecordingGraphics2D extends Graphics2D {
     private static final int SCRATCH_SIZE = 1;
 
     /**
-     * The context glyph vectors are built under. It must be the one the score itself measures and
-     * draws with, because a recorded vector is <em>replayed</em> — unlike
-     * {@code BravuraFont.glyphOutline}, which takes {@code getOutline()} and keeps pure geometry,
-     * the vector kept here carries the positioning decisions its context made.
-     * <p>
-     * That makes fractional metrics load-bearing. With them off, glyph positions round to whole
-     * font units, and a unit here is a quarter of a staff space ({@link BravuraFont#SIZE_SS} is
-     * {@value BravuraFont#SIZE_SS} for a one-staff-space em) — so the rounding is coarse in score
-     * terms, and the zoom transform applied at replay magnifies it into visible stair-stepping.
-     * {@link TextMeasurement#SCREEN_FRC}
-     * is built from a graphics carrying {@link GraphicUtils#setRenderingHints}, which is also what
-     * {@code LineOverlayComponent.paintComponent} applies at replay — so recording and replay
-     * agree by construction rather than by two constants happening to match.
-     */
-    private static final FontRenderContext RECORDING_FRC = TextMeasurement.SCREEN_FRC;
-
-    /**
      * Glyph vector creation dominates the cost of recording by orders of magnitude; the rest is
      * arithmetic and a few small shapes. The key is total — a glyph vector depends on the glyph and
      * the size and nothing else — so there is no staleness class and no invalidation. It is bounded
@@ -257,7 +240,31 @@ public final class RecordingGraphics2D extends Graphics2D {
     private static GlyphVector glyphVector(SMuFLGlyph glyph, Font font) {
         return GLYPH_VECTOR_CACHE.computeIfAbsent(
             new GlyphKey(glyph, font.getSize2D()),
-            key -> font.createGlyphVector(RECORDING_FRC, key.glyph().asString()));
+            key -> recordableGlyphVector(key.glyph().asString(), font));
+    }
+
+    /**
+     * Shapes {@code str} through {@link TextMeasurement}, the one context the score itself measures
+     * and draws with, which is what a recorded vector requires: unlike
+     * {@code BravuraFont.glyphOutline}, which takes {@code getOutline()} and keeps pure geometry,
+     * the vector kept here is <em>replayed</em>, so it carries the positioning decisions its context
+     * made.
+     * <p>
+     * That makes fractional metrics load-bearing. With them off, glyph positions round to whole
+     * font units, and a unit here is a quarter of a staff space ({@link BravuraFont#SIZE_SS} is
+     * {@value BravuraFont#SIZE_SS} for a one-staff-space em) — so the rounding is coarse in score
+     * terms, and the zoom transform applied at replay magnifies it into visible stair-stepping.
+     * {@link TextMeasurement} shapes under a graphics carrying
+     * {@link GraphicUtils#setRenderingHints}, which is also what
+     * {@code LineOverlayComponent.paintComponent} applies at replay — so recording and replay agree
+     * by construction rather than by two constants happening to match.
+     *
+     * @param str  the string to shape
+     * @param font the font to shape it in
+     * @return the shaped glyphs, positioned as replay will draw them
+     */
+    private static GlyphVector recordableGlyphVector(String str, Font font) {
+        return TextMeasurement.glyphVector(str, font);
     }
 
     /**
@@ -297,7 +304,7 @@ public final class RecordingGraphics2D extends Graphics2D {
             return;
         }
 
-        var glyphVector = font.createGlyphVector(RECORDING_FRC, str);
+        var glyphVector = recordableGlyphVector(str, font);
         recordGlyph(glyphVector, fallbackBoundsSs(str, glyphVector), x, y);
     }
 

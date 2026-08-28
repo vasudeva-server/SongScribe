@@ -106,17 +106,17 @@ public class StaffLinesLayout implements LayoutManager2 {
             return paintAboveMidlineSs[0] + index * spacingSs;
         }
 
-        double topYSs(int index) {
-            return midlineYSs(index) - paintAboveMidlineSs[index];
+        Ss topYSs(int index) {
+            return new Ss(midlineYSs(index) - paintAboveMidlineSs[index]);
         }
 
-        double heightSs(int index) {
-            return paintAboveMidlineSs[index] + paintBelowMidlineSs[index];
+        Ss heightSs(int index) {
+            return new Ss(paintAboveMidlineSs[index] + paintBelowMidlineSs[index]);
         }
 
-        double totalHeightSs() {
+        Ss totalHeightSs() {
             var last = count() - 1;
-            return midlineYSs(last) + paintBelowMidlineSs[last];
+            return new Ss(midlineYSs(last) + paintBelowMidlineSs[last]);
         }
     }
 
@@ -200,8 +200,8 @@ public class StaffLinesLayout implements LayoutManager2 {
             for (var i = 0; i < geometry.count(); i++) {
                 // Positions round to nearest so lines stay centered on their midline;
                 // sizes round up so no content is clipped at the component edge.
-                var y = viewScale.toViewPx(new Ss(geometry.topYSs(i))).roundedPx();
-                var height = viewScale.toViewPx(new Ss(geometry.heightSs(i))).ceilPx();
+                var y = viewScale.toViewPx(geometry.topYSs(i)).positionPx();
+                var height = viewScale.toViewPx(geometry.heightSs(i)).sizePx();
                 parent.getComponent(i).setBounds(insets.left, insets.top + y, width, height);
             }
         }
@@ -223,7 +223,7 @@ public class StaffLinesLayout implements LayoutManager2 {
             }
 
             var insets = parent.getInsets();
-            var height = staffPanel.viewScale().toViewPx(new Ss(geometry.totalHeightSs())).ceilPx();
+            var height = staffPanel.viewScale().toViewPx(geometry.totalHeightSs()).sizePx();
 
             return new Dimension(
                 width + insets.left + insets.right,

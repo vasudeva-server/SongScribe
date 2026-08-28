@@ -67,7 +67,7 @@ public interface LineLayoutProvider {
     static LineLayoutProvider headless(Song song, DocumentFontsHolder fonts) {
         var engine = new LayoutEngine(
             LyricRenderMetrics.forFont(fonts.getLyricsFont()),
-            song.getLineWidthSs(),
+            song.getLineWidthSs().value(),
             fonts);
         var lastLineIndex = song.lineCount() - 1;
 

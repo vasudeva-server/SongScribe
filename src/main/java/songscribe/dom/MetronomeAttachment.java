@@ -74,12 +74,7 @@ public abstract sealed class MetronomeAttachment extends Attachment
      * {@code LayoutResult.DecorationLayout}.
      */
     @Override
-    public double getContentWidthPx() {
+    public double getContentWidthSs() {
         return 0;
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(QUARTER_NOTE_HEIGHT_SS);
     }
 }

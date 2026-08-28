@@ -37,8 +37,6 @@ import songscribe.engraving.SMuFLConstants;
  *   <li>An anchor element (first element in the range)</li>
  *   <li>Methods to determine the range extent</li>
  * </ul>
- * <p>
- * Concrete subclasses will be implemented in Phase 4.
  */
 public abstract class Span extends LineElement {
 
@@ -266,16 +264,6 @@ public abstract class Span extends LineElement {
         }
 
         return Math.abs(end.getXSs() - anchor.getXSs()) + end.getContentWidthSs();
-    }
-
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(getContentWidthSs());
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(getContentHeightSs());
     }
 
     /**

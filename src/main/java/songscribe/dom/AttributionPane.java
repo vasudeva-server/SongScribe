@@ -250,7 +250,7 @@ public class AttributionPane {
      */
     public int getContentWidthPx(Font attributionFont, Font subAttributionFont) {
         var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
-        return new DocPx(cache.contentWidthPx()).ceilPx();
+        return new DocPx(cache.contentWidthPx()).sizePx();
     }
 
     /**
@@ -262,7 +262,7 @@ public class AttributionPane {
      */
     public int getContentHeightPx(Font attributionFont, Font subAttributionFont) {
         var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
-        return new DocPx(cache.contentHeightPx()).ceilPx();
+        return new DocPx(cache.contentHeightPx()).sizePx();
     }
 
     /**
@@ -277,8 +277,8 @@ public class AttributionPane {
     public Dimension getContentSizePx(Font attributionFont, Font subAttributionFont) {
         var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
         return new Dimension(
-            new DocPx(cache.contentWidthPx()).ceilPx(),
-            new DocPx(cache.contentHeightPx()).ceilPx());
+            new DocPx(cache.contentWidthPx()).sizePx(),
+            new DocPx(cache.contentHeightPx()).sizePx());
     }
 
     // -------------------------------------------------------------------------
@@ -380,8 +380,8 @@ public class AttributionPane {
         // scale with the view zoom exactly like the (caller-zoomed) fonts do. Keeping
         // them fractional — never rounding to whole pixels — is what stops the line
         // spacing from jumping as the zoom factor sweeps across pixel boundaries.
-        var leadingPx = DocumentScale.ssToPx(LEADING_SS) * zoomFactor;
-        var subAttributionGapPx = DocumentScale.ssToPx(SUB_ATTRIBUTION_GAP_SS) * zoomFactor;
+        var leadingPx = DocumentScale.ssToPx(LEADING_SS).value() * zoomFactor;
+        var subAttributionGapPx = DocumentScale.ssToPx(SUB_ATTRIBUTION_GAP_SS).value() * zoomFactor;
 
         // The extra gap sits above the first sub-attribution line, but only when an
         // attribution line precedes it; a sub-attribution line at index 0 has nothing

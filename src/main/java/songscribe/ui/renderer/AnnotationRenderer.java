@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import java.awt.Graphics2D;
 
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.StaffElement;
 import songscribe.font.TextMeasurement;
 import songscribe.hit.HitTarget;
@@ -72,7 +73,7 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
         var annotationFont = invariants.getAnnotationFont();
 
         try (var _ = GraphicsState.save(g2, FONT, COLOR)) {
-            g2.setFont(TextMeasurement.scaleFont(annotationFont));
+            g2.setFont(DocumentScale.fontSizedInSs(annotationFont));
             // The annotation is selectable on its own, so the color is keyed on the attachment
             // rather than on the note it hangs off.
             RenderingUtils.applyDecorationColor(

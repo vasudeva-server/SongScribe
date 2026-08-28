@@ -533,7 +533,7 @@ public final class InsertionPointMode {
         // Nothing can be inserted into the staff header or past the staff's right edge,
         // whatever is being placed, so outside that span there is no insertion point to show.
         if (HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line)
-            || mouseXSs > line.getSong().getLineWidthSs()) {
+            || mouseXSs > line.getSong().getLineWidthSs().value()) {
             clearTarget();
             return;
         }

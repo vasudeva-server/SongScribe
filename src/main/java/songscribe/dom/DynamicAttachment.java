@@ -207,14 +207,4 @@ public final class DynamicAttachment extends Attachment {
     public double getContentBottomSs() {
         return glyphBBox().bottom();
     }
-
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(getContentWidthSs());
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(getContentHeightSs());
-    }
 }

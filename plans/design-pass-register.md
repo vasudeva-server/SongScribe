@@ -223,18 +223,6 @@ the reason for it is still in hand.
   dead: `UnitTest`, `E2ETest` and `RuntimeErrorTestHelper` call all three. They
   are test-only production surface rather than removable code, and the boundary
   the rewrite installs is what the test bases should be using instead.
-- **→ Pass 18.** `PageModel.getDefaultLineWidthSs():133` routes inches → *whole*
-  pixels → staff spaces: `getContentAreaWidthPx():118` rounds the page width
-  through `roundedPx()` and both margins through `inchesToPx`, and only then does
-  `DocumentScale.pxToSs` divide. `DocumentScale.inchesToSs`'s Javadoc (`:64–70`)
-  warns against that exact path — whole-pixel rounding "can push a line that only
-  just fits past the staff margin" — and names itself the precise pair to use
-  instead. Whether the *default* line width is a place the exact length matters
-  is pass 18's to settle, with page setup in hand.
-- **→ Pass 18.** `PageModel` is Javadoc'd as a "Singleton" at `:30` but is a
-  private-constructor static utility with no instance. It also carries a blanket
-  `@SuppressWarnings("SameReturnValue")` at `:34` over the whole class rather
-  than the two constant-returning accessors that provoke it.
 
 ## Blockers
 

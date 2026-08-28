@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
@@ -102,7 +103,7 @@ class LineSelectionHandler {
      *
      * @invariant {@code leftSs <= rightSs}
      */
-    record SelectionBand(double leftSs, double rightSs) {
+    record SelectionBand(Ss leftSs, Ss rightSs) {
 
         /**
          * The band covering both {@code anchorSs} and {@code leadSs}, in either order.
@@ -111,7 +112,7 @@ class LineSelectionHandler {
          */
         static SelectionBand spanning(double anchorSs, double leadSs) {
             return new SelectionBand(
-                Math.min(anchorSs, leadSs), Math.max(anchorSs, leadSs));
+                new Ss(Math.min(anchorSs, leadSs)), new Ss(Math.max(anchorSs, leadSs)));
         }
     }
 
@@ -730,7 +731,7 @@ class LineSelectionHandler {
         var coordinator = lc.getScoreView().getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
 
-        var touched = sweepRange.overlapping(band.leftSs(), band.rightSs());
+        var touched = sweepRange.overlapping(band.leftSs().value(), band.rightSs().value());
 
         if (touched == null) {
             coordinator.clearActiveSelection();

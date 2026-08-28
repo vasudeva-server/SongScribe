@@ -169,7 +169,7 @@ final class NoteMapper {
 
         if (relativeXTenths != null) {
             element.setXOffsetPx(
-                DocumentScale.ssToRoundedPx(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE)
+                DocumentScale.ssToPx(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE).positionPx()
             );
         }
 

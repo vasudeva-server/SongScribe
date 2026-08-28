@@ -77,7 +77,7 @@ public class Tuplet extends Span {
     /**
      * The measured ink width of {@code grade} drawn as a tuplet number, in staff spaces.
      * <p>
-     * Measured under {@link TextMeasurement#SCREEN_FRC} rather than the paint-time font render
+     * Measured by {@link TextMeasurement} rather than in the paint-time font render
      * context, so it is available before anything is drawn — the number-only tuplet's hit region
      * is the number's ink and nothing else, and hit regions are built at layout time.
      */

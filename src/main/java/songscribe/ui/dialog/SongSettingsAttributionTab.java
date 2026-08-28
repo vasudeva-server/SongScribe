@@ -401,7 +401,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         for (var label : labels) {
             var insets = label.getInsets();
             var textWidth = (int) Math.ceil(
-                label.getFont().getStringBounds(label.getText(), TextMeasurement.SCREEN_FRC).getWidth()
+                TextMeasurement.textAdvancePx(label.getFont(), label.getText())
             );
             width = Math.max(width, textWidth + insets.left + insets.right);
         }

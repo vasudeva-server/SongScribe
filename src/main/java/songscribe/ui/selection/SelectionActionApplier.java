@@ -378,7 +378,7 @@ public final class SelectionActionApplier {
         var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
 
         return InsertionSpacingCalculator.calculateModification(line, projected, lyricRenderMetrics)
-            .fitsWithinLine(line.getSong().getLineWidthSs());
+            .fitsWithinLine(line.getSong().getLineWidthSs().value());
     }
 
     // Validates beam and tuplet spans after batch element replacement.

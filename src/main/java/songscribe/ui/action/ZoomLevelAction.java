@@ -39,9 +39,10 @@ public final class ZoomLevelAction extends UIAction {
 
     /**
      * The zoom stops that get their own accelerator, paired with the digit key
-     * that selects them. Every percent listed here must also appear in
-     * {@link ZoomController#ZOOM_LEVEL_PERCENTS}, so the status-bar percent menu
-     * has an item to hang the accelerator on.
+     * that selects them. Every percent listed here is a
+     * {@link ZoomController#ZOOM_LEVEL_PERCENTS} stop, so the status-bar percent
+     * menu has an item to hang the accelerator on; the static initializer below
+     * enforces that rather than leaving the two lists to agree by hand.
      */
     private static final List<ZoomLevelShortcut> ZOOM_LEVEL_SHORTCUTS = List.of(
         new ZoomLevelShortcut(100, KeyEvent.VK_1),
@@ -50,6 +51,19 @@ public final class ZoomLevelAction extends UIAction {
         new ZoomLevelShortcut(400, KeyEvent.VK_4),
         new ZoomLevelShortcut(800, KeyEvent.VK_8)
     );
+
+    static {
+        var strandedPercents = ZOOM_LEVEL_SHORTCUTS.stream()
+            .map(ZoomLevelShortcut::zoomPercent)
+            .filter(percent -> !ZoomController.ZOOM_LEVEL_PERCENTS.contains(percent))
+            .toList();
+
+        if (!strandedPercents.isEmpty()) {
+            throw new IllegalStateException(
+                "Zoom shortcut percents with no ZoomController zoom stop: " + strandedPercents
+            );
+        }
+    }
 
     private final int zoomPercent;
 

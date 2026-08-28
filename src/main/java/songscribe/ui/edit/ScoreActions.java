@@ -25,6 +25,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.prefs.PrefsKey;
 
@@ -88,7 +89,7 @@ public interface ScoreActions {
      *
      * @param lineWidthSs line width in staff spaces
      */
-    void updatePageLayout(double lineWidthSs);
+    void updatePageLayout(Ss lineWidthSs);
 
     /**
      * Enables or disables key bindings (disabled during lyric text editing).

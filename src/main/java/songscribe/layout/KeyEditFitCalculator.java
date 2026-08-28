@@ -208,7 +208,7 @@ public final class KeyEditFitCalculator {
         ElementColumnBuilder columnBuilder) {
 
         var song = editedLine.getSong();
-        var staffRightMarginSs = song.getLineWidthSs();
+        var staffRightMarginSs = song.getLineWidthSs().value();
         var lineIndex = song.indexOfLine(editedLine);
 
         if (lineIndex > 0 && !cautionaryFits(

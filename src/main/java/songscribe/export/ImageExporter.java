@@ -53,8 +53,8 @@ public final class ImageExporter {
         ExportOptions options
     ) {
         var image = new BufferedImage(
-            (int) ((score.getSheetWidthPx()) * scale) + border.getWidth(),
-            (int) ((score.getSheetHeightPx(options)) * scale) + border.getHeight(),
+            (int) Math.ceil(score.getSheetWidthPx() * scale) + border.getWidth(),
+            (int) Math.ceil(score.getSheetHeightPx(options) * scale) + border.getHeight(),
             BufferedImage.TYPE_BYTE_GRAY
         );
         createImageForExport(image, background, scale, border, options);

@@ -26,6 +26,7 @@ import java.util.List;
 
 import songscribe.dom.BeatChange;
 import songscribe.dom.CollisionRegion;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.ElementType;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.StaffElement;
@@ -212,7 +213,7 @@ public record MetronomeContent(
 
         private Builder(Font font) {
             this.font = font;
-            scaledFont = TextMeasurement.scaleFont(font);
+            scaledFont = DocumentScale.fontSizedInSs(font);
             // Text sits on the note cap-height baseline, so a marking's silhouette does not
             // change shape when its BPM changes from 120 to 132.
             textBaselineOffsetSs = MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;

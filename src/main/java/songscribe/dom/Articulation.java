@@ -142,14 +142,4 @@ public class Articulation extends LineElement {
     public double getContentHeightSs() {
         return isStaccato() ? STACCATO_HEIGHT_SS : ACCENT_HEIGHT_SS;
     }
-
-    @Override
-    public double getContentWidthPx() {
-        return DocumentScale.ssToPx(getContentWidthSs());
-    }
-
-    @Override
-    public double getContentHeightPx() {
-        return DocumentScale.ssToPx(getContentHeightSs());
-    }
 }
