@@ -19,8 +19,9 @@ only part that held up was the ordering, because ordering is a dependency fact
 rather than a prediction.
 
 It carries no file lists and no task lists. `/design-pass <row number>` owns the
-procedure; the record it keeps at `plans/design-pass/<target>.md` owns the detail
-of one system.
+procedure; what it keeps in `plans/design-pass-<pass>/` — a record and one
+findings document per reviewed step, `<pass>` being the row number — owns the
+detail of one system.
 
 **A row number is the only way to start a pass.** `/design-pass 1` takes row 1,
 resolving its *Where* column into the target. Work that is not on this table gets

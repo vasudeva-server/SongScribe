@@ -15,6 +15,10 @@ promise*. One stash snapshot per step, resumable across context clears.
 **A pass never commits.** It leaves its work in the tree and snapshots each step
 to the stash. Committing is the user's, whenever they choose.
 
+**A step that decides something is reviewed before it is executed.** It writes
+what it found to a findings document, opens it for review, and stops — see *The
+review gate*.
+
 Paths in this file are relative to `.claude/skills/design-pass/`.
 
 ### The yardstick
@@ -27,6 +31,79 @@ earns, and every remaining test sits on the floor in `design.md`.
 Steps run in the order of attack: what a type can carry never becomes a contract
 clause, and what a contract can state never becomes a test. **Work that arrives
 at the test step in volume means the earlier steps were skipped.**
+
+### The review gate
+
+**A step that decides something writes its findings, opens them for review, and
+stops.** Nothing in the tree changes until that review is complete and every
+question — the user's and yours — is resolved. A step that edits first and
+reports afterwards has spent the decision the review exists to make.
+
+**Unless the user says otherwise.** They can lift the gate — for a step, a class,
+a single change, or the rest of the pass — and that is theirs to give, never
+yours to assume or to infer from impatience. A lifting covers what they named and
+nothing adjacent, and it expires with the thing they named: permission to rename
+one method now is not permission to rename its siblings, and permission to skip
+step 4's gate says nothing about step 5's. Where you think a gate is not worth its
+cost, say so and let them lift it; do not decide it for them.
+
+The documents live in one directory per pass, `plans/design-pass-<pass>/`, where
+`<pass>` is the register row the pass took — the number with its suffix, so a
+split row `14b` gets `plans/design-pass-14b/`. Inside it, one file per step: a
+pass on row 3 writes `plans/design-pass-3/findings-1-2.md`, then
+`plans/design-pass-3/findings-5.md`, and so on. The record lives there too, as
+`record.md`; step 0 creates the directory.
+
+**Steps 1 and 2 share one document**, because the inventory is what the
+class-design argument is made from and neither is reviewable without the other.
+Steps 3, 4, 5, 6, 7, 9 and 12 each have their own.
+
+**Steps 8, 10 and 11 have no gate.** They run something and report what it says;
+there is nothing in them for a reviewer to decide.
+
+**A findings document covers its own step's axis and nothing else.** Step 3 asks
+what types can carry; step 5 asks what fan-in earns a contract; step 6 asks what
+each test is for. A finding that belongs to a later step's axis is recorded in
+the record's *Findings raised* and picked up by that step's document — never
+argued early, because the earlier step's answer changes what the later question
+even is. This is also why the gate is per step and not one document up front: the
+tree step 5 reads is the tree step 3 left.
+
+Each document states, for its step:
+
+1. **What it found** — the facts the step's own reading produced, with file and
+   line.
+2. **What it proposes**, each item separately decidable, with the correct
+   structure stated concretely and the recommendation. Never one coherent
+   proposal the user can only agree to.
+3. **Open questions** — anything you cannot decide, and anything you decided but
+   are not certain of. A question you did not ask is a decision you made
+   silently.
+
+Then:
+
+- **Read `~/.claude/skills/roughdraft/SKILL.md`** before the first gate of a
+  pass. It holds the CriticMarkup the review comes back in and the form your own
+  replies must take, and a reply in the wrong form is one the user's tool will
+  not thread.
+- **Open it.** `roughdraft open "<absolute path to the document>"`. The command
+  **blocks until the user closes the review session**, so the waiting is the tool
+  call itself, not a turn you end and hope to be woken from. Nothing changes
+  while it is open: no production file, no test file, no `docs/` file, no
+  register row.
+- **Resolve.** When it returns, read the file back from disk. The review is
+  CriticMarkup — comments, insertions, deletions, substitutions — and **every
+  mark gets an answer written into the document**, as a reply whose `re:` names
+  the id it answers. A suggestion you are applying is answered too; silently
+  taking one leaves the user unable to tell agreement from oversight.
+- **Then open it again**, so they see the answers. **The gate opens on a close
+  that leaves nothing unanswered** — not on the first close, and a mark you
+  interpreted rather than asked about is unanswered. Rounds are cheap; a
+  misread comment is what this whole gate exists to prevent.
+- **Then execute the step**, and snapshot.
+
+The findings documents are working memory on the same terms as the record, and
+step 12 deletes them with it.
 
 ### Doctrine — read before step 2, do not paraphrase
 
@@ -42,6 +119,9 @@ at the test step in volume means the earlier steps were skipped.**
 - **`.claude/rules/java.md`** — Javadoc syntax and the signature rules.
 - **`reference/classification.md`** — which contracts you may decide and which
   you must propose, and the checkpoint format.
+- **`~/.claude/skills/roughdraft/SKILL.md`** — the review tool every gate runs
+  through: how to open a document, that the command blocks until the user closes
+  it, and the CriticMarkup both sides write in.
 
 ## Step 0: Resolve, check, resume
 
@@ -88,15 +168,23 @@ you take one of them, and step 12 rewrites the register's single row into those
 systems. Splitting from a directory listing predicts boundaries instead of
 finding them, which is the error the register exists to avoid.
 
-Everything below calls the resolved target `<target>`, and its record name is the
-row's system name in lower-case kebab — `units-and-scale.md`, `ui-selection.md`.
+Everything below calls the resolved target `<target>`, and everything the pass
+writes lives in `plans/design-pass-<pass>/` — the record and the findings
+documents together, named by the row rather than by the system, so nothing has
+to be translated into a filename to be found again.
 
-1. **Open the record.** `plans/design-pass/<target>.md`. If it exists, read it
-   and resume at the first step not marked ✅ — it is the only memory across a
-   context clear. If not, create it from the template at the end of this file.
+1. **Open the record.** `plans/design-pass-<pass>/record.md`. If it exists, read
+   it and resume at the first step not marked ✅ — it is the only memory across a
+   context clear. If not, create the directory and the record from the template
+   at the end of this file.
 
-   **Resume inside that step, not at the top of it.** A step's row carries a
-   *Plan* link once the step has one (see *Steps decompose; the record links
+   **The *Gate* column decides where a resume lands.** A step marked 📖 stopped
+   at its review: open `plans/design-pass-<pass>/findings-<step>.md`, read what
+   came back, and resolve it — the step has changed nothing in the tree, so
+   there is nothing there to infer its state from.
+
+   **Otherwise resume inside the step, not at the top of it.** A step's row
+   carries a *Plan* link once the step has one (see *Steps decompose; the record links
    where*). Open that plan and take the first phase its dashboard does not mark
    ✅. Restarting a step whose first three phases are already done redoes work
    the tree already holds, and the redo is invisible until it conflicts.
@@ -165,7 +253,11 @@ named explicitly, and an instruction to report and stop rather than widen the
 search. Include *"Read `.claude/rules/serena.md` and follow it for all Java
 exploration and refactoring."*
 
-**Snapshot.** Record the inventory in the record file.
+Write the inventory into `plans/design-pass-<pass>/findings-1-2.md` as *What it
+found*. It is facts only — a type that fails to carry an invariant is named
+here and argued in step 2. **Snapshot**, and go straight on to step 2; the gate
+for both steps is at the end of step 2, since the inventory alone is not a
+decision anyone can review.
 
 ## Step 2: Class design
 
@@ -194,7 +286,10 @@ nothing to do but agree. The decision is theirs, and every step below is derived
 from the answer — so a change here is made before step 3 begins, not alongside
 it.
 
-**Snapshot.**
+The three answers and the architecture gate go into
+`plans/design-pass-<pass>/findings-1-2.md` beneath step 1's inventory, as *What it
+proposes* and *Open questions*. **Then the review gate: open, review, resolve.**
+No type is created, split, dissolved or renamed until it is through.
 
 ## Step 3: Make illegal states unrepresentable
 
@@ -213,19 +308,23 @@ From step 1's inventory, over the type set step 2 settled, in this order:
    unproven one.
 5. **Constructor validation** only where a closed type is not possible.
 
-Each of these is a design change, so **raise it before making it**: file and
-line, the correct structure concretely, the recommendation. Whether to do it now
-is the user's call.
+Each of these is a design change, so every one of them goes into
+`plans/design-pass-<pass>/findings-3.md` — file and line, the correct structure
+concretely, the recommendation — **as a separately decidable item**. Whether to
+do each is the user's call, and a proposal bundled so that one no takes the rest
+with it has removed that call.
 
-**Lead with two counts.** How many guards the proposal retires — `@Nullable`
-among them — and how many types it introduces to carry an invariant the code
-currently checks at runtime. That pair is the yield the user is deciding on:
-every guard retired is a runtime check the compiler now makes instead, and a
+**The document leads with two counts.** How many guards the proposal retires —
+`@Nullable` among them — and how many types it introduces to carry an invariant
+the code currently checks at runtime. That pair is the yield the user is deciding
+on: every guard retired is a runtime check the compiler now makes instead, and a
 proposal that introduces types without retiring guards has added structure
-without moving anything. State both before the per-change detail, from step 1's
-inventory of `@Nullable`s and guards.
+without moving anything. Both come from step 1's inventory of `@Nullable`s and
+guards, and both stand before the per-change detail.
 
-**Then delete the guards it retired**, and the tests that were pinned to them.
+**Then the review gate: open, review, resolve.** Only what survives it is built —
+and then the guards it retired are deleted, with the tests that were pinned to
+them.
 
 **Snapshot per change or per coherent group.**
 
@@ -236,7 +335,12 @@ naming any caller, named as a verb on its arguments. A `*Utils` or `*Helper`
 static bag in the target is a finding: its contents are redistributed to the
 types owning the invariants, and anything left that names no owner **goes back
 to step 2** — a concept with no type is a class-design decision, not something
-this step can place.
+this step can place, so it is an *Open question* in this step's document rather
+than a move you invent an owner for.
+
+Every move goes into `plans/design-pass-<pass>/findings-4.md`: what moves, to which
+type, and the invariant that type owns which makes it the owner. **Then the
+review gate: open, review, resolve.** Nothing moves before it.
 
 **Snapshot.**
 
@@ -250,16 +354,38 @@ everything downstream then tests against it.
 accurate name and no contract. Do not write a contract to be thorough; write it
 where callers rely on the promise.
 
-For each class that earns one:
+`plans/design-pass-<pass>/findings-5.md` is **a summary of the work, not a draft
+of it.** No Javadoc text goes in it; the contracts are written after the gate,
+against what the gate settled.
 
-1. **Classify each contract** per `reference/classification.md`. Write the
-   mechanical ones straight through.
-2. **Batch the domain ones into one checkpoint for that class**, in the four-line
-   form that file specifies. Write what the reviewer decides.
-3. **Then the class Javadoc** — invariants spanning several of its methods.
-4. **Then `package-info.java`** — invariants spanning the classes.
-5. **Anything spanning subsystems goes to `docs/`.** If a `docs/` document
-   already states it, cite rather than restate.
+**Three counts open it**, in methods:
+
+- **write** — no Javadoc exists and fan-in earns one;
+- **update** — one exists, but not in the form `.claude/guides/contracts.md`
+  states;
+- **remove** — one exists that fan-in does not earn, or that describes the code
+  instead of promising anything.
+
+Then **one row per class**: its three counts, and a line on what the class
+promises that makes them come out that way. A class whose count is `0 / 0 / 0` is
+still a row — that it earns nothing is the finding.
+
+Then two lists:
+
+- **Signature changes the rules below force** — a `record` replacing transposable
+  parameters, an enum replacing a mode-selecting `boolean`, a rename. These are
+  code changes, so they are proposed here and not performed.
+- **Open questions** — every domain promise you cannot settle from the code, in
+  the checkpoint form `reference/classification.md` specifies. Nothing mechanical
+  belongs here; a promise about notation you guessed at reads exactly like one
+  you knew, which is the whole reason this list exists.
+
+**Then the review gate: open, review, resolve.** No Javadoc is written and no
+signature changed before it. Then write, in this order: the method contracts as
+the reviewer settled them, the class Javadoc — invariants spanning several of its
+methods — then `package-info.java` for invariants spanning the classes. **Anything
+spanning subsystems goes to `docs/`;** if a `docs/` document already states it,
+cite rather than restate.
 
 Three things that are not optional:
 
@@ -296,10 +422,11 @@ Then **add only the cases the floor calls for and nothing asserts.** A clause
 with no case is not automatically a gap; ask first whether the design already
 enforces it.
 
-**One table, before any test is written or deleted.** Triage and proposal are one
-conversation: a test kept, a test rewritten, a test discarded and a case added
-are four dispositions of one list, and splitting them into two conversations
-hides that a discard and an addition are usually the same case moving.
+**One table, and it is the body of `plans/design-pass-<pass>/findings-6.md`.**
+Triage and proposal are one review: a test kept, a test rewritten, a test
+discarded and a case added are four dispositions of one list, and splitting them
+across two documents hides that a discard and an addition are usually the same
+case moving.
 
 | Test | Kind | Disposition | Why |
 |---|---|---|---|
@@ -310,8 +437,8 @@ kinds, which is why it is going — so the column is the table's own check. A ro
 you can justify only by naming a branch, a guard or a private helper is a
 discard, whatever you meant to put in it.
 
-**Then wait.** No `@Test` is written and none is deleted until the user has seen
-the table and had the chance to veto it.
+**Then the review gate: open, review, resolve.** No `@Test` is written and none is
+deleted until the table has been through it.
 
 Two traps, both here:
 
@@ -347,9 +474,15 @@ Each finding is one of four kinds, and the kind decides the fix:
 from it. When a test cannot arrange the state it needs, the answer is a
 constructor or factory taking that state, used by production too.
 
+`plans/design-pass-<pass>/findings-7.md` lists each finding with the kind it was
+judged to be and the fix that kind decides — the kind is the argument, so a fix
+stated without it is asking to be taken on trust. For a scope, name the
+production caller that justifies it. **Then the review gate: open, review,
+resolve.**
+
 **Snapshot.**
 
-## Step 8: Compile and run
+## Step 8: The suite gate and the visual gate
 
 Every snapshot in steps 2 through 7 builds and runs the classes it touched, or
 that state is unverified. This step is the **full-suite gate**: run
@@ -386,7 +519,9 @@ a person cannot act on without reading the diff is not on the list.
 their permission. If the pass reached nothing a person can see, say so plainly
 instead of emitting a checklist of things it cannot have broken.
 
-**Snapshot.**
+**Snapshot after each gate**, and mark 8a and 8b separately. The visual gate can
+sit open for a long time — it needs a person at the application — so a resume has
+to be able to see that the suite is through and the eyes are not.
 
 ## Step 9: Judge the diagrams
 
@@ -394,6 +529,11 @@ Any diagram in the target's `docs/` document or Javadoc. Keep only what shows
 what prose cannot — a topology, a state machine, a sequence with genuine
 concurrency. A diagram walking through a sequence the contracts already state is
 the contract drawn a second time, and the second copy goes stale.
+
+Each diagram, its verdict and the reason go into
+`plans/design-pass-<pass>/findings-9.md`. **Then the review gate: open, review,
+resolve.** A diagram is someone's explanation of the system and deleting one is
+not yours to decide alone.
 
 **Snapshot** if anything changed.
 
@@ -436,9 +576,19 @@ why under *The record is working memory*. Two things leave the record first:
 2. **Anything about the system's shape** goes to `docs/`, written in this pass
    rather than promised to a later one.
 
-Then flip the register row to ✅ and delete the record. The row, the findings and
-the deletion are one change, and they land in the tree beside the pass's own
-work for the user to commit.
+Both, plus any row rewrite a split forces, go into
+`plans/design-pass-<pass>/findings-12.md` first. **Then the review gate: open,
+review, resolve.** Deletion is the one step nothing recovers from, and a
+carry-forward item is written for a reader who will never be able to ask what it
+meant.
+
+Then flip the register row to ✅ and **delete `plans/design-pass-<pass>/`
+entire** — the record and every findings document go together, they are working
+memory on the same terms, and everything in them that outlives the pass has just
+been harvested. Any execution plan a step took goes with them, from wherever
+`/make-plan` put it. The row, the findings and the deletion are one
+change, and they land in the tree beside the pass's own work for the user to
+commit.
 
 **A row you split rewrites itself here.** Where step 1 read an *(undecomposed)*
 directory and named the systems it holds, replace that single row with one row
@@ -455,11 +605,16 @@ suffixes again: `14b1`, `14b2`.
 
 Then report: what the types now carry that runtime checks used to — with step 3's
 two counts as they actually landed — what the contracts turned out to promise,
-what the checkpoints changed, and anything you surfaced that is not yours to
-decide.
+what the reviews changed about what you proposed, and anything you surfaced that
+is not yours to decide.
 
 ## Things that stay true throughout
 
+- **No step changes anything ahead of its gate, unless the user says otherwise.**
+  Not a rename, not a Javadoc line, not a "while I'm here" fix in a neighbouring
+  file. The gate is what makes the pass's decisions the user's, and a change made
+  before it has already taken one. Only they lift it, on the terms in *The review
+  gate*.
 - **Findings outside the target are still findings.** A design flaw, a
   duplication, a wrong abstraction or a misleading name in a caller, a neighbor,
   or a shared helper this work merely passes through gets raised with file and
@@ -500,7 +655,7 @@ decide.
 
 ## The record template
 
-`plans/design-pass/<target>.md`, created at step 0:
+`plans/design-pass-<pass>/record.md`, created at step 0:
 
 ```markdown
 # Design Pass — `<target>`
@@ -509,19 +664,25 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 
 **Status:** ⏳ not started · 🔄 in progress · ✅ complete
 
-| Step | Status | Plan | Notes |
-|---|---|---|---|
-| 1 Inventory | ⏳ | — | |
-| 2 Class design | ⏳ | — | |
-| 3 Unrepresentable states | ⏳ | — | |
-| 4 Extraction | ⏳ | — | |
-| 5 Contracts | ⏳ | — | |
-| 6 Test triage | ⏳ | — | |
-| 7 Test-only surface | ⏳ | — | |
-| 8 Compile and run | ⏳ | — | |
-| 9 Diagrams | ⏳ | — | |
-| 10 Coverage | ⏳ | — | |
-| 11 Mutation | ⏳ | — | opportunistic |
+| Step | Status | Gate | Plan | Notes |
+|---|---|---|---|---|
+| 1 Inventory | ⏳ | with 2 | — | |
+| 2 Class design | ⏳ | ⏳ | — | |
+| 3 Unrepresentable states | ⏳ | ⏳ | — | |
+| 4 Extraction | ⏳ | ⏳ | — | |
+| 5 Contracts | ⏳ | ⏳ | — | |
+| 6 Test triage | ⏳ | ⏳ | — | |
+| 7 Test-only surface | ⏳ | ⏳ | — | |
+| 8a Suite gate | ⏳ | n/a | — | |
+| 8b Visual gate | ⏳ | n/a | — | |
+| 9 Diagrams | ⏳ | ⏳ | — | |
+| 10 Coverage | ⏳ | n/a | — | |
+| 11 Mutation | ⏳ | n/a | — | opportunistic |
+| 12 Close out | ⏳ | ⏳ | — | |
+
+*Gate* is the state of the step's findings document: ⏳ not written · 📖 open for
+review · ✅ resolved. A step whose *Gate* is not ✅ has made no code change, so a
+resume that finds one 📖 reads the marked-up document rather than the tree.
 
 *Plan* links the step's execution plan once it has one, and is where a resume
 picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
@@ -534,6 +695,8 @@ to be. Deleted from the register when claimed.
 
 ## Findings raised
 
-Anything surfaced that was not this target's to fix. Harvested to the register at
-step 12, before this file is deleted.
+Anything surfaced that was not this target's to fix, and anything a step turned
+up that belongs to a later step's axis — the latter is picked up by that step's
+findings document rather than argued where it was found. Harvested to the
+register at step 12, before this file is deleted.
 ```
