@@ -41,9 +41,4 @@ public class Beam extends Span {
     public double getContentHeightSs() {
         return 0;
     }
-
-    @Override
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(1.0, endXSs - anchorXSs);
-    }
 }

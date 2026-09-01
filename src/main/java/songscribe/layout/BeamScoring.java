@@ -27,7 +27,8 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.Staff;
 import songscribe.util.LogUtils;
 
@@ -43,7 +44,7 @@ import songscribe.util.LogUtils;
  *  Every Y-up ↔ Y-down conversion happens ONLY at the LayoutEngine ↔ BeamScoring
  *  boundary. Inside this class everything is Y-up.
  *
- *      IN  (per stem):  headYUpSs  = -Staff.spToSs(staffPosition)
+ *      IN  (per stem):  headYUpSs  = -StaffPosition.toSs(staffPosition)
  *                       headHalfPos = -staffPosition
  *
  *      OUT (per group): a beam position is (leftY, rightY) — the Y of the CENTER
@@ -160,13 +161,13 @@ final class BeamScoring {
     static final double STAFF_RADIUS_SS = Staff.STAFF_HALF_SS;
 
     /** Beam thickness in staff spaces (LilyPond's {@code beam_thickness}). */
-    static final double BEAM_THICKNESS_SS = LineThickness.BEAM_THICKNESS_SS;
+    static final double BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS;
 
     /** Center-to-center distance between stacked beams, in staff spaces. */
-    static final double BEAM_TRANSLATION_SS = LineThickness.BEAM_TRANSLATION_SS;
+    static final double BEAM_TRANSLATION_SS = BeamMetrics.BEAM_TRANSLATION_SS;
 
     /** Staff line thickness in staff spaces (LilyPond's {@code slt}). */
-    static final double STAFF_LINE_THICKNESS_SS = LineThickness.STAFF_LINE_SS;
+    static final double STAFF_LINE_THICKNESS_SS = EngravingConstants.STAFF_LINE_THICKNESS_SS;
 
     // ---------------------------------------------------------------------
     // Quant offsets — the single source of truth for straddle/sit/inter/hang.
@@ -297,7 +298,7 @@ final class BeamScoring {
         // Its comment in stem.cc gives the reason — "a8[ a32] must be horizontal"
         // — and only that shared count makes the ideal ends of equal-pitch edge
         // stems agree, which is what lets least_squares_positions see dy == 0.
-        var heightOfBeams = LineThickness.beamStackHeightSs(maxBeamCount);
+        var heightOfBeams = BeamMetrics.beamStackHeightSs(maxBeamCount);
         var halfBeamThickness = BEAM_THICKNESS_SS / 2.0;
 
         // Stems only extend to the center of the beam, hence the half-thickness terms.

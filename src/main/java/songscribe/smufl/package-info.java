@@ -14,6 +14,10 @@
  * attachment point is asked for by notehead, not by glyph, because most glyphs are not
  * noteheads.
  *
+ * <p>The application reads glyph bounding boxes, advance widths and stem anchors from the
+ * font, and takes no engraving default from it: every stroke width, gap and beam measurement
+ * is LilyPond's or this program's own.
+ *
  * <p>The glyphs the application draws are a closed set, so the font is queried by enum
  * constant rather than by name. A glyph the application does not draw has no constant, and
  * a name the font does not carry cannot be written.

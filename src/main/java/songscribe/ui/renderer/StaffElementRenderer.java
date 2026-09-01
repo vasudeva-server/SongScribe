@@ -30,7 +30,9 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.LedgerLine;
+import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
@@ -61,7 +63,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
-    private static final double HALF_BEAM_THICKNESS_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
+    private static final double HALF_BEAM_THICKNESS_SS = BeamMetrics.BEAM_THICKNESS_SS / 2.0;
 
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond code analysis)
     private static final double STEM_ARC_RATIO = 0.615;
@@ -230,7 +232,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
         var upper = direction.isUp();
         var geom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
-        var stemWidthSs = LineThickness.STEM_SS;
+        var stemWidthSs = StemMetrics.THICKNESS_SS;
 
         // Both stem directions keep their exact (sub-pixel) position. The score draws glyphs with
         // FRACTIONALMETRICS_ON (GraphicUtils.setRenderingHints), so the notehead's origin is NOT
@@ -287,7 +289,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
         if (beamed) {
             beamInsetSs = HALF_BEAM_THICKNESS_SS + beamThickeningSs / 2.0
-                + frenchShorteningLevels * LineThickness.beamTranslationSs(beamThickeningSs);
+                + frenchShorteningLevels * BeamMetrics.beamTranslationSs(beamThickeningSs);
         }
 
         double stemTipY;
@@ -388,7 +390,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         // the per-line accidental clamp inside the loop.
         var geometry = NoteGeometry.getLedgerLineGeometry(note);
 
-        RenderingUtils.forEachLedgerLineYSs(note.getStaffPosition(), yOffsetSs -> {
+        LedgerLine.forEachOffsetSs(note.getStaffPosition(), yOffsetSs -> {
             var extent = geometry.extentAtSs(yOffsetSs);
             RenderingUtils.drawLedgerLine(g2, extent.leftSs(), extent.rightSs(), yOffsetSs, invariants);
         });

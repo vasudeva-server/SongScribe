@@ -27,7 +27,6 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.TextMeasurement;
 import songscribe.layout.ElementColumn;
@@ -35,6 +34,8 @@ import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.MetronomeContent;
 import songscribe.layout.StaffExtents;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -117,7 +118,8 @@ public class SystemStacker {
             systemExtents,
             tempoMark,
             content.regions(),
-            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS,
+            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line)
+                + SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs(),
             content.widthSs(),
             TEMPO_MARGIN_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,

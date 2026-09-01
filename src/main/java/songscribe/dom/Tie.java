@@ -55,11 +55,6 @@ public class Tie extends Span {
         return TIE_ARC_HEIGHT_SS;
     }
 
-    @Override
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(1.0, endXSs - anchorXSs);
-    }
-
     /**
      * Returns whether {@code type} may sit between two tied notes.
      *

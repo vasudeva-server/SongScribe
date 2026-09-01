@@ -31,10 +31,11 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.EngravingConstants;
 import songscribe.font.LocalFonts;
 import songscribe.font.TextMeasurement;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Layout geometry for {@link Ending} volta brackets.
@@ -193,7 +194,7 @@ public final class EndingBracketGeometry {
                 || endType == ElementType.FINAL_DOUBLE_BARLINE;
         }
         else {
-            x2 = endColumn.getRightEdgeXSs() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
+            x2 = endColumn.getRightEdgeXSs() + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
             hasClosingStroke = false;
         }
 
@@ -215,8 +216,8 @@ public final class EndingBracketGeometry {
         Ending.BracketRange bracket,
         double xBaseSs
     ) {
-        var spanWidthSs = bracket.widthSs();
-        var bracketThicknessSs = LineThickness.VOLTA_BRACKET_SS;
+        var spanWidthSs = bracket.inkRightXSs() - bracket.x1Ss();
+        var bracketThicknessSs = EngravingConstants.VOLTA_BRACKET_SS;
         var halfThicknessSs = bracketThicknessSs / 2;
 
         // The bracket is stroked along the element's Y, and a stroke is centered on its path,

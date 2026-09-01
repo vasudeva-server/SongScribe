@@ -31,9 +31,9 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.engraving.Staff;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.StaffPosition;
+import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.BeamMath;
 import songscribe.layout.LayoutResult;
@@ -62,7 +62,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     // The round pen that rounds a drawn beam's corners (see drawBeam).  Immutable
     // and built from constants, so it is shared rather than rebuilt per repaint.
     private static final BasicStroke BLOT_STROKE = new BasicStroke(
-        (float) LineThickness.BEAM_BLOT_DIAMETER_SS,
+        (float) BeamMetrics.BEAM_BLOT_DIAMETER_SS,
         BasicStroke.CAP_ROUND,
         BasicStroke.JOIN_ROUND
     );
@@ -103,12 +103,12 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      */
     public void renderBeams(
         Graphics2D g2,
-        Line line,
         LineInvariants invariants,
         ElementFrame frame,
         int beginIndex,
         int endIndex
     ) {
+        var line = invariants.requireCurrentLine();
         var level = getBeamLevel(line, beginIndex, endIndex);
         var highlightColor = getBeamHighlightColor(invariants, beginIndex, endIndex);
         drawBeams(g2, level, line, invariants, frame, beginIndex, endIndex, highlightColor != null,
@@ -303,22 +303,21 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var endNote = line.getElement(endIndex);
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
-        var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
         var isUpper = direction.isUp();
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
-        var effectiveBeamDepthSs = LineThickness.BEAM_THICKNESS_SS + thickeningSs;
+        var effectiveBeamDepthSs = BeamMetrics.BEAM_THICKNESS_SS + thickeningSs;
         var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
         var innerBeamOffsetSs =
-            LineThickness.beamTranslationSs(thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
+            BeamMetrics.beamTranslationSs(thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
         var firstNoteXSs = layoutResult.getElementXSs(beginNote);
         var firstStemCenterXSs = firstNoteXSs
             + RenderingUtils.stemCenterXOffsetSs(beginNote.getType(), direction);
-        var firstX = firstStemCenterXSs - halfStemWidthSs;
+        var firstX = firstStemCenterXSs - StemMetrics.STEM_HALF_WIDTH_SS;
         var firstTipYSs = stemTipYSsOffset(firstStemLayout, direction, beginNote);
         var firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
         var firstInnerY = firstOuterY + beamDepthSs;
@@ -328,7 +327,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var lastNoteXSs = layoutResult.getElementXSs(endNote);
         var lastStemCenterXSs = lastNoteXSs
             + RenderingUtils.stemCenterXOffsetSs(endNote.getType(), direction);
-        var lastX = lastStemCenterXSs + halfStemWidthSs;
+        var lastX = lastStemCenterXSs + StemMetrics.STEM_HALF_WIDTH_SS;
         var lastTipYSs = stemTipYSsOffset(lastStemLayout, direction, endNote);
         var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
         var lastInnerY = lastOuterY + beamDepthSs;
@@ -339,7 +338,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         // full blot diameter. Fill plus stroke restores the original extent, so
         // the beam measures BEAM_THICKNESS_SS as before and only its corners round
         // off. Insetting without stroking would draw a beam one blot too thin.
-        var blotRadiusSs = LineThickness.BEAM_BLOT_DIAMETER_SS / 2.0;
+        var blotRadiusSs = BeamMetrics.BEAM_BLOT_DIAMETER_SS / 2.0;
         var towardInnerSs = isUpper ? blotRadiusSs : -blotRadiusSs;
 
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
@@ -390,10 +389,10 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        var elementYSs = Staff.spToSs(element.getStaffPosition());
+        var elementYSs = StaffPosition.toSs(element.getStaffPosition());
         return direction.isUp()
-            ? elementYSs - SMuFLConstants.STEM_LENGTH_SS
-            : elementYSs + SMuFLConstants.STEM_LENGTH_SS;
+            ? elementYSs - StemMetrics.STEM_LENGTH_SS
+            : elementYSs + StemMetrics.STEM_LENGTH_SS;
     }
 
     /**

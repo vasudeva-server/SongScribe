@@ -34,7 +34,8 @@ import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.SMuFLConstants;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -471,7 +472,8 @@ class EndingBracketGeometryTest extends UnitTest {
 
     /** Where a bracket closing on the note in column {@code index} puts its right end. */
     private static double noteClosingXSs(int index) {
-        return columnXSs(index) + COLUMN_RIGHT_EXTENT_SS + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
+        return columnXSs(index) + COLUMN_RIGHT_EXTENT_SS
+            + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
     }
 
     private static boolean isBarOrRepeat(ElementType type) {

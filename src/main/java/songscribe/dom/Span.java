@@ -24,8 +24,6 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.engraving.SMuFLConstants;
-
 /**
  * Abstract base class for elements that span multiple elements.
  * <p>
@@ -52,36 +50,36 @@ public abstract class Span extends LineElement {
     }
 
     /** The first element in this range. */
-    private @Nullable StaffElement anchorElement;
+    private StaffElement anchorElement;
 
     /** The last element in this range. */
-    private @Nullable StaffElement endElement;
+    private StaffElement endElement;
 
     /**
      * Returns the first element in this range.
      */
-    public @Nullable StaffElement getAnchorElement() {
+    public StaffElement getAnchorElement() {
         return anchorElement;
     }
 
     /**
      * Sets the first element in this range.
      */
-    public void setAnchorElement(@Nullable StaffElement anchorElement) {
+    public void setAnchorElement(StaffElement anchorElement) {
         this.anchorElement = anchorElement;
     }
 
     /**
      * Returns the last element in this range.
      */
-    public @Nullable StaffElement getEndElement() {
+    public StaffElement getEndElement() {
         return endElement;
     }
 
     /**
      * Sets the last element in this range.
      */
-    public void setEndElement(@Nullable StaffElement endElement) {
+    public void setEndElement(StaffElement endElement) {
         this.endElement = endElement;
     }
 
@@ -106,8 +104,8 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * The line the anchor element belongs to, or {@code null} when the anchor is unset or
-     * sits in no line. Null-safe so callers deciding which lines a span reaches — including
+     * The line the anchor element belongs to, or {@code null} when the anchor sits in no
+     * line. Null-safe so callers deciding which lines a span reaches — including
      * {@link Line#appendChild} and {@link Song#removeSpansBetweenNonAdjacentLines} — express
      * that in one call rather than each repeating the unwrap.
      * <p>
@@ -116,14 +114,12 @@ public abstract class Span extends LineElement {
      * {@link Line#anchorIndexOf}.
      */
     public @Nullable Line getAnchorLine() {
-        var anchor = anchorElement;
-        return anchor == null ? null : anchor.getParentLine();
+        return anchorElement.getParentLine();
     }
 
     /** The line the end element belongs to. See {@link #getAnchorLine}. */
     public @Nullable Line getEndLine() {
-        var end = endElement;
-        return end == null ? null : end.getParentLine();
+        return endElement.getParentLine();
     }
 
     /**
@@ -259,50 +255,14 @@ public abstract class Span extends LineElement {
         var anchor = anchorElement;
         var end = endElement;
 
-        if (anchor == null || end == null) {
-            return 0;
-        }
-
         return Math.abs(end.getXSs() - anchor.getXSs()) + end.getContentWidthSs();
     }
 
     /**
-     * Returns the horizontal span width for collision detection in staff-space units.
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return span width in staff-space units
+     * The position of {@code element} within the line it is in, or -1 when it sits in no
+     * line because a removal detached it ({@link Line#removeElement}).
      */
-    public abstract double getSpanWidthSs(double anchorXSs, double endXSs);
-
-    /**
-     * Returns the end element's own glyph width in staff spaces — per type, so a whole note is
-     * measured as a whole note (refs #694). Implementations of {@link #getSpanWidthSs} whose span
-     * runs past the end element's origin need this to know how far past it to reach.
-     *
-     * <p>Falls back to the black-notehead width for a range that has no end element yet, which is
-     * the same reservation such a range got before the width became per-type.
-     */
-    protected double getEndElementWidthSs() {
-        var end = endElement;
-
-        if (end == null) {
-            return SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS;
-        }
-
-        return end.getType().getElementWidthSs();
-    }
-
-    /**
-     * The position of {@code element} within the line it is in, or -1 when there is no
-     * such position: the endpoint is unset, or it sits in no line because a removal
-     * detached it ({@link Line#removeElement}).
-     */
-    private static int indexInLine(@Nullable StaffElement element) {
-        if (element == null) {
-            return -1;
-        }
-
+    private static int indexInLine(StaffElement element) {
         var line = element.getParentLine();
 
         if (line == null) {
@@ -314,7 +274,7 @@ public abstract class Span extends LineElement {
 
     /**
      * Returns the index of the anchor element within its line.
-     * Returns -1 if the anchor element is not set or not in a line.
+     * Returns -1 if the anchor element is not in a line.
      */
     public int getAnchorElementIndex() {
         return indexInLine(anchorElement);
@@ -322,7 +282,7 @@ public abstract class Span extends LineElement {
 
     /**
      * Returns the index of the end element within its line.
-     * Returns -1 if the end element is not set or not in a line.
+     * Returns -1 if the end element is not in a line.
      */
     public int getEndElementIndex() {
         return indexInLine(endElement);

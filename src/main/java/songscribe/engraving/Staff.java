@@ -21,11 +21,15 @@
 package songscribe.engraving;
 
 /**
- * Canonical staff geometry constants and staff-position/staff-space conversions.
+ * Canonical geometry of the 5-line staff, and the half staff space, the unit in
+ * which vertical distances on it are counted.
  * <p>
- * All values are in staff-space units unless noted otherwise. Staff positions
- * are in half staff-space units, with 0 at the middle staff line and Y-down
- * orientation (smaller = higher on the page).
+ * All values are in staff-space units unless noted otherwise, measured Y-down
+ * from the middle staff line, so a negative distance is higher on the page.
+ * <p>
+ * The pitch grid this geometry carries — the discrete positions a note head may
+ * occupy, their bounds, and the conversion between a position and a distance —
+ * belongs to {@link StaffPosition}.
  */
 public final class Staff {
 
@@ -34,36 +38,63 @@ public final class Staff {
     public static final double STAFF_HALF_SS = STAFF_HEIGHT_SS / 2.0;
 
     /**
-     * Staff position offset: half of one staff space.
-     * Used to convert between staff positions and Y coordinates.
+     * Half of one staff space, the unit in which vertical distances on the staff
+     * are counted: the gap between a staff line and the space adjacent to it.
      */
-    public static final double STAFF_POSITION_OFFSET_SS = 0.5;
+    public static final double HALF_SPACE_SS = 0.5;
 
-    /** Staff lines above middle line for ledger lines. */
-    public static final int STAFF_LINES_ABOVE = 3;
-    /** Minimum (highest-pitched) valid staff position, in half staff-space units. */
-    public static final int MIN_STAFF_POSITION_SP = -(STAFF_LINES_ABOVE + 2) * 2;
-    /** Minimum staff-space amount reserved above the staff top, derived from MIN_STAFF_POSITION_SP. */
+    /** Minimum staff-space amount reserved above the staff top, derived from {@link StaffPosition#MIN_SP}. */
     public static final double MIN_ABOVE_STAFF_SS =
-        Math.abs(MIN_STAFF_POSITION_SP) * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
+        Math.abs(StaffPosition.MIN_SP) * HALF_SPACE_SS - STAFF_HALF_SS;
 
-    /** Staff lines below middle line for ledger lines. */
-    public static final int STAFF_LINES_BELOW = 4;
-    /** Maximum (lowest-pitched) valid staff position, in half staff-space units. */
-    public static final int MAX_STAFF_POSITION_SP = (STAFF_LINES_BELOW + 2) * 2;
-    /** Minimum staff-space amount reserved below the staff bottom, derived from MAX_STAFF_POSITION_SP. */
-    public static final double MIN_BELOW_STAFF_SS =
-        MAX_STAFF_POSITION_SP * STAFF_POSITION_OFFSET_SS - STAFF_HALF_SS;
+    /** Minimum staff-space amount reserved below the staff bottom, derived from {@link StaffPosition#MAX_SP}. */
+    public static final double MIN_BELOW_STAFF_SS = StaffPosition.MAX_SP * HALF_SPACE_SS - STAFF_HALF_SS;
 
     private Staff() {}
 
-    /** Converts a staff position (half staff-space units) to staff spaces. */
-    public static double spToSs(int staffPositionSp) {
-        return staffPositionSp * STAFF_POSITION_OFFSET_SS;
+    /**
+     * Converts a count of half staff spaces to staff spaces.
+     * <p>
+     * The argument is a distance — a difference between two staff positions, or an
+     * offset expressed in half staff spaces — never a staff position itself. A
+     * position is converted by {@link StaffPosition#toSs(int)}. The two are the same
+     * arithmetic, and only the name says which of them a call site means, so a site
+     * that measures from the middle staff line belongs in the other method however
+     * well this one compiles.
+     *
+     * @param halfSpaces a distance in half staff spaces
+     * @return that distance in staff spaces
+     * @invariant the result is an exact multiple of {@link #HALF_SPACE_SS}
+     */
+    public static double halfSpacesToSs(int halfSpaces) {
+        return halfSpaces * HALF_SPACE_SS;
     }
 
-    /** Converts staff spaces to a staff position (half staff-space units). */
-    public static int ssToSp(double ss) {
-        return (int) Math.round(ss / STAFF_POSITION_OFFSET_SS);
+    /**
+     * Converts a distance in staff spaces to the nearest whole count of half staff
+     * spaces.
+     * <p>
+     * The argument is a distance — a drag's vertical travel, an engraving offset —
+     * never a distance measured from the middle staff line. One measured from the
+     * middle line names a position and converts through
+     * {@link StaffPosition#atSs(double)}, which additionally answers that a value
+     * off the position grid is no position at all. Range-checking a distance would be
+     * wrong: a distance is not bounded by the grid, and whatever bound applies to it
+     * depends on where it is applied from, which only its caller knows.
+     * <p>
+     * A distance that falls between two half spaces snaps to the nearer of them, and
+     * one exactly halfway snaps toward positive — further down the page — matching
+     * {@link StaffPosition#atSs(double)} so that a count and a position resolve a
+     * boundary the same way.
+     *
+     * @param ss a distance in staff spaces
+     * @return that distance as a count of half staff spaces, with no bound applied
+     * @invariant {@code ssToHalfSpaces(halfSpacesToSs(n))} is {@code n} for any
+     *            {@code n}
+     * @invariant the result is monotonic in {@code ss}: a larger distance never
+     *            yields a smaller count
+     */
+    public static int ssToHalfSpaces(double ss) {
+        return (int) Math.round(ss / HALF_SPACE_SS);
     }
 }

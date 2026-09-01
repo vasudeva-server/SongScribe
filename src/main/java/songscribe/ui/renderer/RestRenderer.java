@@ -26,7 +26,7 @@ import java.util.EnumMap;
 import songscribe.dom.ElementType;
 import songscribe.dom.GlyphAppearance;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -49,9 +49,9 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     // Rest Glyphs (SMuFL/Bravura)
     // ==========================================================================
 
-    // Y position adjustment for whole and half rests (relative to middle line)
-    static final int SEMIBREVE_REST_Y_OFFSET = -2;  // Above the middle line
-    static final int MINIM_REST_Y_OFFSET = 0;       // On the middle line
+    // Staff position for whole and half rests (relative to middle line)
+    private static final int SEMIBREVE_REST_STAFF_POSITION_SP = -2; // Hangs below the 4th line
+    private static final int MINIM_REST_STAFF_POSITION_SP = 0;      // Sits on the middle line
 
     // Dot positioning derived from SMuFL metadata, in staff-space units.
     // The Graphics2D scale transform handles pixel conversion.
@@ -156,16 +156,16 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
 
         if (noteType == ElementType.SEMIBREVE_REST) {
             // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + Staff.spToSs(SEMIBREVE_REST_Y_OFFSET);
+            return middleLineYSs + StaffPosition.toSs(SEMIBREVE_REST_STAFF_POSITION_SP);
         }
 
         if (noteType == ElementType.MINIM_REST) {
             // Half rest sits on the middle line
-            return middleLineYSs + Staff.spToSs(MINIM_REST_Y_OFFSET);
+            return middleLineYSs + StaffPosition.toSs(MINIM_REST_STAFF_POSITION_SP);
         }
 
         // Other rests use standard note Y positioning
-        return middleLineYSs + Staff.spToSs(note.getStaffPosition());
+        return middleLineYSs + StaffPosition.toSs(note.getStaffPosition());
     }
 
     /**

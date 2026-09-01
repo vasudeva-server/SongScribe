@@ -21,8 +21,9 @@ ledgerLeft |                              |  ledgerRight
     overhang                               overhang
 
    accidental clamp midpoint = midway between the accidental's right edge
-     and headLeft — i.e. right of ledgerLeft. Where an accidental spans the
-     ledger's height, the ledger's left end is pulled in to that midpoint.
+     and headLeft. Where an accidental spans the ledger's height, the ledger's
+     left end is pulled in to that midpoint — unless the midpoint falls left of
+     ledgerLeft, where the base extent stands.
 ```
 
 ## Column extent

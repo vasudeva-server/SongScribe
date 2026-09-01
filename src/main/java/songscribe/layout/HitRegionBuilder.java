@@ -43,7 +43,8 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 
@@ -547,13 +548,13 @@ public final class HitRegionBuilder {
         // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
         var anchorXSs = layout.xSs();
         var leftEdgeXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-            anchor.getDirection().isUp(), LineThickness.STEM_SS, anchorColumn.getNoteheadWidthSs());
+            anchor.getDirection().isUp(), StemMetrics.THICKNESS_SS, anchorColumn.getNoteheadWidthSs());
         var rightEdgeXSs = Tuplet.bracketRightEdgeXSs(
             anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
 
         // The reserved box top is sloped, so it has to be evaluated at an X rather than read off
         // the layout: dySs is its rise over the anchor-to-end run, measured from the anchor X.
-        // widthSs is always positive (Tuplet.getSpanWidthSs floors it at one staff space).
+        // widthSs is always positive: Tuplet.getSpanWidthSs floors it at Tuplet.MIN_SPAN_WIDTH_SS.
         var slope = layout.dySs() / layout.widthSs();
         DoubleUnaryOperator boxTopYAtSs = xSs -> layout.ySs() + slope * (xSs - anchorXSs);
 
@@ -719,11 +720,9 @@ public final class HitRegionBuilder {
      * everything nested between them.
      * <p>
      * That depth — from the outermost beam's outer edge to the deepest sub-beam's inner edge — is
-     * {@link LineThickness#BEAM_THICKNESS_SS} plus this group's {@code thickeningSs}, plus one
-     * {@link LineThickness#beamTranslationSs} step per sub-beam level beyond the first, mirroring
-     * how {@code BeamGroupRenderer.drawBeam} accumulates {@code innerBeamOffsetSs} per recursion
-     * level. The depth extends toward the noteheads: downward when {@code stemsUp}, upward
-     * otherwise.
+     * what {@link BeamMetrics#beamStackHeightSs(int, double)} measures, so this region and the
+     * stack {@code BeamGroupRenderer.drawBeam} actually draws are read off one definition. The
+     * depth extends toward the noteheads: downward when {@code stemsUp}, upward otherwise.
      */
     private static Rectangle2D.Double beamGroupRectSs(
         Line line,
@@ -745,8 +744,7 @@ public final class HitRegionBuilder {
         var outerEndYSs = outerStartYSs + beamLayout.slope() * widthSs;
 
         var levelCount = BeamMath.beamLevel(line, beam.getAnchorElementIndex(), beam.getEndElementIndex()) + 1;
-        var totalDepthSs = LineThickness.BEAM_THICKNESS_SS + beamLayout.thickeningSs()
-            + (levelCount - 1) * LineThickness.beamTranslationSs(beamLayout.thickeningSs());
+        var totalDepthSs = BeamMetrics.beamStackHeightSs(levelCount, beamLayout.thickeningSs());
         var innerOffsetSs = beamLayout.stemsUp() ? totalDepthSs : -totalDepthSs;
 
         // The four corners: each end of the outer edge, and each end of the deepest inner edge.

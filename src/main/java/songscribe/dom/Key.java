@@ -23,7 +23,9 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.List;
 
-import songscribe.engraving.StaffHeaderMetrics;
+import org.jspecify.annotations.Nullable;
+
+import songscribe.engraving.EngravingConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.Copyable;
@@ -213,11 +215,108 @@ public enum Key implements Copyable<Key> {
      * @param leadingGapSs    extra space in front of this accidental, separating it from the group
      *                        to its left; zero for every accidental except the first of a group
      *                        that follows another group
-     * @param advanceSs       how far the pen moves after drawing this accidental, including the
-     *                        kerning a natural needs to clear the accidental to its right
      */
-    public record DrawnAccidental(
-        SMuFLGlyph glyph, int staffPositionSp, double leadingGapSs, double advanceSs) {}
+    public record DrawnAccidental(SMuFLGlyph glyph, int staffPositionSp, double leadingGapSs) {
+
+        /**
+         * Gap from a cancellation (the run of naturals) to the key signature that follows it —
+         * the order LilyPond itself always uses, and the only order this program draws. LilyPond
+         * {@code KeyCancellation} {@code space-alist}: the {@code key-signature} entry, an
+         * {@code extra-space} of {@value}.
+         */
+        public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
+
+        /** Extra space after a natural whose neighbour's vertical extent it overlaps. */
+        private static final double NATURAL_OVERLAP_KERNING_SS = 0.3;
+
+        /** Extra space after a natural that merely touches its neighbour at the corners. */
+        private static final double NATURAL_TOUCHING_KERNING_SS = 0.15;
+
+        // LilyPond models each accidental's silhouette on a grid of half staff positions:
+        // on its right side the glyph runs from its descender to its upper right corner,
+        // and its left side is that same span shifted up.
+        private static final int RIGHT_EDGE_DESCENDER = -6;
+        private static final int RIGHT_EDGE_TOP_CORNER = 3;
+        private static final int LEFT_EDGE_SHIFT = 3;
+
+        /**
+         * Returns how wide an accidental's ink is, which is how far one key signature accidental
+         * carries the pen before the next one starts.
+         * <p>
+         * This is deliberately the ink extent, not the font's designed advance width that
+         * {@link SMuFLMetadata#advanceWidthSs} reports and the rest of the program uses.
+         * LilyPond stacks key signature accidentals ink edge to ink edge; swapping in the
+         * advance width would change the spacing of every key signature.
+         *
+         * @param glyph the accidental glyph
+         * @return the width of the glyph's bounding box, in staff spaces
+         */
+        public static double inkWidthSs(SMuFLGlyph glyph) {
+            return SMuFLMetadata.bboxSs(glyph).widthSs();
+        }
+
+        /**
+         * Returns how far the pen moves after drawing this accidental, given what follows it.
+         * <p>
+         * The answer is this glyph's {@linkplain #inkWidthSs ink width}, plus — in the one case
+         * that needs it — the kerning a natural's vertical right edge needs to clear the left edge
+         * of the accidental beside it.
+         * <p>
+         * Every other case answers the plain ink width, so this is total for any {@code next}:
+         *
+         * <ul>
+         *   <li>this accidental is not a natural — a sharp and a flat have no vertical right edge
+         *       to collide with anything;</li>
+         *   <li>{@code next} is {@code null} — nothing follows, so there is nothing to clear;</li>
+         *   <li>{@code next} has a non-zero {@link #leadingGapSs} — kerning stays within a group,
+         *       because a leading gap means {@code next} opens the following group and already
+         *       stands that far off, so the kerning run ends here.</li>
+         * </ul>
+         *
+         * @param next the accidental drawn immediately to the right of this one, or {@code null}
+         *             when this is the last one drawn
+         * @return the advance in staff spaces, never less than this glyph's ink width
+         */
+        public double advanceSs(@Nullable DrawnAccidental next) {
+            var inkWidthSs = inkWidthSs(glyph);
+
+            if (next == null || glyph != SMuFLGlyph.ACCIDENTAL_NATURAL || next.leadingGapSs != 0) {
+                return inkWidthSs;
+            }
+
+            return inkWidthSs + naturalKerningSs(staffPositionSp, next.staffPositionSp);
+        }
+
+        /**
+         * Returns the extra space LilyPond inserts to the right of a natural so that its
+         * vertical right edge clears the left edge of the accidental beside it.
+         *
+         * @param staffPositionSp     staff position of the natural
+         * @param nextStaffPositionSp staff position of the accidental to its right
+         * @return the extra space in staff spaces, zero when the two extents clear each other
+         */
+        private static double naturalKerningSs(int staffPositionSp, int nextStaffPositionSp) {
+            // SongScribe staff positions grow downward, LilyPond's grow upward.
+            var upwardSp = -staffPositionSp;
+            var nextUpwardSp = -nextStaffPositionSp;
+
+            var rightEdgeBottom = 2 * upwardSp + RIGHT_EDGE_DESCENDER;
+            var rightEdgeTop = 2 * upwardSp + RIGHT_EDGE_TOP_CORNER;
+            var nextLeftEdgeBottom = 2 * nextUpwardSp + RIGHT_EDGE_DESCENDER + LEFT_EDGE_SHIFT;
+            var nextLeftEdgeTop = 2 * nextUpwardSp + RIGHT_EDGE_TOP_CORNER + LEFT_EDGE_SHIFT;
+
+            var overlapBottom = Math.max(rightEdgeBottom, nextLeftEdgeBottom);
+            var overlapTop = Math.min(rightEdgeTop, nextLeftEdgeTop);
+
+            if (overlapTop < overlapBottom) {
+                return 0;
+            }
+
+            return overlapTop > overlapBottom
+                ? NATURAL_OVERLAP_KERNING_SS
+                : NATURAL_TOUCHING_KERNING_SS;
+        }
+    }
 
     /**
      * Returns the accidentals to draw for a change from {@code sourceKey} into this key, left to
@@ -241,7 +340,7 @@ public enum Key implements Copyable<Key> {
      * <p>Cancellation naturals always come first, so a caller may rely on the result being a
      * (possibly empty) run of naturals followed by a (possibly empty) run of sharps or flats.
      * There is no case in which a cancellation follows the key it cancels, which is why only
-     * {@link StaffHeaderMetrics#CANCELLATION_TO_KEY_GAP_SS} ever separates the two groups, and it
+     * {@link DrawnAccidental#CANCELLATION_TO_KEY_GAP_SS} ever separates the two groups, and it
      * is what lets the MusicXML writer decide whether a {@code <cancel>} is owed by asking whether
      * the list opens with a natural.
      *
@@ -266,7 +365,7 @@ public enum Key implements Copyable<Key> {
             accidentals.addAll(groupOf(this, accidentalGlyph(), accidentals.size()));
         }
 
-        return withAdvances(accidentals);
+        return List.copyOf(accidentals);
     }
 
     /**
@@ -284,17 +383,21 @@ public enum Key implements Copyable<Key> {
     /**
      * Returns how wide the drawn change from {@code sourceKey} into this key is: the sum of every
      * accidental's advance and leading gap. It excludes
-     * {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}, which is the caller's to add.
+     * {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}, which is the caller's to add.
      *
      * @param sourceKey the key in effect before the change
      * @return the laid-out width in staff spaces; zero when {@code sourceKey} is this key, and
      *         never negative
      */
     public double widthSsFrom(Key sourceKey) {
+        var accidentals = accidentalsFrom(sourceKey);
         var widthSs = 0.0;
 
-        for (var accidental : accidentalsFrom(sourceKey)) {
-            widthSs += accidental.leadingGapSs() + accidental.advanceSs();
+        for (var i = 0; i < accidentals.size(); i++) {
+            var accidental = accidentals.get(i);
+            var next = i + 1 < accidentals.size() ? accidentals.get(i + 1) : null;
+
+            widthSs += accidental.leadingGapSs() + accidental.advanceSs(next);
         }
 
         return widthSs;
@@ -348,50 +451,16 @@ public enum Key implements Copyable<Key> {
      * <p>{@code precedingCount} is how many accidentals already stand to the left. Only the first
      * accidental of a group that follows another group is pushed away; within a group the glyphs
      * nest with no gap.
-     *
-     * <p>Advances are left at zero here and filled in by {@link #withAdvances}, because a natural's
-     * advance depends on the accidental after it, which the following group has not appended yet.
      */
     private static List<DrawnAccidental> groupOf(Key key, SMuFLGlyph glyph, int precedingCount) {
         var staffPositions = key.isFlatKey() ? FLAT_STAFF_POSITIONS : SHARP_STAFF_POSITIONS;
-        var groupGapSs = precedingCount == 0 ? 0 : StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS;
+        var groupGapSs = precedingCount == 0 ? 0 : DrawnAccidental.CANCELLATION_TO_KEY_GAP_SS;
         var group = new ArrayList<DrawnAccidental>(key.accidentalCount);
 
         for (var i = 0; i < key.accidentalCount; i++) {
-            group.add(new DrawnAccidental(glyph, staffPositions[i], i == 0 ? groupGapSs : 0, 0));
+            group.add(new DrawnAccidental(glyph, staffPositions[i], i == 0 ? groupGapSs : 0));
         }
 
         return group;
-    }
-
-    /**
-     * Returns {@code accidentals} with each entry's advance resolved against the entry that
-     * follows it.
-     *
-     * <p>Kerning stays within a group: LilyPond computes it per key signature object, and the gap
-     * separating two groups already holds them apart, so a non-zero leading gap on the following
-     * accidental ends the run.
-     */
-    private static List<DrawnAccidental> withAdvances(List<DrawnAccidental> accidentals) {
-        var resolved = new ArrayList<DrawnAccidental>(accidentals.size());
-
-        for (var i = 0; i < accidentals.size(); i++) {
-            var accidental = accidentals.get(i);
-            var next = i + 1 < accidentals.size() ? accidentals.get(i + 1) : null;
-            var advanceSs = StaffHeaderMetrics.accidentalInkBboxSs(accidental.glyph());
-
-            if (next != null
-                && accidental.glyph() == SMuFLGlyph.ACCIDENTAL_NATURAL
-                && next.leadingGapSs() == 0) {
-
-                advanceSs += StaffHeaderMetrics.naturalKerningSs(
-                    accidental.staffPositionSp(), next.staffPositionSp());
-            }
-
-            resolved.add(new DrawnAccidental(
-                accidental.glyph(), accidental.staffPositionSp(), accidental.leadingGapSs(), advanceSs));
-        }
-
-        return List.copyOf(resolved);
     }
 }

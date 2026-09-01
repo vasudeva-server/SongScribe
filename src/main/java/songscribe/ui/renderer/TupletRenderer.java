@@ -23,9 +23,9 @@ package songscribe.ui.renderer;
 import java.awt.Graphics2D;
 import java.util.function.DoubleUnaryOperator;
 
-import songscribe.dom.Line;
 import songscribe.dom.Tuplet;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
+import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.shape.TupletBracketShape;
@@ -53,6 +53,12 @@ public final class TupletRenderer {
     /** Rightward italic correction for tuplet number gap (LilyPond: +0.1ss) */
     private static final double TUPLET_GAP_ITALIC_CORRECTION_SS = 0.1;  // 0.8px
 
+    /** The tuplet bracket stroke width as a multiple of the LilyPond base thickness. */
+    private static final double TUPLET_BRACKET_MULTIPLIER = 1.61;
+
+    private static final double TUPLET_BRACKET_SS =
+        EngravingConstants.LILYPOND_BASE_THICKNESS_SS * TUPLET_BRACKET_MULTIPLIER;
+
     // Singleton instance
     private static final TupletRenderer INSTANCE = new TupletRenderer();
 
@@ -79,10 +85,10 @@ public final class TupletRenderer {
      */
     public void renderTupletsFromLine(
         Graphics2D g2,
-        Line line,
         LineInvariants invariants,
         ElementFrame frame
     ) {
+        var line = invariants.requireCurrentLine();
         var layoutResult = invariants.getLayoutResult();
 
         for (var tuplet : line.findSpans(Tuplet.class)) {
@@ -107,7 +113,7 @@ public final class TupletRenderer {
             var anchorType = anchorNote.getType();
             var isUpper = anchorNote.getDirection().isUp();
             var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorType.isNoteWithStem(),
-                isUpper, LineThickness.STEM_SS, anchorType.getElementWidthSs());
+                isUpper, StemMetrics.THICKNESS_SS, anchorType.getElementWidthSs());
             var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
 
@@ -177,7 +183,7 @@ public final class TupletRenderer {
             ? centerXSs
             : centerXSs + TUPLET_GAP_ITALIC_CORRECTION_SS / 2.0;
 
-        var thicknessSs = LineThickness.TUPLET_BRACKET_SS;
+        var thicknessSs = TUPLET_BRACKET_SS;
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
             // A tuplet spans notes rather than hanging off one, so it has no owner whose color it

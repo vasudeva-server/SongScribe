@@ -27,7 +27,7 @@ import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.layout.CautionaryKeySignature;
 import songscribe.util.GraphicsState;
 
@@ -173,11 +173,12 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
 
             for (var i = 0; i < accidentals.size(); i++) {
                 var accidental = accidentals.get(i);
-                var y = middleLineYSs + Staff.spToSs(accidental.staffPositionSp());
+                var y = middleLineYSs + StaffPosition.toSs(accidental.staffPositionSp());
+                var next = i + 1 < accidentals.size() ? accidentals.get(i + 1) : null;
 
                 penXSs += accidental.leadingGapSs();
                 g2.drawString(accidental.glyph().asString(), (float) penXSs, (float) y);
-                penXSs += accidental.advanceSs();
+                penXSs += accidental.advanceSs(next);
             }
         }
     }

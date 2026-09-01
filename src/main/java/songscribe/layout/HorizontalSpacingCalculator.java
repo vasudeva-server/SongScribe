@@ -36,8 +36,10 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.LogUtils;
 
 /**
@@ -144,7 +146,7 @@ public final class HorizontalSpacingCalculator {
     public static double calculateFirstElementXSs(Key key) {
         if (key.signatureWidthSs() == 0) {
             return LayoutEngine.CLEF_X_POSITION_SS
-                + Math.max(SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
+                + Math.max(SMuFLMetadata.advanceWidthSs(SMuFLGlyph.G_CLEF), StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
         }
 
         return calculateHeaderRightEdgeSs(key)
@@ -158,7 +160,7 @@ public final class HorizontalSpacingCalculator {
      */
     public static double calculateKeySignatureXSs() {
         return LayoutEngine.CLEF_X_POSITION_SS
-            + SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS
+            + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.G_CLEF)
             + StaffHeaderMetrics.CLEF_GAP_SS;
     }
 
@@ -189,7 +191,7 @@ public final class HorizontalSpacingCalculator {
         var keySignatureWidthSs = key.signatureWidthSs();
 
         if (keySignatureWidthSs == 0) {
-            return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_ADVANCE_WIDTH_SS;
+            return LayoutEngine.CLEF_X_POSITION_SS + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.G_CLEF);
         }
 
         return calculateKeySignatureXSs() + keySignatureWidthSs;
@@ -325,7 +327,7 @@ public final class HorizontalSpacingCalculator {
         double restSs(double lineRestSs) {
             return switch (this) {
                 case GRACE_TO_HOST -> GRACE_HOST_REST_SS;
-                case BARLINE_TO_KEY_SIGNATURE -> StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+                case BARLINE_TO_KEY_SIGNATURE -> EngravingConstants.KEY_SIGNATURE_PADDING_SS;
                 case TIGHT_BEAM -> BEAM_GROUP_INTERNAL_REST_FACTOR * lineRestSs;
                 case NORMAL -> lineRestSs;
             };
@@ -338,7 +340,7 @@ public final class HorizontalSpacingCalculator {
          */
         double minimumInkGapSs() {
             return switch (this) {
-                case BARLINE_TO_KEY_SIGNATURE -> StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+                case BARLINE_TO_KEY_SIGNATURE -> EngravingConstants.KEY_SIGNATURE_PADDING_SS;
                 case GRACE_TO_HOST, TIGHT_BEAM, NORMAL -> MIN_COLUMN_GAP_SS;
             };
         }

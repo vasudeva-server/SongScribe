@@ -11,9 +11,9 @@ import songscribe.dom.AccidentalBounds;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.engraving.Staff;
+import songscribe.engraving.LedgerLine;
+import songscribe.engraving.StaffPosition;
+import songscribe.engraving.StemMetrics;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.BBox;
 import songscribe.smufl.Anchor;
@@ -34,9 +34,6 @@ public final class NoteGeometry {
     // Stem Constants
     // ==========================================================================
 
-    /** Stem width in staff-space units (LilyPond multiplier-derived). */
-    public static final double STEM_WIDTH_SS = LineThickness.STEM_SS;
-
     /**
      * Shortening applied per diatonic step of distance from the middle line to a stem forced into its
      * unnatural direction. LilyPond's {@code shortening_step} of 0.3333 half-spaces, halved to ss
@@ -55,7 +52,7 @@ public final class NoteGeometry {
      * {@link #MAX_FORCED_SHORTEN_SS}, so a forced stem never falls below this; kept as a named
      * constant for defensive flooring at the renderer.
      */
-    public static final double FORCED_STEM_FLOOR_SS = SMuFLConstants.STEM_LENGTH_SS - MAX_FORCED_SHORTEN_SS;
+    public static final double FORCED_STEM_FLOOR_SS = StemMetrics.STEM_LENGTH_SS - MAX_FORCED_SHORTEN_SS;
 
     // ==========================================================================
     // Font Constants
@@ -110,7 +107,7 @@ public final class NoteGeometry {
 
     // Center-to-center spacing between consecutive augmentation dots (in ss): one dot glyph
     // plus a one-dot-width gap, following LilyPond's stack-by-one-dot-width convention.
-    public static final double DOT_SPACING_SS = SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS * 2;
+    public static final double DOT_SPACING_SS = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT) * 2;
 
     /**
      * Returns the X position (in ss, from the note glyph origin) of the first augmentation dot,
@@ -129,7 +126,7 @@ public final class NoteGeometry {
             }
         }
 
-        return obstructionRightSs + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
+        return obstructionRightSs + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
     }
 
     /**
@@ -148,7 +145,7 @@ public final class NoteGeometry {
         var noteType = note.getType();
 
         // Dots shift up when note is on a line (even staff position)
-        var yOffset = StaffElement.isLinePosition(note.getStaffPosition()) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
+        var yOffset = StaffPosition.isOnLine(note.getStaffPosition()) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
         var dotX = firstDotXSs(noteType, beamed, direction);
 
@@ -235,8 +232,8 @@ public final class NoteGeometry {
      */
     public static double stemLengthSs(ElementType noteType) {
         return noteType.isGraceNote()
-            ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS
-            : SMuFLConstants.STEM_LENGTH_SS;
+            ? StemMetrics.GRACE_NOTE_STEM_LENGTH_SS
+            : StemMetrics.STEM_LENGTH_SS;
     }
 
     /**
@@ -256,7 +253,7 @@ public final class NoteGeometry {
         // Stem left edge: the anchor marks the stem's RIGHT edge for up-stems (back off a full
         // stem width) and its LEFT edge for down-stems (use the anchor directly). Both leave the
         // stem's outer edge flush with the notehead's outer edge, overlapping inward by its width.
-        var stemLeftXSs = direction.isUp() ? anchorXSs - STEM_WIDTH_SS : anchorXSs;
+        var stemLeftXSs = direction.isUp() ? anchorXSs - StemMetrics.THICKNESS_SS : anchorXSs;
 
         return new StemGeometry(stemLeftXSs, anchor.ySs(), stemLengthSs(noteType));
     }
@@ -540,7 +537,7 @@ public final class NoteGeometry {
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + Staff.spToSs(staffPosition);
+        return middleLineYSs + StaffPosition.toSs(staffPosition);
     }
 
     /**
@@ -548,9 +545,6 @@ public final class NoteGeometry {
      * (X right-positive). {@code leftSs} and {@code rightSs} are the line's left and right edges.
      */
     public record LedgerExtentSs(double leftSs, double rightSs) {}
-
-    /** Outermost staff-line position (top/bottom line); |position| beyond this needs ledger lines. */
-    private static final int OUTERMOST_STAFF_LINE_POSITION = 5;
 
     /**
      * Per-note ledger-line geometry: the y-invariant base extent plus the data needed to shorten any
@@ -562,9 +556,13 @@ public final class NoteGeometry {
      * from {@code ledgerLeft} to {@code ledgerRight}, overhanging the notehead by the ledger factor
      * times the head width ({@code headRight - headLeft}) on each side. Where an accidental spans
      * the ledger's y, {@link #extentAtSs} pulls {@code ledgerLeft} in to the clamp midpoint
-     * {@code (accRight + headLeft) / 2}, which always lands right of {@code ledgerLeft}.
+     * {@code (accRight + headLeft) / 2}, but only where that midpoint lies right of {@code ledgerLeft}
+     * — otherwise the base extent's left edge stands.
      *
      * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
+     *
+     * @param closestAccidentalSs bounds of the note's nearest accidental close enough to shorten a
+     *     ledger line for, or {@code null} when the note has none
      */
     public record LedgerLineGeometry(
         LedgerExtentSs baseExtentSs,
@@ -575,8 +573,8 @@ public final class NoteGeometry {
          * Extent of the ledger line at note-relative {@code yOffsetSs} (Y down-positive, note-center
          * origin, matching {@link NoteGeometry#getAccidentalBoundsSs}). Where the nearest accidental
          * spans this ledger's Y, pulls the left edge in to the midpoint between the accidental's right
-         * edge and the notehead's left edge (LilyPond's per-head accidental shortening); otherwise
-         * returns the base extent unchanged.
+         * edge and the notehead's left edge (LilyPond's per-head accidental shortening) — but only where
+         * that midpoint would extend the extent inward; otherwise returns the base extent unchanged.
          */
         public LedgerExtentSs extentAtSs(double yOffsetSs) {
             // closestAccidentalSs and yOffsetSs share the note-center, Y-down origin, so the closed
@@ -596,12 +594,14 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns whether a note requires ledger lines: notes within the staff
-     * (|staffPosition| ≤ {@value #OUTERMOST_STAFF_LINE_POSITION}) or whose type does not draw staff
-     * longitude get no ledger lines.
+     * Returns whether a note is drawn with ledger lines: one the staff reaches, or one
+     * whose type draws no staff longitude at all, gets none.
+     *
+     * @return {@code true} when the note's staff position lies beyond what the staff reaches
+     *     and its type draws staff longitude
      */
     public static boolean noteNeedsLedgerLines(StaffElement note) {
-        return Math.abs(note.getStaffPosition()) > OUTERMOST_STAFF_LINE_POSITION
+        return StaffPosition.needsLedgerLines(note.getStaffPosition())
             && note.getType().drawStaveLongitude();
     }
 
@@ -611,11 +611,13 @@ public final class NoteGeometry {
      * note and reuse it across the note's ledger lines.
      *
      * <p>Each side of the base extent runs beyond the notehead bbox by
-     * {@link SMuFLConstants#LEDGER_LINE_LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
+     * {@link LedgerLine#LENGTH_FRACTION} × notehead width (LilyPond's proportional rule).
      *
      * <p>Every note type passing {@link #noteNeedsLedgerLines} has a notehead, and
      * {@code bbox.left()} is {@code 0.0} for all noteheads, so no fallback or left-edge constant
      * is needed.
+     *
+     * @return the note's base ledger extent plus its closest-accidental shortening data
      */
     public static LedgerLineGeometry getLedgerLineGeometry(StaffElement note) {
         var noteType = note.getType();
@@ -625,7 +627,7 @@ public final class NoteGeometry {
         var headLeftSs = offsetSs + bbox.leftSs();
         var headRightSs = offsetSs + bbox.rightSs();
         var widthSs = headRightSs - headLeftSs;
-        var extensionSs = SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION * widthSs;
+        var extensionSs = LedgerLine.LENGTH_FRACTION * widthSs;
         var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
 
         return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalGlyphBoundsSs(note), headLeftSs);
@@ -699,7 +701,7 @@ public final class NoteGeometry {
      * on where the grace flag sits.
      */
     public static double getGraceFlagOriginXSs(double stemLeftXSs) {
-        return stemLeftXSs + STEM_WIDTH_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
+        return stemLeftXSs + StemMetrics.THICKNESS_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
     }
 
     /**

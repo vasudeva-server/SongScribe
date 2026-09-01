@@ -56,10 +56,12 @@ pass on row 3 writes `plans/design-pass-3/findings-1-2.md`, then
 
 **Steps 1 and 2 share one document**, because the inventory is what the
 class-design argument is made from and neither is reviewable without the other.
-Steps 3, 4, 5, 6, 7, 9 and 12 each have their own.
+Steps 3, 4, 5, 6, 7, 9 and 13 each have their own.
 
-**Steps 8, 10 and 11 have no gate.** They run something and report what it says;
-there is nothing in them for a reviewer to decide.
+**Steps 8, 10, 11 and 12 have no findings document.** Steps 8, 10 and 11 run
+something and report what it says; there is nothing in them for a reviewer to
+decide. Step 12 is itself a review, and its marks come back on the code rather
+than on a document.
 
 **A findings document covers its own step's axis and nothing else.** Step 3 asks
 what types can carry; step 5 asks what fan-in earns a contract; step 6 asks what
@@ -103,7 +105,7 @@ Then:
 - **Then execute the step**, and snapshot.
 
 The findings documents are working memory on the same terms as the record, and
-step 12 deletes them with it.
+step 13 deletes them with it.
 
 ### Doctrine — read before step 2, do not paraphrase
 
@@ -164,7 +166,7 @@ names a whole package, each list is that one directory.
 
 A row marked *(undecomposed)* is a directory nobody has read yet. **Split it on
 the read**, never before: step 1 names the systems the directory actually holds,
-you take one of them, and step 12 rewrites the register's single row into those
+you take one of them, and step 13 rewrites the register's single row into those
 systems. Splitting from a directory listing predicts boundaries instead of
 finding them, which is the error the register exists to avoid.
 
@@ -561,7 +563,40 @@ Re-run the unit suite. **Snapshot.**
 investigating. Under contract testing a **high surviving-mutant count is the
 expected, healthy state**. **Never report the percentage.**
 
-## Step 12: Close out
+## Step 12: Adversarial review
+
+**The pass cannot review itself.** Every step above was decided, executed and
+re-read by the same reader, so a fault that survived the writing survives the
+reading. This step hands the whole tree to a reviewer that did not write it, and
+it is the last thing that happens while the record and the findings documents
+still exist to explain what the pass believed.
+
+**The user runs the review. Ask, and wait.** What review, and how, is theirs;
+the pass does not choose it and does not stand in for it — a review you perform
+yourself is the same reader again, which is the thing this step exists to get
+past. State that the pass is at its adversarial review, name what changed and
+which packages the change reaches, and stop there. Waiting is the whole step;
+nothing else in the tree moves while it runs.
+
+**Every finding gets an answer, and the answer lands here.** A finding against
+the pass's own work is fixed in this step, while the reason for the design is
+still in hand — never carried forward to the register, never left for close out,
+never recorded as something a later pass owns. A finding you judge wrong is
+answered with why, and the user settles it; you do not dismiss one on your own
+reading, which is the reading the review exists to check. A finding that lands
+outside the target is still a finding, on the terms in *Things that stay true
+throughout*.
+
+**Snapshot after the fixes, and ask for the review again.** A round that changed
+code has not been reviewed. Rounds are cheap against a pass that has just
+restructured a subsystem.
+
+**The step is complete only when the user says the review passed.** Not when the
+findings are fixed, not when you believe they are — when they say so. Until then
+step 13 does not begin: it deletes the record and every findings document, and a
+review still open is work those documents are the memory of.
+
+## Step 13: Close out
 
 **Harvest, and delete the record** — `plans/design-pass-register.md` states
 why under *The record is working memory*. Two things leave the record first:
@@ -577,7 +612,7 @@ why under *The record is working memory*. Two things leave the record first:
    rather than promised to a later one.
 
 Both, plus any row rewrite a split forces, go into
-`plans/design-pass-<pass>/findings-12.md` first. **Then the review gate: open,
+`plans/design-pass-<pass>/findings-13.md` first. **Then the review gate: open,
 review, resolve.** Deletion is the one step nothing recovers from, and a
 carry-forward item is written for a reader who will never be able to ask what it
 meant.
@@ -649,7 +684,7 @@ is not yours to decide.
   other — a plan that re-argues a decision drifts from the record, and a record
   that tracks progress drifts from the plan.
 
-  **The plan is deleted with the record at step 12.** It is working memory on the
+  **The plan is deleted with the record at step 13.** It is working memory on the
   same terms, and `plans/design-pass-register.md` states why under *The record is
   working memory*.
 
@@ -678,7 +713,8 @@ Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
 | 9 Diagrams | ⏳ | ⏳ | — | |
 | 10 Coverage | ⏳ | n/a | — | |
 | 11 Mutation | ⏳ | n/a | — | opportunistic |
-| 12 Close out | ⏳ | ⏳ | — | |
+| 12 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
+| 13 Close out | ⏳ | ⏳ | — | |
 
 *Gate* is the state of the step's findings document: ⏳ not written · 📖 open for
 review · ✅ resolved. A step whose *Gate* is not ✅ has made no code change, so a
@@ -698,5 +734,5 @@ to be. Deleted from the register when claimed.
 Anything surfaced that was not this target's to fix, and anything a step turned
 up that belongs to a later step's axis — the latter is picked up by that step's
 findings document rather than argued where it was found. Harvested to the
-register at step 12, before this file is deleted.
+register at step 13, before this file is deleted.
 ```

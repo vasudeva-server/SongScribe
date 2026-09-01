@@ -31,7 +31,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
@@ -591,10 +591,12 @@ public final class PreviewElementManager {
 
         currentMouseXSs = mouseXSs;
 
-        // Calculate Y position from mouse (in staff-space coordinates)
-        var staffPosition = calculateStaffPositionFromMouse(mouseYSs, lc.getMiddleLineYSs());
+        // Distance of the mouse from the middle staff line, the form the pitch grid is
+        // addressed in.
+        var mouseOffsetSs = mouseYSs - lc.getMiddleLineYSs();
+        var resolvedPosition = StaffPosition.atSs(mouseOffsetSs);
 
-        if (!isValidStaffPosition(staffPosition)) {
+        if (resolvedPosition == null) {
             // Mouse is outside valid range, clear insertion note if on this line
             if (currentPreviewLine == lc) {
                 clearPreviewElement();
@@ -602,6 +604,8 @@ public final class PreviewElementManager {
 
             return;
         }
+
+        var staffPosition = (int) resolvedPosition;
 
         // Calculate X index and element-head match from mouse using layout result
         var layoutResult = lc.getLayoutResult();
@@ -869,7 +873,7 @@ public final class PreviewElementManager {
      * gestures both believing the click is theirs.
      * <p>
      * The answer is point-dependent, not merely mode-dependent: {@link #trackMouse} clears the
-     * preview outside {@link Staff#MIN_STAFF_POSITION_SP} .. {@link Staff#MAX_STAFF_POSITION_SP},
+     * preview outside {@link StaffPosition#MIN_SP} .. {@link StaffPosition#MAX_SP},
      * so the same line can answer differently from one click to the next depending on where
      * within it the pointer lands.
      *
@@ -911,17 +915,6 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Calculates the staff position from a mouse Y coordinate.
-     *
-     * @param mouseYSs      Mouse Y coordinate in staff-space units
-     * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
-     * @return Staff position
-     */
-    static int calculateStaffPositionFromMouse(double mouseYSs, double middleLineYSs) {
-        return Staff.ssToSp(mouseYSs - middleLineYSs);
-    }
-
-    /**
      * Sets the staff position on an element: rests snap to their type's default
      * position, pitched notes use the given mouse-derived position.
      */
@@ -931,16 +924,5 @@ public final class PreviewElementManager {
         } else {
             element.setStaffPosition(staffPositionSp);
         }
-    }
-
-    /**
-     * Returns whether the given staff position is within the valid range for elements.
-     *
-     * @param staffPosition Staff position
-     * @return true if the position is valid
-     */
-    static boolean isValidStaffPosition(int staffPosition) {
-        return staffPosition >= Staff.MIN_STAFF_POSITION_SP
-            && staffPosition <= Staff.MAX_STAFF_POSITION_SP;
     }
 }

@@ -33,8 +33,8 @@ import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
-import songscribe.engraving.Staff;
 import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.engraving.StaffPosition;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -434,7 +434,7 @@ public final class ElementColumn {
      * spacing corrections.
      */
     public double getPositionSs() {
-        return Staff.spToSs(element.getStaffPosition());
+        return StaffPosition.toSs(element.getStaffPosition());
     }
 
     /**
@@ -674,8 +674,7 @@ public final class ElementColumn {
 
     /**
      * Resolves a {@link Span} span's anchor and end elements to their columns, or {@code null}
-     * when either endpoint is unset ({@link Span#getAnchorElement} /
-     * {@link Span#getEndElement}) or either has no column in {@code columnsByElement}.
+     * when either endpoint has no column in {@code columnsByElement}.
      * <p>
      * A tie is the one span whose two notes may sit in different lines, and this method cannot
      * tell that apart from an unplaceable span — use {@link #resolveTie} for ties.
@@ -689,10 +688,6 @@ public final class ElementColumn {
         Span span, Map<StaffElement, ElementColumn> columnsByElement) {
         var anchor = span.getAnchorElement();
         var end = span.getEndElement();
-
-        if (anchor == null || end == null) {
-            return null;
-        }
 
         var anchorColumn = columnsByElement.get(anchor);
         var endColumn = columnsByElement.get(end);
@@ -721,7 +716,7 @@ public final class ElementColumn {
      * endpoint that is actually in it — so which side is open comes from asking {@code line}
      * where the far endpoint sits ({@link Line#anchorIndexOf} / {@link Line#endIndexOf}), never
      * from the endpoint's own line. An endpoint that resolves to no direction at all
-     * ({@link SpanBound#ABSENT} — unset, in no line, or in a line the song no longer holds)
+     * ({@link SpanBound#ABSENT} — in no line, or in a line the song no longer holds)
      * yields {@code null}: nothing is drawn rather than an arc running off an edge toward
      * nothing.
      *
@@ -741,10 +736,6 @@ public final class ElementColumn {
 
         var anchor = tie.getAnchorElement();
         var end = tie.getEndElement();
-
-        if (anchor == null || end == null) {
-            return null;
-        }
 
         var anchorColumn = columnsByElement.get(anchor);
 

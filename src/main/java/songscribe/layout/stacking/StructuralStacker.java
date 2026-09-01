@@ -39,7 +39,7 @@ import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Tuplet;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.StemMetrics;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.HairpinEndpoints;
@@ -191,7 +191,7 @@ public class StructuralStacker {
             var endXSs = anchorXSs + widthSs;
             var anchorStemUp = anchor.getDirection().isUp();
             var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-                anchorStemUp, LineThickness.STEM_SS, anchorColumn.getNoteheadWidthSs());
+                anchorStemUp, StemMetrics.THICKNESS_SS, anchorColumn.getNoteheadWidthSs());
             var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
@@ -525,7 +525,7 @@ public class StructuralStacker {
         // or stemless) by the head's outer (left) edge.
         var element = column.getElement();
         var isUpStem = element.getType().isNoteWithStem() && element.getDirection().isUp();
-        return isUpStem ? headRightXSs - LineThickness.STEM_SS : headLeftXSs;
+        return isUpStem ? headRightXSs - StemMetrics.THICKNESS_SS : headLeftXSs;
     }
 
     /**
@@ -759,10 +759,6 @@ public class StructuralStacker {
 
         for (var ending : line.findSpans(Ending.class)) {
             var anchor = ending.getAnchorElement();
-
-            if (anchor == null || ending.getEndElement() == null) {
-                continue;
-            }
 
             // Compute bracket ranges (stored on the Ending for renderer use)
             var brackets = EndingBracketGeometry.computeBracketRanges(

@@ -38,9 +38,11 @@ import songscribe.dom.Line;
 import songscribe.dom.SongTempoMark;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
+import songscribe.engraving.StemMetrics;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn.TieColumns;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -79,10 +81,10 @@ public class LayoutEngine {
     static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
-    // Not the drawn beam thickness (that is LineThickness.BEAM_THICKNESS_SS) — only
+    // Not the drawn beam thickness (that is BeamMetrics.BEAM_THICKNESS_SS) — only
     // the base the raster-thickening factor scales.
     static final double BEAM_DEPTH_SS = 0.4;
-    private static final double MIN_STEM_SS = SMuFLConstants.STEM_LENGTH_SS;
+    private static final double MIN_STEM_SS = StemMetrics.STEM_LENGTH_SS;
 
     /** Decimal format for the staff-space values in this class's beam debug output. */
     private static final String STEM_LOG_FORMAT = "%.3f";
@@ -141,8 +143,6 @@ public class LayoutEngine {
     /** Fixed ink height (bottom of the endpoint stroke cap to the top of the apex stroke) when a tie is heightened over a staff line; staff spaces. */
     static final double TIE_HEIGHTENED_INK_HEIGHT_SS = 0.88;
 
-    /** LilyPond default layout line-thickness (ly/paper-defaults-init.ly), i.e. staff line thickness; staff spaces. */
-    private static final double TIE_LINE_THICKNESS_SS = 0.1;
     /** Tie apex thickness measured in LilyPond, as a multiple of staff line thickness (includes the render stroke). */
     private static final double TIE_APEX_THICKNESS_RATIO = 5.0 / 3.0;
     /** Fraction of its control-point offset a symmetric cubic actually reaches at the apex (t=0.5), per side. */
@@ -156,7 +156,7 @@ public class LayoutEngine {
      * {@link #TIE_APEX_THICKNESS_RATIO} × staff line thickness; staff spaces.
      */
     static final double TIE_MID_THICKNESS_SS =
-        (TIE_APEX_THICKNESS_RATIO * TIE_LINE_THICKNESS_SS - TIE_OUTLINE_THICKNESS_SS)
+        (TIE_APEX_THICKNESS_RATIO * EngravingConstants.LILYPOND_BASE_THICKNESS_SS - TIE_OUTLINE_THICKNESS_SS)
             / (2 * TIE_APEX_CONTROL_REACH);
 
     private final LyricRenderMetrics lyricRenderMetrics;
@@ -646,7 +646,7 @@ public class LayoutEngine {
 
                 stemInputs.add(new BeamScoring.StemInput(
                     column.getXSs() - firstColumnXSs,
-                    -Staff.spToSs(element.getStaffPosition()),
+                    -StaffPosition.toSs(element.getStaffPosition()),
                     -element.getStaffPosition(),
                     BeamMath.beamCount(element)));
 
@@ -685,7 +685,7 @@ public class LayoutEngine {
                 var rightYUpSs = beamPosition.rightYUpSs();
                 var xSpanSs = stemInputs.getLast().xSs();
 
-                startYSs = -leftYUpSs - dirSign * LineThickness.BEAM_THICKNESS_SS / 2.0;
+                startYSs = -leftYUpSs - dirSign * BeamMetrics.BEAM_THICKNESS_SS / 2.0;
 
                 if (xSpanSs != 0.0) {
                     slope = -(rightYUpSs - leftYUpSs) / xSpanSs;
@@ -782,7 +782,7 @@ public class LayoutEngine {
             return null;
         }
 
-        var elementYSs = Staff.spToSs(element.getStaffPosition());
+        var elementYSs = StaffPosition.toSs(element.getStaffPosition());
         var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
         var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
         return new BeamElementGeometry(element, elementYSs, beamYSs, stemLenSs);
@@ -812,9 +812,9 @@ public class LayoutEngine {
             // Stem direction was resolved by the Step 0 pre-pass (resolveStemDirections).
             var direction = element.getDirection();
             var isGraceNote = element.getType().isGraceNote();
-            var elementYSs = Staff.spToSs(element.getStaffPosition());
+            var elementYSs = StaffPosition.toSs(element.getStaffPosition());
             var stemLenSs = isGraceNote
-                ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS
+                ? StemMetrics.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
 
             // Extend the stem tip to reach the staff center (Y=0) when the stem points toward
@@ -1019,7 +1019,7 @@ public class LayoutEngine {
         var dotRowCoincides = anchorColumn != null
             && tieSeatRowHasDot(anchorColumn.getElement(), notePositionSp, arcSignSs);
         var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
-        var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
+        var endpointYSs = StaffPosition.toSs(notePositionSp) + arcSignSs * seatSs;
 
         // Facing edge while the seat stays within the half-space-tall head box; notehead center
         // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
@@ -1053,7 +1053,7 @@ public class LayoutEngine {
         // (`conf->attachment_x_.widen (-details_.x_gap_)`, tie-formatting-problem.cc:580), with no
         // test for whether an end is a notehead or a break column, so the arc stands off the
         // header and the barline by exactly what it stands off a notehead.
-        var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
+        var centerAttach = seatSs > Staff.HALF_SPACE_SS;
         var startXSs = anchorColumn == null
             ? openLimits.startXSs() + NOTE_HEAD_GAP_SS
             : tieEndpointXSs(
@@ -1276,10 +1276,10 @@ public class LayoutEngine {
      */
     static double tieSeatSs(int notePositionSp, int arcSignSs, boolean dotRowCoincides) {
         if (dotRowCoincides) {
-            return Staff.STAFF_POSITION_OFFSET_SS + TIE_DOT_ROW_NUDGE_SS;
+            return Staff.HALF_SPACE_SS + TIE_DOT_ROW_NUDGE_SS;
         }
 
-        if (StaffElement.isLinePosition(notePositionSp)) {
+        if (StaffPosition.isOnLine(notePositionSp)) {
             // Outer staff lines seat outside the staff (centered outside the notehead); inner lines
             // tuck into the adjacent space.
             return isOuterRealStaffLine(notePositionSp)
@@ -1291,10 +1291,10 @@ public class LayoutEngine {
         var edgeRowSp = notePositionSp + arcSignSs;
 
         if (isRealStaffLinePosition(edgeRowSp)) {
-            return Staff.STAFF_POSITION_OFFSET_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
+            return Staff.HALF_SPACE_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
         }
 
-        return Staff.STAFF_POSITION_OFFSET_SS;
+        return Staff.HALF_SPACE_SS;
     }
 
     /**
@@ -1304,8 +1304,8 @@ public class LayoutEngine {
      * @param staffPositionSp a staff position, in half staff-spaces
      */
     private static boolean isRealStaffLinePosition(int staffPositionSp) {
-        return StaffElement.isLinePosition(staffPositionSp)
-            && Math.abs(Staff.spToSs(staffPositionSp)) <= Staff.STAFF_HALF_SS;
+        return StaffPosition.isOnLine(staffPositionSp)
+            && Math.abs(staffPositionSp) <= StaffPosition.OUTERMOST_STAFF_LINE_SP;
     }
 
     /**
@@ -1315,8 +1315,8 @@ public class LayoutEngine {
      * @param staffPositionSp a staff position, in half staff-spaces
      */
     private static boolean isOuterRealStaffLine(int staffPositionSp) {
-        return StaffElement.isLinePosition(staffPositionSp)
-            && Math.abs(Staff.spToSs(staffPositionSp)) == Staff.STAFF_HALF_SS;
+        return StaffPosition.isOnLine(staffPositionSp)
+            && Math.abs(staffPositionSp) == StaffPosition.OUTERMOST_STAFF_LINE_SP;
     }
 
     /**
@@ -1332,13 +1332,13 @@ public class LayoutEngine {
      * @param arcSignSs      +1 when the arc bulges downward, -1 upward
      */
     static boolean tieSeatRowHasDot(StaffElement note, int notePositionSp, int arcSignSs) {
-        if (note.getDotCount() == 0 || !StaffElement.isLinePosition(notePositionSp)) {
+        if (note.getDotCount() == 0 || !StaffPosition.isOnLine(notePositionSp)) {
             return false;
         }
 
         // Dot row = note row displaced up (Y-down); seat row = note row + one half-space in the arc
         // direction (LilyPond position_ += dir). They meet only for an upward arc into the dot's space.
-        var dotRowSp = notePositionSp + Staff.ssToSp(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
+        var dotRowSp = notePositionSp + Staff.ssToHalfSpaces(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
         var seatRowSp = notePositionSp + arcSignSs;
 
         return dotRowSp == seatRowSp;

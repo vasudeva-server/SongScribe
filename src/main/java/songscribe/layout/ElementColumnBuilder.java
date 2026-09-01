@@ -31,7 +31,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -72,7 +71,7 @@ public class ElementColumnBuilder {
      * so a regression back to {@code noteheadBlackSmall} fails a test instead of passing unnoticed.
      */
     public static final double GRACE_NOTE_HEAD_WIDTH_SS =
-        SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS * ElementType.GRACE_NOTE_SCALE;
+        SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs() * ElementType.GRACE_NOTE_SCALE;
 
     // Non-hyphenated syllables reserve more than the bare space glyph, so consecutive words
     // read as clearly separated rather than crowded.

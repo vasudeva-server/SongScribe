@@ -35,6 +35,7 @@ import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
@@ -306,7 +307,8 @@ public class LineComponent extends ScoreComponent
      */
     public int staffPositionToYPx(int staffPositionSp) {
         return getMiddleLineYPx()
-            + (int) Math.round(DocumentScale.ssToPx(Staff.spToSs(staffPositionSp)).value() * getViewScale().factor());
+            + (int) Math.round(
+                DocumentScale.ssToPx(StaffPosition.toSs(staffPositionSp)).value() * getViewScale().factor());
     }
 
     /**

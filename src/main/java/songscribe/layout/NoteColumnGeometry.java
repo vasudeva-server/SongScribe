@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import songscribe.dom.StaffElement;
+import songscribe.engraving.StemMetrics;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
@@ -137,7 +138,7 @@ public final class NoteColumnGeometry {
 
             if (direction.isUp()) {
                 // Stem-up: stem is to the right of the notehead.
-                var stemRightXSs = stemLeftXSs + NoteGeometry.STEM_WIDTH_SS;
+                var stemRightXSs = stemLeftXSs + StemMetrics.THICKNESS_SS;
 
                 if (stemRightXSs > rightSs) {
                     rightSs = stemRightXSs;

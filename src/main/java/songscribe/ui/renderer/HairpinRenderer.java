@@ -30,7 +30,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.shape.HairpinShape;
@@ -50,6 +50,11 @@ public final class HairpinRenderer {
     // ==========================================================================
     // Constants
     // ==========================================================================
+
+    /** The hairpin stroke width as a multiple of the LilyPond base thickness. */
+    private static final double HAIRPIN_MULTIPLIER = 1.0;
+
+    private static final double HAIRPIN_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * HAIRPIN_MULTIPLIER;
 
     // Singleton instance
     private static final HairpinRenderer INSTANCE = new HairpinRenderer();
@@ -117,7 +122,7 @@ public final class HairpinRenderer {
             // overlap at the narrow tip and fill it solidly. GraphicUtils.drawRoundedLine
             // keeps ends within endpoints, which leaves the tip visually unclosed.
             g2.setStroke(new BasicStroke(
-                (float) LineThickness.HAIRPIN_SS,
+                (float) HAIRPIN_SS,
                 BasicStroke.CAP_ROUND,
                 BasicStroke.JOIN_ROUND
             ));
@@ -149,35 +154,4 @@ public final class HairpinRenderer {
         }
     }
 
-    // ==========================================================================
-    // Hit testing
-    // ==========================================================================
-
-    /**
-     * Hit-tests a click point against all hairpins on {@code line}, returning the hairpin
-     * whose wedge-and-margin bounding box contains the point, or {@code null} if none.
-     * <p>
-     * The box needs no extra tolerance band: a hairpin is only
-     * {@link Hairpin#HAIRPIN_OPENING_HEIGHT_SS} tall, so it is already about as
-     * forgiving as a tolerance band would be.
-     * <p>
-     * The box and the overlap rule come from
-     * {@link RenderingUtils#hitTestDecoration}, shared with every other decoration.
-     *
-     * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
-     * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
-     * @param line          The line
-     * @param layoutResult  The line's layout result, or null if layout has not run yet
-     * @param middleLineYSs The line's middle-staff-line Y in component space (staff spaces)
-     */
-    public @Nullable Hairpin hitTestHairpin(
-        double clickXSs,
-        double clickYSs,
-        Line line,
-        @Nullable LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        return RenderingUtils.hitTestDecoration(
-            line.findSpans(Hairpin.class), clickXSs, clickYSs, layoutResult, middleLineYSs);
-    }
 }

@@ -105,18 +105,18 @@ splits again suffixes again: 14b1, 14b2.
 
 ## Register
 
-| # | System | Where | Status | Notes |
-|---|---|---|---|---|
-| 0 | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
-| 1 | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
-| 2 | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
-| 3 | Staff geometry | `engraving` | ⏳ | Depends on `smufl` and units. |
-| 4 | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
-| 5 | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
-| 6 | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements` | ⏳ | Everything except key state, which pass 0 settled. |
-| 7 | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
-| 8 | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
-| 9 | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
+| #  | System | Where | Status | Notes |
+|----|---|---|---|---|
+| 0  | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
+| 1  | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
+| 2  | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
+| 3  | Staff geometry | `engraving` | 🔄 | Depends on `smufl` and units. |
+| 4  | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
+| 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
+| 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements` | ⏳ | Everything except key state, which pass 0 settled. |
+| 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
+| 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
+| 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
 | 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, and the five `*Attachment` types | ⏳ | |
 | 11 | Tempo and beat | `dom`: `Tempo`, `TempoResolver`, `SongTempoMark`, `BeatAt`, `BeatChange` | ⏳ | |
 | 12 | Song | `dom`: `Song`, `SongMetadata`, `Attribution*`, `ModificationSession`, `TerminalMaintainer` | ⏳ | The large model, less key state, which pass 0 settled. Decouple from everything above it as far as it will go. |
@@ -135,9 +135,7 @@ splits again suffixes again: 14b1, 14b2.
 | 25 | Score components | `ui/component`, `ui/component/score`, `ui/component/toolbar` | ⏳ | *(undecomposed)* |
 | 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
 | 27 | MIDI | `midi` | ⏳ | |
-| 28 | Export | `export` | ⏳ | |
-| 29 | Converter | `converter` | ⏳ | Headless; a producer that reaches the model without the UI. |
-| 30 | Leaf utilities | `util`, `error`, `shape`, `font`, `prefs` | ⏳ | Swept as encountered; a pass of their own only if one earns it. |
+| 28  | Leaf utilities | `util`, `error`, `shape`, `font`, `prefs` | ⏳ | Swept as encountered; a pass of their own only if one earns it. |
 
 Legend: ⏳ not started · 🔄 in progress · ✅ complete · ⛔ blocked
 
@@ -148,16 +146,6 @@ speculative belongs here, and nothing that the *current* pass could fix belongs
 here either — a finding inside a pass's own reach is fixed in that pass, while
 the reason for it is still in hand.
 
-- **→ Pass 3.** `StaffHeaderMetrics.accidentalInkBboxSs` is named for a bounding
-  box and returns only its width. The Javadoc now says why the ink extent rather
-  than the advance width is the right measure; the name is what is left wrong.
-- **→ Pass 3.** `BarStroke` is new and owns the width of a thin bar, a thick bar
-  and repeat dots; `SMuFLConstants` lost its four notehead stem-anchor constants
-  and its static block that computed them; `LineThickness` lost
-  `REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS` and `REPEAT_RIGHT_AFTER_THICK_X_SS`.
-  Open: whether `BarStroke` belongs in `engraving` beside the `LineThickness`
-  that defines the widths it carries, or in `dom` beside the `BarAppearance`
-  that sequences it.
 - **→ Pass 18.** What is drawn for a grace note today is an ordinary
   `noteheadBlack` at a reduced font size, not `noteheadBlackSmall` — so
   Bravura's `noteheadBlackSmall` stem anchors do not belong to the glyph the
@@ -187,14 +175,14 @@ the reason for it is still in hand.
   bare `elements.get(index)`, so out of bounds throws by inheritance from the
   field's type rather than by promise, and any caller guarding on `elementCount()`
   is guessing.
-- **→ Pass 30.** `strings.properties` has `dialog.song.settings.year` above
+- **→ Pass 28.** `strings.properties` has `dialog.song.settings.year` above
   `dialog.converter.converting`, breaking the within-group alphabetical order the
   strings guide requires.
 - **→ Pass 23.** `ui/dialog/ResolutionDialog.form` is orphaned: no
   `ResolutionDialog` exists in Java anywhere in `src`, and the 9KB GUI-designer
   file was last touched by `6c849acd`, the pre-2.0 legacy import. Dead through
   the entire rewrite.
-- **→ Pass 30.** `Prefs.resetAll()` has no production caller and is the only
+- **→ Pass 28.** `Prefs.resetAll()` has no production caller and is the only
   producer of `PrefsKey.ALL`; delete both, and the `key == PrefsKey.ALL`
   branches in `BaseDialog.GeometryResetSubscriber.prefsDidChange` and
   `ScoreViewController.prefsDidChange` that exist only to catch it.
@@ -203,7 +191,7 @@ the reason for it is still in hand.
   `putRawStored` are visibility relaxations over a load pipeline welded to
   `Prefs`'s constructor — extract a `PrefsStore`, constructed from a path, that
   the pipeline runs against, so a test can build one directly.
-- **→ Pass 30.** `RecentDocumentsManager.resetForTest`/`reloadForTest` are
+- **→ Pass 28.** `RecentDocumentsManager.resetForTest`/`reloadForTest` are
   deleted — both had zero callers once the test vault was retired. What remains
   is the shaping: `loadFromPrefs`'s logic (stored strings in, existing paths
   out) wants to be a static `readRecents` function, not a constructor step. The

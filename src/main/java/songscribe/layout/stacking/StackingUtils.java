@@ -29,8 +29,9 @@ import songscribe.dom.LineElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.MetronomeContent;
@@ -53,30 +54,24 @@ public final class StackingUtils {
     static final double NOTE_HEAD_RADIUS_SS = NOTE_HEAD_HEIGHT_SS / 2.0;
 
     // Staff position of the top staff line (F5); positions <= this are at or above the staff
-    static final int TOP_STAFF_LINE_POSITION = -4;
+    static final int TOP_STAFF_LINE_POSITION = -StaffPosition.OUTERMOST_STAFF_LINE_SP;
 
     // Y coordinate of the top staff line in the middleLineY=0 coordinate system
-    static final double STAFF_TOP_Y_SS =
-        TOP_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS;
+    static final double STAFF_TOP_Y_SS = StaffPosition.toSs(TOP_STAFF_LINE_POSITION);
 
     // Staff position of the bottom staff line (E4); positions >= this are at or below the staff
-    static final int BOTTOM_STAFF_LINE_POSITION = 4;
+    static final int BOTTOM_STAFF_LINE_POSITION = StaffPosition.OUTERMOST_STAFF_LINE_SP;
 
     // Y coordinate of the bottom staff line in the middleLineY=0 coordinate system
-    static final double STAFF_BOT_Y_SS =
-        BOTTOM_STAFF_LINE_POSITION * Staff.STAFF_POSITION_OFFSET_SS;
-
-    // Half the staff line's ink thickness. The staff clamp pads to the outer edge of the top/bottom
-    // staff line's ink, not to its centerline (STAFF_TOP_Y_SS / STAFF_BOT_Y_SS), because every
-    // script and decoration padding is ink-to-ink: a fermata, a tie arc, and a round notehead are
-    // all bounded by ink, so the staff line — which also has thickness — must be measured to its ink.
-    static final double STAFF_LINE_HALF_THICKNESS_SS = LineThickness.STAFF_LINE_SS / 2.0;
+    static final double STAFF_BOT_Y_SS = StaffPosition.toSs(BOTTOM_STAFF_LINE_POSITION);
 
     // The outer ink edges of the outer staff lines: the top edge of the top line (above the staff)
     // and the bottom edge of the bottom line (below it). These, not the centerlines, are what an
     // element pads against when the staff is its outward clamp.
-    public static final double STAFF_TOP_INK_Y_SS = STAFF_TOP_Y_SS - STAFF_LINE_HALF_THICKNESS_SS;
-    public static final double STAFF_BOT_INK_Y_SS = STAFF_BOT_Y_SS + STAFF_LINE_HALF_THICKNESS_SS;
+    public static final double STAFF_TOP_INK_Y_SS =
+        STAFF_TOP_Y_SS - EngravingConstants.STAFF_LINE_HALF_THICKNESS_SS;
+    public static final double STAFF_BOT_INK_Y_SS =
+        STAFF_BOT_Y_SS + EngravingConstants.STAFF_LINE_HALF_THICKNESS_SS;
 
     // Horizontal collision margin for structural/system elements (collapses between adjacent elements)
     static final double STRUCTURAL_HORIZONTAL_MARGIN_SS = 0.75; // 6px
@@ -100,7 +95,7 @@ public final class StackingUtils {
     // center falls within this band is snapped to a space; beyond it, the dot keeps its raw padded
     // position. In staff-space units, |center| <= this value.
     static final double STACCATO_QUANTIZE_ZONE_SS =
-        Staff.STAFF_HALF_SS + Staff.STAFF_POSITION_OFFSET_SS;
+        Staff.STAFF_HALF_SS + Staff.HALF_SPACE_SS;
 
     private StackingUtils() {
     }
@@ -146,7 +141,7 @@ public final class StackingUtils {
             return STAFF_TOP_Y_SS;
         }
 
-        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = StaffPosition.toSs(staffPosition);
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
@@ -180,7 +175,7 @@ public final class StackingUtils {
             return STAFF_BOT_Y_SS;
         }
 
-        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
+        var noteHeadYSs = StaffPosition.toSs(staffPosition);
         return noteHeadYSs + NOTE_HEAD_RADIUS_SS;
     }
 
@@ -198,8 +193,8 @@ public final class StackingUtils {
             return anchorCeilingSs(staffPosition);
         }
 
-        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
-        var distanceSs = StaffElement.isLinePosition(staffPosition)
+        var noteHeadYSs = StaffPosition.toSs(staffPosition);
+        var distanceSs = StaffPosition.isOnLine(staffPosition)
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
@@ -216,8 +211,8 @@ public final class StackingUtils {
             return anchorFloorSs(staffPosition);
         }
 
-        var noteHeadYSs = staffPosition * Staff.STAFF_POSITION_OFFSET_SS;
-        var distanceSs = StaffElement.isLinePosition(staffPosition)
+        var noteHeadYSs = StaffPosition.toSs(staffPosition);
+        var distanceSs = StaffPosition.isOnLine(staffPosition)
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
@@ -590,7 +585,7 @@ public final class StackingUtils {
         }
 
         var above = direction.isUp();
-        var position = centerYSs / Staff.STAFF_POSITION_OFFSET_SS;
+        var position = centerYSs / Staff.HALF_SPACE_SS;
         // Round outward to the nearest integer staff position (above = toward smaller Y).
         var rounded = above ? Math.floor(position) : Math.ceil(position);
 
@@ -599,7 +594,7 @@ public final class StackingUtils {
             rounded += above ? -1 : 1;
         }
 
-        return rounded * Staff.STAFF_POSITION_OFFSET_SS;
+        return StaffPosition.toSs((int) rounded);
     }
 
     /**

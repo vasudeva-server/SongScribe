@@ -443,24 +443,6 @@ public abstract sealed class Hairpin extends Span
     }
 
     /**
-     * Returns the horizontal span width for collision detection. The span runs past the end
-     * element's head, so it is measured with that element's own width
-     * ({@link #getEndElementWidthSs()}).
-     * <p>
-     * No longer used to place a hairpin — {@code HairpinEndpoints} resolves both tips from the
-     * neighbouring columns instead — but {@link Span#getSpanWidthSs} is abstract, so every span
-     * must answer it.
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return span width in staff-space units
-     */
-    @Override
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + getEndElementWidthSs());
-    }
-
-    /**
      * Which of the two hairpins a crescendo or diminuendo is — a plain two-value tag
      * rather than a {@code Class} token, since a hairpin is always constructed
      * directly ({@code new Crescendo}/{@code new Diminuendo}), never reflectively.

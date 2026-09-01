@@ -118,12 +118,15 @@ public class Trill extends Span {
     }
 
     /**
-     * Returns the full horizontal span of the trill in staff-space units,
-     * from the anchor note X to the end note right edge.
-     * <p>
-     * Used for reserving horizontal space in StaffExtents.
+     * Returns the full horizontal span the trill's wavy line occupies, in staff spaces: from the
+     * anchor note's X to one glyph width past the end note's, since the line is drawn in whole
+     * glyphs and the last one starts at the end note rather than finishing there.
+     *
+     * @param anchorXSs X position of the anchor element in staff-space units
+     * @param endXSs    X position of the end element in staff-space units
+     * @return the span width in staff spaces, never less than one {@link #TRILL_GLYPH_WIDTH_SS}
+     *     however close the two elements sit
      */
-    @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(TRILL_GLYPH_WIDTH_SS, endXSs - anchorXSs + TRILL_GLYPH_WIDTH_SS);
     }

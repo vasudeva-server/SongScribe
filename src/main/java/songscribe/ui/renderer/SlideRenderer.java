@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
@@ -71,6 +71,11 @@ public final class SlideRenderer {
     /** No displacement: the note sits where the layout put it. */
     private static final double NO_SHIFT_SS = 0.0;
 
+    /** The glissando stroke width as a multiple of the LilyPond base thickness. */
+    private static final double GLISSANDO_MULTIPLIER = 1.75;
+
+    private static final double GLISSANDO_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * GLISSANDO_MULTIPLIER;
+
     // ==========================================================================
     // Singleton
     // ==========================================================================
@@ -94,17 +99,17 @@ public final class SlideRenderer {
     /**
      * Renders slides for all notes in a line.
      *
-     * @param g2    Graphics context
-     * @param line  The line containing notes
-     * @param invariants   Line invariants
-     * @param frame Element frame (line-level)
+     * @param g2          Graphics context
+     * @param invariants  Line invariants
+     * @param frame       Element frame (line-level)
      */
     public void renderSlidesFromLine(
         Graphics2D g2,
-        Line line,
         LineInvariants invariants,
         ElementFrame frame
     ) {
+        var line = invariants.requireCurrentLine();
+
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             var note = line.getElement(i);
 
@@ -216,15 +221,15 @@ public final class SlideRenderer {
      *
      * @param g2          Graphics context (staff-space coordinate system)
      * @param sourceIndex Index of the source note in the line
-     * @param line        The line containing the notes
-     * @param invariants         Line invariants
+     * @param invariants  Line invariants
      */
     public void renderPreviewGlissando(
         Graphics2D g2,
         int sourceIndex,
-        Line line,
         LineInvariants invariants
     ) {
+        var line = invariants.requireCurrentLine();
+
         if (!line.hasIndex(sourceIndex)) {
             return;
         }
@@ -427,7 +432,7 @@ public final class SlideRenderer {
                 RenderingUtils.layoutYToComponentYSs(endpoints.startYSs(), middleLineYSs),
                 endpoints.endXSs(),
                 RenderingUtils.layoutYToComponentYSs(endpoints.endYSs(), middleLineYSs),
-                LineThickness.GLISSANDO_SS);
+                GLISSANDO_SS);
         }
     }
 

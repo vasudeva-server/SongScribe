@@ -32,11 +32,10 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
-import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.CautionaryKeySignature;
@@ -44,7 +43,6 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.renderer.AnnotationRenderer;
@@ -223,7 +221,7 @@ class LineRenderer {
 
             var lineWidth = invariants.getSong().getLineWidthSs().value();
             var middleLineYSs = invariants.getMiddleLineYSs();
-            var staffLineThicknessSs = LineThickness.STAFF_LINE_SS;
+            var staffLineThicknessSs = EngravingConstants.STAFF_LINE_THICKNESS_SS;
 
             // Staff has 5 lines, middle line (B) is at index 2.
             // Lines are at: middleLineYSs - 2, middleLineYSs - 1, middleLineYSs,
@@ -372,9 +370,8 @@ class LineRenderer {
      * @param frame Element frame
      */
     private void renderSlides(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var line = invariants.requireCurrentLine();
-        SlideRenderer.getInstance().renderSlidesFromLine(g2, line, invariants, frame);
-        renderPendingConnectGlissando(g2, line, invariants);
+        SlideRenderer.getInstance().renderSlidesFromLine(g2, invariants, frame);
+        renderPendingConnectGlissando(g2, invariants);
     }
 
     /**
@@ -382,11 +379,13 @@ class LineRenderer {
      * connection is render-only state — mutating the grace note's slide during the drag would
      * leak an untracked change into undo's before-state clones.
      */
-    private void renderPendingConnectGlissando(Graphics2D g2, Line line, LineInvariants invariants) {
+    private void renderPendingConnectGlissando(Graphics2D g2, LineInvariants invariants) {
         // Common case: no grace-mode drag is active anywhere — skip the per-element scan.
         if (!GraceModeManager.hasPendingConnect()) {
             return;
         }
+
+        var line = invariants.requireCurrentLine();
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {
             if (!lc.isPendingConnectElement(line.getElement(i))) {
@@ -395,7 +394,7 @@ class LineRenderer {
 
             try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
                 g2.setColor(ScoreView.getPreviewElementColor());
-                SlideRenderer.getInstance().renderPreviewGlissando(g2, i, line, invariants);
+                SlideRenderer.getInstance().renderPreviewGlissando(g2, i, invariants);
             }
 
             return;
@@ -417,7 +416,7 @@ class LineRenderer {
             var anchorIdx = beam.getAnchorElementIndex();
             var endIdx = beam.getEndElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
-                () -> beamRenderer.renderBeams(g2, line, invariants, frame, anchorIdx, endIdx));
+                () -> beamRenderer.renderBeams(g2, invariants, frame, anchorIdx, endIdx));
         }
     }
 
@@ -482,8 +481,7 @@ class LineRenderer {
      * @param frame Element frame
      */
     private void renderTuplets(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var line = invariants.requireCurrentLine();
-        TupletRenderer.getInstance().renderTupletsFromLine(g2, line, invariants, frame);
+        TupletRenderer.getInstance().renderTupletsFromLine(g2, invariants, frame);
     }
 
     /**
@@ -515,7 +513,6 @@ class LineRenderer {
      * @param invariants Line invariants
      */
     private void renderDynamics(Graphics2D g2, LineInvariants invariants) {
-        invariants.requireCurrentLine();
         HairpinRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
     }
 
@@ -526,8 +523,7 @@ class LineRenderer {
      * @param invariants Line invariants
      */
     private void renderEndings(Graphics2D g2, LineInvariants invariants) {
-        var line = invariants.requireCurrentLine();
-        EndingRenderer.getInstance().renderEndings(g2, line, invariants.getLineIndex(), invariants);
+        EndingRenderer.getInstance().renderEndings(g2, invariants);
     }
 
     // ==========================================================================

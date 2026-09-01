@@ -209,7 +209,11 @@ class NoteDragHandler {
         // The screen-Y delta is in view pixels; the view scale folds the zoom factor and the
         // fixed document scale into a single conversion, so a drag tracks on-screen motion 1:1.
         var deltaYSs = lc.getViewScale().toSs(new ViewPx(deltaYPx)).value();
-        var deltaSp = Staff.ssToSp(deltaYSs);
+        // A count of half spaces travelled, not a position: the mouse has moved this far from
+        // where it was pressed, which says nothing about where on the grid that lands. What
+        // bounds the travel is the group's own room to move, and clampDelta below is what
+        // knows it.
+        var deltaSp = Staff.ssToHalfSpaces(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 
         if (newPositionSp == lastPlayedStaffPositionSp) {

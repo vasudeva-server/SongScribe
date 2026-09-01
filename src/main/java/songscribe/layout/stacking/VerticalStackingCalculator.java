@@ -34,6 +34,7 @@ import songscribe.dom.SongTempoMark;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
@@ -297,7 +298,7 @@ public class VerticalStackingCalculator {
             var accXSs = column.getXSs() + bounds.leftSs();
 
             // bounds Y values are relative to the note center; shift to staff coordinates.
-            var centerYSs = Staff.spToSs(element.getStaffPosition());
+            var centerYSs = StaffPosition.toSs(element.getStaffPosition());
 
             structuralExtents.ySet(true, accXSs, bounds.widthSs(), bounds.topSs() + centerYSs);
             structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.botSs() + centerYSs);

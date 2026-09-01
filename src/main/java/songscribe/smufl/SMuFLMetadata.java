@@ -50,8 +50,6 @@ public final class SMuFLMetadata {
 
     private static final String METADATA_RESOURCE = "/fonts/bravura_metadata.json";
 
-    private final EngravingDefaults engravingDefaults;
-
     /** Indexed by {@link SMuFLGlyph#ordinal()}. */
     private final BBox[] bboxesSs;
 
@@ -62,19 +60,12 @@ public final class SMuFLMetadata {
     private final StemAnchors[] stemAnchors;
 
     private SMuFLMetadata(JsonObject root) {
-        engravingDefaults = parseEngravingDefaults(
-                requiredObject(root, "engravingDefaults", "engraving defaults"));
         bboxesSs = parseBBoxes(
                 requiredObject(root, "glyphBBoxes", "glyph bounding boxes"));
         advanceWidthsSs = parseAdvanceWidths(
                 requiredObject(root, "glyphAdvanceWidths", "glyph advance widths"));
         stemAnchors = parseStemAnchors(
                 requiredObject(root, "glyphsWithAnchors", "glyph anchors"));
-    }
-
-    /** @return The engraving measurements the font sets. */
-    public static EngravingDefaults engravingDefaults() {
-        return Holder.INSTANCE.engravingDefaults;
     }
 
     /**
@@ -110,14 +101,6 @@ public final class SMuFLMetadata {
     }
 
     // --- Parsing ---
-
-    private static EngravingDefaults parseEngravingDefaults(JsonObject obj) {
-        return new EngravingDefaults(
-                engravingDefault(obj, "repeatBarlineDotSeparation"),
-                engravingDefault(obj, "legerLineThickness"),
-                engravingDefault(obj, "tieMidpointThickness")
-        );
-    }
 
     private static BBox[] parseBBoxes(JsonObject obj) {
         var glyphs = SMuFLGlyph.values();
@@ -191,10 +174,6 @@ public final class SMuFLMetadata {
         }
 
         return entry;
-    }
-
-    private static double engravingDefault(JsonObject obj, String key) {
-        return requiredDouble(obj, key, "engraving default " + key);
     }
 
     private static double requiredDouble(JsonObject obj, String key, String what) {

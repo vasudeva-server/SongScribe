@@ -24,15 +24,11 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.geom.Point2D;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.dom.Ending;
-import songscribe.dom.Line;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 import songscribe.font.TextMeasurement;
 import songscribe.hit.HitTarget;
 import songscribe.layout.EndingBracketGeometry;
-import songscribe.layout.LayoutResult;
 import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -72,17 +68,12 @@ public final class EndingRenderer {
     /**
      * Renders all first/second endings for a line.
      *
-     * @param g2        Graphics context
-     * @param line      The line
-     * @param lineIndex Line index
-     * @param invariants       Line invariants
+     * @param g2         Graphics context
+     * @param invariants Line invariants
      */
-    public void renderEndings(
-        Graphics2D g2,
-        Line line,
-        int lineIndex,
-        LineInvariants invariants
-    ) {
+    public void renderEndings(Graphics2D g2, LineInvariants invariants) {
+        var line = invariants.requireCurrentLine();
+
         for (var ending : line.findEndings()) {
             var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
 
@@ -108,31 +99,6 @@ public final class EndingRenderer {
     }
 
     /**
-     * Hit-tests a click point against all endings on {@code line}, returning the ending
-     * whose bracket-and-margin-and-label bounding box contains the point, or
-     * {@code null} if none.
-     * <p>
-     * The box and the overlap rule come from
-     * {@link RenderingUtils#hitTestDecoration}, shared with every other decoration.
-     *
-     * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
-     * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
-     * @param line          The line
-     * @param layoutResult  The line's layout result, or null if layout has not run yet
-     * @param middleLineYSs The line's middle-staff-line Y in component space (staff spaces)
-     */
-    public @Nullable Ending hitTestEnding(
-        double clickXSs,
-        double clickYSs,
-        Line line,
-        @Nullable LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        return RenderingUtils.hitTestDecoration(
-            line.findEndings(), clickXSs, clickYSs, layoutResult, middleLineYSs);
-    }
-
-    /**
      * Draws a single ending bracket.
      *
      * @param g2      Graphics context
@@ -148,19 +114,16 @@ public final class EndingRenderer {
         double yTopSs,
         Color color
     ) {
-        var x1 = bracket.x1Ss();
-        var x2 = bracket.x2Ss();
         var yBottomSs = yTopSs + ending.getContentHeightSs();
 
-        var thicknessSs = LineThickness.VOLTA_BRACKET_SS;
+        var thicknessSs = EngravingConstants.VOLTA_BRACKET_SS;
 
         try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
 
             // Bracket as a single path so the top corners join cleanly: up the left leg, across
             // the top, and (when present) down the right leg.
-            var bracketPoints = EndingBracketShape.points(
-                x1, x2, yTopSs, yBottomSs, bracket.hasClosingStroke());
+            var bracketPoints = EndingBracketShape.points(bracket, yTopSs, yBottomSs);
 
             GraphicUtils.drawPath(g2, bracketPoints, thicknessSs);
 
@@ -185,7 +148,7 @@ public final class EndingRenderer {
 
             g2.drawGlyphVector(
                 glyphVector,
-                (float) (x1 + Ending.LABEL_X_INSET_SS),
+                (float) (bracket.x1Ss() + Ending.LABEL_X_INSET_SS),
                 (float) (yTopSs + glyphHeightSs + Ending.LABEL_Y_OFFSET_SS));
         }
     }

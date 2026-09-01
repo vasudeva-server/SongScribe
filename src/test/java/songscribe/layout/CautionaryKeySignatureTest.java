@@ -30,8 +30,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.Key;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.engraving.BarStroke;
+import songscribe.engraving.EngravingConstants;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -112,8 +112,8 @@ class CautionaryKeySignatureTest extends UnitTest {
 
     static Stream<LineEndingCase> lineEndingCases() {
         var drawnLeadInSs = LINE_REST_SS
-            + LineThickness.THIN_BARLINE_SS
-            + StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+            + BarStroke.THIN.widthSs()
+            + EngravingConstants.KEY_SIGNATURE_PADDING_SS;
 
         return Stream.of(
             new LineEndingCase("a note owes the cautionary its own barline",
@@ -121,13 +121,13 @@ class CautionaryKeySignatureTest extends UnitTest {
             new LineEndingCase("an empty line owes the cautionary its own barline",
                 null, true, drawnLeadInSs),
             new LineEndingCase("a single barline is the one the cautionary stands behind",
-                singleBarline(), false, StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS
+                singleBarline(), false, EngravingConstants.KEY_SIGNATURE_PADDING_SS
             ),
             new LineEndingCase("a final double barline is one the cautionary stands behind",
-                finalDoubleBarline(), false, StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS
+                finalDoubleBarline(), false, EngravingConstants.KEY_SIGNATURE_PADDING_SS
             ),
             new LineEndingCase("a repeat is one the cautionary stands behind",
-                repeatRight(), false, StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS
+                repeatRight(), false, EngravingConstants.KEY_SIGNATURE_PADDING_SS
             ));
     }
 
@@ -149,7 +149,7 @@ class CautionaryKeySignatureTest extends UnitTest {
         assertThat(cautionary.reservationSs()).isCloseTo(
             testCase.leadInSs()
                 + cautionary.accidentalsWidthSs()
-                + StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS,
+                + EngravingConstants.KEY_SIGNATURE_PADDING_SS,
             within(TOLERANCE_SS));
     }
 
@@ -173,25 +173,15 @@ class CautionaryKeySignatureTest extends UnitTest {
             .isCloseTo(testCase.leadInSs(), within(TOLERANCE_SS));
         assertThat(accidentalsXSs + cautionary.accidentalsWidthSs())
             .isCloseTo(
-                LINE_WIDTH_SS - StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS,
+                LINE_WIDTH_SS - EngravingConstants.KEY_SIGNATURE_PADDING_SS,
                 within(TOLERANCE_SS));
 
-        if (testCase.drawsBarLine()) {
-            assertThat(placement)
-                .as("a cautionary that draws its own barline places one")
-                .isInstanceOf(CautionaryKeySignature.Placement.WithBarLine.class);
+        assertBarLinePlacement(cautionary, placement, accidentalsXSs);
 
-            var barLineXSs =
-                ((CautionaryKeySignature.Placement.WithBarLine) placement).barLineXSs();
-
-            assertThat(barLineXSs - lastElementInkEndSs)
+        if (placement instanceof CautionaryKeySignature.Placement.WithBarLine withBarLine) {
+            assertThat(withBarLine.barLineXSs() - lastElementInkEndSs)
+                .as("the barline it draws for itself clears the music by the song's line rest")
                 .isCloseTo(LINE_REST_SS, within(TOLERANCE_SS));
-            assertThat(accidentalsXSs - barLineXSs - LineThickness.THIN_BARLINE_SS)
-                .isCloseTo(StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS, within(TOLERANCE_SS));
-        } else {
-            assertThat(placement)
-                .as("a cautionary standing behind the line's own barline places none of its own")
-                .isInstanceOf(CautionaryKeySignature.Placement.AccidentalsOnly.class);
         }
     }
 
@@ -207,12 +197,42 @@ class CautionaryKeySignatureTest extends UnitTest {
 
         assertThat(cautionary).isNotNull();
 
-        var accidentalsXSs =
-            cautionary.placeIn(overflowingLayout(), LINE_WIDTH_SS).accidentalsXSs();
+        var placement = cautionary.placeIn(overflowingLayout(), LINE_WIDTH_SS);
+        var accidentalsXSs = placement.accidentalsXSs();
 
         assertThat(accidentalsXSs - OVERFLOWING_CONTENT_RIGHT_EDGE_SS)
             .as("the run starts one lead-in past the content rather than being pinned to the staff")
             .isCloseTo(testCase.leadInSs(), within(TOLERANCE_SS));
+
+        assertBarLinePlacement(cautionary, placement, accidentalsXSs);
+    }
+
+    /**
+     * Asserts that {@code placement} is the variant {@code cautionary} owes, and that a barline it
+     * draws for itself stands one padding ahead of the accidentals. That relation holds wherever
+     * the run lands, so both placements are checked against it here rather than each stating it.
+     */
+    private static void assertBarLinePlacement(
+        CautionaryKeySignature cautionary,
+        CautionaryKeySignature.Placement placement,
+        double accidentalsXSs
+    ) {
+        if (!cautionary.drawsBarLine()) {
+            assertThat(placement)
+                .as("a cautionary standing behind the line's own barline places none of its own")
+                .isInstanceOf(CautionaryKeySignature.Placement.AccidentalsOnly.class);
+            return;
+        }
+
+        assertThat(placement)
+            .as("a cautionary that draws its own barline places one")
+            .isInstanceOf(CautionaryKeySignature.Placement.WithBarLine.class);
+
+        var barLineXSs = ((CautionaryKeySignature.Placement.WithBarLine) placement).barLineXSs();
+
+        assertThat(accidentalsXSs - barLineXSs - BarStroke.THIN.widthSs())
+            .as("the accidentals stand one padding past that barline's ink")
+            .isCloseTo(EngravingConstants.KEY_SIGNATURE_PADDING_SS, within(TOLERANCE_SS));
     }
 
     @ParameterizedTest(name = "{0}")

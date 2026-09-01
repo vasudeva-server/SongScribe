@@ -27,9 +27,8 @@ import javax.swing.KeyStroke;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
-import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.engraving.StemMetrics;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.Notehead;
 import songscribe.smufl.SMuFLGlyph;
@@ -283,8 +282,8 @@ public enum ElementType {
      *
      * <p>This is the single source of truth for how wide an element's own glyph is. Anything that
      * needs a notehead width should call this rather than
-     * {@link SMuFLConstants#NOTE_HEAD_INK_WIDTH_SS}, which is the black notehead
-     * specifically and leaves a whole note about half a staff space short (refs #694).
+     * {@link SMuFLMetadata#bboxSs}({@link SMuFLGlyph#NOTEHEAD_BLACK})'s width, which is the black
+     * notehead specifically and leaves a whole note about half a staff space short (refs #694).
      */
     public double getElementWidthSs() {
         return baseWidthSs;
@@ -800,8 +799,8 @@ public enum ElementType {
         var stemUpXSs = anchors.stemUpSE().xSs();
 
         // Stem tip above the notehead for an up-stem, below it for a down-stem.
-        var upTopSs = anchors.stemUpSE().ySs() - SMuFLConstants.STEM_LENGTH_SS;
-        var downBottomSs = anchors.stemDownNW().ySs() + SMuFLConstants.STEM_LENGTH_SS;
+        var upTopSs = anchors.stemUpSE().ySs() - StemMetrics.STEM_LENGTH_SS;
+        var downBottomSs = anchors.stemDownNW().ySs() + StemMetrics.STEM_LENGTH_SS;
 
         // Width: max of notehead and stem-up flag extent
         var widthSs = headRightSs;
@@ -837,7 +836,7 @@ public enum ElementType {
         var stemUpXSs = stemUpSE.xSs() * scale;
         var stemUpYSs = stemUpSE.ySs() * scale;
 
-        var upTopSs = stemUpYSs - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
+        var upTopSs = stemUpYSs - StemMetrics.GRACE_NOTE_STEM_LENGTH_SS;
         var flagRightSs = SMuFLMetadata.bboxSs(SMuFLGlyph.FLAG_8TH_UP).rightSs() * scale;
         var widthSs = Math.max(headRightSs, stemUpXSs + flagRightSs);
 
@@ -899,8 +898,8 @@ public enum ElementType {
      */
     private static void computeKeySignatureBoundsSs(ElementType type) {
         var narrowestAccidentalSs = Math.min(
-            StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_FLAT),
-            StaffHeaderMetrics.accidentalInkBboxSs(SMuFLGlyph.ACCIDENTAL_SHARP)
+            Key.DrawnAccidental.inkWidthSs(SMuFLGlyph.ACCIDENTAL_FLAT),
+            Key.DrawnAccidental.inkWidthSs(SMuFLGlyph.ACCIDENTAL_SHARP)
         );
 
         type.setSymmetricBounds(

@@ -23,9 +23,9 @@ package songscribe.layout;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.engraving.Staff;
+import songscribe.engraving.BeamMetrics;
+import songscribe.engraving.StaffPosition;
+import songscribe.engraving.StemMetrics;
 
 /**
  * Pure-static beam-geometry helpers shared by {@link LayoutEngine},
@@ -319,7 +319,7 @@ public final class BeamMath {
             }
 
             var stemTopYSs =
-                Staff.spToSs(element.getStaffPosition()) - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
+                StaffPosition.toSs(element.getStaffPosition()) - StemMetrics.GRACE_NOTE_STEM_LENGTH_SS;
 
             if (stemTopYSs < beamBottomYSs + GRACE_STEM_BEAM_CLEARANCE_SS) {
                 return true;
@@ -343,8 +343,8 @@ public final class BeamMath {
         Line line, int beamStart, int beamEnd, int topStaffPosition) {
         var beamStackCount = beamLevel(line, beamStart, beamEnd) + 1;
 
-        return Staff.spToSs(topStaffPosition)
-            - SMuFLConstants.STEM_LENGTH_SS
-            + LineThickness.beamStackHeightSs(beamStackCount);
+        return StaffPosition.toSs(topStaffPosition)
+            - StemMetrics.STEM_LENGTH_SS
+            + BeamMetrics.beamStackHeightSs(beamStackCount);
     }
 }

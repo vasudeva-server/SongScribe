@@ -23,13 +23,13 @@ package songscribe.dom;
 import java.util.List;
 
 import songscribe.engraving.BarStroke;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.EngravingConstants;
 
 /**
  * A barline or repeat sign, as the left-to-right sequence of strokes it is drawn from.
  *
  * <p>The strokes are laid out in the order given, starting at the element's own X origin,
- * with exactly one {@link LineThickness#BARLINE_SEPARATION_SS} between each adjacent pair.
+ * with exactly one {@link BarStroke#SEPARATION_SS} between each adjacent pair.
  * The group's width and both of its volta bracket anchors are derived from that sequence,
  * so a bar's geometry is stated once, in its declaration, rather than restated by every
  * reader of it.
@@ -80,11 +80,11 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
 
     /**
      * @return The total width of the group in staff spaces: every stroke's width, plus one
-     *         {@link LineThickness#BARLINE_SEPARATION_SS} for each gap between adjacent
+     *         {@link BarStroke#SEPARATION_SS} for each gap between adjacent
      *         strokes.
      */
     public double widthSs() {
-        var totalSs = (strokes.size() - 1) * LineThickness.BARLINE_SEPARATION_SS;
+        var totalSs = (strokes.size() - 1) * BarStroke.SEPARATION_SS;
 
         for (var stroke : strokes) {
             totalSs += stroke.widthSs();
@@ -98,7 +98,7 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
      * opening on this bar puts its left arm.
      *
      * <p>This is a path coordinate, not an ink edge: the arm is stroked centered on it, reaching
-     * half a {@link LineThickness#VOLTA_BRACKET_SS} to either side. Trailing repeat dots are
+     * half a {@link EngravingConstants#VOLTA_BRACKET_SS} to either side. Trailing repeat dots are
      * skipped rather than opened past — one opening past them would start inside the section the
      * bracket is meant to bound.
      *
@@ -114,7 +114,7 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
         }
 
         var lastLine = strokes.get(lastLineIndex);
-        var offsetSs = lastLineIndex * LineThickness.BARLINE_SEPARATION_SS;
+        var offsetSs = lastLineIndex * BarStroke.SEPARATION_SS;
 
         for (var i = 0; i < lastLineIndex; i++) {
             offsetSs += strokes.get(i).widthSs();
@@ -127,7 +127,7 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
         var width = lastLine.widthSs();
 
         if (lastLine == BarStroke.THICK) {
-            return offsetSs + width - LineThickness.VOLTA_BRACKET_SS / 2;
+            return offsetSs + width - EngravingConstants.VOLTA_BRACKET_SS / 2;
         }
 
         return offsetSs + width / 2;
@@ -142,7 +142,7 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
      * bracket and a struck-through one stop at the same place. Leading repeat dots are skipped
      * rather than closed on — one closing on them would hang back into the preceding measure.
      *
-     * <p>The advance is half a {@link LineThickness#THIN_BARLINE_SS} whatever the line it is
+     * <p>The advance is half a {@link BarStroke#THIN} whatever the line it is
      * measured from, following LilyPond: on a bar opening with a thick line the endpoint lands
      * that same distance in, well short of that line's center.
      *
@@ -153,10 +153,10 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
         var index = 0;
 
         while (strokes.get(index) == BarStroke.DOTS) {
-            offsetSs += strokes.get(index).widthSs() + LineThickness.BARLINE_SEPARATION_SS;
+            offsetSs += strokes.get(index).widthSs() + BarStroke.SEPARATION_SS;
             index++;
         }
 
-        return offsetSs + LineThickness.THIN_BARLINE_SS / 2;
+        return offsetSs + BarStroke.THIN.widthSs() / 2;
     }
 }

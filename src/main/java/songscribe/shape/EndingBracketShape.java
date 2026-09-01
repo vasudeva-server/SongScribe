@@ -24,10 +24,13 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 
+import songscribe.dom.Ending;
+
 /**
  * The corner points of a first/second ending bracket: up the left leg, across the top, and (when
- * present) down the right leg. The caller strokes the returned polyline; this class holds only the
- * geometry, no layout or renderer dependency.
+ * present) down the right leg. The caller strokes the returned polyline; this class holds the
+ * geometry and reads the bracket's own range from the domain model, with no layout or renderer
+ * dependency.
  */
 public final class EndingBracketShape {
 
@@ -37,27 +40,28 @@ public final class EndingBracketShape {
      * Builds the ending bracket corner points as a single polyline, so the top corners join
      * cleanly when stroked.
      *
-     * @param x1               left leg x, in staff spaces
-     * @param x2               right leg x, in staff spaces
-     * @param yTopSs           top of the bracket, in staff spaces
-     * @param yBottomSs        bottom of the legs, in staff spaces
-     * @param hasClosingStroke whether the right leg is drawn down to {@code yBottomSs}
+     * <p>The horizontal arm ends where the bracket's ink reaches on the right, which is
+     * {@link Ending.BracketRange#inkRightXSs()}. A closed bracket's arm ends at an interior corner,
+     * where a stroker leaves a join, so its ink reaches the bracket's own right edge. An open
+     * arm ends at a terminal cap, which {@code GraphicUtils.drawPath} pulls in half a stroke
+     * width; pushing the endpoint out by that same half puts the open arm's ink at the X a
+     * closed bracket's right leg would reach.
+     *
+     * @param bracket   the bracket range being drawn
+     * @param yTopSs    top of the bracket, in staff spaces
+     * @param yBottomSs bottom of the legs, in staff spaces
      * @return the bracket corner points, in draw order
      */
-    public static Point2D[] points(
-        double x1,
-        double x2,
-        double yTopSs,
-        double yBottomSs,
-        boolean hasClosingStroke
-    ) {
-        var bracketPoints = new ArrayList<Point2D>(List.of(
-            new Point2D.Double(x1, yBottomSs),
-            new Point2D.Double(x1, yTopSs),
-            new Point2D.Double(x2, yTopSs)));
+    public static Point2D[] points(Ending.BracketRange bracket, double yTopSs, double yBottomSs) {
+        var armEndXSs = bracket.inkRightXSs();
 
-        if (hasClosingStroke) {
-            bracketPoints.add(new Point2D.Double(x2, yBottomSs));
+        var bracketPoints = new ArrayList<Point2D>(List.of(
+            new Point2D.Double(bracket.x1Ss(), yBottomSs),
+            new Point2D.Double(bracket.x1Ss(), yTopSs),
+            new Point2D.Double(armEndXSs, yTopSs)));
+
+        if (bracket.hasClosingStroke()) {
+            bracketPoints.add(new Point2D.Double(bracket.x2Ss(), yBottomSs));
         }
 
         return bracketPoints.toArray(new Point2D[0]);

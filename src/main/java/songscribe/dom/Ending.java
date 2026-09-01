@@ -25,7 +25,7 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.EngravingConstants;
 
 /**
  * Represents a first or second ending bracket above a repeated section.
@@ -57,9 +57,18 @@ public class Ending extends Span {
     public record BracketRange(
         double x1Ss, double x2Ss, int number, boolean hasClosingStroke
     ) {
-        /** Returns the width of this bracket in staff spaces. */
-        public double widthSs() {
-            return x2Ss - x1Ss;
+        /**
+         * Returns the X the bracket's drawn ink reaches on the right: {@link #x2Ss} itself when a
+         * closing stroke gives the top arm a join to rest on, or half a volta stroke width past it
+         * when an open arm's round end-cap pushes the ink out to match where a closed bracket's
+         * right leg would reach.
+         *
+         * @return the X the bracket's ink reaches on the right, in staff spaces
+         */
+        public double inkRightXSs() {
+            return hasClosingStroke
+                ? x2Ss
+                : x2Ss + EngravingConstants.VOLTA_BRACKET_SS / 2;
         }
 
         /** Returns the label text for this bracket (e.g. "1." or "2."). */
@@ -282,21 +291,6 @@ public class Ending extends Span {
     @Override
     public double getContentHeightSs() {
         return VOLTA_TICK_HEIGHT_SS;
-    }
-
-    /**
-     * Returns the horizontal span width for collision detection. The span runs past the end
-     * element's head, so it is measured with that element's own width
-     * ({@link #getEndElementWidthSs()}).
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return span width in staff-space units
-     */
-    @Override
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        // NOTE_HEAD_INK_WIDTH_SS here is a generic minimum-span floor, not the end note's head width.
-        return Math.max(SMuFLConstants.NOTE_HEAD_INK_WIDTH_SS, endXSs - anchorXSs + getEndElementWidthSs());
     }
 
     @Override

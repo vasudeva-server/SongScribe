@@ -26,7 +26,7 @@ import java.awt.geom.Rectangle2D;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -40,7 +40,7 @@ import songscribe.util.GraphicsState;
  * Exactly one instance exists for the lifetime of the owning {@link ScoreView}; it is retargeted
  * and shown or hidden by {@code InsertionPointMode} rather than being recreated. Its height is
  * identical on every line — it is bounded by the compile-time constants
- * {@link Staff#MIN_STAFF_POSITION_SP} and {@link Staff#MAX_STAFF_POSITION_SP} — so only its x
+ * {@link StaffPosition#MIN_SP} and {@link StaffPosition#MAX_SP} — so only its x
  * position and the zoom-driven scale ever change.
  */
 public final class InsertionMarkerOverlay extends LineOverlayComponent {
@@ -112,8 +112,8 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
             + previewElement.getGlyphWidthSs() / 2;
 
         var middleLineYSs = line.getMiddleLineYSs();
-        var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);
-        var bottomYSs = middleLineYSs + Staff.spToSs(Staff.MAX_STAFF_POSITION_SP);
+        var topYSs = middleLineYSs + StaffPosition.toSs(StaffPosition.MIN_SP);
+        var bottomYSs = middleLineYSs + StaffPosition.toSs(StaffPosition.MAX_SP);
         var halfThicknessSs = INSERTION_POINT_THICKNESS_SS / 2;
 
         return new Rectangle2D.Double(

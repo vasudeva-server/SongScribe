@@ -59,6 +59,13 @@ public class Tuplet extends Span {
     /** Minimum number of non-rest notes a tuplet must span to have a meaningful bracket. */
     private static final int MIN_NON_REST_NOTES = 2;
 
+    /**
+     * Floor on the width {@link #getSpanWidthSs} reports, in staff spaces. A collision region of
+     * zero width reserves nothing and lets the layer above sit on top of the bracket, so a span
+     * whose two elements have not been separated yet still claims one staff space.
+     */
+    public static final double MIN_SPAN_WIDTH_SS = 1.0;
+
     /** Measured ink height of a tuplet number in staff-spaces (representative digit "3"). */
     public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
 
@@ -243,26 +250,18 @@ public class Tuplet extends Span {
     public boolean isNumberOnly(Line line) {
         var anchor = getAnchorElement();
 
-        return anchor != null
-            && line.findBeamAt(getAnchorElementIndex()) != null
+        return line.findBeamAt(getAnchorElementIndex()) != null
             && line.findBeamAt(getEndElementIndex()) != null
             && anchor.getDirection().isUp();
     }
 
     /**
-     * Returns whether this tuplet's anchor and end elements are both set and span at
+     * Returns whether this tuplet's anchor and end elements span at
      * least {@value #MIN_NON_REST_NOTES} non-rest notes. A tuplet bracket has no
      * meaningful slope to compute across fewer notes, so a load-time validator should
      * reject any tuplet for which this returns false.
      */
     public boolean hasValidSpan(Line line) {
-        var anchor = getAnchorElement();
-        var end = getEndElement();
-
-        if (anchor == null || end == null) {
-            return false;
-        }
-
         var anchorIndex = getAnchorElementIndex();
         var endIndex = getEndElementIndex();
 
@@ -330,9 +329,18 @@ public class Tuplet extends Span {
         return oldType != newType || oldElement.getDotCount() != newElement.getDotCount();
     }
 
-    @Override
+    /**
+     * Returns the horizontal span the tuplet bracket reserves, in staff spaces: the distance
+     * between its two elements, floored so that a bracket over elements sharing a column still
+     * reserves a region with width to it.
+     *
+     * @param anchorXSs X position of the anchor element in staff-space units
+     * @param endXSs    X position of the end element in staff-space units
+     * @return the span width in staff spaces, never below {@link #MIN_SPAN_WIDTH_SS} and so
+     *     always positive
+     */
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(1.0, endXSs - anchorXSs);
+        return Math.max(MIN_SPAN_WIDTH_SS, endXSs - anchorXSs);
     }
 
     /**

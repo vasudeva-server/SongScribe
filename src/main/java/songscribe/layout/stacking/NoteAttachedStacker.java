@@ -30,7 +30,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Trill;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
@@ -335,7 +335,7 @@ public class NoteAttachedStacker {
      * Computes note vertical bounds from element type geometry alone (no stem layout).
      */
     public static NoteBounds computeNoteBounds(StaffElement element) {
-        var centerYSs = Staff.spToSs(element.getStaffPosition());
+        var centerYSs = StaffPosition.toSs(element.getStaffPosition());
         var type = element.getType();
         var direction = element.getDirection();
         var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
@@ -367,8 +367,7 @@ public class NoteAttachedStacker {
             double botSs;
 
             if (stemLayout != null) {
-                var centerYSs = element.getStaffPosition()
-                    * Staff.STAFF_POSITION_OFFSET_SS;
+                var centerYSs = StaffPosition.toSs(element.getStaffPosition());
                 var type = element.getType();
                 var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
                 var noteheadBotSs = centerYSs + type.getNoteheadBottomOffsetSs();
@@ -385,8 +384,7 @@ public class NoteAttachedStacker {
             noteAttachedExtents.ySet(false, xSs, noteheadWidthSs, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
-            var noteheadCenterYSs = element.getStaffPosition()
-                * Staff.STAFF_POSITION_OFFSET_SS;
+            var noteheadCenterYSs = StaffPosition.toSs(element.getStaffPosition());
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
 

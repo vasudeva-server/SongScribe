@@ -28,8 +28,8 @@ import songscribe.dom.Key;
 import songscribe.dom.KeySignatureExtent;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.StaffHeaderMetrics;
+import songscribe.engraving.BarStroke;
+import songscribe.engraving.EngravingConstants;
 
 /**
  * The cautionary key signature at the end of a line — the warning to the performer that the next
@@ -54,10 +54,10 @@ import songscribe.engraving.StaffHeaderMetrics;
  *
  * <p>The line rest is the song's own, which is what {@code HorizontalSpacingCalculator} gives a
  * mid-line barline, so music clears a barline by the same distance wherever the barline is. The
- * padding either side of the accidentals is {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS} —
+ * padding either side of the accidentals is {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS} —
  * the same padding {@link HorizontalSpacingCalculator} puts between a mid-line key change and the
  * barline in front of it, so a key signature stands the same distance behind its barline wherever it
- * falls. The barline is {@link LineThickness#THIN_BARLINE_SS} wide — the same barline an element
+ * falls. The barline is {@link BarStroke#THIN} wide — the same barline an element
  * draws.
  *
  * <p>See {@code docs/key-changes.md} for what a cautionary is and why it is stored nowhere.
@@ -195,12 +195,12 @@ public record CautionaryKeySignature(
      * <p>This is the whole of the line's trailing gap rather than a floor under it: the lead-in
      * already carries whatever separation the last element is owed, so taking the larger of this
      * and the ordinary line rest would push a narrow cautionary off its padding and leave the
-     * signature further from its barline than {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}.
+     * signature further from its barline than {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}.
      *
      * @return the span in staff spaces
      */
     public double reservationSs() {
-        return leadInSs() + accidentalsWidthSs() + StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+        return leadInSs() + accidentalsWidthSs() + EngravingConstants.KEY_SIGNATURE_PADDING_SS;
     }
 
     /**
@@ -210,7 +210,7 @@ public record CautionaryKeySignature(
      * <p>Placement depends on whether the line's content fits the staff:
      * <ul>
      *   <li>On a line that fits, the run is right-aligned to {@code lineWidthSs} less
-     *       {@link StaffHeaderMetrics#KEY_SIGNATURE_PADDING_SS}, and the barline sits that same
+     *       {@link EngravingConstants#KEY_SIGNATURE_PADDING_SS}, and the barline sits that same
      *       padding ahead of it. Layout reserved exactly that span, so both clear the music.</li>
      *   <li>On a line whose {@link LayoutResult#overflowsStaffWidth() content overflows}, the margin
      *       is already behind the last element and pinning to it would drop the run on top of the
@@ -231,7 +231,7 @@ public record CautionaryKeySignature(
             accidentalsXSs = layoutResult.contentRightEdgeSs() + leadInSs();
         } else {
             accidentalsXSs =
-                lineWidthSs - StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS - accidentalsWidthSs();
+                lineWidthSs - EngravingConstants.KEY_SIGNATURE_PADDING_SS - accidentalsWidthSs();
         }
 
         if (!drawsBarLine) {
@@ -239,7 +239,7 @@ public record CautionaryKeySignature(
         }
 
         return new Placement.WithBarLine(
-            accidentalsXSs - StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS - LineThickness.THIN_BARLINE_SS,
+            accidentalsXSs - EngravingConstants.KEY_SIGNATURE_PADDING_SS - BarStroke.THIN.widthSs(),
             accidentalsXSs);
     }
 
@@ -253,11 +253,11 @@ public record CautionaryKeySignature(
      */
     private double leadInSs() {
         if (!drawsBarLine) {
-            return StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+            return EngravingConstants.KEY_SIGNATURE_PADDING_SS;
         }
 
         return lineRestSs
-            + LineThickness.THIN_BARLINE_SS
-            + StaffHeaderMetrics.KEY_SIGNATURE_PADDING_SS;
+            + BarStroke.THIN.widthSs()
+            + EngravingConstants.KEY_SIGNATURE_PADDING_SS;
     }
 }

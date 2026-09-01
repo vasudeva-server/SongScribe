@@ -483,35 +483,6 @@ public abstract class StaffElement extends LineElement implements Cloneable {
         this.staffPosition = staffPosition;
     }
 
-    /**
-     * Returns whether the given staff position falls on a staff line, as opposed to a
-     * space between lines. Staff positions alternate line/space with lines at even values.
-     */
-    public static boolean isLinePosition(int staffPosition) {
-        return staffPosition % 2 == 0;
-    }
-
-    /**
-     * Returns the number of ledger lines required for this note's staff position.
-     * Consistent with {@link songscribe.ui.renderer.RenderingUtils#forEachLedgerLineYSs}.
-     */
-    public int getLedgerLineCount() {
-        var a = Math.abs(staffPosition);
-
-        if (a % 2 != 0) {
-            a--;
-        }
-
-        return Math.max(0, (a - 4) / 2);
-    }
-
-    /**
-     * Returns whether this note requires ledger lines (staff position beyond the staff).
-     */
-    public boolean hasLedgerLines() {
-        return getLedgerLineCount() > 0;
-    }
-
     public int getDotCount() {
         return dotCount;
     }

@@ -26,7 +26,7 @@ import java.awt.geom.Rectangle2D;
 import songscribe.dom.BarAppearance;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
+import songscribe.engraving.BarStroke;
 import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.util.GraphicsState;
@@ -159,7 +159,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
                 case DOTS -> drawRepeatDots(g2, x, bottomY);
             }
 
-            x += stroke.widthSs() + LineThickness.BARLINE_SEPARATION_SS;
+            x += stroke.widthSs() + BarStroke.SEPARATION_SS;
         }
     }
 

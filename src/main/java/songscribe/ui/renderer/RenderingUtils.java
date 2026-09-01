@@ -23,19 +23,14 @@ package songscribe.ui.renderer;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.geom.Rectangle2D;
-import java.util.List;
-import java.util.function.DoubleConsumer;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
-import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
-import songscribe.engraving.Staff;
+import songscribe.engraving.LedgerLine;
+import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
-import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
@@ -217,8 +212,8 @@ public final class RenderingUtils {
     /**
      * Converts a layout Y coordinate to component space, given the middle-line Y directly.
      * <p>
-     * Hit-testing runs outside a render pass and so has no {@link LineInvariants} to hand;
-     * it calls this overload so hit geometry cannot drift from what was drawn.
+     * {@link SlideRenderer} computes glissando endpoints from a middle-line Y it holds
+     * directly, rather than from a {@link LineInvariants}, and needs this overload for that.
      *
      * @param layoutYSs     the Y coordinate in layout space (from a DecorationLayout)
      * @param middleLineYSs the line's middle-staff-line Y in component space
@@ -226,61 +221,6 @@ public final class RenderingUtils {
      */
     static double layoutYToComponentYSs(double layoutYSs, double middleLineYSs) {
         return middleLineYSs + layoutYSs;
-    }
-
-    /**
-     * Returns the first decoration in {@code decorations} whose drawn box contains the
-     * click point, or null if none does.
-     * <p>
-     * The box comes from the decoration's {@link LayoutResult.DecorationLayout} and
-     * spans its width and its height plus margin. Containment follows
-     * {@link Rectangle2D#contains}, so the left and top edges are inclusive and the
-     * right and bottom edges are exclusive. When decorations overlap, the first match
-     * in the given order wins.
-     * <p>
-     * This answers only the geometric question. Turning a hit into a selection is the
-     * selection layer's job, which is why this returns the decoration itself. Every
-     * decoration type hit-tests through here, so a change to the box or the overlap
-     * rule reaches all of them at once.
-     *
-     * @param decorations   the decorations to test, in the order ties should be broken
-     * @param clickXSs      click X in staff spaces (line-local, same space as DecorationLayout.xSs)
-     * @param clickYSs      click Y in staff spaces (component space, relative to the component top)
-     * @param layoutResult  the line's layout result, or null if layout has not run yet
-     * @param middleLineYSs the line's middle-staff-line Y in component space (staff spaces)
-     */
-    static <D extends LineElement> @Nullable D hitTestDecoration(
-        List<D> decorations,
-        double clickXSs,
-        double clickYSs,
-        @Nullable LayoutResult layoutResult,
-        double middleLineYSs
-    ) {
-        if (layoutResult == null) {
-            return null;
-        }
-
-        for (var decoration : decorations) {
-            var decorationLayout = layoutResult.getDecorationLayout(decoration);
-
-            // A decoration whose anchor element is missing gets no layout entry, so a
-            // null layout here is an expected incomplete decoration, not an error.
-            if (decorationLayout == null) {
-                continue;
-            }
-
-            var hitRect = new Rectangle2D.Double(
-                decorationLayout.xSs(),
-                layoutYToComponentYSs(decorationLayout.ySs(), middleLineYSs),
-                decorationLayout.widthSs(),
-                decorationLayout.heightSs() + decorationLayout.marginSs());
-
-            if (hitRect.contains(clickXSs, clickYSs)) {
-                return decoration;
-            }
-        }
-
-        return null;
     }
 
     // ==========================================================================
@@ -298,7 +238,7 @@ public final class RenderingUtils {
     static void drawLedgerLine(Graphics2D g2, double leftXSs, double rightXSs, double ySs, LineInvariants invariants) {
         // Color is intentionally not set — inherited from caller so insertion notes
         // draw ledger lines in their own color.
-        var thicknessSs = LineThickness.LEDGER_LINE_SS;
+        var thicknessSs = LedgerLine.THICKNESS_SS;
         GraphicUtils.drawRoundedLine(g2, leftXSs, ySs, rightXSs, ySs, thicknessSs);
     }
 
@@ -377,28 +317,6 @@ public final class RenderingUtils {
     }
 
     /**
-     * Iterates over the Y offsets (in staff spaces, relative to the note's staff position)
-     * of each ledger line needed for a note at the given staff position.
-     *
-     * @param staffPosition The note's staff position (integer index along the Y axis)
-     * @param consumer      Called once per ledger line with the Y offset in staff spaces
-     */
-    static void forEachLedgerLineYSs(int staffPosition, DoubleConsumer consumer) {
-        var i = staffPosition;
-
-        if ((staffPosition % 2) != 0) {
-            i += (staffPosition > 0) ? -1 : 1;
-        }
-
-        var step = (staffPosition > 0) ? -2 : 2;
-
-        while (Math.abs(i) > 5) {
-            consumer.accept(Staff.spToSs(i - staffPosition));
-            i += step;
-        }
-    }
-
-    /**
      * Returns the X offset in staff spaces from the note reference point to the stem center,
      * for the given stem direction and note type.
      *
@@ -412,7 +330,8 @@ public final class RenderingUtils {
 
         // upper: SE anchor is the stem's right edge; center = anchorXSs - half stem width
         // lower: NW anchor is the stem's left edge; center = anchorXSs + half stem width
-        var halfStemWidthSs = NoteGeometry.STEM_WIDTH_SS / 2.0;
-        return upper ? anchorXSs - halfStemWidthSs : anchorXSs + halfStemWidthSs;
+        return upper
+            ? anchorXSs - StemMetrics.STEM_HALF_WIDTH_SS
+            : anchorXSs + StemMetrics.STEM_HALF_WIDTH_SS;
     }
 }
