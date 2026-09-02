@@ -1,8 +1,8 @@
 ---
 name: check
 description: Adversarial contract-driven review — design, contracts and API, correctness and efficiency, test conformance
-model: opus
-effort: high
+model: fable
+effort: low
 disable-model-invocation: true
 ---
 
@@ -168,8 +168,8 @@ reviewed.
 
 | Axis | Model | Runs when |
 |---|---|---|
-| Design | opus | any scope is non-empty |
-| Contract & API | opus | production or doc scope non-empty, and no `--tests-only` |
+| Design | fable (low effort) | any scope is non-empty |
+| Contract & API | fable (low effort) | production or doc scope non-empty, and no `--tests-only` |
 | Correctness & Efficiency | sonnet | production scope non-empty, and no `--tests-only` |
 | Test Conformance | sonnet | test scope non-empty |
 
@@ -183,10 +183,11 @@ holding both copies — see rule 11 in `reference/axes.md`.
 
 With every scope populated that is four agents in one message.
 
-Design and Contract & API run on opus by design. Root-cause analysis and
-contract judgment are the two axes where a smaller model reliably returns a
-plausible-sounding workaround instead of the actual cause, or a contract
-paraphrased out of the method body instead of a promise the domain requires.
+Design and Contract & API run on fable at low effort by design. Root-cause
+analysis and contract judgment are the two axes where a smaller model reliably
+returns a plausible-sounding workaround instead of the actual cause, or a
+contract paraphrased out of the method body instead of a promise the domain
+requires.
 
 **Style conformance is not an axis.** It is the cheapest finding to produce, and
 spending an agent on it crowds out the quietest ones. Apply the Java style rules

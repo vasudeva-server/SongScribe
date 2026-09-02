@@ -1,8 +1,8 @@
 ---
 name: design-pass
 description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
-model: opus
-effort: high
+model: fable
+effort: low
 disable-model-invocation: true
 ---
 
@@ -463,9 +463,11 @@ Each finding is one of four kinds, and the kind decides the fix:
 - **A replaceable process-global** — a setter, a probe or a widened field that
   lets a test swap something process-wide. The fix is a stack of instances plus
   an `AutoCloseable` scope, never a setter, per *Scope a global; never swap it*
-  in `design.md`. **Name the production caller that justifies the scope** — the
-  headless converters justified `MessageBusScope` — because a scope only tests
-  push is a test-only injection point in better clothes.
+  in `design.md`. **Name the production caller that justifies the scope**,
+  because a scope only tests push is a test-only injection point in better
+  clothes. `MessageBusScope` has no such caller; the Pass 30 carry-forward in
+  `plans/design-pass-register.md` records that and names the plan that settles
+  it.
 - **Misnamed internal API** — it takes arguments and returns a value and is
   already a coherent unit. Rename it to its concept and write its contract.
 - **Lifecycle** — a class with `initialize()` and no way back has an incomplete

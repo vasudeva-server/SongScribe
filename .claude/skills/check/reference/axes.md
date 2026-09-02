@@ -1,17 +1,17 @@
 # The Four Review Axes
 
-Four agents, one per axis. Design and Contract & API run on **opus**; Correctness
-& Efficiency and Test Conformance run on **sonnet**.
+Four agents, one per axis. Design and Contract & API run on **fable at low
+effort**; Correctness & Efficiency and Test Conformance run on **sonnet**.
 
-The two opus axes are the ones where a smaller model reliably returns a
+The two fable axes are the ones where a smaller model reliably returns a
 plausible-sounding workaround instead of the actual cause, or a contract
 paraphrased out of the method body instead of a promise. Those are the two
 failures this skill exists to avoid.
 
 | Axis | Model | Input | Covers |
 |---|---|---|---|
-| Design | opus | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
-| Contract & API | opus | production scope, plus the doc scope when it is non-empty | depth earned by fan-in; contract stated / complete / derived from the domain; contract duplicated into prose; naming; signature quality; test-only surface |
+| Design | fable (low effort) | production scope, plus the tests when the test scope is non-empty | architecture, boundaries, reuse and duplication, wrong abstractions |
+| Contract & API | fable (low effort) | production scope, plus the doc scope when it is non-empty | depth earned by fan-in; contract stated / complete / derived from the domain; contract duplicated into prose; naming; signature quality; test-only surface |
 | Correctness & Efficiency | sonnet | production scope | real defects, null contracts, repeated or redundant work |
 | Test Conformance | sonnet | test scope and its production counterparts | should each test exist at all, and does it exercise what the contract promises |
 
@@ -63,7 +63,7 @@ doctrine reaches every agent on the next run with nothing to re-synchronize.
 
 ---
 
-## Axis 1: Design — opus
+## Axis 1: Design — fable (low effort)
 
 The other axes look for defects; this one looks for the reason the defects are
 there. Give it the review target — and, when the test scope is non-empty, the
@@ -184,7 +184,7 @@ change touches, per *Reporting a design finding*. Consult the design notes under
 
 ---
 
-## Axis 2: Contract & API — opus
+## Axis 2: Contract & API — fable (low effort)
 
 An API that **fan-in earns a contract for** is judged against that contract, and
 the contract is judged against the domain. Read `.claude/guides/contracts.md` and
