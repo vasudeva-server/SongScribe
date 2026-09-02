@@ -288,7 +288,6 @@ public class Ending extends Span {
     /**
      * Returns the height of the volta bracket in staff-space units.
      */
-    @Override
     public double getContentHeightSs() {
         return VOLTA_TICK_HEIGHT_SS;
     }

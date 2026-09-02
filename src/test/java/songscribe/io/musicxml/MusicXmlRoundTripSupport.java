@@ -30,7 +30,6 @@ import java.time.ZoneOffset;
 import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.InputSource;
 
-import songscribe.Constants;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
@@ -97,13 +96,13 @@ final class MusicXmlRoundTripSupport {
      */
     static final String SOFTWARE_ENCODING =
         "    " + openTag(MusicXmlTags.ENCODING) + '\n' +
-        "      " + element(MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME) + '\n' +
+        "      " + element(MusicXmlTags.SOFTWARE, SoftwareProvenance.SOFTWARE) + '\n' +
         "    " + closeTag(MusicXmlTags.ENCODING) + '\n';
 
     /**
      * Minimal SongScribe provenance block. Every hand-built {@code <score-partwise>}
-     * fixture read through {@link MusicXmlReader} must carry a {@code <software>} tag
-     * that starts with {@link Constants#PACKAGE_NAME}, or the reader's provenance gate
+     * fixture read through {@link MusicXmlReader} must carry the {@code <software>} value
+     * {@link SoftwareProvenance#SOFTWARE}, or the reader's provenance gate
      * refuses the document before mapping any of it. Fixtures insert this immediately after the
      * root element so future fixtures inherit the tag instead of silently breaking.
      */

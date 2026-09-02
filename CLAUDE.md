@@ -10,7 +10,6 @@ GitHub repo: `vasudeva-server/SongScribe`
 - io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; MusicXML I/O goes through a schema-bound `org.audiveris:proxymusic` object graph (`ScorePartwise`) rather than streaming SAX/XMLStreamWriter events — see `docs/musicxml-object-model.md`. `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
 - dom/ — the document model (`Song`, `Line`, elements), not a DOM/XML tree
 - layout/ vs engraving/ — `layout/` computes positions and spacing; `engraving/` holds staff geometry and engraving constants
-- converter/ — the headless batch converter, reached through the `image_converter`, `midi_converter` and `pdf_converter` modes of `SongScribe.main`
 - binding/ vs ui/binding/ — `binding/` is the Swing-free property graph (`Bindings`, `Property`, `ViewProperty`); `ui/binding/` holds only the views over Swing controls (`Controls`, `Widgets`). A view over non-Swing storage is a `ViewProperty` and belongs with that storage, not in either package
 
 ### Key Entry Points

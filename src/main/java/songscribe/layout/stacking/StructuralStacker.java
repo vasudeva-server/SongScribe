@@ -33,6 +33,7 @@ import songscribe.dom.CollisionRegion;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
+import songscribe.dom.IntrinsicHeight;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
@@ -213,8 +214,8 @@ public class StructuralStacker {
 
             // Record the sloped layout (dySs folded in), keeping the resolved left-end Y as ySs.
             builder.putDecorationLayout(tuplet,
-                new LayoutResult.DecorationLayout(
-                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs, null));
+                new LayoutResult.DecorationLayout.Plain(
+                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs));
         }
     }
 
@@ -553,7 +554,7 @@ public class StructuralStacker {
 
         // Pass 1: resolve each member's footprint and the reference line it would demand alone,
         // reserving nothing.
-        var placements = new ArrayList<DynamicPlacement>(members.size());
+        var placements = new ArrayList<DynamicPlacement<?>>(members.size());
         var groupReferenceYSs = Double.POSITIVE_INFINITY;
 
         for (var member : members) {
@@ -607,7 +608,7 @@ public class StructuralStacker {
      * {@code null} when the member has no geometry in this line (an endpoint that resolves to no
      * column). Reserves nothing.
      */
-    private @Nullable DynamicPlacement resolvePlacement(
+    private @Nullable DynamicPlacement<?> resolvePlacement(
         DynamicGrouper.Member member,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement) {
@@ -634,7 +635,7 @@ public class StructuralStacker {
      * ({@code Hairpin.self-alignment-Y} is {@code CENTER}), so its inner edge — the bottom, above
      * the staff — sits half its height below the line.
      */
-    private @Nullable DynamicPlacement resolveHairpinPlacement(
+    private @Nullable DynamicPlacement<Hairpin> resolveHairpinPlacement(
         Hairpin hairpin,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement) {
@@ -647,12 +648,11 @@ public class StructuralStacker {
 
         var xSs = endpoints.x1Ss();
         var widthSs = endpoints.widthSs();
-        var heightSs = hairpin.getContentHeightSs();
-        var innerEdgeOffsetSs = heightSs / 2;
+        var innerEdgeOffsetSs = hairpin.intrinsicHeightSs() / 2;
         var innerEdgeYSs = StackingUtils.anchoredInnerEdgeYSs(Direction.UP, structuralExtents,
             xSs, widthSs, HAIRPIN_MARGIN_SS, endpoints.spanColumns().anchor().getStaffPosition());
 
-        return new DynamicPlacement(hairpin, xSs, widthSs, heightSs, HAIRPIN_MARGIN_SS,
+        return new DynamicPlacement<>(hairpin, xSs, widthSs, HAIRPIN_MARGIN_SS,
             innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
     }
 
@@ -662,7 +662,7 @@ public class StructuralStacker {
      * x-height center rather than the bounding-box center lands on the line. Its inner edge — the
      * glyph's bottom — is therefore that drop plus however far the ink descends past the baseline.
      */
-    private DynamicPlacement resolveDynamicPlacement(
+    private DynamicPlacement<DynamicAttachment> resolveDynamicPlacement(
         DynamicAttachment dynamic, ElementColumn column) {
 
         var xSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
@@ -673,7 +673,7 @@ public class StructuralStacker {
             NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
             StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS);
 
-        return new DynamicPlacement(dynamic, xSs, widthSs, dynamic.getContentHeightSs(),
+        return new DynamicPlacement<>(dynamic, xSs, widthSs,
             NoteAttachedStacker.DYNAMIC_PADDING_SS, innerEdgeOffsetSs,
             innerEdgeYSs - innerEdgeOffsetSs);
     }
@@ -686,12 +686,24 @@ public class StructuralStacker {
      * {@code referenceYSs = innerEdgeYSs - innerEdgeOffsetSs} and pass 2 inverts it. Half the
      * height for a centered hairpin, the baseline drop plus the glyph's descent for a text dynamic.
      *
+     * @param <E>          the member's element type, which must own its height so the placement
+     *                     cannot be built with one the element disagrees with
      * @param referenceYSs the reference line this member would demand on its own
      */
-    private record DynamicPlacement(
-        LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
+    private record DynamicPlacement<E extends LineElement & IntrinsicHeight>(
+        E element,
+        double xSs, double widthSs, double marginSs,
         double innerEdgeOffsetSs, double referenceYSs) {
+
+        /**
+         * The height this member reserves, which is always its own. Derived rather than
+         * stored so a placement cannot carry a height its element disagrees with.
+         *
+         * @return the member's intrinsic height, in staff spaces
+         */
+        double heightSs() {
+            return element.intrinsicHeightSs();
+        }
     }
 
     /**
@@ -713,8 +725,7 @@ public class StructuralStacker {
         }
 
         stackAbove(structuralExtents, hairpin,
-            endpoints.x1Ss(), endpoints.widthSs(),
-            hairpin.getContentHeightSs(), HAIRPIN_MARGIN_SS,
+            endpoints.x1Ss(), endpoints.widthSs(), HAIRPIN_MARGIN_SS,
             endpoints.spanColumns().anchor().getStaffPosition(), builder);
     }
 
@@ -739,7 +750,7 @@ public class StructuralStacker {
         var contentWidthSs = HairpinEndpoints.dynamicWidthSs(dynamic);
         var centeredXSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
         StackingUtils.placeAndReserveClamped(Direction.UP, structuralExtents, dynamic,
-            centeredXSs, contentWidthSs, dynamic.getContentHeightSs(),
+            centeredXSs, contentWidthSs,
             StaffExtents.Profiles.flat(contentWidthSs),
             NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
             StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS, builder);

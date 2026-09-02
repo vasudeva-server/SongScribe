@@ -47,6 +47,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.renderer.AnnotationRenderer;
 import songscribe.ui.renderer.ArticulationRenderer;
+import songscribe.ui.renderer.AttributionRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
@@ -148,6 +149,7 @@ class LineRenderer {
         renderDynamics(g2, invariants);
         renderEndings(g2, invariants);
         renderAttachments(g2, invariants, lineFrame);
+        renderAttribution(g2, invariants);
     }
 
     /**
@@ -272,6 +274,20 @@ class LineRenderer {
 
         SongTempoMarkRenderer.getInstance()
             .render(invariants, frame, invariants.getSong().getTempoMarkElement(), g2);
+    }
+
+    /**
+     * Draws the song's attribution block above the right end of the first line's staff. Only the
+     * line index is tested here — the renderer has no way to know which line it was handed.
+     * Whether the block was stacked at all is the renderer's own question, and it answers it once,
+     * from the block's decoration layout.
+     */
+    private void renderAttribution(Graphics2D g2, LineInvariants invariants) {
+        if (invariants.getLineIndex() != 0) {
+            return;
+        }
+
+        AttributionRenderer.getInstance().render(invariants, g2);
     }
 
     // ==========================================================================

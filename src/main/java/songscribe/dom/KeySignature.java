@@ -59,21 +59,4 @@ public class KeySignature extends LineElement {
         return key;
     }
 
-    @Override
-    public double getContentWidthSs() {
-        return key.signatureWidthSs();
-    }
-
-    /**
-     * Returns the content height in staff-space units.
-     *
-     * @return {@link Key#signatureHeightSs()}, so the header cannot disagree with a cautionary
-     *         rendering of the same signature about how tall it is, exactly as
-     *         {@link #getContentWidthSs()} keeps the two agreeing on width; zero for
-     *         {@link Key#NO_ACCIDENTALS}, which draws nothing
-     */
-    @Override
-    public double getContentHeightSs() {
-        return key.signatureHeightSs();
-    }
 }

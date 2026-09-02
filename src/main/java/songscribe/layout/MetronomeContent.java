@@ -60,7 +60,8 @@ import songscribe.smufl.SMuFLMetadata;
  * @param regions  one collision region per ink run, for vertical stacking
  */
 public record MetronomeContent(
-    List<Item> items, double widthSs, List<CollisionRegion> regions) {
+    List<TypesetItem> items, double widthSs, List<CollisionRegion> regions)
+    implements DecorationContent {
 
     /** " = " in tempo markings and beat changes. */
     public static final String EQUALS_STR = " = ";
@@ -95,41 +96,6 @@ public record MetronomeContent(
         return SMuFLMetadata.advanceWidthSs(SMuFLGlyph.MET_AUGMENTATION_DOT)
             * MetronomeAttachment.NOTE_SCALE;
     }
-
-    /**
-     * One drawable piece of a metronome marking, positioned relative to the content's
-     * top-left corner. An item carries everything needed to draw it, so the renderer decides
-     * no position of its own on either axis.
-     */
-    public sealed interface Item permits GlyphItem, TextItem {
-
-        /** Offset from the content's left edge, in staff spaces. */
-        double xSs();
-
-        /**
-         * Offset from the content's top edge down to this item's drawing origin (its
-         * baseline), in staff spaces.
-         */
-        double baselineOffsetSs();
-    }
-
-    /**
-     * A SMuFL metronome glyph drawn in the metronome note font.
-     *
-     * @param baselineOffsetSs an augmentation dot carries the same value as the note it
-     *                         follows, because the dot sits on the note's drawing origin
-     */
-    public record GlyphItem(SMuFLGlyph glyph, double xSs, double baselineOffsetSs)
-        implements Item {}
-
-    /**
-     * A run of text drawn in the resolved annotation font.
-     *
-     * @param scaledFont the annotation font already scaled for the staff-space transform, so
-     *                   the renderer sets it verbatim rather than deriving it on every paint
-     */
-    public record TextItem(String text, Font scaledFont, double xSs, double baselineOffsetSs)
-        implements Item {}
 
     /**
      * Builds the content for a beat change: the duration note, the "=", and the beat note.
@@ -197,7 +163,7 @@ public record MetronomeContent(
         private final double textBaselineOffsetSs;
         private final double textAscentSs;
         private final double textDescentSs;
-        private final List<Item> items = new ArrayList<>();
+        private final List<TypesetItem> items = new ArrayList<>();
         private final List<CollisionRegion> regions = new ArrayList<>();
         private double cursorSs = 0;
 
@@ -239,6 +205,8 @@ public record MetronomeContent(
 
             if (note.getDotCount() > 0) {
                 cursorSs += dotAdvanceSs;
+                // The dot sits on the note's own drawing origin, so it repeats the note's
+                // baseline offset rather than deriving one from the dot glyph's bounding box.
                 items.add(
                     new GlyphItem(SMuFLGlyph.MET_AUGMENTATION_DOT, cursorSs, baselineOffsetSs));
                 cursorSs += dotAdvanceSs;

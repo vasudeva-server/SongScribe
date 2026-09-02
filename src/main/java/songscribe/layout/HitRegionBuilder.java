@@ -345,7 +345,7 @@ public final class HitRegionBuilder {
         var endNote = trill.getEndElement();
 
         if (endNote == null || endNote == anchor) {
-            return glyphLeftXSs + trill.getContentWidthSs();
+            return glyphLeftXSs + trill.intrinsicWidthSs();
         }
 
         return layoutResult.getElementXSs(endNote) + endNote.getType().getElementWidthSs();

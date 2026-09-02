@@ -196,6 +196,9 @@ public class MainFrame extends JFrame implements Printable {
     private static final int MAC_TITLE_FONT_SIZE = 13;
     private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
 
+    // Text origin for the print stub's message, in both x and y.
+    private static final int PRINT_STUB_MESSAGE_INSET_PX = 50;
+
     @Nullable
     private PrinterJob printerJob = null;
 
@@ -993,7 +996,7 @@ public class MainFrame extends JFrame implements Printable {
         }
 
         var path = file.toPath().toAbsolutePath();
-        var opened = scoreView.openFile(file, true);
+        var opened = scoreView.openFile(file);
 
         if (opened) {
             RecentDocumentsManager.add(path);
@@ -1059,13 +1062,8 @@ public class MainFrame extends JFrame implements Printable {
         g2.setColor(Color.BLACK);
         g2.drawString(
             Strings.get(Strings.ERROR_PRINT_NOT_IMPLEMENTED),
-            50,
-            50
-        );
-        g2.drawString(
-            Strings.get(Strings.ERROR_EXPORT_PENDING),
-            50,
-            70
+            PRINT_STUB_MESSAGE_INSET_PX,
+            PRINT_STUB_MESSAGE_INSET_PX
         );
 
         return PAGE_EXISTS;

@@ -117,7 +117,9 @@ public final class MusicXmlReader {
     /**
      * Thrown when a document cannot be read as this program's format: the root element
      * is not {@code <score-partwise>}; its {@code version} is missing, unparseable, or
-     * older than {@link MusicXmlTags#VERSION_VALUE}; a required element the mappers
+     * older than {@link MusicXmlTags#VERSION_VALUE}; its {@code <software>} names this
+     * program but carries a version that is not semver, or one older than
+     * {@link SoftwareProvenance#MIN_VERSION}; a required element the mappers
      * cannot proceed without is absent (see {@link ProxyMusicAccess#require}); or a
      * token names something no model value maps to.
      *

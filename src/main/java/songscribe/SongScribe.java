@@ -29,9 +29,6 @@ import com.formdev.flatlaf.util.SystemInfo;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
-import songscribe.converter.ImageConverter;
-import songscribe.converter.MidiConverter;
-import songscribe.converter.PDFConverter;
 import songscribe.error.RuntimeError;
 import songscribe.io.musicxml.MusicXmlSerializer;
 import songscribe.ui.component.MainFrame;
@@ -65,7 +62,7 @@ public final class SongScribe {
         return dir;
     }
 
-    public static void configureLogging() {
+    private static void configureLogging() {
         if (System.getenv("CONSOLE_LOG") != null) {
             var consoleLogUrl = SongScribe.class.getResource("/logback-console.xml");
 
@@ -181,16 +178,6 @@ public final class SongScribe {
             System.setProperty("apple.awt.application.appearance", "system");
         }
 
-        // Figure out which app to start. The default is Song Writer.
-        String app;
-
-        if (args.length > 0) {
-            app = args[0];
-        } else {
-            var prop = System.getProperty("songscribe");
-            app = (prop == null) ? "sw" : prop;
-        }
-
         // Enable anti-aliasing and sub-pixel rendering for fonts. Like the macOS
         // properties above, these are read during AWT/Swing initialization, so they
         // must be set on the main thread before the toolkit starts. macOS ignores
@@ -210,16 +197,11 @@ public final class SongScribe {
         System.setProperty("swing.actions.reconfigureOnNull", "true");
 
         truncateLogIfRequested();
-        logBanner(app.contains("converter") ? "SongScribe Converter" : "SongScribe");
+        logBanner("SongScribe");
         warmMusicXmlSerializer();
 
-        switch (app) {
-            case "image_converter" -> ImageConverter.main(args);
-            case "midi_converter" -> MidiConverter.main(args);
-            case "pdf_converter" -> PDFConverter.main(args);
-            // macOS system properties are already set above on the main thread.
-            // Bootstrap the UI on the EDT so the splash can appear immediately.
-            default -> SwingUtilities.invokeLater(() -> MainFrame.main(args));
-        }
+        // macOS system properties are already set above on the main thread.
+        // Bootstrap the UI on the EDT so the splash can appear immediately.
+        SwingUtilities.invokeLater(() -> MainFrame.main(args));
     }
 }

@@ -47,8 +47,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.Constants;
-import songscribe.Version;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
@@ -154,7 +152,7 @@ final class HeaderBuilder {
         var encoding = factory.createEncoding();
         var items = encoding.getEncodingDateOrEncoderOrSoftware();
 
-        items.add(factory.createEncodingSoftware(Constants.PACKAGE_NAME + ' ' + Version.PUBLIC_VERSION));
+        items.add(factory.createEncodingSoftware(SoftwareProvenance.SOFTWARE));
         items.add(factory.createEncodingEncodingDate(toEncodingDate(headerText.encodingDate())));
         items.add(factory.createEncodingSupports(newSupports(factory, MusicXmlTags.SUPPORTS_ACCIDENTAL)));
         items.add(factory.createEncodingSupports(newSupports(factory, MusicXmlTags.SUPPORTS_BEAM)));

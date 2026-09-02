@@ -31,11 +31,6 @@ import org.jspecify.annotations.Nullable;
 public class Tie extends Span {
 
     /**
-     * Arc height of a tie curve.
-     */
-    public static final double TIE_ARC_HEIGHT_SS = 1.0;  // 8px
-
-    /**
      * Creates a new tie between two elements.
      *
      * @param anchorElement The first (starting) element of the tie
@@ -48,11 +43,6 @@ public class Tie extends Span {
     @Override
     protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Tie(newAnchor, newEnd);
-    }
-
-    @Override
-    public double getContentHeightSs() {
-        return TIE_ARC_HEIGHT_SS;
     }
 
     /**

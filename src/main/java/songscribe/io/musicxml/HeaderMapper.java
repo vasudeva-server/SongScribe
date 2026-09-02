@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import songscribe.Constants;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Ss;
@@ -147,21 +146,20 @@ final class HeaderMapper {
     }
 
     /**
-     * Provenance gate: only SongScribe-authored documents are accepted. A missing,
-     * blank, or foreign {@code <software>} tag is rejected here.
-     * {@code SongFileLoader.load} maps the exception to
-     * {@code SongLoadResult.WrongSoftware}.
+     * Provenance gate: only SongScribe-authored documents are accepted. The
+     * {@code <software>} value is read off the graph and judged by
+     * {@link SoftwareProvenance#check}, which decides between foreign software and a
+     * hand-edited document of ours. {@code SongFileLoader.load} maps the two
+     * exceptions to {@code SongLoadResult.WrongSoftware} and
+     * {@code SongLoadResult.UnsupportedFileFormat} respectively.
      *
      * <p>{@code SongMapper.map} calls this before any mapping, so a foreign document
      * reports its provenance even when its content would also have tripped a mapper,
      * and no {@code Song} is built out of an input this program does not support.
      */
-    static void checkProvenance(ScorePartwise score) throws MusicXmlReader.ForeignSoftwareException {
-        var software = ProxyMusicAccess.software(score);
-
-        if (software == null || software.isBlank() || !software.startsWith(Constants.PACKAGE_NAME)) {
-            throw new MusicXmlReader.ForeignSoftwareException(software);
-        }
+    static void checkProvenance(ScorePartwise score)
+        throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedFormatException {
+        SoftwareProvenance.check(ProxyMusicAccess.software(score));
     }
 
     // -------------------------------------------------------------------------

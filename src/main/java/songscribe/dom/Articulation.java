@@ -36,7 +36,7 @@ import songscribe.smufl.SMuFLMetadata;
  *   <li>For upward stems: articulations go below the staff</li>
  * </ul>
  */
-public class Articulation extends LineElement {
+public class Articulation extends LineElement implements IntrinsicHeight {
 
     // SMuFL bbox-derived dimensions in staff-space units
     private static final double STACCATO_WIDTH_SS;
@@ -128,18 +128,14 @@ public class Articulation extends LineElement {
     }
 
     /**
-     * Returns the content width in staff-space units, derived from SMuFL bounding box data.
+     * Returns the glyph's own width in staff-space units, derived from SMuFL bounding box data.
      */
-    @Override
-    public double getContentWidthSs() {
+    public double intrinsicWidthSs() {
         return isStaccato() ? STACCATO_WIDTH_SS : ACCENT_WIDTH_SS;
     }
 
-    /**
-     * Returns the content height in staff-space units, derived from SMuFL bounding box data.
-     */
     @Override
-    public double getContentHeightSs() {
+    public double intrinsicHeightSs() {
         return isStaccato() ? STACCATO_HEIGHT_SS : ACCENT_HEIGHT_SS;
     }
 }

@@ -147,9 +147,9 @@ public final class TextMeasurement {
      * the advance, not the ink, so a glyph whose marks overhang its advance is not counted
      * past it.
      *
-     * @param font the font to set the text in
+     * @param font the font to set the text in, sized in document pixels
      * @param text a single line of text, which must not be empty
-     * @return the advance width in pixels at the size {@code font} is expressed in
+     * @return the advance width in document pixels
      */
     public static double textAdvancePx(Font font, String text) {
         return new TextLayout(text, font, SCREEN_FRC).getAdvance();
@@ -276,7 +276,7 @@ public final class TextMeasurement {
      * @param ascent     the font's nominal ascent, in whole pixels
      * @return the overshoot in whole pixels, never negative
      */
-    public static int extraInkAbove(@Nullable Rectangle2D lineBounds, int ascent) {
+    public static int extraInkAbovePx(@Nullable Rectangle2D lineBounds, int ascent) {
         if (lineBounds == null) {
             return 0;
         }
@@ -285,7 +285,7 @@ public final class TextMeasurement {
     }
 
     /**
-     * The below-the-baseline counterpart of {@link #extraInkAbove}: extra room the block
+     * The below-the-baseline counterpart of {@link #extraInkAbovePx}: extra room the block
      * needs below its last baseline because that line's ink overshoots the font's nominal
      * {@code descent}. Rounded up for the same reason.
      *
@@ -294,7 +294,7 @@ public final class TextMeasurement {
      * @param descent    the font's nominal descent, in whole pixels
      * @return the overshoot in whole pixels, never negative
      */
-    public static int extraInkBelow(@Nullable Rectangle2D lineBounds, int descent) {
+    public static int extraInkBelowPx(@Nullable Rectangle2D lineBounds, int descent) {
         if (lineBounds == null) {
             return 0;
         }

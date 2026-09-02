@@ -31,7 +31,7 @@ drawn.
 
 **The factor is applied once**, at the paint transform. Everything drawn inside
 that transform works in staff spaces and must never multiply by the factor
-again. Two renderers draw *outside* it, in pixel space, and so have to
+again. One renderer draws *outside* it, in pixel space, and so has to
 reintroduce the factor by name:
 
 - The **lyric renderer** strips the transform so painted lyrics land on the same
@@ -40,13 +40,8 @@ reintroduce the factor by name:
   by up to a device pixel, so text would visibly jump on entering and leaving
   edit mode. This is editor parity, not a general legibility win: a renderer with
   no overlaid editor has no reason to copy it.
-- The **attribution block** is not a component and never gets a graphics context
-  of its own, so whoever paints it decides its coordinate space. Its two callers
-  agree on pixels, so one pixel-based render serves both, taking the factor as an
-  explicit parameter. Its *measurement* is deliberately zoom-free, so the
-  staff-space dimensions layout reserves are zoom-invariant by construction.
 
-In both cases the carrier is named for what it is, so it cannot be mistaken for a
+The carrier is named for what it is, so it cannot be mistaken for a
 document-scale value.
 
 ## Read zoom on demand, never cache it
@@ -59,7 +54,7 @@ the document-load path: a push would leave a freshly rebuilt line drawing at 100
 while the rest of the tree stayed zoomed. Reading on demand makes that class of
 staleness structurally impossible.
 
-Consumers with no view — dialog previews, exporters — read a shared read-only
+Consumers with no view — dialog previews — read a shared read-only
 identity scale and render at natural size regardless of what any live view is
 showing.
 
@@ -112,12 +107,13 @@ drawn from and never stored, and nothing they produce may reach layout.
 A measurement also answers one of three questions, and they are not
 interchangeable. That axis is set out on `TextMeasurement` itself.
 
-## Export is zoom-independent by construction
+## Rendering without a view is zoom-independent by construction
 
-Export sizing is derived from the document scale and never from a live view. In
+Sizing for anything rendered outside a live view — a dialog preview, a printed
+page — is derived from the document scale and never from a live view. In
 particular it is never recovered by dividing a zoomed, already-rounded on-screen
 measurement back down by the factor: that round trip loses information at the
 clamp applied during layout and accumulates rounding error. Where a view-scaled
 measurement is genuinely needed, it is converted back to document space *before*
-any clamping, never after. This keeps exporters immune to whatever zoom the view
-happens to be showing.
+any clamping, never after. This keeps such rendering immune to whatever zoom the
+view happens to be showing.

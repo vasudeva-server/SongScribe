@@ -32,6 +32,7 @@ import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.SongFactory;
+import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongFileWriter;
@@ -100,7 +101,24 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             .toArray(SongFactory.LineBuilder[]::new);
         var song = SongFactory.buildSong(builders);
 
-        song.withoutMutationTracking(() -> song.setMetadata(song.getMetadata().withTitle(SONG_TITLE)));
+        var metadata = song.getMetadata();
+        song.withoutMutationTracking(() -> song.setMetadata(new SongMetadata(
+            SONG_TITLE,
+            metadata.number(),
+            metadata.place(),
+            metadata.year(),
+            metadata.month(),
+            metadata.day(),
+            metadata.composer(),
+            metadata.lyricist(),
+            metadata.lyricsSource(),
+            metadata.arrangement(),
+            metadata.unofficialTranslation(),
+            metadata.subtitle(),
+            metadata.wordsYear(),
+            metadata.wordsMonth(),
+            metadata.wordsDay()
+        )));
 
         var fonts = DocumentFonts.defaultFonts();
 

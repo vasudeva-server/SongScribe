@@ -32,7 +32,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Dynamics indicate volume levels (p, f, mf, etc.) and are typically
  * placed below the staff, centered on the note.
  */
-public final class DynamicAttachment extends Attachment {
+public final class DynamicAttachment extends Attachment implements IntrinsicHeight {
 
     /**
      * Types of dynamic markings.
@@ -160,18 +160,15 @@ public final class DynamicAttachment extends Attachment {
     }
 
     /**
-     * Returns the content width in staff-space units.
+     * Returns the glyph's own ink width in staff-space units. This is the ink, not the advance
+     * box a neighbouring hairpin pads away from — see {@link #getAdvanceWidthSs()}.
      */
-    @Override
-    public double getContentWidthSs() {
+    public double intrinsicWidthSs() {
         return glyphBBox().widthSs();
     }
 
-    /**
-     * Returns the content height in staff-space units.
-     */
     @Override
-    public double getContentHeightSs() {
+    public double intrinsicHeightSs() {
         return glyphBBox().heightSs();
     }
 
@@ -200,7 +197,7 @@ public final class DynamicAttachment extends Attachment {
      * Returns the glyph's bottom edge relative to its text baseline, in staff-space units.
      * Positive, since a dynamic's descender drops below the baseline.
      * <p>
-     * This says where the ink sits <em>around</em> the baseline, which {@link #getContentHeightSs()}
+     * This says where the ink sits <em>around</em> the baseline, which {@link #intrinsicHeightSs()}
      * alone cannot: {@code p} has a descender and no ascender, {@code f} has both, and {@code mf} is
      * nearly all x-height, so a shared baseline is the only alignment that reads level across them.
      */

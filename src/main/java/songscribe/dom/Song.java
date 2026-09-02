@@ -212,12 +212,6 @@ public final class Song implements Disposable {
     // tempo of its own — see SongTempoMark.
     private final SongTempoMark tempoMarkElement = new SongTempoMark();
 
-    // Rendering surface for the attribution block — owned here so layout and render
-    // both share the same cached measurement without LineComponent holding state.
-    // setSong is called in the instance initializer below so every constructor path
-    // wires the pane to this Song before any constructor body runs.
-    private final AttributionPane attributionPane = new AttributionPane();
-
     private double rowHeightAdjustmentSs = 0;
 
     // Line-wide rest length driving derived column spacing (#330); persisted in the MusicXML
@@ -291,14 +285,7 @@ public final class Song implements Disposable {
     // Answers what tempo and what beat are in effect at a position.
     private final TempoResolver tempoResolver = new TempoResolver(this);
 
-    // Wire the pane to this Song instance — called at the start of every constructor.
-    private void init() {
-        attributionPane.setSong(this);
-    }
-
     public Song() {
-        init();
-
         // Suspend mutation tracking so that setup changes don't post a spurious
         // SongDidChangeNotification to global subscribers before this Song is
         // installed in any ScoreView.
@@ -317,7 +304,6 @@ public final class Song implements Disposable {
      * Avoids the wasted work of the no-arg constructor (default line initialization).
      */
     public Song(SongData data) {
-        init();
         loadFrom(data);
         MessageCenter.subscribe(this);
     }
@@ -335,7 +321,6 @@ public final class Song implements Disposable {
     private enum Stub { INSTANCE }
 
     private Song(Stub ignored) {
-        init();
         MessageCenter.subscribe(this);
     }
 
@@ -626,11 +611,6 @@ public final class Song implements Disposable {
         return tempoMarkElement;
     }
 
-    /** Returns the attribution rendering surface owned by this Song. */
-    public AttributionPane getAttributionPane() {
-        return attributionPane;
-    }
-
     public String getNumber() {
         return metadata.number();
     }
@@ -798,12 +778,7 @@ public final class Song implements Disposable {
         var oldMetadata = metadata;
         withModification(() -> applyChange(
             new MetadataChange(MetadataField.ATTRIBUTION, oldMetadata, newMetadata),
-            () -> {
-                metadata = newMetadata;
-                // Invalidate the attribution pane's measure cache so the next
-                // layout/render picks up the updated metadata.
-                attributionPane.invalidateCache();
-            }
+            () -> metadata = newMetadata
         ));
     }
 
@@ -819,13 +794,9 @@ public final class Song implements Disposable {
 
     public void setTranslatedLyrics(String text) {
         var newLyrics = StringUtils.processText(text, false);
-        // showTranslation() — and thus the attribution's translation credit —
-        // is derived from translatedLyrics, so invalidate the pane's measure
-        // cache when the value actually changes.
-        mutateLyrics(LyricsField.TRANSLATED, translatedLyrics, newLyrics, () -> {
-            translatedLyrics = newLyrics;
-            attributionPane.invalidateCache();
-        });
+        mutateLyrics(
+            LyricsField.TRANSLATED, translatedLyrics, newLyrics,
+            () -> translatedLyrics = newLyrics);
     }
 
     public void setFootnotes(String text) {

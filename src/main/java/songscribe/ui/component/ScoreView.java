@@ -64,9 +64,6 @@ import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.error.RuntimeError;
-import songscribe.export.ExportOptions;
-import songscribe.export.ImageExporter;
-import songscribe.export.SVGExporter;
 import songscribe.font.DocumentFonts;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
@@ -275,10 +272,6 @@ public final class ScoreView
         }
     }
 
-    public void createSVG(File outputFile) {
-        SVGExporter.createSVG(outputFile);
-    }
-
     /**
      * Initializes the interactive UI: view, panels, message coordinator,
      * and the initial Song. Must be called exactly once after construction
@@ -436,7 +429,7 @@ public final class ScoreView
         return lineComponent.getLayoutResult();
     }
 
-    public boolean openFile(File file, boolean updateCurrentFile) {
+    public boolean openFile(File file) {
         var result = SongFileLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
@@ -468,7 +461,7 @@ public final class ScoreView
                         SwingUtilities.getWindowAncestor(this), tupletReport, accidentalsConverted);
                 }
 
-                if (updateCurrentFile && onFileOpened != null) {
+                if (onFileOpened != null) {
                     onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
                 }
 
@@ -958,41 +951,6 @@ public final class ScoreView
         return DocumentScale.ssToPx(getSong().getLineWidthSs().value()).sizePx();
     }
 
-    public int getSheetHeightPx() {
-        // TODO: Calculate from component hierarchy
-        //
-        // Zoom-independent by construction: unlike ScoreView's own getHeight() (which is
-        // clamped against the page height and rounded at the view scale in layoutPage),
-        // this reproduces that max/margin arithmetic entirely in document space so future
-        // exporters never inherit view zoom. mainPanel's preferred height is the one
-        // remaining view-scaled read; it is converted back to document px via the view's
-        // own ViewScale rather than a raw factor() division, and is not first clamped or
-        // rounded against the page height, so no page-height information is lost in the
-        // round trip.
-        var contentHeightViewPx = (mainPanel != null) ? mainPanel.getPreferredSize().height : 0;
-        var contentHeightDocPx = viewScale.toDocPx(new ViewPx(contentHeightViewPx));
-        return new DocPx(pageHeightForContent(
-            PageModel.getPageHeightPx().value(),
-            contentHeightDocPx.value(),
-            PageModel.getTopMarginPx().value(),
-            PageModel.getBottomMarginPx().value()
-        )).sizePx();
-    }
-
-    /**
-     * Returns the sheet height in pixels, adjusted for the given export options.
-     * When the rendering pipeline is fully implemented, this will calculate
-     * the height without including excluded sections (lyrics, title, attribution).
-     *
-     * @param options controls which content sections to include in the measurement
-     * @return the sheet height in pixels
-     */
-    public int getSheetHeightPx(ExportOptions options) {
-        // TODO: Calculate height based on options without relying on component layout.
-        // For now, returns full height since rendering is not yet implemented.
-        return getSheetHeightPx();
-    }
-
     @Override
     public void drawWidthIfWiderLine(Line line, boolean revalidateOnly) {
         // Exclude the auto-maintained FINAL_DOUBLE_BARLINE from stretch calculations:
@@ -1135,11 +1093,11 @@ public final class ScoreView
     }
 
     /**
-     * The page policy both {@link #getPreferredSize} and {@link #getSheetHeightPx} answer with:
-     * a page never shrinks below a full page, and never crops its content.
+     * The page policy {@link #getPreferredSize} answers with: a page never shrinks below a
+     * full page, and never crops its content.
      * <p>
-     * Unit-agnostic on purpose — the two callers work in different spaces, view pixels and
-     * document pixels, and the policy is the same in both. Each converts before calling.
+     * Unit-agnostic on purpose, so a future caller in a different unit space needs no
+     * conversion of its own.
      *
      * @param pageHeight the full page height
      * @param contentHeight the height of what the page holds, excluding margins
@@ -1491,21 +1449,6 @@ public final class ScoreView
     @Nullable
     public ElementSelection getSelection() {
         return selectionCoordinator.getSelection();
-    }
-
-    public BufferedImage createImageForExport(
-        Color background,
-        double scale,
-        MyBorder border,
-        ExportOptions options
-    ) {
-        return ImageExporter.createImageForExport(
-            this,
-            background,
-            scale,
-            border,
-            options
-        );
     }
 
     public enum ConnectionType {

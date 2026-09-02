@@ -248,11 +248,12 @@ public class LayoutEngine {
      * Executes the complete layout pipeline for a line, optionally stacking the song's tempo mark
      * and an attribution block.
      * <p>
-     * On the first line, pass the song's {@link Attribution} element (with dimensions pre-set via
-     * {@link Attribution#setDimensionsSs}) to trigger attribution stacking above the right-edge
-     * columns, and the song's {@link SongTempoMark} to place the tempo at the staff header. Passing
-     * either non-null implies this is the first line. The mark needs no pre-measurement — its
-     * content is derived from {@link songscribe.dom.Song#getTempo()} during stacking.
+     * On the first line, pass the song's {@link Attribution} element to trigger attribution
+     * stacking above the right-edge columns, and the song's {@link SongTempoMark} to place the
+     * tempo at the staff header. Passing either non-null implies this is the first line. Neither
+     * needs pre-measurement: both are typeset here, from the song, on every layout pass — the
+     * tempo mark from {@link songscribe.dom.Song#getTempo()} and the attribution block into an
+     * {@link AttributionContent}.
      *
      * @param line                        The line to lay out
      * @param isLastLine                  Whether this line is the last line of the song
@@ -313,7 +314,8 @@ public class LayoutEngine {
         // Use the song's staff width for consistent StaffExtents clamping,
         // not the content width which varies with column count.
         verticalCalculator.calculate(
-            columns, line, builder, staffRightMarginSs, fonts, tempoMark, attribution);
+            columns, line, builder, staffRightMarginSs, fonts, tempoMark,
+            attributionBlock(line, attribution));
 
         // Step 7b: Compute lyric box and connector geometry, for the same verse step 1 built the
         // columns for — what makes their cached syllable widths reusable there.
@@ -322,6 +324,26 @@ public class LayoutEngine {
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
+    }
+
+    /**
+     * Typesets the attribution block for the line being laid out, or returns null when there is
+     * none to stack.
+     * <p>
+     * The block is set here rather than by the caller because everything it needs is already here:
+     * the song, reached through the line, and the document fonts this engine was built with. Both
+     * the interactive paint path and the headless writers therefore get the same block from the
+     * same measurement, without either of them spelling one out.
+     */
+    private VerticalStackingCalculator.@Nullable AttributionBlock attributionBlock(
+        Line line, @Nullable Attribution attribution) {
+
+        if (attribution == null) {
+            return null;
+        }
+
+        return new VerticalStackingCalculator.AttributionBlock(
+            attribution, AttributionContent.forSong(line.getSong(), fonts));
     }
 
     private void buildLyricLayout(

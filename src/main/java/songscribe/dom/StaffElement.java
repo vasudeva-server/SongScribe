@@ -279,18 +279,14 @@ public abstract class StaffElement extends LineElement implements Cloneable {
         return getType().getElementWidthSs();
     }
 
-    // ========================================================================
-    // LineElement Implementation
-    // ========================================================================
-
-    @Override
+    /**
+     * Returns the element's full advance width — the glyph plus whatever the type reserves
+     * beside it — in staff spaces.
+     *
+     * @return {@link ElementType#getFullElementWidthSs()} for this element's type
+     */
     public double getContentWidthSs() {
         return getType().getFullElementWidthSs();
-    }
-
-    @Override
-    public double getContentHeightSs() {
-        return getType().getElementHeightSs(direction);
     }
 
     // ========================================================================

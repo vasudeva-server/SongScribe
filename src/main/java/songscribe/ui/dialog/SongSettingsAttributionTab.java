@@ -42,12 +42,13 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
-import songscribe.dom.AttributionPane;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.SongAttribution;
 import songscribe.font.FontDescription;
 import songscribe.font.FontKey;
 import songscribe.font.TextMeasurement;
+import songscribe.layout.AttributionContent;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.binding.Controls;
@@ -58,7 +59,9 @@ import songscribe.ui.binding.Widgets;
 import songscribe.binding.WritableValue;
 import songscribe.ui.component.MyJTextArea;
 import songscribe.ui.component.MyJTextField;
+import songscribe.ui.renderer.AttributionRenderer;
 import songscribe.util.GraphicUtils;
+import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
@@ -103,7 +106,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private final JCheckBox arrangementCheck = new JCheckBox(
         Strings.get(Strings.DIALOG_SONG_SETTINGS_ARRANGEMENT)
     );
-    private final AttributionPaneWidget attributionPreview = new AttributionPaneWidget();
+    private final AttributionPreviewWidget attributionPreview = new AttributionPreviewWidget();
 
     // The controls stay fields because the layout code adds them; everything read or
     // written after the build goes through the property over each one.
@@ -143,7 +146,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     // effect over it re-packs the dialog when the preview's height can actually have
     // moved, and on no other notification a dependency makes. Assigned in the constructor,
     // which is the first point at which the derivation it is seeded from can run.
-    private final ValueProperty<AttributionPaneWidget.PreviewState> previewState;
+    private final ValueProperty<AttributionPreviewWidget.PreviewState> previewState;
 
     // Each font row owns two actions that subscribe themselves to the message bus, so this
     // tab holds the rows until dispose() releases them. Assigned while the Fonts section is
@@ -197,7 +200,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         // same derivation makes the binding's settling write an equal one, which is
         // silent.
         previewState = new ValueProperty<>(buildPreviewState());
-        WritableValue<AttributionPaneWidget.PreviewState> preview = attributionPreview::setPreviewState;
+        WritableValue<AttributionPreviewWidget.PreviewState> preview = attributionPreview::setPreviewState;
         dialogBindings.bind(previewState, dialogBindings.computed(this::buildPreviewState));
         dialogBindings.bind(preview, previewState);
 
@@ -462,7 +465,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * the framework can track: a direct control read would be invisible to it and the
      * preview would answer stale.
      */
-    private AttributionPaneWidget.PreviewState buildPreviewState() {
+    private AttributionPreviewWidget.PreviewState buildPreviewState() {
         // The SongAttribution constructor normalizes each field, so the raw property text
         // is passed through directly.
         var composerText = composer.get();
@@ -484,7 +487,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         );
         var showTranslation = !translation && hasTranslation.get();
 
-        return new AttributionPaneWidget.PreviewState(
+        return new AttributionPreviewWidget.PreviewState(
             attributionFont.get(),
             subAttributionFont.get(),
             AttributionFormatter.lines(credits, showTranslation)
@@ -582,19 +585,19 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     }
 
     /**
-     * Thin Swing wrapper around {@link AttributionPane}.
-     * Delegates measure and paint to the bare rendering surface;
-     * holds the state one preview refresh writes so {@link #getPreferredSize()} and
-     * {@link #paintComponent} can pass the fonts through.
+     * Thin Swing wrapper showing the attribution block as the score will draw it.
+     * <p>
+     * It typesets the uncommitted preview lines into an {@link AttributionContent} — the same
+     * content the layout pass builds for the score — and draws it through the same
+     * {@link AttributionRenderer}, so the preview cannot depict something the score would set
+     * differently.
      */
-    private static final class AttributionPaneWidget extends JComponent {
-
-        private final AttributionPane pane = new AttributionPane();
+    private static final class AttributionPreviewWidget extends JComponent {
 
         // Null until the first write, which the owning tab's binding makes while it is
         // being constructed — before this widget is ever laid out or painted.
         @Nullable
-        private PreviewState state = null;
+        private AttributionContent content = null;
 
         /**
          * Everything one preview refresh writes, as one value.
@@ -615,19 +618,23 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
          * three.
          */
         void setPreviewState(PreviewState state) {
-            this.state = state;
-            pane.setOverrideLines(state.lines());
+            content = AttributionContent.forLines(
+                state.lines(), state.attributionFont(), state.subAttributionFont());
             revalidate();
             repaint();
         }
 
         @Override
         public Dimension getPreferredSize() {
-            if (state == null) {
+            var previewContent = content;
+
+            if (previewContent == null) {
                 return new Dimension(0, 0);
             }
 
-            return pane.getContentSizePx(state.attributionFont(), state.subAttributionFont());
+            return new Dimension(
+                DocumentScale.ssToPx(previewContent.widthSs()).sizePx(),
+                DocumentScale.ssToPx(previewContent.heightSs()).sizePx());
         }
 
         @Override
@@ -642,16 +649,22 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
-            if (state == null) {
+            var previewContent = content;
+
+            if (previewContent == null) {
                 return;
             }
 
             var g2 = (Graphics2D) g;
             GraphicUtils.setRenderingHints(g2);
-            // The preview always renders unzoomed (no ScoreView), so measure at natural scale.
-            pane.render(
-                g2, 0, 0, getWidth(), state.attributionFont(), state.subAttributionFont(),
-                AttributionPane.NATURAL_ZOOM_FACTOR);
+
+            // The renderer draws in staff spaces, as it does in the score. There is no ScoreView
+            // here to establish that transform and no zoom to fold into it, so the preview
+            // applies the document scale itself and shows the block at natural size.
+            try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+                g2.scale(DocumentScale.PIXELS_PER_STAFF_SPACE, DocumentScale.PIXELS_PER_STAFF_SPACE);
+                AttributionRenderer.getInstance().render(g2, previewContent);
+            }
         }
     }
 }

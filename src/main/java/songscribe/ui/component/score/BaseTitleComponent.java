@@ -290,12 +290,12 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
         /** Room above the first baseline for ink that overshoots the nominal ascent. */
         int topInkPaddingPx() {
-            return TextMeasurement.extraInkAbove(lines.getFirst().ink(), metrics.getAscent());
+            return TextMeasurement.extraInkAbovePx(lines.getFirst().ink(), metrics.getAscent());
         }
 
         /** Room below the last baseline for ink that overshoots the nominal descent. */
         int bottomInkPaddingPx() {
-            return TextMeasurement.extraInkBelow(lines.getLast().ink(), metrics.getDescent());
+            return TextMeasurement.extraInkBelowPx(lines.getLast().ink(), metrics.getDescent());
         }
     }
 

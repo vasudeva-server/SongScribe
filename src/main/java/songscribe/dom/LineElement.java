@@ -105,26 +105,6 @@ public abstract class LineElement {
     private final List<LineElement> children = new ArrayList<>();
 
     // ========================================================================
-    // Abstract Methods
-    // ========================================================================
-
-    /**
-     * Returns the intrinsic width of this element's content, in staff spaces.
-     *
-     * @return the width the element draws, in the unit the document model holds its
-     *     dimensions in; a caller needing pixels converts through {@link DocumentScale}
-     */
-    public abstract double getContentWidthSs();
-
-    /**
-     * Returns the intrinsic height of this element's content, in staff spaces.
-     *
-     * @return the height the element draws, in the unit the document model holds its
-     *     dimensions in; a caller needing pixels converts through {@link DocumentScale}
-     */
-    public abstract double getContentHeightSs();
-
-    // ========================================================================
     // Parent/Line Relationships
     // ========================================================================
 

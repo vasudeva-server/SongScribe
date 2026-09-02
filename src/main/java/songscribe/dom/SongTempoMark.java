@@ -35,21 +35,4 @@ package songscribe.dom;
  * to leave behind.
  */
 public final class SongTempoMark extends LineElement {
-
-    /**
-     * Always {@code 0}. The mark's drawn extent is derived from the song's current
-     * {@link Tempo} by the stacker, never cached on the element.
-     */
-    @Override
-    public double getContentWidthSs() {
-        return 0;
-    }
-
-    /**
-     * Always {@code 0}, for the same reason as {@link #getContentWidthSs()}.
-     */
-    @Override
-    public double getContentHeightSs() {
-        return 0;
-    }
 }

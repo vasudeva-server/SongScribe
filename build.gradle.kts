@@ -2,6 +2,18 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
+import org.semver4j.Semver
+
+// generateVersion validates project.version as semver while the build runs, so semver4j
+// must be on the build script's own classpath as well as the application's.
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.semver4j:semver4j:6.0.0")
+    }
+}
 
 plugins {
     java
@@ -49,6 +61,7 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("net.engio:mbassador:1.3.2")
     implementation("org.audiveris:proxymusic:4.0.3")
+    implementation("org.semver4j:semver4j:6.0.0")
 
     testImplementation("org.mockito:mockito-core:5.21.0")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
@@ -70,10 +83,14 @@ dependencies {
 // -- Code generation --
 
 val generateVersion = tasks.register("generateVersion") {
-    description = "Generates Version.java, which contains constants for the public version (from project.version) and build version (current date). This allows us to display version info in the UI and have it accessible at runtime without hardcoding it in the source code."
+    description = "Generates Version.java, which contains a constant for the public version (from project.version, validated as semver). This allows us to display version info in the UI and have it accessible at runtime without hardcoding it in the source code."
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
     outputs.dir(outDir)
     doLast {
+        Semver.parse(project.version.toString())
+            ?: throw GradleException(
+                "project.version \"${project.version}\" is not a valid semantic version"
+            )
         val dir = outDir.get().asFile
         dir.mkdirs()
         File(dir, "Version.java").writeText(
@@ -82,7 +99,6 @@ val generateVersion = tasks.register("generateVersion") {
             package songscribe;
             public final class Version {
                 public static final String PUBLIC_VERSION = "${project.version}";
-                public static final String BUILD_VERSION = "$buildDate";
                 private Version() {}
             }
             """.trimIndent()
@@ -265,9 +281,7 @@ val e2eTest = tasks.register<Test>("e2eTest") {
 // -- PIT mutation testing --
 
 val defaultPitestTargets = listOf(
-    "songscribe.converter.*",
     "songscribe.dom.*",
-    "songscribe.export.*",
     "songscribe.font.*",
     "songscribe.io.*",
     "songscribe.layout.*",

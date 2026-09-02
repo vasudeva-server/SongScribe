@@ -28,6 +28,12 @@ resolving its *Where* column into the target. Work that is not on this table get
 a row before it gets a pass, which is what keeps the ordering above true rather
 than aspirational.
 
+**Every package under `src/main/java/songscribe` is named by some row's *Where*
+column.** A package no row names is a gap in the register, not a package exempt
+from review; adding a package to the tree means adding a row or extending one in
+the same change. `export` and `converter` carry no row because they no longer
+exist — a rewritten export or converter subsystem gets a row when it lands.
+
 ## The record is working memory
 
 **A pass's record is deleted when the pass completes.** It exists to survive a
@@ -103,39 +109,46 @@ passes that are finished and cannot be asked what they meant, so renumbering
 would re-point every one of those tags at the wrong system. A suffixed row that
 splits again suffixes again: 14b1, 14b2.
 
+A row added after the table was written takes the next free number, wherever in
+the order it belongs — so a row numbered 29 can sit between 22 and 23. **Table
+position is the order; the number is only identity.** Read the order down the
+table, never up the numbers.
+
 ## Register
 
 | #  | System | Where | Status | Notes |
 |----|---|---|---|---|
-| 0  | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
-| 1  | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
+| 0  | **Keys** | `dom`: `Key`, `KeySignature`, `KeyChangeElement`, `KeyChangeSite`, `KeySignatureExtent`; plus `layout`, `io`, `io/musicxml`, `midi`, `ui` | ✅ | On `develop`. Settled key state wherever it lived, including in `Song` and `Line`. The design it arrived at is `docs/key-changes.md`. |
+| 1  | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`, `PixelDistance`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
 | 2  | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
 | 3  | Staff geometry | `engraving` | ✅ | Every stroke width is base × named multiplier, with no bare literal standing in for one. `EngravingConstants` collects the LilyPond base thickness and everything derived from it that has no single owner; `StemMetrics`, `BeamMetrics`, `LedgerLine`, `StaffPosition` and `BarStroke` are new types that each own one measurement, replacing `LineThickness` and `SMuFLConstants`, both dissolved. `StaffPosition` carries its own `MIN`/`MAX` range and clamps into it, so the two callers that used to check a raw `int` cannot skip the check. The accidental-advance rule — ink width plus natural kerning — moved off `StaffHeaderMetrics` onto `Key.DrawnAccidental` in `dom`, which is total over its own value and its neighbour's rather than partial in its contract. The ledger-line threshold, stated twice before, is now `LedgerLine.forEachOffsetSs`, read by both its callers. The design it arrived at is `engraving/package-info.java`. |
-| 4  | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation` | ⏳ | The vocabulary every element is built from. |
-| 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
-| 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements` | ⏳ | Everything except key state, which pass 0 settled. |
+| 4  | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ⏳ | The vocabulary every element is built from. |
+| 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds` | ⏳ | Everything except key state, which pass 0 settled. |
+| 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ⏳ | Everything except key state, which pass 0 settled. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
-| 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, and the five `*Attachment` types | ⏳ | |
-| 11 | Tempo and beat | `dom`: `Tempo`, `TempoResolver`, `SongTempoMark`, `BeatAt`, `BeatChange` | ⏳ | |
-| 12 | Song | `dom`: `Song`, `SongMetadata`, `Attribution*`, `ModificationSession`, `TerminalMaintainer` | ⏳ | The large model, less key state, which pass 0 settled. Decouple from everything above it as far as it will go. |
+| 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, `AnnotationAttachment`, `BeatChangeAttachment`, `DynamicAttachment`, `FermataAttachment`, `MetronomeAttachment`, `TempoChangeAttachment` | ⏳ | |
+| 11 | Tempo and beat | `dom`: `Tempo`, `TempoResolver`, `SongTempoMark`, `TempoMarking`, `BeatAt`, `BeatChange` | ⏳ | `docs/song-tempo.md`. |
+| 12 | Song | `dom`: `Song`, `SongMetadata`, `Attribution`, `AttributionFormatter`, `AttributionLine`, `SongAttribution`, `ModificationSession`, `TerminalMaintainer` | ⏳ | The large model, less key state, which pass 0 settled. Decouple from everything above it as far as it will go. |
 | 13 | Mutations | `message/mutation` | ⏳ | Shapes follow the model. |
-| 14 | Message bus | `message`, `message/notification`, `message/command` | ⏳ | *(undecomposed)* |
-| 15 | Undo | `undo`, `lifecycle` | ⏳ | Replays mutations. |
+| 14 | Message bus | `message`, `message/notification`, `message/command` | ⏳ | *(undecomposed)* — `plans/message-subscription-delegate.md` settles part of what a read of `message` would otherwise have to discover, so this pass inherits rather than derives: one bus with no scope stack; a publication-error policy the application entry point installs, defaulting to log-only; `MessageSubscription` as the only route to a registration, with `MessageCenter.subscribe`/`unsubscribe` package-private behind it; and a registration whose end is its owner's `dispose()`. That plan is remediation, not a pass, and it leaves `message/notification`, `message/command` and the 28-plus-28 message types they carry untouched. |
+| 15 | Undo and lifecycle | `undo`, `lifecycle` | ⏳ | Two halves: `undo` replays mutations, and `lifecycle` builds `Shutdown` and `Disposable`. `docs/lifecycle.md`. How those two are built is this pass's; what the application does about a fatal error is row 30's, so this pass is not the one expected to answer it. `plans/message-subscription-delegate.md` makes the thing every `Disposable` implementor acquires a `MessageSubscription` field and rewrites the class Javadoc sentence that says so, so this pass reads a `Disposable` whose content is already settled and does not re-derive it. |
 | 16 | MusicXML I/O | `io/musicxml` | ⏳ | The live boundary — converts into domain types. |
 | 17 | Legacy I/O | `io` | ⏳ | Read-only migration path. |
-| 18 | Layout | `layout`, `layout/stacking`, `hit` | ⏳ | *(undecomposed)* — visibly several systems: columns, spring spacing, lyric layout, beams, accidentals, hit testing, the layout result, geometry primitives. Split on the read. |
+| 18 | Layout | `dom`: `CollisionRegion`; plus `layout`, `layout/stacking`, `hit` | ⏳ | *(undecomposed)* — visibly several systems: columns, spring spacing, lyric layout, beams, accidentals, hit testing, the layout result, geometry primitives. Split on the read. |
 | 19 | Rendering | `ui/renderer` | ⏳ | *(undecomposed)* |
 | 20 | Selection | `ui/selection` | ⏳ | |
 | 21 | Clipboard | `ui/clipboard` | ⏳ | |
 | 22 | Edit modes | `ui/edit` | ⏳ | |
-| 23 | Dialogs | `ui/dialog`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — takes the package as the finished `ui-dialog-interface` track left it. That track deleted `ui/dialog/backend`, so this pass never sees it. |
+| 29 | Bindings | `binding`, `ui/binding` | ⏳ | Consumers today: `ui/dialog` (13 files), `ui/component` (2: `ScoreView`, which already owns a `Bindings`, and `ZoomStatusBarPanel`), `prefs` (1). `plans/bindings-outside-dialogs.md` makes `Song` a binding owner too, so if that plan's Phase 1 lands first, `dom` becomes a consumer and this row moves above row 12. |
+| 23 | Dialogs | `ui/dialog`, `ui/dialog/fontchooser` | ⏳ | *(undecomposed)* — takes the package as the finished `ui-dialog-interface` track left it. That track deleted `ui/dialog/backend`, so this pass never sees it. `ui/dialog/fontchooser` has three subpackages: `listeners`, `model`, `panes`. |
 | 24 | Actions | `ui/action` | ⏳ | *(undecomposed)* — 60 files. |
 | 25 | Score components | `ui/component`, `ui/component/score`, `ui/component/toolbar` | ⏳ | *(undecomposed)* |
-| 26 | UI shell | `ui`, `ui/menu`, `ui/platform`, `ui/playback` | ⏳ | *(undecomposed)* |
+| 26 | UI shell | `ui`, `ui/menu`, `ui/platform/mac`, `ui/playback` | ⏳ | *(undecomposed)* — `ui/platform` itself holds no files; everything is in `ui/platform/mac`, which holds six. |
 | 27 | MIDI | `midi` | ⏳ | |
-| 28  | Leaf utilities | `util`, `error`, `shape`, `font`, `prefs` | ⏳ | Swept as encountered; a pass of their own only if one earns it. |
+| 28  | Leaf utilities | `songscribe`: `FileExtensions`, and the generated `Strings` and `Version`; plus `util`, `error`, `shape`, `prefs` | ⏳ | Swept as encountered; a pass of their own only if one earns it. `strings.properties` is this row's too. |
+| 30 | Application entry point | `songscribe`: `SongScribe` | ⏳ | It starts every system above it and nothing consumes it, so it is reviewed after all of them. It reads a `lifecycle` that row 15 has settled. Two questions are this row's: how a fatal error is reported by an entry point that may have no display, and whether `SongScribe.logBanner` stays `public` for the test bases alone. |
 
 Legend: ⏳ not started · 🔄 in progress · ✅ complete · ⛔ blocked
 
@@ -225,19 +238,25 @@ the reason for it is still in hand.
   `PreferencesDialog.ensureInstrumentsLoaded`, which this pass retires anyway.
   `PreferencesDialog.resetInstrumentsForTesting` is deleted, but the cache it
   reset is untouched and still lives on the dialog.
-- **→ The `converter` rewrite.** The fatal-error path assumes a display.
-  `RuntimeError.exit` routes unconditionally through
-  `OptionDialogs.showErrorMessageWithString`, i.e. a modal `JOptionPane`, so any
-  entry point without a screen attempts a dialog on any fatal error. The
-  `songscribe.converter` classes that made this visible are being rewritten and
-  are not themselves a finding; what the rewrite owes is the answer to **how does
-  a non-interactive entry point report and terminate a fatal error?**
-  Answered once at the boundary, three production members stop being back doors:
-  `OptionDialogs.setSuppressDialogs` — `public`, documented "for testing" — and
-  `RuntimeError.setExitHandlerForTesting`/`resetAlertShownForTesting`. None is
-  dead: `UnitTest`, `E2ETest` and `RuntimeErrorTestHelper` call all three. They
-  are test-only production surface rather than removable code, and the boundary
-  the rewrite installs is what the test bases should be using instead.
+- **→ Pass 30.** The fatal-error path assumes a display, and the open question is
+  **how does an entry point without a display report and terminate a fatal
+  error?** `RuntimeError.exit` routes unconditionally through
+  `OptionDialogs.showErrorMessageWithString`, i.e. a modal `JOptionPane`, and it
+  is called from far more than a throwing `@Handler`. Answered once at the
+  boundary, four production members stop being back doors:
+  `OptionDialogs.setSuppressDialogs` — `public`, documented "for testing" —
+  `RuntimeError.setExitHandlerForTesting`, `RuntimeError.resetAlertShownForTesting`
+  and `SongScribe.logBanner`. None is dead: `UnitTest`, `E2ETest` and
+  `RuntimeErrorTestHelper` call the first three, and `logBanner` is `public` for
+  `UnitTest` and `E2ETest` alone — no caller outside its own class is production.
+  They are test-only production surface rather than removable code, and the
+  boundary this pass installs is what the test bases should be using instead.
+
+  The message bus is not an instance of this finding.
+  `plans/message-subscription-delegate.md` makes the publication-error policy
+  log-only by default and has `SongScribe.main` install the dialog policy, and it
+  deletes `MessageBusScope`, `MessageCenter.pushBus`, `popBus` and `SCOPE_STACK`
+  outright, so none of them is a member this row inherits.
 
 ## Blockers
 

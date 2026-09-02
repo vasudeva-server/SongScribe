@@ -19,7 +19,7 @@ an ordinary tempo change. A guard costing one method produces the same practical
 outcome as tracking would, without the undo brackets spanning a transfer, the
 emptied-line edge cases, or the cross-line displacement that tracking brings.
 
-## It is drawn like the attribution, not like an attachment
+## It is a decoration, not an attachment
 
 The song tempo renders at the start of the first line — always the first line,
 even when it is empty or the song has no notes at all. It reserves no horizontal
@@ -34,9 +34,11 @@ to a note, so a mark that belongs to no element is simply never offered — it g
 stacking without hit-testing **by construction**, rather than by carrying a flag
 saying "skip me" that some later call site could forget to check.
 
-That is why it copies the attribution's mechanism: the attribution is the existing
-precedent for an ownerless, non-hittable, first-line-only, collision-stacked
-decoration.
+That is why it is a decoration rather than an attachment. The song tempo and the
+attribution are the two ownerless, non-hittable, first-line-only,
+collision-stacked marks, and they share one mechanism: a `DecorationContent`
+riding on a `DecorationLayout`, dispatched from `LineRenderer` and drawn inside
+the staff-space transform.
 
 ## A marking always draws something
 

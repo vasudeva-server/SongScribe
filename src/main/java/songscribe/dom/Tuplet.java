@@ -169,21 +169,11 @@ public class Tuplet extends Span {
     }
 
     /**
-     * {@inheritDoc}
-     * <p>
-     * Returns the <em>bracketed</em> reserved height. A number-only tuplet
-     * (see {@link #isNumberOnly(Line)}) reserves {@link #numberOnlyHeightSs()}
-     * instead. Because that distinction requires a {@link Line}, callers laying
-     * out tuplets must branch on {@code isNumberOnly} rather than rely on this
-     * context-free value.
-     */
-    @Override
-    public double getContentHeightSs() {
-        return bracketedHeightSs();
-    }
-
-    /**
-     * Reserved vertical height for a bracketed tuplet (bracket line + arm).
+     * Reserved vertical height for a bracketed tuplet (bracket line + arm). A number-only
+     * tuplet (see {@link #isNumberOnly(Line)}) reserves {@link #numberOnlyHeightSs()}
+     * instead, so a caller laying out a tuplet branches on {@code isNumberOnly} to choose
+     * between the two; neither height is meaningful without that choice, which is why a
+     * tuplet has no context-free height query.
      */
     public static double bracketedHeightSs() {
         return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0 + BRACKET_ARM_HEIGHT_SS;

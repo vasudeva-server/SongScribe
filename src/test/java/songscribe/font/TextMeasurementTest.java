@@ -37,7 +37,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link TextMeasurement#extraInkAbove}, {@link TextMeasurement#extraInkBelow} and
+ * {@link TextMeasurement#extraInkAbovePx}, {@link TextMeasurement#extraInkBelowPx} and
  * {@link TextMeasurement#textBlockHeight}: the ink-overshoot and line-height formulas that
  * neither call into the graphics environment nor need a system font to exercise.
  */
@@ -70,30 +70,30 @@ class TextMeasurementTest extends UnitTest {
         return Stream.of(
             new OvershootCase(
                 "extraInkAbove is 0 for a null (blank) line",
-                TextMeasurement::extraInkAbove, null, ascent, 0
+                TextMeasurement::extraInkAbovePx, null, ascent, 0
             ),
             new OvershootCase(
                 "extraInkAbove is 0 when the ink stays within the ascent",
-                TextMeasurement::extraInkAbove,
+                TextMeasurement::extraInkAbovePx,
                 new Rectangle2D.Double(0, -ascent, 5, ascent), ascent, 0
             ),
             new OvershootCase(
                 "extraInkAbove is the ceiling of the ink past the ascent",
-                TextMeasurement::extraInkAbove,
+                TextMeasurement::extraInkAbovePx,
                 new Rectangle2D.Double(0, -13.2, 5, 13.2), ascent, 4
             ),
             new OvershootCase(
                 "extraInkBelow is 0 for a null (blank) line",
-                TextMeasurement::extraInkBelow, null, descent, 0
+                TextMeasurement::extraInkBelowPx, null, descent, 0
             ),
             new OvershootCase(
                 "extraInkBelow is 0 when the ink stays within the descent",
-                TextMeasurement::extraInkBelow,
+                TextMeasurement::extraInkBelowPx,
                 new Rectangle2D.Double(0, 0, 5, descent), descent, 0
             ),
             new OvershootCase(
                 "extraInkBelow is the ceiling of the ink past the descent",
-                TextMeasurement::extraInkBelow,
+                TextMeasurement::extraInkBelowPx,
                 new Rectangle2D.Double(0, 0, 5, 11.4), descent, 4
             )
         );

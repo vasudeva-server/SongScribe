@@ -326,7 +326,7 @@ public final class HairpinEndpoints {
      * reaching for the attachment's own accessor.
      */
     public static double dynamicWidthSs(DynamicAttachment dynamic) {
-        return dynamic.getContentWidthSs();
+        return dynamic.intrinsicWidthSs();
     }
 
     /**

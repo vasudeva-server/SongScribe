@@ -27,8 +27,10 @@ import java.awt.Graphics2D;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
+import songscribe.layout.GlyphItem;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.MetronomeContent;
+import songscribe.layout.TextItem;
 import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.COLOR;
@@ -81,11 +83,11 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
                 String text;
 
                 switch (item) {
-                    case MetronomeContent.GlyphItem glyphItem -> {
+                    case GlyphItem glyphItem -> {
                         g2.setFont(TEMPO_NOTE_FONT);
                         text = glyphItem.glyph().asString();
                     }
-                    case MetronomeContent.TextItem textItem -> {
+                    case TextItem textItem -> {
                         g2.setFont(textItem.scaledFont());
                         text = textItem.text();
                     }
@@ -114,7 +116,6 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         Graphics2D g2
     ) {
         var decorationLayout = requireDecorationLayout(element, attachment.getClass(), invariants);
-        var content = decorationLayout.requireContent();
         var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
         // A metronome marking is selectable in its own right, so its selection is folded into
@@ -123,14 +124,21 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         var color = RenderingUtils.decorationColor(
             new HitTarget.Attachment(attachment), element, invariants, frame);
 
-        drawContent(g2, content, decorationLayout.xSs(), ySs, color);
+        DecorationContentRenderer.draw(
+            g2, decorationLayout.content(), decorationLayout.xSs(), ySs, color);
     }
 
     /**
-     * Looks up the decoration layout for the given attachment type on the given note.
-     * Throws {@link IllegalStateException} if not found.
+     * Looks up the typeset decoration layout for the given attachment type on the given note.
+     * <p>
+     * The decoration map is keyed by element, so what comes back is untyped; a metronome marking's
+     * layout always carries its content, because the stacker typesets it before the layout exists.
+     * Anything else here is a layout bug, and drawing nothing would hide exactly the class of
+     * failure that carrying the content exists to prevent.
+     *
+     * @throws IllegalStateException if the note carries no typeset layout for that attachment
      */
-    protected LayoutResult.DecorationLayout requireDecorationLayout(
+    protected LayoutResult.DecorationLayout.Typeset requireDecorationLayout(
         StaffElement note,
         Class<? extends MetronomeAttachment> attachmentClass,
         LineInvariants invariants
@@ -138,11 +146,12 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         var decorationLayout = invariants.getLayoutResult().findAttachmentDecorationLayout(
             note, attachmentClass);
 
-        if (decorationLayout == null) {
+        if (!(decorationLayout instanceof LayoutResult.DecorationLayout.Typeset typeset)) {
             throw new IllegalStateException(
-                "No DecorationLayout found for " + attachmentClass.getSimpleName() + " on note");
+                "No typeset DecorationLayout found for " + attachmentClass.getSimpleName()
+                    + " on note");
         }
 
-        return decorationLayout;
+        return typeset;
     }
 }

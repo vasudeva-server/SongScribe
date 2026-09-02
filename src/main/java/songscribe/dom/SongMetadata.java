@@ -128,19 +128,6 @@ public record SongMetadata(
         );
     }
 
-    /**
-     * Returns a copy of this record with the title replaced. The new title is
-     * normalized by the compact constructor; the other fields are already
-     * normalized, so their re-normalization is a no-op.
-     */
-    public SongMetadata withTitle(String newTitle) {
-        return new SongMetadata(
-            newTitle, number, place, year, month, day,
-            composer, lyricist, lyricsSource, arrangement, unofficialTranslation,
-            subtitle, wordsYear, wordsMonth, wordsDay
-        );
-    }
-
     // -------------------------------------------------------------------------
     // Normalization helpers
     // -------------------------------------------------------------------------

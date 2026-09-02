@@ -598,14 +598,14 @@ public class NoteAttachedStacker {
             return null;
         }
 
-        var widthSs = staccato.getContentWidthSs();
+        var widthSs = staccato.intrinsicWidthSs();
         var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
         var reserveProfile = direction.isUp()
             ? STACCATO_RESERVE_PROFILE_ABOVE
             : STACCATO_RESERVE_PROFILE_BELOW;
 
         return stackStaccato(direction, extents, staccato, xSs,
-            widthSs, staccato.getContentHeightSs(), reserveProfile, paddingSs,
+            widthSs, reserveProfile, paddingSs,
             scriptStaffPaddingSs(paddingSs), StackingUtils.SCRIPT_HORIZON_PADDING_SS,
             staffPosition, builder);
     }
@@ -631,7 +631,7 @@ public class NoteAttachedStacker {
             return null;
         }
 
-        var widthSs = accent.getContentWidthSs();
+        var widthSs = accent.intrinsicWidthSs();
         var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
         var innerEdge = direction.isUp() ? ACCENT_PROFILE_ABOVE : ACCENT_PROFILE_BELOW;
 
@@ -640,7 +640,7 @@ public class NoteAttachedStacker {
         var profiles = new StaffExtents.Profiles(innerEdge, StaffExtents.Profile.flat(widthSs));
 
         return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
-            widthSs, accent.getContentHeightSs(), profiles,
+            widthSs, profiles,
             ACCENT_PADDING_SS, scriptStaffPaddingSs(ACCENT_PADDING_SS),
             StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
     }
@@ -737,11 +737,11 @@ public class NoteAttachedStacker {
             return;
         }
 
-        var widthSs = fermata.getContentWidthSs();
+        var widthSs = fermata.intrinsicWidthSs();
         var xSs = articulationFootprintXSs(note, columnXSs, widthSs);
 
         StackingUtils.placeAndReserveClamped(Direction.UP, extents, fermata, xSs,
-            widthSs, fermata.getContentHeightSs(),
+            widthSs,
             StaffExtents.Profiles.flat(widthSs),
             FERMATA_PADDING_SS, scriptStaffPaddingSs(FERMATA_PADDING_SS),
             FERMATA_HORIZON_PADDING_SS, builder);
@@ -866,7 +866,7 @@ public class NoteAttachedStacker {
         // in, so the placement core adds no further margin.
         var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         StackingUtils.placeAndReserve(Direction.UP, outerExtents, trill, anchorXSs, widthSs,
-            trill.getContentHeightSs(), innerEdgeYSs, 0.0, builder);
+            innerEdgeYSs, 0.0, builder);
     }
 
 }

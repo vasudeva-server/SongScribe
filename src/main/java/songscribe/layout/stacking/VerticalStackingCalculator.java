@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Attribution;
+import songscribe.dom.CollisionRegion;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
@@ -36,6 +37,7 @@ import songscribe.dom.Tuplet;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.AttributionContent;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
@@ -72,6 +74,18 @@ import songscribe.layout.StaffExtents;
 public class VerticalStackingCalculator {
 
     /**
+     * The attribution block to stack on the first line: the model element the resulting layout is
+     * keyed by, and the content typeset for it by the layout pass.
+     * <p>
+     * One value rather than two parameters, because neither half is meaningful alone — the element
+     * carries the user Y offset and no size, and the content carries the size and no identity.
+     *
+     * @param element the song's attribution element, which the layout is keyed by
+     * @param content the block's typeset lines, which its size is read from
+     */
+    public record AttributionBlock(Attribution element, AttributionContent content) {}
+
+    /**
      * Calculates vertical positions for all elements in the given columns.
      * Equivalent to {@code calculate(columns, line, builder, lineWidthSs, fonts, null, null)}.
      */
@@ -90,8 +104,8 @@ public class VerticalStackingCalculator {
      * Creates the three-layer StaffExtents model, seeds note bounding areas, then processes
      * each decoration tier in order. Results are written directly to the builder.
      * <p>
-     * On the first line, if {@code attribution} is non-null with non-zero dimensions, it is
-     * stacked as the topmost tier (after {@link SystemStacker}) over its right-edge columns.
+     * On the first line, if {@code attribution} is non-null it is stacked as the topmost tier
+     * (after {@link SystemStacker}) over its right-edge columns.
      * The resulting {@link LayoutResult.DecorationLayout} is keyed by the attribution element
      * so that {@link #applyManualOffsets} can apply the user Y offset. An upward (negative)
      * user Y offset is accounted for when computing {@code aboveStaffSs}, growing the above-staff
@@ -105,8 +119,8 @@ public class VerticalStackingCalculator {
      * @param fonts        font holder for measuring elements
      * @param tempoMark    the song's tempo mark, or null if none to stack; non-null implies this
      *                     is the first line of the song
-     * @param attribution  the attribution block element, or null if none to stack;
-     *                     non-null implies this is the first line of the song
+     * @param attribution  the attribution block and its typeset content, or null if none to
+     *                     stack; non-null implies this is the first line of the song
      */
     public void calculate(
         List<ElementColumn> columns,
@@ -115,7 +129,7 @@ public class VerticalStackingCalculator {
         double lineWidthSs,
         DocumentFontsHolder fonts,
         @Nullable SongTempoMark tempoMark,
-        @Nullable Attribution attribution) {
+        @Nullable AttributionBlock attribution) {
 
         var noteAttachedExtents = new StaffExtents(lineWidthSs);
         var structuralExtents = new StaffExtents(lineWidthSs);
@@ -197,24 +211,24 @@ public class VerticalStackingCalculator {
      *
      * @param systemExtents the system-tier extents to measure
      * @param lineWidthSs   total width of the staff line in staff-space units
-     * @param attribution   the attribution block element, or null if none was stacked
+     * @param attribution   the attribution block, or null if none was stacked
      * @param builder       the builder holding the already-offset decoration layouts
      * @return the extent of content above the staff top, never negative
      */
     private static double calculateContentAboveStaffSs(
         StaffExtents systemExtents,
         double lineWidthSs,
-        @Nullable Attribution attribution,
+        @Nullable AttributionBlock attribution,
         LayoutResultBuilder builder) {
 
         var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
         var contentAboveStaffSs = Math.max(0.0, -topExtentSs - Staff.STAFF_HALF_SS);
 
-        if (attribution == null || attribution.getUserYOffsetSs() >= 0) {
+        if (attribution == null || attribution.element().getUserYOffsetSs() >= 0) {
             return contentAboveStaffSs;
         }
 
-        var finalLayout = builder.getDecorationLayout(attribution);
+        var finalLayout = builder.getDecorationLayout(attribution.element());
 
         if (finalLayout == null) {
             return contentAboveStaffSs;
@@ -228,40 +242,41 @@ public class VerticalStackingCalculator {
     /**
      * Stacks the attribution block above the right-edge columns of the first line.
      * <p>
-     * The attribution is right-aligned to the staff right edge. It uses
-     * {@link StackingUtils#stackAbove} over its x-range, anchored at the top staff line,
-     * so it nests as close to the staff as the system-layer extents allow.
+     * The attribution is right-aligned to the staff right edge. It is stacked over its x-range,
+     * anchored at the top staff line, so it nests as close to the staff as the system-layer
+     * extents allow.
+     * <p>
+     * Its size comes from the content, never from the model: the block is a solid rectangle of
+     * text, so it reserves one collision region covering the whole of it.
      *
-     * @param attribution  the attribution block element with dimensions already set
+     * @param attribution   the attribution block and its typeset content
      * @param systemExtents the system-tier extents (attribution stacks above these)
      * @param staffRightSs  the right edge of the staff in staff-space units
      * @param builder       the layout builder to receive the resulting DecorationLayout
      */
     private static void stackAttribution(
-        Attribution attribution,
+        AttributionBlock attribution,
         StaffExtents systemExtents,
         double staffRightSs,
         LayoutResultBuilder builder) {
 
-        var widthSs = attribution.getContentWidthSs();
-        var heightSs = attribution.getContentHeightSs();
-
-        if (widthSs <= 0 || heightSs <= 0) {
-            return;
-        }
+        var content = attribution.content();
+        var widthSs = content.widthSs();
+        var heightSs = content.heightSs();
 
         // Right-align with a small inset from the staff right edge
         var xSs = staffRightSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS;
 
-        StackingUtils.stackAbove(
+        StackingUtils.stackAboveWithRegions(
             systemExtents,
-            attribution,
+            attribution.element(),
+            List.of(new CollisionRegion(0, 0, widthSs, heightSs)),
             xSs,
             widthSs,
-            heightSs,
             Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder);
+            builder,
+            content);
     }
 
 

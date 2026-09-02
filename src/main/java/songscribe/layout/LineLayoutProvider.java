@@ -22,9 +22,7 @@ package songscribe.layout;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Attribution;
 import songscribe.dom.Line;
-import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 
@@ -75,22 +73,6 @@ public interface LineLayoutProvider {
             line,
             lineIndex == lastLineIndex,
             false,
-            lineIndex == 0 ? measuredAttribution(song, fonts) : null);
-    }
-
-    /**
-     * Returns the song's attribution block with its reserved dimensions measured at natural
-     * (unzoomed) scale, the way the paint path measures it before laying out the first line.
-     */
-    private static Attribution measuredAttribution(Song song, DocumentFontsHolder fonts) {
-        var attribution = song.getAttributionElement();
-        var sizePx = song.getAttributionPane()
-            .getContentSizePx(fonts.getAttributionFont(), fonts.getSubAttributionFont());
-
-        attribution.setDimensionsSs(
-            DocumentScale.pxToSs(sizePx.width),
-            DocumentScale.pxToSs(sizePx.height));
-
-        return attribution;
+            lineIndex == 0 ? song.getAttributionElement() : null);
     }
 }

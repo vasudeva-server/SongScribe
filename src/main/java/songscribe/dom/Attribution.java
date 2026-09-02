@@ -21,13 +21,11 @@
 package songscribe.dom;
 
 /**
- * Block element that represents the attribution pane above the first staff line.
+ * Block element that represents the song's attribution block above the first staff line.
  * <p>
- * Carries only the block geometry (width/height in staff-spaces) and a user Y
- * offset. The layout engine measures the {@code AttributionPane}'s preferred
- * size, converts it from pixels to staff-spaces, and stores the result here via
- * {@link #setDimensionsSs(double, double)} before handing the dimensions to the
- * stacker.
+ * It carries no size of its own — the block's extent belongs to the lines the layout pass typesets
+ * for it, and is measured there on every pass. What lives here is the stable identity the layout
+ * is keyed by, the margins the stacker places it with, and the user Y offset that nudges it.
  * <p>
  * X positioning is always right-aligned to the staff right edge; the user
  * cannot shift it horizontally. Accordingly, {@link #getUserXOffsetSs()} is
@@ -43,38 +41,8 @@ public class Attribution extends LineElement {
     /** Margin from the staff right edge to the attribution block's right edge. */
     public static final double ATTRIBUTION_RIGHT_MARGIN_SS = 0.5;
 
-    private double widthSs;
-    private double heightSs;
-
-    /**
-     * Creates an attribution block element with zero initial dimensions.
-     * Call {@link #setDimensionsSs(double, double)} after measuring the pane.
-     */
     public Attribution() {
         setMarginSs(0, 0, ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
-    }
-
-    /**
-     * Sets the block dimensions from the measured {@code AttributionPane}
-     * preferred size (already converted from pixels to staff-spaces by the
-     * caller via {@code ScaleContext.pxToSs}).
-     *
-     * @param widthSs  pane width in staff-spaces
-     * @param heightSs pane height in staff-spaces
-     */
-    public void setDimensionsSs(double widthSs, double heightSs) {
-        this.widthSs = widthSs;
-        this.heightSs = heightSs;
-    }
-
-    @Override
-    public double getContentWidthSs() {
-        return widthSs;
-    }
-
-    @Override
-    public double getContentHeightSs() {
-        return heightSs;
     }
 
     /**

@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.Constants;
 import songscribe.util.StringUtils;
 
 /**
@@ -69,7 +68,7 @@ public record Lyric(int verse, String text, Extend extend,
      * every serializer (native {@code .mssw} and MusicXML), so it lives here rather
      * than being redeclared in each I/O class.
      */
-    public static final String COMPOUND_WORD_MARKER = Constants.NON_BREAKING_HYPHEN;
+    public static final String COMPOUND_WORD_MARKER = "\u2011";
 
     /** Pre-#420 compound marker (zero-width space, U+200B); still recognized on load. */
     private static final String LEGACY_COMPOUND_WORD_MARKER = "\u200B";

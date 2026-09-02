@@ -36,9 +36,4 @@ public class Beam extends Span {
     protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Beam(newAnchor, newEnd);
     }
-
-    @Override
-    public double getContentHeightSs() {
-        return 0;
-    }
 }

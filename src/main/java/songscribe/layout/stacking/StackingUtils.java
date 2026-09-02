@@ -25,6 +25,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.CollisionRegion;
+import songscribe.dom.IntrinsicHeight;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
@@ -34,7 +35,7 @@ import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
-import songscribe.layout.MetronomeContent;
+import songscribe.layout.DecorationContent;
 import songscribe.layout.StaffExtents;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -45,6 +46,13 @@ import songscribe.smufl.SMuFLMetadata;
  * Contains collision-aware placement methods ({@link #stackAbove}, {@link #stackBelow},
  * {@link #stackStaccato}, {@link #stackAboveWithRegions}) and anchor ceiling/floor calculations.
  * The above/below variants share their implementation, dispatched on {@link Direction}.
+ * <p>
+ * A placement method takes its element as an {@link IntrinsicHeight} and reads the reserved
+ * height off it, so a caller cannot reserve a box that disagrees with the element it is
+ * reserving for. An element whose height layout computes rather than owns — a text
+ * annotation, sized by the annotation font — cannot satisfy that bound; those callers go
+ * through {@link #stackAtAnchor} or {@link #placeAtInnerEdge}, which take the height
+ * explicitly and are the only two doors that do.
  */
 public final class StackingUtils {
 
@@ -228,15 +236,15 @@ public final class StackingUtils {
      *
      * @return the computed top Y in staff-space units
      */
-    public static double stackAbove(
+    public static <E extends LineElement & IntrinsicHeight> double stackAbove(
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
+        E element,
+        double xSs, double widthSs, double marginSs,
         int staffPosition,
         LayoutResultBuilder builder) {
 
-        return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, builder);
+        return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs,
+            element.intrinsicHeightSs(), marginSs, staffPosition, builder);
     }
 
     /**
@@ -248,15 +256,15 @@ public final class StackingUtils {
      *
      * @return the computed bottom Y in staff-space units
      */
-    public static double stackBelow(
+    public static <E extends LineElement & IntrinsicHeight> double stackBelow(
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
+        E element,
+        double xSs, double widthSs, double marginSs,
         int staffPosition,
         LayoutResultBuilder builder) {
 
-        return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs, heightSs, marginSs,
-            staffPosition, builder);
+        return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs,
+            element.intrinsicHeightSs(), marginSs, staffPosition, builder);
     }
 
     /**
@@ -277,11 +285,11 @@ public final class StackingUtils {
      * @param reserveProfile the dot's outer edge, from {@link songscribe.layout.ShapeProfile#outerEdge}
      * @return the computed top Y (above) or bottom Y (below) in staff-space units
      */
-    public static double stackStaccato(
+    public static <E extends LineElement & IntrinsicHeight> double stackStaccato(
         Direction direction,
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs,
+        E element,
+        double xSs, double widthSs,
         StaffExtents.Profile reserveProfile,
         double marginSs, double staffPaddingSs,
         double horizonPaddingSs,
@@ -296,7 +304,7 @@ public final class StackingUtils {
             var profiles = new StaffExtents.Profiles(
                 StaffExtents.Profile.flat(widthSs), reserveProfile);
 
-            return placeAndReserveClamped(direction, extents, element, xSs, widthSs, heightSs,
+            return placeAndReserveClamped(direction, extents, element, xSs, widthSs,
                 profiles, marginSs, staffPaddingSs, horizonPaddingSs, builder);
         }
 
@@ -304,7 +312,7 @@ public final class StackingUtils {
             ? staccatoAnchorCeilingSs(staffPosition)
             : staccatoAnchorFloorSs(staffPosition);
 
-        return stackAtCenter(direction, extents, element, xSs, widthSs, heightSs, reserveProfile,
+        return stackAtCenter(direction, extents, element, xSs, widthSs, reserveProfile,
             marginSs, horizonPaddingSs, centerSs, builder);
     }
 
@@ -321,17 +329,18 @@ public final class StackingUtils {
      *
      * @return the element's outer Y in staff-space units (top above, bottom below)
      */
-    static double placeAndReserve(
+    static <E extends LineElement & IntrinsicHeight> double placeAndReserve(
         Direction direction,
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs, double boundSs, double marginSs,
+        E element,
+        double xSs, double widthSs, double boundSs, double marginSs,
         LayoutResultBuilder builder) {
 
         var above = direction.isUp();
         var innerEdgeYSs = above ? boundSs - marginSs : boundSs + marginSs;
 
-        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs,
+            element.intrinsicHeightSs(),
             innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, builder);
     }
 
@@ -347,6 +356,11 @@ public final class StackingUtils {
      * edge from it. That is precisely why the inner edge is a parameter here rather than being
      * recomputed inside.
      *
+     * @param heightSs            the height to reserve, in staff spaces. This is the lower of
+     *                            the two explicit-height doors: an element implementing
+     *                            {@link IntrinsicHeight} reaches it through
+     *                            {@link #placeAndReserve} or {@link #placeAndReserveClamped},
+     *                            which read the height off the element
      * @param innerEdgeYSs        the element's inner edge in staff-space units (bottom above,
      *                            top below)
      * @param reserveProfile      the element's outer edge; {@link StaffExtents.Profile#flat} for
@@ -379,7 +393,8 @@ public final class StackingUtils {
         extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, decorationMarginSs));
+            new LayoutResult.DecorationLayout.Plain(
+                xSs, elementTopYSs, widthSs, heightSs, decorationMarginSs));
 
         return above ? elementTopYSs : reserveEdgeYSs;
     }
@@ -411,11 +426,11 @@ public final class StackingUtils {
      * @param horizonPaddingSs how far beyond its own footprint the element looks for a support
      * @return the element's outer Y in staff-space units (top above, bottom below)
      */
-    static double placeAndReserveClamped(
+    static <E extends LineElement & IntrinsicHeight> double placeAndReserveClamped(
         Direction direction,
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs,
+        E element,
+        double xSs, double widthSs,
         StaffExtents.Profiles profiles,
         double paddingSs, double staffPaddingSs, double horizonPaddingSs,
         LayoutResultBuilder builder) {
@@ -423,7 +438,8 @@ public final class StackingUtils {
         var innerEdgeYSs = clampedInnerEdgeYSs(direction, extents, xSs, profiles.inner(),
             paddingSs, staffPaddingSs, horizonPaddingSs);
 
-        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs,
+            element.intrinsicHeightSs(),
             innerEdgeYSs, profiles.outer(), paddingSs, builder);
     }
 
@@ -466,6 +482,14 @@ public final class StackingUtils {
      * Places an element on the given side of the staff at the anchored ceiling/floor for
      * {@code staffPosition}. Shared core for {@link #stackAbove}, {@link #stackBelow}, and
      * the edge-anchored branch of {@link #stackStaccato}.
+     * <p>
+     * Unlike those three it takes {@code heightSs} rather than reading it off the element,
+     * which is why it is called directly by a caller whose element cannot own its height —
+     * a text annotation, whose height comes from the annotation font.
+     *
+     * @param heightSs the height to reserve, in staff spaces; for an element implementing
+     *                 {@link IntrinsicHeight} call {@link #stackAbove} or {@link #stackBelow}
+     *                 instead, so the element supplies it
      */
     static double stackAtAnchor(
         Direction direction,
@@ -506,17 +530,18 @@ public final class StackingUtils {
         return above ? boundSs - marginSs : boundSs + marginSs;
     }
 
-    private static double stackAtCenter(
+    private static <E extends LineElement & IntrinsicHeight> double stackAtCenter(
         Direction direction,
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs,
+        E element,
+        double xSs, double widthSs,
         StaffExtents.Profile reserveProfile,
         double marginSs, double horizonPaddingSs,
         double centerSs,
         LayoutResultBuilder builder) {
 
         var above = direction.isUp();
+        var heightSs = element.intrinsicHeightSs();
 
         // The dot's supports, read the way LilyPond reads them: horizonPaddingSs dilates each
         // *reservation*, never the dot's own footprint (skyline.cc internal_distance pads `dim`).
@@ -566,7 +591,8 @@ public final class StackingUtils {
         extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
         builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(xSs, elementTopYSs, widthSs, heightSs, marginSs));
+            new LayoutResult.DecorationLayout.Plain(
+                xSs, elementTopYSs, widthSs, heightSs, marginSs));
 
         return above ? elementTopYSs : reserveEdgeYSs;
     }
@@ -606,8 +632,8 @@ public final class StackingUtils {
      * reserved at its own visual bottom, allowing later elements to nestle into
      * the gaps between shorter and taller sub-regions.
      *
-     * @param content the positioned typeset content for a metronome marking, or null for
-     *                every other decoration type
+     * @param content the positioned typeset content the layout will carry, or null for a
+     *                decoration that draws itself from the model
      */
     public static void stackAboveWithRegions(
         StaffExtents extents,
@@ -616,7 +642,7 @@ public final class StackingUtils {
         double xSs, double widthSs, double marginSs,
         int staffPosition,
         LayoutResultBuilder builder,
-        @Nullable MetronomeContent content
+        @Nullable DecorationContent content
     ) {
         var anchorSs = anchorCeilingSs(staffPosition);
         var elementYSs = Double.MAX_VALUE;
@@ -654,9 +680,8 @@ public final class StackingUtils {
         }
 
         builder.putDecorationLayout(element,
-            new LayoutResult.DecorationLayout(
-                xSs, elementYSs, 0.0, widthSs, overallHeightSs, marginSs, content));
-
+            LayoutResult.DecorationLayout.of(
+                xSs, elementYSs, widthSs, overallHeightSs, marginSs, content));
     }
 
     /**

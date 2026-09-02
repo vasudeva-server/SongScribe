@@ -29,7 +29,7 @@ import java.util.List;
  * a gradual change in volume. The user can adjust the horizontal endpoints
  * and vertical position.
  */
-public abstract sealed class Hairpin extends Span
+public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         permits Crescendo, Diminuendo {
 
     /**
@@ -434,11 +434,8 @@ public abstract sealed class Hairpin extends Span
         this.yShiftSs = yShiftSs;
     }
 
-    /**
-     * Returns the height of the hairpin opening in staff-space units.
-     */
     @Override
-    public double getContentHeightSs() {
+    public double intrinsicHeightSs() {
         return HAIRPIN_OPENING_HEIGHT_SS;
     }
 

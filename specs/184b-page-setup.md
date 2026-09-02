@@ -8,7 +8,7 @@ Move horizontal layout authority from line width to margins. Add a per-document 
 ## Goals
 1. **Per-document Page Setup** — paper size, per-edge margins, mirrored (inner/outer) margins with verso-first option; margins authoritative, line width derived; fully undoable; persisted with true MusicXML `<page-layout>` semantics
 
-2. **Page Setup dialog** — new macOS-style dialog; retire the conflicting legacy `PaperSizeStep` UI and the Song Settings line-width section
+2. **Page Setup dialog** — new macOS-style dialog, the only UI for paper geometry
 
 3. **Mirrored-margin printing** — inner/outer margin placement by page parity
 
@@ -21,8 +21,6 @@ Move horizontal layout authority from line width to margins. Add a per-document 
 - `PageModel` is all-static, reads `PrefsKey.PAGE_SIZE` in `getSize()`, has fixed `VERTICAL_MARGIN_INCHES = 0.5`, and derives horizontal margins by centering the line width in `getHorizontalMarginPx(lineWidthPx)`.
 
 - `<defaults><page-layout><page-width>` is **overloaded** to carry `lineWidthSs` (`HeaderBuilder.buildDefaults`, which sets `pageLayout.setPageWidth(...)` from the model line width; read by `HeaderMapper.mapDefaults`, which calls `song.setLineWidthSs`). `<page-height>` and `<scaling>` are fixed write-forward; `<page-margins>` is never written. SongScribe-specific scalars ride in `<miscellaneous-field>` entries.
-
-- `PageLayoutData` (export-only, raw px) has `mirrored` / `songsPerPage` fields written by `PaperSizeStep` (inside `ExportPDFDialog`, mirrored checkbox hidden) but never read — dead scaffolding.
 
 * * *
 ## Design
@@ -89,7 +87,7 @@ lineWidthSs     = pxToSs(inchesToPx(lineWidthInches))
 
 ### 4. Page Setup dialog
 
-New `PageSetupDialog extends StandardDialog`, category `EXCLUSIVE` (precedent: `SongSettingsDialog`, constructor line 108), designed to read like a typical macOS Page Setup dialog — **not** modeled on the legacy GUI-Designer `PaperSizeStep`:
+New `PageSetupDialog extends StandardDialog`, category `EXCLUSIVE` (precedent: `SongSettingsDialog`, constructor line 108), designed to read like a typical macOS Page Setup dialog:
 
 - Paper size combo (`PaperSize` list, dimensions shown in the active unit)
 - Four margin fields with unit label (inch/cm per `PrefsKey.METRIC`, decimal filtering via `InputUtils.addDecimalFilter`)
@@ -162,19 +160,12 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 
 `MainFrame.print`'s `PageFormat`/`Paper` derivation (#184 §6) gains the parity branch.
 
-### 8. Cleanup
-
-- `PaperSizeStep` is removed from `ExportPDFDialog` (and deleted along with its strings if nothing else references it). `PageLayoutData` drops the dead `mirrored` and `songsPerPage` fields; when PDF export is implemented it will read the document's page setup instead.
-- Stub exporters and their menu items are left untouched.
-
 * * *
 ## What Is Removed
 - `Song.setLineWidthSs` / `Song.applyLineWidthSs` / the stored `lineWidthSs` field (getter stays, derived)
 - `LayoutField.LINE_WIDTH_SS` and its `MutationReplayer` case
 - `LayoutDidChangeNotification`'s `lineWidthSs` payload and `Song.layoutDidChange`'s branch for it
 - `PageModel.Size` (replaced by `PaperSize`), `MAX_LINE_WIDTH_INCHES`, `getHorizontalMarginPx`, pref-reading singleton behavior
-- `PaperSizeStep` (from the export flow; deleted if unreferenced)
-- `PageLayoutData.mirrored`, `PageLayoutData.songsPerPage`
 - Legacy `<page-width> = line width` **write** semantics (read path kept for legacy files)
 
 * * *
@@ -186,7 +177,6 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 | `layout/PageModel.java` | **Modified** — sourced from Song page setup; centered-equivalent margins |
 | `ui/dialog/PageSetupDialog.java` | **New** — macOS-style page setup (StandardDialog, EXCLUSIVE) |
 | `ui/dialog/SongSettingsDialog.java` | **Modified** — Line Width section removed |
-| `ui/dialog/ExportPDFDialog.java` | **Modified** — PaperSizeStep removed |
 | `ui/action/Actions.java`, `ui/menu/MenuController.java` | **Modified** — `PAGE_SETUP_ACTION` in File menu |
 | `ui/component/ScoreView.java` | **Modified** — `updatePageLayout` loses its model-write role |
 | `ui/component/MainFrame.java` | **Modified** — mirrored parity branch in `print` |
@@ -195,7 +185,6 @@ New `LayoutField` entries: `PAPER_SIZE(PaperSize.class)`, `TOP_MARGIN_INCHES(Dou
 | `undo/MutationReplayer.java` | **Modified** — `applyLayoutField` cases updated |
 | `io/musicxml/HeaderBuilder.java` / `HeaderMapper.java` / `MusicXmlTags.java` | **Modified** — real page-layout write/read, legacy fallback, verso-first misc-field |
 | `io/SongLoader.java` (`.mssw` path) | **Modified** — center-derive margins on legacy import |
-| `export/PageLayoutData.java` | **Modified** — dead fields removed |
 | `resources/songscribe/strings.properties` | **Modified** — dialog keys added; dead line-width keys removed |
 
 * * *

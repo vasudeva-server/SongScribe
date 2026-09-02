@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import java.awt.Graphics2D;
 
 import songscribe.dom.SongTempoMark;
+import songscribe.layout.LayoutResult;
 
 /**
  * Draws the song's tempo at the right edge of the first line's staff header.
@@ -63,18 +64,18 @@ public final class SongTempoMarkRenderer implements ElementRenderer<SongTempoMar
     ) {
         var decorationLayout = invariants.getLayoutResult().getDecorationLayout(element);
 
-        // Absent means the mark was never stacked — a line other than the first, or a tempo with
-        // nothing to draw.
-        if (decorationLayout == null) {
+        // Anything but a typeset layout means the mark was never stacked — a line other than the
+        // first, or a tempo with nothing to draw. The mark is stacked with its content or not at
+        // all, so there is no contentless case left to hide.
+        if (!(decorationLayout instanceof LayoutResult.DecorationLayout.Typeset typeset)) {
             return;
         }
 
-        // Present but contentless is a layout bug, not a mark with nothing to draw — that case
-        // is an absent layout, handled above. Drawing nothing here would hide it.
-        var content = decorationLayout.requireContent();
-        var ySs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
-
-        MetronomeRenderer.drawContent(
-            g2, content, decorationLayout.xSs(), ySs, RenderingUtils.ELEMENT_COLOR);
+        DecorationContentRenderer.draw(
+            g2,
+            typeset.content(),
+            typeset.xSs(),
+            RenderingUtils.layoutYToComponentYSs(typeset.ySs(), invariants),
+            RenderingUtils.ELEMENT_COLOR);
     }
 }

@@ -46,11 +46,9 @@ they need:
 2. `Actions` — add a static `Bindings`, created in `initialize` and disposed in
    `deinitialize`, so a retired generation's bindings go with its actions.
 3. `ScoreView` — add `private final Bindings bindings = new Bindings();` and **no**
-   `dispose()`. Every `ScoreView` built today (`MainFrame:506`, `PDFConverter:137`,
-   `SVGConverter:51`, `UIConverter:107`) lives for its process — the converters build
-   one per batch, not per file — so a `dispose()` now would be unreachable. Add a
-   `Lifecycle` clause to `ScoreView`'s Javadoc stating that, and pointing at the
-   converter-rewrite paragraph in `docs/lifecycle.md`.
+   `dispose()`. `MainFrame.java:535` is the only site that builds a `ScoreView`, and the
+   instance it builds lives for the process, so a `dispose()` now would be unreachable.
+   Add a `Lifecycle` clause to `ScoreView`'s Javadoc stating that.
 4. Rewrite the ownership clause in `Bindings`'s class Javadoc, `WriteGuard`'s Javadoc,
    `.claude/guides/bindings.md` and `docs/lifecycle.md` to read *one owner with a
    disposal point* rather than *one dialog*. State in `Bindings`'s Javadoc why an

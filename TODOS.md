@@ -246,9 +246,9 @@ lower-friction first cut.
 `plans/finish-mainframe-decoupling.md` (the invariant must actually hold before a
 guard can be made green).
 
-## Make `Articulation.getContentWidthSs`/`getContentHeightSs` direction-aware
+## Make `Articulation.intrinsicWidthSs`/`intrinsicHeightSs` direction-aware
 
-**What:** `Articulation.java` (`getContentWidthSs`/`getContentHeightSs`) always
+**What:** `Articulation.java` (`intrinsicWidthSs`/`intrinsicHeightSs`) always
 derives dimensions from the *above* glyphs (`ARTIC_STACCATO_ABOVE`,
 `ARTIC_ACCENT_ABOVE`), regardless of the note's stem direction, even after the
 below-staff articulation placement work (`plans/articulation-stem-direction-placement.md`)
@@ -272,11 +272,13 @@ it, since nothing currently exercises the below path against this method.
 asserts `ARTIC_STACCATO_ABOVE`/`ARTIC_STACCATO_BELOW` and
 `ARTIC_ACCENT_ABOVE`/`ARTIC_ACCENT_BELOW` bboxes stay dimensionally identical —
 so this TODO is not urgent, but if that test ever starts failing (or a new
-below-diverging glyph is added), the fix is to make `getContentWidthSs`/
-`getContentHeightSs` take (or read) the owning `StaffElement`'s `Direction` and
-select the matching ABOVE/BELOW bbox explicitly, mirroring how
-`ArticulationRenderer` and `NoteAttachedStacker.dispatchArticulationStacking`
-already do direction-aware glyph selection.
+below-diverging glyph is added), the fix is to make `intrinsicWidthSs`/
+`intrinsicHeightSs` read the owning `StaffElement`'s `Direction` and select the
+matching ABOVE/BELOW bbox explicitly, mirroring how `ArticulationRenderer` and
+`NoteAttachedStacker.dispatchArticulationStacking` already do direction-aware
+glyph selection. `Articulation.getOwnerElement()` is the route to that
+`Direction`, so neither method needs a parameter — which matters for
+`intrinsicHeightSs`, whose signature is fixed by `IntrinsicHeight`.
 
 **Depends on / blocked by:** Nothing — can be picked up any time the parity
 test above starts failing, or proactively as defensive hardening.

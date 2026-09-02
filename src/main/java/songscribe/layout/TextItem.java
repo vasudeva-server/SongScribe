@@ -17,27 +17,16 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package songscribe.export;
 
+package songscribe.layout;
+
+import java.awt.Font;
 
 /**
- * Controls what content is included in an export (image, PDF, etc.).
- * Replaces the pattern of temporarily mutating Song to exclude
- * content during export.
+ * A run of text in a decoration's typeset content, drawn as one string at one position.
  *
- * @param includeLyrics whether to include lyrics (underLyrics, translatedLyrics)
- * @param includeTitle whether to include the song title
- * @param includeAttribution whether to include the attribution/copyright line
+ * @param scaledFont the font already sized in staff spaces, so a renderer drawing inside the
+ *                   staff-space transform sets it verbatim rather than deriving it on every paint
  */
-public record ExportOptions(
-    boolean includeLyrics,
-    boolean includeTitle,
-    boolean includeAttribution
-) {
-
-    /** Include all content. */
-    public static final ExportOptions ALL = new ExportOptions(true, true, true);
-
-    /** Exclude all optional content. */
-    public static final ExportOptions NONE = new ExportOptions(false, false, false);
-}
+public record TextItem(String text, Font scaledFont, double xSs, double baselineOffsetSs)
+    implements TypesetItem {}

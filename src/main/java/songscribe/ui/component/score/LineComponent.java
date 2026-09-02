@@ -29,7 +29,6 @@ import javax.swing.SwingUtilities;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Attribution;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
@@ -438,24 +437,11 @@ public class LineComponent extends ScoreComponent
         var lyricRenderMetrics = view.getLyricRenderMetrics();
         var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
 
-        Attribution attribution = null;
-        // The song's tempo is drawn at line 0's staff header, always — even on an empty line or
-        // an empty song. Unlike the attribution it needs no pre-measurement: the stacker derives
-        // its extent from Song.getTempo() itself.
+        // Both the song's tempo and its attribution are drawn at line 0, always — even on an
+        // empty line or an empty song. Neither needs pre-measurement: the layout pass typesets
+        // both from the song itself.
         var tempoMark = isFirstLine ? song.getTempoMarkElement() : null;
-
-        if (isFirstLine) {
-            attribution = song.getAttributionElement();
-            var pane = song.getAttributionPane();
-            // Measure at natural (unzoomed) scale so the reserved staff-space dimensions
-            // are zoom-invariant by construction — no measure-at-zoom-then-divide-back
-            // round trip. Zoom is applied only when the block is painted (see render),
-            // where the whole block scales uniformly by the view factor.
-            var sizePx = pane.getContentSizePx(view.getAttributionFont(), view.getSubAttributionFont());
-            attribution.setDimensionsSs(
-                DocumentScale.pxToSs(sizePx.width),
-                DocumentScale.pxToSs(sizePx.height));
-        }
+        var attribution = isFirstLine ? song.getAttributionElement() : null;
 
         var result = layoutEngine.layout(
             line, isLastLine, hasLeadingLyricContinuation, tempoMark, attribution);
@@ -518,9 +504,6 @@ public class LineComponent extends ScoreComponent
         //   coords from LineInvariants.getViewPixelsPerStaffSpace() (= pxPerSs × factor) — the
         //   only reader of the zoomed scale inside a render pass.
         //
-        //   Attribution below is drawn in pixel space OUTSIDE the transform, so it applies
-        //   the factor explicitly (positions/sizes × factor, fonts via zoomedFont).
-        //
         //   "EXACTLY ONCE" is per paint pass, not per process. LineOverlayComponent is a
         //   sibling component that paints the line's overlays into its OWN graphics, so it
         //   legitimately establishes a second, parallel scale-and-translate of the same
@@ -541,30 +524,6 @@ public class LineComponent extends ScoreComponent
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             g2.scale(scale, scale);
             lineRenderer.render(g2);
-        }
-
-        // Render the attribution pane directly in pixel space (first line only).
-        // The pane is not a Swing child; it is rendered here after the staff-space
-        // transform has been restored.
-        if (lineIndex == 0 && song != null && scoreView != null) {
-            var attribution = song.getAttributionElement();
-            var layout = result.getDecorationLayout(attribution);
-
-            if (layout != null) {
-                var view = scoreView;
-                // Drawn in pixel space outside the ss transform: apply the view factor to the
-                // (zoom-invariant) staff-space positions/size, and bake zoom into the fonts.
-                var factor = getViewScale().factor();
-                var xPx = DocumentScale.ssToPx(layout.xSs()).value() * factor;
-                var yPx = DocumentScale.ssToPx(layout.ySs() + middleLineYSs).value() * factor;
-                var widthPx = DocumentScale.ssToPx(layout.widthSs()).value() * factor;
-                song.getAttributionPane().render(
-                    g2, xPx, yPx, widthPx,
-                    zoomedFont(view.getAttributionFont()),
-                    zoomedFont(view.getSubAttributionFont()),
-                    factor
-                );
-            }
         }
 
         // Drag rectangle is a pixel-space UI overlay — render after restoring the transform

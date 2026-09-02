@@ -1002,79 +1002,124 @@ public final class LayoutResult {
      * Immutable positioned bounds of a single above-staff decoration, computed during layout.
      * <p>
      * All values are in staff-space units.
-     *
-     * @param xSs      X position (left edge) of the decoration
-     * @param ySs      Y position (top edge) of the decoration
-     * @param dySs     Rise (in staff spaces) over the {@code widthSs} run, from the left (anchor)
-     *                 edge to the right (end) edge; 0 for a flat decoration. Currently only
-     *                 populated for sloped tuplet brackets — all other decoration types are flat.
-     * @param widthSs  Width of the decoration
-     * @param heightSs Height of the decoration
-     * @param marginSs Bottom margin (space between element bottom and the tier below)
-     * @param content  Positioned typeset content for metronome markings (beat changes, tempo
-     *                 changes and the song tempo mark); null for every other decoration type
+     * <p>
+     * A decoration either draws itself from the model — a hairpin, an ending, an articulation —
+     * or draws {@link DecorationContent} the layout pass typeset for it. Those are the two members
+     * of this interface, so a decoration layout without content is not a runtime possibility for
+     * the kinds that have content, and a reader of {@link Typeset#content()} never has to ask
+     * whether it is there.
      */
-    public record DecorationLayout(
-        double xSs,
-        double ySs,
-        double dySs,
-        double widthSs,
-        double heightSs,
-        double marginSs,
-        @Nullable MetronomeContent content) {
+    public sealed interface DecorationLayout permits DecorationLayout.Plain, DecorationLayout.Typeset {
+
+        /** X position (left edge) of the decoration. */
+        double xSs();
+
+        /** Y position (top edge) of the decoration. */
+        double ySs();
 
         /**
-         * Creates a flat DecorationLayout for a simple element. {@code dySs} defaults to 0.0
-         * (flat) and {@code content} to null.
+         * Rise over the {@link #widthSs} run, from the left (anchor) edge to the right (end)
+         * edge; 0 for a level decoration.
          */
-        public DecorationLayout(
-            double xSs, double ySs, double widthSs,
-            double heightSs, double marginSs
-        ) {
-            this(xSs, ySs, 0.0, widthSs, heightSs, marginSs, null);
-        }
+        double dySs();
 
-        /**
-         * Returns the typeset content, which must be present.
-         * <p>
-         * A metronome marking's layout always carries its content — {@code SystemStacker}
-         * builds it before the layout exists. A metronome layout without content is therefore
-         * a layout bug, and drawing nothing would hide exactly the class of failure that
-         * carrying the content exists to prevent.
-         *
-         * @throws IllegalStateException if this decoration carries no content
-         */
-        public MetronomeContent requireContent() {
-            if (content == null) {
-                throw new IllegalStateException(
-                    "No MetronomeContent in this DecorationLayout");
-            }
+        /** Width of the decoration. */
+        double widthSs();
 
-            return content;
-        }
+        /** Height of the decoration. */
+        double heightSs();
+
+        /** Bottom margin: the space between the element's bottom and the tier below. */
+        double marginSs();
 
         /**
          * Returns a copy shifted by the given offsets, with every other component carried
          * through.
          * <p>
-         * User X and Y offsets are applied by rebuilding this record. Doing that here rather
-         * than at the call site is what keeps a component added later from being silently
-         * dropped — a dropped {@code content} makes a nudged marking vanish from the score
-         * with no exception and nothing to catch it.
+         * User X and Y offsets are applied by rebuilding the layout. Each member implements this
+         * itself, so a component added to one of them cannot be silently dropped here — a dropped
+         * {@code content} makes a nudged decoration vanish from the score with no exception and
+         * nothing to catch it.
          *
          * @param dxSs      shift applied to the left edge
          * @param dySsShift shift applied to the top edge
          * @param dWidthSs  change in width
          */
-        public DecorationLayout shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
-            return new DecorationLayout(
-                xSs + dxSs,
-                ySs + dySsShift,
-                dySs,
-                widthSs + dWidthSs,
-                heightSs,
-                marginSs,
-                content);
+        DecorationLayout shiftedBy(double dxSs, double dySsShift, double dWidthSs);
+
+        /**
+         * Returns the layout for a decoration placed at these bounds, carrying {@code content}
+         * when it has any.
+         * <p>
+         * The one place nullability of the content is resolved: the stackers share a placement
+         * core that serves both kinds, and this is where "no content" becomes {@link Plain}
+         * rather than a null a reader could meet.
+         */
+        static DecorationLayout of(
+            double xSs, double ySs, double widthSs, double heightSs, double marginSs,
+            @Nullable DecorationContent content) {
+
+            if (content == null) {
+                return new Plain(xSs, ySs, widthSs, heightSs, marginSs);
+            }
+
+            return new Typeset(xSs, ySs, widthSs, heightSs, marginSs, content);
+        }
+
+        /**
+         * The layout of a decoration that draws itself: a hairpin, a volta ending, an
+         * articulation, a tuplet bracket. It carries bounds and nothing else.
+         */
+        record Plain(
+            double xSs,
+            double ySs,
+            double dySs,
+            double widthSs,
+            double heightSs,
+            double marginSs) implements DecorationLayout {
+
+            /**
+             * Creates the layout of a level decoration — everything but the tuplet bracket, the
+             * one decoration whose bracket tilts.
+             */
+            public Plain(
+                double xSs, double ySs, double widthSs, double heightSs, double marginSs) {
+                this(xSs, ySs, 0.0, widthSs, heightSs, marginSs);
+            }
+
+            @Override
+            public Plain shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+                return new Plain(
+                    xSs + dxSs, ySs + dySsShift, dySs, widthSs + dWidthSs, heightSs, marginSs);
+            }
+        }
+
+        /**
+         * The layout of a decoration that draws the {@link DecorationContent} the layout pass
+         * typeset for it: a metronome marking or the attribution block.
+         * <p>
+         * The bounds are the content's own, so the box hit testing and vertical stacking measured
+         * is the box the renderer draws into.
+         */
+        record Typeset(
+            double xSs,
+            double ySs,
+            double widthSs,
+            double heightSs,
+            double marginSs,
+            DecorationContent content) implements DecorationLayout {
+
+            /** Always 0: typeset content is set on a level baseline grid, never tilted. */
+            @Override
+            public double dySs() {
+                return 0.0;
+            }
+
+            @Override
+            public Typeset shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+                return new Typeset(
+                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs, content);
+            }
         }
     }
 

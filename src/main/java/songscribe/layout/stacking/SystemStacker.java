@@ -26,9 +26,9 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.SongTempoMark;
+import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFontsHolder;
-import songscribe.font.TextMeasurement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResultBuilder;
@@ -37,7 +37,6 @@ import songscribe.layout.StaffExtents;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
-import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
 
 /**
@@ -179,7 +178,7 @@ public class SystemStacker {
         var staffPosition = note.getStaffPosition();
         var annotationFont = fonts.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
-        var heightSs = TextMeasurement.textHeightSs(annotationFont).value();
+        var heightSs = annotation.computeContentHeightSs(annotationFont);
 
         var elementType = note.getType();
         var anchorWidthSs = elementType.getElementWidthSs();
@@ -194,7 +193,9 @@ public class SystemStacker {
             case RIGHT -> columnXSs + freeWidthSs;
         };
 
-        stackAbove(systemExtents, annotation, xSs,
+        // An annotation's height is the annotation font's line height, so it cannot be an
+        // IntrinsicHeight and does not go through stackAbove. This is the explicit-height door.
+        StackingUtils.stackAtAnchor(Direction.UP, systemExtents, annotation, xSs,
             widthSs, heightSs,
             ANNOTATION_MARGIN_SS,
             staffPosition, builder);

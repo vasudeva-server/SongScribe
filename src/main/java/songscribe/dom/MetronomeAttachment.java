@@ -59,22 +59,4 @@ public abstract sealed class MetronomeAttachment extends Attachment
         // owns it.
     }
 
-    /**
-     * Returns the content height in staff-space units.
-     */
-    @Override
-    public double getContentHeightSs() {
-        return QUARTER_NOTE_HEIGHT_SS;
-    }
-
-    /**
-     * Always returns 0. A metronome marking's width depends on the resolved annotation font,
-     * which a DOM object has no access to, so the real width lives in
-     * {@code MetronomeContent.widthSs()} and reaches the layout through
-     * {@code LayoutResult.DecorationLayout}.
-     */
-    @Override
-    public double getContentWidthSs() {
-        return 0;
-    }
 }

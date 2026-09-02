@@ -36,7 +36,7 @@ That ordering shrinks the work here rather than adding to it:
 * * *
 ## Current State
 ### Layout and rendering
-- `ScoreView` (inside `JScrollPane` → `ScorePanel`) is a single white `JComponent` sized to one page width whose height grows without bound: `getSheetHeightPx()` (`ScoreView.java:932-950`) returns `max(pageHeightPx, contentHeight + margins)`. Margins are an `EmptyBorder` set in `layoutPage` (`ScoreView.java:1084-1123`).
+- `ScoreView` (inside `JScrollPane` → `ScorePanel`) is a single white `JComponent` sized to one page width whose height grows without bound: `getPreferredSize()` derives `max(pageHeightPx, contentHeight + margins)` on every ask, from `MainPanel`'s preferred height. Margins are an `EmptyBorder` set in `layoutPage`.
   
 - `MainPanel` (`BoxLayout.Y_AXIS`, `MainPanel.java:92`) stacks `TitleComponent` → `SubtitleComponent` → `ScoreMarginStrut` (`SCORE_MARGIN_TOP_SS = 1.5`) → `StaffPanel` → `TextPanel` → `FootnotesComponent`. `MainPanel.getPreferredSize()` (lines 276-303) manually sums child heights. No page-break concept exists anywhere.
   
@@ -55,7 +55,7 @@ That ordering shrinks the work here rather than adding to it:
   
 - `handlePrint()` (lines 934-949) drives `PrinterJob` + the OS dialog and is unchanged by this issue.
   
-- `PDFExporter`, `ImageExporter`, `SVGExporter` are stubs and stay stubs.
+- There is no export subsystem and none planned, so printing is the only path from the score to paper or a file.
   
 ### Package boundaries (enforced by tests)
 `PackageDependencyTest` (`src/test/java/songscribe/PackageDependencyTest.java`) asserts:
@@ -214,7 +214,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
   
   | Site | Disposition |
   | --- | --- |
-  | `ScoreView.getSheetHeightPx()` (`932-950`, already TODO'd) | replaced by the page stack's O(1) size |
+  | `ScoreView.getPreferredSize()`'s single-sheet derivation | replaced by the page stack's O(1) size |
   | `ScoreView.layoutPage` (`1084-1123`) | replaced by per-page layout |
   | `ScoreView.applyZoomPercent` scroll anchoring (`1188-1220`) | must survive page gaps **and page-count change** |
   
@@ -257,7 +257,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
   
   Edit-time decorations are suppressed by **painting the page's content children and skipping its overlay children**. Because the overlays are separate child components (see Prerequisite), no render-mode flag needs to reach inside them. Selection highlights and insertion cursors drawn by `drawEditElements` are suppressed by not invoking that path.
   
-  This method is the designed entry point for `PDFExporter` and `ImageExporter` when those are implemented.
+  This method is the single per-page paint path: printing goes through it, and so does anything else that ever renders a page off-screen.
   
 - `MainFrame.print(Graphics, PageFormat, int pageIndex)`:
   
@@ -267,7 +267,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
     
   - scale/translate document px → the imageable area, then delegate to `paintPage`
     
-- `handlePrint()` (`MainFrame.java:934-949`) is unchanged; the macOS print dialog's built-in Save-as-PDF covers PDF output until `PDFExporter` is implemented.
+- `handlePrint()` (`MainFrame.java:934-949`) is unchanged; the macOS print dialog's built-in Save-as-PDF is how PDF output is produced.
   
 ### 7. Status bar page indicator
 - New `PageStatusBarPanel` (pattern: `ZoomStatusBarPanel`), added as a **center cell** in `StatusBar`'s `GridBagLayout`. The note preview stays at `LINE_START` (`gridx=0`) and the zoom cluster at `LINE_END`; the new panel is horizontally centered between them.
@@ -314,16 +314,12 @@ Explicitly out of scope for this issue, to keep the diff bounded:
   
 - `PageModel.Size`, `MIN_LINE_WIDTH_INCHES`, `MAX_LINE_WIDTH_INCHES`, `getHorizontalMarginPx`.
   
-- `PaperSizeStep`, `ExportPDFDialog`, `PageLayoutData`.
-  
-- Stub exporters and their menu items.
-  
 
 * * *
 ## What Is Removed
 - `MainFrame.PRINT_EXTRA_MARGIN` and the print stub body
   
-- `ScoreView.getSheetHeightPx()` and `getSheetHeightPx(ExportOptions)` (both replaced by the page stack's size)
+- `ScoreView.getPreferredSize()`'s single-sheet derivation (the page stack's O(1) size answers instead)
   
 - `ScoreView.layoutPage(int)`'s single-sheet sizing and `EmptyBorder` margin logic
   

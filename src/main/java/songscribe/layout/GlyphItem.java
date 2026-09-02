@@ -18,18 +18,16 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.dom;
+package songscribe.layout;
+
+import songscribe.smufl.SMuFLGlyph;
 
 /**
- * Represents the treble clef at the start of a staff line.
+ * A single SMuFL glyph in a decoration's typeset content.
  * <p>
- * The Clef is positioned absolutely at the line start and does not contribute
- * to Staff's bounds. The gap from here to the key signature belongs to the layout,
- * not to this object — see {@code StaffHeaderMetrics.CLEF_GAP_SS}. So does the glyph's
- * width, which the header reads from the font's advance rather than from this element.
- * What this class carries is the clef's identity and its position in the line.
- * <p>
- * Note: This application only uses treble clef.
+ * The glyph is named rather than resolved to a string here, and no font travels with it: a glyph
+ * item is drawn in the music font its renderer already holds, at the size that renderer draws its
+ * whole decoration kind at.
  */
-public class Clef extends LineElement {
-}
+public record GlyphItem(SMuFLGlyph glyph, double xSs, double baselineOffsetSs)
+    implements TypesetItem {}
