@@ -222,7 +222,16 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         BaseDialog.addSectionSeparator(this);
         add(createFontsSection());
         BaseDialog.addSectionSeparator(this);
-        add(SongSettingsLayout.createPreviewSection(attributionPreview));
+
+        // The preview's own width tracks its content, so centering it needs a row that
+        // stretches to the section's width and centers the widget within that — the same
+        // shape SongSettingsTitleTab's PreviewRow gives its previews, without a fixed line
+        // width to pin to since the attribution block has no page-line-width counterpart.
+        var previewRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
+        previewRow.setOpaque(true);
+        previewRow.setBackground(attributionPreview.getBackground());
+        previewRow.add(attributionPreview);
+        add(SongSettingsLayout.createPreviewSection(previewRow));
     }
 
     private static void addHorizontalDivider(JComponent container) {
