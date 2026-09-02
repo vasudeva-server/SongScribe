@@ -23,8 +23,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
-import songscribe.message.command.PrintCommand;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -49,6 +48,6 @@ public final class PrintAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        MessageCenter.post(new PrintCommand());
+        OptionDialogs.showInfoMessage(getMainFrame(), Strings.ALERT_TITLE_PRINT, Strings.ALERT_PRINT_NOT_IMPLEMENTED);
     }
 }
