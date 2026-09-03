@@ -461,13 +461,14 @@ Each finding is one of four kinds, and the kind decides the fix:
 - **Genuinely test-only** — delete it, or restructure the seam so production uses
   it too.
 - **A replaceable process-global** — a setter, a probe or a widened field that
-  lets a test swap something process-wide. The fix is a stack of instances plus
-  an `AutoCloseable` scope, never a setter, per *Scope a global; never swap it*
-  in `design.md`. **Name the production caller that justifies the scope**,
-  because a scope only tests push is a test-only injection point in better
-  clothes. `MessageBusScope` has no such caller; the Pass 30 carry-forward in
-  `plans/design-pass-register.md` records that and names the plan that settles
-  it.
+  lets a test swap something process-wide. The first architecture to consider is
+  a stack of instances plus an `AutoCloseable` scope, per *Scope a global before
+  you swap it* in `design.md`, and **naming the production caller that justifies
+  it** is what tells a real scope from a test-only injection point in better
+  clothes. When the whole set of conditions there does not point at a stack, a
+  setter is the answer instead, and it states its restore obligation in its
+  contract — `MessageCenter.setErrorHandler` is the worked example: the policy
+  is process-wide, has no bounded lifetime, and has no owner to move to.
 - **Misnamed internal API** — it takes arguments and returns a value and is
   already a coherent unit. Rename it to its concept and write its contract.
 - **Lifecycle** — a class with `initialize()` and no way back has an incomplete
