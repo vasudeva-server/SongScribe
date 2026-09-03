@@ -523,7 +523,6 @@ public class MainFrame extends JFrame {
         scoreView = new ScoreView(this::setCurrentFile);
         PlaybackController.register(scoreView);
 
-
         initContent();
         updateTitle();
 
