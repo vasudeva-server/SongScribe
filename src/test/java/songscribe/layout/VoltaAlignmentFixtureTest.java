@@ -106,18 +106,14 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             SONG_TITLE,
             metadata.number(),
             metadata.place(),
-            metadata.year(),
-            metadata.month(),
-            metadata.day(),
+            metadata.date(),
             metadata.composer(),
             metadata.lyricist(),
             metadata.lyricsSource(),
             metadata.arrangement(),
             metadata.unofficialTranslation(),
             metadata.subtitle(),
-            metadata.wordsYear(),
-            metadata.wordsMonth(),
-            metadata.wordsDay()
+            metadata.wordsDate()
         )));
 
         var fonts = DocumentFonts.defaultFonts();

@@ -115,8 +115,8 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // The page-colored rows the two previews sit in. Fields rather than locals in
     // initContents because their width is bound to the wrap width in the constructor,
     // which runs before the layout is built.
-    private final PreviewRow titlePreviewRow = new PreviewRow(titlePreview);
-    private final PreviewRow subtitlePreviewRow = new PreviewRow(subtitlePreview);
+    private final FixedWidthPreviewRow titlePreviewRow = new FixedWidthPreviewRow(titlePreview);
+    private final FixedWidthPreviewRow subtitlePreviewRow = new FixedWidthPreviewRow(subtitlePreview);
 
     // The two chosen fonts. Seeded with the system defaults, which the chooser rows
     // need something to answer with before populate replaces them on every opening.
@@ -250,8 +250,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     }
 
     /**
-     * A page-colored row one score line wide plus a gap at each end, carrying one
-     * preview centered within it.
+     * A {@link SongSettingsLayout.PreviewRow} one score line wide plus a gap at each end.
      * <p>
      * The content width is the song's line width, which is also the width the preview
      * wraps at, so the wrap happens at an edge the user can see: a title that nearly
@@ -263,29 +262,26 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
      * preview still wraps at the line width, and the padding is what keeps text that
      * fills the line from touching the edge of the colored area.
      * <p>
-     * The height stays the preview's own, taken through a zero-gap {@link FlowLayout}
-     * that keeps the preview at its preferred size, so an empty preview (zero preferred
-     * height) collapses the row to zero height instead of leaving a colored band.
+     * The height stays the preview's own, taken through the superclass's zero-gap
+     * {@link FlowLayout} that keeps the preview at its preferred size, so an empty preview
+     * (zero preferred height) collapses the row to zero height instead of leaving a
+     * colored band.
      */
-    private static final class PreviewRow extends JPanel {
+    static final class FixedWidthPreviewRow extends SongSettingsLayout.PreviewRow {
 
         private final int horizontalPaddingPx =
             FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_EXTRA_GAP);
 
         private int lineWidthPx = 0;
 
-        private PreviewRow(JComponent preview) {
-            super(new FlowLayout(FlowLayout.CENTER, 0, 0));
-            setOpaque(true);
-            setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
+        private FixedWidthPreviewRow(JComponent preview) {
+            super(preview);
             setBorder(BorderFactory.createEmptyBorder(
                 0,
                 horizontalPaddingPx,
                 0,
                 horizontalPaddingPx
             ));
-            setAlignmentX(Component.LEFT_ALIGNMENT);
-            add(preview);
         }
 
         /** The line width plus the gap at each end, which is the row's own width. */

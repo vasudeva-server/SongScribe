@@ -212,9 +212,8 @@ public class StructuralStacker {
             // sizing see the tilted silhouette rather than a flat approximation of it.
             structuralExtents.ySetSloped(true, anchorXSs, endXSs, finalLeftYSs, finalLeftYSs + dySs);
 
-            // Record the sloped layout (dySs folded in), keeping the resolved left-end Y as ySs.
             builder.putDecorationLayout(tuplet,
-                new LayoutResult.DecorationLayout.Plain(
+                new LayoutResult.DecorationLayout.Sloped(
                     anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs));
         }
     }

@@ -189,12 +189,12 @@ public class KeyChangeElement extends StructuralElement {
      * @throws IllegalStateException under {@link #extent()}'s condition
      */
     @Override
-    public double getContentWidthSs() {
+    public double getAdvanceWidthSs() {
         return extent().widthSs();
     }
 
     /**
-     * Returns the same width {@link #getContentWidthSs()} reports. A key change draws nothing
+     * Returns the same width {@link #getAdvanceWidthSs()} reports. A key change draws nothing
      * but its accidentals — no stem, no flag, no dots — so the glyph run and the content are the
      * same extent, and the type's own width is only the floor described in
      * {@code ElementType.computeKeySignatureBoundsSs}.
@@ -204,7 +204,7 @@ public class KeyChangeElement extends StructuralElement {
      */
     @Override
     public double getGlyphWidthSs() {
-        return getContentWidthSs();
+        return getAdvanceWidthSs();
     }
 
     /** Resolves the key this element changes from, per {@link #extent()}'s two cases. */

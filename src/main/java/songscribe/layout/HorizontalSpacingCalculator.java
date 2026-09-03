@@ -775,7 +775,7 @@ public final class HorizontalSpacingCalculator {
         var sb = new StringBuilder();
         sb.append(String.format(
             "solveLine[line %d]: available=%.2f natural=%.2f -> %s",
-            line.getSong().indexOfLine(line), availableSpanSs, naturalSpanSs, verdict));
+            line.index(), availableSpanSs, naturalSpanSs, verdict));
 
         for (var i = 0; i < corrected.size(); i++) {
             var before = lifted.get(i);

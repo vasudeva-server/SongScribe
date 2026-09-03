@@ -314,15 +314,14 @@ public record PasteSpanReconciliation(
      */
     public PasteSpanReconciliation dropTupletsRejectedByTarget(Line line) {
         var song = line.getSong();
-        var lineIndex = song.indexOfLine(line);
 
-        // A line outside its song offers no beat context to validate against. Replay
-        // re-applies a recorded batch that already reflects every drop this rule made
+        // Replay re-applies a recorded batch that already reflects every drop this rule made
         // when the paste first ran, so re-deriving them there could only double-apply.
-        if (lineIndex < 0 || song.isReplaying()) {
+        if (song.isReplaying()) {
             return this;
         }
 
+        var lineIndex = line.index();
         var keptSpans = new ArrayList<Span>(fragmentSpans.size());
         var rejectedTuplets = new ArrayList<Tuplet>();
 

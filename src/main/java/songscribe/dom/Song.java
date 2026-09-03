@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -169,25 +170,21 @@ public final class Song implements Disposable {
     // decided by the mark's computed content width, never by nullness.
     private Tempo tempo = new Tempo();
 
-    // The canonical attribution metadata record — single source of truth for all
-    // 11 attribution fields (title, number, place, year, month, day, composer,
-    // lyricist, lyricsSource, arrangement, unofficialTranslation).
+    // The canonical attribution metadata record — single source of truth for every
+    // attribution field (title, number, place, date, composer, lyricist, lyricsSource,
+    // arrangement, unofficialTranslation, subtitle, wordsDate).
     private SongMetadata metadata = new SongMetadata(
         Strings.get(Strings.DOCUMENT_UNTITLED),  // title
         Strings.get(Strings.SONG_DEFAULT_NUMBER), // number
         "",    // place
-        "",    // year
-        0,     // month
-        0,     // day
+        PartialDate.EmptyDate.INSTANCE, // date
         SRI_CHINMOY,           // composer
         SRI_CHINMOY,           // lyricist
         LyricsSource.LYRICIST, // lyricsSource
         false,  // arrangement
         false,  // unofficialTranslation
         "",     // subtitle
-        "",     // wordsYear
-        0,      // wordsMonth
-        0       // wordsDay
+        PartialDate.EmptyDate.INSTANCE // wordsDate
     );
 
     // The language of the song
@@ -359,18 +356,14 @@ public final class Song implements Disposable {
             data.title(),
             data.number(),
             data.place(),
-            data.year(),
-            data.month(),
-            data.day(),
+            data.date(),
             data.composer(),
             data.lyricist(),
             data.lyricsSource(),
             data.arrangement(),
             data.unofficialTranslation(),
             data.subtitle(),
-            data.wordsYear(),
-            data.wordsMonth(),
-            data.wordsDay()
+            data.wordsDate()
         );
 
         // Apply remaining scalar fields. A legacy .mssw file may carry no <tempo> element at
@@ -487,28 +480,16 @@ public final class Song implements Disposable {
         return metadata.place();
     }
 
-    public String getYear() {
-        return metadata.year();
+    public PartialDate getDate() {
+        return metadata.date();
     }
 
-    public int getMonth() {
-        return metadata.month();
-    }
-
-    public int getDay() {
-        return metadata.day();
-    }
-
-    public String getWordsYear() {
-        return metadata.wordsYear();
-    }
-
-    public int getWordsMonth() {
-        return metadata.wordsMonth();
-    }
-
-    public int getWordsDay() {
-        return metadata.wordsDay();
+    /**
+     * @return when the words were written, {@link PartialDate.EmptyDate} when they are
+     *     dated with the music
+     */
+    public PartialDate getWordsDate() {
+        return metadata.wordsDate();
     }
 
     public LANGUAGE getLanguage() {
@@ -669,8 +650,13 @@ public final class Song implements Disposable {
         return lines.size();
     }
 
-    public int indexOfLine(Line line) {
+    int indexOfLine(Line line) {
         return lines.indexOf(line);
+    }
+
+    /** True when {@code line} is currently one of this song's lines. */
+    public boolean contains(Line line) {
+        return indexOfLine(line) >= 0;
     }
 
     public boolean isEmpty() {
@@ -806,13 +792,23 @@ public final class Song implements Disposable {
 
     // -- Direct setters (bypass mutation tracking; for preview/scratch Song instances only) --
 
+    /** A run of two or more blank lines, collapsed by {@link #coercePerson} to a single newline. */
+    private static final Pattern BLANK_LINE_RUN = Pattern.compile("(\\s*\\n){2,}");
+
     /**
-     * Trims the person name; if empty, returns {@link #SRI_CHINMOY}.
-     * Still public because {@link SongIO} uses it when parsing legacy files.
+     * Normalizes a person's name for storage and display. Still public because
+     * {@link SongIO} uses it when parsing legacy files.
+     *
+     * @param text the raw name, as typed or read from storage
+     * @return the trimmed name, with every run of blank lines collapsed to a single newline;
+     *     never empty — {@link #SRI_CHINMOY} when {@code text} carries no other content
+     * @invariant idempotent: {@code coercePerson(coercePerson(text))} equals
+     *     {@code coercePerson(text)}
      */
     public static String coercePerson(String text) {
         var trimmed = text.trim();
-        return trimmed.isEmpty() ? SRI_CHINMOY : trimmed;
+        var collapsed = BLANK_LINE_RUN.matcher(trimmed).replaceAll("\n");
+        return collapsed.isEmpty() ? SRI_CHINMOY : collapsed;
     }
 
     // -- Layout setters --
@@ -1057,10 +1053,9 @@ public final class Song implements Disposable {
                 continue;
             }
 
-            var anchorLineIndex = indexOfLine(anchorLine);
-            var endLineIndex = indexOfLine(endLine);
-
-            if (anchorLineIndex < 0 || endLineIndex < 0 || endLineIndex - anchorLineIndex != 1) {
+            if (!contains(anchorLine)
+                    || !contains(endLine)
+                    || endLine.index() - anchorLine.index() != 1) {
                 line.removeInvalidatedSpan(span);
             }
         }
@@ -1507,8 +1502,12 @@ public final class Song implements Disposable {
      * @return the move, or null when {@code line} is not in this song and so moves nothing
      */
     private @Nullable KeyMove ownKeyMove(Line line) {
-        var lineIndex = indexOfLine(line);
-        return lineIndex < 0 ? null : new KeyMove(lineIndex + 1, lineIndex);
+        if (!contains(line)) {
+            return null;
+        }
+
+        var lineIndex = line.index();
+        return new KeyMove(lineIndex + 1, lineIndex);
     }
 
     /**
@@ -1525,8 +1524,12 @@ public final class Song implements Disposable {
             return null;
         }
 
-        var lineIndex = indexOfLine(line);
-        return lineIndex < 0 ? null : new KeyMove(lineIndex + 1, lineIndex + 1);
+        if (!contains(line)) {
+            return null;
+        }
+
+        var lineIndex = line.index();
+        return new KeyMove(lineIndex + 1, lineIndex + 1);
     }
 
     /**

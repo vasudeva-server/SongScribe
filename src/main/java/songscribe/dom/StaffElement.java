@@ -285,7 +285,7 @@ public abstract class StaffElement extends LineElement implements Cloneable {
      *
      * @return {@link ElementType#getFullElementWidthSs()} for this element's type
      */
-    public double getContentWidthSs() {
+    public double getAdvanceWidthSs() {
         return getType().getFullElementWidthSs();
     }
 

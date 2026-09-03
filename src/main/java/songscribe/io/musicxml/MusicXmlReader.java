@@ -40,7 +40,7 @@ import songscribe.io.SongLoadResult;
  * {@link SongMapper#map} to build the {@link songscribe.dom.Song}. {@link #read(File)} is a
  * one-line delegation to {@link #read(InputSource)}, so there is exactly one parse path.
  * <p>
- * The two exceptions below are thrown by the mapping classes ({@link SongMapper},
+ * The three exceptions below are thrown by the mapping classes ({@link SongMapper},
  * {@link HeaderMapper}, {@link ProxyMusicAccess}, {@link NoteMapper}) rather than by this
  * class directly; they are nested here because {@link songscribe.io.SongFileLoader} and
  * callers throughout the codebase catch them by this class's name.
@@ -117,9 +117,7 @@ public final class MusicXmlReader {
     /**
      * Thrown when a document cannot be read as this program's format: the root element
      * is not {@code <score-partwise>}; its {@code version} is missing, unparseable, or
-     * older than {@link MusicXmlTags#VERSION_VALUE}; its {@code <software>} names this
-     * program but carries a version that is not semver, or one older than
-     * {@link SoftwareProvenance#MIN_VERSION}; a required element the mappers
+     * older than {@link MusicXmlTags#VERSION_VALUE}; a required element the mappers
      * cannot proceed without is absent (see {@link ProxyMusicAccess#require}); or a
      * token names something no model value maps to.
      *
@@ -139,6 +137,24 @@ public final class MusicXmlReader {
 
         public String detail() {
             return detail;
+        }
+    }
+
+    /**
+     * Thrown when a document's {@code <software>} names this program but carries a
+     * version that is not semver, or one older than {@link SoftwareProvenance#MIN_VERSION}.
+     */
+    public static final class UnsupportedVersionException extends SAXException {
+
+        private final String version;
+
+        UnsupportedVersionException(String version) {
+            super("Unsupported SongScribe version: " + version);
+            this.version = version;
+        }
+
+        public String version() {
+            return version;
         }
     }
 }

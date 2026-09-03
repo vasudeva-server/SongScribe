@@ -31,6 +31,7 @@ import songscribe.ui.binding.Controls;
 import songscribe.binding.Property;
 import songscribe.ui.binding.Timing;
 import songscribe.binding.ValueProperty;
+import songscribe.dom.PartialDate;
 import songscribe.ui.binding.Widgets;
 import songscribe.ui.component.NumericRange;
 import songscribe.ui.component.NumericTextField;
@@ -46,8 +47,8 @@ import songscribe.ui.component.NumericTextField;
  *
  * <p>The month combo is <i>valued</i>: it holds {@link MonthChoice} constants, so the
  * property answers a month rather than a position and no agreement between list order
- * and month number has to hold. The stored integer {@code SongMetadata} carries is
- * produced in {@link #getMonth} and consumed in {@link #setValues}, which are the only
+ * and month number has to hold. The month number {@link PartialDate} carries is
+ * produced in {@link #getDate} and consumed in {@link #setDate}, which are the only
  * two places that representation appears.
  *
  * <p>The day combo is still indexed — a day genuinely is its number — with index
@@ -74,7 +75,7 @@ final class SongSettingsDateInputRow {
      * The month combo's items: the twelve months and the absence of one.
      *
      * <p>A closed set rather than a list of names read by position. The number
-     * {@code SongMetadata} stores is a property of the constant, so reordering the
+     * {@link PartialDate} carries is a property of the constant, so reordering the
      * combo, translating it, or inserting a separator cannot change what a selection
      * means.
      */
@@ -102,13 +103,12 @@ final class SongSettingsDateInputRow {
         }
 
         /**
-         * Returns the constant {@code SongMetadata} stores as {@code stored}.
+         * Returns the constant {@link PartialDate} carries as {@code stored}.
          *
          * @param stored the stored month number, 0 for none
          * @return the matching constant
          * @throws IllegalArgumentException if {@code stored} names no month and is not
-         *     0 — which a song file damaged outside this application can produce, and
-         *     nothing in the application can
+         *     0, which {@code PartialDate}'s own range check makes unreachable
          */
         static MonthChoice ofStored(int stored) {
             for (var choice : values()) {
@@ -120,7 +120,7 @@ final class SongSettingsDateInputRow {
             throw new IllegalArgumentException("No month is stored as " + stored);
         }
 
-        /** @return the number {@code SongMetadata} stores for this month, 0 for none */
+        /** @return the number {@link PartialDate} carries for this month, 0 for none */
         int stored() {
             return stored;
         }
@@ -268,43 +268,44 @@ final class SongSettingsDateInputRow {
     }
 
     /**
-     * Seeds the three widgets from stored song data. The enabled states follow from
+     * Seeds the three widgets from a stored date. The enabled states follow from
      * the bindings and need no refresh here.
      *
      * <p>The year is written first, so that an unusable one clears the month and day
      * before this method seeds them — what is put in is what comes back out either
      * way.
      *
-     * @param yearText the stored year, empty when the song has none
-     * @param monthNumber the stored month, 0 for none
-     * @param dayIndex the stored day, {@value #NONE_INDEX} for none
-     * @throws IllegalArgumentException if {@code monthNumber} names no month and is
-     *     not 0
+     * @param date the stored date
      */
-    void setValues(String yearText, int monthNumber, int dayIndex) {
-        year.set(yearText);
-        month.set(MonthChoice.ofStored(monthNumber));
-        day.set(dayIndex);
+    void setDate(PartialDate date) {
+        year.set(date.year());
+
+        switch (date) {
+            case PartialDate.EmptyDate _, PartialDate.YearOnly _ -> {
+                month.set(MonthChoice.NONE);
+                day.set(NONE_INDEX);
+            }
+            case PartialDate.YearMonth yearMonth -> {
+                month.set(MonthChoice.ofStored(yearMonth.month()));
+                day.set(NONE_INDEX);
+            }
+            case PartialDate.YearMonthDay full -> {
+                month.set(MonthChoice.ofStored(full.month()));
+                day.set(full.day());
+            }
+        }
     }
 
     /**
-     * @return the year exactly as the field holds it, which may be empty or out of range
+     * The date the three widgets describe.
+     *
+     * <p>The year goes in exactly as the field holds it, which may be out of range: a
+     * date is built from it all the same, and the enable rules above are what keep a
+     * month or day from standing beside a year that names no date.
+     *
+     * @return the date, {@link PartialDate.EmptyDate} when the year field is empty
      */
-    String getYear() {
-        return year.get();
-    }
-
-    /**
-     * @return the selected month as {@code SongMetadata} stores it, 0 for none
-     */
-    int getMonth() {
-        return month.get().stored();
-    }
-
-    /**
-     * @return the selected day's index, {@value #NONE_INDEX} for none
-     */
-    int getDay() {
-        return day.get();
+    PartialDate getDate() {
+        return PartialDate.of(year.get(), month.get().stored(), day.get());
     }
 }

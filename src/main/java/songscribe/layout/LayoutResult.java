@@ -1004,24 +1004,20 @@ public final class LayoutResult {
      * All values are in staff-space units.
      * <p>
      * A decoration either draws itself from the model — a hairpin, an ending, an articulation —
-     * or draws {@link DecorationContent} the layout pass typeset for it. Those are the two members
-     * of this interface, so a decoration layout without content is not a runtime possibility for
-     * the kinds that have content, and a reader of {@link Typeset#content()} never has to ask
-     * whether it is there.
+     * or draws {@link DecorationContent} the layout pass typeset for it. The tuplet bracket is
+     * the one decoration whose line tilts, so it carries its own member with the extra
+     * {@code dySs} rise rather than every other kind carrying an always-zero field. A decoration
+     * layout without content is not a runtime possibility for the kinds that have content, and a
+     * reader of {@link Typeset#content()} never has to ask whether it is there.
      */
-    public sealed interface DecorationLayout permits DecorationLayout.Plain, DecorationLayout.Typeset {
+    public sealed interface DecorationLayout
+        permits DecorationLayout.Plain, DecorationLayout.Typeset, DecorationLayout.Sloped {
 
         /** X position (left edge) of the decoration. */
         double xSs();
 
         /** Y position (top edge) of the decoration. */
         double ySs();
-
-        /**
-         * Rise over the {@link #widthSs} run, from the left (anchor) edge to the right (end)
-         * edge; 0 for a level decoration.
-         */
-        double dySs();
 
         /** Width of the decoration. */
         double widthSs();
@@ -1053,7 +1049,18 @@ public final class LayoutResult {
          * <p>
          * The one place nullability of the content is resolved: the stackers share a placement
          * core that serves both kinds, and this is where "no content" becomes {@link Plain}
-         * rather than a null a reader could meet.
+         * rather than a null a reader could meet. Never produces a {@link Sloped}: the tuplet
+         * stacker builds that member directly, since it is the only producer of a tilted layout.
+         *
+         * @param xSs        X position (left edge) of the decoration
+         * @param ySs        Y position (top edge) of the decoration
+         * @param widthSs    width of the decoration
+         * @param heightSs   height of the decoration
+         * @param marginSs   bottom margin between the element's bottom and the tier below
+         * @param content    the typeset content to carry, or {@code null} for a self-drawing
+         *                   decoration
+         * @return a {@link Plain} when {@code content} is {@code null}, otherwise a
+         *         {@link Typeset}
          */
         static DecorationLayout of(
             double xSs, double ySs, double widthSs, double heightSs, double marginSs,
@@ -1073,24 +1080,14 @@ public final class LayoutResult {
         record Plain(
             double xSs,
             double ySs,
-            double dySs,
             double widthSs,
             double heightSs,
             double marginSs) implements DecorationLayout {
 
-            /**
-             * Creates the layout of a level decoration — everything but the tuplet bracket, the
-             * one decoration whose bracket tilts.
-             */
-            public Plain(
-                double xSs, double ySs, double widthSs, double heightSs, double marginSs) {
-                this(xSs, ySs, 0.0, widthSs, heightSs, marginSs);
-            }
-
             @Override
             public Plain shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
                 return new Plain(
-                    xSs + dxSs, ySs + dySsShift, dySs, widthSs + dWidthSs, heightSs, marginSs);
+                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs);
             }
         }
 
@@ -1109,16 +1106,30 @@ public final class LayoutResult {
             double marginSs,
             DecorationContent content) implements DecorationLayout {
 
-            /** Always 0: typeset content is set on a level baseline grid, never tilted. */
-            @Override
-            public double dySs() {
-                return 0.0;
-            }
-
             @Override
             public Typeset shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
                 return new Typeset(
                     xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs, content);
+            }
+        }
+
+        /**
+         * The layout of a tuplet bracket, the one decoration whose line tilts: {@code dySs} is
+         * the bracket line's rise over {@code widthSs}, measured from {@code xSs}; negative means
+         * an ascending contour.
+         */
+        record Sloped(
+            double xSs,
+            double ySs,
+            double dySs,
+            double widthSs,
+            double heightSs,
+            double marginSs) implements DecorationLayout {
+
+            @Override
+            public Sloped shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+                return new Sloped(
+                    xSs + dxSs, ySs + dySsShift, dySs, widthSs + dWidthSs, heightSs, marginSs);
             }
         }
     }

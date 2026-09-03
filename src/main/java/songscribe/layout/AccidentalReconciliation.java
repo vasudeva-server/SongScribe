@@ -521,11 +521,11 @@ public final class AccidentalReconciliation {
         var startLineIndex = Integer.MAX_VALUE;
 
         for (var removal : removals) {
-            var lineIndex = song.indexOfLine(removal.line());
-
-            if (lineIndex < 0) {
+            if (!song.contains(removal.line())) {
                 continue;
             }
+
+            var lineIndex = removal.line().index();
 
             startLineIndex = Math.min(startLineIndex, lineIndex);
             pendingByPosition
@@ -624,14 +624,12 @@ public final class AccidentalReconciliation {
      *         as the deletion itself
      */
     public static List<ReachedLine> lineDeletionReach(Line deletedLine) {
-        var song = deletedLine.getSong();
-        var lineIndex = song.indexOfLine(deletedLine);
-
-        if (lineIndex <= 0) {
+        if (deletedLine.isFirst()) {
             return List.of();
         }
 
-        return linesInheriting(deletedLine, song.getLine(lineIndex - 1).keyAtEndOfLine());
+        var song = deletedLine.getSong();
+        return linesInheriting(deletedLine, song.getLine(deletedLine.index() - 1).keyAtEndOfLine());
     }
 
     /**
@@ -649,21 +647,18 @@ public final class AccidentalReconciliation {
      *
      * @param line           The line the key change lands on, which is <b>not</b> in the result —
      *                       its own reconciliation is the caller's, and takes a different shape for
-     *                       an inserted key change than for a change to the line's own key
+     *                       an inserted key change than for a change to the line's own key. Must
+     *                       be one of its song's lines
      * @param keyAtEndOfLine The key {@code line} will leave off in once the change commits: its
      *                       last mid-line {@link KeyChangeElement}'s key when it holds one, and
      *                       its new running key when it does not
      * @return One {@link ReachedLine} per reached line, in song order, each carrying the
      *         {@link ReachedLine#removedRanges() ranges} the change strands on its line; empty
-     *         when the change moves nothing downstream or when {@code line} is not in its song
+     *         when the change moves nothing downstream
      */
     public static List<ReachedLine> linesInheriting(Line line, Key keyAtEndOfLine) {
         var song = line.getSong();
-        var lineIndex = song.indexOfLine(line);
-
-        if (lineIndex < 0) {
-            return List.of();
-        }
+        var lineIndex = line.index();
 
         var reached = new ArrayList<ReachedLine>();
         var runningKey = keyAtEndOfLine;

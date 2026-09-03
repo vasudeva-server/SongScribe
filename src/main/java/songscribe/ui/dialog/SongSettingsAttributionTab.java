@@ -43,6 +43,7 @@ import songscribe.Strings;
 import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.PartialDate;
 import songscribe.dom.Song;
 import songscribe.dom.SongAttribution;
 import songscribe.font.FontDescription;
@@ -51,6 +52,7 @@ import songscribe.font.TextMeasurement;
 import songscribe.layout.AttributionContent;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.ViewScale;
 import songscribe.ui.binding.Controls;
 import songscribe.binding.Property;
 import songscribe.ui.binding.Timing;
@@ -223,14 +225,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         add(createFontsSection());
         BaseDialog.addSectionSeparator(this);
 
-        // The preview's own width tracks its content, so centering it needs a row that
-        // stretches to the section's width and centers the widget within that — the same
-        // shape SongSettingsTitleTab's PreviewRow gives its previews, without a fixed line
-        // width to pin to since the attribution block has no page-line-width counterpart.
-        var previewRow = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        previewRow.setOpaque(true);
-        previewRow.setBackground(attributionPreview.getBackground());
-        previewRow.add(attributionPreview);
+        var previewRow = new SongSettingsLayout.PreviewRow(attributionPreview);
         add(SongSettingsLayout.createPreviewSection(previewRow));
     }
 
@@ -445,7 +440,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     private String normalizeLyricist(String text) {
         return text.trim().isEmpty()
             ? normalizeComposer(composer.get())
-            : StringUtils.processText(text, false);
+            : Song.coercePerson(StringUtils.processText(text, false));
     }
 
     /** Mirrors a committed composer into a lyricist field the user has left blank. */
@@ -480,19 +475,14 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         var composerText = composer.get();
         var lyricistText = resolveLyricistText(composerText);
         var translation = unofficialTranslation.get();
-        var gatedDate = getWordsDate();
         var credits = new SongAttribution(
             place.get(),
-            musicDate.getYear(),
-            musicDate.getMonth(),
-            musicDate.getDay(),
+            getDate(),
             composerText,
             lyricistText,
             lyricsSource.get(),
             arrangement.get(),
-            gatedDate.year(),
-            gatedDate.month(),
-            gatedDate.day()
+            getWordsDate()
         );
         var showTranslation = !translation && hasTranslation.get();
 
@@ -507,16 +497,9 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         return place.get();
     }
 
-    String getYearText() {
-        return musicDate.getYear();
-    }
-
-    int getMonth() {
-        return musicDate.getMonth();
-    }
-
-    int getDay() {
-        return musicDate.getDay();
+    /** @return the composition date as the row holds it */
+    PartialDate getDate() {
+        return musicDate.getDate();
     }
 
     String getComposerText() {
@@ -547,15 +530,14 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * fields keep their last values while it is hidden. Both the commit and the preview ask
      * here, so neither can disagree with what the box says.
      *
-     * @return the three components as typed, or {@link WordsDate#NONE} when the box is
-     *         unchecked
+     * @return the date as typed, or {@link PartialDate.EmptyDate} when the box is unchecked
      */
-    WordsDate getWordsDate() {
+    PartialDate getWordsDate() {
         if (!differentDate.get()) {
-            return WordsDate.NONE;
+            return PartialDate.EmptyDate.INSTANCE;
         }
 
-        return new WordsDate(wordsDate.getYear(), wordsDate.getMonth(), wordsDate.getDay());
+        return wordsDate.getDate();
     }
 
     /**
@@ -564,7 +546,7 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
      * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
      * with nothing else touched, answer the same values — with the one documented exception
      * that a words date equal to the music date arrives already collapsed to
-     * {@link WordsDate#NONE}, because {@code SongMetadata} stores it that way.
+     * {@link PartialDate.EmptyDate}, because {@code SongMetadata} stores it that way.
      *
      * <p>The composer is written before the lyricist, so the inheritance effect the composer
      * fires writes a lyricist the stored one then replaces. Every other order carries
@@ -581,16 +563,16 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
         attributionFont.set(fonts.getFont(FontKey.ATTRIBUTION));
         subAttributionFont.set(fonts.getFont(FontKey.SUB_ATTRIBUTION));
         place.set(metadata.place());
-        musicDate.setValues(metadata.year(), metadata.month(), metadata.day());
+        musicDate.setDate(metadata.date());
         composer.set(metadata.composer());
         lyricist.set(metadata.lyricist());
         lyricsSource.set(metadata.lyricsSource());
         arrangement.set(metadata.arrangement());
         unofficialTranslation.set(metadata.unofficialTranslation());
 
-        var wordsYear = metadata.wordsYear();
-        wordsDate.setValues(wordsYear, metadata.wordsMonth(), metadata.wordsDay());
-        differentDate.set(!wordsYear.isEmpty());
+        var storedWordsDate = metadata.wordsDate();
+        wordsDate.setDate(storedWordsDate);
+        differentDate.set(storedWordsDate != PartialDate.EmptyDate.INSTANCE);
     }
 
     /**
@@ -668,11 +650,14 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
             GraphicUtils.setRenderingHints(g2);
 
             // The renderer draws in staff spaces, as it does in the score. There is no ScoreView
-            // here to establish that transform and no zoom to fold into it, so the preview
-            // applies the document scale itself and shows the block at natural size.
+            // here to establish that transform, so the preview reads the shared identity scale
+            // — the same one an off-score component falls back to — and shows the block at
+            // natural size.
             try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-                g2.scale(DocumentScale.PIXELS_PER_STAFF_SPACE, DocumentScale.PIXELS_PER_STAFF_SPACE);
-                AttributionRenderer.getInstance().render(g2, previewContent);
+                var pixelsPerStaffSpace =
+                    DocumentScale.PIXELS_PER_STAFF_SPACE * ViewScale.IDENTITY.factor();
+                g2.scale(pixelsPerStaffSpace, pixelsPerStaffSpace);
+                AttributionRenderer.getInstance().renderAtOrigin(g2, previewContent);
             }
         }
     }

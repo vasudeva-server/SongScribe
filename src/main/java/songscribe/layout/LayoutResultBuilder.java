@@ -271,6 +271,22 @@ public class LayoutResultBuilder {
     }
 
     /**
+     * Returns the decoration layout recorded for an element that must have been stacked already.
+     *
+     * @param element the decoration element to look up
+     * @throws IllegalStateException if no layout is recorded for {@code element}
+     */
+    public DecorationLayout requireDecorationLayout(LineElement element) {
+        var decorationLayout = decorationLayouts.get(element);
+
+        if (decorationLayout == null) {
+            throw new IllegalStateException("no decoration layout recorded for " + element);
+        }
+
+        return decorationLayout;
+    }
+
+    /**
      * Returns the tie layout for a tie span from the builder's accumulated data.
      *
      * @param span The tie span to look up

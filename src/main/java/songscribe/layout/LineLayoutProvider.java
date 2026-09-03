@@ -20,25 +20,28 @@
 
 package songscribe.layout;
 
+import java.util.ArrayList;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.LayoutEngine.TempoMark;
 
 /**
  * Hands a line's laid-out geometry to code that has no view to ask.
  * <p>
  * The MusicXML writer emits coordinates for external consumers and therefore needs the same
  * geometry the score is painted from. It cannot build that geometry itself: {@link LayoutEngine}
- * needs {@link LyricRenderMetrics}, which the UI owns, and it needs the real {@code isLastLine} and
- * {@code attribution} arguments the paint path passes — the convenience overloads would emit
- * coordinates that disagree with the painted score on the first and last lines. So the caller
- * supplies the geometry instead.
+ * needs {@link LyricRenderMetrics}, which the UI owns, and a line's layout depends on the layout
+ * of the line before it — a melisma running off the end of one line reappears as a leading stub
+ * on the next. So the caller supplies the geometry instead.
  * <p>
  * The interactive save path implements this by returning each line's live layout, which makes
  * saved coordinates identical to painted ones by construction. Callers with no view use
- * {@link #headless(Song, DocumentFontsHolder)}.
+ * {@link #headless(Song, DocumentFontsHolder)}, which reproduces the paint path's
+ * lyric-continuation threading, so its coordinates agree with the painted score.
  */
 @FunctionalInterface
 public interface LineLayoutProvider {
@@ -46,18 +49,19 @@ public interface LineLayoutProvider {
     /**
      * Returns the layout of {@code line}, or null when none is available.
      *
-     * @param line      the line whose geometry is wanted
-     * @param lineIndex the line's index within the song, which decides whether it is the first
-     *                  line (attribution) or the last (right-pinned final barline)
+     * @param line the line whose geometry is wanted; must be in its song
      */
-    @Nullable LayoutResult layoutFor(Line line, int lineIndex);
+    @Nullable LayoutResult layoutFor(Line line);
 
     /**
-     * Returns a provider that lays each line out from scratch, for callers with no view.
+     * Returns a provider that lays every line of {@code song} out from scratch, for callers with
+     * no view.
      * <p>
-     * It passes the same real arguments the paint path does, so its coordinates agree with a
-     * painted score. Laying a line out resolves its automatic stem directions as a side effect,
-     * exactly as painting it does.
+     * The lines are laid out at construction, in song order, each one's trailing lyric
+     * continuation carried into the next line's leading flag exactly as the paint path does.
+     * Laying a line out resolves its automatic stem directions as a side effect, exactly as
+     * painting it does. The song's tempo mark is omitted: the provider's callers want
+     * coordinates, not a painting, and the inert header mark contributes none.
      *
      * @param song  the song whose lines will be laid out
      * @param fonts the document fonts, which supply the lyrics font the metrics derive from
@@ -67,12 +71,15 @@ public interface LineLayoutProvider {
             LyricRenderMetrics.forFont(fonts.getLyricsFont()),
             song.getLineWidthSs().value(),
             fonts);
-        var lastLineIndex = song.lineCount() - 1;
+        var layouts = new ArrayList<LayoutResult>(song.lineCount());
+        var hasLeadingLyricContinuation = false;
 
-        return (line, lineIndex) -> engine.layout(
-            line,
-            lineIndex == lastLineIndex,
-            false,
-            lineIndex == 0 ? song.getAttributionElement() : null);
+        for (var line : song.getLines()) {
+            var result = engine.layout(line, hasLeadingLyricContinuation, TempoMark.OMITTED);
+            layouts.add(result);
+            hasLeadingLyricContinuation = result.hasTrailingLyricContinuation();
+        }
+
+        return line -> layouts.get(line.index());
     }
 }

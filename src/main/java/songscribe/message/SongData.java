@@ -25,6 +25,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.PartialDate;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.Tempo;
@@ -54,9 +55,7 @@ public record SongData(
     String number,
     String title,
     String place,
-    int month,
-    int day,
-    String year,
+    PartialDate date,
     String underLyrics,
     String banglaLyrics,
     String translatedLyrics,
@@ -72,7 +71,5 @@ public record SongData(
     boolean hasBeenDynamicallyLaidOut,
     int formatVersion,
     String subtitle,
-    String wordsYear,
-    int wordsMonth,
-    int wordsDay
+    PartialDate wordsDate
 ) {}

@@ -485,15 +485,14 @@ public final class ModificationSession {
         }
 
         var song = line.getSong();
-        var lineIndex = song.indexOfLine(line);
         var elementIndex = line.getElementIndex(owner);
 
-        if (lineIndex < 0 || elementIndex < 0) {
+        if (!song.contains(line) || elementIndex < 0) {
             edit.run();
             return false;
         }
 
-        return song.withBeatDefiningEdit(lineIndex, elementIndex, edit);
+        return song.withBeatDefiningEdit(line.index(), elementIndex, edit);
     }
 
     /**

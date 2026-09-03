@@ -20,17 +20,20 @@
 
 package songscribe.layout.stacking;
 
-import org.jspecify.annotations.Nullable;
+import java.util.List;
 
 import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Attribution;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.CollisionRegion;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.SongTempoMark;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.AttributionContent;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.MetronomeContent;
 import songscribe.layout.StaffExtents;
@@ -41,7 +44,8 @@ import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
 
 /**
  * Stacks system-tier decorations (tier 4): tempo markings, beat changes,
- * and annotations.
+ * and annotations, and on the song's first line the two first-line decorations — the song's
+ * tempo mark and its attribution block — which it typesets from the song and the document fonts.
  * <p>
  * Operates on the system {@link StaffExtents} layer, which starts as a copy
  * of the structural layer's top extents. All calculations are in staff-space units.
@@ -64,33 +68,50 @@ public class SystemStacker {
     private final StackingContext context;
     private final StaffExtents systemExtents;
     private final DocumentFontsHolder fonts;
-    private final @Nullable SongTempoMark tempoMark;
+    private final TempoMark tempoMark;
+    private final double lineWidthSs;
 
+    /**
+     * @param tempoMark   whether the song's tempo mark is stacked when the line is the first
+     * @param lineWidthSs total width of the staff line in staff-space units, which the
+     *                    attribution block is right-aligned to
+     */
     public SystemStacker(
         StackingContext context,
         StaffExtents systemExtents,
         DocumentFontsHolder fonts,
-        @Nullable SongTempoMark tempoMark) {
+        TempoMark tempoMark,
+        double lineWidthSs) {
         this.context = context;
         this.systemExtents = systemExtents;
         this.fonts = fonts;
         this.tempoMark = tempoMark;
+        this.lineWidthSs = lineWidthSs;
     }
 
     /**
      * Stacks all system-tier decorations in order: the song's own tempo mark, then per-column
-     * tempo changes, beat changes and annotations.
+     * tempo changes, beat changes and annotations, then the attribution block topmost. The
+     * tempo mark and the attribution are stacked only when the line is its song's first.
      */
     public void stack() {
         var columns = context.getColumns();
         var builder = context.getBuilder();
+        var line = context.getLine();
+        var isFirstLine = line.isFirst();
 
-        stackTempoMark(builder);
+        if (isFirstLine && tempoMark == TempoMark.STACKED) {
+            stackTempoMark(builder);
+        }
 
         for (var column : columns) {
             stackTempo(column, builder);
             stackBeatChange(column, builder);
             stackAnnotations(column, builder);
+        }
+
+        if (isFirstLine) {
+            stackAttribution(builder);
         }
     }
 
@@ -106,21 +127,51 @@ public class SystemStacker {
      * right edge and overhangs the music to its right.
      */
     private void stackTempoMark(LayoutResultBuilder builder) {
-        if (tempoMark == null) {
-            return;
-        }
-
         var line = context.getLine();
-        var content = MetronomeContent.forTempo(line.getSong().getTempo(), fonts.getAnnotationFont());
+        var song = line.getSong();
+        var content = MetronomeContent.forTempo(song.getTempo(), fonts.getAnnotationFont());
 
         stackAboveWithRegions(
             systemExtents,
-            tempoMark,
+            song.getTempoMarkElement(),
             content.regions(),
             HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line)
                 + SMuFLMetadata.bboxSs(SMuFLGlyph.NOTEHEAD_BLACK).widthSs(),
             content.widthSs(),
             TEMPO_MARGIN_SS,
+            StackingUtils.TOP_STAFF_LINE_POSITION,
+            builder,
+            content);
+    }
+
+    /**
+     * Stacks the attribution block above the right-edge columns of the first line.
+     * <p>
+     * The attribution is right-aligned to the staff right edge. It is stacked over its x-range,
+     * anchored at the top staff line, so it nests as close to the staff as the system-layer
+     * extents allow. Stacked after the column loop so that it clears every other system-tier
+     * decoration.
+     * <p>
+     * Its size comes from the content, never from the model: the block is a solid rectangle of
+     * text, so it reserves one collision region covering the whole of it. The resulting
+     * layout is keyed by the song's {@link Attribution} element, which carries the user Y offset.
+     */
+    private void stackAttribution(LayoutResultBuilder builder) {
+        var song = context.getLine().getSong();
+        var content = AttributionContent.forSong(song, fonts);
+        var widthSs = content.widthSs();
+        var heightSs = content.heightSs();
+
+        // Right-align with a small inset from the staff right edge
+        var xSs = lineWidthSs - widthSs - Attribution.ATTRIBUTION_RIGHT_MARGIN_SS;
+
+        stackAboveWithRegions(
+            systemExtents,
+            song.getAttributionElement(),
+            List.of(new CollisionRegion(0, 0, widthSs, heightSs)),
+            xSs,
+            widthSs,
+            Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,
             builder,
             content);

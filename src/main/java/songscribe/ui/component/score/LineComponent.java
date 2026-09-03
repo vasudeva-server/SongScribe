@@ -38,6 +38,7 @@ import songscribe.engraving.StaffPosition;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
+import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.Mode;
@@ -431,20 +432,10 @@ public class LineComponent extends ScoreComponent
         }
 
         var staffRightMarginSs = song.getLineWidthSs().value();
-        var isLastLine = lineIndex == song.lineCount() - 1;
-        var isFirstLine = lineIndex == 0;
         var view = scoreView;
         var lyricRenderMetrics = view.getLyricRenderMetrics();
         var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
-
-        // Both the song's tempo and its attribution are drawn at line 0, always — even on an
-        // empty line or an empty song. Neither needs pre-measurement: the layout pass typesets
-        // both from the song itself.
-        var tempoMark = isFirstLine ? song.getTempoMarkElement() : null;
-        var attribution = isFirstLine ? song.getAttributionElement() : null;
-
-        var result = layoutEngine.layout(
-            line, isLastLine, hasLeadingLyricContinuation, tempoMark, attribution);
+        var result = layoutEngine.layout(line, hasLeadingLyricContinuation, TempoMark.STACKED);
 
         layoutResult = result;
         layoutDirty = false;

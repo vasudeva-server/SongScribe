@@ -260,33 +260,23 @@ class LineRenderer {
     }
 
     /**
-     * Draws the song's tempo above the right edge of the first line's staff header. Only the
-     * line index is tested here — the renderer has no way to know which line it was handed.
-     * Whether the mark was stacked at all is the renderer's own question, and it answers it
-     * once, from the mark's decoration layout.
+     * Draws the song's tempo above the right edge of the first line's staff header. Whether the
+     * mark was stacked at all — it is stacked only into the first line's layout — is the
+     * renderer's own question, and it answers it once, from the mark's decoration layout.
      */
     private void renderSongTempoMark(
         Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-
-        if (invariants.getLineIndex() != 0) {
-            return;
-        }
 
         SongTempoMarkRenderer.getInstance()
             .render(invariants, frame, invariants.getSong().getTempoMarkElement(), g2);
     }
 
     /**
-     * Draws the song's attribution block above the right end of the first line's staff. Only the
-     * line index is tested here — the renderer has no way to know which line it was handed.
-     * Whether the block was stacked at all is the renderer's own question, and it answers it once,
-     * from the block's decoration layout.
+     * Draws the song's attribution block above the right end of the first line's staff. Whether
+     * the block was stacked at all — it is stacked only into the first line's layout — is the
+     * renderer's own question, and it answers it once, from the block's decoration layout.
      */
     private void renderAttribution(Graphics2D g2, LineInvariants invariants) {
-        if (invariants.getLineIndex() != 0) {
-            return;
-        }
-
         AttributionRenderer.getInstance().render(invariants, g2);
     }
 

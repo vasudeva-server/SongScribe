@@ -600,7 +600,7 @@ final class ScorePartwiseBuilder {
             var line = site.owner().line();
 
             if (!layouts.containsKey(line)) {
-                layouts.put(line, context.layoutProvider().layoutFor(line, site.owner().lineIndex()));
+                layouts.put(line, context.layoutProvider().layoutFor(line));
             }
 
             var layout = layouts.get(line);

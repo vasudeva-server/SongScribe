@@ -187,6 +187,32 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * This line's position among its song's lines.
+     *
+     * @return the index {@link Song#getLine} would return this line for
+     * @throws IllegalStateException if this line is not one of its song's lines
+     */
+    public int index() {
+        var result = song.indexOfLine(this);
+
+        if (result < 0) {
+            throw new IllegalStateException("Line is not one of its song's lines");
+        }
+
+        return result;
+    }
+
+    /** True when this line is its song's first line. */
+    public boolean isFirst() {
+        return index() == 0;
+    }
+
+    /** True when this line is its song's last line. */
+    public boolean isLast() {
+        return index() == song.lineCount() - 1;
+    }
+
+    /**
      * Applies a single mutation, delegating to the parent song's bracket.
      *
      * <p>A modification bracket must be open — the mutation is recorded and the
@@ -457,13 +483,11 @@ public class Line implements LyricRun, SpanLookup {
      *         measured before it is added
      */
     public @Nullable Key nextLineRunningKey() {
-        var lineIndex = song.indexOfLine(this);
-
-        if (lineIndex < 0 || lineIndex + 1 >= song.lineCount()) {
+        if (!song.contains(this) || isLast()) {
             return null;
         }
 
-        return song.getLine(lineIndex + 1).getRunningKey();
+        return song.getLine(index() + 1).getRunningKey();
     }
 
     // ========================================================================
@@ -630,7 +654,7 @@ public class Line implements LyricRun, SpanLookup {
     public void addElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (song.indexOfLine(this) != song.lineCount() - 1
+                && (!isLast()
                     || index != elementCount())) {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only be appended to the last line");
@@ -725,7 +749,7 @@ public class Line implements LyricRun, SpanLookup {
     public void setElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (song.indexOfLine(this) != song.lineCount() - 1
+                && (!isLast()
                     || index != elementCount() - 1)) {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
@@ -2014,7 +2038,7 @@ public class Line implements LyricRun, SpanLookup {
      * can also name a line the song no longer holds; that has no position at all and is
      * likewise {@link SpanBound#ABSENT}.
      * <p>
-     * Only a cross-line endpoint pays for the two {@link Song#indexOfLine} scans, and only
+     * Only a cross-line endpoint pays for the two {@link Line#index} scans, and only
      * ties are ever cross-line.
      */
     private SpanBound boundOf(@Nullable StaffElement endpoint) {
@@ -2033,14 +2057,14 @@ public class Line implements LyricRun, SpanLookup {
             return new SpanBound.At(getElementIndex(endpoint));
         }
 
-        var thisLineIndex = song.indexOfLine(this);
-        var endpointLineIndex = song.indexOfLine(endpointLine);
-
-        // Guarded before the distance is taken: a line the song no longer holds reports -1,
-        // which would otherwise sit one away from line 0 and read as an adjacent neighbour.
-        if (thisLineIndex < 0 || endpointLineIndex < 0) {
+        // Guarded before the distance is taken: a line the song no longer holds must not
+        // read as one away from line 0 and be treated as an adjacent neighbour.
+        if (!song.contains(this) || !song.contains(endpointLine)) {
             return SpanBound.ABSENT;
         }
+
+        var thisLineIndex = index();
+        var endpointLineIndex = endpointLine.index();
 
         return switch (endpointLineIndex - thisLineIndex) {
             case -1 -> SpanBound.BEFORE_LINE;

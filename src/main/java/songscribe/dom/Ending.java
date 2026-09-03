@@ -285,13 +285,6 @@ public class Ending extends Span {
         this.bracketRanges = bracketRanges;
     }
 
-    /**
-     * Returns the height of the volta bracket in staff-space units.
-     */
-    public double getContentHeightSs() {
-        return VOLTA_TICK_HEIGHT_SS;
-    }
-
     @Override
     public boolean requiresInvalidationConfirm() {
         return true;

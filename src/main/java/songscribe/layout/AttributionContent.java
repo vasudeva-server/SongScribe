@@ -28,6 +28,8 @@ import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
+import songscribe.dom.SongAttribution;
+import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.font.TextMeasurement;
@@ -41,18 +43,17 @@ import songscribe.font.TextMeasurement;
  * extent of its font, and the lines are centered against {@link #widthSs} at typeset time, so the
  * renderer positions nothing.
  * <p>
- * {@link #widthSs} is never zero. A song's attribution text is never completely empty — load and
- * the settings dialog both enforce it — so the block always has ink to measure.
- * <p>
- * A sub-attribution line never precedes an attribution line: {@link AttributionFormatter#lines}
- * appends the sub-attribution lines after the credit lines, so the transition gap is placed by
- * finding the first sub-attribution line and needs no index-0 special case.
+ * {@link #widthSs} is never zero: two independent guarantees give the block ink. {@link
+ * SongAttribution}'s constructor passes both the composer and the lyricist through {@link
+ * Song#coercePerson}, so both names are non-blank on every construction path, and {@link
+ * AttributionFormatter#buildCredits} always emits a Words and a Music line whose role labels have
+ * ink.
  * <p>
  * Like every other {@link DecorationContent}, it is rebuilt by every layout pass and holds no
  * cache. Nothing invalidates it, because nothing outlives the layout that produced it.
  *
  * @param lines    the typeset lines, top to bottom, positioned relative to the block's top-left
- *                 corner; a line whose text has no ink contributes vertical space but no entry
+ *                 corner
  * @param widthSs  the widest line's ink width, in staff spaces; never zero
  * @param heightSs the block's full height, in staff spaces: every line box, one leading per
  *                 inter-line gap, and the sub-attribution gap where the two roles meet
@@ -92,6 +93,7 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
      *
      * @param song  the song whose credits, dates and place are depicted
      * @param fonts the document fonts the block is set in
+     * @return the positioned, measured block
      */
     public static AttributionContent forSong(Song song, DocumentFontsHolder fonts) {
         return forLines(
@@ -104,11 +106,13 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
      * Builds the content for an explicit list of lines, for the settings dialog's preview of
      * attribution text the user has not committed to the song yet.
      *
-     * @param lines              the lines to typeset, in order
+     * @param lines              the lines to typeset, in order; never empty, no line blank, and
+     *                           every credit line precedes every sub-attribution line
      * @param attributionFont    the font for {@link FontKey#ATTRIBUTION} lines, sized in document
      *                           pixels
      * @param subAttributionFont the font for {@link FontKey#SUB_ATTRIBUTION} lines, sized in
      *                           document pixels
+     * @return the positioned, measured block
      */
     public static AttributionContent forLines(
         List<AttributionLine> lines,
@@ -140,16 +144,18 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
             // (the "W" in "Words") does not overhang the box.
             var inkPx = TextMeasurement.visualBounds(line.text(), font);
 
-            if (inkPx != null) {
-                var inkWidthSs = DocumentScale.pxToSs(inkPx.getWidth());
-                widthSs = Math.max(widthSs, inkWidthSs);
-                measured.add(new MeasuredLine(
-                    line.text(),
-                    isAttribution ? scaledAttributionFont : scaledSubAttributionFont,
-                    inkWidthSs,
-                    DocumentScale.pxToSs(inkPx.getX()),
-                    offsetSs + lineBox.ascentSs()));
+            if (inkPx == null) {
+                throw RuntimeError.exit("attribution line has no ink: \"" + line.text() + "\"");
             }
+
+            var inkWidthSs = DocumentScale.pxToSs(inkPx.getWidth());
+            widthSs = Math.max(widthSs, inkWidthSs);
+            measured.add(new MeasuredLine(
+                line.text(),
+                isAttribution ? scaledAttributionFont : scaledSubAttributionFont,
+                inkWidthSs,
+                DocumentScale.pxToSs(inkPx.getX()),
+                offsetSs + lineBox.ascentSs()));
 
             offsetSs += lineBox.heightSs();
 

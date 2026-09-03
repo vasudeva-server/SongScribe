@@ -57,7 +57,9 @@ final class SongMapper {
      * @throws SAXException if the document is not a supported MusicXML version
      *                      ({@link MusicXmlReader.UnsupportedFormatException}), was not
      *                      written by SongScribe
-     *                      ({@link MusicXmlReader.ForeignSoftwareException}), or is
+     *                      ({@link MusicXmlReader.ForeignSoftwareException}), carries an
+     *                      unsupported SongScribe version
+     *                      ({@link MusicXmlReader.UnsupportedVersionException}), or is
      *                      corrupt in a way a mapper rejects
      */
     static SongLoadResult.Success map(MusicXmlSerializer.ParsedDocument document) throws SAXException {

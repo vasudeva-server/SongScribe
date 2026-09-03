@@ -209,7 +209,7 @@ public final class KeyEditFitCalculator {
 
         var song = editedLine.getSong();
         var staffRightMarginSs = song.getLineWidthSs().value();
-        var lineIndex = song.indexOfLine(editedLine);
+        var lineIndex = song.contains(editedLine) ? editedLine.index() : -1;
 
         if (lineIndex > 0 && !cautionaryFits(
                 song.getLine(lineIndex - 1), headerKey, columnBuilder, staffRightMarginSs)) {

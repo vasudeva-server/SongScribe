@@ -31,7 +31,6 @@ import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.MouseWheelEvent;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -56,7 +55,6 @@ import songscribe.Strings;
 import songscribe.binding.Bindings;
 import songscribe.binding.ObservableValue;
 import songscribe.binding.ValueProperty;
-import songscribe.dom.DocPx;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
@@ -417,8 +415,8 @@ public final class ScoreView
      * costs nothing the user would notice.
      */
     @Override
-    public @Nullable LayoutResult layoutFor(Line line, int lineIndex) {
-        var lineComponent = getLineComponent(lineIndex);
+    public @Nullable LayoutResult layoutFor(Line line) {
+        var lineComponent = getLineComponent(line.index());
 
         if (lineComponent == null) {
             return null;
@@ -521,6 +519,12 @@ public final class ScoreView
                 var fileName = file.getName();
                 OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_UNSUPPORTED, fileName);
                 LOG.error("Refused to open '{}': unsupported file format ({})", fileName, e.detail());
+                yield false;
+            }
+            case SongLoadResult.UnsupportedVersion e -> {
+                var fileName = file.getName();
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_LOAD_ERROR, Strings.ALERT_MUSICXML_UNSUPPORTED_VERSION, fileName);
+                LOG.error("Refused to open '{}': unsupported SongScribe version '{}'", fileName, e.version());
                 yield false;
             }
         };
@@ -692,15 +696,14 @@ public final class ScoreView
 
     /**
      * Repaints the component drawing {@code line}, if there is one. A line the song no longer
-     * holds, or one whose component has not been built, has nothing to repaint —
-     * {@link Song#indexOfLine} answers −1 and no component carries that index.
+     * holds, or one whose component has not been built, has nothing to repaint.
      */
     private void repaintLine(@Nullable Line line) {
-        if (line == null) {
+        if (line == null || !getSong().contains(line)) {
             return;
         }
 
-        var lineComponent = getLineComponent(getSong().indexOfLine(line));
+        var lineComponent = getLineComponent(line.index());
 
         if (lineComponent != null) {
             lineComponent.repaint();
@@ -963,7 +966,7 @@ public final class ScoreView
             float idealSpace;
 
             if (revalidateOnly) {
-                idealSpace = (float) DocumentScale.ssToPx(endNote.getContentWidthSs()).value();
+                idealSpace = (float) DocumentScale.ssToPx(endNote.getAdvanceWidthSs()).value();
             } else {
                 idealSpace =
                     (float) DocumentScale.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS).value() + 20;

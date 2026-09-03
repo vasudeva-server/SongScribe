@@ -148,9 +148,9 @@ class SongMetadataTest extends UnitTest {
         var twoLines = "One" + LINE_FEED + "Two";
 
         var metadata = new SongMetadata(
-            twoLines, "", "", "", 0, 0,
+            twoLines, "", "", PartialDate.EmptyDate.INSTANCE,
             "", "", Song.LyricsSource.LYRICIST, false, false,
-            twoLines, "", 0, 0
+            twoLines, PartialDate.EmptyDate.INSTANCE
         );
 
         assertThat(metadata.title()).isEqualTo(twoLines);

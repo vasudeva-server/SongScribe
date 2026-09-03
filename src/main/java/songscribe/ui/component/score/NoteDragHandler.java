@@ -278,7 +278,7 @@ class NoteDragHandler {
                 continue;
             }
 
-            var lineComponent = scoreView.getLineComponent(entryLine.getSong().indexOfLine(entryLine));
+            var lineComponent = scoreView.getLineComponent(entryLine.index());
 
             if (lineComponent != null) {
                 foreignLineComponents.add(lineComponent);

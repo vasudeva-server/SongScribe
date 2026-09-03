@@ -138,7 +138,7 @@ public final class LayoutHitTester {
             return null;
         }
 
-        return song.getLine(song.indexOfLine(line) + 1);
+        return song.getLine(line.index() + 1);
     }
 
     /**

@@ -114,7 +114,7 @@ public final class EndingRenderer {
         double yTopSs,
         Color color
     ) {
-        var yBottomSs = yTopSs + ending.getContentHeightSs();
+        var yBottomSs = yTopSs + Ending.VOLTA_TICK_HEIGHT_SS;
 
         var thicknessSs = EngravingConstants.VOLTA_BRACKET_SS;
 

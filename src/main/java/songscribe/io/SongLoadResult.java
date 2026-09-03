@@ -71,7 +71,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             SongLoadResult.NewerVersion,
             SongLoadResult.LineWidthTooLarge,
             SongLoadResult.WrongSoftware,
-            SongLoadResult.UnsupportedFileFormat {
+            SongLoadResult.UnsupportedFileFormat,
+            SongLoadResult.UnsupportedVersion {
         File file();
     }
 
@@ -99,6 +100,15 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         }
     }
 
+    /**
+     * The file names SongScribe as its writer but carries a version
+     * {@link songscribe.io.musicxml.SoftwareProvenance#check} refuses, either because
+     * it is not semver or because it is below the minimum supported version.
+     *
+     * @param version the offending version string, so the log can name it
+     */
+    record UnsupportedVersion(File file, String version) implements Failure {}
+
     default Song songOrThrow() throws IOException, SAXException, SongIO.NewerVersionException {
         return switch (this) {
             case Success s -> s.song();
@@ -109,6 +119,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
                 "Line width " + e.actualInches() + " inches exceeds maximum " + e.maxInches() + " inches");
             case WrongSoftware e -> throw new IOException(WrongSoftware.message(e.software()));
             case UnsupportedFileFormat e -> throw new IOException(UnsupportedFileFormat.message(e.detail()));
+            case UnsupportedVersion e -> throw new IOException(
+                "Unsupported SongScribe version: " + e.version());
         };
     }
 }

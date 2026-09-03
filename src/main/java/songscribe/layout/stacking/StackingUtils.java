@@ -46,13 +46,6 @@ import songscribe.smufl.SMuFLMetadata;
  * Contains collision-aware placement methods ({@link #stackAbove}, {@link #stackBelow},
  * {@link #stackStaccato}, {@link #stackAboveWithRegions}) and anchor ceiling/floor calculations.
  * The above/below variants share their implementation, dispatched on {@link Direction}.
- * <p>
- * A placement method takes its element as an {@link IntrinsicHeight} and reads the reserved
- * height off it, so a caller cannot reserve a box that disagrees with the element it is
- * reserving for. An element whose height layout computes rather than owns — a text
- * annotation, sized by the annotation font — cannot satisfy that bound; those callers go
- * through {@link #stackAtAnchor} or {@link #placeAtInnerEdge}, which take the height
- * explicitly and are the only two doors that do.
  */
 public final class StackingUtils {
 
@@ -356,11 +349,9 @@ public final class StackingUtils {
      * edge from it. That is precisely why the inner edge is a parameter here rather than being
      * recomputed inside.
      *
-     * @param heightSs            the height to reserve, in staff spaces. This is the lower of
-     *                            the two explicit-height doors: an element implementing
-     *                            {@link IntrinsicHeight} reaches it through
-     *                            {@link #placeAndReserve} or {@link #placeAndReserveClamped},
-     *                            which read the height off the element
+     * @param heightSs            the height to reserve, in staff spaces, already resolved by the
+     *                            caller — from the element itself, from a font, or from typeset
+     *                            content
      * @param innerEdgeYSs        the element's inner edge in staff-space units (bottom above,
      *                            top below)
      * @param reserveProfile      the element's outer edge; {@link StaffExtents.Profile#flat} for

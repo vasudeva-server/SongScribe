@@ -109,8 +109,8 @@ interchangeable. That axis is set out on `TextMeasurement` itself.
 
 ## Rendering without a view is zoom-independent by construction
 
-Sizing for anything rendered outside a live view — a dialog preview, a printed
-page — is derived from the document scale and never from a live view. In
+Sizing for anything rendered outside a live view — a dialog preview — is
+derived from the document scale and never from a live view. In
 particular it is never recovered by dividing a zoomed, already-rounded on-screen
 measurement back down by the factor: that round trip loses information at the
 clamp applied during layout and accumulates rounding error. Where a view-scaled

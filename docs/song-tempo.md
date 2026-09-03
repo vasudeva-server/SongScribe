@@ -36,9 +36,9 @@ saying "skip me" that some later call site could forget to check.
 
 That is why it is a decoration rather than an attachment. The song tempo and the
 attribution are the two ownerless, non-hittable, first-line-only,
-collision-stacked marks, and they share one mechanism: a `DecorationContent`
-riding on a `DecorationLayout`, dispatched from `LineRenderer` and drawn inside
-the staff-space transform.
+collision-stacked marks, and they share one mechanism: the layout pass typesets
+the mark's content and hands it to the renderer along with its position, so the
+renderer measures nothing.
 
 ## A marking always draws something
 

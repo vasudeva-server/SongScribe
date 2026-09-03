@@ -555,7 +555,12 @@ public final class HitRegionBuilder {
         // The reserved box top is sloped, so it has to be evaluated at an X rather than read off
         // the layout: dySs is its rise over the anchor-to-end run, measured from the anchor X.
         // widthSs is always positive: Tuplet.getSpanWidthSs floors it at Tuplet.MIN_SPAN_WIDTH_SS.
-        var slope = layout.dySs() / layout.widthSs();
+        if (!(layout instanceof LayoutResult.DecorationLayout.Sloped sloped)) {
+            throw new IllegalStateException(
+                "Tuplet decoration layout is not Sloped for " + tuplet);
+        }
+
+        var slope = sloped.dySs() / layout.widthSs();
         DoubleUnaryOperator boxTopYAtSs = xSs -> layout.ySs() + slope * (xSs - anchorXSs);
 
         var numberRectSs = tupletNumberRectSs(tuplet, leftEdgeXSs, rightEdgeXSs, boxTopYAtSs);

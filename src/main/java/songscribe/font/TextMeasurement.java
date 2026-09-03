@@ -147,9 +147,9 @@ public final class TextMeasurement {
      * the advance, not the ink, so a glyph whose marks overhang its advance is not counted
      * past it.
      *
-     * @param font the font to set the text in, sized in document pixels
+     * @param font the font to set the text in
      * @param text a single line of text, which must not be empty
-     * @return the advance width in document pixels
+     * @return the advance width, in the pixel unit {@code font} is sized in
      */
     public static double textAdvancePx(Font font, String text) {
         return new TextLayout(text, font, SCREEN_FRC).getAdvance();

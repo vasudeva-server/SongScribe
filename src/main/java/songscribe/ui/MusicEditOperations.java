@@ -455,7 +455,7 @@ public final class MusicEditOperations {
      * {@link IllegalStateException}s in {@link #toggleTuplet}.
      */
     private Tuplet createValidatedTuplet(Line line, int beginIndex, int endIndex, int tupletSize) {
-        var lineIndex = song.indexOfLine(line);
+        var lineIndex = line.index();
         var result = TupletValidator.validateDerived(
             song, line, lineIndex, beginIndex, endIndex, tupletSize,
             TupletValidator.Strictness.STRICT);
@@ -827,7 +827,7 @@ public final class MusicEditOperations {
         }
 
         // Stage 3: Backward search for enclosing repeated section
-        var lineIndex = song.indexOfLine(line);
+        var lineIndex = line.index();
         var hasEnclosing = hasEnclosingRepeat(lineIndex, begin);
 
         if (!hasEnclosing) {

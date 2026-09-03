@@ -81,20 +81,18 @@ public final class RangeQueries {
      */
     public static @Nullable BoundaryTie boundaryTieAt(Line line, int index) {
         var song = line.getSong();
-        var lineIndex = song.indexOfLine(line);
         var element = line.getElement(index);
         BoundaryTie candidate = null;
 
-        if (index == tieEntryIndex(line) && lineIndex > 0) {
-            var previousLine = song.getLine(lineIndex - 1);
+        if (index == tieEntryIndex(line) && !line.isFirst()) {
+            var previousLine = song.getLine(line.index() - 1);
             var anchorIndex = tieExitIndex(previousLine);
 
             if (anchorIndex >= 0) {
                 candidate = new BoundaryTie(previousLine.getElement(anchorIndex), element);
             }
-        } else if (index == tieExitIndex(line)
-            && lineIndex >= 0 && lineIndex < song.lineCount() - 1) {
-            var nextLine = song.getLine(lineIndex + 1);
+        } else if (index == tieExitIndex(line) && !line.isLast()) {
+            var nextLine = song.getLine(line.index() + 1);
             var endIndex = tieEntryIndex(nextLine);
 
             if (endIndex >= 0) {
@@ -520,7 +518,7 @@ public final class RangeQueries {
     private static Set<Integer> validGradesFor(Line line, int beginIndex, int endIndex) {
         var song = line.getSong();
         var context = TupletValidator.describeSpan(
-            song, line, song.indexOfLine(line), beginIndex, endIndex);
+            song, line, line.index(), beginIndex, endIndex);
         var grades = new HashSet<Integer>();
 
         // The range comes from the model, not from the menu's list of actions: what a

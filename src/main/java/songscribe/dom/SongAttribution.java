@@ -39,30 +39,23 @@ import songscribe.util.StringUtils;
  * rules live here and exist once.
  *
  * @param place where the song was composed, tidied and typographically substituted
- * @param year the composition year as entered, which may be empty
- * @param month the composition month, 1 to 12, or 0 for none
- * @param day the composition day, 1 to 31, or 0 for none
+ * @param date when the music was composed, to whatever precision is known
  * @param composer who composed the music
  * @param lyricist who wrote the words
  * @param lyricsSource the role the lyricist is credited in, which decides the connector
  *     joining their name to it
  * @param arrangement whether the music is an arrangement rather than an original
- * @param wordsYear the year the words were written, empty when the same as the music's
- * @param wordsMonth the month the words were written, 0 for none
- * @param wordsDay the day the words were written, 0 for none
+ * @param wordsDate when the words were written, {@link PartialDate.EmptyDate} when the
+ *     same as the music's
  */
 public record SongAttribution(
     String place,
-    String year,
-    int month,
-    int day,
+    PartialDate date,
     String composer,
     String lyricist,
     Song.LyricsSource lyricsSource,
     boolean arrangement,
-    String wordsYear,
-    int wordsMonth,
-    int wordsDay
+    PartialDate wordsDate
 ) {
 
     /**
@@ -81,15 +74,11 @@ public record SongAttribution(
     public SongAttribution {
         // No short-A stripping: that is reserved for title/subtitle/lyrics.
         place = StringUtils.processText(place, false);
-        year = year.trim();
         composer = Song.coercePerson(StringUtils.processText(composer, false));
         lyricist = Song.coercePerson(StringUtils.processText(lyricist, false));
-        wordsYear = wordsYear.trim();
 
-        if (wordsYear.equals(year) && wordsMonth == month && wordsDay == day) {
-            wordsYear = "";
-            wordsMonth = 0;
-            wordsDay = 0;
+        if (wordsDate.equals(date)) {
+            wordsDate = PartialDate.EmptyDate.INSTANCE;
         }
     }
 

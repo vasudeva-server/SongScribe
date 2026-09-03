@@ -21,13 +21,10 @@
 package songscribe.ui.component;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Frame;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
 import java.awt.desktop.AppForegroundEvent;
@@ -37,10 +34,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BaseMultiResolutionImage;
-import java.awt.print.PageFormat;
-import java.awt.print.Printable;
-import java.awt.print.PrinterException;
-import java.awt.print.PrinterJob;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -80,7 +73,6 @@ import songscribe.message.MessageCenter;
 import songscribe.message.MessageLogger;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
-import songscribe.message.command.PrintCommand;
 import songscribe.message.command.RevertToSavedCommand;
 import songscribe.message.command.SaveAsCommand;
 import songscribe.message.command.SaveCommand;
@@ -112,7 +104,7 @@ import songscribe.util.FileUtils;
 import songscribe.util.ModifierState;
 import songscribe.util.UIUtils;
 
-public class MainFrame extends JFrame implements Printable {
+public class MainFrame extends JFrame {
 
     private static final Logger LOG = LoggerFactory.getLogger(MainFrame.class);
 
@@ -194,13 +186,6 @@ public class MainFrame extends JFrame implements Printable {
     private static final int MAC_TITLE_CONTROLS_GAP = 16;
 
     private static final int MAC_TITLE_FONT_SIZE = 13;
-    private static final double PRINT_EXTRA_MARGIN = 0.25 * 72;
-
-    // Text origin for the print stub's message, in both x and y.
-    private static final int PRINT_STUB_MESSAGE_INSET_PX = 50;
-
-    @Nullable
-    private PrinterJob printerJob = null;
 
     /**
      * A startup error collected before the main window is shown. Non-fatal errors are
@@ -619,7 +604,7 @@ public class MainFrame extends JFrame implements Printable {
         if (desktop.isSupported(Desktop.Action.APP_PRINT_FILE)) {
             desktop.setPrintFileHandler(event -> {
                 handleOpenFile(event.getFiles().getFirst());
-                handlePrint();
+                Actions.PRINT_ACTION.perform(this);
             });
         }
 
@@ -1003,70 +988,6 @@ public class MainFrame extends JFrame implements Printable {
         } else {
             RecentDocumentsManager.remove(path);
         }
-    }
-
-    @Handler
-    public void handlePrint(PrintCommand message) {
-        handlePrint();
-    }
-
-    public void handlePrint() {
-        printerJob = PrinterJob.getPrinterJob();
-        printerJob.setPrintable(this);
-
-        if (printerJob.printDialog()) {
-            try {
-                printerJob.print();
-            } catch (PrinterException e1) {
-                OptionDialogs.showErrorMessage(
-                    this,
-                    Strings.ALERT_TITLE_PRINT_ERROR,
-                    Strings.ERROR_PRINT
-                );
-            }
-        }
-    }
-
-    @Override
-    public int print(Graphics graphics, PageFormat pageFormat, int pageIndex) {
-        if (pageIndex >= 1) {
-            return NO_SUCH_PAGE;
-        }
-
-        if (printerJob == null) {
-            throw RuntimeError.exit("printerJob not initialized");
-        }
-
-        var format = printerJob.validatePage(pageFormat);
-        var paper = format.getPaper();
-
-        // Add 1/4 inch margin to ensure it's within the printable area
-        var width = paper.getImageableWidth() - (PRINT_EXTRA_MARGIN * 2);
-        var x = format.getImageableX() + PRINT_EXTRA_MARGIN;
-        paper.setImageableArea(
-            x,
-            paper.getImageableY(),
-            width,
-            paper.getImageableHeight()
-        );
-        format.setPaper(paper);
-
-        graphics.translate(
-            (int) format.getImageableX(),
-            (int) format.getImageableY()
-        );
-
-        var g2 = (Graphics2D) graphics;
-
-        // Print not yet implemented with component-based rendering
-        g2.setColor(Color.BLACK);
-        g2.drawString(
-            Strings.get(Strings.ERROR_PRINT_NOT_IMPLEMENTED),
-            PRINT_STUB_MESSAGE_INSET_PX,
-            PRINT_STUB_MESSAGE_INSET_PX
-        );
-
-        return PAGE_EXISTS;
     }
 
     @Handler

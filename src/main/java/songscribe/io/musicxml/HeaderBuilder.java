@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
-import songscribe.util.DateUtils;
 
 /**
  * Builds the {@code score-header} portion of a {@link ScorePartwise} graph:
@@ -80,8 +79,8 @@ final class HeaderBuilder {
     record HeaderText(String compositionDate, String lyricsDate, String rights, String encodingDate) {
 
         static HeaderText of(Song song, Clock clock) {
-            var compositionDate = DateUtils.toIsoDate(song.getYear(), song.getMonth(), song.getDay());
-            var lyricsDate = DateUtils.toIsoDate(song.getWordsYear(), song.getWordsMonth(), song.getWordsDay());
+            var compositionDate = song.getDate().isoDate();
+            var lyricsDate = song.getWordsDate().isoDate();
 
             var currentDate = LocalDate.now(clock);
             var rights = String.format(MusicXmlTags.COPYRIGHT, currentDate.getYear());

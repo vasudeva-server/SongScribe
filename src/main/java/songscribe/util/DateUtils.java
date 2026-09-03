@@ -24,10 +24,12 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.PartialDate;
+
 /**
- * Shared reduced-precision ISO 8601 date logic ({@code YYYY} / {@code YYYY-MM} /
- * {@code YYYY-MM-DD}), used by the legacy {@code .mssw} reader/writer and the
- * MusicXML reader/writer so both share one implementation.
+ * Parsing of the reduced-precision ISO 8601 date form ({@code YYYY} / {@code YYYY-MM} /
+ * {@code YYYY-MM-DD}) that {@link PartialDate#isoDate} writes, shared by the legacy
+ * {@code .mssw} reader and the MusicXML reader.
  */
 public final class DateUtils {
 
@@ -41,40 +43,18 @@ public final class DateUtils {
     }
 
     /**
-     * Formats a words date as a reduced-precision ISO 8601 string.
-     * Returns {@code ""} when {@code year} is blank.
-     * Appends {@code -MM} when {@code month > 0}, and {@code -DD} when both
-     * {@code month > 0} and {@code day > 0} (day without month is impossible
-     * by the dialog's enable rules).
-     */
-    public static String toIsoDate(String year, int month, int day) {
-        if (year.isEmpty()) {
-            return "";
-        }
-
-        if (month <= 0) {
-            return year;
-        }
-
-        if (day <= 0) {
-            return String.format("%s-%02d", year, month);
-        }
-
-        return String.format("%s-%02d-%02d", year, month, day);
-    }
-
-    /**
-     * Parses a reduced-precision ISO 8601 date string into year/month/day parts.
+     * Parses a reduced-precision ISO 8601 date string.
      *
      * <p>Accepts the forms {@code YYYY}, {@code YYYY-MM}, and {@code YYYY-MM-DD}
      * (two-digit month/day only). Validates both bounds ({@code 1 <= month <=
-     * MAX_MONTH}, {@code 1 <= day <= MAX_DAY}).
+     * MAX_MONTH}, {@code 1 <= day <= MAX_DAY}). The inverse of
+     * {@link PartialDate#isoDate}.
      *
      * <p>Returns {@code null} when the string is malformed or a month/day
      * component is out of range. Performs no logging and has no side effects —
      * callers decide how to report failure.
      */
-    public static @Nullable DateParts parseIsoDate(String str) {
+    public static @Nullable PartialDate parseIsoDate(String str) {
         var matcher = ISO_DATE_PATTERN.matcher(str);
 
         if (!matcher.matches()) {
@@ -105,10 +85,6 @@ public final class DateUtils {
             }
         }
 
-        return new DateParts(year, month, day);
-    }
-
-    /** The year/month/day parts of a reduced-precision ISO 8601 date. */
-    public record DateParts(String year, int month, int day) {
+        return PartialDate.of(year, month, day);
     }
 }

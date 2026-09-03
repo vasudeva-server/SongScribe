@@ -333,8 +333,7 @@ public final class LyricEditor extends MyJTextField {
         openedAsExtender = openingExtend == Lyric.Extend.CONTINUE
             || openingExtend == Lyric.Extend.STOP;
 
-        var lineIndex = score.getSong().indexOfLine(line);
-        lineComponent = lineIndex >= 0 ? score.getLineComponent(lineIndex) : null;
+        lineComponent = score.getLineComponent(line.index());
 
         configureLAF();
 

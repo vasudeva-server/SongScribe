@@ -21,6 +21,7 @@ package songscribe.ui.dialog;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
+import java.awt.FlowLayout;
 import java.awt.Insets;
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -72,5 +73,25 @@ final class SongSettingsLayout {
         previewWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
         previewWrapper.add(preview, BorderLayout.CENTER);
         return previewWrapper;
+    }
+
+    /**
+     * A page-colored row carrying one preview, centered within it, through a zero-gap
+     * {@link FlowLayout} that keeps the preview at its preferred size.
+     * <p>
+     * Shared by the title and attribution tabs. The title tab's previews wrap at the
+     * song's line width, so its rows are {@link SongSettingsTitleTab.FixedWidthPreviewRow},
+     * which pins the row to that width; the attribution block has no page-line-width
+     * counterpart, so its row is this class as is, sized to its own content.
+     */
+    static class PreviewRow extends JPanel {
+
+        PreviewRow(JComponent preview) {
+            super(new FlowLayout(FlowLayout.CENTER, 0, 0));
+            setOpaque(true);
+            setBackground(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
+            setAlignmentX(Component.LEFT_ALIGNMENT);
+            add(preview);
+        }
     }
 }

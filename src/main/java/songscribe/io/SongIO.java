@@ -36,6 +36,7 @@ import songscribe.Strings;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.PartialDate;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.StaffElement;
@@ -167,9 +168,7 @@ public final class SongIO {
         private String attribution = "";
         private String footnotes = "";
         private boolean unofficialTranslation = false;
-        private String wordsYear = "";
-        private int wordsMonth = 0;
-        private int wordsDay = 0;
+        private PartialDate wordsDate = PartialDate.EmptyDate.INSTANCE;
         @Nullable
         private String invalidLyricsDate = null;
         // The song-level key an old file carried, held as its two tags until they can be
@@ -690,9 +689,7 @@ public final class SongIO {
                 number,
                 title,
                 place,
-                month,
-                day,
-                year,
+                PartialDate.of(year, month, day),
                 underLyrics,
                 banglaLyrics,
                 translatedLyrics,
@@ -708,9 +705,7 @@ public final class SongIO {
                 hasBeenDynamicallyLaidOut,
                 formatVersion,
                 subtitle,
-                wordsYear,
-                wordsMonth,
-                wordsDay
+                wordsDate
             );
 
             // Repopulate the stub Song that was created at <song> startElement
@@ -907,13 +902,12 @@ public final class SongIO {
         }
 
         /**
-         * Parses a reduced-precision ISO 8601 lyrics date string into the
-         * {@code wordsYear}, {@code wordsMonth}, and {@code wordsDay} fields.
+         * Parses a reduced-precision ISO 8601 lyrics date string into {@code wordsDate}.
          *
          * <p>Accepts the forms {@code YYYY}, {@code YYYY-MM}, and {@code YYYY-MM-DD}.
-         * On any parse or range failure, logs a warning and leaves the fields at
-         * their defaults (blank/zero); also sets {@link #invalidLyricsDate} to
-         * the raw string for Phase 3 to surface to the user.
+         * On any parse or range failure, logs a warning and leaves the field empty;
+         * also sets {@link #invalidLyricsDate} to the raw string so the load can
+         * surface it to the user.
          *
          * <p>This method deliberately does not throw — a bad {@code lyricsDate}
          * must not abort the whole document load.
@@ -927,9 +921,7 @@ public final class SongIO {
                 return;
             }
 
-            wordsYear = parsed.year();
-            wordsMonth = parsed.month();
-            wordsDay = parsed.day();
+            wordsDate = parsed;
         }
 
         private enum Where {

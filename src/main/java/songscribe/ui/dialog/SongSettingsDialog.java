@@ -141,24 +141,18 @@ public class SongSettingsDialog extends StandardDialog<SongSettingsInput, SongSe
      * makes the preview show what the commit will store.
      */
     private SongMetadata gatherMetadata() {
-        var wordsDate = attributionTab.getWordsDate();
-
         return new SongMetadata(
             textTab.getTitleText(),
             textTab.getNumberText(),
             attributionTab.getPlaceText(),
-            attributionTab.getYearText(),
-            attributionTab.getMonth(),
-            attributionTab.getDay(),
+            attributionTab.getDate(),
             attributionTab.getComposerText(),
             attributionTab.getLyricistText(),
             attributionTab.getLyricsSource(),
             attributionTab.isArrangement(),
             attributionTab.isUnofficialTranslation(),
             textTab.getSubtitleText(),
-            wordsDate.year(),
-            wordsDate.month(),
-            wordsDate.day()
+            attributionTab.getWordsDate()
         );
     }
 

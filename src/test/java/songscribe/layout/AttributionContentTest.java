@@ -101,6 +101,8 @@ class AttributionContentTest extends UnitTest {
 
         assertThat(typesetLines).hasSameSizeAs(sourceLines);
 
+        var maxInkWidthSs = 0.0;
+
         for (var i = 0; i < sourceLines.size(); i++) {
             var sourceLine = sourceLines.get(i);
             var font = sourceLine.font() == FontKey.ATTRIBUTION
@@ -110,9 +112,13 @@ class AttributionContentTest extends UnitTest {
             var inkWidthSs = DocumentScale.pxToSs(inkPx.getWidth());
             var leftBearingSs = DocumentScale.pxToSs(inkPx.getX());
 
+            maxInkWidthSs = Math.max(maxInkWidthSs, inkWidthSs);
+
             assertThat(typesetLines.get(i).xSs())
                 .describedAs(sourceLine.text())
                 .isCloseTo((block.widthSs() - inkWidthSs) / 2.0 - leftBearingSs, TOLERANCE);
         }
+
+        assertThat(block.widthSs()).isCloseTo(maxInkWidthSs, TOLERANCE);
     }
 }

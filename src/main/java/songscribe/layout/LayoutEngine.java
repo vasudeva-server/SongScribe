@@ -29,13 +29,11 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
-import songscribe.dom.SongTempoMark;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.BeamMetrics;
@@ -71,7 +69,7 @@ import songscribe.util.LogUtils;
  * Usage:
  * <pre>{@code
  * var engine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
- * var result = engine.layout(line);
+ * var result = engine.layout(line, hasLeadingLyricContinuation, TempoMark.STACKED);
  * }</pre>
  */
 public class LayoutEngine {
@@ -187,88 +185,39 @@ public class LayoutEngine {
     }
 
     /**
-     * Executes the complete layout pipeline for a line.
-     * Equivalent to {@code layout(line, false, false)}.
-     *
-     * @param line The line to lay out
-     * @return LayoutResult with all positioned elements
-     */
-    public LayoutResult layout(Line line) {
-        return layout(line, false, false);
-    }
-
-    /**
-     * Executes the complete layout pipeline for a line.
-     * Equivalent to {@code layout(line, isLastLine, false)}.
-     *
-     * @param line       The line to lay out
-     * @param isLastLine Whether this line is the last line of the song
-     * @return LayoutResult with all positioned elements
-     */
-    public LayoutResult layout(Line line, boolean isLastLine) {
-        return layout(line, isLastLine, false);
-    }
-
-    /**
-     * Executes the complete layout pipeline for a line.
+     * Whether the song's tempo mark is stacked into the first line's layout.
      * <p>
-     * This is the main entry point for layout. It orchestrates all calculators
-     * and produces a final LayoutResult ready for rendering.
-     *
-     * @param line                        The line to lay out
-     * @param isLastLine                  Whether this line is the last line of the song.
-     *                                    When true, the final double barline (if present) is
-     *                                    pinned flush with the right edge of the line.
-     * @param hasLeadingLyricContinuation True when the previous line ended with an active
-     *                                    melisma extender that should continue from x = 0
-     *                                    on this line until the first syllable or rest that
-     *                                    breaks it.
-     * @return LayoutResult with all positioned elements
+     * {@link #OMITTED} is for callers that lay a line out for its coordinates rather than to
+     * paint it, where the inert header mark has nothing to contribute. The attribution is stacked
+     * either way.
      */
-    public LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
-        return layout(line, isLastLine, hasLeadingLyricContinuation, null, null);
-    }
+    public enum TempoMark { STACKED, OMITTED }
 
     /**
-     * Executes the complete layout pipeline for a line without the song's tempo mark.
+     * Executes the complete layout pipeline for a line and produces a {@link LayoutResult} ready
+     * for rendering.
      * <p>
-     * For callers that lay a line out for its coordinates rather than to paint it — the headless
-     * writers reached through {@link LineLayoutProvider#headless} — where the inert header mark
-     * has nothing to contribute.
-     */
-    public LayoutResult layout(
-        Line line,
-        boolean isLastLine,
-        boolean hasLeadingLyricContinuation,
-        @Nullable Attribution attribution) {
-        return layout(line, isLastLine, hasLeadingLyricContinuation, null, attribution);
-    }
-
-    /**
-     * Executes the complete layout pipeline for a line, optionally stacking the song's tempo mark
-     * and an attribution block.
-     * <p>
-     * On the first line, pass the song's {@link Attribution} element to trigger attribution
-     * stacking above the right-edge columns, and the song's {@link SongTempoMark} to place the
-     * tempo at the staff header. Passing either non-null implies this is the first line. Neither
-     * needs pre-measurement: both are typeset here, from the song, on every layout pass — the
-     * tempo mark from {@link songscribe.dom.Song#getTempo()} and the attribution block into an
-     * {@link AttributionContent}.
+     * The line's position in its song decides the position-dependent work: on the last line the
+     * final double barline (if present) is pinned flush with the right edge of the line, and on
+     * the first line the song's attribution — and, when {@code tempoMark} is
+     * {@link TempoMark#STACKED}, its tempo mark — are typeset from the song and stacked above the
+     * staff. Neither needs pre-measurement; both are typeset on every layout pass.
      *
-     * @param line                        The line to lay out
-     * @param isLastLine                  Whether this line is the last line of the song
-     * @param hasLeadingLyricContinuation True when the previous line's lyric extender continues
-     * @param tempoMark                   The song's tempo mark element, or null if not applicable
-     * @param attribution                 The attribution block element, or null if not applicable
-     * @return LayoutResult with all positioned elements
+     * @param line                        the line to lay out; must be in its song, since its
+     *                                    position is read from {@link Line#isFirst()} and
+     *                                    {@link Line#isLast()}
+     * @param hasLeadingLyricContinuation true when the previous line's layout ended with an
+     *                                    active melisma extender, which then continues from
+     *                                    x = 0 on this line until the first syllable or rest
+     *                                    that breaks it. A fact about the previous line's
+     *                                    layout, not about this line, so it stays a parameter
+     * @param tempoMark                   whether to stack the song's tempo mark on the first
+     *                                    line; has no effect on any other line
+     * @return the positioned elements; never null, since every line can be placed
+     * @throws IllegalStateException if {@code line} is not in a song
+     * @effects resolves the line's automatic stem directions in the model
      */
-    public LayoutResult layout(
-        Line line,
-        boolean isLastLine,
-        boolean hasLeadingLyricContinuation,
-        @Nullable SongTempoMark tempoMark,
-        @Nullable Attribution attribution) {
-
+    public LayoutResult layout(Line line, boolean hasLeadingLyricContinuation, TempoMark tempoMark) {
         // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
         // so layout never precedes initialisation, regardless of paint/layout ordering.
         NoteGeometry.initializeAccidentalWidths();
@@ -290,7 +239,7 @@ public class LayoutEngine {
         // natural zeros on empty columns. It deliberately gets no special-cased result: the
         // extents below feed inter-line spacing, so a line that invents content extents it does
         // not have spaces itself as if it held that content (refs #630).
-        var fitsStaffWidth = placeColumnsHorizontally(columns, line, isLastLine);
+        var fitsStaffWidth = placeColumnsHorizontally(columns, line, line.isLast());
 
         var builder = LayoutResult.builder();
         builder.setOverflowsStaffWidth(!fitsStaffWidth);
@@ -313,9 +262,7 @@ public class LayoutEngine {
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
         // Use the song's staff width for consistent StaffExtents clamping,
         // not the content width which varies with column count.
-        verticalCalculator.calculate(
-            columns, line, builder, staffRightMarginSs, fonts, tempoMark,
-            attributionBlock(line, attribution));
+        verticalCalculator.calculate(columns, line, builder, staffRightMarginSs, fonts, tempoMark);
 
         // Step 7b: Compute lyric box and connector geometry, for the same verse step 1 built the
         // columns for — what makes their cached syllable widths reusable there.
@@ -324,26 +271,6 @@ public class LayoutEngine {
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
-    }
-
-    /**
-     * Typesets the attribution block for the line being laid out, or returns null when there is
-     * none to stack.
-     * <p>
-     * The block is set here rather than by the caller because everything it needs is already here:
-     * the song, reached through the line, and the document fonts this engine was built with. Both
-     * the interactive paint path and the headless writers therefore get the same block from the
-     * same measurement, without either of them spelling one out.
-     */
-    private VerticalStackingCalculator.@Nullable AttributionBlock attributionBlock(
-        Line line, @Nullable Attribution attribution) {
-
-        if (attribution == null) {
-            return null;
-        }
-
-        return new VerticalStackingCalculator.AttributionBlock(
-            attribution, AttributionContent.forSong(line.getSong(), fonts));
     }
 
     private void buildLyricLayout(

@@ -54,6 +54,8 @@ public final class AttributionRenderer {
 
     /**
      * Returns the singleton instance.
+     *
+     * @return the singleton instance
      */
     public static AttributionRenderer getInstance() {
         return INSTANCE;
@@ -87,7 +89,7 @@ public final class AttributionRenderer {
      * The caller supplies the staff-space transform the score view would otherwise establish, so
      * the block comes out at the size it will have in the score.
      */
-    public void render(Graphics2D g2, AttributionContent content) {
+    public void renderAtOrigin(Graphics2D g2, AttributionContent content) {
         drawContent(g2, content, 0, 0, RenderingUtils.ELEMENT_COLOR);
     }
 

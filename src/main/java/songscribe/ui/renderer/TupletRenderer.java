@@ -117,9 +117,14 @@ public final class TupletRenderer {
             var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
 
+            if (!(decorLayout instanceof LayoutResult.DecorationLayout.Sloped sloped)) {
+                throw new IllegalStateException(
+                    "Tuplet decoration layout is not Sloped for " + tuplet);
+            }
+
             var numberOnly = tuplet.isNumberOnly(line);
             var bracketLine = new BracketLine(anchorXSs, decorLayout.widthSs(),
-                decorLayout.ySs(), decorLayout.dySs());
+                decorLayout.ySs(), sloped.dySs());
 
             renderTuplet(g2, invariants, frame, tuplet, bracketLine, leftXSs, rightXSs, numberOnly);
         }

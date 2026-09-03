@@ -38,10 +38,6 @@ import songscribe.Version;
  * the writer's concatenation would leave a gate that still accepted the string
  * it no longer emits.
  *
- * <p>{@code MusicXmlRoundTripSupport.roundTrip} exercises the invariant end to
- * end on every write that is read back — each of those reads runs the gate over
- * a string this class emitted — which is why no test asserts it directly.
- *
  * <p>Recognition is deliberately exact rather than a prefix match: a product
  * whose name merely begins with this one, such as {@code SongScribeMax 1.0},
  * is foreign and is refused.
@@ -83,13 +79,13 @@ final class SoftwareProvenance {
      *         {@code null}, blank, or does not have the form <em>product name,
      *         space, version</em> — including a product whose name merely begins
      *         with this one. The document was written by other software.
-     * @throws MusicXmlReader.UnsupportedFormatException if the form matches but the
+     * @throws MusicXmlReader.UnsupportedVersionException if the form matches but the
      *         version is not semver, or is lower than {@link #MIN_VERSION}. Either
      *         means a hand-edited document, since no SongScribe that wrote MusicXML
      *         emitted such a version.
      */
     static void check(@Nullable String software)
-        throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedFormatException {
+        throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedVersionException {
         var matcher = software == null ? null : RECOGNIZED.matcher(software);
 
         if (matcher == null || !matcher.matches()) {
@@ -100,13 +96,11 @@ final class SoftwareProvenance {
         var parsed = Semver.parse(version);
 
         if (parsed == null) {
-            throw new MusicXmlReader.UnsupportedFormatException("unparseable version '" + version + '\'');
+            throw new MusicXmlReader.UnsupportedVersionException(version);
         }
 
         if (parsed.isLowerThan(MIN_VERSION)) {
-            throw new MusicXmlReader.UnsupportedFormatException(
-                "unsupported " + PRODUCT_NAME + " version '" + version + "'; requires " + MIN_VERSION + " or later"
-            );
+            throw new MusicXmlReader.UnsupportedVersionException(version);
         }
     }
 }

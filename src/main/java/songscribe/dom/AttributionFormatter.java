@@ -238,8 +238,8 @@ public final class AttributionFormatter {
      */
     private static List<AttributionLine> buildSubAttributionLines(SongAttribution data) {
         var lines = new ArrayList<AttributionLine>();
-        var musicDate = formatDate(data.year(), data.month(), data.day());
-        var wordsDate = formatDate(data.wordsYear(), data.wordsMonth(), data.wordsDay());
+        var musicDate = formatDate(data.date());
+        var wordsDate = formatDate(data.wordsDate());
 
         if (wordsDate.isEmpty() && !musicDate.isEmpty()) {
             lines.add(new AttributionLine(musicDate, FontKey.SUB_ATTRIBUTION));
@@ -265,29 +265,18 @@ public final class AttributionFormatter {
     }
 
     /**
-     * Formats a date from year, month, and day into a display string.
-     * Returns {@code ""} when {@code year} is empty.
+     * Formats a date for the credit block: {@code [Month [Day, ]]year}, and {@code ""}
+     * for {@link PartialDate.EmptyDate}.
      */
-    private static String formatDate(String year, int month, int day) {
-        if (year.isEmpty()) {
-            return "";
-        }
-
-        var sb = new StringBuilder();
-
-        if (month > 0) {
-            sb.append(Strings.get(MONTH_KEYS[month]));
-
-            if (day > 0) {
-                sb.append(' ');
-                sb.append(day);
-            }
-
-            sb.append(", ");
-        }
-
-        sb.append(year);
-        return sb.toString();
+    private static String formatDate(PartialDate date) {
+        return switch (date) {
+            case PartialDate.EmptyDate _ -> "";
+            case PartialDate.YearOnly yearOnly -> yearOnly.year();
+            case PartialDate.YearMonth yearMonth ->
+                Strings.get(MONTH_KEYS[yearMonth.month()]) + ", " + yearMonth.year();
+            case PartialDate.YearMonthDay full ->
+                Strings.get(MONTH_KEYS[full.month()]) + ' ' + full.day() + ", " + full.year();
+        };
     }
 
     /**

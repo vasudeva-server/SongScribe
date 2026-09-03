@@ -36,7 +36,8 @@ package songscribe.dom;
  * tuplet is as tall as its bracket only when a bracket is drawn, which layout decides; and
  * an attribution, song tempo mark or metronome mark takes its height from the typeset
  * content the layout pass builds for it. Each of those supplies its height explicitly, to a
- * placement method that accepts one.
+ * placement method that accepts one. A volta ending's height is a constant, but it stays out
+ * too: it stacks through collision regions rather than a placement method.
  * <p>
  * Width is not here, and its absence is deliberate too. Three of this interface's
  * implementors reserve a width that is not their own — a trill reserves the span between

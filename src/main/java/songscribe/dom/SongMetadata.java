@@ -39,40 +39,34 @@ import songscribe.util.StringUtils;
  *     title    : {@link #normalizeTitle}     (up to {@value #MAX_TITLE_LINES} lines)
  *     subtitle : {@link #normalizeSubtitle}  (always {@value #MAX_SUBTITLE_LINES} line)
  *     place    : processText(…, false)  (trim + toTypographic; no ă->a)
- *     year     : trim
  *     number   : trim
  *     composer : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
  *     lyricist : coercePerson(processText(…, false))  (trim + toTypographic; empty -> SRI_CHINMOY)
- *     month / day / lyricsSource / arrangement / unofficialTranslation : as-is
+ *     date / lyricsSource / arrangement / unofficialTranslation : as-is
  *
  *  Same factory feeds: dialog commit, dialog PREVIEW, loadFrom, Converter
  *  => preview == render (normalization parity guaranteed).
  * </pre>
  *
  * <h3>Words-date invariant</h3>
- * The words (lyrics) date can never explicitly equal the composition date: if
- * {@code wordsYear/wordsMonth/wordsDay} equal {@code year/month/day} after the
- * above normalization, the words-date components are reset to
- * {@code ("", 0, 0)}. An empty words-date is the sole canonical representation
- * of "lyrics date same as music date," which every consumer (formatters, IO
- * writers, equality checks) already assumes.
+ * The words (lyrics) date can never explicitly equal the composition date: a
+ * {@code wordsDate} equal to {@code date} is reset to {@link PartialDate.EmptyDate}.
+ * An empty words-date is the sole canonical representation of "lyrics date same as
+ * music date," which every consumer (formatters, IO writers, equality checks) already
+ * assumes.
  */
 public record SongMetadata(
     String title,
     String number,
     String place,
-    String year,
-    int month,
-    int day,
+    PartialDate date,
     String composer,
     String lyricist,
     Song.LyricsSource lyricsSource,
     boolean arrangement,
     boolean unofficialTranslation,
     String subtitle,
-    String wordsYear,
-    int wordsMonth,
-    int wordsDay
+    PartialDate wordsDate
 ) {
 
     /**
@@ -102,15 +96,12 @@ public record SongMetadata(
         // the rules have one home and a metadata record and a bare attribution cannot
         // disagree about what the same entry means.
         var credits = new SongAttribution(
-            place, year, month, day, composer, lyricist, lyricsSource, arrangement, wordsYear, wordsMonth, wordsDay
+            place, date, composer, lyricist, lyricsSource, arrangement, wordsDate
         );
         place = credits.place();
-        year = credits.year();
         composer = credits.composer();
         lyricist = credits.lyricist();
-        wordsYear = credits.wordsYear();
-        wordsMonth = credits.wordsMonth();
-        wordsDay = credits.wordsDay();
+        wordsDate = credits.wordsDate();
     }
 
     /**
@@ -124,7 +115,7 @@ public record SongMetadata(
      */
     public SongAttribution attribution() {
         return new SongAttribution(
-            place, year, month, day, composer, lyricist, lyricsSource, arrangement, wordsYear, wordsMonth, wordsDay
+            place, date, composer, lyricist, lyricsSource, arrangement, wordsDate
         );
     }
 

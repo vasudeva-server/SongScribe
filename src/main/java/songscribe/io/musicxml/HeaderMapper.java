@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.PartialDate;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.Ss;
@@ -97,16 +98,11 @@ final class HeaderMapper {
     private boolean headUnofficialTranslation = false;
     private Song.LyricsSource headLyricsSource = Song.LyricsSource.LYRICIST;
 
-    // A date the document does not state. SongMetadata's compact constructor coerces
-    // these three values to "no date"; they are held as one DateParts rather than three
-    // scalars each so a date stays one value from parse to metadata.
-    private static final DateUtils.DateParts NO_DATE = new DateUtils.DateParts("", 0, 0);
-
     // Composition date (composition-date misc-field).
-    private DateUtils.DateParts headDate = NO_DATE;
+    private PartialDate headDate = PartialDate.EmptyDate.INSTANCE;
 
     // Lyrics/words date (lyrics-date misc-field).
-    private DateUtils.DateParts headWordsDate = NO_DATE;
+    private PartialDate headWordsDate = PartialDate.EmptyDate.INSTANCE;
 
     // The subtitle recovered from the subtitle credit; empty when the document
     // carries no subtitle credit (a blank subtitle is never written, so absent and
@@ -151,14 +147,14 @@ final class HeaderMapper {
      * {@link SoftwareProvenance#check}, which decides between foreign software and a
      * hand-edited document of ours. {@code SongFileLoader.load} maps the two
      * exceptions to {@code SongLoadResult.WrongSoftware} and
-     * {@code SongLoadResult.UnsupportedFileFormat} respectively.
+     * {@code SongLoadResult.UnsupportedVersion} respectively.
      *
      * <p>{@code SongMapper.map} calls this before any mapping, so a foreign document
      * reports its provenance even when its content would also have tripped a mapper,
      * and no {@code Song} is built out of an input this program does not support.
      */
     static void checkProvenance(ScorePartwise score)
-        throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedFormatException {
+        throws MusicXmlReader.ForeignSoftwareException, MusicXmlReader.UnsupportedVersionException {
         SoftwareProvenance.check(ProxyMusicAccess.software(score));
     }
 
@@ -354,7 +350,7 @@ final class HeaderMapper {
      * Routes a {@code <miscellaneous-field>}'s text by its {@code name} attribute.
      * The head fields go into the metadata scratch; the two dates go through the
      * shared {@link DateUtils#parseIsoDate} inverse of the writer's
-     * {@code toIsoDate} (a malformed date parses to {@code null} and is treated as
+     * {@link PartialDate#isoDate} (a malformed date parses to {@code null} and is treated as
      * absent, keeping the scratch date fields at their empty defaults). The
      * defaults residuals — {@code row-height-adjustment}, the default rest length,
      * and the sub-attribution font — are applied straight onto the song /
@@ -435,9 +431,9 @@ final class HeaderMapper {
      * form, so a bad one means a hand-edit, and dropping just the date keeps the rest of
      * the document readable.
      */
-    private static DateUtils.DateParts parsedDateOr(String text, DateUtils.DateParts fallback) {
-        var parts = DateUtils.parseIsoDate(text);
-        return parts == null ? fallback : parts;
+    private static PartialDate parsedDateOr(String text, PartialDate fallback) {
+        var date = DateUtils.parseIsoDate(text);
+        return date == null ? fallback : date;
     }
 
     /**
@@ -451,12 +447,10 @@ final class HeaderMapper {
         // The SongMetadata compact constructor normalizes/coerces every field, so
         // the scratch values need no pre-normalization here.
         song.setMetadata(new SongMetadata(
-            headTitle, headNumber, headPlace,
-            headDate.year(), headDate.month(), headDate.day(),
+            headTitle, headNumber, headPlace, headDate,
             headComposer, headLyricist, headLyricsSource,
             headArrangement, headUnofficialTranslation,
-            subtitle,
-            headWordsDate.year(), headWordsDate.month(), headWordsDate.day()
+            subtitle, headWordsDate
         ));
     }
 
