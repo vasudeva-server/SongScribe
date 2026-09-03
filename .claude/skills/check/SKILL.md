@@ -25,9 +25,8 @@ against what it promises; the promise against what the domain requires; a test
 against whether the design could have enforced it instead. Nothing in this skill
 is judged by how many lines or branches ran.
 
-IMPORTANT: All reviews MUST apply the Java style rules in `.claude/rules/java.md`
-in addition to the criteria below. When the review is done and fixes are applied,
-DO NOT run any other commands or skills on your own volition.
+Every review also applies the Java style rules in `.claude/rules/java.md`. Once
+the review is done and fixes are applied, stop: the user decides what runs next.
 
 ### Doctrine (read all three before Phase 2)
 

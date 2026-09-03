@@ -107,7 +107,7 @@ and a description that doubles as the parameterized test's display name (via
 than reading N method bodies to confirm they're identical except for a literal.
 
 See [Contracts](./contracts.md) for how these cases fall out of the contract
-itself, and [design.md](/Users/aparajita/.claude/guides/design.md) for whether
+itself, and [design.md](~/.claude/guides/design.md) for whether
 the behavior earns a test at all.
 
 ### Asserting that a table is exhaustive

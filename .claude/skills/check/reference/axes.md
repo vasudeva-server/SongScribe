@@ -21,16 +21,15 @@ Every agent this skill spawns gets this text at the top of its prompt, followed
 by its own axis brief and the material it is reviewing. Reproduce it as written;
 do not paraphrase it away.
 
-> MANDATORY: Read `.claude/rules/serena.md` and follow it for all Java
-> exploration.
+> Read `.claude/rules/serena.md` and follow it for all Java exploration.
 >
-> MANDATORY: Read these two files in full before reporting anything, and follow
-> them for every finding:
+> Read these two files in full before reporting anything; they govern how every
+> finding is written and what may be proposed:
 >
 > - `check-findings.md`
 > - `.claude/skills/check/reference/design-flaws.md`
 >
-> MANDATORY: Read `~/.claude/guides/design.md` before reporting. Each of its
+> Read `~/.claude/guides/design.md` before reporting. Each of its
 > rules carries the observable that flags its violation in existing code, and
 > those observables are what this review looks for.
 >

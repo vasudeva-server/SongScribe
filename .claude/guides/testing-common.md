@@ -1,7 +1,7 @@
 # Testing Common Conventions
 
 **Whether a test should exist at all is decided in
-[design.md](/Users/aparajita/.claude/guides/design.md), under *The testing
+[design.md](~/.claude/guides/design.md), under *The testing
 floor*.** Read that first; most behavior earns no test. This guide is the
 mechanics for the ones that do.
 
@@ -50,7 +50,7 @@ existing class, or rewritten — goes into one table before any test code is
 written, giving the promise it checks and which kind of test it is. Proposed
 deletions go in the same table. Format and rationale:
 *Propose the tests before writing them* in
-[design.md](/Users/aparajita/.claude/guides/design.md).
+[design.md](~/.claude/guides/design.md).
 
 Wiring carries no tests at all — see *The rule* in
 [dialogs.md](./dialogs.md#the-rule), which states that a dialog's own steps —

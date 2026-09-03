@@ -2,7 +2,7 @@
 
 The Javadoc form of a contract. Read when writing one. **How much contract a
 method earns is decided by fan-in, not by this guide** — see *Contract depth
-follows fan-in* in [design.md](/Users/aparajita/.claude/guides/design.md). Most methods here earn a name and
+follows fan-in* in [design.md](~/.claude/guides/design.md). Most methods here earn a name and
 nothing else; this guide is for the ones that earn more.
 
 ## What belongs in a method contract
@@ -102,7 +102,7 @@ Three cases, all of them properties rather than pinned outputs:
 `ArithmeticException` clause promises something about a constant rather than
 about any input. Deriving a case per branch here is how a three-case contract
 turns into a nine-case test class. See *The testing floor* in
-[design.md](/Users/aparajita/.claude/guides/design.md).
+[design.md](~/.claude/guides/design.md).
 
 **Writing the table found a defect, which is the point of writing it.** The
 contract says to guard with `hasDuration`, but `hasDuration` returns
@@ -138,7 +138,7 @@ meaning of a contract, and it is what makes the clause worth writing.
 
 **Guards belong at the point of entry and nowhere else.** The entry points are
 the two boundaries in *Boundaries convert, they do not check* in
-[design.md](/Users/aparajita/.claude/guides/design.md): file and network input,
+[design.md](~/.claude/guides/design.md): file and network input,
 and the human at the UI. Those convert an untrusted value into a domain value
 that satisfies the invariant. Every layer below them relies on the invariant and
 re-checks nothing.
@@ -227,7 +227,7 @@ The condition goes in the `@return` tag, not only in the summary above it. For a
 *"around `viewAnchorPoint` (or the viewport center when null)"*.
 
 Before writing either, check that the nullable should exist at all — see
-*`@Nullable` is a design flag* in [design.md](/Users/aparajita/.claude/guides/design.md).
+*`@Nullable` is a design flag* in [design.md](~/.claude/guides/design.md).
 
 ## Constants and the contract
 
@@ -246,7 +246,7 @@ For `{@value}` mechanics see **Javadoc References to Constants** in
 
 The contract is written before the code it describes, but after the design
 decisions that determine whether the method should exist and what shape it has.
-It is step 4 of the order in [design.md](/Users/aparajita/.claude/guides/design.md), not step 1.
+It is step 4 of the order in [design.md](~/.claude/guides/design.md), not step 1.
 
 When the code already exists, write the contract from the domain, never from the
 body. The body is the strongest available temptation and the one thing that
