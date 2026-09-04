@@ -1851,7 +1851,7 @@ public class Line implements LyricRun, SpanLookup {
         for (var i = begin; i <= end; i++) {
             var type = getElement(i).getType();
 
-            if (type.isRepeat() || (type.isBarLine() && type != ElementType.SINGLE_BARLINE)) {
+            if (type.isBar() && type != ElementType.SINGLE_BARLINE) {
                 return true;
             }
         }

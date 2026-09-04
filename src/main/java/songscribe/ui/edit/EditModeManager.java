@@ -313,7 +313,7 @@ public final class EditModeManager {
         var type = elementType;
 
         if (Actions.REST_ACTION.isSelected() && elementType.isPitchedNote()) {
-            type = ElementType.valueOf(elementType.name() + "_REST");
+            type = elementType.toRest();
         }
 
         var element = type.newInstance();

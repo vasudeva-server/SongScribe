@@ -56,7 +56,21 @@ public class StructuralElement extends StaffElement {
 
     @Override
     public int getStaffPosition() {
-        return getType().getDefaultStaffPosition();
+        return switch (getType().appearance()) {
+            case GlyphAppearance(var ignoredGlyph, var seatSp) -> seatSp;
+
+            // A bar and a key signature span the staff, so the middle line is their
+            // position by definition.
+            case BarAppearance ignored -> 0;
+            case KeySignatureAppearance ignored -> 0;
+
+            // ElementType.newInstance() is the only place that constructs a StructuralElement,
+            // and it does so only for REST, BARLINE, REPEAT and BREATH_MARK — never a notehead
+            // type.
+            case NoteheadAppearance ignored ->
+                throw new IllegalStateException(
+                    "structural element built from notehead type " + getType());
+        };
     }
 
     @Override

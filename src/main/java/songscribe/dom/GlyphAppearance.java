@@ -29,6 +29,8 @@ import songscribe.smufl.SMuFLGlyph;
  * <p>The glyph is the whole of the appearance: the element's extent is the glyph's
  * bounding box, with no stem, ledger line or stroke sequence to add to it.
  *
- * @param glyph the glyph the element is drawn with
+ * @param glyph  the glyph the element is drawn with
+ * @param seatSp the staff position the glyph is drawn at and hit-tested at, in staff-position
+ *               units from the middle line
  */
-public record GlyphAppearance(SMuFLGlyph glyph) implements ElementAppearance {}
+public record GlyphAppearance(SMuFLGlyph glyph, int seatSp) implements ElementAppearance {}

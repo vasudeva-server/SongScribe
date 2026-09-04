@@ -150,13 +150,14 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
 
         var musicLine = line.getLine();
         var layoutResult = line.getLayoutResult();
+        var hover = PreviewElementManager.hover();
 
-        if (musicLine == null || layoutResult == null) {
+        if (musicLine == null || layoutResult == null || hover == null) {
             return 0;
         }
 
         return layoutResult.calculateInsertionXSs(
-            PreviewElementManager.getCurrentXIndex(),
+            hover.insertionIndex(),
             PreviewElementManager.getCurrentMouseXSs(),
             previewElement,
             musicLine,
@@ -176,14 +177,15 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
      */
     private DisplayList recordPreviewElement(LineComponent line, StaffElement previewElement) {
         var invariants = line.previewInvariants();
+        var hover = PreviewElementManager.hover();
 
-        if (invariants == null) {
+        if (invariants == null || hover == null) {
             return DisplayList.EMPTY;
         }
 
         NoteGeometry.initializeAccidentalWidths();
 
-        previewElement.setStaffPosition(PreviewElementManager.getCurrentStaffPosition());
+        previewElement.setStaffPosition(hover.staffPositionSp());
         previewElement.setDirection(StaffElement.defaultDirection(previewElement));
 
         var lineFrame = line.gracePreviewLineFrame();

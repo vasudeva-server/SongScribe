@@ -122,7 +122,7 @@ table, never up the numbers.
 | 1  | Units and scale | `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale`, `PixelDistance`; plus `font`, `util` | ✅ | On `develop`. The document scale is a compile-time constant, so staff spaces and document pixels cannot diverge. The size-rounds-up / position-rounds-nearest rule is carried by the sealed `PixelDistance` over `DocPx` and `ViewPx`, with `Ss` outside it by construction. Text measurement is collected into `font.TextMeasurement`, the one place toolkit pixels cross into staff spaces and the one measuring instrument; `MyFontUtils` dissolved into four `font` classes and was deleted. The design it arrived at is `.claude/guides/spatial-units.md` and `docs/zoom.md`. |
 | 2  | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
 | 3  | Staff geometry | `engraving` | ✅ | Every stroke width is base × named multiplier, with no bare literal standing in for one. `EngravingConstants` collects the LilyPond base thickness and everything derived from it that has no single owner; `StemMetrics`, `BeamMetrics`, `LedgerLine`, `StaffPosition` and `BarStroke` are new types that each own one measurement, replacing `LineThickness` and `SMuFLConstants`, both dissolved. `StaffPosition` carries its own `MIN`/`MAX` range and clamps into it, so the two callers that used to check a raw `int` cannot skip the check. The accidental-advance rule — ink width plus natural kerning — moved off `StaffHeaderMetrics` onto `Key.DrawnAccidental` in `dom`, which is total over its own value and its neighbour's rather than partial in its contract. The ledger-line threshold, stated twice before, is now `LedgerLine.forEachOffsetSs`, read by both its callers. The design it arrived at is `engraving/package-info.java`. |
-| 4  | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ⏳ | The vocabulary every element is built from. |
+| 4  | Durations and element types | `dom`: `Duration`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | 🔄 | The vocabulary every element is built from. |
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ⏳ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ⏳ | Everything except key state, which pass 0 settled. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
@@ -170,19 +170,6 @@ the reason for it is still in hand.
   `StemmedNotehead.BLACK_SMALL` and `SMuFLGlyph.NOTEHEAD_BLACK_SMALL` are
   deleted, so re-adding them is part of that future change rather than a
   prerequisite for it.
-- **→ Pass 4.** `ElementLocation.matches(int lineIndex, int elementIndex)` takes
-  two same-typed parameters that transpose silently. Pass 0 built `KeyChangeSite`
-  for the same shape — a place in a line, stated by whoever resolved it — but only
-  for key changes. Whether the general type extends or displaces `ElementLocation`
-  is the open question; `ElementLocation`'s own consumers are hover highlighting.
-- **→ Pass 4.** Inside `ElementType`, each constant now declares an
-  `ElementAppearance` — a sealed type over `NoteheadAppearance`,
-  `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied
-  through the constructor, so the mapping is total by construction and the
-  bounds computation is one exhaustive switch with no lookup that can miss.
-  Open: whether `voltaOpeningXOffsetSs` and `voltaClosingXOffsetSs` belong on
-  `ElementType` at all, or whether an element type owing layout the position
-  of a volta bracket's tick is a dependency that should point the other way.
 - **→ Pass 6.** `StaffElementRun.getElement` is contracted as *"The element at
   `index`."* — no range, no `@return`, no `@throws`. `Line`'s implementation is a
   bare `elements.get(index)`, so out of bounds throws by inheritance from the

@@ -32,7 +32,7 @@ import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -70,12 +70,12 @@ class AttachmentDialogControllerTest extends UnitTest {
         return new Annotation(text);
     }
 
-    private static BeatChange beatChange(Duration duration) {
-        return new BeatChange(duration, Duration.CROTCHET);
+    private static BeatChange beatChange(BeatUnit duration) {
+        return new BeatChange(duration, BeatUnit.CROTCHET);
     }
 
     private static Tempo tempo(int bpm) {
-        return new Tempo(bpm, Duration.CROTCHET, new TempoMarking.Metronome(TEMPO_DESCRIPTION));
+        return new Tempo(bpm, BeatUnit.CROTCHET, new TempoMarking.Metronome(TEMPO_DESCRIPTION));
     }
 
     /**
@@ -118,11 +118,11 @@ class AttachmentDialogControllerTest extends UnitTest {
                 "beat change",
                 BeatChangeController.class,
                 element -> element.addAttachment(
-                    new BeatChangeAttachment(element, beatChange(Duration.CROTCHET_DOTTED))),
+                    new BeatChangeAttachment(element, beatChange(BeatUnit.CROTCHET_DOTTED))),
                 target -> new BeatChangeController(target)
-                    .dataWasModified(beatChange(Duration.CROTCHET_DOTTED)),
+                    .dataWasModified(beatChange(BeatUnit.CROTCHET_DOTTED)),
                 target -> new BeatChangeController(target)
-                    .dataWasModified(beatChange(Duration.QUAVER))
+                    .dataWasModified(beatChange(BeatUnit.QUAVER))
             ),
             new ModificationCase(
                 "tempo change",

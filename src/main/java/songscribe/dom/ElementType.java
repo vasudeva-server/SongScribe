@@ -20,115 +20,85 @@
 
 package songscribe.dom;
 
-import java.awt.GraphicsEnvironment;
-import java.awt.event.KeyEvent;
-import javax.swing.KeyStroke;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StemMetrics;
-import songscribe.error.RuntimeError;
 import songscribe.smufl.Notehead;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StemmedNotehead;
 import songscribe.smufl.WholeNotehead;
-import songscribe.util.UIUtils;
 
 import static songscribe.engraving.BarStroke.DOTS;
 import static songscribe.engraving.BarStroke.THICK;
 import static songscribe.engraving.BarStroke.THIN;
-import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
 public enum ElementType {
     // Notes
-    SEMIBREVE("Whole note", KeyEvent.VK_6, 0, PPQ * 4, 0,
-        new NoteheadAppearance(WholeNotehead.WHOLE)),
-    MINIM("Half note", KeyEvent.VK_5, 0, PPQ * 2, 0,
-        new NoteheadAppearance(StemmedNotehead.HALF)),
-    CROTCHET("Quarter note", KeyEvent.VK_4, 0, PPQ, 0,
-        new NoteheadAppearance(StemmedNotehead.BLACK)),
-    QUAVER("Eighth note", KeyEvent.VK_3, 0, PPQ / 2, 0,
-        new NoteheadAppearance(StemmedNotehead.BLACK)),
-    SEMIQUAVER("Sixteenth note", KeyEvent.VK_2, 0, PPQ / 4, 0,
-        new NoteheadAppearance(StemmedNotehead.BLACK)),
-    DEMI_SEMIQUAVER("Thirty-second note", KeyEvent.VK_1, 0, PPQ / 8, 0,
+    SEMIBREVE(Kind.NOTE, NoteValue.WHOLE, new NoteheadAppearance(WholeNotehead.WHOLE)),
+    MINIM(Kind.NOTE, NoteValue.HALF, new NoteheadAppearance(StemmedNotehead.HALF)),
+    CROTCHET(Kind.NOTE, NoteValue.QUARTER, new NoteheadAppearance(StemmedNotehead.BLACK)),
+    QUAVER(Kind.NOTE, NoteValue.EIGHTH, new NoteheadAppearance(StemmedNotehead.BLACK)),
+    SEMIQUAVER(Kind.NOTE, NoteValue.SIXTEENTH, new NoteheadAppearance(StemmedNotehead.BLACK)),
+    DEMI_SEMIQUAVER(Kind.NOTE, NoteValue.THIRTY_SECOND,
         new NoteheadAppearance(StemmedNotehead.BLACK)),
 
     // Rests
-    SEMIBREVE_REST("Whole rest", KeyEvent.VK_6, -1, PPQ * 4, -1,
-        new GlyphAppearance(SMuFLGlyph.REST_WHOLE)),
-    MINIM_REST("Half rest", KeyEvent.VK_5, -1, PPQ * 2, 0,
-        new GlyphAppearance(SMuFLGlyph.REST_HALF)),
-    CROTCHET_REST("Quarter rest", KeyEvent.VK_4, -1, PPQ, 0,
-        new GlyphAppearance(SMuFLGlyph.REST_QUARTER)),
-    QUAVER_REST("Eighth rest", KeyEvent.VK_3, -1, PPQ / 2, 0,
-        new GlyphAppearance(SMuFLGlyph.REST_8TH)),
-    SEMIQUAVER_REST("Sixteenth rest", KeyEvent.VK_2, -1, PPQ / 4, 0,
-        new GlyphAppearance(SMuFLGlyph.REST_16TH)),
-    DEMI_SEMIQUAVER_REST("Thirty-second rest", KeyEvent.VK_1, -1, PPQ / 8, 0,
-        new GlyphAppearance(SMuFLGlyph.REST_32ND)),
+    SEMIBREVE_REST(Kind.REST, NoteValue.WHOLE, new GlyphAppearance(SMuFLGlyph.REST_WHOLE, -2)),
+    MINIM_REST(Kind.REST, NoteValue.HALF, new GlyphAppearance(SMuFLGlyph.REST_HALF, 0)),
+    CROTCHET_REST(Kind.REST, NoteValue.QUARTER, new GlyphAppearance(SMuFLGlyph.REST_QUARTER, 0)),
+    QUAVER_REST(Kind.REST, NoteValue.EIGHTH, new GlyphAppearance(SMuFLGlyph.REST_8TH, 0)),
+    SEMIQUAVER_REST(Kind.REST, NoteValue.SIXTEENTH, new GlyphAppearance(SMuFLGlyph.REST_16TH, 0)),
+    DEMI_SEMIQUAVER_REST(Kind.REST, NoteValue.THIRTY_SECOND,
+        new GlyphAppearance(SMuFLGlyph.REST_32ND, 0)),
 
     // Grace notes
-    GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0,
-        new NoteheadAppearance(StemmedNotehead.BLACK)),
+    GRACE_QUAVER(Kind.GRACE_NOTE, NoteValue.EIGHTH, new NoteheadAppearance(StemmedNotehead.BLACK)),
 
     // Repeats
-    REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0,
-        BarAppearance.of(THICK, THIN, DOTS)),
-    REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0,
-        BarAppearance.of(DOTS, THIN, THICK)),
-    REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0,
-        BarAppearance.of(DOTS, THIN, THICK, THIN, DOTS)),
+    REPEAT_LEFT(Kind.REPEAT, BarAppearance.of(THICK, THIN, DOTS)),
+    REPEAT_RIGHT(Kind.REPEAT, BarAppearance.of(DOTS, THIN, THICK)),
+    REPEAT_LEFT_RIGHT(Kind.REPEAT, BarAppearance.of(DOTS, THIN, THICK, THIN, DOTS)),
 
     // Half a staff space above the top staff line. This is the single source for where a
     // breath mark sits: StaffElementRenderer.renderBreathMark() derives the glyph's Y from it and the
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
-    BREATH_MARK("Breath mark", 0, -5,
-        new GlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA)),
+    BREATH_MARK(Kind.BREATH_MARK, new GlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA, -5)),
 
     // Barlines
-    SINGLE_BARLINE("Single barline", 0, 0, BarAppearance.of(THIN)),
-    DOUBLE_BARLINE("Double barline", 0, 0, BarAppearance.of(THIN, THIN)),
-    FINAL_DOUBLE_BARLINE("Final double barline", 0, 0, BarAppearance.of(THIN, THICK)),
+    SINGLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN)),
+    DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THIN)),
+    FINAL_DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THICK)),
 
-    // Key changes. Deliberately placed after the barlines and before the IO aliases: the
-    // three ordinal-range predicates — isNote(), isRest() and isBarLine() — all end before
-    // this point, so none of them picks it up.
-    KEY_CHANGE("Key change", 0, 0, new KeySignatureAppearance()),
+    // Key changes
+    KEY_CHANGE(Kind.KEY_CHANGE, new KeySignatureAppearance());
 
-    // IO aliases
-    SEMIBREVEREST(ElementType.SEMIBREVE_REST),
-    MINIMREST(ElementType.MINIM_REST),
-    CROTCHETREST(ElementType.CROTCHET_REST),
-    QUAVERREST(ElementType.QUAVER_REST),
-    SEMIQUAVERREST(ElementType.SEMIQUAVER_REST),
-    DEMISEMIQUAVERREST(ElementType.DEMI_SEMIQUAVER_REST),
-    GRACEQUAVER(ElementType.GRACE_QUAVER),
-    REPEATLEFT(ElementType.REPEAT_LEFT),
-    REPEATRIGHT(ElementType.REPEAT_RIGHT),
-    REPEATLEFTRIGHT(ElementType.REPEAT_LEFT_RIGHT),
-    BREATHMARK(ElementType.BREATH_MARK),
-    SINGLEBARLINE(ElementType.SINGLE_BARLINE),
-    DOUBLEBARLINE(ElementType.DOUBLE_BARLINE),
-    FINALDOUBLEBARLINE(ElementType.FINAL_DOUBLE_BARLINE);
+    /**
+     * The category an element type belongs to. Every type has exactly one, and every
+     * category predicate on {@link ElementType} is a comparison against it.
+     */
+    public enum Kind {
+        NOTE(Strings.LABEL_ELEMENT_CATEGORY_NOTE),
+        GRACE_NOTE(Strings.LABEL_ELEMENT_CATEGORY_GRACE_NOTE),
+        REST(Strings.LABEL_ELEMENT_CATEGORY_REST),
+        BARLINE(Strings.LABEL_ELEMENT_CATEGORY_BARLINE),
+        REPEAT(Strings.LABEL_ELEMENT_CATEGORY_REPEAT),
+        BREATH_MARK(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK),
+        KEY_CHANGE(Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE);
 
-    static {
-        // Create instances for canonical types
-        for (var type : values()) {
-            //noinspection ConstantValue
-            if (type.instance == null && type.aliasOf == null) {
-                type.instance = type.createDefaultInstance();
-            }
+        private final String labelKey;
+
+        Kind(String labelKey) {
+            this.labelKey = labelKey;
         }
 
-        // Copy instances for alias types
-        for (var type : values()) {
-            if (type.aliasOf != null) {
-                type.instance = type.aliasOf.instance;
-            }
+        /**
+         * @return the {@link Strings} key of the lowercase word naming this category
+         */
+        public String labelKey() {
+            return labelKey;
         }
     }
 
@@ -139,121 +109,48 @@ public enum ElementType {
     /** Uniform scale factor applied to grace note glyphs (75% of normal size). */
     public static final float GRACE_NOTE_SCALE = 0.75f;
 
-    static {
-        computeElementBoundsSs();
-    }
-
-    public static int getMenuShortcutKeyMask() {
-        return !GraphicsEnvironment.isHeadless()
-            ? UIUtils.MENU_SHORTCUT_MASK
-            : 0;
-    }
-
-    @SuppressWarnings("NullAway") // instance is initialized in static block, but NullAway doesn't track that
-    private StaffElement instance;
+    private final Kind kind;
     @Nullable
-    private final String name;
-    @Nullable
-    private final KeyStroke acceleratorKey;
-    private final int defaultDuration;
-    private final int defaultStaffPosition;
-    @Nullable
-    private final ElementType aliasOf;
+    private final NoteValue value;
     private final ElementAppearance appearance;
-    private double fullWidthSs;
-    private double baseWidthSs;
-    private double fullElementHeightSs;
-    private double noteheadTopOffsetSs;
-    private double heightUpSs;
-    private double heightDownSs;
-    private double topOffsetUpSs;
-    private double topOffsetDownSs;
+    private final ElementBounds bounds;
 
-    ElementType(
-        @Nullable String name,
-        int keyCode,
-        int modifiers,
-        int defaultDuration,
-        int defaultStaffPosition,
-        ElementAppearance appearance
-    ) {
-        this.name = name;
-        this.defaultDuration = defaultDuration;
-        this.defaultStaffPosition = defaultStaffPosition;
+    ElementType(Kind kind, NoteValue value, ElementAppearance appearance) {
+        this(kind, appearance, value);
+    }
+
+    ElementType(Kind kind, ElementAppearance appearance) {
+        this(kind, appearance, null);
+    }
+
+    private ElementType(Kind kind, ElementAppearance appearance, @Nullable NoteValue value) {
+        this.kind = kind;
+        this.value = value;
         this.appearance = appearance;
-        aliasOf = null;
-
-        if (keyCode != 0) {
-            if (modifiers == -1) {
-                modifiers = getMenuShortcutKeyMask();
-            }
-
-            acceleratorKey = KeyStroke.getKeyStroke(keyCode, modifiers);
-        } else {
-            acceleratorKey = null;
-        }
-    }
-
-    ElementType(
-        @Nullable String name,
-        int defaultDuration,
-        int defaultStaffPosition,
-        ElementAppearance appearance
-    ) {
-        this(name, 0, 0, defaultDuration, defaultStaffPosition, appearance);
-    }
-
-    ElementType(ElementType aliasOf) {
-        this.aliasOf = aliasOf;
-        appearance = aliasOf.appearance;
-        name = aliasOf.name;
-        acceleratorKey = aliasOf.acceleratorKey;
-        defaultDuration = aliasOf.defaultDuration;
-        defaultStaffPosition = aliasOf.defaultStaffPosition;
+        bounds = computeBounds(kind, value, appearance);
     }
 
     /**
-     * Builds the shared instance {@link #getInstance()} hands out and {@link #newInstance()} clones.
+     * Creates a fresh element of this type.
      * <p>
-     * The instance's Java class matches the type: a key change is a {@link KeyChangeElement},
-     * so a caller that reaches an element through the type registry gets one it can ask for a key,
-     * and a {@code newInstance()} clone is an element the document can hold. It starts in C major —
-     * the key that draws nothing — because a default instance states no key of its own and a
-     * caller that means a particular key sets it.
+     * The element's Java class matches the type: a key change is a {@link KeyChangeElement},
+     * so a caller can ask it for a key. It starts in C major — the key that draws nothing —
+     * because a new element states no key of its own and a caller that means a particular key
+     * sets it.
      */
-    private StaffElement createDefaultInstance() {
-        if (isKeyChange()) {
-            return new KeyChangeElement(Key.NO_ACCIDENTALS);
-        }
-
-        if (isRest() || isNonDuration()) {
-            return new StructuralElement(this);
-        }
-
-        return new NoteElement(this);
-    }
-
-    public StaffElement getInstance() {
-        return instance;
-    }
-
     public StaffElement newInstance() {
-        return instance.clone();
-    }
-
-    public @Nullable String getName() {
-        return name;
-    }
-
-    public @Nullable KeyStroke getAcceleratorKey() {
-        return acceleratorKey;
+        return switch (kind) {
+            case KEY_CHANGE -> new KeyChangeElement(Key.NO_ACCIDENTALS);
+            case REST, BARLINE, REPEAT, BREATH_MARK -> new StructuralElement(this);
+            case NOTE, GRACE_NOTE -> new NoteElement(this);
+        };
     }
 
     /**
      * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
      */
     public double getFullElementWidthSs() {
-        return fullWidthSs;
+        return bounds.fullWidthSs();
     }
 
     /**
@@ -262,15 +159,7 @@ public enum ElementType {
      * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
      */
     public double getElementHeightSs(StaffElement.Direction direction) {
-        return direction.isUp() ? heightUpSs : heightDownSs;
-    }
-
-    /**
-     * Returns the horizontal center of the element in staff spaces.
-     * For note types, includes the flag.
-     */
-    public double getFullElementCenterXSs() {
-        return fullWidthSs / 2;
+        return direction.isUp() ? bounds.heightUpSs() : bounds.heightDownSs();
     }
 
     /**
@@ -286,7 +175,7 @@ public enum ElementType {
      * notehead specifically and leaves a whole note about half a staff space short (refs #694).
      */
     public double getElementWidthSs() {
-        return baseWidthSs;
+        return bounds.baseWidthSs();
     }
 
     /**
@@ -295,7 +184,7 @@ public enum ElementType {
      * For note types, excludes the flag.
      */
     public double getElementCenterXSs() {
-        return baseWidthSs / 2;
+        return bounds.baseWidthSs() / 2;
     }
 
     /**
@@ -306,7 +195,7 @@ public enum ElementType {
      * @param terminalType the terminal element type ({@link #isValidSongTerminal()} must be true)
      */
     public static double terminalFlushRightXSs(double lineWidthSs, ElementType terminalType) {
-        return lineWidthSs - terminalType.baseWidthSs;
+        return lineWidthSs - terminalType.bounds.baseWidthSs();
     }
 
     /**
@@ -343,7 +232,7 @@ public enum ElementType {
      * Returns the element height in staff spaces, excluding the stem for note types.
      */
     public double getFullElementHeightSs() {
-        return fullElementHeightSs;
+        return bounds.fullElementHeightSs();
     }
 
     /**
@@ -352,7 +241,7 @@ public enum ElementType {
      * For non-stemmed elements this equals {@link #getTopYOffsetSs(StaffElement.Direction)}.
      */
     public double getNoteheadTopOffsetSs() {
-        return noteheadTopOffsetSs;
+        return bounds.noteheadTopOffsetSs();
     }
 
     /**
@@ -361,7 +250,7 @@ public enum ElementType {
      * Mirrors {@link #getNoteheadTopOffsetSs()}.
      */
     public double getNoteheadBottomOffsetSs() {
-        return noteheadTopOffsetSs + fullElementHeightSs;
+        return bounds.noteheadTopOffsetSs() + bounds.fullElementHeightSs();
     }
 
     /**
@@ -374,21 +263,39 @@ public enum ElementType {
      * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
      */
     public double getTopYOffsetSs(StaffElement.Direction direction) {
-        return direction.isUp() ? topOffsetUpSs : topOffsetDownSs;
+        return direction.isUp() ? bounds.topOffsetUpSs() : bounds.topOffsetDownSs();
     }
 
+    /**
+     * @return this type's category
+     */
+    public Kind kind() {
+        return kind;
+    }
+
+    /**
+     * The note value of a note, a rest or a grace note.
+     *
+     * @return this type's value, or {@code null} for a type that has none — a bar, a breath
+     *     mark or a key change
+     */
+    public @Nullable NoteValue noteValue() {
+        return value;
+    }
+
+    /**
+     * The time an element of this type occupies by default, in ticks. A type with no note
+     * value occupies none, and so does a grace note: its value names its flag, not a duration.
+     *
+     * @return the ticks of this type's value, or 0 for a type that occupies no time
+     */
     public int getDefaultDuration() {
-        return defaultDuration;
-    }
-
-    public int getDefaultStaffPosition() {
-        return defaultStaffPosition;
+        return value != null && kind != Kind.GRACE_NOTE ? value.ticks() : 0;
     }
 
     /**
      * How an element of this type is drawn. Every type answers one of the four
-     * {@link ElementAppearance} arms, an alias answering the same one as the type it aliases,
-     * so a caller switching over the result needs no default.
+     * {@link ElementAppearance} arms, so a caller switching over the result needs no default.
      *
      * @return this type's appearance
      */
@@ -418,11 +325,7 @@ public enum ElementType {
     }
 
     public boolean isPitchedNote() {
-        //noinspection ConstantValue
-        return (
-            ordinal() >= SEMIBREVE.ordinal() &&
-                ordinal() <= DEMI_SEMIQUAVER.ordinal()
-        );
+        return kind == Kind.NOTE;
     }
 
     public boolean isNote() {
@@ -434,10 +337,7 @@ public enum ElementType {
     }
 
     public boolean isRest() {
-        return (
-            ordinal() >= SEMIBREVE_REST.ordinal() &&
-                ordinal() <= DEMI_SEMIQUAVER_REST.ordinal()
-        );
+        return kind == Kind.REST;
     }
 
     public boolean isBeamable() {
@@ -445,18 +345,18 @@ public enum ElementType {
     }
 
     public boolean isRepeat() {
-        return (
-            this == REPEAT_LEFT ||
-                this == REPEAT_RIGHT ||
-                this == REPEAT_LEFT_RIGHT
-        );
+        return kind == Kind.REPEAT;
     }
 
     public boolean isBarLine() {
-        return (
-            ordinal() >= SINGLE_BARLINE.ordinal() &&
-                ordinal() <= FINAL_DOUBLE_BARLINE.ordinal()
-        );
+        return kind == Kind.BARLINE;
+    }
+
+    /**
+     * Whether this type is a structural marker that closes a measure: a barline or a repeat.
+     */
+    public boolean isBar() {
+        return isBarLine() || isRepeat();
     }
 
     public boolean isDuration() {
@@ -464,7 +364,7 @@ public enum ElementType {
     }
 
     public boolean isNonDuration() {
-        return isBarLine() || isRepeat() || isBreathMark() || isKeyChange();
+        return isBar() || isBreathMark() || isKeyChange();
     }
 
     /**
@@ -478,25 +378,25 @@ public enum ElementType {
      * projection of how the line will look after an edit ({@code AccidentalReconciliation}). They
      * have to agree, or an edit's preview and its result would disagree about a note's pitch.
      *
-     * <p>The same {@code isBarLine() || isRepeat()} test appears elsewhere in the codebase for
-     * unrelated reasons — closing a MusicXML measure, bounding an ending, choosing a glyph — so
-     * this is deliberately narrow rather than a general "is a structural marker". A key change
-     * belongs here, and only here: a new key change resets what a later note at the same
-     * staff position inherits, but it does not close a measure, bound an ending or pick a glyph.
+     * <p>{@link #isBar()} is asked elsewhere in the codebase for unrelated reasons — closing a
+     * MusicXML measure, bounding an ending, choosing a glyph — so this is deliberately narrow
+     * rather than a general "is a structural marker". A key change belongs here, and only here:
+     * a new key change resets what a later note at the same staff position inherits, but it
+     * does not close a measure, bound an ending or pick a glyph.
      */
     public boolean cancelsAccidentals() {
-        return isBarLine() || isRepeat() || isKeyChange();
+        return isBar() || isKeyChange();
     }
 
     /**
      * @return {@code true} for the mid-line key change type
      */
     public boolean isKeyChange() {
-        return this == KEY_CHANGE;
+        return kind == Kind.KEY_CHANGE;
     }
 
     public boolean isGraceNote() {
-        return this == GRACE_QUAVER;
+        return kind == Kind.GRACE_NOTE;
     }
 
     /**
@@ -543,7 +443,7 @@ public enum ElementType {
     }
 
     public boolean isBreathMark() {
-        return this == BREATH_MARK;
+        return kind == Kind.BREATH_MARK;
     }
 
     /**
@@ -579,7 +479,6 @@ public enum ElementType {
      * to whoever shows it — asks {@link #categoryNameKey()} instead.
      *
      * @return the category name, resolved for display
-     * @throws IllegalStateException if this type has no category name
      */
     public String categoryName() {
         return Strings.get(categoryNameKey());
@@ -588,39 +487,33 @@ public enum ElementType {
     /**
      * The {@link Strings} key of this element type's category name, unresolved.
      *
-     * <p>Every type answering a name here answers the same name through {@link #categoryName()};
-     * the two never disagree, because that method resolves this one. Which types have a name at
-     * all is stated there.
+     * <p>Every type answers the same name through {@link #categoryName()}; the two never
+     * disagree, because that method resolves this one.
      *
      * @return a {@link Strings} constant naming this type's category
-     * @throws IllegalStateException if this type has no category name
      */
     public String categoryNameKey() {
-        if (isNote()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_NOTE;
+        return kind.labelKey();
+    }
+
+    /**
+     * The lowercase display words for this type — the value word, then the kind word: "quarter
+     * note", "whole rest", "barline". This is the one place that composes a type's display
+     * words. A grace note omits its value word, because a grace note is named by its kind alone.
+     *
+     * <p>Dots are the element's, not the type's, so a caller that shows a dotted element adds
+     * the dot word itself.
+     *
+     * @return this type's display words, lowercase
+     */
+    public String label() {
+        var kindWord = Strings.get(kind.labelKey());
+
+        if (value == null || kind == Kind.GRACE_NOTE) {
+            return kindWord;
         }
 
-        if (isBarLine()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_BARLINE;
-        }
-
-        if (isRest()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_REST;
-        }
-
-        if (isRepeat()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_REPEAT;
-        }
-
-        if (isBreathMark()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK;
-        }
-
-        if (isKeyChange()) {
-            return Strings.LABEL_ELEMENT_CATEGORY_KEY_CHANGE;
-        }
-
-        throw new IllegalStateException("No category name for element type " + this);
+        return Strings.get(value.labelKey()) + ' ' + kindWord;
     }
 
     /**
@@ -640,7 +533,7 @@ public enum ElementType {
      * @return {@code true} for grace notes, breath marks and key changes
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == BREATH_MARK || isKeyChange();
+        return isGraceNote() || isBreathMark() || isKeyChange();
     }
 
     /**
@@ -660,45 +553,18 @@ public enum ElementType {
      * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
      */
     public ElementType toRest() {
-        //noinspection DuplicatedCode
-        return switch (this) {
-            case SEMIBREVE -> SEMIBREVE_REST;
-            case MINIM -> MINIM_REST;
-            case CROTCHET -> CROTCHET_REST;
-            case QUAVER -> QUAVER_REST;
-            case SEMIQUAVER -> SEMIQUAVER_REST;
-            case DEMI_SEMIQUAVER -> DEMI_SEMIQUAVER_REST;
-            default -> this;
-        };
+        return value == null ? this : value.rest();
     }
 
     /**
      * Returns the note equivalent of this type, or {@code this} if no note counterpart exists.
      */
     public ElementType toNote() {
-        //noinspection DuplicatedCode
-        return switch (this) {
-            case SEMIBREVE_REST -> SEMIBREVE;
-            case MINIM_REST -> MINIM;
-            case CROTCHET_REST -> CROTCHET;
-            case QUAVER_REST -> QUAVER;
-            case SEMIQUAVER_REST -> SEMIQUAVER;
-            case DEMI_SEMIQUAVER_REST -> DEMI_SEMIQUAVER;
-            default -> this;
-        };
+        return value == null ? this : value.note();
     }
 
     public boolean drawStaveLongitude() {
         return this != BREATH_MARK;
-    }
-
-    public boolean snapToEnd() {
-        return (
-            this == REPEAT_RIGHT ||
-                this == SINGLE_BARLINE ||
-                this == DOUBLE_BARLINE ||
-                this == FINAL_DOUBLE_BARLINE
-        );
     }
 
     /**
@@ -736,61 +602,70 @@ public enum ElementType {
      */
     @Nullable
     public SMuFLGlyph getFlagGlyph(StaffElement.Direction direction) {
-        return switch (this) {
-            case QUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
-            case GRACE_QUAVER -> SMuFLGlyph.FLAG_8TH_UP;
-            case SEMIQUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
-            case DEMI_SEMIQUAVER -> direction.isUp() ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
-            default -> null;
+        return flagGlyph(kind, value, direction);
+    }
+
+    /**
+     * The flag glyph of a type given by its parts, so that the constructor's bounds computation
+     * can ask it before any constant of this enum exists. A grace note's flag is always the
+     * up-stem eighth flag, whatever the direction.
+     */
+    @Nullable
+    private static SMuFLGlyph flagGlyph(
+        Kind kind, @Nullable NoteValue value, StaffElement.Direction direction
+    ) {
+        if (kind == Kind.GRACE_NOTE) {
+            return SMuFLGlyph.FLAG_8TH_UP;
+        }
+
+        if (value == null) {
+            return null;
+        }
+
+        return switch (value) {
+            case EIGHTH -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
+            case SIXTEENTH -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
+            case THIRTY_SECOND ->
+                direction.isUp() ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
+            case WHOLE, HALF, QUARTER -> null;
         };
     }
 
-  // ========================================================================
+    // ========================================================================
     // Element bounds in staff spaces
     // ========================================================================
 
-    private static void computeElementBoundsSs() {
-        for (var type : values()) {
-            if (type.aliasOf != null) {
-                continue;
-            }
+    /**
+     * The bounds of a type given by its parts. Runs inside the constructor, so it references no
+     * constant of this enum: everything it needs is in its arguments.
+     */
+    private static ElementBounds computeBounds(
+        Kind kind, @Nullable NoteValue value, ElementAppearance appearance
+    ) {
+        return switch (appearance) {
+            // A stemmed notehead is the only appearance whose bounds reach past the glyph,
+            // so it is the only one that needs the stem and flag.
+            case NoteheadAppearance(StemmedNotehead notehead) -> kind == Kind.GRACE_NOTE
+                ? computeGraceNoteBoundsSs(notehead)
+                : computeStemmedNoteBoundsSs(kind, value, notehead);
 
-            switch (type.appearance) {
-                // A stemmed notehead is the only appearance whose bounds reach past the glyph,
-                // so it is the only one that needs the stem and flag.
-                case NoteheadAppearance(StemmedNotehead notehead) -> {
-                    if (type.isGraceNote()) {
-                        computeGraceNoteBoundsSs(type);
-                    } else {
-                        computeStemmedNoteBoundsSs(type, notehead);
-                    }
-                }
+            // A semibreve carries no stem, so its bounds are its glyph's, exactly as a
+            // rest's are.
+            case NoteheadAppearance(WholeNotehead notehead) ->
+                computeGlyphBoundsSs(notehead.glyph());
 
-                // A semibreve carries no stem, so its bounds are its glyph's, exactly as a
-                // rest's are.
-                case NoteheadAppearance(WholeNotehead notehead) ->
-                    computeGlyphBoundsSs(type, notehead.glyph());
+            case GlyphAppearance(SMuFLGlyph glyph, int ignored) -> computeGlyphBoundsSs(glyph);
 
-                case GlyphAppearance(SMuFLGlyph glyph) -> computeGlyphBoundsSs(type, glyph);
+            case BarAppearance bar -> ElementBounds.symmetric(
+                bar.widthSs(), Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
 
-                case BarAppearance bar -> type.setSymmetricBounds(
-                    bar.widthSs(), Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
-
-                case KeySignatureAppearance ignored -> computeKeySignatureBoundsSs(type);
-            }
-        }
-
-        // Copy bounds to alias types
-        for (var type : values()) {
-            if (type.aliasOf != null) {
-                type.copyBoundsFrom(type.aliasOf);
-            }
-        }
-
-        validateElementBounds();
+            case KeySignatureAppearance ignored -> computeKeySignatureBoundsSs();
+        };
     }
 
-    private static void computeStemmedNoteBoundsSs(ElementType type, StemmedNotehead notehead) {
+    private static ElementBounds computeStemmedNoteBoundsSs(
+        Kind kind, @Nullable NoteValue value, StemmedNotehead notehead
+    ) {
         var headBBox = SMuFLMetadata.bboxSs(notehead.glyph());
         var anchors = SMuFLMetadata.stemAnchors(notehead);
         var headTopSs = headBBox.topSs();
@@ -804,28 +679,27 @@ public enum ElementType {
 
         // Width: max of notehead and stem-up flag extent
         var widthSs = headRightSs;
-        var flagGlyph = type.getFlagGlyph(StaffElement.Direction.UP);
+        var flagGlyph = flagGlyph(kind, value, StaffElement.Direction.UP);
 
         if (flagGlyph != null) {
             widthSs = Math.max(widthSs, stemUpXSs + SMuFLMetadata.bboxSs(flagGlyph).rightSs());
         }
 
-        type.fullWidthSs = widthSs;
-        type.baseWidthSs = headRightSs;
-        type.fullElementHeightSs = headBottomSs - headTopSs;
-        type.noteheadTopOffsetSs = headTopSs;
-
-        // Height up: from top of stem to bottom of notehead
-        type.heightUpSs = headBottomSs - upTopSs;
-        type.topOffsetUpSs = upTopSs;      // stem tip above center (negative)
-
-        // Height down: from top of notehead to bottom of stem
-        type.heightDownSs = downBottomSs - headTopSs;
-        type.topOffsetDownSs = headTopSs;  // notehead top above center (negative)
+        return new ElementBounds(
+            widthSs,
+            headRightSs,
+            headBottomSs - headTopSs,
+            headTopSs,
+            // Height up: from top of stem to bottom of notehead
+            headBottomSs - upTopSs,
+            // Height down: from top of notehead to bottom of stem
+            downBottomSs - headTopSs,
+            upTopSs,    // stem tip above center (negative)
+            headTopSs   // notehead top above center (negative)
+        );
     }
 
-    private static void computeGraceNoteBoundsSs(ElementType type) {
-        var notehead = type.stemmedNotehead();
+    private static ElementBounds computeGraceNoteBoundsSs(StemmedNotehead notehead) {
         var headBBox = SMuFLMetadata.bboxSs(notehead.glyph());
         double scale = GRACE_NOTE_SCALE;
 
@@ -841,83 +715,45 @@ public enum ElementType {
         var widthSs = Math.max(headRightSs, stemUpXSs + flagRightSs);
 
         var headTopSs = headBBox.topSs() * scale;
+        var heightSs = headBottomSs - upTopSs;
 
-        type.setSymmetricBounds(widthSs, headBottomSs - upTopSs, upTopSs);
-        type.baseWidthSs = headRightSs;
-        type.fullElementHeightSs = headBottomSs - headTopSs;
-        type.noteheadTopOffsetSs = headTopSs;
+        return new ElementBounds(
+            widthSs,
+            headRightSs,
+            headBottomSs - headTopSs,
+            headTopSs,
+            heightSs,
+            heightSs,
+            upTopSs,
+            upTopSs
+        );
     }
 
-    /**
-     * Sets symmetric bounds where up/down values are identical and
-     * noteheadWidth equals element width.
-     */
-    private void setSymmetricBounds(
-        double width, double height, double topOffset
-    ) {
-        fullWidthSs = width;
-        baseWidthSs = width;
-        fullElementHeightSs = height;
-        noteheadTopOffsetSs = topOffset;
-        heightUpSs = height;
-        heightDownSs = height;
-        topOffsetUpSs = topOffset;
-        topOffsetDownSs = topOffset;
-    }
-
-    private void copyBoundsFrom(ElementType source) {
-        fullWidthSs = source.fullWidthSs;
-        baseWidthSs = source.baseWidthSs;
-        fullElementHeightSs = source.fullElementHeightSs;
-        noteheadTopOffsetSs = source.noteheadTopOffsetSs;
-        heightUpSs = source.heightUpSs;
-        heightDownSs = source.heightDownSs;
-        topOffsetUpSs = source.topOffsetUpSs;
-        topOffsetDownSs = source.topOffsetDownSs;
-    }
-
-    private static void computeGlyphBoundsSs(ElementType type, SMuFLGlyph glyph) {
+    private static ElementBounds computeGlyphBoundsSs(SMuFLGlyph glyph) {
         var bbox = SMuFLMetadata.bboxSs(glyph);
         // Width is the glyph's right edge from the origin, not the bbox width, so that
         // baseWidthSs means the same thing for every glyph-bearing type (see
         // getElementWidthSs()). The two differ only when bBoxSW's x is non-zero.
-        type.setSymmetricBounds(bbox.rightSs(), bbox.heightSs(), bbox.topSs());
+        return ElementBounds.symmetric(bbox.rightSs(), bbox.heightSs(), bbox.topSs());
     }
 
     /**
-     * Sets a key change's bounds to the degenerate case: the narrowest key signature
-     * that draws anything, a single accidental, spanning the staff vertically the way a
-     * barline does.
+     * A key change's bounds are the degenerate case: the narrowest key signature that draws
+     * anything, a single accidental, spanning the staff vertically the way a barline does.
      * <p>
      * Every other type in this enum has one width, so the constant is the whole answer. A key
      * signature does not: its width depends on the {@link Key} it carries and on the key it
      * cancels, neither of which the enum constant knows. The real width comes from the element
-     * instance ({@code KeyChangeElement.getContentWidthSs()}); what is set here is only the
-     * floor, so that a caller reasoning from the type alone never over-reserves and
-     * {@code validateElementBounds} still has something positive to check.
+     * instance ({@code KeyChangeElement.getContentWidthSs()}); what is computed here is only the
+     * floor, so that a caller reasoning from the type alone never over-reserves.
      */
-    private static void computeKeySignatureBoundsSs(ElementType type) {
+    private static ElementBounds computeKeySignatureBoundsSs() {
         var narrowestAccidentalSs = Math.min(
             Key.DrawnAccidental.inkWidthSs(SMuFLGlyph.ACCIDENTAL_FLAT),
             Key.DrawnAccidental.inkWidthSs(SMuFLGlyph.ACCIDENTAL_SHARP)
         );
 
-        type.setSymmetricBounds(
+        return ElementBounds.symmetric(
             narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
-    }
-
-    private static void validateElementBounds() {
-        for (var type : values()) {
-            if (type.aliasOf != null) {
-                continue;
-            }
-
-            if (type.fullWidthSs <= 0 || type.heightUpSs <= 0 || type.heightDownSs <= 0) {
-                throw RuntimeError.missingResource("Invalid element bounds for " + type +
-                    ": widthSs=" + type.fullWidthSs +
-                    ", heightUpSs=" + type.heightUpSs +
-                    ", heightDownSs=" + type.heightDownSs);
-            }
-        }
     }
 }

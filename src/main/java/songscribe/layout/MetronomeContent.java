@@ -25,14 +25,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.dom.BeatChange;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.DocumentScale;
-import songscribe.dom.ElementType;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.StaffElement;
+import songscribe.dom.NoteValue;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
-import songscribe.error.RuntimeError;
 import songscribe.font.TextMeasurement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -72,19 +71,16 @@ public record MetronomeContent(
     }
 
     /**
-     * Returns the SMuFL metronome glyph for the given element type.
+     * Returns the SMuFL metronome glyph for the given note value.
      */
-    public static SMuFLGlyph metronomeGlyphFor(ElementType type) {
-        return switch (type) {
-            case SEMIBREVE -> SMuFLGlyph.MET_NOTE_WHOLE;
-            case MINIM -> SMuFLGlyph.MET_NOTE_HALF_UP;
-            case CROTCHET -> SMuFLGlyph.MET_NOTE_QUARTER_UP;
-            case QUAVER -> SMuFLGlyph.MET_NOTE_8TH_UP;
-            case SEMIQUAVER -> SMuFLGlyph.MET_NOTE_16TH_UP;
-            case DEMI_SEMIQUAVER -> SMuFLGlyph.MET_NOTE_32ND_UP;
-            // glyph absent from the font => missing resource, not an unmapped-type bug
-            default -> throw RuntimeError.missingResource(
-                "No metronome glyph for element type: " + type);
+    public static SMuFLGlyph metronomeGlyphFor(NoteValue value) {
+        return switch (value) {
+            case WHOLE -> SMuFLGlyph.MET_NOTE_WHOLE;
+            case HALF -> SMuFLGlyph.MET_NOTE_HALF_UP;
+            case QUARTER -> SMuFLGlyph.MET_NOTE_QUARTER_UP;
+            case EIGHTH -> SMuFLGlyph.MET_NOTE_8TH_UP;
+            case SIXTEENTH -> SMuFLGlyph.MET_NOTE_16TH_UP;
+            case THIRTY_SECOND -> SMuFLGlyph.MET_NOTE_32ND_UP;
         };
     }
 
@@ -105,9 +101,9 @@ public record MetronomeContent(
      */
     public static MetronomeContent forBeatChange(BeatChange beatChange, Font font) {
         var builder = new Builder(font);
-        builder.appendNote(beatChange.duration().getNote());
+        builder.appendNote(beatChange.duration());
         builder.appendText(EQUALS_STR);
-        builder.appendNote(beatChange.beat().getNote());
+        builder.appendNote(beatChange.beat());
 
         return builder.build();
     }
@@ -126,7 +122,7 @@ public record MetronomeContent(
 
         switch (tempo.marking()) {
             case TempoMarking.Metronome metronome -> {
-                builder.appendNote(tempo.tempoType().getNote());
+                builder.appendNote(tempo.tempoType());
                 // The "=" and the BPM/description are separate items because they are drawn as
                 // two separate strings at two positions.
                 builder.appendText(EQUALS_STR);
@@ -189,10 +185,10 @@ public record MetronomeContent(
             textDescentSs = TextMeasurement.fontDescentSs(font).value();
         }
 
-        private void appendNote(StaffElement note) {
+        private void appendNote(BeatUnit unit) {
             payPendingGap();
 
-            var glyph = metronomeGlyphFor(note.getType());
+            var glyph = metronomeGlyphFor(unit.noteValue());
             var baselineOffsetSs =
                 -SMuFLMetadata.bboxSs(glyph).topSs() * MetronomeAttachment.NOTE_SCALE;
             var noteStartSs = cursorSs;
@@ -203,7 +199,7 @@ public record MetronomeContent(
 
             var dotAdvanceSs = dotAdvanceWidthSs();
 
-            if (note.getDotCount() > 0) {
+            if (unit.dotted()) {
                 cursorSs += dotAdvanceSs;
                 // The dot sits on the note's own drawing origin, so it repeats the note's
                 // baseline offset rather than deriving one from the dot glyph's bounding box.

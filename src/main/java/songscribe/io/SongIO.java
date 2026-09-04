@@ -321,7 +321,7 @@ public final class SongIO {
             String localName,
             String qName,
             Attributes attributes
-        ) {
+        ) throws SAXException {
             if (where == Where.NOTES) {
                 if (noteReader == null || parsingSong == null) {
                     return;

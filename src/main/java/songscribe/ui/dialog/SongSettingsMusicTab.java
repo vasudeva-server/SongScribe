@@ -23,7 +23,6 @@ import java.util.List;
 import javax.swing.JPanel;
 
 import songscribe.Strings;
-import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
 import songscribe.util.UIUtils;
 

@@ -1,0 +1,90 @@
+/*
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package songscribe.dom;
+
+import songscribe.Strings;
+
+import static songscribe.midi.MidiSequenceBuilder.PPQ;
+
+/**
+ * A note value — whole through thirty-second — the closed domain a note or a rest is
+ * measured in. Each value knows its length in ticks, the word that names it, and the
+ * note and rest types that carry it.
+ */
+public enum NoteValue {
+    WHOLE(PPQ * 4, Strings.LABEL_NOTE_VALUE_WHOLE),
+    HALF(PPQ * 2, Strings.LABEL_NOTE_VALUE_HALF),
+    QUARTER(PPQ, Strings.LABEL_NOTE_VALUE_QUARTER),
+    EIGHTH(PPQ / 2, Strings.LABEL_NOTE_VALUE_EIGHTH),
+    SIXTEENTH(PPQ / 4, Strings.LABEL_NOTE_VALUE_SIXTEENTH),
+    THIRTY_SECOND(PPQ / 8, Strings.LABEL_NOTE_VALUE_THIRTY_SECOND);
+
+    private final int ticks;
+    private final String labelKey;
+
+    NoteValue(int ticks, String labelKey) {
+        this.ticks = ticks;
+        this.labelKey = labelKey;
+    }
+
+    /**
+     * @return this value's length in ticks, at {@link songscribe.midi.MidiSequenceBuilder#PPQ}
+     *     ticks per quarter
+     */
+    public int ticks() {
+        return ticks;
+    }
+
+    /**
+     * @return the {@link Strings} key of the lowercase word naming this value
+     */
+    public String labelKey() {
+        return labelKey;
+    }
+
+    /**
+     * @return the pitched note type of this value
+     */
+    public ElementType note() {
+        return switch (this) {
+            case WHOLE -> ElementType.SEMIBREVE;
+            case HALF -> ElementType.MINIM;
+            case QUARTER -> ElementType.CROTCHET;
+            case EIGHTH -> ElementType.QUAVER;
+            case SIXTEENTH -> ElementType.SEMIQUAVER;
+            case THIRTY_SECOND -> ElementType.DEMI_SEMIQUAVER;
+        };
+    }
+
+    /**
+     * @return the rest type of this value
+     */
+    public ElementType rest() {
+        return switch (this) {
+            case WHOLE -> ElementType.SEMIBREVE_REST;
+            case HALF -> ElementType.MINIM_REST;
+            case QUARTER -> ElementType.CROTCHET_REST;
+            case EIGHTH -> ElementType.QUAVER_REST;
+            case SIXTEENTH -> ElementType.SEMIQUAVER_REST;
+            case THIRTY_SECOND -> ElementType.DEMI_SEMIQUAVER_REST;
+        };
+    }
+}

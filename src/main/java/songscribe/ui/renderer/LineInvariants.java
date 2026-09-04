@@ -26,6 +26,7 @@ import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.DocumentScale;
@@ -453,7 +454,7 @@ public final class LineInvariants {
      */
     public boolean isElementHovered(int elementIndex) {
         var matched = PreviewElementManager.getHoveredElementLocation();
-        return matched != null && matched.matches(lineIndex, elementIndex);
+        return new ElementLocation(lineIndex, elementIndex).equals(matched);
     }
 
     /** Returns the index of the currently playing note, or -1 if none. */

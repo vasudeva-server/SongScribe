@@ -134,7 +134,7 @@ public final class EndingBracketGeometry {
 
         // For barlines and repeats, the bar states the anchor its opening arm hangs from.
         // For notes/rests, anchor to the element's left extent.
-        if (startType.isBarLine() || startType.isRepeat()) {
+        if (startType.isBar()) {
             x1 = startColumn.getXSs() + startType.voltaOpeningXOffsetSs();
         }
         else {
@@ -174,12 +174,12 @@ public final class EndingBracketGeometry {
         var endType = endElement.getType();
 
         // Extend to the next barline/repeat if end element is not one
-        if (!endType.isBarLine() && !endType.isRepeat()
+        if (!endType.isBar()
             && end + 1 < line.elementCount()) {
             var nextElement = line.getElement(end + 1);
             var nextType = nextElement.getType();
 
-            if (nextType.isBarLine() || nextType.isRepeat()) {
+            if (nextType.isBar()) {
                 endType = nextType;
                 x2 = columnFn.apply(nextElement).getXSs();
             }
@@ -187,7 +187,7 @@ public final class EndingBracketGeometry {
 
         boolean hasClosingStroke;
 
-        if (endType.isBarLine() || endType.isRepeat()) {
+        if (endType.isBar()) {
             x2 += endType.voltaClosingXOffsetSs();
             hasClosingStroke = endType == ElementType.REPEAT_RIGHT
                 || endType == ElementType.REPEAT_LEFT_RIGHT

@@ -22,7 +22,6 @@ package songscribe.io.musicxml;
 import java.math.BigDecimal;
 import java.util.List;
 
-import org.audiveris.proxymusic.AboveBelow;
 import org.audiveris.proxymusic.Direction;
 import org.audiveris.proxymusic.DirectionType;
 import org.audiveris.proxymusic.Empty;
@@ -33,11 +32,10 @@ import org.audiveris.proxymusic.WedgeType;
 import org.audiveris.proxymusic.YesNo;
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -85,18 +83,9 @@ final class DirectionBuilder {
      * {@code <words>} description direction-type, and a write-forward {@code <sound tempo>}.
      * A hidden tempo carries {@code print-object="no"} on the {@code <metronome>}; the
      * beat-unit/per-minute are still emitted so the visible tempo survives.
-     *
-     * <p>Returns {@code null} when the tempo's duration has no beat-unit mapping. Every
-     * {@code Tempo.tempoType} is one of the seven mapped {@link Duration}s, so that is
-     * unreachable; the guard keeps the builder null-safe.
      */
-    static @Nullable Direction buildTempoDirection(BuildContext context, Tempo tempo) {
+    static Direction buildTempoDirection(BuildContext context, Tempo tempo) {
         var beatUnit = BeatUnitMapping.forDuration(tempo.tempoType());
-
-        if (beatUnit == null) {
-            return null;
-        }
-
         var factory = context.factory();
         var direction = factory.createDirection();
         direction.getDirectionType().add(buildMetronomeDirectionType(factory, tempo, beatUnit));
@@ -233,19 +222,10 @@ final class DirectionBuilder {
      * Appends one {@code <metronome-note>} to {@code metronome}: a {@code <metronome-type>}
      * token plus one {@code <metronome-dot/>} per augmentation dot, both from
      * {@link BeatUnitMapping}.
-     *
-     * <p>A duration with no beat-unit mapping appends nothing. Every {@link BeatChange}
-     * duration is one of the seven mapped values, so that is unreachable; the guard keeps the
-     * builder null-safe.
      */
     private static void addMetronomeNote(
-            ObjectFactory factory, Metronome metronome, Duration duration) {
+            ObjectFactory factory, Metronome metronome, BeatUnit duration) {
         var beatUnit = BeatUnitMapping.forDuration(duration);
-
-        if (beatUnit == null) {
-            return;
-        }
-
         var metronomeNote = factory.createMetronomeNote();
         metronomeNote.setMetronomeType(beatUnit.token());
         addDots(factory, metronomeNote.getMetronomeDot(), beatUnit.dotCount());

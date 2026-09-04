@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import java.io.PrintWriter;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
@@ -27,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
 
@@ -44,11 +43,11 @@ public final class TempoIO {
     static final String XML_DONT_SHOW_TEMPO = "dontshowtempo";
 
     // Maps v1.0 XML names (no underscores) to the canonical Duration constants.
-    private static final Map<String, Duration> LEGACY_TEMPO_DURATION_NAMES = Map.of(
-        "SEMIBREVE", Duration.SEMI_BREVE,
-        "MINIMDOTTED", Duration.MINIM_DOTTED,
-        "CROTCHETDOTTED", Duration.CROTCHET_DOTTED,
-        "QUAVERDOTTED", Duration.QUAVER_DOTTED
+    private static final Map<String, BeatUnit> LEGACY_TEMPO_DURATION_NAMES = Map.of(
+        "SEMIBREVE", BeatUnit.SEMI_BREVE,
+        "MINIMDOTTED", BeatUnit.MINIM_DOTTED,
+        "CROTCHETDOTTED", BeatUnit.CROTCHET_DOTTED,
+        "QUAVERDOTTED", BeatUnit.QUAVER_DOTTED
     );
 
     private TempoIO() {}
@@ -66,7 +65,7 @@ public final class TempoIO {
         // from all of them at once, and no tag is guaranteed to arrive, so each starts at the
         // default a tempo has when nothing states one.
         private int visibleTempo = Tempo.DEFAULT_BPM;
-        private Duration tempoType = Tempo.DEFAULT_TYPE;
+        private BeatUnit tempoType = Tempo.DEFAULT_TYPE;
         private String description = "";
         private boolean hideMetronome = false;
 
@@ -110,13 +109,13 @@ public final class TempoIO {
         // canonical enum names and the underscore-less legacy tokens (e.g.
         // CROTCHETDOTTED). Shared by the v1.0 and v1.1 read paths so an unknown
         // token is rejected identically on both.
-        private static Duration resolveTempoDuration(String str) throws SAXException {
+        private static BeatUnit resolveTempoDuration(String str) throws SAXException {
             var upper = str.toUpperCase();
             var duration = LEGACY_TEMPO_DURATION_NAMES.get(upper);
 
             if (duration == null) {
                 try {
-                    duration = Duration.valueOf(upper);
+                    duration = BeatUnit.valueOf(upper);
                 } catch (IllegalArgumentException e) {
                     throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown tempo duration: '{}'", str);
                 }

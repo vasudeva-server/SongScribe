@@ -102,7 +102,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
             return;
         }
 
-        if (elementType.isBarLine() || elementType.isRepeat()) {
+        if (elementType.isBar()) {
             BarRenderer.getInstance().render(invariants, frame, element, g2);
             return;
         }

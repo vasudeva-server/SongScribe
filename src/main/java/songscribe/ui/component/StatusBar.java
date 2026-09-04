@@ -235,13 +235,8 @@ public final class StatusBar extends JPanel {
     }
 
     private static String getDurationText(StaffElement element) {
-        var name = element.getType().getName();
-
-        if (name == null) {
-            return "";
-        }
-
-        return StringUtils.capitalizeSentence(getDotPrefix(element.getDotCount()) + name.toLowerCase());
+        return StringUtils.capitalizeSentence(
+            getDotPrefix(element.getDotCount()) + element.getType().label());
     }
 
     private static String getDotPrefix(int dotCount) {

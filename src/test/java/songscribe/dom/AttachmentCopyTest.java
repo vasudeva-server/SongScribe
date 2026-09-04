@@ -81,7 +81,7 @@ class AttachmentCopyTest extends UnitTest {
             new AttachmentCase(
                 BeatChangeAttachment.class,
                 owner -> new BeatChangeAttachment(
-                    owner, new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET))),
+                    owner, new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET))),
             new AttachmentCase(
                 TempoChangeAttachment.class,
                 owner -> new TempoChangeAttachment(owner, new Tempo())),

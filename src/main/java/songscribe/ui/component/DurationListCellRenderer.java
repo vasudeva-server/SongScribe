@@ -30,13 +30,14 @@ import javax.swing.ListCellRenderer;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
+import songscribe.dom.NoteValue;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.ui.renderer.RenderingUtils;
 
 /**
- * A {@link ListCellRenderer} for {@link Duration} values that paints SMuFL music glyphs.
- * Use {@link #createCombo(Duration[])} to build a fully configured combo box.
+ * A {@link ListCellRenderer} for {@link BeatUnit} values that paints SMuFL music glyphs.
+ * Use {@link #createCombo(BeatUnit[])} to build a fully configured combo box.
  */
 public final class DurationListCellRenderer implements ListCellRenderer<Object> {
 
@@ -58,16 +59,18 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
     @Nullable
     private NoteLabel cell;
 
-    static SMuFLGlyph noteGlyphFor(Duration duration) {
-        return switch (duration) {
-            case SEMI_BREVE -> SMuFLGlyph.NOTE_WHOLE;
-            case MINIM, MINIM_DOTTED -> SMuFLGlyph.NOTE_HALF_UP;
-            case CROTCHET, CROTCHET_DOTTED -> SMuFLGlyph.NOTE_QUARTER_UP;
-            case QUAVER, QUAVER_DOTTED -> SMuFLGlyph.NOTE_8TH_UP;
+    static SMuFLGlyph noteGlyphFor(BeatUnit unit) {
+        return switch (unit.noteValue()) {
+            case WHOLE -> SMuFLGlyph.NOTE_WHOLE;
+            case HALF -> SMuFLGlyph.NOTE_HALF_UP;
+            case QUARTER -> SMuFLGlyph.NOTE_QUARTER_UP;
+            case EIGHTH -> SMuFLGlyph.NOTE_8TH_UP;
+            case SIXTEENTH -> SMuFLGlyph.NOTE_16TH_UP;
+            case THIRTY_SECOND -> SMuFLGlyph.NOTE_32ND_UP;
         };
     }
 
-    public static JComboBox<Duration> createCombo(Duration[] values) {
+    public static JComboBox<BeatUnit> createCombo(BeatUnit[] values) {
         var combo = new JComboBox<>(values);
         combo.setRenderer(new DurationListCellRenderer());
         combo.setEditable(false);
@@ -82,7 +85,7 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
         boolean isSelected,
         boolean cellHasFocus
     ) {
-        var duration = (Duration) value;
+        var duration = (BeatUnit) value;
 
         if (cell == null) {
             cell = new NoteLabel(duration, list, index, isSelected);
@@ -99,10 +102,10 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
         private static final int DOT_OFFSET = 3;
         private static final int EIGHTH_DOT_OFFSET = 1;
 
-        private Duration duration;
+        private BeatUnit duration;
 
         private NoteLabel(
-            Duration duration,
+            BeatUnit duration,
             JList<?> list,
             int index,
             boolean isSelected
@@ -113,7 +116,7 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
             setMinimumSize(CELL_SIZE);
         }
 
-        private void configure(Duration duration, JList<?> list, int index, boolean isSelected) {
+        private void configure(BeatUnit duration, JList<?> list, int index, boolean isSelected) {
             this.duration = duration;
             setText(noteGlyphFor(duration).asString());
 
@@ -133,15 +136,15 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
 
             var text = getText();
             var x = getWidth() / 2;
-            var y = (duration == Duration.SEMI_BREVE) ? (getHeight() / 2) : BASELINE_Y_PX;
+            var y = (duration == BeatUnit.SEMI_BREVE) ? (getHeight() / 2) : BASELINE_Y_PX;
 
             g.drawString(text, x, y);
 
-            if (duration.getNote().getDotCount() > 0) {
+            if (duration.dotted()) {
                 var metrics = g.getFontMetrics();
                 var width = metrics.stringWidth(text);
 
-                var dotOffset = (duration == Duration.QUAVER_DOTTED)
+                var dotOffset = (duration.noteValue() == NoteValue.EIGHTH)
                     ? EIGHTH_DOT_OFFSET
                     : DOT_OFFSET;
 

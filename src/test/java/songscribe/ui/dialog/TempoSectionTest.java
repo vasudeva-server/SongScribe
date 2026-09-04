@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.binding.Bindings;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
 
@@ -65,17 +65,17 @@ class TempoSectionTest extends UnitTest {
     }
 
     private static Tempo metronome(String description) {
-        return new Tempo(BPM, Duration.CROTCHET, new TempoMarking.Metronome(description));
+        return new Tempo(BPM, BeatUnit.CROTCHET, new TempoMarking.Metronome(description));
     }
 
     private static Tempo textOnly(String description) {
-        return new Tempo(BPM, Duration.CROTCHET, new TempoMarking.TextOnly(description));
+        return new Tempo(BPM, BeatUnit.CROTCHET, new TempoMarking.TextOnly(description));
     }
 
     @Test
     void testSetTempoThenGetTempoRoundTrips() {
         var tempoSection = tempoSection();
-        var tempo = new Tempo(BPM, Duration.QUAVER, new TempoMarking.TextOnly(DESCRIPTION));
+        var tempo = new Tempo(BPM, BeatUnit.QUAVER, new TempoMarking.TextOnly(DESCRIPTION));
 
         tempoSection.setTempo(tempo);
         var gathered = tempoSection.getTempo();

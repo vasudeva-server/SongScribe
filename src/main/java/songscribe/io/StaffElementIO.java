@@ -30,12 +30,11 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
-import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
@@ -95,6 +94,33 @@ public final class StaffElementIO {
     private static final String XML_LYRIC_TEXT = "text";
     private static final String XML_EXTEND_TAG = "extend";
 
+    // Maps every legacy element-type spelling — the underscore-less aliases phase 1
+    // deleted from ElementType, plus the retired names the v1.0/v1.1 if-chains used to
+    // rewrite — to the canonical ElementType constant. Shared by startElement10 and
+    // startElement11 via resolveElementType so an unknown token is rejected identically
+    // on both.
+    private static final Map<String, ElementType> LEGACY_ELEMENT_TYPE_NAMES = Map.ofEntries(
+        Map.entry("SEMIBREVEREST", ElementType.SEMIBREVE_REST),
+        Map.entry("MINIMREST", ElementType.MINIM_REST),
+        Map.entry("CROTCHETREST", ElementType.CROTCHET_REST),
+        Map.entry("QUAVERREST", ElementType.QUAVER_REST),
+        Map.entry("SEMIQUAVERREST", ElementType.SEMIQUAVER_REST),
+        Map.entry("DEMISEMIQUAVERREST", ElementType.DEMI_SEMIQUAVER_REST),
+        Map.entry("GRACEQUAVER", ElementType.GRACE_QUAVER),
+        Map.entry("REPEATLEFT", ElementType.REPEAT_LEFT),
+        Map.entry("REPEATRIGHT", ElementType.REPEAT_RIGHT),
+        Map.entry("REPEATLEFTRIGHT", ElementType.REPEAT_LEFT_RIGHT),
+        Map.entry("BREATHMARK", ElementType.BREATH_MARK),
+        Map.entry("SINGLEBARLINE", ElementType.SINGLE_BARLINE),
+        Map.entry("DOUBLEBARLINE", ElementType.DOUBLE_BARLINE),
+        Map.entry("FINALDOUBLEBARLINE", ElementType.FINAL_DOUBLE_BARLINE),
+        Map.entry("LINE", ElementType.SINGLE_BARLINE),
+        Map.entry("VERTICALLINE", ElementType.SINGLE_BARLINE),
+        Map.entry("GRACE_SEMIQUAVER", ElementType.GRACE_QUAVER),
+        Map.entry("GRACE_SEMIQUAVER_EDIT_STEP1", ElementType.GRACE_QUAVER),
+        Map.entry("GRACESEMIQUAVER", ElementType.GRACE_QUAVER)
+    );
+
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
 
@@ -143,6 +169,23 @@ public final class StaffElementIO {
     }
 
     private StaffElementIO() {
+    }
+
+    // Resolves an element-type token to an ElementType, accepting both the canonical
+    // enum names and the legacy tokens LEGACY_ELEMENT_TYPE_NAMES maps. Shared by the
+    // v1.0 and v1.1 read paths so an unknown token is rejected identically on both.
+    private static ElementType resolveElementType(String name) throws SAXException {
+        var elementType = LEGACY_ELEMENT_TYPE_NAMES.get(name);
+
+        if (elementType == null) {
+            try {
+                elementType = ElementType.valueOf(name);
+            } catch (IllegalArgumentException e) {
+                throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown element type: '{}'", name);
+            }
+        }
+
+        return elementType;
     }
 
     /**
@@ -212,7 +255,7 @@ public final class StaffElementIO {
             return sawLegacyAccidental;
         }
 
-        public boolean startElement10(String qName, Attributes attributes) {
+        public boolean startElement10(String qName, Attributes attributes) throws SAXException {
             if (qName.equals(XML_NOTE)) {
                 lastTag = null;
                 where = Where.ELEMENT;
@@ -223,16 +266,8 @@ public final class StaffElementIO {
                     where = null;
                     return true;
                 }
-                if (type.equals("LINE")) {
-                    type = ElementType.SINGLE_BARLINE.name();
-                }
-                if (type.equals("GRACE_SEMIQUAVER") ||
-                    type.equals("GRACE_SEMIQUAVER_EDIT_STEP1") ||
-                    type.equals("GRACESEMIQUAVER")) {
-                    type = ElementType.GRACE_QUAVER.name();
-                }
 
-                element = ElementType.valueOf(type).newInstance();
+                element = resolveElementType(type).newInstance();
             } else {
                 lastTag = qName;
             }
@@ -261,19 +296,10 @@ public final class StaffElementIO {
 
                 var type = attributes.getValue(XML_TYPE);
 
-                if (type.equals("VERTICALLINE")) {
-                    element = ElementType.SINGLE_BARLINE.newInstance();
-                } else {
-                    if (type.equals("GRACE_SEMIQUAVER") ||
-                        type.equals("GRACE_SEMIQUAVER_EDIT_STEP1")) {
-                        type = ElementType.GRACE_QUAVER.name();
-                    }
-
-                    try {
-                        element = ElementType.valueOf(type).newInstance();
-                    } catch (IllegalArgumentException | NullPointerException e) {
-                        throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown element type: '{}'", type);
-                    }
+                try {
+                    element = resolveElementType(type).newInstance();
+                } catch (NullPointerException e) {
+                    throw DocumentValidation.corrupt(LOG, "Corrupt document: unknown element type: '{}'", type);
                 }
             } else if (qName.equals(TempoIO.XML_TEMPO)) {
                 where = Where.TEMPO_CHANGE;
@@ -316,7 +342,7 @@ public final class StaffElementIO {
                             // New two-attribute format (v2.5+)
                             element.addAttachment(new BeatChangeAttachment(
                                 element,
-                                new BeatChange(Duration.valueOf(duration), Duration.valueOf(beat))
+                                new BeatChange(BeatUnit.valueOf(duration), BeatUnit.valueOf(beat))
                             ));
                         } else {
                             // Legacy text-content format — defer to endElement11

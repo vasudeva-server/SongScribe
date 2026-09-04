@@ -74,29 +74,36 @@ public final class PreviewElementManager {
     // ==========================================================================
 
     /**
-     * The LineComponent that currently has the preview element.
+     * Where the preview element is hovering: the line it is on, the insertion index (0 to
+     * elementCount inclusive), the staff position the mouse resolves to, and whether the mouse
+     * sits within the horizontal bounds of an existing note head and, given that, within its
+     * vertical bounds too.
+     *
+     * @param line             the line showing the preview element
+     * @param insertionIndex   the slot the preview element would be inserted at
+     * @param staffPositionSp  the mouse Y in staff-position units
+     * @param overElementX     whether the mouse X lies within an existing element's head
+     * @param overElementHead  whether the mouse also lies within that head vertically
+     */
+    public record PreviewHover(
+        LineComponent line,
+        int insertionIndex,
+        int staffPositionSp,
+        boolean overElementX,
+        boolean overElementHead) {
+    }
+
+    /**
+     * The current hover, or null when no line shows the preview element.
      * <p>
      * Only one line can show the preview element at a time. When the mouse moves
      * to a different line, the old line is repainted to clear the preview element.
      */
-    @Nullable
-    private static LineComponent currentPreviewLine = null;
-
-    /** Current insertion index (0 to elementCount inclusive). */
-    private static int currentXIndex = -1;
-
-    /** Current Y position on the staff (in staff position units, not pixels). */
-    private static int currentStaffPosition = 0;
+    private static @Nullable PreviewHover hover = null;
 
     /** The LineComponent the mouse is currently over (independent of insertion note state). */
     @Nullable
     private static LineComponent currentMouseLine = null;
-
-    /** Whether the mouse X (in staff spaces) is within the horizontal bounds of a note head. */
-    private static boolean xPosSsMatchesElement = false;
-
-    /** Whether the mouse Y (staff position) is within the vertical bounds of that note head. */
-    private static boolean yPosSpMatchesElement = false;
 
     /**
      * Runs after {@code ScoreViewController}'s layout-invalidating handler, so the pending
@@ -142,9 +149,9 @@ public final class PreviewElementManager {
      * once a zoom change has been applied.
      * <p>
      * A keyboard/menu zoom (anchored at the viewport center, not the cursor) shifts which
-     * document location sits under a stationary mouse — {@link #currentXIndex}/{@link
-     * #currentStaffPosition} track document position, not screen position, so without this
-     * they stay pinned to the pre-zoom location: the preview keeps rendering there (now
+     * document location sits under a stationary mouse — the {@link PreviewHover} tracks document
+     * position, not screen position, so without this it stays pinned to the pre-zoom location:
+     * the preview keeps rendering there (now
      * reprojected to new screen pixels by {@code ScoreView.zoomDidChangeRefreshOverlayBounds},
      * which only fixes the pixel conversion, not the underlying position) and a click at that
      * screen location resolves against a document position the cursor is no longer over.
@@ -334,12 +341,14 @@ public final class PreviewElementManager {
      *                     behind is cleared
      */
     private static void repaintHighlightedElements(@Nullable LineComponent previousLine) {
-        if (previousLine != null && previousLine != currentPreviewLine) {
+        var currentLine = getCurrentInsertionLine();
+
+        if (previousLine != null && previousLine != currentLine) {
             previousLine.repaint();
         }
 
-        if (currentPreviewLine != null) {
-            currentPreviewLine.repaint();
+        if (currentLine != null) {
+            currentLine.repaint();
         }
     }
 
@@ -415,18 +424,11 @@ public final class PreviewElementManager {
      * Call this when exiting edit mode or when the mouse leaves the score area.
      */
     static void clearPreviewElement() {
-        var previousPreviewLine = currentPreviewLine;
-
-        if (currentPreviewLine != null) {
-            currentPreviewLine = null;
-            currentXIndex = -1;
-            currentStaffPosition = 0;
-            xPosSsMatchesElement = false;
-            yPosSpMatchesElement = false;
-        }
+        var previousPreviewLine = getCurrentInsertionLine();
+        hover = null;
 
         // Unconditional: the mode-driven paths reach here with no preview line to clear, and the
-        // overlay must still be taken down. currentPreviewLine is null by now, so this hides it.
+        // overlay must still be taken down. The hover is null by now, so this hides it.
         PreviewOverlayRegistry.previewDidChange();
 
         // The element that was the hover target is still painted red on the line it lives on,
@@ -455,7 +457,14 @@ public final class PreviewElementManager {
      */
     @Nullable
     static LineComponent getCurrentInsertionLine() {
-        return currentPreviewLine;
+        return hover == null ? null : hover.line();
+    }
+
+    /**
+     * Returns the current hover, or null when no line shows the preview element.
+     */
+    public static @Nullable PreviewHover hover() {
+        return hover;
     }
 
     /**
@@ -469,24 +478,10 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns the current insertion X index.
-     */
-    public static int getCurrentXIndex() {
-        return currentXIndex;
-    }
-
-    /**
      * Returns the last tracked mouse X in staff-space units.
      */
     public static double getCurrentMouseXSs() {
         return currentMouseXSs;
-    }
-
-    /**
-     * Returns the current insertion Y position.
-     */
-    static int getCurrentStaffPosition() {
-        return currentStaffPosition;
     }
 
     /**
@@ -495,7 +490,9 @@ public final class PreviewElementManager {
      */
     @Nullable
     public static ElementLocation getHoveredElementLocation() {
-        if (!xPosSsMatchesElement || currentPreviewLine == null) {
+        var current = hover;
+
+        if (current == null || !current.overElementX()) {
             return null;
         }
 
@@ -508,35 +505,20 @@ public final class PreviewElementManager {
         }
 
         // An element that may not be replaced never shows the red replacement highlight.
-        var line = currentPreviewLine.getLine();
+        var line = current.line().getLine();
 
-        if (line != null && !line.canReplaceElementAt(currentXIndex)) {
+        if (line != null && !line.canReplaceElementAt(current.insertionIndex())) {
             return null;
         }
 
-        return new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex);
+        return new ElementLocation(current.line().getLineIndex(), current.insertionIndex());
     }
 
     /**
      * Returns whether the given line currently has the preview element.
      */
     static boolean hasPreviewElement(LineComponent lc) {
-        return currentPreviewLine == lc;
-    }
-
-    /**
-     * Returns whether the mouse is currently hovering over an existing note head
-     * (both X and Y match).
-     */
-    public static boolean isHoveringOverElementHead() {
-        return xPosSsMatchesElement && yPosSpMatchesElement;
-    }
-
-    /**
-     * Returns whether the mouse X (in staff spaces) is within the horizontal bounds of a note head.
-     */
-    static boolean isXPosSsMatchesElement() {
-        return xPosSsMatchesElement;
+        return getCurrentInsertionLine() == lc;
     }
 
     // ==========================================================================
@@ -590,7 +572,7 @@ public final class PreviewElementManager {
 
         if (resolvedPosition == null) {
             // Mouse is outside valid range, clear insertion note if on this line
-            if (currentPreviewLine == lc) {
+            if (hasPreviewElement(lc)) {
                 clearPreviewElement();
             }
 
@@ -604,10 +586,9 @@ public final class PreviewElementManager {
         var line = lc.getLine();
 
         if (layoutResult == null || line == null) {
-            // Layout is being recalculated (e.g., mid-drag). Clear stale hover state
+            // Layout is being recalculated (e.g., mid-drag). A stale hover is no hover: drop it
             // so that the next repaint does not show a highlight on the wrong element.
-            xPosSsMatchesElement = false;
-            yPosSpMatchesElement = false;
+            hover = null;
             return;
         }
 
@@ -642,7 +623,7 @@ public final class PreviewElementManager {
         // takes the replacement path, which canReplaceElementAt rules on below; only a plain
         // gap-insert is blocked here.
         if (previewElement != null && (elementAtX < 0) && !line.canInsertElementAt(xIndex)) {
-            if (currentPreviewLine == lc) {
+            if (hasPreviewElement(lc)) {
                 clearPreviewElement();
             }
 
@@ -668,30 +649,27 @@ public final class PreviewElementManager {
         // preview over them; handleClick separately ignores the click.
         var replacementBlocked = !line.canReplaceElementAt(elementAtX);
 
-        // Split the five tracked fields by what they affect. The insertion index alone is
+        var candidate = new PreviewHover(lc, xIndex, staffPosition, newXMatch, newYMatch);
+        var previous = hover;
+
+        if (candidate.equals(previous)) {
+            return;  // No change, no repaint
+        }
+
+        // Split the hover's components by what they affect. The insertion index alone is
         // position: the glyphs the renderers would emit are identical, so the overlay only needs
         // a new translate. Everything else changes the drawn ink — the staff position flips the
         // stem direction and crosses the ledger-line threshold, and the hover flags change what
         // is drawn at all — so the display list has to be rebuilt. Both are step functions, so
         // rebuilds stay rare even though the mouse moves continuously.
-        var xIndexChanged = xIndex != currentXIndex;
-        var configurationChanged = lc != currentPreviewLine
-            || staffPosition != currentStaffPosition
-            || newXMatch != xPosSsMatchesElement
-            || newYMatch != yPosSpMatchesElement;
+        var configurationChanged = previous == null
+            || lc != previous.line()
+            || staffPosition != previous.staffPositionSp()
+            || newXMatch != previous.overElementX()
+            || newYMatch != previous.overElementHead();
 
-        if (!xIndexChanged && !configurationChanged) {
-            return;  // No change, no repaint
-        }
-
-        var previousPreviewLine = currentPreviewLine;
-
-        // Update static state
-        currentPreviewLine = lc;
-        currentXIndex = xIndex;
-        currentStaffPosition = staffPosition;
-        xPosSsMatchesElement = newXMatch;
-        yPosSpMatchesElement = newYMatch;
+        var previousPreviewLine = previous == null ? null : previous.line();
+        hover = candidate;
 
         // Always show the ghost preview — even when hovering over an existing element head.
         // The preview shows the user what pitch/type will replace the existing element.
@@ -758,7 +736,7 @@ public final class PreviewElementManager {
         currentMouseLine = null;
 
         // Clear preview element when mouse leaves this line
-        if (currentPreviewLine == lc) {
+        if (hasPreviewElement(lc)) {
             clearPreviewElement();
         }
 
@@ -892,10 +870,16 @@ public final class PreviewElementManager {
             return;
         }
 
-        // Invalidate the cached xIndex so that the early-return guard in trackMouse
-        // does not skip recomputation when the mouse position is unchanged but the
-        // underlying notes have moved (e.g., after a drag finalises a pitch change).
-        currentXIndex = -1;
+        // Drop the hover so that trackMouse recomputes it: its early-return guard would otherwise
+        // skip the recomputation when the mouse position is unchanged but the underlying notes
+        // have moved (e.g., after a drag finalizes a pitch change). The line the old hover held
+        // is repainted when it is another line, as trackMouse does when the pointer crosses lines.
+        var previousPreviewLine = getCurrentInsertionLine();
+        hover = null;
+
+        if (previousPreviewLine != null && previousPreviewLine != lc) {
+            previousPreviewLine.repaint();
+        }
 
         // Synthesize a MouseEvent and delegate to trackMouse
         var syntheticEvent = new MouseEvent(
@@ -907,13 +891,11 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Sets the staff position on an element: rests snap to their type's default
-     * position, pitched notes use the given mouse-derived position.
+     * Sets the mouse-derived staff position on a pitched note. Any other element answers its
+     * staff position from its type, so there is nothing to set.
      */
     static void applyStaffPosition(StaffElement element, int staffPositionSp) {
-        if (element.getType().isRest()) {
-            element.setStaffPosition(element.getType().getDefaultStaffPosition());
-        } else {
+        if (element.getType().isPitchedNote()) {
             element.setStaffPosition(staffPositionSp);
         }
     }

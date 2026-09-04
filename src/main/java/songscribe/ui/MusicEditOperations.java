@@ -908,7 +908,7 @@ public final class MusicEditOperations {
                 continue;
             }
 
-            if (type.isBarLine() || type.isRepeat()) {
+            if (type.isBar()) {
                 return false;
             }
 

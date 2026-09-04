@@ -22,8 +22,6 @@ package songscribe.undo;
 
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ArticulationType;
@@ -76,35 +74,17 @@ public final class OpNames {
     /**
      * The single classifier both labels are built on.
      *
-     * @return the category {@code type} belongs to, or {@code null} for a type in none of
-     *         them — which the caller must handle, since no category means no name
+     * @return the category {@code type} belongs to
      */
-    private static @Nullable Category categoryOf(ElementType type) {
-        if (type.isNote()) {
-            return Category.NOTE;
-        }
-
-        if (type.isRest()) {
-            return Category.REST;
-        }
-
-        if (type.isBarLine()) {
-            return Category.BARLINE;
-        }
-
-        if (type.isRepeat()) {
-            return Category.REPEAT;
-        }
-
-        if (type.isBreathMark()) {
-            return Category.BREATH_MARK;
-        }
-
-        if (type.isKeyChange()) {
-            return Category.KEY_CHANGE;
-        }
-
-        return null;
+    private static Category categoryOf(ElementType type) {
+        return switch (type.kind()) {
+            case NOTE, GRACE_NOTE -> Category.NOTE;
+            case REST -> Category.REST;
+            case BARLINE -> Category.BARLINE;
+            case REPEAT -> Category.REPEAT;
+            case BREATH_MARK -> Category.BREATH_MARK;
+            case KEY_CHANGE -> Category.KEY_CHANGE;
+        };
     }
 
     /**
@@ -180,10 +160,6 @@ public final class OpNames {
      *             can insert — a note, a rest, a barline, a repeat, a breath mark or a key
      *             change
      * @return the localized name for the insertion
-     * @throws IllegalArgumentException if {@code type} is in none of those categories,
-     *                                  which no insertion the user can perform produces.
-     *                                  A new {@link ElementType} category fails here
-     *                                  rather than being labelled as something it is not.
      */
     public static String addLabel(ElementType type) {
         if (type.isGraceNote()) {
@@ -191,10 +167,6 @@ public final class OpNames {
         }
 
         var category = categoryOf(type);
-
-        if (category == null) {
-            throw new IllegalArgumentException("No add label for element type " + type);
-        }
 
         return Strings.get(
             switch (category) {

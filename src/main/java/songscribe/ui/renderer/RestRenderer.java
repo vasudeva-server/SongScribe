@@ -49,10 +49,6 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     // Rest Glyphs (SMuFL/Bravura)
     // ==========================================================================
 
-    // Staff position for whole and half rests (relative to middle line)
-    private static final int SEMIBREVE_REST_STAFF_POSITION_SP = -2; // Hangs below the 4th line
-    private static final int MINIM_REST_STAFF_POSITION_SP = 0;      // Sits on the middle line
-
     // Dot positioning derived from SMuFL metadata, in staff-space units.
     // The Graphics2D scale transform handles pixel conversion.
     private static final double DOT_GAP_SS = 0.5; // ss gap between rest glyph right edge and first dot
@@ -65,7 +61,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
                 continue;
             }
 
-            if (elementType.appearance() instanceof GlyphAppearance(var glyph)) {
+            if (elementType.appearance() instanceof GlyphAppearance(var glyph, var ignoredSeat)) {
                 var advanceWidth = SMuFLMetadata.advanceWidthSs(glyph);
                 FIRST_DOT_X_SS.put(elementType, (float) (advanceWidth + DOT_GAP_SS));
             }
@@ -137,7 +133,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
             // (e.g., blue for insertion notes, black for song notes)
 
             // Draw rest glyph
-            if (noteType.appearance() instanceof GlyphAppearance(var glyph)) {
+            if (noteType.appearance() instanceof GlyphAppearance(var glyph, var ignoredSeat)) {
                 g2.drawString(glyph.asString(), 0f, 0f);
             }
 
@@ -147,24 +143,9 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     }
 
     /**
-     * Calculates the Y position for a rest in staff-space units.
-     * Whole rests hang from the second line, half rests sit on the middle line.
-     * Other rests are centered vertically on the staff.
+     * Calculates the Y position for a rest in staff-space units, from its type's glyph seat.
      */
     double calculateRestYSs(StaffElement note, double middleLineYSs) {
-        var noteType = note.getType();
-
-        if (noteType == ElementType.SEMIBREVE_REST) {
-            // Whole rest hangs below the 4th line (second from top)
-            return middleLineYSs + StaffPosition.toSs(SEMIBREVE_REST_STAFF_POSITION_SP);
-        }
-
-        if (noteType == ElementType.MINIM_REST) {
-            // Half rest sits on the middle line
-            return middleLineYSs + StaffPosition.toSs(MINIM_REST_STAFF_POSITION_SP);
-        }
-
-        // Other rests use standard note Y positioning
         return middleLineYSs + StaffPosition.toSs(note.getStaffPosition());
     }
 

@@ -86,7 +86,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     ) {
         var noteType = element.getType();
 
-        if (!noteType.isBarLine() && !noteType.isRepeat()) {
+        if (!noteType.isBar()) {
             return;
         }
 

@@ -24,19 +24,21 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.NoteValue;
 
 /**
- * Bidirectional lookup table between SongScribe note/rest/grace {@link ElementType}s
- * and their MusicXML {@code <type>} token, plus tick-duration computation.
+ * Bidirectional lookup table between a SongScribe {@link NoteValue} and its MusicXML
+ * {@code <type>} token, plus tick-duration computation.
  *
  * <p>A rest is distinguished from its note counterpart by a {@code <rest/>} child
  * within the {@code <note>} element, not by a separate token. A grace note is
  * distinguished by a {@code <grace>} child within the {@code <note>} element. Both
  * the rest and grace variants map to the same {@code <type>} token as the
- * corresponding pitched note.
+ * corresponding pitched note, which is why the tables key on the value rather than
+ * on the {@link ElementType}.
  *
- * <p>This class owns the {@code ticks(type, dotCount)} duration math: the
- * {@code <type>} token and the tick count both key off the same {@link ElementType},
+ * <p>This class owns the {@code ticks(value, dotCount)} duration math: the
+ * {@code <type>} token and the tick count both key off the same {@link NoteValue},
  * so they share one class rather than two parallel tables.
  *
  * <p>Special-shape rules:
@@ -46,17 +48,17 @@ import songscribe.dom.ElementType;
  *   <li>Rests emit {@code <duration>} + {@code <type>} + {@code <rest/>}.</li>
  * </ul>
  *
- * <p>ASCII table — single {@code ElementType → <type> token + base-tick factor}:
+ * <p>ASCII table — single {@code NoteValue → <type> token + base-tick factor}.
+ * A rest and a grace note share the value of their pitched counterpart:
  * <pre>
- * ElementType                   &lt;type&gt;    base ticks (DIVISIONS = 13440)
- * -------------------------------------------------------------------------
- * SEMIBREVE  / SEMIBREVE_REST   whole     4 × DIVISIONS = 53760
- * MINIM      / MINIM_REST       half      2 × DIVISIONS = 26880
- * CROTCHET   / CROTCHET_REST    quarter   1 × DIVISIONS = 13440
- * QUAVER     / QUAVER_REST      eighth    DIVISIONS / 2  =  6720
- * SEMIQUAVER / SEMIQUAVER_REST  16th      DIVISIONS / 4  =  3360
- * DEMI_SEMIQUAVER / *_REST      32nd      DIVISIONS / 8  =  1680
- * GRACE_QUAVER                  eighth    n/a (no &lt;duration&gt; emitted)
+ * NoteValue       &lt;type&gt;    base ticks (DIVISIONS = 13440)
+ * ---------------------------------------------------------
+ * WHOLE           whole     4 × DIVISIONS = 53760
+ * HALF            half      2 × DIVISIONS = 26880
+ * QUARTER         quarter   1 × DIVISIONS = 13440
+ * EIGHTH          eighth    DIVISIONS / 2  =  6720
+ * SIXTEENTH       16th      DIVISIONS / 4  =  3360
+ * THIRTY_SECOND   32nd      DIVISIONS / 8  =  1680
  *
  * Dot augmentation: base × (2^(d+1) − 1) / 2^d   where d = dotCount
  *   0 dots → × 1      (base)
@@ -136,70 +138,19 @@ public final class NoteTypeMapping {
     public static final String TYPE_32ND    = "32nd";
 
     // -------------------------------------------------------------------------
-    // Forward map: ElementType → <type> token
-    // Both a note and its *_REST counterpart map to the same token; GRACE_QUAVER
-    // also maps to eighth (distinguished on read by a <grace> child, not the token).
+    // Reverse map for reading: token → NoteValue. forTypeToken() turns the value
+    // into the note or rest ElementType from the <rest/> flag, and recovers
+    // GRACE_QUAVER from the <grace> flag. The forward direction is an exhaustive
+    // switch in typeToken(), so it needs no map and no null branch.
     // -------------------------------------------------------------------------
 
-    private static final Map<ElementType, String> FORWARD_MAP = Map.ofEntries(
-        Map.entry(ElementType.SEMIBREVE,            TYPE_WHOLE),
-        Map.entry(ElementType.MINIM,                TYPE_HALF),
-        Map.entry(ElementType.CROTCHET,             TYPE_QUARTER),
-        Map.entry(ElementType.QUAVER,               TYPE_EIGHTH),
-        Map.entry(ElementType.SEMIQUAVER,           TYPE_16TH),
-        Map.entry(ElementType.DEMI_SEMIQUAVER,      TYPE_32ND),
-        Map.entry(ElementType.SEMIBREVE_REST,       TYPE_WHOLE),
-        Map.entry(ElementType.MINIM_REST,           TYPE_HALF),
-        Map.entry(ElementType.CROTCHET_REST,        TYPE_QUARTER),
-        Map.entry(ElementType.QUAVER_REST,          TYPE_EIGHTH),
-        Map.entry(ElementType.SEMIQUAVER_REST,      TYPE_16TH),
-        Map.entry(ElementType.DEMI_SEMIQUAVER_REST, TYPE_32ND),
-        Map.entry(ElementType.GRACE_QUAVER,         TYPE_EIGHTH)
-    );
-
-    // -------------------------------------------------------------------------
-    // Reverse maps for reading: token → pitched note and token → rest.
-    // GRACE_QUAVER is recovered by the presence of a <grace> child, not a
-    // separate token, so it is handled explicitly in forTypeToken().
-    // -------------------------------------------------------------------------
-
-    private static final Map<String, ElementType> REVERSE_NOTE_MAP = Map.of(
-        TYPE_WHOLE,   ElementType.SEMIBREVE,
-        TYPE_HALF,    ElementType.MINIM,
-        TYPE_QUARTER, ElementType.CROTCHET,
-        TYPE_EIGHTH,  ElementType.QUAVER,
-        TYPE_16TH,    ElementType.SEMIQUAVER,
-        TYPE_32ND,    ElementType.DEMI_SEMIQUAVER
-    );
-
-    private static final Map<String, ElementType> REVERSE_REST_MAP = Map.of(
-        TYPE_WHOLE,   ElementType.SEMIBREVE_REST,
-        TYPE_HALF,    ElementType.MINIM_REST,
-        TYPE_QUARTER, ElementType.CROTCHET_REST,
-        TYPE_EIGHTH,  ElementType.QUAVER_REST,
-        TYPE_16TH,    ElementType.SEMIQUAVER_REST,
-        TYPE_32ND,    ElementType.DEMI_SEMIQUAVER_REST
-    );
-
-    // -------------------------------------------------------------------------
-    // Base-tick map: ElementType → undotted tick count.
-    // GRACE_QUAVER is intentionally absent — grace notes have no <duration>.
-    // Note and its *_REST counterpart share the same base-tick value.
-    // -------------------------------------------------------------------------
-
-    private static final Map<ElementType, Integer> BASE_TICKS_MAP = Map.ofEntries(
-        Map.entry(ElementType.SEMIBREVE,            WHOLE_TICKS),
-        Map.entry(ElementType.MINIM,                HALF_TICKS),
-        Map.entry(ElementType.CROTCHET,             QUARTER_TICKS),
-        Map.entry(ElementType.QUAVER,               EIGHTH_TICKS),
-        Map.entry(ElementType.SEMIQUAVER,           SIXTEENTH_TICKS),
-        Map.entry(ElementType.DEMI_SEMIQUAVER,      THIRTY_SECOND_TICKS),
-        Map.entry(ElementType.SEMIBREVE_REST,       WHOLE_TICKS),
-        Map.entry(ElementType.MINIM_REST,           HALF_TICKS),
-        Map.entry(ElementType.CROTCHET_REST,        QUARTER_TICKS),
-        Map.entry(ElementType.QUAVER_REST,          EIGHTH_TICKS),
-        Map.entry(ElementType.SEMIQUAVER_REST,      SIXTEENTH_TICKS),
-        Map.entry(ElementType.DEMI_SEMIQUAVER_REST, THIRTY_SECOND_TICKS)
+    private static final Map<String, NoteValue> REVERSE_MAP = Map.of(
+        TYPE_WHOLE,   NoteValue.WHOLE,
+        TYPE_HALF,    NoteValue.HALF,
+        TYPE_QUARTER, NoteValue.QUARTER,
+        TYPE_EIGHTH,  NoteValue.EIGHTH,
+        TYPE_16TH,    NoteValue.SIXTEENTH,
+        TYPE_32ND,    NoteValue.THIRTY_SECOND
     );
 
     // Maximum supported dot count (double-dotted).
@@ -211,13 +162,28 @@ public final class NoteTypeMapping {
     // Public API
     // -------------------------------------------------------------------------
 
-    /**
-     * Returns the MusicXML {@code <type>} token for the given {@link ElementType},
-     * or {@code null} if the type has no entry in the forward map (e.g. a barline).
-     */
-    @Nullable
-    public static String typeToken(ElementType type) {
-        return FORWARD_MAP.get(type);
+    /** Returns the MusicXML {@code <type>} token for the given {@link NoteValue}. */
+    public static String typeToken(NoteValue value) {
+        return switch (value) {
+            case WHOLE -> TYPE_WHOLE;
+            case HALF -> TYPE_HALF;
+            case QUARTER -> TYPE_QUARTER;
+            case EIGHTH -> TYPE_EIGHTH;
+            case SIXTEENTH -> TYPE_16TH;
+            case THIRTY_SECOND -> TYPE_32ND;
+        };
+    }
+
+    /** The undotted {@code <duration>} tick count of {@code value}. */
+    private static int baseTicks(NoteValue value) {
+        return switch (value) {
+            case WHOLE -> WHOLE_TICKS;
+            case HALF -> HALF_TICKS;
+            case QUARTER -> QUARTER_TICKS;
+            case EIGHTH -> EIGHTH_TICKS;
+            case SIXTEENTH -> SIXTEENTH_TICKS;
+            case THIRTY_SECOND -> THIRTY_SECOND_TICKS;
+        };
     }
 
     /**
@@ -234,27 +200,27 @@ public final class NoteTypeMapping {
             return ElementType.GRACE_QUAVER;
         }
 
-        if (isRest) {
-            return REVERSE_REST_MAP.get(typeToken);
+        var value = REVERSE_MAP.get(typeToken);
+
+        if (value == null) {
+            return null;
         }
 
-        return REVERSE_NOTE_MAP.get(typeToken);
+        return isRest ? value.rest() : value.note();
     }
 
     /**
-     * Returns {@code true} if the given {@link ElementType} should emit a
-     * {@code <duration>} element in MusicXML output.
-     *
-     * <p>Grace notes ({@link ElementType#GRACE_QUAVER}) carry no {@code <duration>}
-     * because SongScribe assigns them zero playback time and never steals from the
-     * host note. All other durational types (notes and rests) emit {@code <duration>}.
+     * Returns {@code true} if the given {@link ElementType} emits a {@code <duration>}
+     * element in MusicXML output: a pitched note or a rest does; a grace note does not,
+     * because SongScribe assigns it zero playback time and never steals from the host
+     * note. A type that is none of those has no duration at all.
      */
     public static boolean hasDuration(ElementType type) {
-        return type != ElementType.GRACE_QUAVER;
+        return type.isDuration();
     }
 
     /**
-     * Returns the {@code <duration>} tick count for the given {@link ElementType}
+     * Returns the {@code <duration>} tick count for the given {@link NoteValue}
      * and dot count, as an exact integer.
      *
      * <p>The formula is {@code baseTicks × (2^(d+1) − 1) / 2^d} where {@code d}
@@ -262,27 +228,19 @@ public final class NoteTypeMapping {
      * always produces an exact integer: the worst case is a double-dotted 32nd,
      * which yields {@code 1680 × 7 / 4 = 2940} ticks.
      *
-     * <p>Do not call this for {@link ElementType#GRACE_QUAVER}; grace notes carry
-     * no {@code <duration>}. Use {@link #hasDuration(ElementType)} to guard the call.
-     *
-     * @param type     the note/rest {@link ElementType} (not {@code GRACE_QUAVER})
+     * @param value    the written note value
      * @param dotCount number of augmentation dots (0, 1, or 2)
      * @return the exact integer tick count
-     * @throws IllegalArgumentException if {@code type} has no tick mapping or
-     *                                  {@code dotCount} is out of range
+     * @throws IllegalArgumentException if {@code dotCount} is out of range
      * @throws ArithmeticException      if the result is not an exact integer
      *                                  (indicates {@link #DIVISIONS} is wrong)
      */
-    public static int ticks(ElementType type, int dotCount) {
+    public static int ticks(NoteValue value, int dotCount) {
         if (dotCount < 0 || dotCount > MAX_DOT_COUNT) {
             throw new IllegalArgumentException("dotCount must be 0–" + MAX_DOT_COUNT + ", got " + dotCount);
         }
 
-        var baseTicks = BASE_TICKS_MAP.get(type);
-
-        if (baseTicks == null) {
-            throw new IllegalArgumentException("No tick mapping for ElementType: " + type);
-        }
+        var baseTicks = baseTicks(value);
 
         // Dot augmentation: base × (2^(d+1) − 1) / 2^d
         var numerator   = (1 << (dotCount + 1)) - 1;
@@ -291,7 +249,7 @@ public final class NoteTypeMapping {
 
         if (product % denominator != 0) {
             throw new ArithmeticException(
-                "Tick count is not an integer for " + type + " dotCount=" + dotCount
+                "Tick count is not an integer for " + value + " dotCount=" + dotCount
                 + " (DIVISIONS=" + DIVISIONS + " is wrong)"
             );
         }

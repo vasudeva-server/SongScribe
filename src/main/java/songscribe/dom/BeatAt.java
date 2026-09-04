@@ -29,7 +29,7 @@ package songscribe.dom;
  *
  * @see TempoResolver#resolveBeatAt
  */
-public record BeatAt(Duration beat, int lineIndex, int elementIndex) {
+public record BeatAt(BeatUnit beat, int lineIndex, int elementIndex) {
 
     /** Index value meaning "no element defined this beat". */
     public static final int NO_DEFINING_EVENT = -1;

@@ -25,7 +25,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Duration;
 import songscribe.dom.Tempo;
 import songscribe.ui.component.MainFrame;
 

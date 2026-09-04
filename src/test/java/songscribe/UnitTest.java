@@ -26,6 +26,9 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URISyntaxException;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import javax.swing.UIManager;
 import javax.xml.parsers.SAXParserFactory;
 
@@ -74,6 +77,16 @@ import static songscribe.dom.StaffElementFactory.crotchet;
 @SuppressWarnings("OverlyBroadThrowsClause")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class UnitTest {
+
+    private static final String FIXED_CLOCK_INSTANT = "2026-01-01T00:00:00Z";
+
+    /**
+     * A fixed clock for every writer path that stamps a date — the {@code <encoding-date>},
+     * the rights-credit year — so what a test writes is identical across runs and can be
+     * compared against a checked-in fixture. Without it a comparison would fail whenever a
+     * run straddled midnight, and a regenerated fixture would differ in nothing but the date.
+     */
+    public static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse(FIXED_CLOCK_INSTANT), ZoneOffset.UTC);
 
     private static volatile boolean bannerShown = false;
     private static volatile boolean flatLafInstalled = false;

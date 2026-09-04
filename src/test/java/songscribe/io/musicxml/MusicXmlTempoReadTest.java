@@ -22,7 +22,7 @@ package songscribe.io.musicxml;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.TempoMarking;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -76,7 +76,7 @@ class MusicXmlTempoReadTest extends UnitTest {
 
         // The repair touches the marking and nothing else, so the beat and the BPM survive it.
         assertThat(tempo.visibleTempo()).isEqualTo(BPM);
-        assertThat(tempo.tempoType()).isEqualTo(Duration.CROTCHET);
+        assertThat(tempo.tempoType()).isEqualTo(BeatUnit.CROTCHET);
     }
 
     @Test

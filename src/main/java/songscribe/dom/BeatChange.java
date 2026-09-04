@@ -21,12 +21,12 @@ package songscribe.dom;
 
 import songscribe.util.Copyable;
 
-public record BeatChange(Duration duration, Duration beat) implements Copyable<BeatChange> {
+public record BeatChange(BeatUnit duration, BeatUnit beat) implements Copyable<BeatChange> {
 
     /**
      * {@inheritDoc}
      *
-     * @return {@code this}. Both components are {@link Duration} constants, so a beat change holds
+     * @return {@code this}. Both components are {@link BeatUnit} constants, so a beat change holds
      *         no mutable state for a copy to separate.
      */
     @Override
@@ -45,19 +45,19 @@ public record BeatChange(Duration duration, Duration beat) implements Copyable<B
     public static BeatChange fromLegacyName(String legacyName) {
         return switch (legacyName) {
             case "QUAVER_EQUALS_QUAVER", "QUAVEREQUALSQUAVER" ->
-                new BeatChange(Duration.QUAVER, Duration.QUAVER);
+                new BeatChange(BeatUnit.QUAVER, BeatUnit.QUAVER);
             case "DOTTED_CROCHET_EQUALS_MINIM", "DOTTEDCROCHETEQUALSMINIM" ->
-                new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM);
+                new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.MINIM);
             case "MINIM_EQUALS_DOTTED_CROCHET", "MINIMEQUALSDOTTEDCROCHET" ->
-                new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED);
+                new BeatChange(BeatUnit.MINIM, BeatUnit.CROTCHET_DOTTED);
             // "CROTCHETQUALSDOTTEDCROCHET" is not the underscore-less form (missing E) — it is a
             // historical typo preserved in old .mssw files and must keep being accepted as-is.
             case "CROTCHET_EQUALS_DOTTED_CROCHET", "CROTCHETQUALSDOTTEDCROCHET" ->
-                new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED);
+                new BeatChange(BeatUnit.CROTCHET, BeatUnit.CROTCHET_DOTTED);
             // "DOTTEDCROCHETQUALSCROCHET" is not the underscore-less form (missing E) — it is a
             // historical typo preserved in old .mssw files and must keep being accepted as-is.
             case "DOTTED_CROCHET_EQUALS_CROCHET", "DOTTEDCROCHETQUALSCROCHET" ->
-                new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
+                new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET);
             default -> throw new IllegalArgumentException("unknown legacy beat change: " + legacyName);
         };
     }

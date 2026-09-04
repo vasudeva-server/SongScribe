@@ -35,7 +35,7 @@ import javax.swing.SpinnerNumberModel;
 import songscribe.Strings;
 import songscribe.binding.Bindings;
 import songscribe.binding.Property;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
 import songscribe.ui.FlatLafKey;
@@ -69,13 +69,13 @@ class TempoSection extends JPanel {
     private static final int BPM_MIN = 40;
     private static final int BPM_MAX = 220;
 
-    private final JComboBox<Duration> tempoTypeCombo;
+    private final JComboBox<BeatUnit> tempoTypeCombo;
     private final SpinnerModel tempoSpinnerModel =
         new SpinnerNumberModel(Tempo.DEFAULT_BPM, BPM_MIN, BPM_MAX, 1);
     private final OtherValueComboBox tempoDescriptionCombo;
     private final JCheckBox showOnlyDescriptionCheckBox;
 
-    private final Property<Duration> tempoType;
+    private final Property<BeatUnit> tempoType;
     private final Property<Number> visibleTempo;
     private final Property<String> tempoDescription;
     private final Property<Boolean> showOnlyDescription;
@@ -88,7 +88,7 @@ class TempoSection extends JPanel {
      *          them before returning
      */
     TempoSection(Bindings bindings, List<String> fileNames) {
-        tempoTypeCombo = DurationListCellRenderer.createCombo(Duration.values());
+        tempoTypeCombo = DurationListCellRenderer.createCombo(BeatUnit.values());
 
         showOnlyDescriptionCheckBox = new JCheckBox(
             Strings.get(Strings.DIALOG_TEMPO_SHOW_ONLY_DESCRIPTION)

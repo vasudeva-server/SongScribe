@@ -305,7 +305,7 @@ final class MeasureBuilder {
                 measure.getNoteOrBackupOrForward().add(output.rightBarline);
                 measure = openMeasure(context, state, measures);
                 output.leftBarline = openForwardRepeat(context, measure);
-            } else if (type.isBarLine() || type.isRepeat()) {
+            } else if (type.isBar()) {
                 // Every other barline/repeat type closes the current measure with a right
                 // barline. REPEAT_LEFT and REPEAT_LEFT_RIGHT are handled above, so every
                 // remaining type has a forward-map entry; one that ever does not is passed

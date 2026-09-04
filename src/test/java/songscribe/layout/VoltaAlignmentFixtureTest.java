@@ -21,6 +21,9 @@
 package songscribe.layout;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -35,7 +38,7 @@ import songscribe.dom.SongFactory;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
-import songscribe.io.SongFileWriter;
+import songscribe.io.musicxml.MusicXmlWriter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
@@ -47,24 +50,30 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
- * Generates {@code src/test/resources/fixtures/volta-alignments.musicxml}, one line per way a
- * volta bracket can be aligned. Running this class rewrites the fixture; the fixture is then
- * opened in the application and looked at, because where a bracket's arms land against the
- * barline beside them is a judgement only a person makes.
+ * Checks that the song built here — one line per way a volta bracket can be aligned — still
+ * writes as {@code src/test/resources/fixtures/volta-alignments.musicxml}. The fixture is the
+ * approved output: it was opened in the application and looked at, because where a bracket's
+ * arms land against the barline beside them is a judgement only a person makes, and this test
+ * holds that judgement against later changes to layout and to the writer.
  *
  * <p>{@code EndingBracketGeometry} positions a bracket from three independent inputs — what the
  * bracket opens on, what repeat splits its two halves, and what it closes on — so the lines
  * below vary exactly one of the three at a time, and each line writes its own case name under
  * its first note.
  *
- * <p>This is a generator, not a check: it asserts that the file was written and nothing about
- * where any bracket landed.
+ * <p>When a change to what a bracket emits is intended, regenerate the fixture with
+ * {@code EXTRA_JVM_ARGS=-D}{@value #UPDATE_FIXTURES_PROPERTY}{@code =true ./scripts/test.sh
+ * VoltaAlignmentFixtureTest}, open the result in the application, and commit it once it looks
+ * right. Nothing else writes the fixture.
  */
 class VoltaAlignmentFixtureTest extends UnitTest {
 
-    /** Where the generated fixture lands, relative to the project directory the tests run in. */
+    /** The checked-in fixture, relative to the project directory the tests run in. */
     private static final Path FIXTURE_PATH =
         Path.of("src", "test", "resources", "fixtures", "volta-alignments.musicxml");
+
+    /** Set to {@code true} to rewrite the fixture from the current writer instead of checking it. */
+    private static final String UPDATE_FIXTURES_PROPERTY = "songscribe.updateFixtures";
 
     private static final String SONG_TITLE = "Volta bracket alignments";
 
@@ -95,7 +104,26 @@ class VoltaAlignmentFixtureTest extends UnitTest {
     private record VoltaCase(String label, SongFactory.LineBuilder builder) {}
 
     @Test
-    void testWritesTheVoltaAlignmentFixture() throws IOException {
+    void testWrittenVoltaAlignmentsMatchTheCheckedInFixture() throws IOException {
+        var written = writeVoltaAlignments();
+
+        if (Boolean.getBoolean(UPDATE_FIXTURES_PROPERTY)) {
+            Files.createDirectories(FIXTURE_PATH.getParent());
+            Files.writeString(FIXTURE_PATH, written, StandardCharsets.UTF_8);
+            return;
+        }
+
+        var expected = Files.readString(FIXTURE_PATH, StandardCharsets.UTF_8);
+
+        assertThat(written)
+            .as("the volta alignments as written now, against %s — if the change is intended, "
+                + "regenerate with -D%s=true and look at the result in the application",
+                FIXTURE_PATH, UPDATE_FIXTURES_PROPERTY)
+            .isEqualTo(expected);
+    }
+
+    /** The volta-alignment song as the application saves it, dated from the fixed clock. */
+    private static String writeVoltaAlignments() {
         var builders = voltaCases().stream()
             .map(VoltaCase::builder)
             .toArray(SongFactory.LineBuilder[]::new);
@@ -117,16 +145,15 @@ class VoltaAlignmentFixtureTest extends UnitTest {
         )));
 
         var fonts = DocumentFonts.defaultFonts();
+        var out = new StringWriter();
 
-        Files.createDirectories(FIXTURE_PATH.getParent());
+        // The save path's own writer with the save path's own headless layout, so the song is
+        // written the way the application saves one rather than by an imitation of it.
+        try (var pw = new PrintWriter(out)) {
+            MusicXmlWriter.writeSong(song, fonts, LineLayoutProvider.headless(song, fonts), pw, FIXED_CLOCK);
+        }
 
-        // The save path's own entry point, so the fixture is a song saved the way the
-        // application saves one rather than one assembled by an imitation of it.
-        var written = SongFileWriter.write(song, fonts, FIXTURE_PATH.toFile());
-
-        assertThat(written).as("the fixture was written without error").isTrue();
-        assertThat(FIXTURE_PATH).exists();
-        assertThat(Files.size(FIXTURE_PATH)).as("fixture size in bytes").isPositive();
+        return out.toString();
     }
 
     /**

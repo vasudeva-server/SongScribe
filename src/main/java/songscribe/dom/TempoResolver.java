@@ -104,7 +104,7 @@ public final class TempoResolver {
      * This is the single definition of that precedence: {@code TupletValidator}'s forward
      * walk calls it too, so the two cannot answer differently for the same element.
      */
-    static @Nullable Duration beatDefinedAt(StaffElement element) {
+    static @Nullable BeatUnit beatDefinedAt(StaffElement element) {
         var beatChange = element.findAttachment(BeatChangeAttachment.class);
 
         if (beatChange != null) {

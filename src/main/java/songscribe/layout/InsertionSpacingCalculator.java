@@ -664,8 +664,7 @@ public final class InsertionSpacingCalculator {
         Line line, int atIndex, @Nullable LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var staffRightMarginSs = line.getSong().getLineWidthSs().value();
-        // Shared singleton is safe: calculateInsertion only reads geometry from the element.
-        var graceNote = ElementType.GRACE_QUAVER.getInstance();
+        var graceNote = ElementType.GRACE_QUAVER.newInstance();
         return calculateInsertion(line, graceNote, atIndex, layout, lyricRenderMetrics)
             .fitsWithinLine(staffRightMarginSs);
     }
@@ -686,8 +685,7 @@ public final class InsertionSpacingCalculator {
         Line line, int graceNoteIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var staffRightMarginSs = line.getSong().getLineWidthSs().value();
-        // Shared singleton is safe: calculateInsertion only reads geometry from the element.
-        var hostNote = ElementType.CROTCHET.getInstance();
+        var hostNote = ElementType.CROTCHET.newInstance();
         return calculateInsertion(line, hostNote, graceNoteIndex + 1, null, lyricRenderMetrics)
             .fitsWithinLine(staffRightMarginSs);
     }

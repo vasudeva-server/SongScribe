@@ -22,7 +22,7 @@ package songscribe.io;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoMarking;
 
@@ -45,7 +45,7 @@ class TempoIOTest extends UnitTest {
         reader.startElement11(TempoIO.XML_TEMPO);
 
         writeValue(reader, TempoIO.XML_VISIBLE_TEMPO, Integer.toString(BPM));
-        writeValue(reader, TempoIO.XML_TEMPO_TYPE, Duration.CROTCHET.name());
+        writeValue(reader, TempoIO.XML_TEMPO_TYPE, BeatUnit.CROTCHET.name());
         writeValue(reader, TempoIO.XML_TEMPO_DESCRIPTION, description);
         writeValue(reader, TempoIO.XML_DONT_SHOW_TEMPO, "");
 
@@ -70,7 +70,7 @@ class TempoIOTest extends UnitTest {
 
         // The repair touches the marking and nothing else, so the beat and the BPM survive it.
         assertThat(tempo.visibleTempo()).isEqualTo(BPM);
-        assertThat(tempo.tempoType()).isEqualTo(Duration.CROTCHET);
+        assertThat(tempo.tempoType()).isEqualTo(BeatUnit.CROTCHET);
     }
 
     @Test

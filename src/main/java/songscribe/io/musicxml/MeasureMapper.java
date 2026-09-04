@@ -425,7 +425,7 @@ final class MeasureMapper {
 
         var previousType = line.getElement(elementCount - 1).getType();
 
-        if (!previousType.isBarLine() && !previousType.isRepeat()) {
+        if (!previousType.isBar()) {
             throw DocumentValidation.corrupt(
                 LOG,
                 "Corrupt document: mid-measure <key> is not preceded by a barline; preceded by {}",

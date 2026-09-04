@@ -25,10 +25,10 @@ import songscribe.Strings;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.dom.BeatUnit;
 import songscribe.dom.Song;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.ui.component.MainFrame;
 
 /**
  * Reads and writes the beat change on one element, for {@link BeatChangeDialog}.
@@ -38,7 +38,7 @@ import songscribe.ui.component.MainFrame;
  * forces out.
  *
  * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: both of a
- * {@link BeatChange}'s durations come from {@link songscribe.dom.Duration}, and there is no pair
+ * {@link BeatChange}'s durations come from {@link BeatUnit}, and there is no pair
  * of note values the dialog can offer that this could sensibly reject.
  */
 public final class BeatChangeController extends AttachmentDialogController<BeatChange> {

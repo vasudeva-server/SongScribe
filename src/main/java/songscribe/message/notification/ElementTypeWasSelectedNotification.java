@@ -37,6 +37,6 @@ public class ElementTypeWasSelectedNotification extends Message {
 
     @Override
     public String toString() {
-        return super.toString() + "(noteType = " + noteType.getName() + ')';
+        return super.toString() + "(noteType = " + noteType.label() + ')';
     }
 }

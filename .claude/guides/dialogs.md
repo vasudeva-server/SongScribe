@@ -15,7 +15,7 @@ The mechanical test, applied to every dialog class without judgment:
 
 A dialog is still free to use the domain's *static knowledge*. That line, not a package line, is where the boundary runs: a `songscribe.dom` import is fine when it names knowledge and wrong when it names the document.
 
-- **Knowledge — allowed.** Enums (`Duration`, `Key`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score. A mutable value type reaches a dialog as a copy — see [`I` is `Copyable`](#i-is-copyable-and-the-copy-happens-in-one-place).
+- **Knowledge — allowed.** Enums (`BeatUnit`, `Key`), value types (`BeatChange`, `Tempo`, `Annotation`), constants, and pure functions over them. Knowing what a crotchet is is not the same as holding a handle on a score. A mutable value type reaches a dialog as a copy — see [`I` is `Copyable`](#i-is-copyable-and-the-copy-happens-in-one-place).
 - **State — forbidden.** `Song`, `Line`, `StaffElement`, `ScoreView`, and reaching through `MainFrame` for any of them. `getMainFrame()` is for **window parenting only**.
 
 Under this rule a dialog's own steps — populate, gather, call the ops — are wiring and carry no tests of their own. **What carries tests is the controller.**

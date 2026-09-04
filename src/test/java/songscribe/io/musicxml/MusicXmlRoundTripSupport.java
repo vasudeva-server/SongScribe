@@ -30,6 +30,7 @@ import java.time.ZoneOffset;
 import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.InputSource;
 
+import songscribe.UnitTest;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
@@ -42,6 +43,7 @@ import songscribe.io.SongLoadResult;
 import songscribe.layout.LineLayoutProvider;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.UnitTest.FIXED_CLOCK;
 import static songscribe.io.XmlFixtures.closeTag;
 import static songscribe.io.XmlFixtures.element;
 import static songscribe.io.XmlFixtures.emptyTag;
@@ -74,17 +76,7 @@ final class MusicXmlRoundTripSupport {
      */
     static final int C4_STAFF_POSITION = 6;
 
-    private static final String FIXED_CLOCK_INSTANT = "2026-01-01T00:00:00Z";
-
-    /**
-     * A fixed clock, so every date-derived value the writer produces — the
-     * {@code <encoding-date>}, the rights-credit year — is identical across runs and
-     * across generations of the same song. Without it the corpus fixpoint would flake
-     * whenever a run straddled midnight.
-     */
-    static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse(FIXED_CLOCK_INSTANT), ZoneOffset.UTC);
-
-    /** The year {@link #FIXED_CLOCK} reports, for cases asserting on the rights credit. */
+    /** The year {@link UnitTest#FIXED_CLOCK} reports, for cases asserting on the rights credit. */
     static final int FIXED_CLOCK_YEAR = FIXED_CLOCK.instant().atZone(ZoneOffset.UTC).getYear();
 
     /**
@@ -184,7 +176,7 @@ final class MusicXmlRoundTripSupport {
 
     /**
      * Builds the complete {@link ScorePartwise} graph for {@code song}, headless-laid-out
-     * and dated from {@link #FIXED_CLOCK}. This is the construction
+     * and dated from {@link UnitTest#FIXED_CLOCK}. This is the construction
      * {@code MusicXmlWriter.writeSong} drives internally, minus the marshal step — a case
      * that only needs the shape the builder produced has no reason to also exercise the
      * serializer.

@@ -76,23 +76,28 @@ final class PreviewElementInserter {
             return;
         }
 
+        var hover = PreviewElementManager.hover();
+
+        if (hover == null) {
+            return;
+        }
+
+        var insertionIndex = hover.insertionIndex();
+        var overElementX = hover.overElementX();
         var previewElement = EditModeManager.getPreviewElement();
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
         // terminal. trackMouse already clears the preview at these positions.
         var song = line.getSong();
 
-        if (PreviewElementManager.isPositionBlockedByTerminal(
-                song, line, PreviewElementManager.getCurrentXIndex(),
-                PreviewElementManager.isXPosSsMatchesElement())) {
+        if (PreviewElementManager.isPositionBlockedByTerminal(song, line, insertionIndex, overElementX)) {
             return;
         }
 
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
-        if (PreviewElementManager.isXPosSsMatchesElement()) {
-            if (previewElement != null
-                    && isDirectClickOnTerminal(song, line, PreviewElementManager.getCurrentXIndex())) {
+        if (overElementX) {
+            if (previewElement != null && isDirectClickOnTerminal(song, line, insertionIndex)) {
                 var previewType = previewElement.getType();
 
                 if (song.canReplaceTerminal(previewType)) {
@@ -103,15 +108,13 @@ final class PreviewElementInserter {
         }
 
         if (PreviewElementManager.isBreathMarkInsertionBlocked(
-                previewElement, PreviewElementManager.getCurrentXIndex(), line,
-                PreviewElementManager.isXPosSsMatchesElement())) {
+                previewElement, insertionIndex, line, overElementX)) {
             return;
         }
 
         // A grace note, a key change and the barline a key change sits behind may never be
         // replaced — ignore the click.
-        if (PreviewElementManager.isXPosSsMatchesElement()
-                && !line.canReplaceElementAt(PreviewElementManager.getCurrentXIndex())) {
+        if (overElementX && !line.canReplaceElementAt(insertionIndex)) {
             return;
         }
 
@@ -123,14 +126,15 @@ final class PreviewElementInserter {
 
         // Decided once and used both to ask and to act, so the question can never be asked about a
         // click that then does something else.
-        var appends = PreviewElementManager.getCurrentXIndex() == line.elementCount();
-        var replacesExisting = !appends && !forceInsert && PreviewElementManager.isXPosSsMatchesElement();
+        var appends = insertionIndex == line.elementCount();
+        var replacesExisting = !appends && !forceInsert && overElementX;
 
         // Replacing a note takes its explicit accidental away, so this path asks the same question
         // every other removal path does — here, before the bracket opens, since a dialog must never
         // be open inside one. An append or an insert removes nothing and is never asked.
+        var staffPositionSp = hover.staffPositionSp();
         var decision = replacesExisting
-            ? confirmReplacementRestatements(lc, line, PreviewElementManager.getCurrentXIndex(), previewElement)
+            ? confirmReplacementRestatements(lc, line, insertionIndex, staffPositionSp, previewElement)
             : AccidentalRestatements.Decision.PROCEED;
 
         if (decision.isCancelled()) {
@@ -145,9 +149,9 @@ final class PreviewElementInserter {
             if (appends) {
                 addPreviewElement(lc, line);
             } else if (replacesExisting) {
-                modifyExistingElement(lc, PreviewElementManager.getCurrentXIndex(), line, decision);
+                modifyExistingElement(lc, insertionIndex, staffPositionSp, line, decision);
             } else {
-                insertElement(lc, PreviewElementManager.getCurrentXIndex(), line);
+                insertElement(lc, insertionIndex, line);
             }
         });
     }
@@ -377,12 +381,13 @@ final class PreviewElementInserter {
      * means the click does nothing at all.
      */
     private static AccidentalRestatements.Decision confirmReplacementRestatements(
-        LineComponent lc, Line line, int elementIndex, StaffElement previewElement) {
+        LineComponent lc, Line line, int elementIndex, int hoverStaffPositionSp,
+        StaffElement previewElement) {
 
         var existing = line.getElement(elementIndex);
         var staffPosition = existing.getStaffPosition();
         var landsAtSamePosition = previewElement.getType().isPitchedNote()
-            && (PreviewElementManager.getCurrentStaffPosition() == staffPosition);
+            && (hoverStaffPositionSp == staffPosition);
 
         return AccidentalRestatements.confirm(
             lc,
@@ -402,14 +407,16 @@ final class PreviewElementInserter {
      * dynamic attachments, lyrics, fermata, x position) are preserved from the existing element.
      * Called when the user clicks on an existing element head with the preview element active.
      *
-     * @param lc           The LineComponent
-     * @param elementIndex The index of the element to replace
-     * @param line         The line containing the element
-     * @param decision     The restatements the user accepted for this replacement, from
-     *                     {@link #confirmReplacementRestatements}
+     * @param lc                   The LineComponent
+     * @param elementIndex         The index of the element to replace
+     * @param hoverStaffPositionSp The staff position the hover resolved the mouse Y to
+     * @param line                 The line containing the element
+     * @param decision             The restatements the user accepted for this replacement, from
+     *                             {@link #confirmReplacementRestatements}
      */
     private static void modifyExistingElement(
-        LineComponent lc, int elementIndex, Line line, AccidentalRestatements.Decision decision) {
+        LineComponent lc, int elementIndex, int hoverStaffPositionSp, Line line,
+        AccidentalRestatements.Decision decision) {
 
         var previewElement = validateAndGetPreviewElement(line, elementIndex);
 
@@ -435,8 +442,8 @@ final class PreviewElementInserter {
         // the existing element by the copy constructor.
         replacement.copyArticulationsFrom(previewElement);
 
-        // Rests snap to their default staff position; pitched notes use the mouse Y position
-        PreviewElementManager.applyStaffPosition(replacement, PreviewElementManager.getCurrentStaffPosition());
+        // A pitched note takes the mouse Y position; anything else answers from its type
+        PreviewElementManager.applyStaffPosition(replacement, hoverStaffPositionSp);
 
         if (replacement.isStemDirectionAuto()) {
             replacement.setDirection(StaffElement.defaultDirection(replacement));

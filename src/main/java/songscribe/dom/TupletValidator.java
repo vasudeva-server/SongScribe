@@ -108,16 +108,16 @@ public final class TupletValidator {
     private static final int MAX_BEAT_MULTIPLE = 8;
 
     /** Shortest span a beat is subdivided down to, in PPQ ticks — the shortest written value. */
-    private static final int SHORTEST_SPAN_TICKS = ElementType.DEMI_SEMIQUAVER.getDefaultDuration();
+    private static final int SHORTEST_SPAN_TICKS = NoteValue.THIRTY_SECOND.ticks();
 
     /** Returned by {@link #notatableTicks} for a value that is not writable as a note. */
     private static final int NOT_NOTATABLE_TICKS = 0;
 
     /** Every writable note value, keyed by its duration in PPQ ticks. */
-    private static final Map<Integer, NoteValue> NOTATABLE_BY_TICKS = buildNotatableByTicks();
+    private static final Map<Integer, NotatableValue> NOTATABLE_BY_TICKS = buildNotatableByTicks();
 
     /** The same table inverted, for checking a value a file stated. */
-    private static final Map<NoteValue, Integer> TICKS_BY_NOTATABLE = invert(NOTATABLE_BY_TICKS);
+    private static final Map<NotatableValue, Integer> TICKS_BY_NOTATABLE = invert(NOTATABLE_BY_TICKS);
 
     private TupletValidator() {
     }
@@ -161,7 +161,7 @@ public final class TupletValidator {
     ) {}
 
     /** A written note value: a base element type plus a dot count. */
-    private record NoteValue(ElementType type, int dots) {}
+    private record NotatableValue(ElementType type, int dots) {}
 
     /**
      * Measures a span once, so every candidate grade can be tested against it without
@@ -180,12 +180,11 @@ public final class TupletValidator {
         Song song, Line line, int lineIndex, int beginIndex, int endIndex
     ) {
         var beat = song.resolveBeatAt(lineIndex, beginIndex).beat();
-        var beatNote = beat.getNote();
 
         return new SpanContext(
             writtenTicks(line, beginIndex, endIndex),
-            beatNote.getDefaultDurationWithDots(),
-            beatNote.getDotCount() == 1,
+            beat.ticks(),
+            beat.dotted(),
             hasFermata(line, beginIndex, endIndex),
             crossesBeatBarrier(line, beginIndex, endIndex, beat),
             crossesStructuralBoundary(line, beginIndex, endIndex)
@@ -446,13 +445,11 @@ public final class TupletValidator {
         private boolean crossesBeatBarrier;
         private boolean crossesStructuralBoundary;
 
-        private OpenSpan(Tuplet tuplet, Duration beatAtAnchor) {
-            var beatNote = beatAtAnchor.getNote();
-
+        private OpenSpan(Tuplet tuplet, BeatUnit beatAtAnchor) {
             this.tuplet = tuplet;
             endIndex = tuplet.getEndElementIndex();
-            beatTicks = beatNote.getDefaultDurationWithDots();
-            beatDotted = beatNote.getDotCount() == 1;
+            beatTicks = beatAtAnchor.ticks();
+            beatDotted = beatAtAnchor.dotted();
         }
 
         private int endIndex() {
@@ -526,7 +523,7 @@ public final class TupletValidator {
      * walk starts at {@code beginIndex + 1} and carries the beat resolved at the anchor.
      */
     private static boolean crossesBeatBarrier(
-        Line line, int beginIndex, int endIndex, Duration beatAtAnchor
+        Line line, int beginIndex, int endIndex, BeatUnit beatAtAnchor
     ) {
         var runningBeat = beatAtAnchor;
 
@@ -553,7 +550,7 @@ public final class TupletValidator {
      * value differs from the beat already running — a marking that changes nothing but the
      * BPM leaves the beat, and so the tuplet's frame of reference, intact.
      */
-    private static boolean isBeatBarrier(StaffElement element, Duration runningBeat) {
+    private static boolean isBeatBarrier(StaffElement element, BeatUnit runningBeat) {
         if (element.findAttachment(BeatChangeAttachment.class) != null) {
             return true;
         }
@@ -583,7 +580,7 @@ public final class TupletValidator {
      * control on ordinary selections.
      */
     private static boolean isStructuralBoundary(ElementType type, int index, int endIndex) {
-        return index != endIndex && (type.isBarLine() || type.isRepeat() || type.isBreathMark());
+        return index != endIndex && (type.isBar() || type.isBreathMark());
     }
 
     /**
@@ -663,7 +660,7 @@ public final class TupletValidator {
 
     /** The duration of a stated written value in PPQ ticks, or {@value #NOT_NOTATABLE_TICKS}. */
     private static int notatableTicks(ElementType type, int dots) {
-        var ticks = TICKS_BY_NOTATABLE.get(new NoteValue(type, dots));
+        var ticks = TICKS_BY_NOTATABLE.get(new NotatableValue(type, dots));
 
         return ticks == null ? NOT_NOTATABLE_TICKS : ticks;
     }
@@ -677,26 +674,24 @@ public final class TupletValidator {
      * excluded because they duplicate the note durations; the note table itself has no
      * collisions.
      */
-    private static Map<Integer, NoteValue> buildNotatableByTicks() {
-        var table = new HashMap<Integer, NoteValue>();
+    private static Map<Integer, NotatableValue> buildNotatableByTicks() {
+        var table = new HashMap<Integer, NotatableValue>();
 
-        for (var type : ElementType.values()) {
-            if (!type.isPitchedNote() || type.getDefaultDuration() == 0) {
-                continue;
-            }
+        for (var value : NoteValue.values()) {
+            var type = value.note();
 
             for (var dots = 0; dots <= MAX_DOT_COUNT; dots++) {
                 var probe = type.newInstance();
                 probe.setDotCount(dots);
-                table.put(probe.getDefaultDurationWithDots(), new NoteValue(type, dots));
+                table.put(probe.getDefaultDurationWithDots(), new NotatableValue(type, dots));
             }
         }
 
         return Map.copyOf(table);
     }
 
-    private static Map<NoteValue, Integer> invert(Map<Integer, NoteValue> byTicks) {
-        var inverted = new HashMap<NoteValue, Integer>();
+    private static Map<NotatableValue, Integer> invert(Map<Integer, NotatableValue> byTicks) {
+        var inverted = new HashMap<NotatableValue, Integer>();
 
         byTicks.forEach((ticks, noteValue) -> inverted.put(noteValue, ticks));
 

@@ -264,7 +264,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             return element.getType() == ElementType.BREATH_MARK;
         }
 
-        if (!element.getType().isBarLine() && !element.getType().isRepeat()) {
+        if (!element.getType().isBar()) {
             return false;
         }
 
@@ -297,7 +297,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
      * keep their static Tier-A key.
      */
     private boolean isBarLineOrRepeatReplace() {
-        return kind == Kind.NON_DURATION && (type.isBarLine() || type.isRepeat());
+        return kind == Kind.NON_DURATION && type.isBar();
     }
 
     /**

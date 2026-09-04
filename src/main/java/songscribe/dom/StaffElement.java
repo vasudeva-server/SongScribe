@@ -167,9 +167,6 @@ public abstract class StaffElement extends LineElement implements Cloneable {
             staffPosition = source.staffPosition;
 
             copyArticulationsFrom(source);
-        } else {
-            // Rest: use default staff position for the target type
-            staffPosition = targetType.getDefaultStaffPosition();
         }
     }
 

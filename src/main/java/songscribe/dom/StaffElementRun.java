@@ -147,7 +147,7 @@ public interface StaffElementRun {
 
         var precedingType = getElement(index - 1).getType();
 
-        return precedingType.isBarLine() || precedingType.isRepeat();
+        return precedingType.isBar();
     }
 
     /**

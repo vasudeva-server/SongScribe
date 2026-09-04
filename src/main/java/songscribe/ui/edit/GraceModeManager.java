@@ -348,14 +348,16 @@ public final class GraceModeManager {
             return false;
         }
 
-        var xIndex = PreviewElementManager.getCurrentXIndex();
+        var hover = PreviewElementManager.hover();
+
+        if (hover == null) {
+            return false;
+        }
+
+        var xIndex = hover.insertionIndex();
 
         if (line.isInsideGraceHostPair(xIndex)) {
             return true;
-        }
-
-        if (xIndex < 0) {
-            return false;
         }
 
         if (!InsertionSpacingCalculator.hasRoomForGraceNote(
@@ -550,8 +552,15 @@ public final class GraceModeManager {
         graceLineComponent = lineComponent;
         graceLine = line;
 
-        // The grace note is the most recently inserted element at the current x index
-        var insertedIndex = PreviewElementManager.getCurrentXIndex();
+        // The grace note is the most recently inserted element at the hover's insertion index
+        var hover = PreviewElementManager.hover();
+
+        if (hover == null) {
+            abort();
+            return;
+        }
+
+        var insertedIndex = hover.insertionIndex();
 
         if (!line.hasIndex(insertedIndex)) {
             // Insertion failed (e.g. triplet boundary)
@@ -559,11 +568,10 @@ public final class GraceModeManager {
             return;
         }
 
-        // handleClick inserts at currentXIndex, but after insertion the element
-        // count has increased. The inserted element is at the index that was
-        // currentXIndex before the click. Since handleClick may have appended
-        // (currentXIndex == elementCount before insert), we need to check the
-        // last element in that case.
+        // handleClick inserts at the hover's insertion index, but after insertion the element
+        // count has increased. The inserted element is at the index the hover held before the
+        // click. Since handleClick may have appended (insertion index == elementCount before
+        // insert), we need to check the last element in that case.
         graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
         graceNote = line.getElement(graceNoteIndex);
 

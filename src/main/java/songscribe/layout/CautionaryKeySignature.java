@@ -159,7 +159,7 @@ public record CautionaryKeySignature(
     /** Whether {@code lastElement} is the barline a cautionary would otherwise draw for itself. */
     private static boolean endsAtBarLine(StaffElement lastElement) {
         var type = lastElement.getType();
-        return type.isBarLine() || type.isRepeat();
+        return type.isBar();
     }
 
     /**

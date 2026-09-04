@@ -218,7 +218,7 @@ public class Ending extends Span {
     }
 
     private static boolean opensOnItsOwn(ElementType type) {
-        return type.isBarLine() || type.isRepeat();
+        return type.isBar();
     }
 
     /**
@@ -240,7 +240,7 @@ public class Ending extends Span {
             return true;
         }
 
-        if (!endType.isBarLine() && !endType.isRepeat()) {
+        if (!endType.isBar()) {
             return false;
         }
 
@@ -361,7 +361,7 @@ public class Ending extends Span {
         // REPEAT_LEFT_RIGHT) is a valid anchor; only a non-content, non-barline,
         // non-repeat type (e.g. clef/key change) invalidates.
         if (oldElement == getAnchorElement()) {
-            return (newType.isDuration() || newType.isBarLine() || newType.isRepeat())
+            return (newType.isDuration() || newType.isBar())
                 ? EndingEffect.None.INSTANCE
                 : new EndingEffect.Invalidate(this);
         }
@@ -395,7 +395,7 @@ public class Ending extends Span {
 
         // Condition 3 — end element replaced
         if (oldElement == getEndElement()) {
-            if (!newType.isDuration() && !newType.isBarLine() && !newType.isRepeat()) {
+            if (!newType.isDuration() && !newType.isBar()) {
                 return new EndingEffect.Invalidate(this);
             }
 
@@ -446,7 +446,7 @@ public class Ending extends Span {
     protected boolean isInvalidatedByInsertion(
         int insertedIndex, ElementType insertedType, Line line
     ) {
-        if (!insertedType.isBarLine() && !insertedType.isRepeat()) {
+        if (!insertedType.isBar()) {
             return false;
         }
 

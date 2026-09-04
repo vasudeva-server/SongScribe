@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.binding.Property;
 import songscribe.dom.BeatChange;
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.binding.Controls;
@@ -42,7 +42,7 @@ import songscribe.ui.component.MainFrame;
  * element.
  *
  * <p><strong>Both combos always carry a selection.</strong> Each is built over the whole
- * {@link Duration} enum, so its model is never empty, and a non-empty combo selects its first
+ * {@link BeatUnit} enum, so its model is never empty, and a non-empty combo selects its first
  * entry on construction. That is the precondition {@link Controls#item} states, and it is what
  * lets {@link #gather()} produce a {@link BeatChange} unconditionally instead of quietly
  * declining to commit.
@@ -54,16 +54,16 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
      * taking the beat of a crotchet, the compound-time case the dialog is opened for most often.
      */
     static final BeatChange DEFAULT_BEAT_CHANGE =
-        new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
+        new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET);
 
-    private final Property<Duration> duration;
-    private final Property<Duration> beat;
+    private final Property<BeatUnit> duration;
+    private final Property<BeatUnit> beat;
 
     public BeatChangeDialog(MainFrame mainFrame, DialogOps<? extends @Nullable BeatChange, BeatChange> ops) {
         super(mainFrame, Strings.get(Strings.DIALOG_BEAT_CHANGE_TITLE), ops);
 
-        var durationCombo = DurationListCellRenderer.createCombo(Duration.values());
-        var beatCombo = DurationListCellRenderer.createCombo(Duration.values());
+        var durationCombo = DurationListCellRenderer.createCombo(BeatUnit.values());
+        var beatCombo = DurationListCellRenderer.createCombo(BeatUnit.values());
         duration = Controls.item(durationCombo);
         beat = Controls.item(beatCombo);
 

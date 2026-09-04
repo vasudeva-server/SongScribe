@@ -24,10 +24,10 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Duration;
+import songscribe.dom.BeatUnit;
 
 /**
- * Bidirectional lookup table between SongScribe {@link Duration} values and
+ * Bidirectional lookup table between SongScribe {@link BeatUnit} values and
  * their MusicXML beat-unit representation: a type token ({@code <beat-unit>}
  * or {@code <metronome-type>}) plus a dot count ({@code <beat-unit-dot/>} or
  * {@code <metronome-dot/>}).
@@ -45,42 +45,21 @@ import songscribe.dom.Duration;
 final class BeatUnitMapping {
 
     // -------------------------------------------------------------------------
-    // Dot counts used by this mapping (no note value needs more than one dot).
+    // Reverse map: (token, dot count) → BeatUnit, derived from the same
+    // token/dot derivation forDuration uses, so the two directions cannot drift
+    // apart.
     // -------------------------------------------------------------------------
 
-    private static final int NO_DOT = 0;
-    private static final int ONE_DOT = 1;
-
-    // -------------------------------------------------------------------------
-    // Forward map: Duration → BeatUnitEntry (token + dot count)
-    // -------------------------------------------------------------------------
-
-    private static final Map<Duration, BeatUnitEntry> FORWARD_MAP = Map.of(
-        Duration.SEMI_BREVE,      new BeatUnitEntry(NoteTypeMapping.TYPE_WHOLE, NO_DOT),
-        Duration.MINIM,           new BeatUnitEntry(NoteTypeMapping.TYPE_HALF, NO_DOT),
-        Duration.MINIM_DOTTED,    new BeatUnitEntry(NoteTypeMapping.TYPE_HALF, ONE_DOT),
-        Duration.CROTCHET,        new BeatUnitEntry(NoteTypeMapping.TYPE_QUARTER, NO_DOT),
-        Duration.CROTCHET_DOTTED, new BeatUnitEntry(NoteTypeMapping.TYPE_QUARTER, ONE_DOT),
-        Duration.QUAVER,          new BeatUnitEntry(NoteTypeMapping.TYPE_EIGHTH, NO_DOT),
-        Duration.QUAVER_DOTTED,   new BeatUnitEntry(NoteTypeMapping.TYPE_EIGHTH, ONE_DOT)
-    );
-
-    // -------------------------------------------------------------------------
-    // Reverse map: (token, dot count) → Duration, derived from FORWARD_MAP so the
-    // two directions cannot drift apart. A collision would silently drop an entry;
-    // BeatUnitMappingTest guards FORWARD_MAP's injectivity to rule that out.
-    // -------------------------------------------------------------------------
-
-    private static final Map<BeatUnitKey, Duration> REVERSE_MAP = buildReverseMap();
+    private static final Map<BeatUnitKey, BeatUnit> REVERSE_MAP = buildReverseMap();
 
     private BeatUnitMapping() {}
 
-    private static Map<BeatUnitKey, Duration> buildReverseMap() {
-        var reverse = new HashMap<BeatUnitKey, Duration>();
+    private static Map<BeatUnitKey, BeatUnit> buildReverseMap() {
+        var reverse = new HashMap<BeatUnitKey, BeatUnit>();
 
-        for (var entry : FORWARD_MAP.entrySet()) {
-            var beatUnit = entry.getValue();
-            reverse.put(new BeatUnitKey(beatUnit.token(), beatUnit.dotCount()), entry.getKey());
+        for (var unit : BeatUnit.values()) {
+            var entry = forDuration(unit);
+            reverse.put(new BeatUnitKey(entry.token(), entry.dotCount()), unit);
         }
 
         return Map.copyOf(reverse);
@@ -92,20 +71,19 @@ final class BeatUnitMapping {
 
     /**
      * Returns the MusicXML beat-unit representation for the given
-     * {@link Duration}, or {@code null} if the duration has no entry in the
-     * forward map.
+     * {@link BeatUnit}.
      */
-    @Nullable
-    static BeatUnitEntry forDuration(Duration duration) {
-        return FORWARD_MAP.get(duration);
+    static BeatUnitEntry forDuration(BeatUnit duration) {
+        return new BeatUnitEntry(
+            NoteTypeMapping.typeToken(duration.noteValue()), duration.dotted() ? 1 : 0);
     }
 
     /**
-     * Returns the {@link Duration} for the given MusicXML beat-unit token and
+     * Returns the {@link BeatUnit} for the given MusicXML beat-unit token and
      * dot count, or {@code null} if the combination is not recognised.
      */
     @Nullable
-    static Duration forBeatUnit(String token, int dotCount) {
+    static BeatUnit forBeatUnit(String token, int dotCount) {
         return REVERSE_MAP.get(new BeatUnitKey(token, dotCount));
     }
 
@@ -114,7 +92,7 @@ final class BeatUnitMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Carries the MusicXML beat-unit token and dot count for a {@link Duration}.
+     * Carries the MusicXML beat-unit token and dot count for a {@link BeatUnit}.
      */
     record BeatUnitEntry(String token, int dotCount) {}
 

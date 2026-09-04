@@ -45,7 +45,7 @@ import songscribe.util.Copyable;
  *                     a tuplet is measured in
  * @param marking      what this tempo draws — see {@link TempoMarking}
  */
-public record Tempo(int visibleTempo, Duration tempoType, TempoMarking marking)
+public record Tempo(int visibleTempo, BeatUnit tempoType, TempoMarking marking)
     implements Copyable<Tempo> {
 
     // The default tempo produced by the no-arg constructor. Note that the default marking's
@@ -53,7 +53,7 @@ public record Tempo(int visibleTempo, Duration tempoType, TempoMarking marking)
     // localized string.
 
     public static final int DEFAULT_BPM = 120;
-    public static final Duration DEFAULT_TYPE = Duration.CROTCHET;
+    public static final BeatUnit DEFAULT_TYPE = BeatUnit.CROTCHET;
     public static final TempoMarking DEFAULT_MARKING = new TempoMarking.Metronome("Moderate");
 
     /**
@@ -68,7 +68,7 @@ public record Tempo(int visibleTempo, Duration tempoType, TempoMarking marking)
      *         playback runs at the written tempo whatever unit it counts
      */
     public int realTempo() {
-        return ((visibleTempo * tempoType.getNote().getDuration()) / MidiSequenceBuilder.PPQ);
+        return ((visibleTempo * tempoType.ticks()) / MidiSequenceBuilder.PPQ);
     }
 
     /**

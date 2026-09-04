@@ -46,10 +46,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteValue;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 
@@ -105,8 +105,8 @@ final class NoteBuilder {
      *
      * <p>Two kinds of element produce none. A breath mark is folded into the preceding note's
      * {@code <articulations>} rather than emitted in its own right (see
-     * {@link #foldBreathMark}). Anything else without a {@code <type>} token — a barline, a
-     * repeat — is not a note at all; the caller emits those as {@code <barline>} children.
+     * {@link #foldBreathMark}). Anything else without a note value — a barline, a repeat, a
+     * key change — is not a note at all; the caller emits those in its own way.
      */
     static @Nullable Note buildNote(BuildContext ctx, Line line, int elementIndex) {
         var element = line.getElements().get(elementIndex);
@@ -117,12 +117,13 @@ final class NoteBuilder {
             return null;
         }
 
-        var typeToken = NoteTypeMapping.typeToken(type);
+        var value = type.noteValue();
 
-        if (typeToken == null) {
+        if (value == null) {
             return null;
         }
 
+        var typeToken = NoteTypeMapping.typeToken(value);
         var factory = ctx.factory();
         var pmNote = factory.createNote();
         var isGrace = type.isGraceNote();
@@ -164,7 +165,7 @@ final class NoteBuilder {
         // <duration> is the *performed* duration, which is what MusicXML means by it: a tuplet
         // member sounds shorter than its <type> says. Grace notes have none.
         if (NoteTypeMapping.hasDuration(type)) {
-            pmNote.setDuration(BigDecimal.valueOf(performedTicks(type, element.getDotCount(), tuplet)));
+            pmNote.setDuration(BigDecimal.valueOf(performedTicks(value, element.getDotCount(), tuplet)));
         }
 
         var noteType = factory.createNoteType();
@@ -441,7 +442,8 @@ final class NoteBuilder {
         var factory = ctx.factory();
         var grade = tuplet.getGrade();
         var noteValue = tuplet.getNoteValue();
-        var normalTypeToken = noteValue == null ? null : NoteTypeMapping.typeToken(noteValue);
+        var value = noteValue == null ? null : noteValue.noteValue();
+        var normalTypeToken = value == null ? null : NoteTypeMapping.typeToken(value);
         var timeModification = factory.createTimeModification();
 
         timeModification.setActualNotes(BigInteger.valueOf(grade));
@@ -502,8 +504,8 @@ final class NoteBuilder {
      *
      * @param tuplet the tuplet this note belongs to, or {@code null} if none
      */
-    private static int performedTicks(ElementType type, int dotCount, @Nullable Tuplet tuplet) {
-        var writtenTicks = NoteTypeMapping.ticks(type, dotCount);
+    private static int performedTicks(NoteValue value, int dotCount, @Nullable Tuplet tuplet) {
+        var writtenTicks = NoteTypeMapping.ticks(value, dotCount);
 
         // An unresolved tuplet states no ratio to scale by — the post-load pass derives one, so
         // until then the written duration is all there is.
@@ -516,7 +518,7 @@ final class NoteBuilder {
 
         if (product % grade != 0) {
             throw new ArithmeticException(
-                "Performed duration is not an integer for " + type + " dotCount=" + dotCount
+                "Performed duration is not an integer for " + value + " dotCount=" + dotCount
                 + " in a " + grade + ':' + tuplet.getNormalNotes() + " tuplet"
                 + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
             );

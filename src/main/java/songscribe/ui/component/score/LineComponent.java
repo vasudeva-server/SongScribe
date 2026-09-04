@@ -612,20 +612,6 @@ public class LineComponent extends ScoreComponent
         return PreviewElementManager.hasPreviewElement(this);
     }
 
-    /**
-     * Returns the current insertion X index.
-     */
-    public static int getCurrentXIndex() {
-        return PreviewElementManager.getCurrentXIndex();
-    }
-
-    /**
-     * Returns the current insertion Y position.
-     */
-    public static int getCurrentStaffPosition() {
-        return PreviewElementManager.getCurrentStaffPosition();
-    }
-
     // ==========================================================================
     // Mouse Event Handlers
     // ==========================================================================

@@ -109,7 +109,7 @@ public class KeyChangeElement extends StructuralElement {
     public static boolean needsBarlineBefore(Line line, int insertionIndex) {
         var precedingType = line.getElement(insertionIndex - 1).getType();
 
-        return !precedingType.isBarLine() && !precedingType.isRepeat();
+        return !precedingType.isBar();
     }
 
     @Override

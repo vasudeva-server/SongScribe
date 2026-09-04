@@ -899,7 +899,7 @@ public class LayoutEngine {
         var lastElement = line.getElement(elementCount - 1);
         var lastType = lastElement.getType();
 
-        if (!lastType.isBarLine() && !lastType.isRepeat()) {
+        if (!lastType.isBar()) {
             return staffRightMarginSs;
         }
 
