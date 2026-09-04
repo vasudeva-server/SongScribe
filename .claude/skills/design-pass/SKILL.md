@@ -657,6 +657,16 @@ is not yours to decide.
   duplication, a wrong abstraction or a misleading name in a caller, a neighbor,
   or a shared helper this work merely passes through gets raised with file and
   line references. Never call anything out of scope.
+- **The correct structure is proposed whole, never narrowed because it reaches a
+  later pass' package.** Where the right shape moves a type, redistributes a
+  method, or edits a file that belongs to a target no pass has taken yet, that is
+  what gets proposed — not an intermediate state, adapter, or partial version
+  sized to stay inside the current target's files. Crossing the boundary is a
+  fact about the design, not a reason to design around it. Whether to execute the
+  cross-boundary part now or carry it forward, tagged to the pass that owns that
+  package, is the user's call at the gate — the same choice *Findings outside the
+  target are still findings* already gives them, applied to a change instead of
+  an observation.
 - **No production surface exists solely for tests** — no method, no accessor, no
   widened field, no relaxed visibility, no reflection.
 - **Serena's `jet_brains_*` tools for all Java exploration and refactoring**, per
