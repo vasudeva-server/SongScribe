@@ -63,6 +63,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.lifecycle.Disposable;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.prefs.Prefs;
@@ -84,8 +85,8 @@ import songscribe.util.UIUtils;
  *
  * <p><strong>An instance serves one opening.</strong> The opener builds a dialog, shows
  * it, and drops it; the next opening builds a fresh one. The one piece of state that must
- * outlive a close — the window's geometry — is held per class in {@link #SAVED_GEOMETRY},
- * outside the instance, and {@link #getData()} reads what to show afresh every time, so
+ * outlive a close — the window's geometry — is held per class in
+ * {@link DialogGeometryStore}, outside the instance, and {@link #getData()} reads what to show afresh every time, so
  * there is nothing else a dialog is entitled to carry from one opening to the next.
  *
  * <p><strong>A non-modal dialog must not be built twice while one is up.</strong> A modal
@@ -120,14 +121,7 @@ public abstract class BaseDialog implements Disposable {
         TOP,
     }
 
-    private static final String KEY_X = "x";
-    private static final String KEY_Y = "y";
-    private static final String KEY_WIDTH = "width";
-    private static final String KEY_HEIGHT = "height";
-
     private static int visibleBlockingDialogCount = 0;
-    private static final Map<Class<?>, DialogGeometry> SAVED_GEOMETRY = new HashMap<>();
-    private static final GeometryResetSubscriber GEOMETRY_RESET_SUBSCRIBER = new GeometryResetSubscriber();
 
     private final MainFrame mainFrame;
     protected final String dialogTitle;
@@ -225,7 +219,7 @@ public abstract class BaseDialog implements Disposable {
      *
      * <p>Conditions accumulate and are conjoined: {@link #valid} is true when every one
      * of them is, and a dialog that adds none is always valid. A
-     * {@link songscribe.ui.dialog.StandardDialog} disables its OK button while
+     * {@link StandardDialog} disables its OK button while
      * {@link #valid} is false, so a rule stated here is one the user sees the moment they
      * break it rather than one they are told about after pressing OK.
      *
@@ -245,20 +239,11 @@ public abstract class BaseDialog implements Disposable {
     }
 
     /**
-     * Disposes every registered {@link Tab}, then this dialog's own {@link #bindings}, and
-     * marks this instance spent.
-     * <p>
-     * Tabs dispose first so a tab's own {@link Tab#dispose()} still runs with its bound
-     * controls intact, rather than after the bindings backing them have already been torn down.
+     * Disposes this dialog's own {@link #bindings} and marks this instance spent.
      * <p>
      * Idempotent: {@code setVisible(false)} is reachable both from the OK/Cancel path and
      * from {@code windowClosing}, so a second call has to be a no-op rather than a second
      * teardown.
-     * <p>
-     * {@code BaseDialog} unsubscribes nothing of its own. Its one subscriber,
-     * {@link #GEOMETRY_RESET_SUBSCRIBER}, is static and shared by every dialog of every
-     * class, so unsubscribing it here would silence geometry resets for the dialogs still
-     * to come.
      */
     @Override
     public void dispose() {
@@ -267,11 +252,6 @@ public abstract class BaseDialog implements Disposable {
         }
 
         disposed = true;
-
-        for (var tab : tabs) {
-            tab.dispose();
-        }
-
         bindings.dispose();
     }
 
@@ -284,13 +264,6 @@ public abstract class BaseDialog implements Disposable {
     }
 
     protected BaseDialog(MainFrame mainFrame, String title, Modality modality, DialogCategory category) {
-        // Subscribed here rather than in a static initializer: geometry can only be saved
-        // once a dialog exists, so first-construction subscription loses nothing, and merely
-        // loading the class cannot register the handler. Subscribing is idempotent — the bus
-        // refuses a listener it already holds — so repeated constructions are safe, and a
-        // construction after the subscriber's bus went away re-attaches it.
-        MessageCenter.subscribe(GEOMETRY_RESET_SUBSCRIBER);
-
         this.mainFrame = mainFrame;
         dialogTitle = title;
         this.modality = modality;
@@ -309,9 +282,6 @@ public abstract class BaseDialog implements Disposable {
         visibleBlockingDialogCount = 0;
     }
 
-    static void resetSavedGeometry() {
-        SAVED_GEOMETRY.clear();
-    }
 
     private static void incrementBlockingCount() {
         visibleBlockingDialogCount++;
@@ -832,11 +802,7 @@ public abstract class BaseDialog implements Disposable {
             dialog.pack();
             pinSizeToPreferred();
 
-            var geometry = SAVED_GEOMETRY.get(getClass());
-
-            if (geometry == null) {
-                geometry = loadGeometryFromPrefs();
-            }
+            var geometry = DialogGeometryStore.load(getClass());
 
             if (geometry != null) {
                 applyGeometry(geometry);
@@ -876,20 +842,7 @@ public abstract class BaseDialog implements Disposable {
 
                 var location = dialog.getLocation();
                 var size = isResizable() ? dialog.getSize() : null;
-                var closingGeometry = new DialogGeometry(location, size);
-                SAVED_GEOMETRY.put(getClass(), closingGeometry);
-
-                var valueMap = new HashMap<String, Object>();
-                valueMap.put(KEY_X, location.x);
-                valueMap.put(KEY_Y, location.y);
-
-                if (size != null) {
-                    valueMap.put(KEY_WIDTH, size.width);
-                    valueMap.put(KEY_HEIGHT, size.height);
-                }
-
-                var simpleClassName = getClass().getSimpleName();
-                Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(simpleClassName, valueMap));
+                DialogGeometryStore.save(getClass(), new DialogGeometry(location, size));
             } finally {
                 // Dispose first: decrementBlockingCount() posts DialogVisibilityDidChangeNotification(false),
                 // which handlers rely on to mean the dialog is actually gone (e.g. Component.getMousePosition()
@@ -906,37 +859,6 @@ public abstract class BaseDialog implements Disposable {
                 dispose();
             }
         }
-    }
-
-    private @Nullable DialogGeometry loadGeometryFromPrefs() {
-        var simpleClassName = getClass().getSimpleName();
-        var allGeometry = Prefs.getMap(PrefsKey.DIALOG_GEOMETRY);
-        var entry = allGeometry.get(simpleClassName);
-
-        if (!(entry instanceof Map<?, ?> map)) {
-            return null;
-        }
-
-        var rawX = map.get(KEY_X);
-        var rawY = map.get(KEY_Y);
-
-        if (!(rawX instanceof Number) || !(rawY instanceof Number)) {
-            return null;
-        }
-
-        var location = new Point(((Number) rawX).intValue(), ((Number) rawY).intValue());
-        Dimension size = null;
-
-        var rawWidth = map.get(KEY_WIDTH);
-        var rawHeight = map.get(KEY_HEIGHT);
-
-        if (rawWidth instanceof Number && rawHeight instanceof Number) {
-            size = new Dimension(((Number) rawWidth).intValue(), ((Number) rawHeight).intValue());
-        }
-
-        var geometry = new DialogGeometry(location, size);
-        SAVED_GEOMETRY.put(getClass(), geometry);
-        return geometry;
     }
 
     private void applyGeometry(DialogGeometry geometry) {
@@ -1241,18 +1163,6 @@ public abstract class BaseDialog implements Disposable {
          */
         protected void tabWillHide() {}
 
-        /**
-         * Releases whatever this tab acquired that outlives it — today, always the
-         * message-bus subscription a {@link songscribe.ui.action.UIAction} the tab built
-         * makes in its own constructor. Called by {@link BaseDialog#dispose()} when the
-         * dialog closes; the tab is not used afterwards.
-         * <p>
-         * A tab that owns a {@link Disposable} overrides this; a tab that owns none does
-         * not. An empty override is indistinguishable from an absent one, which is exactly
-         * what {@link Disposable} says a no-op implementation costs.
-         */
-        protected void dispose() {}
-
         @Override
         public Component add(Component comp) {
             add(comp, constraints);
@@ -1392,15 +1302,4 @@ public abstract class BaseDialog implements Disposable {
         }
     }
 
-    private static class GeometryResetSubscriber {
-
-        @Handler
-        public void prefsDidChange(PrefsDidChangeNotification notification) {
-            var key = notification.getKey();
-
-            if (key == PrefsKey.ALL || key == PrefsKey.DIALOG_GEOMETRY) {
-                SAVED_GEOMETRY.clear();
-            }
-        }
-    }
 }

@@ -31,8 +31,8 @@ import songscribe.message.Message;
  * <p>
  * {@code ScoreView} applies the change itself, from a {@code @Handler(priority =
  * Message.HIGH_PRIORITY)} handler of this same message — see {@code
- * ScoreView.zoomDidChangeApplyZoom}. Every other handler (status bar, action enablement, the
- * active lyric editor, overlay bounds) reacts to an already-applied change, so <b>any new
+ * ScoreView.zoomDidChangeApplyZoom}. Every other handler (status bar, action enablement,
+ * overlay bounds) reacts to an already-applied change, so <b>any new
  * listener to this message MUST use a handler priority strictly less than
  * {@code Message.HIGH_PRIORITY}</b> — a bare {@code @Handler} (priority 0) satisfies this. A
  * handler at {@code HIGH_PRIORITY} or above races {@code ScoreView}'s and may run before the

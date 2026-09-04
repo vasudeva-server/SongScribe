@@ -23,18 +23,14 @@ package songscribe.ui.action;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
-import songscribe.ui.component.MainFrame;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mockStatic;
 
 /**
  * The position policy for a mid-line key change — where the insertion marker appears and where it
@@ -52,18 +48,11 @@ class KeyChangeActionTest extends UnitTest {
      */
     private record PositionCase(String description, List<ElementType> types, int index, boolean accepted) {}
 
-    private MockedStatic<MainFrame> mainFrameMock;
     private KeyChangeAction action;
 
     @BeforeEach
     void setUpAction() {
-        mainFrameMock = mockStatic(MainFrame.class);
-        action = KeyChangeAction.createAction(MockEnvHelper.setupMockEnv(mainFrameMock).frame());
-    }
-
-    @AfterEach
-    void tearDownAction() {
-        mainFrameMock.close();
+        action = KeyChangeAction.createAction(MockEnvHelper.setupMockEnv().frame());
     }
 
     @ParameterizedTest(name = "{0}")

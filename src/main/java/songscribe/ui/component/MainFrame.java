@@ -70,7 +70,7 @@ import songscribe.io.SongFileWriter;
 import songscribe.layout.PageModel;
 import songscribe.lifecycle.Shutdown;
 import songscribe.message.MessageCenter;
-import songscribe.message.MessageLogger;
+import songscribe.message.MessageSubscription;
 import songscribe.message.command.NewFileCommand;
 import songscribe.message.command.OpenFileCommand;
 import songscribe.message.command.RevertToSavedCommand;
@@ -246,8 +246,8 @@ public class MainFrame extends JFrame {
             }
         );
 
-        MessageCenter.subscribe(this);
         installShutdownTasks();
+        MessageSubscription.addProcessListener(this);
     }
 
     public static void main(String[] args) {
@@ -275,7 +275,8 @@ public class MainFrame extends JFrame {
             // Install remaining fonts while MIDI initializes in the background.
             UIUtils.installEagerFonts();
 
-            MessageLogger.init();
+            // The bus holds the listener strongly, so nothing here needs to keep it.
+            new PreviewElementManager();
             Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
 
             // Build the main window but do NOT show it — reveal() will show it
@@ -514,7 +515,6 @@ public class MainFrame extends JFrame {
         // of one of those constants is MenuController.init(this). See docs/lifecycle.md.
         Actions.initialize(this);
         PlaybackController.initialize(this);
-        PreviewElementManager.initialize();
 
         setTitle(appName);
         setAppIcon();

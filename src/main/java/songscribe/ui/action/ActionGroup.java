@@ -9,6 +9,14 @@ import javax.swing.Action;
 
 import org.jspecify.annotations.Nullable;
 
+/**
+ * A set of actions of which at most one is selected at a time.
+ *
+ * <h2>Lifecycle</h2>
+ * Every group is a public constant of {@code Actions}, created by {@code Actions.initialize}
+ * and living for the process. A group listens to each action it holds for selection changes,
+ * and those actions live exactly as long as the group, so nothing ends the registrations.
+ */
 public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
 
     private final List<T> actions = new ArrayList<>();

@@ -30,6 +30,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
@@ -121,7 +122,7 @@ public final class EditModeManager {
         graceModeManager = new GraceModeManager(selectionCoordinator);
         insertionPointMode = new InsertionPointMode(scoreView);
         pasteModeManager = new PasteModeManager(scoreView, insertionPointMode);
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     /**

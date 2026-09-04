@@ -25,10 +25,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.listener.Listener;
+import net.engio.mbassy.listener.References;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction.AppMenuAction;
@@ -47,10 +49,11 @@ import songscribe.ui.action.UIAction.AppMenuAction;
  * no changes to this class.
  * <p>
  * Each managed {@code NSMenuItem} is {@code -retain}ed so its pointer stays valid
- * across runloop ticks. The controller is an application-lifetime singleton with
- * no teardown, so the retains are reclaimed by the OS at process exit rather than
- * via explicit {@code -release}.
+ * across runloop ticks. The controller lives for the process — the bus holds it as a
+ * {@link References#Strong} listener and nothing tears it down — so the retains are
+ * reclaimed by the OS at process exit rather than via explicit {@code -release}.
  */
+@Listener(references = References.Strong)
 public class MacNativeMenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MacNativeMenuController.class);
@@ -62,7 +65,7 @@ public class MacNativeMenuController {
 
     public MacNativeMenuController() {
         managedItems = discoverNativeItems();
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     @Handler()

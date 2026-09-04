@@ -37,7 +37,7 @@ import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Mode;
@@ -128,9 +128,11 @@ public final class SelectionCoordinator implements Disposable {
     private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
 
+    private final MessageSubscription subscription;
+
     public SelectionCoordinator(ScoreView scoreView) {
         this.scoreView = scoreView;
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /**
@@ -139,7 +141,7 @@ public final class SelectionCoordinator implements Disposable {
      */
     @Override
     public void dispose() {
-        MessageCenter.unsubscribe(this);
+        subscription.dispose();
         actionReflector.dispose();
     }
 

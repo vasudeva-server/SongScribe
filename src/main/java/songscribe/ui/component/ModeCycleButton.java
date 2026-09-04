@@ -24,7 +24,7 @@ import javax.swing.DefaultButtonModel;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
@@ -57,7 +57,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
 
         addActionListener(e -> CYCLE_MODE_ACTION.perform(this));
 
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     @Handler

@@ -32,9 +32,11 @@ import javax.xml.parsers.SAXParserFactory;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInstance;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -55,8 +57,6 @@ import songscribe.io.SongLoader;
 import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.message.MessageCenterTestHelper;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.Actions;
-import songscribe.undo.UndoController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.AdditionalAnswers.answerVoid;
@@ -72,6 +72,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
  * so tests don't block on user interaction.
  */
 @SuppressWarnings("OverlyBroadThrowsClause")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class UnitTest {
 
     private static volatile boolean bannerShown = false;
@@ -100,26 +101,22 @@ public abstract class UnitTest {
             bannerShown = true;
             SongScribe.logBanner("SongScribe (Unit Tests)");
         }
+
+        // Last, so nothing above can post to a bus the class does not own. A bus per class
+        // is what keeps a listener one test leaks from hearing a later class's posts.
+        MessageCenterTestHelper.installClassBus();
     }
 
-    // Both calls do what closing the bus scope cannot. Actions.initialize() installs a
-    // generation of action singletons; retiring them releases the mocked MainFrame they
-    // captured. UndoController is a static singleton, so its undo and redo stacks and its
-    // pending op-name outlive a test even though its subscription does not. Both are
-    // null-safe (they skip uninitialized fields) and idempotent, so this is a harmless
-    // no-op for a test that never touches either.
+    @AfterAll
+    static void retireClassBus() {
+        MessageCenterTestHelper.retireClassBus();
+    }
+
     @AfterEach
     void teardown() {
-        Actions.deinitialize();
-        UndoController.deinitialize();
-
-        // Discards this test's bus and every listener on it, so nothing a production
-        // constructor subscribed can fire against torn-down mocks in a later test.
-        MessageCenterTestHelper.closeScope();
-
-        // After the close, so the discard always runs: fail loudly if any @Handler threw
-        // during a post in this test — MBassador swallows the error and silently aborts
-        // delivery to the post's remaining subscribers, so nothing else reports it.
+        // Fail loudly if any @Handler threw during a post in this test — MBassador swallows
+        // the error and silently aborts delivery to the post's remaining subscribers, so
+        // nothing else reports it.
         MessageCenterTestHelper.assertNoPublicationErrors();
 
         // Also last: fail loudly if a background thread (e.g. PlayThread, a poll thread)
@@ -131,10 +128,6 @@ public abstract class UnitTest {
     @BeforeEach
     void setup() {
         RuntimeErrorTestHelper.reset();
-
-        // Opened before the test can construct anything, so every subscription it makes
-        // lands on this test's bus and leaves with it.
-        MessageCenterTestHelper.openScope();
 
         // Reinstalled every test: some tests (e.g. SongScribeTest's main() tests) call
         // Thread.setDefaultUncaughtExceptionHandler themselves, replacing this probe.

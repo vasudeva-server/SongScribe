@@ -24,7 +24,6 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -37,10 +36,8 @@ import songscribe.Strings;
 import songscribe.binding.Property;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
-import songscribe.lifecycle.Disposable;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -60,9 +57,6 @@ import songscribe.util.UIUtils;
  */
 final class FontSettingRow {
 
-    private static final String CHOOSE_FONT_COMMAND = "choose-font";
-    private static final String RESET_FONT_COMMAND = "reset-font";
-
     // The system defaults never change at runtime, so build them once and read
     // each Reset's font from the shared instance rather than rebuilding all
     // fonts on every Reset click.
@@ -70,25 +64,6 @@ final class FontSettingRow {
     private static DocumentFonts systemDefaultFonts = null;
 
     private FontSettingRow() {
-    }
-
-    /**
-     * An assembled row: the panel to add to a section, and the two actions behind its
-     * buttons, which subscribe themselves to the message bus and so have to be released
-     * when the dialog that owns the row closes.
-     * <p>
-     * The actions travel back with the panel rather than being reachable from it, because a
-     * caller that has to dig components out of a panel to release them is a caller that will
-     * forget: the row hands over exactly what it made and the owning tab holds the whole
-     * record until it disposes it.
-     */
-    record Row(JPanel panel, Disposable actions) implements Disposable {
-
-        /** Releases the row's actions. Idempotent, as {@link Disposable} requires. */
-        @Override
-        public void dispose() {
-            actions.dispose();
-        }
     }
 
     /**
@@ -120,9 +95,9 @@ final class FontSettingRow {
      *
      * @param mainFrame the frame the font chooser opens over
      * @param spec what this row displays and what choosing a font in it means
-     * @return the assembled row, whose actions the caller owns and must dispose
+     * @return the assembled row
      */
-    static Row create(MainFrame mainFrame, Spec spec) {
+    static JPanel create(MainFrame mainFrame, Spec spec) {
         return create(mainFrame, new JLabel(Strings.get(Strings.DIALOG_SONG_SETTINGS_FONT)), spec);
     }
 
@@ -133,9 +108,9 @@ final class FontSettingRow {
      * @param rowLabel the caption in column 0, for a row the standard "Font" label would
      *     not describe
      * @param spec what this row displays and what choosing a font in it means
-     * @return the assembled row, whose actions the caller owns and must dispose
+     * @return the assembled row
      */
-    static Row create(MainFrame mainFrame, JLabel rowLabel, Spec spec) {
+    static JPanel create(MainFrame mainFrame, JLabel rowLabel, Spec spec) {
         var fontDescription = spec.description();
         var fontKey = spec.fontKey();
         var font = spec.font();
@@ -162,14 +137,16 @@ final class FontSettingRow {
         constraints.fill = GridBagConstraints.HORIZONTAL;
         row.add(fontDescription, constraints);
 
-        var chooseAction = new ChooseFontAction(mainFrame, font);
-        var resetAction = new ResetFontAction(mainFrame, fontKey, font);
+        var chooseButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE));
+        chooseButton.addActionListener(_ -> font.set(FontDialog.showDialog(mainFrame, font.get())));
+        var resetButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET));
+        resetButton.addActionListener(_ -> font.set(defaultFont(fontKey)));
 
         var buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.X_AXIS));
-        buttons.add(new JButton(chooseAction));
+        buttons.add(chooseButton);
         BaseDialog.addLargeSeparator(buttons);
-        buttons.add(new JButton(resetAction));
+        buttons.add(resetButton);
 
         constraints.gridx = 2;
         constraints.weightx = 0;
@@ -178,7 +155,7 @@ final class FontSettingRow {
         row.add(buttons, constraints);
 
         UIUtils.setFlexibleWidth(row);
-        return new Row(row, Disposable.of(chooseAction, resetAction));
+        return row;
     }
 
     /**
@@ -202,45 +179,5 @@ final class FontSettingRow {
         }
 
         return systemDefaultFonts.getFont(fontKey);
-    }
-
-    private static final class ChooseFontAction extends UIAction {
-
-        private final Property<Font> font;
-
-        private ChooseFontAction(MainFrame mainFrame, Property<Font> font) {
-            super(
-                mainFrame,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_CHOOSE),
-                CHOOSE_FONT_COMMAND
-            );
-            this.font = font;
-        }
-
-        @Override
-        protected void performAction(ActionEvent e) {
-            font.set(FontDialog.showDialog(getMainFrame(), font.get()));
-        }
-    }
-
-    private static final class ResetFontAction extends UIAction {
-
-        private final FontKey fontKey;
-        private final Property<Font> font;
-
-        private ResetFontAction(MainFrame mainFrame, FontKey fontKey, Property<Font> font) {
-            super(
-                mainFrame,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_RESET),
-                RESET_FONT_COMMAND
-            );
-            this.fontKey = fontKey;
-            this.font = font;
-        }
-
-        @Override
-        protected void performAction(ActionEvent e) {
-            font.set(defaultFont(fontKey));
-        }
     }
 }

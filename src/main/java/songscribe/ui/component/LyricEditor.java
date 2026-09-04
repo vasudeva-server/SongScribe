@@ -58,7 +58,6 @@ import javax.swing.text.FieldView;
 import javax.swing.text.PlainDocument;
 import javax.swing.text.View;
 
-import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +73,6 @@ import songscribe.layout.InsetsSs;
 import songscribe.layout.LyricEditFitCalculator;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
-import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
@@ -362,27 +360,6 @@ public final class LyricEditor extends MyJTextField {
         }
 
         logState("open");
-        MessageCenter.subscribe(this);
-    }
-
-    /**
-     * Re-derives this editor's zoomed font and bounds when it is the currently active editor.
-     * <p>
-     * This is an absolutely-positioned {@link JComponent}, not a layout-managed
-     * child, so a zoom change does not move or resize it on its own. Guarded on being the
-     * active editor because {@link MessageCenter} holds subscribers weakly — a dismissed
-     * editor stays reachable (and therefore subscribed) until GC'd, and must not react to a
-     * zoom change after {@link #dismiss}. Priority is intentionally left at the default: see
-     * the priority requirement documented on {@link ZoomDidChangeNotification}.
-     */
-    @Handler
-    void zoomDidChange(ZoomDidChangeNotification message) {
-        if (score.getActiveLyricEditor() != this) {
-            return;
-        }
-
-        refreshFont();
-        recomputeBounds();
     }
 
     // PlainDocument replaces '\n' with space before calling the filter; override to strip instead.

@@ -22,8 +22,6 @@ package songscribe.ui.action;
 
 import javax.swing.JRootPane;
 
-import org.mockito.MockedStatic;
-
 import songscribe.dom.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
@@ -52,17 +50,10 @@ public final class MockEnvHelper {
         ScoreViewController ctrl
     ) {}
 
-    public static MockEnv setupMockEnv(MockedStatic<MainFrame> mainFrameMock) {
-        var env = setupMockEnv();
-        mainFrameMock.when(MainFrame::getInstance).thenReturn(env.frame());
-        return env;
-    }
-
     /**
-     * Creates a mock MainFrame environment without stubbing {@code MainFrame.getInstance()}.
-     *
-     * <p>Use this when the code under test uses an injected {@code MainFrame} directly
-     * (e.g. via constructor injection) and never calls {@code MainFrame.getInstance()}.
+     * Creates a mock MainFrame environment for code that takes the frame as a constructor or
+     * factory parameter. {@code MainFrame.getInstance()} is left unstubbed: code reaching it is a
+     * constructor-injection finding, not a case for a wider mock.
      */
     public static MockEnv setupMockEnv() {
         var mockFrame = mock(MainFrame.class);

@@ -58,6 +58,7 @@ import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.command.AddHairpinCommand;
 import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.DeselectCommand;
@@ -169,7 +170,7 @@ public final class ScoreViewController {
 
         repaintDebounce = Debounce.rescheduling(REPAINT_DEBOUNCE_DELAY_MS, score::repaint);
 
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     private void warmTupletCache() {

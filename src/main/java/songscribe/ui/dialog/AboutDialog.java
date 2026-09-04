@@ -44,7 +44,7 @@ import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -78,6 +78,9 @@ import songscribe.util.Utils;
  * window above it — a visible flicker. Staying unfocusable leaves the frame active throughout,
  * so there is no activation to race with. Every dismissal trigger is instead a global listener
  * that sees the input before it is dispatched, or the application-background notification.
+ *
+ * <p>The message subscription ends in {@link #dismiss()}, not in a {@code dispose()} override —
+ * this window has no other lifecycle event to hang it on.
  */
 public final class AboutDialog extends JDialog {
 
@@ -102,6 +105,7 @@ public final class AboutDialog extends JDialog {
 
     private final KeyEventDispatcher keyDismisser = this::dismissOnKeyPress;
     private final AWTEventListener outsideClickDismisser = this::dismissOnOutsideClick;
+    private final MessageSubscription subscription;
     private boolean dismissed = false;
 
     private AboutDialog(MainFrame mainFrame) {
@@ -153,7 +157,7 @@ public final class AboutDialog extends JDialog {
         setContentPane(content);
         pack();
         UIUtils.positionDialog(this, mainFrame);
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /** Shows the window, replacing one that is already up. */
@@ -190,7 +194,7 @@ public final class AboutDialog extends JDialog {
         var focusManager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
         focusManager.removeKeyEventDispatcher(keyDismisser);
         Toolkit.getDefaultToolkit().removeAWTEventListener(outsideClickDismisser);
-        MessageCenter.unsubscribe(this);
+        subscription.dispose();
         ActivationGate.disarmForOverlay();
 
         if (instance == this) {

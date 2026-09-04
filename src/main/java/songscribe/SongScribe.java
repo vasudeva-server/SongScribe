@@ -26,11 +26,14 @@ import java.nio.file.Path;
 import javax.swing.SwingUtilities;
 
 import com.formdev.flatlaf.util.SystemInfo;
+import net.engio.mbassy.bus.MBassador;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
 import songscribe.error.RuntimeError;
 import songscribe.io.musicxml.MusicXmlSerializer;
+import songscribe.message.DebugMBassador;
+import songscribe.message.MessageCenter;
 import songscribe.ui.component.MainFrame;
 
 public final class SongScribe {
@@ -198,10 +201,23 @@ public final class SongScribe {
 
         truncateLogIfRequested();
         logBanner("SongScribe");
+
+        setBus();
+
         warmMusicXmlSerializer();
 
         // macOS system properties are already set above on the main thread.
         // Bootstrap the UI on the EDT so the splash can appear immediately.
         SwingUtilities.invokeLater(() -> MainFrame.main(args));
+    }
+
+    // The bus, and with it the publication-error policy, is set once for the life of
+    // the process, before anything can post or subscribe.
+    private static void setBus() {
+        if (System.getenv("DEBUG") != null) {
+            MessageCenter.setBus(new DebugMBassador<>(MessageCenter::exitOnPublicationError));
+        } else {
+            MessageCenter.setBus(new MBassador<>(MessageCenter::exitOnPublicationError));
+        }
     }
 }

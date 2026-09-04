@@ -38,7 +38,7 @@ import songscribe.Strings;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.io.musicxml.PitchSpelling;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -143,7 +143,7 @@ public final class StatusBar extends JPanel {
         zoomConstraints.anchor = GridBagConstraints.LINE_END;
         add(new ZoomStatusBarPanel(), zoomConstraints);
 
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     @Override

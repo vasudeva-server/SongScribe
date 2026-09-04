@@ -38,7 +38,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
@@ -244,6 +244,8 @@ public class UIAction extends AbstractAction implements Disposable {
      */
     private @Nullable String undoOpNameKey;
 
+    private final MessageSubscription subscription;
+
     public UIAction(MainFrame mainFrame, @Nullable String name, @Nullable String actionCommand, Flag... flags) {
         this(mainFrame, name, null, 0, actionCommand, null, 0, 0, flags);
     }
@@ -297,20 +299,20 @@ public class UIAction extends AbstractAction implements Disposable {
             UIUtils.addAction(mainFrame.getRootPane(), this);
         }
 
-        MessageCenter.subscribe(this);
         setFlags(flags);
+        subscription = new MessageSubscription(this);
     }
 
     /**
-     * Removes this action from the message bus. Idempotent — {@link MessageCenter#unsubscribe}
-     * is a no-op for a listener that is not currently subscribed.
+     * Releases this action's message-bus subscription.
      *
-     * <p>Called by {@link Actions#deinitialize()} or {@link PlaybackController#deinitialize()}
-     * when the generation of action constants that owns this instance is retired.
+     * <p>Called by the owner that retires the action while the process continues. The action
+     * constants have no such owner and are never disposed; the open-recent menu's actions are
+     * rebuilt with the menu, and the menu controller disposes the outgoing set.
      */
     @Override
     public void dispose() {
-        MessageCenter.unsubscribe(this);
+        subscription.dispose();
     }
 
     protected static Flag[] withFlags(Flag[] base, Flag... extra) {

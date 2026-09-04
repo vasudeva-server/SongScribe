@@ -163,9 +163,11 @@ it so a test can is the no-test-only-surface violation rather than the way out.
 - **Its name names the contract case it asserts.** Not the method it calls and
   not the setup it performs: the promise being checked. See
   [Naming Conventions](#naming-conventions).
-- **No flakiness.** No dependence on timing, shared mutable state, the real
-  clock, or the real filesystem.
-- **No order dependence.** See [Test Independence](#test-independence).
+- **No flakiness.** No dependence on timing, the real clock, or the real
+  filesystem. State shared within a class is the class's environment, not
+  flakiness; see [Test Environments](#test-environments).
+- **No unpinned order dependence.** A test that relies on a predecessor runs in
+  a class that pins its order. See [Test Environments](#test-environments).
 
 Over-mocking fails the first check in a form that looks like passing: a test
 asserting against mocks breaks on refactors and stays green on real regressions.
@@ -178,8 +180,8 @@ A behavior is verified in exactly one place.
 
 **Default: unit.** Faster, runs without approval, localizes failures. A behavior
 is unit-testable if its risk is logic, computation, state, data transformation,
-or model mutation — even when it requires mocking the `MainFrame.getInstance()`
-chain or constructing collaborators through a test helper. Format migration,
+or model mutation — even when it requires an injected mock `MainFrame` or
+collaborators built through a test helper. Format migration,
 serialization round-trips, layout geometry, MIDI generation, action enablement,
 selection state machines, mutation records, derived model state.
 
@@ -243,8 +245,10 @@ do instead.
 
 - **JUnit 5** (Jupiter) — test lifecycle and structure. Global config in
   `src/test/resources/junit-platform.properties` runs test classes and methods
-  in name order. `@ParameterizedTest` with `@MethodSource` / `@EnumSource` is the
-  normal shape for an enumerated domain or an invariant over many inputs.
+  in name order; that order is a config artifact, and a class that relies on
+  order pins it (see [Test Environments](#test-environments)). Parallel execution
+  is never enabled. `@ParameterizedTest` with `@MethodSource` / `@EnumSource` is
+  the normal shape for an enumerated domain or an invariant over many inputs.
 - **AssertJ** for assertions (`assertThat(...).isEqualTo(...)`). Prefer AssertJ
   over JUnit's `assertEquals` / `assertTrue` for its readable failure messages — a
   failing test should localize the cause without a debugger. JUnit's `assertAll` is
@@ -252,31 +256,64 @@ do instead.
 - **Mockito** for mocking (`mock()`, `mockStatic()`, `when()`, `verify()`)
 - **AssertJ Swing** for E2E GUI testing (Robot, FrameFixture)
 
-## MBassador Subscribers
+## Test Environments
 
-MBassador holds subscribers via weak references. Any test that creates a
-non-persistent subscriber (e.g. a local object registered with the bus) MUST
-unsubscribe it at the end of the test — in an `@AfterEach`/finally block, not
-just at the end of a happy path — to prevent zombie subscribers from lingering
-and affecting later tests.
+A test class defines one environment: the message bus, the frame, the action
+constants, the fixtures its tests need. It builds that environment once, in
+`@BeforeAll`, and keeps it stable through its tests. The harness never rebuilds
+application state per test. A class that resets one piece of state before each
+test does so in its own `@BeforeEach`, as part of the environment it defines.
 
-## Test Independence
-
-Classes and methods run in a fixed name order, but that order is an artifact of
-the config, not a contract. Never write a test that depends on another test
-having run first. The one sanctioned exception is a class that shares a single
-mutable fixture across its tests — see [Fixture Ordering](#fixture-ordering).
+- **A class is guaranteed to run in isolation. A test within a class is not.** A
+  test may rely on the state a predecessor left behind. A test that must run
+  alone belongs in a class of its own. To diagnose a failure, run the class.
+- **A test that relies on a predecessor is order-dependent, and the class pins
+  the order** with `@TestMethodOrder(OrderAnnotation.class)` and `@Order` on each
+  method. JUnit has no declaration-order orderer, and the `MethodName` default in
+  `junit-platform.properties` is alphabetical; a class that relies on that
+  alphabetical order silently is wrong. A class that shares an environment
+  without relying on order needs no annotation.
+- **A sequence has a second shape:** one test method that walks the scenario,
+  asserting at each step. It gives up per-step reporting and gains the ability
+  to run alone. Choose by which of those the scenario needs.
+- **Where many tests in one class each need a different environment, split them
+  into `@Nested` classes, one per environment.** A nested class builds its
+  additional state in its own `@BeforeAll`, which needs
+  `@TestInstance(PER_CLASS)` on the nested class, and shares the outer class's
+  bus and frame.
+- **The bus belongs to the top-level class.** `UnitTest` installs a fresh
+  recording bus in `@BeforeAll` and retires it in `@AfterAll`, so a listener one
+  class leaks cannot hear another class's posts. Within a class, MBassador holds
+  subscribers weakly, so a listener a test or a nested class registers on its
+  own stays registered until collected. Whoever registered it disposes it, in an
+  `@AfterEach`, `@AfterAll` or `finally` block, never only on the happy path.
+- **A shared mock accumulates invocations across the class.** A test that
+  verifies a call count clears the mock's invocations first.
+- **A process singleton is put into the state a class needs by the operation the
+  application uses for it, never by a method that exists for tests.** Undo
+  history returns to its baseline when a document loads, so a class posts
+  `DocumentDidLoadNotification` for the song it built, as `ScoreView.setSong`
+  does. Production has no `deinitialize` or `resetForTest` on a singleton, and
+  none is added.
 
 ## Base Classes
 
 **`UnitTest`** (`src/test/java/songscribe/UnitTest.java`) — extend for all unit
-tests. Suppresses modal dialogs and provides shared helpers:
+tests. Annotated `@TestInstance(PER_CLASS)`, so a subclass's `@BeforeAll` may be
+an instance method and must not re-declare it. Installs the class's message bus,
+suppresses modal dialogs and provides shared helpers:
 
 - `loadFixture(name)` — load `src/test/resources/fixtures/{name}` into a `Song`, preferring
   a `.musicxml` fixture over a `.mssw` fixture of the same name (see [Fixtures](#fixtures))
 - `minimalSongMock()` / `detachedLine()` — a `Song` mock (mutation tracking
   suspended) and a `Line` backed by one, for model tests that don't need the UI
 - `installFlatLafDefaults()` — see [Unit Test Guide](./testing-unit.md)
+
+**`MockEnvHelper`** (`src/test/java/songscribe/ui/action/MockEnvHelper.java`) —
+`setupMockEnv()` builds a mock `MainFrame` with a score view, selection
+coordinator and controller behind it, for a class that takes the frame as a
+constructor or factory parameter. It does not stub `MainFrame.getInstance()`.
+See [Unit Test Guide](./testing-unit.md#the-mainframe-is-injected-never-mocked-as-a-singleton).
 
 **`E2ETest`** (`src/test/java/songscribe/e2e/E2ETest.java`) — extend for E2E
 tests. Already annotated `@TestInstance(PER_CLASS)`; subclasses inherit it and
@@ -304,13 +341,6 @@ unchanged. Those are the only `.mssw` fixtures left: `damaged`, `newer-version`,
 `lyrics-date-invalid`, and `full-line`. Reach for `UnitTest.fixtureFile` (`.mssw`-only)
 just when the legacy reader itself is the subject.
 
-## Fixture Ordering
-
-Test methods run in name order by default, but that order is an artifact of
-config, not a contract (see [Test Independence](#test-independence)). A test
-class that loads a fixture file once (in `@BeforeAll`) and whose tests mutate
-that shared fixture cumulatively — each test building on the state the previous
-one left behind — must not depend on that default order. Such a class pins
-execution order explicitly with `@TestClassOrder` / `@Order` (plus
-`@TestInstance(PER_CLASS)` so a non-static `@BeforeAll` can run once per class),
-with its class header documenting why each block runs where it does.
+A fixture loaded once in `@BeforeAll` is part of the class's environment, and a
+class whose tests mutate it cumulatively pins its order as
+[Test Environments](#test-environments) states.

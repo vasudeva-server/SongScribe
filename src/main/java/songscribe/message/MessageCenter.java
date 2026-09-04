@@ -1,48 +1,69 @@
 package songscribe.message;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-
 import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import net.engio.mbassy.bus.error.PublicationError;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
 
 /**
- * The application's message bus, and the scopes that can temporarily replace it.
+ * The application's message bus.
  * <p>
- * {@link #post}, {@link #subscribe} and {@link #unsubscribe} always act on the bus in force.
- * Outside any scope that is the application bus, whose publication-error handler treats a
- * throwing {@code @Handler} as fatal.
+ * There is one bus in force at a time, and it is supplied from outside through {@link #setBus}:
+ * the application entry point sets one at startup, before anything can post or subscribe, and
+ * keeps it for the life of the process. {@link #post} delivers to the bus in force; a listener
+ * joins and leaves it only through {@link MessageSubscription}.
  * <p>
- * A {@link MessageBusScope} pushes a fresh bus with a publication-error handler of its own.
- * While it is in force it <em>replaces</em> the application bus rather than layering over it:
- * posts reach only what subscribed inside the scope, and closing the scope discards that bus
- * and everything subscribed to it in one operation. See {@link MessageBusScope} for the
- * constraints that carries.
+ * What happens when a {@code @Handler} throws is decided by the bus itself: MBassador takes its
+ * publication-error handler at construction, so whoever constructs the bus chooses the policy.
+ * The application's is {@link #exitOnPublicationError}.
  * <p>
- * The rules that span the whole codebase — who must unsubscribe, how messages are named, what
- * a handler may do — are in {@code docs/messages.md}.
+ * The rules that span the whole codebase — how messages are named, what a handler may do — are
+ * in {@code docs/messages.md}.
  */
 public final class MessageCenter {
 
     /**
-     * The bus every subscriber and poster reaches outside a scope. A field rather than something
-     * built on demand so the JVM's class-initialization guarantee supplies the "exactly once, and
-     * visible to every thread" that a check-then-build cannot.
+     * The bus in force, or null before {@link #setBus} has been called. {@code volatile} because
+     * it is set on one thread and a handler may post from another.
      */
-    private static final MBassador<Message> APPLICATION_BUS =
-        new MBassador<>(MessageCenter::exitOnPublicationError);
-
-    /** The scopes in force, innermost first. Empty whenever the application bus is the one in force. */
-    private static final Deque<MBassador<Message>> SCOPE_STACK = new ArrayDeque<>();
+    private static volatile @Nullable MBassador<Message> bus = null;
 
     private MessageCenter() {}
 
     /**
-     * Delivers {@code message} to every {@code @Handler} subscribed to the bus in force, in
-     * priority order, and returns once the last of them has run.
+     * Makes {@code bus} the bus every post, subscribe and unsubscribe from now on acts on.
+     * <p>
+     * The application entry point calls this once at startup. Nothing that subscribed to the
+     * bus this replaces is carried over: a listener registered on the old bus stays registered
+     * there and hears nothing from the new one.
+     *
+     * @effects {@code bus} becomes the bus in force
+     */
+    public static void setBus(MBassador<Message> bus) {
+        MessageCenter.bus = bus;
+    }
+
+    /**
+     * The bus in force.
+     *
+     * @throws RuntimeException reported through {@link RuntimeError#exit} if no bus has been set,
+     *                          which means something posted or subscribed before the entry point
+     *                          ran
+     */
+    private static MBassador<Message> requireBus() {
+        var result = bus;
+
+        if (result == null) {
+            throw RuntimeError.exit("MessageCenter used before a bus was set");
+        }
+
+        return result;
+    }
+
+    /**
+     * Delivers {@code message} to every {@code @Handler} subscribed to the bus, in priority
+     * order, and returns once the last of them has run.
      * <p>
      * Delivery is synchronous and on the calling thread, so a handler observes — and may
      * change — the state the caller was in when it posted, and a post from inside a handler
@@ -51,83 +72,39 @@ public final class MessageCenter {
      * @effects runs every matching subscriber's handler before returning
      */
     public static void post(Message message) {
-        bus().post(message).now();
+        requireBus().post(message).now();
     }
 
     /**
-     * Registers {@code listener}'s {@code @Handler} methods with the bus in force. Subscribing a
-     * listener the bus already holds does nothing, so this is safe to call again.
+     * Registers {@code listener}'s {@code @Handler} methods with the bus. Registering a listener
+     * the bus already holds does nothing. Package-private because {@link MessageSubscription} is
+     * the only caller: it is what ties every registration to the lifetime that ends it.
      * <p>
      * The bus holds subscribers <em>weakly</em>: a listener that nothing else keeps strongly
-     * reachable is collected and silently stops receiving messages. The caller is responsible for
-     * that reference and for the matching {@link #unsubscribe} — see {@code docs/messages.md}.
+     * reachable is collected and silently stops receiving messages.
      *
-     * @effects the listener begins receiving messages on the bus in force
+     * @effects the listener begins receiving messages
      */
-    public static void subscribe(Object listener) {
-        bus().subscribe(listener);
+    static void subscribe(Object listener) {
+        requireBus().subscribe(listener);
     }
 
     /**
-     * Removes {@code listener} from the bus in force. Does nothing if that bus does not hold it —
-     * including when the listener subscribed to the application bus and a scope is in force, since
-     * a scope replaces the application bus rather than layering over it.
+     * Removes {@code listener} from the bus. Removing a listener the bus does not hold does
+     * nothing. Package-private because {@link MessageSubscription} is the only caller.
      *
-     * @effects the listener stops receiving messages on the bus in force
+     * @effects the listener stops receiving messages
      */
-    public static void unsubscribe(Object listener) {
-        bus().unsubscribe(listener);
-    }
-
-    /** The innermost scope's bus, or the application bus when no scope is in force. */
-    private static MBassador<Message> bus() {
-        var scoped = SCOPE_STACK.peek();
-
-        return scoped != null ? scoped : APPLICATION_BUS;
-    }
-
-    /**
-     * Pushes a bus that reports publication errors to {@code errorHandler}, making it the bus in
-     * force until it is passed back to {@link #popBus}. Package-private because
-     * {@link MessageBusScope} is the only supported way to drive the stack — it is what
-     * guarantees the pop.
-     *
-     * @return the pushed bus, which its scope holds so that {@link #popBus} can verify it
-     */
-    static MBassador<Message> pushBus(IPublicationErrorHandler errorHandler) {
-        var bus = new MBassador<Message>(errorHandler);
-        SCOPE_STACK.push(bus);
-
-        return bus;
-    }
-
-    /**
-     * Discards {@code bus}, along with everything subscribed to it, and restores the one beneath.
-     * Shuts it down so its dispatch threads are released.
-     * <p>
-     * Taking the bus rather than simply popping the head is what makes closing scopes out of
-     * order — or closing one twice — fail here rather than silently discard another scope's bus.
-     *
-     * @throws RuntimeException reported through {@link RuntimeError#exit} if {@code bus} is not
-     *                          the bus in force
-     */
-    static void popBus(MBassador<Message> bus) {
-        if (SCOPE_STACK.peek() != bus) {
-            throw RuntimeError.exit(
-                "MessageCenter.popBus() for a bus that is not in force — message bus scopes were "
-                    + "closed out of order, or one was closed twice"
-            );
-        }
-
-        SCOPE_STACK.pop().shutdown();
+    static void unsubscribe(Object listener) {
+        requireBus().unsubscribe(listener);
     }
 
     /**
      * Renders a publication error as diagnostic text: which listener's handler threw, for which
      * message, and the cause if MBassador reported one.
      * <p>
-     * Public because a {@link MessageBusScope}'s error handler is supplied by its caller, which
-     * is generally in another package and wants the same rendering the application bus uses.
+     * Public because a publication-error handler is supplied by whoever constructs the bus, which
+     * is generally in another package and wants the same rendering the application's policy uses.
      *
      * @return the multi-line description, ending in the cause when there is one
      */
@@ -140,8 +117,8 @@ public final class MessageCenter {
 
     /**
      * The listener/handler/message triple, without the cause. Kept separate from
-     * {@link #describe} because {@link #exitOnPublicationError} passes the cause to
-     * {@link RuntimeError#exit} as a throwable rather than as message text.
+     * {@link #describe} because the built-in policies pass the cause to their sink as a throwable
+     * rather than as message text.
      */
     private static String whichHandlerThrew(PublicationError error) {
         var listener = error.getListener();
@@ -155,14 +132,17 @@ public final class MessageCenter {
     }
 
     /**
-     * The application bus's publication-error handler: a {@code @Handler} that throws has left
-     * the application in an undefined state, so this reports it as fatal.
+     * The application's publication-error policy, which the entry point constructs its bus with:
+     * a {@code @Handler} that throws has left the application in an undefined state, so this
+     * reports it as fatal.
      * <p>
      * MBassador wraps the error handler in {@code catch(Throwable)} and swallows whatever it
      * throws, so the throw below never propagates — {@link RuntimeError#exit} has already
      * reported and terminated by the time it is evaluated.
+     *
+     * @effects reports the error through {@link RuntimeError#exit}, which terminates the process
      */
-    private static void exitOnPublicationError(PublicationError error) {
+    public static void exitOnPublicationError(PublicationError error) {
         var detail = whichHandlerThrew(error);
         var cause = error.getCause();
 

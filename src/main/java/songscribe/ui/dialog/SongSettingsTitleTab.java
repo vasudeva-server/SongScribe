@@ -23,7 +23,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.event.ActionEvent;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
@@ -45,7 +44,6 @@ import songscribe.font.FontDescription;
 import songscribe.font.FontKey;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.action.UIAction;
 import songscribe.ui.binding.Controls;
 import songscribe.binding.Property;
 import songscribe.ui.binding.Timing;
@@ -53,7 +51,6 @@ import songscribe.binding.ValueProperty;
 import songscribe.ui.binding.Widgets;
 import songscribe.binding.WritableValue;
 import songscribe.ui.component.InputUtils;
-import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.MyJTextField;
 import songscribe.ui.component.NonBlankTextArea;
 import songscribe.ui.component.NumericRange;
@@ -100,9 +97,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private final SpinnerModel takeFirstWordsSpinnerModel =
         new SpinnerNumberModel(TAKE_FIRST_WORDS_DEFAULT, TAKE_FIRST_WORDS_MIN, TAKE_FIRST_WORDS_MAX, 1);
 
-    // Assigned in the constructor rather than here: it needs the owning dialog,
-    // and field initializers run before the constructor body that captures it.
-    private final TakeFirstLyricsWordAction takeAction;
+    private final JButton takeButton = new JButton(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE));
     private final TitleComponent titlePreview = new TitleComponent();
 
     // Subtitle section — field, font-description label, and preview component.
@@ -123,15 +118,6 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     private final ValueProperty<Font> titleFont;
     private final ValueProperty<Font> subtitleFont;
 
-    // Each font row owns two actions that subscribe themselves to the message bus, so this
-    // tab holds the rows until dispose() releases them. Assigned while the sections are
-    // built, from initContents() — a UI builder NullAway cannot follow.
-    @SuppressWarnings("NullAway.Init")
-    private FontSettingRow.Row titleFontRow;
-
-    @SuppressWarnings("NullAway.Init")
-    private FontSettingRow.Row subtitleFontRow;
-
     // Whether the subtitle preview is currently collapsed (empty). A ValueProperty
     // notifies only on a real change, so the effect over it re-packs the dialog on
     // the empty <-> non-empty transition that actually changes the tab's height,
@@ -143,14 +129,14 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
     // preview shows the score as it stands rather than as the Music tab might change it. Both
     // are set by populate on every opening.
     //
-    // The lyrics stay a plain field: nothing observes them. The Take button re-derives
-    // its own enablement from enableFromSongState() on every global UI event.
+    // The lyrics stay a plain field: nothing observes them. They cannot change while the
+    // dialog is up, so populate sets the Take button's enablement once from them.
     private String lyricsText = "";
     private final ValueProperty<Ss> wrapWidthSs = new ValueProperty<>(new Ss(0));
 
     SongSettingsTitleTab(SongSettingsDialog dialog) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE));
-        takeAction = new TakeFirstLyricsWordAction(getMainFrame());
+        takeButton.addActionListener(_ -> takeTitleFromLyrics());
 
         // Line wrap stays off so the area's visible rows map one-to-one onto the title's
         // logical lines: the notator sees where the break they typed actually falls,
@@ -230,13 +216,6 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         stackedPreview.add(subtitlePreviewRow);
 
         add(SongSettingsLayout.createPreviewSection(stackedPreview));
-    }
-
-    @Override
-    protected void dispose() {
-        titleFontRow.dispose();
-        subtitleFontRow.dispose();
-        takeAction.dispose();
     }
 
     /**
@@ -337,11 +316,10 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
 
         BaseDialog.addSeparator(section);
 
-        titleFontRow = FontSettingRow.create(
+        section.add(FontSettingRow.create(
             getMainFrame(),
             new FontSettingRow.Spec(titleFontLabel, FontKey.TITLE, titleFont)
-        );
-        section.add(titleFontRow.panel());
+        ));
 
         BaseDialog.addLargeSeparator(section);
         section.add(createTakePanel());
@@ -362,11 +340,10 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         );
 
         BaseDialog.addSeparator(section);
-        subtitleFontRow = FontSettingRow.create(
+        section.add(FontSettingRow.create(
             getMainFrame(),
             new FontSettingRow.Spec(subtitleFontLabel, FontKey.SUBTITLE, subtitleFont)
-        );
-        section.add(subtitleFontRow.panel());
+        ));
 
         UIUtils.setFlexibleWidth(section);
         return section;
@@ -419,7 +396,7 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         var panel = new JPanel(new FlowLayout(FlowLayout.LEFT, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_HORIZONTAL_GAP), 0));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        panel.add(new JButton(takeAction));
+        panel.add(takeButton);
 
         panel.add(new JLabel(
             Strings.get(Strings.DIALOG_SONG_SETTINGS_THE_FIRST)
@@ -453,15 +430,13 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
      * <p>Whatever is put in comes back out: this tab's getters called straight afterwards,
      * with nothing else touched, answer the same title, number, subtitle and two fonts.
      *
-     * <p>The order of the writes below carries nothing. Every preview and label is derived
-     * from these properties, so each write re-derives whatever depends on it.
-     *
      * @param input the settings this opening of the dialog is showing
      */
     void populate(SongSettingsInput input) {
         var metadata = input.metadata();
         var fonts = input.fonts();
 
+        // First: the Take button's enablement at the end of this method reads it.
         lyricsText = input.lyrics().text();
         wrapWidthSs.set(input.lineWidthSs());
         titleFont.set(fonts.getFont(FontKey.TITLE));
@@ -470,38 +445,17 @@ final class SongSettingsTitleTab extends BaseDialog.Tab {
         title.set(metadata.title());
         titleField.rememberCurrentText();
         subtitle.set(metadata.subtitle());
-        takeAction.updateEnabledState();
+        // The button takes its words from the lyrics, so it is meaningless without them.
+        takeButton.setEnabled(!lyricsText.isEmpty());
     }
 
-    private final class TakeFirstLyricsWordAction extends UIAction {
+    private void takeTitleFromLyrics() {
+        var maxWords = ((Number) takeFirstWordsSpinnerModel.getValue()).intValue();
+        title.set(SongMetadata.titleFromLyrics(lyricsText, maxWords));
 
-        private TakeFirstLyricsWordAction(MainFrame mainFrame) {
-            super(
-                mainFrame,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_TAKE),
-                "take-lyrics"
-            );
-        }
-
-        // The button takes its words from the lyrics, so it is meaningless
-        // without them. As a UIAction it re-derives its enabled state from
-        // this hook on every global UI event (e.g. focusing the title
-        // field), so the lyrics check must live here rather than being set
-        // once.
-        @Override
-        protected boolean enableFromSongState() {
-            return !lyricsText.isEmpty();
-        }
-
-        @Override
-        protected void performAction(ActionEvent e) {
-            var maxWords = ((Number) takeFirstWordsSpinnerModel.getValue()).intValue();
-            title.set(SongMetadata.titleFromLyrics(lyricsText, maxWords));
-
-            // Lyrics that are all melisma underscores extract to nothing, which the guard ignores
-            // — so the title the button failed to improve on is still what comes back if the user
-            // then empties the field.
-            titleField.rememberCurrentText();
-        }
+        // Lyrics that are all melisma underscores extract to nothing, which the guard ignores
+        // — so the title the button failed to improve on is still what comes back if the user
+        // then empties the field.
+        titleField.rememberCurrentText();
     }
 }

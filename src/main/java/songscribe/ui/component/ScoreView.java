@@ -76,6 +76,7 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
@@ -119,6 +120,14 @@ import songscribe.util.StringUtils;
  * {@code LinePanel}s, text panel and footnotes down the Y axis.
  *
  * <p>See {@code docs/score-view-hierarchy.md} for the full containment tree.
+ *
+ * <h2>Lifecycle</h2>
+ * Process-lifetime. {@code MainFrame} is the only construction site, and the view lives as long
+ * as the window — the long-lived-views case in {@code docs/lifecycle.md}. {@link #init()}
+ * subscribes the view to the message bus; nothing ever unsubscribes it, because nothing retires
+ * it while the process continues. The class therefore does not implement
+ * {@code songscribe.lifecycle.Disposable}: the absence of a {@code dispose()} is the decision
+ * that there is nothing to release, not an omission.
  */
 
 public final class ScoreView
@@ -311,7 +320,7 @@ public final class ScoreView
         // Initialize insertion note with default type
         setPreviewElement(EditModeManager.makePreviewElement());
 
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
         syncPlaybackPrefs();
         song.setModified(false);
 
@@ -1227,15 +1236,23 @@ public final class ScoreView
     }
 
     /**
-     * Refreshes every hosted overlay's on-screen bounds against the current zoom.
+     * Refreshes every hosted overlay's on-screen bounds against the current zoom, and the
+     * active lyric editor's font and bounds with them.
      * <p>
      * Overlay bounds are pixel-cached ({@link LineOverlayComponent#updateBounds()}) and
      * otherwise only refreshed on the next validation pass or mouse-driven update; without
      * this an overlay (e.g. the hover preview) stays at its pre-zoom screen position until
-     * the mouse moves.
+     * the mouse moves. The lyric editor is an absolutely-positioned child rather than a
+     * layout-managed one, so a zoom change moves and resizes it only through this call; its
+     * font is re-derived first because its bounds are computed from that font.
      */
     private void refreshOverlayBounds() {
         forEachLineOverlay(LineOverlayComponent::updateBounds);
+
+        if (activeLyricEditor != null) {
+            activeLyricEditor.refreshFont();
+            activeLyricEditor.recomputeBounds();
+        }
     }
 
     /**

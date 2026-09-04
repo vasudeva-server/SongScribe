@@ -1,7 +1,7 @@
 # Messages
 
 Conventions for the application message bus. For how the bus behaves — delivery,
-subscriber lifetime, scopes — see [messages.md](../../docs/messages.md).
+subscriber lifetime, the error policy — see [messages.md](../../docs/messages.md).
 
 ## Kinds
 

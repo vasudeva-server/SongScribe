@@ -22,9 +22,9 @@ package songscribe.lifecycle;
 import java.util.List;
 
 /**
- * Implemented by a class that acquires something in its constructor which must be
- * released before the instance is discarded — today, always a message-bus
- * subscription.
+ * Implemented by a class whose constructor registers the instance with something that
+ * outlives it — the message bus, a property graph, another object's listener list — so
+ * that the registration must be released before the instance is discarded.
  *
  * <p>Implement this if and only if there is real work to do. An empty
  * {@code dispose()} is indistinguishable from an unimplemented one, so it costs
@@ -39,8 +39,8 @@ import java.util.List;
  * process-lifetime, so it does not implement this.
  *
  * <p>See {@code docs/lifecycle.md} for who calls {@code dispose()} for each
- * implementor, and {@code docs/messages.md} for the rule that a constructor-side
- * subscription creates this obligation.
+ * implementor, and for the rule that a constructor-side registration creates this
+ * obligation.
  */
 @FunctionalInterface
 public interface Disposable {

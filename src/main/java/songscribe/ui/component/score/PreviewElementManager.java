@@ -24,6 +24,8 @@ import java.awt.event.MouseEvent;
 import javax.swing.SwingUtilities;
 
 import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.listener.Listener;
+import net.engio.mbassy.listener.References;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementLocation;
@@ -34,6 +36,7 @@ import songscribe.dom.ViewPx;
 import songscribe.engraving.StaffPosition;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
@@ -59,7 +62,11 @@ import songscribe.ui.playback.PlaybackController;
  * {@link PreviewElementInserter} turns a click into an edit, {@link PreviewOverlayRegistry} owns
  * the overlay components, and {@link PreviewCursorHider} takes the system cursor away over the
  * preview.
+ *
+ * <p><b>Lifecycle:</b> the main window constructs one instance at startup, which subscribes to
+ * the message bus for the life of the process and is never disposed.
  */
+@Listener(references = References.Strong)
 public final class PreviewElementManager {
 
     // ==========================================================================
@@ -100,30 +107,15 @@ public final class PreviewElementManager {
     /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
 
-    /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
-    private static final PreviewElementManager INSTANCE = new PreviewElementManager();
-
-    private PreviewElementManager() {
-    }
-
     /**
-     * Attaches the singleton to the bus in force. Called by {@code MainFrame.initFrame} during
-     * startup; see {@code docs/lifecycle.md}.
-     * <p>
-     * Idempotent, and no flag here makes it so — the bus refuses a listener it already holds. That
-     * matters more than saving the second call: a guard remembering that this ran once would
-     * answer "already subscribed" after a {@link songscribe.message.MessageBusScope} had discarded
-     * the subscription, and the singleton would stay off the bus for the rest of the process.
-     * <p>
-     * Subscription is deliberately not a static-initializer side effect. As one, it happened
-     * whenever the classloader first reached this class, which nothing orders. Keeping it explicit
-     * also means a headless conversion, which builds a score view but never hovers, does not
-     * subscribe a preview handler at all.
+     * Subscribes this instance to the bus. The class is a {@link References#Strong} listener, so
+     * the bus itself keeps the instance reachable and the caller need not hold it.
      *
-     * @effects the singleton begins receiving mode, zoom, dialog and background notifications
+     * @effects the instance begins receiving messages, and stays subscribed for the life of the
+     *          process
      */
-    public static void initialize() {
-        MessageCenter.subscribe(INSTANCE);
+    public PreviewElementManager() {
+        MessageSubscription.addProcessListener(this);
     }
 
     @Handler

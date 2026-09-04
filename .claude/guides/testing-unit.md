@@ -5,16 +5,31 @@ Read `./testing-common.md` first for shared conventions.
 ## Structure
 
 All unit tests extend `UnitTest`. Location mirrors source: `src/test/java/songscribe/ui/action/FooTest.java`.
+The class builds its environment once and its tests share it (see
+[Test Environments](./testing-common.md#test-environments)).
 
 ```java
 class FooTest extends UnitTest {
+    private Foo foo;
+
+    @BeforeAll
+    void buildEnvironment() {
+        foo = new Foo();
+    }
+
     @Test
     void testSomethingHappens() {
-        assertThat(result).isEqualTo(expected);
+        assertThat(foo.result()).isEqualTo(expected);
     }
 
     @Nested
+    @TestInstance(PER_CLASS)
     class WhenConditionX {
+        @BeforeAll
+        void enterConditionX() {
+            foo.enterX();
+        }
+
         @Test
         void testBehaviorY() { ... }
     }
@@ -165,17 +180,21 @@ If the type you need is missing, add a method to `StaffElementFactory` rather
 than reaching for `newInstance()` at the call site — a per-class `note()` helper
 is the duplication this factory exists to prevent.
 
-## Mocking the MainFrame singleton is a fallback
+## The MainFrame is injected, never mocked as a singleton
 
-**Reach for `mockStatic(MainFrame.class)` only when the class under test cannot
-be constructed without the `MainFrame.getInstance()` chain and cannot be changed
-to take its collaborators directly.** A dependency that needs this much mocking
-to exercise is usually a constructor-injection finding — the collaborator belongs
-as a constructor or factory parameter, real API used by production too, not
-something reached for through a static singleton at test time. Prefer that fix
-over adding another mock setup.
+A class that needs a `MainFrame` takes it as a constructor or factory parameter
+— real API used by production too. Its test builds one with
+`MockEnvHelper.setupMockEnv()` and passes `env.frame()` in; the frame is
+construction ceremony, and the assertions are against the model or the return
+value, never against the mock.
 
-The trap when you cannot: **code that triggers `Actions` initialization needs a
+**Do not `mockStatic(MainFrame.class)`.** Code under test that reaches
+`MainFrame.getInstance()` is a constructor-injection finding — the collaborator
+belongs as a parameter, not something reached for through a static singleton at
+test time. Fix that, rather than adding a stub that lets the reach stand. There
+is no shared fixture for the stub, deliberately.
+
+The trap: **code that triggers `Actions` initialization needs a
 mocked root pane too**, carrying a real `InputMap` and `ActionMap`, because
 initialization registers action keystrokes through it. Without them the failure
 is a `NullPointerException` inside static initialization, which does not name the

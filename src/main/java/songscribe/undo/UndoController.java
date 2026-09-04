@@ -37,6 +37,7 @@ import songscribe.Strings;
 import songscribe.dom.Song;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.CrescendoAddition;
@@ -107,10 +108,9 @@ import songscribe.ui.component.MainFrame;
  * the singleton is also constructed lazily the first time
  * {@link Song#beginModification} reads the pending op-name.
  *
- * <p>{@link #reset()} returns the stacks and clean markers to the empty baseline
- * while leaving the controller attached and recording; a document load does
- * exactly this. {@link #deinitialize()} detaches it, after which it records nothing
- * until {@link #initialize()} is called again.
+ * <p>Once {@link #initialize()} has run, the controller is attached for the process. A
+ * document load returns the stacks and clean markers to the empty baseline while leaving
+ * the controller attached and recording.
  */
 public final class UndoController {
 
@@ -167,9 +167,9 @@ public final class UndoController {
     }
 
     /**
-     * Subscribes the singleton to the bus in force, attaching it. Idempotent — the bus refuses a
-     * listener it already holds, so no flag here tracks whether this has run, and a call after
-     * {@link #deinitialize()} re-attaches.
+     * Subscribes the singleton to the bus in force, attaching it for the rest of the process.
+     * Registers on every call, unguarded: the bus ignores a listener it already holds, and a
+     * call made after the bus in force has changed must reach the new bus.
      *
      * <p>Subscription is deliberately not a constructor side effect: the singleton is
      * also constructed lazily the first time {@link Song#beginModification} reads the
@@ -180,7 +180,7 @@ public final class UndoController {
      * @effects the controller begins recording mutations posted on the bus in force
      */
     public static void initialize() {
-        MessageCenter.subscribe(INSTANCE);
+        MessageSubscription.addProcessListener(INSTANCE);
     }
 
     /**
@@ -375,7 +375,7 @@ public final class UndoController {
     /**
      * Discards the outgoing document's history: a document that has just been opened or
      * created has nothing to undo, and replaying a step recorded against the previous
-     * document would corrupt this one. Equivalent to {@link #reset()}.
+     * document would corrupt this one.
      */
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
@@ -385,31 +385,16 @@ public final class UndoController {
     /**
      * Returns undo state to the empty baseline: both stacks cleared, the document
      * marked clean, no pending op-name. Posts {@link UndoStateDidChangeNotification}
-     * so the Edit menu follows.
-     *
-     * <p>Does not attach or detach the controller — see {@link #initialize()} and
-     * {@link #deinitialize()}. Loading a document performs exactly this reset.
+     * so the Edit menu follows. Leaves the controller attached; a document load performs
+     * exactly this.
      */
-    public static void reset() {
+    private static void reset() {
         INSTANCE.undoStack.clear();
         INSTANCE.redoStack.clear();
         INSTANCE.cleanStep = BASELINE;
         INSTANCE.cleanValid = true;
         INSTANCE.pendingOpName = null;
         MessageCenter.post(new UndoStateDidChangeNotification());
-    }
-
-    /**
-     * Detaches the singleton from the message bus and releases the songs its steps pin.
-     * The stacks and pending op-name are cleared; nothing is recorded until
-     * {@link #initialize()} is called again. Posts nothing — the bus is being left, and a
-     * notification about state nobody is listening for is noise.
-     */
-    public static void deinitialize() {
-        MessageCenter.unsubscribe(INSTANCE);
-        INSTANCE.undoStack.clear();
-        INSTANCE.redoStack.clear();
-        INSTANCE.pendingOpName = null;
     }
 
     /**

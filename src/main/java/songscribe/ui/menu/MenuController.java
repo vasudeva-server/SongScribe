@@ -34,17 +34,18 @@ import javax.swing.JMenuItem;
 import com.formdev.flatlaf.util.SystemInfo;
 import com.uber.nullaway.annotations.Initializer;
 import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.listener.Listener;
+import net.engio.mbassy.listener.References;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.RecentDocumentsDidChangeNotification;
 import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.ClearRecentsAction;
 import songscribe.ui.action.CloseWindowAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.action.NewAction;
@@ -56,23 +57,30 @@ import songscribe.ui.action.SaveAsAction;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.platform.mac.MacNativeMenuController;
 
+@Listener(references = References.Strong)
 public class MenuController {
 
     private static final Logger LOG = LoggerFactory.getLogger(MenuController.class);
 
-    // We need to keep a reference to the instance to prevent it from being garbage collected
-    @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private static @Nullable MenuController instance = null;
-
-    /** Strong reference prevents GC — MBassador uses weak subscriber references. */
-    @SuppressWarnings({"FieldCanBeLocal", "unused"})
-    private static @Nullable MacNativeMenuController nativeMenuController = null;
-
     private final MainFrame mainFrame;
     JMenu openRecentMenu;
 
+    // The current generation of per-entry actions. Each subscribes itself to the bus in its
+    // constructor, so a rebuild disposes the outgoing generation rather than leaving it to
+    // handle every notification until the collector reaches it.
+    private List<OpenRecentAction> openRecentActions = List.of();
+
+    /**
+     * Builds the menu bar for {@code mainFrame} and subscribes the controller that keeps it
+     * current. The controller is a {@link References#Strong} listener, so the bus keeps it
+     * reachable and nothing else holds it.
+     *
+     * @effects installs the menu bar on {@code mainFrame} and, on macOS, the native app-menu
+     *          controller; both begin receiving messages and stay subscribed for the life of
+     *          the process
+     */
     public static void init(MainFrame mainFrame) {
-        instance = new MenuController(mainFrame);
+        new MenuController(mainFrame);
     }
 
     public MenuController(MainFrame mainFrame) {
@@ -80,7 +88,7 @@ public class MenuController {
         // Fail here rather than later: every menu this builds acts on the score view.
         mainFrame.requireScoreView();
         initMenus();
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     void initMenus() {
@@ -99,7 +107,7 @@ public class MenuController {
 
         if (SystemInfo.isMacOS) {
             try {
-                nativeMenuController = new MacNativeMenuController();
+                new MacNativeMenuController();
             } catch (Throwable e) {
                 if (GraphicsEnvironment.isHeadless()) {
                     LOG.debug("MacNativeMenuController not available: {}", e.getMessage());
@@ -146,21 +154,26 @@ public class MenuController {
 
     void rebuildOpenRecentMenu() {
         openRecentMenu.removeAll();
+        openRecentActions.forEach(OpenRecentAction::dispose);
         var recents = RecentDocumentsManager.getRecents();
 
         if (recents.isEmpty()) {
+            openRecentActions = List.of();
             var noRecentItem = new JMenuItem(Strings.get(Strings.MENU_FILE_NO_RECENT_DOCUMENTS));
             noRecentItem.setEnabled(false);
             openRecentMenu.add(noRecentItem);
         } else {
             var labels = buildLabels(recents);
+            var actions = new ArrayList<OpenRecentAction>(recents.size());
 
             for (var i = 0; i < recents.size(); i++) {
-                openRecentMenu.add(new OpenRecentAction(mainFrame, labels.get(i), recents.get(i)));
+                actions.add(new OpenRecentAction(mainFrame, labels.get(i), recents.get(i)));
             }
 
+            openRecentActions = List.copyOf(actions);
+            openRecentActions.forEach(openRecentMenu::add);
             openRecentMenu.addSeparator();
-            openRecentMenu.add(ClearRecentsAction.createAction(mainFrame));
+            openRecentMenu.add(Actions.CLEAR_RECENTS_ACTION);
         }
     }
 

@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.Actions;
@@ -79,9 +79,11 @@ public final class ActionReflector implements Disposable {
 
     private record ActionState(boolean selected, boolean enabled) {}
 
+    private final MessageSubscription subscription;
+
     ActionReflector(SelectionCoordinator coordinator) {
         this.coordinator = coordinator;
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /**
@@ -91,7 +93,7 @@ public final class ActionReflector implements Disposable {
      */
     @Override
     public void dispose() {
-        MessageCenter.unsubscribe(this);
+        subscription.dispose();
     }
 
     // -------------------------------------------------------------------------

@@ -23,7 +23,7 @@ package songscribe.ui.action;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DurationWasSelectedNotification;
 
 /**
@@ -40,7 +40,7 @@ public class NonDurationActionGroup extends ActionGroup<ElementTypeAction> {
         }
 
         add(Actions.BREATH_MARK_ACTION);
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     // It's important for this to happen first, so that the non-duration actions

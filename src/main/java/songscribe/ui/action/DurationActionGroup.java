@@ -23,7 +23,7 @@ package songscribe.ui.action;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.BarWasSelectedNotification;
 
 /**
@@ -34,7 +34,7 @@ public class DurationActionGroup extends ActionGroup<ElementTypeAction> {
 
     DurationActionGroup(ElementTypeAction... actions) {
         super(actions);
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     // It's important for this to happen first, so that the duration actions

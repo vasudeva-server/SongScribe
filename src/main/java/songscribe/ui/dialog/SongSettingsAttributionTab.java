@@ -150,15 +150,6 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
     // which is the first point at which the derivation it is seeded from can run.
     private final ValueProperty<AttributionPreviewWidget.PreviewState> previewState;
 
-    // Each font row owns two actions that subscribe themselves to the message bus, so this
-    // tab holds the rows until dispose() releases them. Assigned while the Fonts section is
-    // built, from initContents() — a UI builder NullAway cannot follow.
-    @SuppressWarnings("NullAway.Init")
-    private FontSettingRow.Row attributionFontRow;
-
-    @SuppressWarnings("NullAway.Init")
-    private FontSettingRow.Row subAttributionFontRow;
-
     SongSettingsAttributionTab(SongSettingsDialog dialog) {
         dialog.super(Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION));
 
@@ -356,30 +347,22 @@ final class SongSettingsAttributionTab extends BaseDialog.Tab {
 
         var mainFrame = getMainFrame();
 
-        attributionFontRow = FontSettingRow.create(
+        section.add(FontSettingRow.create(
             mainFrame,
             wordsMusicLabel,
             new FontSettingRow.Spec(attributionFontLabel, FontKey.ATTRIBUTION, attributionFont)
-        );
-        section.add(attributionFontRow.panel());
+        ));
 
         BaseDialog.addSeparator(section);
 
-        subAttributionFontRow = FontSettingRow.create(
+        section.add(FontSettingRow.create(
             mainFrame,
             datePlaceLabel,
             new FontSettingRow.Spec(subAttributionFontLabel, FontKey.SUB_ATTRIBUTION, subAttributionFont)
-        );
-        section.add(subAttributionFontRow.panel());
+        ));
 
         UIUtils.setFlexibleWidth(section);
         return section;
-    }
-
-    @Override
-    protected void dispose() {
-        attributionFontRow.dispose();
-        subAttributionFontRow.dispose();
     }
 
     Font getAttributionFont() {

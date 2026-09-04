@@ -30,13 +30,15 @@ import java.util.function.Consumer;
 import javax.swing.KeyStroke;
 
 import net.engio.mbassy.listener.Handler;
+import net.engio.mbassy.listener.Listener;
+import net.engio.mbassy.listener.References;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
@@ -56,22 +58,11 @@ import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
  * does the first constant use (for example {@code MODE_ACTION_GROUP.select(...)}) occur.
  *
  * <h2>Lifecycle</h2>
- * {@link #initialize(MainFrame)} establishes a <em>generation</em>: every action
- * constant is constructed against one owner frame, each subscribing itself to the
- * message bus, together with this class's document-load reset handler. The
- * app-menu cache is invalidated so {@link #getAppMenuActions()} rebuilds from the
- * new generation.
- *
- * <p>Re-initialization is permitted. Each call retires the previous generation
- * first — the constants of a retired generation are off the bus and must not be
- * used. Without that step a replaced generation would keep receiving
- * notifications: the bus holds subscribers weakly, so dropping the static
- * reference does not detach them (see {@code docs/messages.md}).
- *
- * <p>{@link #deinitialize()} retires the current generation and clears the owner.
- * Nothing survives it. The constants are {@code @NonNull} static fields, so they
- * are not nulled; after {@code deinitialize()} they still reference retired actions
- * and must not be read until {@link #initialize} is called again.
+ * {@link #initialize(MainFrame)} constructs every action constant against one owner frame,
+ * each subscribing itself to the message bus, together with this class's document-load reset
+ * handler. All of them live for the process; nothing tears them down. A caller that
+ * replaces them must first have retired the bus they joined, because the constants it
+ * replaces keep whatever registrations they made.
  */
 // The action constants are @NonNull but populated lazily by initialize() (which needs
 // the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses
@@ -84,11 +75,6 @@ import static songscribe.util.UIUtils.MENU_SHORTCUT_MASK;
     "StaticVariableUsedBeforeInitialization"
 })
 public final class Actions {
-
-    // Injected by initialize() before any constant is referenced.
-    // Null until initialize() is called; null again after deinitialize().
-    @Nullable
-    private static MainFrame mainFrame;
 
     private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
 
@@ -183,6 +169,7 @@ public final class Actions {
 
     public static PrintAction PRINT_ACTION;
     public static QuitAction QUIT_ACTION;
+    public static ClearRecentsAction CLEAR_RECENTS_ACTION;
 
     public static UndoAction UNDO_ACTION;
     public static RedoAction REDO_ACTION;
@@ -201,28 +188,21 @@ public final class Actions {
     public static ZoomAction ZOOM_OUT_ACTION;
     public static List<ZoomLevelAction> ZOOM_LEVEL_ACTIONS;
 
-    // Strong reference prevents GC (mbassy uses weak references)
-    private static final ResetHandler RESET_HANDLER = new ResetHandler();
-
     /**
      * Initializes all action constants using {@code mainFrame} as the owner.
      *
-     * <p>Must be called once at the top of {@link MainFrame#initFrame()} before any
-     * constant in this class is first referenced. Calling this method again (e.g. in
-     * tests) retires the previous generation via {@link #deinitialize()} first, then
-     * replaces all constants with freshly constructed instances.
+     * <p>Called once per process, at the top of {@link MainFrame#initFrame()}, before any
+     * constant in this class is first referenced. The constants this replaces keep whatever
+     * bus registrations they made, so a caller that calls it again must first have retired
+     * the bus the previous constants joined.
+     *
+     * @effects every constant is assigned a freshly constructed action subscribed to the bus,
+     *     the reset handler is subscribed, and the app-menu cache is rebuilt on its next read
      */
     public static void initialize(MainFrame mainFrame) {
-        if (Actions.mainFrame != null) {
-            deinitialize();
-        }
-
-        Actions.mainFrame = mainFrame;
-
-        // Subscribed here rather than in a static initializer so that merely loading
-        // this class cannot register the handler before the constants it dereferences
-        // exist.
-        MessageCenter.subscribe(RESET_HANDLER);
+        // Constructed here rather than in a static initializer so that merely loading this
+        // class cannot register the handler before the constants it dereferences exist.
+        new ResetHandler();
 
         UndoController.initialize();
 
@@ -358,6 +338,7 @@ public final class Actions {
         ABOUT_ACTION = AboutOpenAction.createAction(mainFrame);
         PRINT_ACTION = PrintAction.createAction(mainFrame);
         QUIT_ACTION = QuitAction.createAction(mainFrame);
+        CLEAR_RECENTS_ACTION = ClearRecentsAction.createAction(mainFrame);
 
         UNDO_ACTION = UndoAction.createAction(mainFrame);
         REDO_ACTION = RedoAction.createAction(mainFrame);
@@ -455,28 +436,6 @@ public final class Actions {
         return appMenuActions;
     }
 
-    /**
-     * Retires the current generation of action constants and clears the owner.
-     *
-     * <p>Every action constant and the document-load reset handler are removed from
-     * the message bus, and the app-menu cache is dropped. Idempotent: calling it
-     * without a preceding {@link #initialize} is a no-op.
-     *
-     * <p>After this returns, no constant in this class may be read until
-     * {@link #initialize} is called again — the fields are non-null but reference
-     * retired actions.
-     */
-    public static void deinitialize() {
-        // The reflection loop below only covers the public action constants, so the
-        // private reset handler must be removed explicitly — otherwise it lingers as a
-        // zombie whose resetToDefaults() throws once the constants reference disposed
-        // actions, aborting delivery to every lower-priority subscriber of that post.
-        MessageCenter.unsubscribe(RESET_HANDLER);
-        forEachActionConstant(Actions::disposeValue);
-        mainFrame = null;
-        appMenuActions = null;
-    }
-
     private static void forEachActionConstant(Consumer<@Nullable Object> action) {
         var requiredModifiers = Modifier.PUBLIC | Modifier.STATIC;
 
@@ -493,24 +452,21 @@ public final class Actions {
         }
     }
 
-    private static void disposeValue(@Nullable Object value) {
-        if (value instanceof Disposable disposable) {
-            disposable.dispose();
-        } else if (value instanceof Iterable<?> items) {
-            for (var item : items) {
-                disposeValue(item);
-            }
-        } else if (value instanceof Object[] array) {
-            for (var item : array) {
-                disposeValue(item);
-            }
-        }
-    }
-
     private Actions() {
     }
 
-    private static class ResetHandler {
+    /**
+     * Resets the action constants on every document load. Registered by {@link #initialize}
+     * once the constants it dereferences exist, for the life of the process; the bus holds it
+     * strongly because nothing else does.
+     */
+    @Listener(references = References.Strong)
+    private static final class ResetHandler {
+
+        private ResetHandler() {
+            MessageSubscription.addProcessListener(this);
+        }
+
         @Handler(priority = Message.HIGH_PRIORITY)
         public void documentDidLoad(DocumentDidLoadNotification message) {
             resetToDefaults();

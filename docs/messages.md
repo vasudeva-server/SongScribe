@@ -17,9 +17,14 @@ ordering.
 
 ## Subscribers are held weakly, which is not enough
 
-The bus does not keep its subscribers alive, so **every subscriber needs a strong
-reference elsewhere for as long as it should live** — a static field, or a field
-on a longer-lived owner. That much is a familiar hazard.
+The bus does not keep its subscribers alive by default, so **a subscriber needs a
+strong reference for as long as it should live**. A subscriber with a natural
+owner — a component in a container, a controller on the view it drives — gets it
+from that owner. A subscriber that lives for the process and has no owner is
+annotated `@Listener(references = References.Strong)`, which makes the bus hold
+it strongly; whoever constructs it then drops the reference, because nothing else
+needs to hold it. A static field kept only to prevent collection is a sign the
+annotation is missing. That much is a familiar hazard.
 
 The unfamiliar half is the other direction: a subscriber that has lost its last
 strong reference is **still subscribed and still receiving messages** until the
@@ -39,34 +44,21 @@ Two kinds do:
 
 See [lifecycle.md](lifecycle.md) for how those are disposed.
 
-## A scope replaces the bus; it does not layer on it
+## A registration has one owner
 
-A bounded piece of work can push a bus of its own for its duration. Three things
-follow, and each is a promise the scope makes:
+Every registration is tied to a lifetime when it is made. A listener retired
+while the process continues owns its registration and ends it by disposing what
+it was handed; a listener that lives for the process registers for the process
+and holds nothing, because nothing ends it. There is no third way in and no other
+way out. See [lifecycle.md](lifecycle.md) for who owns what, and when it ends.
 
-- **It replaces.** While a scope is in force, a post reaches only what subscribed
-  inside it. Whatever subscribed beneath hears nothing during, and hears nothing
-  afterwards about what happened while it was open.
-- **Closing discards everything subscribed inside it**, in one operation, with no
-  per-subscriber bookkeeping. This is not disposal — it covers the unsubscribing
-  and nothing else — and for a process about to exit it buys nothing at all.
-- **The error handler is the scope's own.** This is the reason scopes exist in
-  production: a headless conversion has no display for the fatal-error dialog the
-  application bus ends in, so it supplies a handler that reports to the log
-  instead.
+## The bus is supplied by the entry point
 
-What consumes the discarding half is the test suite, where a scope per test is
-what keeps one test's subscribers out of the next.
+There is no bus until something sets one, and a post or subscribe before then is
+a fatal error. The entry point sets the bus once, before anything can post or
+subscribe, and keeps it for the life of the process. A process with a different
+entry point — a headless conversion — sets a bus of its own.
 
-**Unsubscribing reaches only the bus in force.** A subscriber that registered on
-the application bus and tries to unsubscribe while a scope is open matches
-nothing and stays subscribed. Disposal inside a scope is therefore not supported:
-dispose where the bus that saw the subscription is still the bus in force.
-
-The scope stack is process-wide rather than per-thread, because a bounded piece
-of work may hand parts of itself to other threads and they must post to the same
-bus. That is only coherent if scopes are pushed and popped when nothing else is
-running — open one when the work begins, close it when the work is finished, never
-around a stretch of a live application while other threads are still posting.
-Nesting is fine; interleaving is not, and closing out of order is reported rather
-than allowed through.
+What happens when a handler throws during delivery is a per-process policy fixed
+when the bus is built, not a property the bus exposes. The entry point chooses
+the policy by choosing the bus. For SongScribe that is a fatal dialog.

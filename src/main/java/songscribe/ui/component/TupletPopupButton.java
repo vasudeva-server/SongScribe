@@ -26,7 +26,7 @@ import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -42,7 +42,7 @@ public class TupletPopupButton extends PopupMenuButton {
             Actions.TOGGLE_TUPLET_ACTIONS.get(1),
             ItemStyle.RADIO
         );
-        MessageCenter.subscribe(this);
+        MessageSubscription.addProcessListener(this);
     }
 
     @Override

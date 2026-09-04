@@ -36,6 +36,7 @@ import songscribe.io.SongIO;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.MessageSubscription;
 import songscribe.message.SongData;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
@@ -282,6 +283,8 @@ public final class Song implements Disposable {
     // Answers what tempo and what beat are in effect at a position.
     private final TempoResolver tempoResolver = new TempoResolver(this);
 
+    private final MessageSubscription subscription;
+
     public Song() {
         // Suspend mutation tracking so that setup changes don't post a spurious
         // SongDidChangeNotification to global subscribers before this Song is
@@ -293,7 +296,7 @@ public final class Song implements Disposable {
             lines.add(initialLine);
         });
 
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /**
@@ -302,7 +305,7 @@ public final class Song implements Disposable {
      */
     public Song(SongData data) {
         loadFrom(data);
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /**
@@ -318,7 +321,7 @@ public final class Song implements Disposable {
     private enum Stub { INSTANCE }
 
     private Song(Stub ignored) {
-        MessageCenter.subscribe(this);
+        subscription = new MessageSubscription(this);
     }
 
     /**
@@ -327,7 +330,7 @@ public final class Song implements Disposable {
      */
     @Override
     public void dispose() {
-        MessageCenter.unsubscribe(this);
+        subscription.dispose();
     }
 
     @Handler
