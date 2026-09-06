@@ -48,8 +48,16 @@ record ElementBounds(
     /**
      * Bounds for an element with no stem: the same in both stem directions, and the glyph's
      * width is the element's width.
+     *
+     * @param glyphSize   the glyph's width from the origin to its right edge, and its height
+     * @param topOffsetSs the Y offset from the element center to the top of the glyph, negative
+     * @return bounds whose full and base widths are both the glyph's width, and whose height and
+     *     top offset are the glyph's for either stem direction
      */
-    static ElementBounds symmetric(double widthSs, double heightSs, double topOffsetSs) {
+    static ElementBounds symmetric(Size glyphSize, double topOffsetSs) {
+        var widthSs = glyphSize.widthSs();
+        var heightSs = glyphSize.heightSs();
+
         return new ElementBounds(
             widthSs, widthSs, heightSs, topOffsetSs, heightSs, heightSs, topOffsetSs, topOffsetSs);
     }

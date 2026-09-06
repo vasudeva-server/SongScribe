@@ -162,9 +162,12 @@ public final class ModificationSession {
      * undo entry is recorded, and the song's {@code modified} flag is
      * not set.
      * <p>
-     * Intended for test setup that populates lines outside a user-driven
-     * modification bracket. Production code should use
-     * {@link #withModification(Runnable)} instead.
+     * The caller is asserting that this run owes no undo entry of its own — either
+     * because it is not a user edit at all (establishing, loading or repairing
+     * document state), or because the entry for it is recorded elsewhere, as a grace
+     * note's insertion is by the bracket that later pairs it with a host, or must not
+     * exist at all, as a cancelled operation's must not. An edit that owes its own
+     * entry goes through {@link #withModification(Runnable)}.
      */
     public void withoutMutationTracking(Runnable body) {
         beginSuspendMutationTracking();

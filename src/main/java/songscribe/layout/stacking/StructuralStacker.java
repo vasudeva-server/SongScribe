@@ -192,7 +192,7 @@ public class StructuralStacker {
             var endXSs = anchorXSs + widthSs;
             var anchorStemUp = anchor.getDirection().isUp();
             var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-                anchorStemUp, StemMetrics.THICKNESS_SS, anchorColumn.getNoteheadWidthSs());
+                anchorStemUp, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
             var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
@@ -525,7 +525,7 @@ public class StructuralStacker {
         // or stemless) by the head's outer (left) edge.
         var element = column.getElement();
         var isUpStem = element.getType().isNoteWithStem() && element.getDirection().isUp();
-        return isUpStem ? headRightXSs - StemMetrics.THICKNESS_SS : headLeftXSs;
+        return isUpStem ? headRightXSs - StemMetrics.thicknessSs() : headLeftXSs;
     }
 
     /**

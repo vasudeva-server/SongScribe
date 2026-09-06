@@ -113,7 +113,7 @@ public final class TupletRenderer {
             var anchorType = anchorNote.getType();
             var isUpper = anchorNote.getDirection().isUp();
             var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorType.isNoteWithStem(),
-                isUpper, StemMetrics.THICKNESS_SS, anchorType.getElementWidthSs());
+                isUpper, StemMetrics.thicknessSs(), anchorType.getElementWidthSs());
             var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
 

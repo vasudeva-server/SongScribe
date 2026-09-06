@@ -30,6 +30,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -294,27 +295,25 @@ public class ElementColumnBuilder {
         StaffElement.Direction direction,
         boolean includeAugmentation) {
 
-        var type = element.getType();
-
         // Non-note elements (rests, barlines, breath marks, repeats) use their
         // actual visual width — they have no dots or flags.
-        if (!type.isNote()) {
+        if (!(element instanceof NoteElement note)) {
             return element.getGlyphWidthSs();
         }
 
         // Element head right edge — per type, so a whole note is measured as a whole note and a
         // grace note as the grace-scaled head.
-        var noteheadRightExtentSs = type.getElementWidthSs();
+        var noteheadRightExtentSs = note.getType().getElementWidthSs();
 
         // Augmentation dots extend the right edge. Derived from the same positions the renderer
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
         // the dots already clear the flag when an unbeamed up-stem one is present.
         var baseRightExtentSs = includeAugmentation
-            ? NoteGeometry.dotsRightExtentSs(element, beamed, direction, noteheadRightExtentSs)
+            ? NoteGeometry.dotsRightExtentSs(note, beamed, direction, noteheadRightExtentSs)
             : noteheadRightExtentSs;
 
         // Flag extent: only for unbeamed elements that have a flag
-        var flagBBox = NoteGeometry.flagBBoxLocalSs(type, direction, beamed);
+        var flagBBox = NoteGeometry.flagBBoxLocalSs(note, direction, beamed);
         var flagRightExtentSs = (flagBBox == null) ? 0.0 : flagBBox.getMaxX();
 
         var rightExtentSs = Math.max(baseRightExtentSs, flagRightExtentSs);

@@ -47,7 +47,7 @@ public final class FinalDoubleBarlineAction extends ElementTypeAction {
     private FinalDoubleBarlineAction(MainFrame mainFrame) {
         super(
             mainFrame,
-            Kind.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
+            Role.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
             Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "final-barline.svg", 30,
             "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
             0, 0,

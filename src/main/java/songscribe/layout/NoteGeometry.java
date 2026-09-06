@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AccidentalBounds;
 import songscribe.dom.ElementType;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.engraving.LedgerLine;
@@ -19,6 +20,7 @@ import songscribe.smufl.BBox;
 import songscribe.smufl.Anchor;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StemmedNotehead;
 
 /**
  * Geometry constants and stateless calculations for notes, noteheads, stems,
@@ -91,9 +93,9 @@ public final class NoteGeometry {
      * note is an ordinary black notehead drawn at a reduced font size.
      */
     public static final Anchor GRACE_STEM_UP_SE = new Anchor(
-        SMuFLMetadata.stemAnchors(ElementType.GRACE_QUAVER.stemmedNotehead()).stemUpSE().xSs()
+        SMuFLMetadata.stemAnchors(StemmedNotehead.BLACK).stemUpSE().xSs()
             * ElementType.GRACE_NOTE_SCALE,
-        SMuFLMetadata.stemAnchors(ElementType.GRACE_QUAVER.stemmedNotehead()).stemUpSE().ySs()
+        SMuFLMetadata.stemAnchors(StemmedNotehead.BLACK).stemUpSE().ySs()
             * ElementType.GRACE_NOTE_SCALE
     );
 
@@ -115,11 +117,11 @@ public final class NoteGeometry {
      * to the right of the note's right-most obstruction. That obstruction is the notehead, unless an
      * unbeamed up-stem flag extends further right.
      */
-    public static double firstDotXSs(ElementType noteType, boolean beamed, StaffElement.Direction direction) {
-        var obstructionRightSs = SMuFLMetadata.bboxSs(noteType.notehead().glyph()).rightSs();
+    public static double firstDotXSs(NoteElement note, boolean beamed, StaffElement.Direction direction) {
+        var obstructionRightSs = SMuFLMetadata.bboxSs(note.notehead().glyph()).rightSs();
 
         if (direction.isUp()) {
-            var flagBBox = flagBBoxLocalSs(noteType, StaffElement.Direction.UP, beamed);
+            var flagBBox = flagBBoxLocalSs(note, StaffElement.Direction.UP, beamed);
 
             if (flagBBox != null) {
                 obstructionRightSs = Math.max(obstructionRightSs, flagBBox.getMaxX());
@@ -135,19 +137,17 @@ public final class NoteGeometry {
      * relative to the note's glyph origin.
      */
     public static void forEachDotPosition(
-        StaffElement note, boolean beamed, StaffElement.Direction direction,
+        NoteElement note, boolean beamed, StaffElement.Direction direction,
         BiConsumer<? super Double, ? super Double> consumer
     ) {
         if (note.getDotCount() == 0) {
             return;
         }
 
-        var noteType = note.getType();
-
         // Dots shift up when note is on a line (even staff position)
         var yOffset = StaffPosition.isOnLine(note.getStaffPosition()) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
-        var dotX = firstDotXSs(noteType, beamed, direction);
+        var dotX = firstDotXSs(note, beamed, direction);
 
         for (var i = 0; i < note.getDotCount(); i++) {
             consumer.accept(dotX, yOffset);
@@ -162,7 +162,7 @@ public final class NoteGeometry {
      * actually painted.
      */
     public static double dotsRightExtentSs(
-        StaffElement note, boolean beamed, StaffElement.Direction direction, double baseRightSs
+        NoteElement note, boolean beamed, StaffElement.Direction direction, double baseRightSs
     ) {
         if (note.getDotCount() == 0) {
             return baseRightSs;
@@ -237,23 +237,24 @@ public final class NoteGeometry {
     }
 
     /**
-     * Computes the base stem geometry for a note type and direction.
+     * Computes the base stem geometry for a note and direction.
      * This is the shared anchor selection and positioning logic used by both
      * {@code StaffElementRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
      *
-     * @param noteType  The note type (determines anchor and stem length)
+     * @param note      The note; must satisfy {@link ElementType#isNoteWithStem()}
      * @param direction UP for stem-up, DOWN for stem-down
      * @return The base stem geometry
      */
-    public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
+    public static StemGeometry computeBaseStemGeometry(NoteElement note, StaffElement.Direction direction) {
+        var noteType = note.getType();
         var isGrace = noteType.isGraceNote();
-        var anchor = isGrace ? GRACE_STEM_UP_SE : stemSideAnchor(noteType, direction);
+        var anchor = isGrace ? GRACE_STEM_UP_SE : stemSideAnchor(note.stemmedNotehead(), direction);
         var anchorXSs = anchor.xSs();
 
         // Stem left edge: the anchor marks the stem's RIGHT edge for up-stems (back off a full
         // stem width) and its LEFT edge for down-stems (use the anchor directly). Both leave the
         // stem's outer edge flush with the notehead's outer edge, overlapping inward by its width.
-        var stemLeftXSs = direction.isUp() ? anchorXSs - StemMetrics.THICKNESS_SS : anchorXSs;
+        var stemLeftXSs = direction.isUp() ? anchorXSs - StemMetrics.thicknessSs() : anchorXSs;
 
         return new StemGeometry(stemLeftXSs, anchor.ySs(), stemLengthSs(noteType));
     }
@@ -265,8 +266,8 @@ public final class NoteGeometry {
      * {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs} so the anchor lookup is
      * defined once.
      */
-    public static Anchor stemSideAnchor(ElementType noteType, StaffElement.Direction direction) {
-        var anchors = SMuFLMetadata.stemAnchors(noteType.stemmedNotehead());
+    public static Anchor stemSideAnchor(StemmedNotehead notehead, StaffElement.Direction direction) {
+        var anchors = SMuFLMetadata.stemAnchors(notehead);
 
         return direction.isUp() ? anchors.stemUpSE() : anchors.stemDownNW();
     }
@@ -594,15 +595,12 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns whether a note is drawn with ledger lines: one the staff reaches, or one
-     * whose type draws no staff longitude at all, gets none.
+     * Returns whether a note is drawn with ledger lines: one the staff reaches gets none.
      *
      * @return {@code true} when the note's staff position lies beyond what the staff reaches
-     *     and its type draws staff longitude
      */
-    public static boolean noteNeedsLedgerLines(StaffElement note) {
-        return StaffPosition.needsLedgerLines(note.getStaffPosition())
-            && note.getType().drawStaveLongitude();
+    public static boolean noteNeedsLedgerLines(NoteElement note) {
+        return StaffPosition.needsLedgerLines(note.getStaffPosition());
     }
 
     /**
@@ -619,9 +617,9 @@ public final class NoteGeometry {
      *
      * @return the note's base ledger extent plus its closest-accidental shortening data
      */
-    public static LedgerLineGeometry getLedgerLineGeometry(StaffElement note) {
+    public static LedgerLineGeometry getLedgerLineGeometry(NoteElement note) {
         var noteType = note.getType();
-        var bbox = SMuFLMetadata.bboxSs(noteType.notehead().glyph());
+        var bbox = SMuFLMetadata.bboxSs(note.notehead().glyph());
         var direction = effectiveDirection(note);
         var offsetSs = getNoteheadXOffsetSs(noteType, direction);
         var headLeftSs = offsetSs + bbox.leftSs();
@@ -638,7 +636,7 @@ public final class NoteGeometry {
      * no accidental shortening), in staff spaces relative to the note origin. Convenience wrapper over
      * {@link #getLedgerLineGeometry} for callers that need the base extent alone.
      */
-    public static LedgerExtentSs getLedgerLineBaseExtentSs(StaffElement note) {
+    public static LedgerExtentSs getLedgerLineBaseExtentSs(NoteElement note) {
         return getLedgerLineGeometry(note).baseExtentSs();
     }
 
@@ -648,7 +646,7 @@ public final class NoteGeometry {
      * followed by {@link LedgerLineGeometry#extentAtSs}; callers drawing all of a note's ledger lines
      * should reuse one {@link LedgerLineGeometry} instead of calling this per line.
      */
-    public static LedgerExtentSs getLedgerLineExtentSs(StaffElement note, double yOffsetSs) {
+    public static LedgerExtentSs getLedgerLineExtentSs(NoteElement note, double yOffsetSs) {
         return getLedgerLineGeometry(note).extentAtSs(yOffsetSs);
     }
 
@@ -701,7 +699,7 @@ public final class NoteGeometry {
      * on where the grace flag sits.
      */
     public static double getGraceFlagOriginXSs(double stemLeftXSs) {
-        return stemLeftXSs + StemMetrics.THICKNESS_SS * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
+        return stemLeftXSs + StemMetrics.thicknessSs() * (1 - ElementType.GRACE_NOTE_SCALE) / 2;
     }
 
     /**
@@ -716,7 +714,9 @@ public final class NoteGeometry {
      * {@link ElementType#GRACE_NOTE_SCALE}.
      */
     @Nullable
-    public static Rectangle2D flagBBoxLocalSs(ElementType noteType, StaffElement.Direction direction, boolean beamed) {
+    public static Rectangle2D flagBBoxLocalSs(NoteElement note, StaffElement.Direction direction, boolean beamed) {
+        var noteType = note.getType();
+
         if (beamed || !noteType.isNoteWithStem()) {
             return null;
         }
@@ -727,7 +727,7 @@ public final class NoteGeometry {
             return null;
         }
 
-        var stemGeom = computeBaseStemGeometry(noteType, direction);
+        var stemGeom = computeBaseStemGeometry(note, direction);
         var stemLeftXSs = stemGeom.stemLeftXSs();
         var stemTipYSs = stemGeom.stemTipYSs(direction);
         var flagBBox = SMuFLMetadata.bboxSs(flagGlyph);

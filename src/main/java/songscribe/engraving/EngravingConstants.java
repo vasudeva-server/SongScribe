@@ -46,9 +46,14 @@ public final class EngravingConstants {
     private static final double VOLTA_BRACKET_MULTIPLIER = 1.61;
 
     /**
-     * LilyPond base staff-line thickness in staff spaces. SMuFL Bravura uses 0.13,
-     * but LilyPond uses 0.1 — applying LilyPond multipliers to a LilyPond base
-     * produces the correct absolute thicknesses.
+     * LilyPond base staff-line thickness in staff spaces. SMuFL Bravura's own staff line is
+     * heavier; applying LilyPond multipliers to a LilyPond base reproduces LilyPond's absolute
+     * weights, which is what this program's strokes follow.
+     *
+     * <p>That holds for a stroke this program draws on its own — a staff line, a barline, a
+     * bracket, a hairpin. A stroke that has to register against geometry the font draws takes
+     * its width from the font instead, because the glyphs are cut around the font's own value
+     * and not LilyPond's: see {@link StemMetrics#thicknessSs()}.
      */
     public static final double LILYPOND_BASE_THICKNESS_SS = 0.1;
 

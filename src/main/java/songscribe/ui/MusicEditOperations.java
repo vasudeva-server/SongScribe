@@ -852,7 +852,7 @@ public final class MusicEditOperations {
 
             contentCount++;
 
-            if (i < end && (type == ElementType.REPEAT_RIGHT || type == ElementType.REPEAT_LEFT_RIGHT)) {
+            if (i < end && type.closesRepeat()) {
                 if (rightRepeatIndex >= 0) {
                     return -1;
                 }

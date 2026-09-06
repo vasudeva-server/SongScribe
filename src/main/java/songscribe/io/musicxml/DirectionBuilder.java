@@ -85,7 +85,7 @@ final class DirectionBuilder {
      * beat-unit/per-minute are still emitted so the visible tempo survives.
      */
     static Direction buildTempoDirection(BuildContext context, Tempo tempo) {
-        var beatUnit = BeatUnitMapping.forDuration(tempo.tempoType());
+        var beatUnit = BeatUnitMapping.entryFor(tempo.tempoType());
         var factory = context.factory();
         var direction = factory.createDirection();
         direction.getDirectionType().add(buildMetronomeDirectionType(factory, tempo, beatUnit));
@@ -225,7 +225,7 @@ final class DirectionBuilder {
      */
     private static void addMetronomeNote(
             ObjectFactory factory, Metronome metronome, BeatUnit duration) {
-        var beatUnit = BeatUnitMapping.forDuration(duration);
+        var beatUnit = BeatUnitMapping.entryFor(duration);
         var metronomeNote = factory.createMetronomeNote();
         metronomeNote.setMetronomeType(beatUnit.token());
         addDots(factory, metronomeNote.getMetronomeDot(), beatUnit.dotCount());

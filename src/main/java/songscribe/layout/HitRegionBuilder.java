@@ -548,7 +548,7 @@ public final class HitRegionBuilder {
         // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
         var anchorXSs = layout.xSs();
         var leftEdgeXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-            anchor.getDirection().isUp(), StemMetrics.THICKNESS_SS, anchorColumn.getNoteheadWidthSs());
+            anchor.getDirection().isUp(), StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
         var rightEdgeXSs = Tuplet.bracketRightEdgeXSs(
             anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
 

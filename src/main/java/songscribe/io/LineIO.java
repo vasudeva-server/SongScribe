@@ -534,20 +534,15 @@ public final class LineIO {
             for (var pair : pendingEndingPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
 
-                var startElement = line.getElement(pair[0]);
-                var endElement = line.getElement(pair[1]);
-                var ending = new Ending(startElement, endElement);
-
-                // Every ending must have a REPEAT splitting its two brackets (issue #306).
-                // A split-less span — e.g. a pre-#306 single-bracket ending in an older
-                // .mssw file — would throw during layout or MIDI generation, so drop it on
-                // load, mirroring the MusicXML import path (EndingResolver.buildEnding).
-                if (ending.findRepeatSplitElement(line) == null) {
+                // A pre-#306 single-bracket ending in an older .mssw file has no repeat
+                // splitting its two brackets, which Ending's invariant requires, so it is
+                // dropped on load as the MusicXML import path drops one.
+                if (!Ending.hasRepeatSplit(line, pair[0], pair[1])) {
                     LOG.warn("Dropping split-less <ending> on load (no repeat between anchor and end)");
                     continue;
                 }
 
-                line.addSpan(ending);
+                line.addSpan(new Ending(line.getElement(pair[0]), line.getElement(pair[1])));
             }
 
             pendingEndingPairs.clear();

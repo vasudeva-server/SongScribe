@@ -22,65 +22,31 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Base class for non-sounding elements in a line.
- * <p>
- * Non-pitched elements include:
- * <ul>
- *   <li>Bar lines (single, double, final, repeat variants)</li>
- *   <li>Breath marks</li>
- *   <li>Rests</li>
- *   <li>Other non-pitched elements</li>
- * </ul>
- * <p>
- * These elements are positioned on the staff but don't have
- * pitch-related properties like accidentals. Rests support dots.
+ * A non-sounding element: a rest, a barline, a repeat, a breath mark or a key change. Has no
+ * pitch, so it carries no accidental, and spans the staff, so the middle line is its position by
+ * definition. Each leaf holds the appearance arm it is drawn from — {@link GlyphElement},
+ * {@link BarElement}, {@link KeyChangeElement} — and overrides what that arm answers
+ * differently: a glyph sits at its own seat, and a rest takes dots.
  */
-public class StructuralElement extends StaffElement {
+public abstract sealed class StructuralElement extends StaffElement
+    permits GlyphElement, BarElement, KeyChangeElement {
 
-    public StructuralElement(ElementType noteType) {
-        super(noteType);
-    }
-
-    @Override
-    public StructuralElement clone() {
-        var copy = new StructuralElement(getType());
-        copy.copyStateFrom(this);
-
-        return copy;
-    }
-
-    /** A non-sounding element carries no state beyond {@link StaffElement#copyStateFrom}'s field list. */
-    @Override
-    protected void copySubtypeStateFrom(StaffElement source) {
+    protected StructuralElement(ElementType type) {
+        super(type);
     }
 
     @Override
     public int getStaffPosition() {
-        return switch (getType().appearance()) {
-            case GlyphAppearance(var ignoredGlyph, var seatSp) -> seatSp;
-
-            // A bar and a key signature span the staff, so the middle line is their
-            // position by definition.
-            case BarAppearance ignored -> 0;
-            case KeySignatureAppearance ignored -> 0;
-
-            // ElementType.newInstance() is the only place that constructs a StructuralElement,
-            // and it does so only for REST, BARLINE, REPEAT and BREATH_MARK — never a notehead
-            // type.
-            case NoteheadAppearance ignored ->
-                throw new IllegalStateException(
-                    "structural element built from notehead type " + getType());
-        };
+        return 0;
     }
 
     @Override
     public int getDotCount() {
-        return getType().isRest() ? super.getDotCount() : 0;
+        return 0;
     }
 
     @Override
     public StaffElement.@Nullable Accidental getAccidental() {
         return null;
     }
-
 }

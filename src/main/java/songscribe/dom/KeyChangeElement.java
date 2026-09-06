@@ -40,7 +40,7 @@ import org.jspecify.annotations.Nullable;
  * <p>A key change carries no duration and no pitch, so it inherits
  * {@link StructuralElement}'s answers for staff position, dots and accidental.
  */
-public class KeyChangeElement extends StructuralElement {
+public final class KeyChangeElement extends StructuralElement {
 
     private Key key;
 
@@ -54,7 +54,7 @@ public class KeyChangeElement extends StructuralElement {
     private @Nullable Key detachedPreviousKey;
 
     /**
-     * @param key the key taking effect here; never null
+     * @param key the key taking effect here
      */
     public KeyChangeElement(Key key) {
         super(ElementType.KEY_CHANGE);
@@ -139,7 +139,7 @@ public class KeyChangeElement extends StructuralElement {
     }
 
     /**
-     * @return the key taking effect at this element's position; never null
+     * @return the key taking effect at this element's position
      */
     public Key getKey() {
         return key;
@@ -233,7 +233,7 @@ public class KeyChangeElement extends StructuralElement {
      * key of later lines, re-spelled accidentals, an invalidated layout — is the caller's to
      * drive through the mutation the edit belongs to, not a side effect of this setter.
      *
-     * @param key the key taking effect here; never null
+     * @param key the key taking effect here
      */
     public void setKey(Key key) {
         this.key = key;

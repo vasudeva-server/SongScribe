@@ -1176,9 +1176,10 @@ public final class Song implements Disposable {
 
     /**
      * Runs {@code body} with mutation tracking suspended: mutations apply but nothing is
-     * recorded — no notification, no undo entry, no {@code modified} flag. Intended for
-     * test setup and file-load infrastructure; production editing code should use
-     * {@link #withModification(Runnable)} instead.
+     * recorded — no notification, no undo entry, no {@code modified} flag. The caller is
+     * asserting that this run owes no undo entry of its own: it is not a user edit, or the
+     * entry for it is recorded elsewhere, or it must leave none. An edit that owes its own
+     * entry goes through {@link #withModification(Runnable)}.
      *
      * @see ModificationSession#withoutMutationTracking
      */

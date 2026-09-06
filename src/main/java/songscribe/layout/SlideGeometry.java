@@ -24,6 +24,7 @@ import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -72,7 +73,7 @@ public final class SlideGeometry {
      * column right edge (the fall anchor), and the stem-free glissando attachment extents.
      */
     public record NoteContext(
-        StaffElement note,
+        NoteElement note,
         double cySs,
         double columnRightXSs,
         double glissLeftXSs,
@@ -117,7 +118,7 @@ public final class SlideGeometry {
      * @param middleLineYSs Y position of the middle staff line; pass 0 for layout space
      */
     public static NoteContext noteContextAt(
-        StaffElement note, double elementXSs, boolean beamed, double middleLineYSs
+        NoteElement note, double elementXSs, boolean beamed, double middleLineYSs
     ) {
         var cy = NoteGeometry.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
 

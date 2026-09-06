@@ -20,22 +20,37 @@
 
 package songscribe.engraving;
 
+import songscribe.smufl.SMuFLMetadata;
+
 /**
  * Stem thickness and length, in staff spaces.
  */
 public final class StemMetrics {
-    /** From LilyPond's {@code Stem} grob {@code thickness} ({@code scm/define-grobs.scm:3474}). */
-    private static final double STEM_MULTIPLIER = 1.3;
-
-    /** Stem thickness in staff spaces. */
-    public static final double THICKNESS_SS = EngravingConstants.LILYPOND_BASE_THICKNESS_SS * STEM_MULTIPLIER;
+    /**
+     * Stem thickness in staff spaces, as the font declares it.
+     *
+     * <p>The strokes this program draws itself — barlines, brackets, hairpins — follow
+     * LilyPond's weights, built up from {@link EngravingConstants#LILYPOND_BASE_THICKNESS_SS}.
+     * A stem cannot: it has to register against glyphs the font supplies, starting at a
+     * notehead's stem anchor and carrying a flag cut for its edge, so the font's own stem
+     * width is the one those glyphs are drawn around.
+     *
+     * @return the stem thickness in staff spaces
+     */
+    public static double thicknessSs() {
+        return SMuFLMetadata.stemThicknessSs();
+    }
 
     /**
      * Half the stem thickness — the distance from a stem's center line to either edge. Beam and
      * stem-anchor geometry work outward from a stem's center, so they need the half width rather
      * than the full one.
+     *
+     * @return half the stem thickness in staff spaces
      */
-    public static final double STEM_HALF_WIDTH_SS = THICKNESS_SS / 2.0;
+    public static double halfWidthSs() {
+        return thicknessSs() / 2.0;
+    }
 
     /**
      * Stem length in staff-space units, from LilyPond's {@code Stem.details.lengths}, first

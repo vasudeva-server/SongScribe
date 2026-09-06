@@ -192,7 +192,7 @@ final class PreviewElementInserter {
                 null,
                 Strings.ALERT_TITLE_INSERT_ERROR,
                 Strings.ERROR_LINE_FULL_ELEMENT,
-                element.getType().categoryName()
+                element.getType().kind().label()
             );
             return null;
         }

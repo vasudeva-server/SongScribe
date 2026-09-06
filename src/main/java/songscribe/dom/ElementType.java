@@ -35,6 +35,57 @@ import static songscribe.engraving.BarStroke.DOTS;
 import static songscribe.engraving.BarStroke.THICK;
 import static songscribe.engraving.BarStroke.THIN;
 
+/**
+ * What an element is — a quarter note, an eighth rest, a left repeat — and everything that
+ * follows from that alone: its category, its note value where it has one, how it is drawn, and
+ * the room its glyph takes on a staff. What varies between two elements of one type — pitch,
+ * dots, accidental, a key — lives on the element.
+ *
+ * <p>Each constant declares one {@link Kind} and one {@link ElementAppearance}, and carries a
+ * {@link NoteValue} exactly when its kind is a note, a grace note or a rest. The eleven
+ * predicates that name a category answer from the kind alone, and this matrix is the whole of
+ * what those eleven promise:
+ *
+ * <pre>
+ *                  NOTE  GRACE_NOTE  REST  BARLINE  REPEAT  BREATH_MARK  KEY_CHANGE
+ *   isPitchedNote   ✓
+ *   isGraceNote            ✓
+ *   isNote          ✓      ✓
+ *   isRest                            ✓
+ *   isDuration      ✓                 ✓
+ *   isBarLine                               ✓
+ *   isRepeat                                         ✓
+ *   isBar                                   ✓        ✓
+ *   isBreathMark                                              ✓
+ *   isKeyChange                                                            ✓
+ *   isNonDuration                           ✓        ✓        ✓            ✓
+ * </pre>
+ *
+ * The predicates that state a rule rather than name a category — accidental cancellation,
+ * lyric-chain behavior, annotation capacity, and the bar rules below — are not in the matrix,
+ * and two of them, {@link #isNoteWithStem()} and {@link #isBeamable()}, do not answer from the
+ * kind at all.
+ *
+ * <p>A grace note sounds a pitch and occupies no time, so it is a note that is neither a duration
+ * nor a non-duration: {@link #isDuration()} and {@link #isNonDuration()} do not partition the
+ * kinds.
+ *
+ * <p><b>Which bars may stand where.</b> Five predicates are rules about particular bars rather
+ * than about a kind, and are read together: {@link #isValidSongTerminal()}, the bars that may
+ * occupy the song's last slot; {@link #isReplaceableByTerminal()}, the bars that slot replaces
+ * rather than follows; {@link #isEndingTerminal()}, the bars that can close a first/second-ending
+ * selection; {@link #closesRepeat()}, the bars playback loops back from, at which an ending's two
+ * brackets split; and {@link #closesSection()}, the bars nothing runs past, on which a volta's
+ * closing stroke hangs.
+ *
+ * <p>An element's Java class follows its type's appearance: {@link #newInstance()} chooses the
+ * class from the appearance, and {@link KeyChangeElement}'s own constructors build the one class
+ * its type admits. No other path builds an element.
+ *
+ * <p>The measurements are in staff spaces relative to the element's origin, computed once from
+ * the appearance. X grows rightward from the glyph's left origin; Y grows downward from the
+ * element's center, so a top offset is negative and a bottom offset positive.
+ */
 public enum ElementType {
     // Notes
     SEMIBREVE(Kind.NOTE, NoteValue.WHOLE, new NoteheadAppearance(WholeNotehead.WHOLE)),
@@ -68,7 +119,7 @@ public enum ElementType {
     BREATH_MARK(Kind.BREATH_MARK, new GlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA, -5)),
 
     // Barlines
-    SINGLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN)),
+    SINGLE_BARLINE(Kind.BARLINE, BarAppearance.SINGLE_BARLINE),
     DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THIN)),
     FINAL_DOUBLE_BARLINE(Kind.BARLINE, BarAppearance.of(THIN, THICK)),
 
@@ -99,6 +150,13 @@ public enum ElementType {
          */
         public String labelKey() {
             return labelKey;
+        }
+
+        /**
+         * @return the lowercase word naming this category, resolved for display
+         */
+        public String label() {
+            return Strings.get(labelKey);
         }
     }
 
@@ -133,134 +191,106 @@ public enum ElementType {
     /**
      * Creates a fresh element of this type.
      * <p>
-     * The element's Java class matches the type: a key change is a {@link KeyChangeElement},
-     * so a caller can ask it for a key. It starts in C major — the key that draws nothing —
-     * because a new element states no key of its own and a caller that means a particular key
-     * sets it.
+     * The element's Java class follows the type's appearance, so a caller holding a
+     * {@link NoteElement} can ask it for its notehead and one holding a {@link BarElement} for
+     * its strokes, each leaf answering from the appearance arm this match guarantees its type
+     * carries. A key change starts in C major — the key that draws nothing — because a new
+     * element states no key of its own and a caller that means a particular key sets it.
+     *
+     * @return a new element of this type, on no line, carrying nothing an editor would have
+     *     set — no dots, accidental, lyric or attachment
      */
     public StaffElement newInstance() {
-        return switch (kind) {
-            case KEY_CHANGE -> new KeyChangeElement(Key.NO_ACCIDENTALS);
-            case REST, BARLINE, REPEAT, BREATH_MARK -> new StructuralElement(this);
-            case NOTE, GRACE_NOTE -> new NoteElement(this);
+        return switch (appearance) {
+            case NoteheadAppearance ignored -> new NoteElement(this);
+            case GlyphAppearance ignored -> new GlyphElement(this);
+            case BarAppearance ignored -> new BarElement(this);
+            case KeySignatureAppearance ignored -> new KeyChangeElement(Key.NO_ACCIDENTALS);
         };
     }
 
     /**
-     * Returns the element width in staff spaces. Includes flag extent for stemmed notes.
+     * @return the width an element of this type advances a column by: its glyph, and for a
+     *     stemmed note the flag where that reaches past the notehead
      */
     public double getFullElementWidthSs() {
         return bounds.fullWidthSs();
     }
 
     /**
-     * Returns the element height in staff spaces for the given stem direction.
-     *
-     * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
+     * @param direction the stem direction, which decides whether the stem reaches above or below
+     *                  the notehead
+     * @return the height of an element of this type from its highest to its lowest ink with its
+     *     stem in {@code direction}; the glyph's own height for a type with no stem
      */
     public double getElementHeightSs(StaffElement.Direction direction) {
         return direction.isUp() ? bounds.heightUpSs() : bounds.heightDownSs();
     }
 
     /**
-     * Returns the distance in staff spaces from the element origin to the right edge of the
-     * element's glyph — the notehead alone for note types, excluding stem, flag, and
-     * augmentation dots, and already grace-scaled for grace notes. This is a right edge measured
-     * from the origin, not a bounding-box width: for glyphs whose bounding box does not start at
-     * x = 0 the two differ.
+     * The right edge of this type's own glyph — the notehead alone for a note, with no stem, flag
+     * or dot — measured from the origin rather than as a bounding-box width, so that a glyph whose
+     * ink starts right of its origin is still placed by where its ink ends.
      *
-     * <p>This is the single source of truth for how wide an element's own glyph is. Anything that
-     * needs a notehead width should call this rather than
-     * {@link SMuFLMetadata#bboxSs}({@link SMuFLGlyph#NOTEHEAD_BLACK})'s width, which is the black
-     * notehead specifically and leaves a whole note about half a staff space short (refs #694).
+     * <p>This is the one answer to how wide an element's own glyph is. Reading the black
+     * notehead's box from {@link SMuFLMetadata#bboxSs} instead leaves a whole note about half a
+     * staff space short (refs #694).
+     *
+     * @return the X of the glyph's right edge, grace-scaled for a grace note
      */
     public double getElementWidthSs() {
         return bounds.baseWidthSs();
     }
 
     /**
-     * Returns the horizontal midpoint in staff spaces between the element origin and the right
-     * edge of the element's glyph (see {@link #getElementWidthSs()}).
-     * For note types, excludes the flag.
+     * @return the X midway between the origin and {@link #getElementWidthSs()}: the center of the
+     *     glyph alone, never of a flag
      */
     public double getElementCenterXSs() {
         return bounds.baseWidthSs() / 2;
     }
 
     /**
-     * Returns the X position at which the given terminal type should be placed
-     * so its right edge aligns flush with the right edge of the line.
+     * The X at which an element of this type sits with its glyph's right edge on a line's right
+     * edge.
      *
-     * @param lineWidthSs  the line width in staff spaces
-     * @param terminalType the terminal element type ({@link #isValidSongTerminal()} must be true)
+     * @param lineWidthSs the line width in staff spaces
+     * @return {@code lineWidthSs} less {@link #getElementWidthSs()}, in staff spaces
      */
-    public static double terminalFlushRightXSs(double lineWidthSs, ElementType terminalType) {
-        return lineWidthSs - terminalType.bounds.baseWidthSs();
+    public double flushRightXSs(double lineWidthSs) {
+        return lineWidthSs - bounds.baseWidthSs();
     }
 
     /**
-     * The X offset from this element's layout X at which a volta bracket that opens on this
-     * element places its left vertical stroke.
-     *
-     * @return the opening anchor of this type's {@link BarAppearance}, or 0 for a type drawn
-     *     as anything else — a volta opens on the element's own X there
-     */
-    public double voltaOpeningXOffsetSs() {
-        if (appearance instanceof BarAppearance bar) {
-            return bar.openingAnchorSs();
-        }
-
-        return 0;
-    }
-
-    /**
-     * The X offset from this element's layout X at which a volta bracket that closes on this
-     * element ends.
-     *
-     * @return the closing anchor of this type's {@link BarAppearance}, or 0 for a type drawn
-     *     as anything else — a volta closes on the element's own X there
-     */
-    public double voltaClosingXOffsetSs() {
-        if (appearance instanceof BarAppearance bar) {
-            return bar.closingAnchorSs();
-        }
-
-        return 0;
-    }
-
-    /**
-     * Returns the element height in staff spaces, excluding the stem for note types.
+     * @return the height of this type's glyph alone, with no stem
      */
     public double getFullElementHeightSs() {
         return bounds.fullElementHeightSs();
     }
 
     /**
-     * Returns the Y offset in staff spaces from the notehead center to the top of the notehead.
-     * The returned value is negative (the top is above the note center).
-     * For non-stemmed elements this equals {@link #getTopYOffsetSs(StaffElement.Direction)}.
+     * @return the Y of the top of this type's glyph — the notehead for a note, the whole glyph
+     *     for a rest, half the staff above center for a bar — negative, and the same as
+     *     {@link #getTopYOffsetSs} for a type with no stem
      */
     public double getNoteheadTopOffsetSs() {
         return bounds.noteheadTopOffsetSs();
     }
 
     /**
-     * Returns the Y offset in staff spaces from the notehead center to the bottom of the notehead.
-     * The returned value is positive (the bottom is below the note center).
-     * Mirrors {@link #getNoteheadTopOffsetSs()}.
+     * @return the Y of the bottom of this type's glyph, positive; the counterpart of
+     *     {@link #getNoteheadTopOffsetSs()}
      */
     public double getNoteheadBottomOffsetSs() {
         return bounds.noteheadTopOffsetSs() + bounds.fullElementHeightSs();
     }
 
     /**
-     * Returns the Y offset in staff spaces from the notehead center to the top of the element.
-     * The returned value is negative (the top is above the note center).
-     * <p>
-     * For stem-up notes this is the stem tip; for stem-down the notehead top; for
-     * non-stemmed elements the glyph bbox top or half of the staff height above center.
-     *
-     * @param direction {@code UP} for stem-up; {@code DOWN} for stem-down
+     * @param direction the stem direction, which decides whether the stem tip or the notehead is
+     *                  the element's highest ink
+     * @return the Y of the highest ink of an element of this type with its stem in
+     *     {@code direction}, negative: the stem tip when the stem is up, otherwise
+     *     {@link #getNoteheadTopOffsetSs()}
      */
     public double getTopYOffsetSs(StaffElement.Direction direction) {
         return direction.isUp() ? bounds.topOffsetUpSs() : bounds.topOffsetDownSs();
@@ -304,65 +334,80 @@ public enum ElementType {
     }
 
     /**
-     * The notehead this type is drawn with. The receiver must satisfy {@link #isNote()}; no
-     * other type has one.
-     *
-     * @return the notehead of this type's {@link NoteheadAppearance}
+     * @return {@code true} for a note that occupies time: every note but a grace note
      */
-    public Notehead notehead() {
-        return ((NoteheadAppearance) appearance).notehead();
-    }
-
-    /**
-     * The notehead this type is drawn with, narrowed to the arm a stem attaches to. The
-     * receiver must satisfy {@link #isNoteWithStem()}: this class is where the two facts —
-     * which types carry a stem, and which noteheads take stem anchors — are known together.
-     *
-     * @return this type's notehead as a {@link StemmedNotehead}
-     */
-    public StemmedNotehead stemmedNotehead() {
-        return (StemmedNotehead) notehead();
-    }
-
     public boolean isPitchedNote() {
         return kind == Kind.NOTE;
     }
 
+    /**
+     * @return {@code true} for anything that sounds a pitch: a note or a grace note
+     */
     public boolean isNote() {
         return isPitchedNote() || isGraceNote();
     }
 
+    /**
+     * Whether an element of this type carries a stem: whether it is drawn from a notehead
+     * a stem attaches to.
+     *
+     * @return {@code true} for every note but a whole note
+     */
     public boolean isNoteWithStem() {
-        return isNote() && this != SEMIBREVE;
+        return appearance instanceof NoteheadAppearance(StemmedNotehead _);
     }
 
+    /**
+     * @return {@code true} for a rest of any value
+     */
     public boolean isRest() {
         return kind == Kind.REST;
     }
 
+    /**
+     * Whether an element of this type can take part in a beam: a pitched note whose value
+     * carries a flag, which is what the beam replaces.
+     *
+     * @return {@code true} for a pitched eighth or shorter
+     */
     public boolean isBeamable() {
-        return this == QUAVER || this == SEMIQUAVER || this == DEMI_SEMIQUAVER;
+        return isPitchedNote() && value != null && value.hasFlag();
     }
 
+    /**
+     * @return {@code true} for a repeat sign, whichever way it faces
+     */
     public boolean isRepeat() {
         return kind == Kind.REPEAT;
     }
 
+    /**
+     * @return {@code true} for a barline that is not a repeat
+     */
     public boolean isBarLine() {
         return kind == Kind.BARLINE;
     }
 
     /**
      * Whether this type is a structural marker that closes a measure: a barline or a repeat.
+     *
+     * @return {@code true} for a barline or a repeat — the types drawn from a stroke sequence
      */
     public boolean isBar() {
         return isBarLine() || isRepeat();
     }
 
+    /**
+     * @return {@code true} for a type that occupies time: a pitched note or a rest
+     */
     public boolean isDuration() {
         return isPitchedNote() || isRest();
     }
 
+    /**
+     * @return {@code true} for a type that occupies no time and sounds no pitch: a bar, a
+     *     breath mark or a key change. A grace note is not one, and is not a duration either.
+     */
     public boolean isNonDuration() {
         return isBar() || isBreathMark() || isKeyChange();
     }
@@ -383,6 +428,8 @@ public enum ElementType {
      * rather than a general "is a structural marker". A key change belongs here, and only here:
      * a new key change resets what a later note at the same staff position inherits, but it
      * does not close a measure, bound an ending or pick a glyph.
+     *
+     * @return {@code true} for a bar or a key change
      */
     public boolean cancelsAccidentals() {
         return isBar() || isKeyChange();
@@ -395,6 +442,9 @@ public enum ElementType {
         return kind == Kind.KEY_CHANGE;
     }
 
+    /**
+     * @return {@code true} for a grace note
+     */
     public boolean isGraceNote() {
         return kind == Kind.GRACE_NOTE;
     }
@@ -442,6 +492,9 @@ public enum ElementType {
         return bearsSyllableText() || !bearsLyricChain();
     }
 
+    /**
+     * @return {@code true} for a breath mark
+     */
     public boolean isBreathMark() {
         return kind == Kind.BREATH_MARK;
     }
@@ -465,35 +518,11 @@ public enum ElementType {
      * itself for such an element rather than let the user type text that cannot be stored. The
      * action asks whether <em>any</em> selected element can carry one, which is why a key
      * change selected together with its barline still leaves the action enabled.
+     *
+     * @return {@code true} for every type but a breath mark and a key change
      */
     public boolean canCarryAnnotation() {
         return !isBreathMark() && !isKeyChange();
-    }
-
-    /**
-     * Returns a lowercase, user-facing category name for this element type, suitable for
-     * substitution into a message such as "There isn’t enough room on this line for this {0}."
-     *
-     * <p>Resolved text, for a caller that is about to display it. A caller that must name the
-     * category <em>without</em> producing text — one stating what is wrong and leaving the wording
-     * to whoever shows it — asks {@link #categoryNameKey()} instead.
-     *
-     * @return the category name, resolved for display
-     */
-    public String categoryName() {
-        return Strings.get(categoryNameKey());
-    }
-
-    /**
-     * The {@link Strings} key of this element type's category name, unresolved.
-     *
-     * <p>Every type answers the same name through {@link #categoryName()}; the two never
-     * disagree, because that method resolves this one.
-     *
-     * @return a {@link Strings} constant naming this type's category
-     */
-    public String categoryNameKey() {
-        return kind.labelKey();
     }
 
     /**
@@ -507,7 +536,7 @@ public enum ElementType {
      * @return this type's display words, lowercase
      */
     public String label() {
-        var kindWord = Strings.get(kind.labelKey());
+        var kindWord = kind.label();
 
         if (value == null || kind == Kind.GRACE_NOTE) {
             return kindWord;
@@ -520,8 +549,8 @@ public enum ElementType {
      * Non-content elements are skipped during first-second ending validation
      * but are allowed to be present in the selection. Breath marks are
      * non-content: they may sit inside an ending but cannot anchor or end it.
-     * The complement — the elements that can anchor or end an ending — is
-     * exactly {@link #isDuration()} (notes and rests).
+     * The complement — the elements that can anchor or end an ending — is every
+     * note, rest, barline and repeat.
      * <p>
      * A key change is non-content for two reasons that point the same way. It is not
      * musical content, so it must not help a selection reach the minimum an ending needs;
@@ -544,36 +573,43 @@ public enum ElementType {
      * {@link #isValidSongTerminal()}. {@code REPEAT_RIGHT} is deliberately excluded because it
      * plays the split role that closes the first ending and loops back to the second, so it
      * cannot also serve as the bracket's right boundary.
+     *
+     * @return {@code true} for a barline or a left repeat
      */
     public boolean isEndingTerminal() {
         return isBarLine() || this == REPEAT_LEFT;
     }
 
     /**
-     * Returns the rest equivalent of this type, or {@code this} if no rest counterpart exists.
+     * The rest of the same value as this note. Conversion is defined between a pitched note and
+     * a rest only: a grace note has no rest counterpart and is not the note of its value, so it
+     * converts to itself, as every type with no value does.
+     *
+     * @return the rest of this pitched note's value; {@code this} for every other type
+     * @invariant {@code toRest().toNote()} is {@code this} for a pitched note
      */
     public ElementType toRest() {
-        return value == null ? this : value.rest();
+        return value != null && kind == Kind.NOTE ? value.rest() : this;
     }
 
     /**
-     * Returns the note equivalent of this type, or {@code this} if no note counterpart exists.
+     * The pitched note of the same value as this rest. Conversion is defined between a pitched
+     * note and a rest only, so a grace note converts to itself, as every type with no value does.
+     *
+     * @return the pitched note of this rest's value; {@code this} for every other type
+     * @invariant {@code toNote().toRest()} is {@code this} for a rest
      */
     public ElementType toNote() {
-        return value == null ? this : value.note();
-    }
-
-    public boolean drawStaveLongitude() {
-        return this != BREATH_MARK;
+        return value != null && kind == Kind.REST ? value.note() : this;
     }
 
     /**
-     * Returns {@code true} for barline types that, when present as the last element of
-     * the last line, are replaced by the auto-maintained terminal rather than having
-     * one appended after them: {@code SINGLE_BARLINE}, {@code DOUBLE_BARLINE},
-     * {@code REPEAT_RIGHT}, {@code REPEAT_LEFT_RIGHT}. {@code REPEAT_LEFT} is
-     * intentionally excluded — a left-facing repeat does not terminate the line, so
-     * the terminal is appended.
+     * Whether a bar of this type, standing last on the last line, is replaced by the
+     * auto-maintained terminal rather than followed by one. A left-facing repeat opens what
+     * follows it and so does not end a line; the terminal is appended after it instead.
+     *
+     * @return {@code true} for a single barline, a double barline, a right repeat and a
+     *     left-right repeat
      */
     public boolean isReplaceableByTerminal() {
         return this == SINGLE_BARLINE
@@ -583,22 +619,47 @@ public enum ElementType {
     }
 
     /**
-     * Returns {@code true} for element types that may occupy the auto-maintained terminal
-     * slot (last position of the last line): {@code FINAL_DOUBLE_BARLINE} or
-     * {@code REPEAT_RIGHT}.
+     * Whether a bar of this type may occupy the auto-maintained terminal slot, the last position
+     * of the last line. A song ends either with a final barline or by repeating back, and nothing
+     * else may stand where the song stops.
      *
      * <p>This is about the <b>song's</b> last slot, not {@link #isEndingTerminal()}.
+     *
+     * @return {@code true} for a final double barline and a right repeat
      */
     public boolean isValidSongTerminal() {
         return this == FINAL_DOUBLE_BARLINE || this == REPEAT_RIGHT;
     }
 
     /**
-     * Returns the SMuFL flag glyph for this note type and stem direction, or {@code null} if this
-     * type has no flag (whole, half, quarter notes, rests, non-note types).
+     * Whether a bar of this type closes a repeated section — the bar playback loops back
+     * from, and the one an ending's two brackets are split at.
      *
-     * @param direction {@code UP} for stem-up (flag on right of stem); {@code DOWN} for stem-down
-     * @return The flag glyph, or {@code null} if this type carries no flag
+     * @return {@code true} for a right repeat and a left-right repeat
+     */
+    public boolean closesRepeat() {
+        return this == REPEAT_RIGHT || this == REPEAT_LEFT_RIGHT;
+    }
+
+    /**
+     * Whether a bar of this type closes a section nothing runs past, so that a volta bracket
+     * closing on it hangs a closing stroke from it.
+     *
+     * @return {@code true} for a bar that {@link #closesRepeat()} and for a final double barline
+     */
+    public boolean closesSection() {
+        return closesRepeat() || this == FINAL_DOUBLE_BARLINE;
+    }
+
+    /**
+     * The flag a note of this type carries on a stem in the given direction. A grace note's flag
+     * is the up-stem eighth flag whatever the direction, because a grace note's stem always goes
+     * up.
+     *
+     * @param direction the stem direction: a flag hangs right of an up stem and left of a down
+     *                  stem
+     * @return the flag glyph; {@code null} for a note whose value carries none and for every
+     *     type that is not a note
      */
     @Nullable
     public SMuFLGlyph getFlagGlyph(StaffElement.Direction direction) {
@@ -607,27 +668,17 @@ public enum ElementType {
 
     /**
      * The flag glyph of a type given by its parts, so that the constructor's bounds computation
-     * can ask it before any constant of this enum exists. A grace note's flag is always the
-     * up-stem eighth flag, whatever the direction.
+     * can ask it before any constant of this enum exists.
      */
     @Nullable
     private static SMuFLGlyph flagGlyph(
         Kind kind, @Nullable NoteValue value, StaffElement.Direction direction
     ) {
-        if (kind == Kind.GRACE_NOTE) {
-            return SMuFLGlyph.FLAG_8TH_UP;
-        }
-
-        if (value == null) {
-            return null;
-        }
-
-        return switch (value) {
-            case EIGHTH -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
-            case SIXTEENTH -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
-            case THIRTY_SECOND ->
-                direction.isUp() ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
-            case WHOLE, HALF, QUARTER -> null;
+        return switch (kind) {
+            // A grace note's stem is always up, whatever direction the caller asks for.
+            case GRACE_NOTE -> value == null ? null : value.flagGlyph(StaffElement.Direction.UP);
+            case NOTE -> value == null ? null : value.flagGlyph(direction);
+            case REST, BARLINE, REPEAT, BREATH_MARK, KEY_CHANGE -> null;
         };
     }
 
@@ -646,7 +697,7 @@ public enum ElementType {
             // A stemmed notehead is the only appearance whose bounds reach past the glyph,
             // so it is the only one that needs the stem and flag.
             case NoteheadAppearance(StemmedNotehead notehead) -> kind == Kind.GRACE_NOTE
-                ? computeGraceNoteBoundsSs(notehead)
+                ? computeGraceNoteBoundsSs(kind, value, notehead)
                 : computeStemmedNoteBoundsSs(kind, value, notehead);
 
             // A semibreve carries no stem, so its bounds are its glyph's, exactly as a
@@ -657,7 +708,7 @@ public enum ElementType {
             case GlyphAppearance(SMuFLGlyph glyph, int ignored) -> computeGlyphBoundsSs(glyph);
 
             case BarAppearance bar -> ElementBounds.symmetric(
-                bar.widthSs(), Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
+                new Size(bar.widthSs(), Staff.STAFF_HEIGHT_SS), -Staff.STAFF_HALF_SS);
 
             case KeySignatureAppearance ignored -> computeKeySignatureBoundsSs();
         };
@@ -699,7 +750,9 @@ public enum ElementType {
         );
     }
 
-    private static ElementBounds computeGraceNoteBoundsSs(StemmedNotehead notehead) {
+    private static ElementBounds computeGraceNoteBoundsSs(
+        Kind kind, @Nullable NoteValue value, StemmedNotehead notehead
+    ) {
         var headBBox = SMuFLMetadata.bboxSs(notehead.glyph());
         double scale = GRACE_NOTE_SCALE;
 
@@ -711,8 +764,13 @@ public enum ElementType {
         var stemUpYSs = stemUpSE.ySs() * scale;
 
         var upTopSs = stemUpYSs - StemMetrics.GRACE_NOTE_STEM_LENGTH_SS;
-        var flagRightSs = SMuFLMetadata.bboxSs(SMuFLGlyph.FLAG_8TH_UP).rightSs() * scale;
-        var widthSs = Math.max(headRightSs, stemUpXSs + flagRightSs);
+        var widthSs = headRightSs;
+        var flagGlyph = flagGlyph(kind, value, StaffElement.Direction.UP);
+
+        if (flagGlyph != null) {
+            var flagRightSs = SMuFLMetadata.bboxSs(flagGlyph).rightSs() * scale;
+            widthSs = Math.max(widthSs, stemUpXSs + flagRightSs);
+        }
 
         var headTopSs = headBBox.topSs() * scale;
         var heightSs = headBottomSs - upTopSs;
@@ -734,7 +792,7 @@ public enum ElementType {
         // Width is the glyph's right edge from the origin, not the bbox width, so that
         // baseWidthSs means the same thing for every glyph-bearing type (see
         // getElementWidthSs()). The two differ only when bBoxSW's x is non-zero.
-        return ElementBounds.symmetric(bbox.rightSs(), bbox.heightSs(), bbox.topSs());
+        return ElementBounds.symmetric(new Size(bbox.rightSs(), bbox.heightSs()), bbox.topSs());
     }
 
     /**
@@ -754,6 +812,6 @@ public enum ElementType {
         );
 
         return ElementBounds.symmetric(
-            narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS, -Staff.STAFF_HALF_SS);
+            new Size(narrowestAccidentalSs, Staff.STAFF_HEIGHT_SS), -Staff.STAFF_HALF_SS);
     }
 }

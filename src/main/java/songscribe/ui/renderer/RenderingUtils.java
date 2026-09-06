@@ -35,6 +35,7 @@ import songscribe.layout.NoteGeometry;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.smufl.StemmedNotehead;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -318,20 +319,20 @@ public final class RenderingUtils {
 
     /**
      * Returns the X offset in staff spaces from the note reference point to the stem center,
-     * for the given stem direction and note type.
+     * for the given stem direction and notehead.
      *
-     * @param noteType  the note type (determines which notehead anchor to use)
+     * @param notehead  the notehead the stem attaches to
      * @param direction stem direction: UP = stem-up SE anchor; DOWN = stem-down NW anchor
      * @return X offset from note reference point to stem center, in staff spaces
      */
-    static double stemCenterXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
-        var anchorXSs = NoteGeometry.stemSideAnchor(noteType, direction).xSs();
+    static double stemCenterXOffsetSs(StemmedNotehead notehead, StaffElement.Direction direction) {
+        var anchorXSs = NoteGeometry.stemSideAnchor(notehead, direction).xSs();
         var upper = direction.isUp();
 
         // upper: SE anchor is the stem's right edge; center = anchorXSs - half stem width
         // lower: NW anchor is the stem's left edge; center = anchorXSs + half stem width
         return upper
-            ? anchorXSs - StemMetrics.STEM_HALF_WIDTH_SS
-            : anchorXSs + StemMetrics.STEM_HALF_WIDTH_SS;
+            ? anchorXSs - StemMetrics.halfWidthSs()
+            : anchorXSs + StemMetrics.halfWidthSs();
     }
 }

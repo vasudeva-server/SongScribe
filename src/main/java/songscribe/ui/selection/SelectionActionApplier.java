@@ -165,7 +165,7 @@ public final class SelectionActionApplier {
                     score,
                     Strings.ALERT_TITLE_INSERT_ERROR,
                     Strings.ERROR_LINE_FULL_ELEMENT,
-                    changes.getFirst().standIn().getType().categoryName()
+                    changes.getFirst().standIn().getType().kind().label()
                 );
             } else {
                 OptionDialogs.showErrorMessage(

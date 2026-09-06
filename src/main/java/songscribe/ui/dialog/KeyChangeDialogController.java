@@ -526,7 +526,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
     private static LocalizedMessage midLineKeyRefusal() {
         return new LocalizedMessage(
             Strings.ERROR_LINE_FULL_ELEMENT,
-            List.of(new LocalizedMessage(ElementType.KEY_CHANGE.categoryNameKey())));
+            List.of(new LocalizedMessage(ElementType.Kind.KEY_CHANGE.labelKey())));
     }
 
     /**

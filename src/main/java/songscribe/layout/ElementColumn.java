@@ -29,6 +29,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
@@ -312,11 +313,13 @@ public final class ElementColumn {
      * @param neighbourBottomYSs bottom (lower, numerically larger) of the neighbour's vertical span
      */
     public double getRightExtentFacingSs(double neighbourTopYSs, double neighbourBottomYSs) {
-        if (getFlagExtentSs() <= 0 || rightExtentSs > rightExtentExcludingAugmentationSs) {
+        if (getFlagExtentSs() <= 0
+            || rightExtentSs > rightExtentExcludingAugmentationSs
+            || !(element instanceof NoteElement note)) {
             return rightExtentSs;
         }
 
-        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(element.getType(), getDirection(), beamed);
+        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, getDirection(), beamed);
 
         if (flagBoundsSs == null) {
             return rightExtentSs;

@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.StaffPosition;
@@ -299,8 +300,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        var beginNote = line.getElement(beginIndex);
-        var endNote = line.getElement(endIndex);
+        var beginNote = beamedNoteAt(line, beginIndex);
+        var endNote = beamedNoteAt(line, endIndex);
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
         var isUpper = direction.isUp();
@@ -316,8 +317,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
         var firstNoteXSs = layoutResult.getElementXSs(beginNote);
         var firstStemCenterXSs = firstNoteXSs
-            + RenderingUtils.stemCenterXOffsetSs(beginNote.getType(), direction);
-        var firstX = firstStemCenterXSs - StemMetrics.STEM_HALF_WIDTH_SS;
+            + RenderingUtils.stemCenterXOffsetSs(beginNote.stemmedNotehead(), direction);
+        var firstX = firstStemCenterXSs - StemMetrics.halfWidthSs();
         var firstTipYSs = stemTipYSsOffset(firstStemLayout, direction, beginNote);
         var firstOuterY = middleLineYSs + firstTipYSs + innerBeamOffsetSs;
         var firstInnerY = firstOuterY + beamDepthSs;
@@ -326,8 +327,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var lastStemLayout = layoutResult.getStemLayout(endNote);
         var lastNoteXSs = layoutResult.getElementXSs(endNote);
         var lastStemCenterXSs = lastNoteXSs
-            + RenderingUtils.stemCenterXOffsetSs(endNote.getType(), direction);
-        var lastX = lastStemCenterXSs + StemMetrics.STEM_HALF_WIDTH_SS;
+            + RenderingUtils.stemCenterXOffsetSs(endNote.stemmedNotehead(), direction);
+        var lastX = lastStemCenterXSs + StemMetrics.halfWidthSs();
         var lastTipYSs = stemTipYSsOffset(lastStemLayout, direction, endNote);
         var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
         var lastInnerY = lastOuterY + beamDepthSs;
@@ -367,6 +368,20 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             g2.fill(beam);
             g2.draw(beam);
         }
+    }
+
+    /**
+     * The note a beam's end index names. A beam spans beamable notes and nothing else —
+     * {@code Beam} admits no other member — so the element at one of its indices is a note.
+     *
+     * @throws IllegalStateException if the element at {@code index} is not a note
+     */
+    private static NoteElement beamedNoteAt(Line line, int index) {
+        if (line.getElement(index) instanceof NoteElement note) {
+            return note;
+        }
+
+        throw new IllegalStateException("beam spans a non-note element at index " + index);
     }
 
     /**

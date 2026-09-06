@@ -22,6 +22,10 @@ package songscribe.dom;
 /**
  * A beat unit is a note value with at most one dot, which is the whole domain a tempo or a beat
  * change can name; {@code dotted} is a boolean rather than a count for that reason.
+ *
+ * <p>The constants are declared longest first. The tempo and beat-change dialogs list their
+ * combos straight from {@link #values()}, so declaration order is the order a user sees, and a
+ * new constant is declared where its length puts it.
  */
 public enum BeatUnit {
     SEMI_BREVE(NoteValue.WHOLE, false),
@@ -48,6 +52,14 @@ public enum BeatUnit {
         return dotted;
     }
 
+    /**
+     * This unit's length in ticks: the value's length, plus half again when dotted.
+     *
+     * @return the length in ticks, at {@link songscribe.midi.MidiSequenceBuilder#PPQ} ticks
+     *     per quarter
+     * @invariant the result is an exact integer for every unit — the shortest dotted unit is a
+     *     dotted eighth, and an eighth is an even number of ticks
+     */
     public int ticks() {
         var ticks = noteValue.ticks();
 

@@ -51,9 +51,9 @@ import songscribe.dom.TempoChangeAttachment;
  * that carries it: elements are {@code Delete}d, while slides, ties, beams, tuplets,
  * trills, accidentals, articulations and attachments are {@code Remove}d.
  *
- * <p>This is the only place the {@code ElementType} → category taxonomy behind those
- * names is decoded, so the categories the insertion and deletion labels use cannot drift
- * apart. These are the Tier-B names of {@code docs/undo.md}; a step with no declared name
+ * <p>This is the only place the {@code ElementType.Kind} taxonomy behind those names is
+ * decoded, so the kinds the insertion and deletion labels use cannot drift apart. These
+ * are the Tier-B names of {@code docs/undo.md}; a step with no declared name
  * falls back to {@code UndoController}'s own mutation-type label instead.
  */
 public final class OpNames {
@@ -62,38 +62,12 @@ public final class OpNames {
     }
 
     /**
-     * The element categories the labels distinguish. Grace notes fold into {@link #NOTE}
-     * via {@link ElementType#isNote()}; {@link #addLabel} names them separately by asking
-     * before it classifies, because inserting a grace note is a distinct operation to the
-     * user while deleting one is not.
-     */
-    private enum Category {
-        NOTE, REST, BARLINE, REPEAT, BREATH_MARK, KEY_CHANGE
-    }
-
-    /**
-     * The single classifier both labels are built on.
-     *
-     * @return the category {@code type} belongs to
-     */
-    private static Category categoryOf(ElementType type) {
-        return switch (type.kind()) {
-            case NOTE, GRACE_NOTE -> Category.NOTE;
-            case REST -> Category.REST;
-            case BARLINE -> Category.BARLINE;
-            case REPEAT -> Category.REPEAT;
-            case BREATH_MARK -> Category.BREATH_MARK;
-            case KEY_CHANGE -> Category.KEY_CHANGE;
-        };
-    }
-
-    /**
-     * Names a deletion by the categories of the deleted elements: a single element yields
-     * the singular {@code Delete <Category>}; several elements that all share one category
-     * yield the plural {@code Delete <Category>s}; a mix of categories, or any element in
-     * no category, yields the generic {@code Delete Elements}. A note and its grace note
-     * share the {@code Note} category, so deleting them together is {@code Delete Notes}
-     * rather than the generic label.
+     * Names a deletion by the kinds of the deleted elements: a single element yields the
+     * singular {@code Delete <Kind>}; several elements that all share one delete label yield
+     * the plural {@code Delete <Kind>s}; a mix yields the generic {@code Delete Elements}.
+     * A note and its grace note share the {@code Note} label — {@link #deleteKey} folds the
+     * two kinds — so deleting them together is {@code Delete Notes} rather than the generic
+     * label.
      *
      * <p>{@code types} is what the user selected, not what the deletion will take: a key
      * change drags the barline it sits behind out with it, and that barline is in a
@@ -106,43 +80,30 @@ public final class OpNames {
      * @return the localized name for the deletion
      */
     public static String deleteLabel(List<ElementType> types) {
-        Category common = null;
-        var first = true;
+        var common = deleteKey(types.getFirst().kind());
 
         for (var type : types) {
-            var category = categoryOf(type);
-
-            if (first) {
-                common = category;
-                first = false;
-            } else if (common != category) {
-                common = null;
-            }
-
-            if (common == null) {
-                break;
+            if (!common.equals(deleteKey(type.kind()))) {
+                return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ELEMENTS);
             }
         }
 
-        if (common == null) {
-            return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ELEMENTS);
-        }
-
-        return Strings.get(deleteKey(common), types.size());
+        return Strings.get(common, types.size());
     }
 
     /**
-     * The delete-label key for one category. Each value carries its own plural as a choice
+     * The delete-label key for one kind. Each value carries its own plural as a choice
      * suffix over the element count, so the singular and the plural are one string rather
      * than two that can drift apart, and picking between them is the format's job rather
-     * than this method's.
+     * than this method's. A grace note deletes as a note: the one fold in the taxonomy,
+     * stated here and nowhere else.
      *
-     * @param category the category every deleted element shares
+     * @param kind the kind every deleted element shares
      * @return the key, to be read through the varargs {@code Strings.get} with the count
      */
-    private static String deleteKey(Category category) {
-        return switch (category) {
-            case NOTE -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
+    private static String deleteKey(ElementType.Kind kind) {
+        return switch (kind) {
+            case NOTE, GRACE_NOTE -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
             case REST -> Strings.ACTION_EDIT_OP_DELETE_REST;
             case BARLINE -> Strings.ACTION_EDIT_OP_DELETE_BARLINE;
             case REPEAT -> Strings.ACTION_EDIT_OP_DELETE_REPEAT;
@@ -166,11 +127,9 @@ public final class OpNames {
             return Strings.get(Strings.ACTION_EDIT_OP_ADD_GRACE_NOTE);
         }
 
-        var category = categoryOf(type);
-
         return Strings.get(
-            switch (category) {
-                case NOTE -> Strings.ACTION_EDIT_OP_ADD_NOTE;
+            switch (type.kind()) {
+                case NOTE, GRACE_NOTE -> Strings.ACTION_EDIT_OP_ADD_NOTE;
                 case REST -> Strings.ACTION_EDIT_OP_ADD_REST;
                 case BARLINE -> Strings.ACTION_EDIT_OP_ADD_BARLINE;
                 case REPEAT -> Strings.ACTION_EDIT_OP_ADD_REPEAT;

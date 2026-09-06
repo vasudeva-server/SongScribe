@@ -34,6 +34,7 @@ import songscribe.dom.Clef;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.BeamMetrics;
@@ -385,7 +386,7 @@ public class LayoutEngine {
             return;
         }
 
-        var flushRightXSs = ElementType.terminalFlushRightXSs(staffRightMarginSs, lastType);
+        var flushRightXSs = lastType.flushRightXSs(staffRightMarginSs);
 
         // Snapping to the margin moves the terminal independently of the solved chain, so on a
         // line whose content already reaches the margin it could land on top of — or left of —
@@ -1082,7 +1083,10 @@ public class LayoutEngine {
         var elementCount = line.effectiveElementCount();
 
         for (var i = 0; i < elementCount; i++) {
-            var note = line.getElement(i);
+            if (!(line.getElement(i) instanceof NoteElement note)) {
+                continue;
+            }
+
             var slide = note.getSlide();
 
             if (slide == null) {
@@ -1137,7 +1141,7 @@ public class LayoutEngine {
      * Builds the slide geometry context for the note at {@code noteIndex}, in layout space.
      */
     private static SlideGeometry.NoteContext slideNoteContext(
-        StaffElement note,
+        NoteElement note,
         int noteIndex,
         Line line,
         Map<StaffElement, ElementColumn> elementToColumn) {
@@ -1166,13 +1170,11 @@ public class LayoutEngine {
             return null;
         }
 
-        var nextElement = line.getElement(sourceIndex + 1);
-
-        if (!nextElement.getType().isNote()) {
+        if (!(line.getElement(sourceIndex + 1) instanceof NoteElement nextNote)) {
             return null;
         }
 
-        return slideNoteContext(nextElement, sourceIndex + 1, line, elementToColumn);
+        return slideNoteContext(nextNote, sourceIndex + 1, line, elementToColumn);
     }
 
     /**

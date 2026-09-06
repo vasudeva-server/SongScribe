@@ -23,7 +23,6 @@ package songscribe.dom;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.assertj.core.data.Offset;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,7 +32,6 @@ import songscribe.UnitTest;
 import songscribe.engraving.BarStroke;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.within;
 
 /**
@@ -46,8 +44,8 @@ import static org.assertj.core.api.Assertions.within;
  * stroke added or reordered shows up as the thing it is rather than only as a width that moved.
  *
  * <p>The rows are checked against the domain the production code defines — every type that answers
- * to {@code isBarLine()} or {@code isRepeat()} — so a bar type added later fails this class rather
- * than passing through it unmeasured.
+ * to {@link ElementType#isBar()} — so a bar type added later fails this class rather than passing
+ * through it unmeasured.
  */
 class BarAppearanceTest extends UnitTest {
 
@@ -77,8 +75,7 @@ class BarAppearanceTest extends UnitTest {
 
     /** Every type the production code treats as a bar: what this class must cover, in full. */
     static Stream<ElementType> barAndRepeatTypes() {
-        return Stream.of(ElementType.values())
-            .filter(type -> type.isBarLine() || type.isRepeat());
+        return Stream.of(ElementType.values()).filter(ElementType::isBar);
     }
 
     @Test
@@ -143,30 +140,5 @@ class BarAppearanceTest extends UnitTest {
         assertThat(bar.closingAnchorSs())
             .as("where a volta bracket closing on %s ends its horizontal arm", type)
             .isCloseTo(testCase.expectedClosingAnchorSs(), TOLERANCE_SS);
-    }
-
-    /**
-     * A stroke sequence the record refuses, with the construction that offers it.
-     *
-     * @param description  the case, as the test's display name
-     * @param construction the call that must be rejected
-     */
-    private record RejectedBarCase(String description, ThrowingCallable construction) {
-        @Override
-        public String toString() {
-            return description;
-        }
-    }
-
-    static Stream<RejectedBarCase> rejectedBarCases() {
-        return Stream.of(
-            new RejectedBarCase("no strokes at all", () -> BarAppearance.of()),
-            new RejectedBarCase("nothing but repeat dots", () -> BarAppearance.of(BarStroke.DOTS)));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("rejectedBarCases")
-    void testABarWithNoDrawnLineIsRejected(RejectedBarCase testCase) {
-        assertThatIllegalArgumentException().isThrownBy(testCase.construction());
     }
 }

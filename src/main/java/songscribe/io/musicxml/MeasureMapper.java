@@ -689,23 +689,20 @@ final class MeasureMapper {
 
     /**
      * Builds one {@link Ending} over [{@code anchor}, {@code end}] and adds it to
-     * {@code line}, unless it is split-less. Every ending must have a REPEAT splitting
-     * its two brackets; a span with no such element is not a valid ending and is
-     * dropped on import.
+     * {@code line}, unless no repeat splits its two brackets, which {@link Ending}'s invariant
+     * requires; a span without one is not a valid ending and is dropped on import.
      */
     private static void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end) {
         if (line == null) {
             return;
         }
 
-        var ending = new Ending(anchor, end);
-
-        if (ending.findRepeatSplitElement(line) == null) {
+        if (!Ending.hasRepeatSplit(line, line.getElementIndex(anchor), line.getElementIndex(end))) {
             LOG.warn("Dropping split-less <ending> on import (no repeat between anchor and end)");
             return;
         }
 
-        line.addSpan(ending);
+        line.addSpan(new Ending(anchor, end));
     }
 
     // -------------------------------------------------------------------------
@@ -941,7 +938,7 @@ final class MeasureMapper {
         }
 
         var beatUnitDotCount = metronome.getBeatUnitDot().size();
-        var duration = BeatUnitMapping.forBeatUnit(beatUnit.trim(), beatUnitDotCount);
+        var duration = BeatUnitMapping.beatUnitFor(beatUnit.trim(), beatUnitDotCount);
 
         if (duration == null) {
             LOG.warn("Ignoring <metronome> with unrecognised beat-unit '{}' (dots={})", beatUnit, beatUnitDotCount);
@@ -986,8 +983,8 @@ final class MeasureMapper {
 
         var durationDotCount = durationNote.getMetronomeDot().size();
         var beatDotCount = beatNote.getMetronomeDot().size();
-        var duration = BeatUnitMapping.forBeatUnit(durationToken.trim(), durationDotCount);
-        var beat = BeatUnitMapping.forBeatUnit(beatToken.trim(), beatDotCount);
+        var duration = BeatUnitMapping.beatUnitFor(durationToken.trim(), durationDotCount);
+        var beat = BeatUnitMapping.beatUnitFor(beatToken.trim(), beatDotCount);
 
         if (duration == null || beat == null) {
             LOG.warn("Ignoring <metronome> metric modulation with unrecognised note ('{}' dots={} / '{}' dots={})",

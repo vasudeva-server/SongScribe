@@ -24,8 +24,7 @@ import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
 
 import songscribe.dom.BarAppearance;
-import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
+import songscribe.dom.BarElement;
 import songscribe.engraving.BarStroke;
 import songscribe.engraving.Staff;
 import songscribe.smufl.SMuFLGlyph;
@@ -51,7 +50,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  *   <li>Left-right repeat</li>
  * </ul>
  */
-public final class BarRenderer implements ElementRenderer<StaffElement> {
+public final class BarRenderer implements ElementRenderer<BarElement> {
 
     // ==========================================================================
     // Constants
@@ -77,41 +76,23 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
     // Rendering
     // ==========================================================================
 
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        StaffElement element,
-        Graphics2D g2
-    ) {
-        var noteType = element.getType();
-
-        if (!noteType.isBar()) {
-            return;
-        }
-
-        var noteX = frame.resolveElementXSs(element, invariants);
-
-        try (var _ = GraphicsState.save(g2, TRANSFORM)) {
-            g2.translate(noteX, invariants.getMiddleLineYSs());
-            renderBarLineOrRepeat(g2, noteType, invariants);
-        }
-    }
-
     /**
      * Renders a bar line or repeat sign by drawing its {@link BarAppearance}'s strokes,
      * left to right, starting at the element's own origin.
      */
-    private void renderBarLineOrRepeat(
-        Graphics2D g2,
-        ElementType noteType,
-        LineInvariants invariants
+    @Override
+    public void render(
+        LineInvariants invariants,
+        ElementFrame frame,
+        BarElement element,
+        Graphics2D g2
     ) {
-        if (!(noteType.appearance() instanceof BarAppearance barAppearance)) {
-            return;
-        }
+        var noteX = frame.resolveElementXSs(element, invariants);
 
-        drawStrokes(g2, barAppearance, 0, 0);
+        try (var _ = GraphicsState.save(g2, TRANSFORM)) {
+            g2.translate(noteX, invariants.getMiddleLineYSs());
+            drawStrokes(g2, element.bar(), 0, 0);
+        }
     }
 
     // ==========================================================================
@@ -130,7 +111,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
      * @param middleLineYSs Y coordinate of the staff's middle line, which the bar is centered on
      */
     public static void drawSingleBarLine(Graphics2D g2, double xSs, double middleLineYSs) {
-        drawStrokes(g2, (BarAppearance) ElementType.SINGLE_BARLINE.appearance(), xSs, middleLineYSs);
+        drawStrokes(g2, BarAppearance.SINGLE_BARLINE, xSs, middleLineYSs);
     }
 
     /**

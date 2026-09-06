@@ -76,16 +76,12 @@ public final class EndingConfirms {
     public static void applyCompensatingSplitChange(
         Line line, Ending.EndingEffect.CompensateSplit cs
     ) {
-        applyCompensatingChange(line, cs.ending().findRepeatSplitElement(line), cs.newSplitType());
+        applyCompensatingChange(line, cs.ending().getSplitElement(line), cs.newSplitType());
     }
 
     private static void applyCompensatingChange(
-        Line line, @Nullable StaffElement targetEl, ElementType newType
+        Line line, StaffElement targetEl, ElementType newType
     ) {
-        if (targetEl == null) {
-            return;
-        }
-
         var index = line.getElementIndex(targetEl);
         var newEl = newType.newInstance();
         newEl.setXOffsetPx(targetEl.getXOffsetPx());

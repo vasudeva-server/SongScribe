@@ -42,29 +42,27 @@ import songscribe.engraving.EngravingConstants;
  * preceding measure, and one opening past trailing dots would start inside the section it is
  * meant to bound.
  *
+ * <p>Every bar is declared as a literal in this package — the constants of {@link ElementType}
+ * and {@link #SINGLE_BARLINE} — through {@link #of}, and no other code builds one.
+ *
  * @param strokes the strokes, left to right; copied on construction, so the record is
  *                immutable whatever the caller does with the list afterwards
  * @invariant {@code strokes} is non-empty and holds at least one stroke that is not
  *            {@link BarStroke#DOTS}, so {@link #openingAnchorSs()} scanning back from the end
  *            and {@link #closingAnchorSs()} scanning forward from the start each reach a drawn
  *            line rather than running off the sequence
- * @throws IllegalArgumentException if {@code strokes} is empty or holds nothing but
- *         {@link BarStroke#DOTS}
  */
 public record BarAppearance(List<BarStroke> strokes) implements ElementAppearance {
 
+    /**
+     * A single thin barline. Named because it is drawn from somewhere other than an element —
+     * the barline a cautionary key signature draws at the end of a line — and that drawing and
+     * {@link ElementType#SINGLE_BARLINE} must not disagree about what a single barline is.
+     */
+    public static final BarAppearance SINGLE_BARLINE = of(BarStroke.THIN);
+
     public BarAppearance {
         strokes = List.copyOf(strokes);
-
-        if (strokes.isEmpty()) {
-            throw new IllegalArgumentException("strokes must not be empty");
-        }
-
-        if (strokes.stream().allMatch(stroke -> stroke == BarStroke.DOTS)) {
-            throw new IllegalArgumentException(
-                "strokes (%s) must hold at least one stroke that is not %s".formatted(
-                    strokes, BarStroke.DOTS));
-        }
     }
 
     /**
@@ -74,7 +72,7 @@ public record BarAppearance(List<BarStroke> strokes) implements ElementAppearanc
      * @return the appearance, so that a declaration site reads
      *         {@code BarAppearance.of(DOTS, THIN, THICK)}
      */
-    public static BarAppearance of(BarStroke... strokes) {
+    static BarAppearance of(BarStroke... strokes) {
         return new BarAppearance(List.of(strokes));
     }
 

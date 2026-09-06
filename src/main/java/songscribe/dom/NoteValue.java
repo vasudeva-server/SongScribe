@@ -20,14 +20,23 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
+import songscribe.smufl.SMuFLGlyph;
 
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
 /**
  * A note value — whole through thirty-second — the closed domain a note or a rest is
- * measured in. Each value knows its length in ticks, the word that names it, and the
- * note and rest types that carry it.
+ * measured in. Each value knows its length in ticks, the word that names it, the flag a
+ * note of it carries, and the note and rest types that carry it.
+ *
+ * <p>{@link #note()} and {@link #rest()} are the two inverses of
+ * {@link ElementType#noteValue()}: {@code v.note().noteValue()} and
+ * {@code v.rest().noteValue()} are both {@code v}, so a caller can walk from a value to a type
+ * and back without losing which value it started from. The MusicXML mapping and the tuplet
+ * validator both rely on that round trip.
  */
 public enum NoteValue {
     WHOLE(PPQ * 4, Strings.LABEL_NOTE_VALUE_WHOLE),
@@ -58,6 +67,30 @@ public enum NoteValue {
      */
     public String labelKey() {
         return labelKey;
+    }
+
+    /**
+     * The flag a stemmed note of this value carries, for the given stem direction.
+     *
+     * @param direction {@code UP} for a flag on the right of the stem; {@code DOWN} for one on
+     *                  the left
+     * @return the flag glyph, or {@code null} for a whole, half or quarter, which carry none
+     */
+    public @Nullable SMuFLGlyph flagGlyph(StaffElement.Direction direction) {
+        return switch (this) {
+            case EIGHTH -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
+            case SIXTEENTH -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
+            case THIRTY_SECOND ->
+                direction.isUp() ? SMuFLGlyph.FLAG_32ND_UP : SMuFLGlyph.FLAG_32ND_DOWN;
+            case WHOLE, HALF, QUARTER -> null;
+        };
+    }
+
+    /**
+     * @return whether a note of this value carries a flag — an eighth or shorter
+     */
+    public boolean hasFlag() {
+        return flagGlyph(StaffElement.Direction.UP) != null;
     }
 
     /**

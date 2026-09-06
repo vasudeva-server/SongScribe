@@ -24,6 +24,7 @@ import java.awt.geom.Rectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.NoteElement;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.util.GraphicUtils;
 
@@ -68,12 +69,14 @@ public final class GraceGlissandoPreviewOverlay extends RecordedInkOverlay {
         }
 
         var domLine = line.getLine();
-        var previewElement = line.getPreviewElement();
 
         // getLayoutResult() rather than previewInvariants(): the latter is null under exactly this
         // condition but builds a full LineInvariants otherwise, which is wasted whenever the
-        // recorded ink is still current.
-        if (domLine == null || previewElement == null || line.getLayoutResult() == null) {
+        // recorded ink is still current. The preview a grace note awaits is its host note, so a
+        // preview element of any other class means there is nothing to connect to.
+        if (domLine == null
+            || !(line.getPreviewElement() instanceof NoteElement previewElement)
+            || line.getLayoutResult() == null) {
             return null;
         }
 

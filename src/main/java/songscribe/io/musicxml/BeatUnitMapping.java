@@ -46,7 +46,7 @@ final class BeatUnitMapping {
 
     // -------------------------------------------------------------------------
     // Reverse map: (token, dot count) → BeatUnit, derived from the same
-    // token/dot derivation forDuration uses, so the two directions cannot drift
+    // token/dot derivation entryFor uses, so the two directions cannot drift
     // apart.
     // -------------------------------------------------------------------------
 
@@ -58,7 +58,7 @@ final class BeatUnitMapping {
         var reverse = new HashMap<BeatUnitKey, BeatUnit>();
 
         for (var unit : BeatUnit.values()) {
-            var entry = forDuration(unit);
+            var entry = entryFor(unit);
             reverse.put(new BeatUnitKey(entry.token(), entry.dotCount()), unit);
         }
 
@@ -70,20 +70,27 @@ final class BeatUnitMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the MusicXML beat-unit representation for the given
-     * {@link BeatUnit}.
+     * Returns the MusicXML beat-unit representation for the given {@link BeatUnit}.
+     *
+     * @param unit the beat unit being written
+     * @return the token naming the unit's note value, with one dot when the unit is dotted
+     *     and none otherwise
      */
-    static BeatUnitEntry forDuration(BeatUnit duration) {
+    static BeatUnitEntry entryFor(BeatUnit unit) {
         return new BeatUnitEntry(
-            NoteTypeMapping.typeToken(duration.noteValue()), duration.dotted() ? 1 : 0);
+            NoteTypeMapping.typeToken(unit.noteValue()), unit.dotted() ? 1 : 0);
     }
 
     /**
-     * Returns the {@link BeatUnit} for the given MusicXML beat-unit token and
-     * dot count, or {@code null} if the combination is not recognised.
+     * Returns the {@link BeatUnit} for the given MusicXML beat-unit token and dot count.
+     *
+     * @param token    the {@code <beat-unit>} or {@code <metronome-type>} text, already trimmed
+     * @param dotCount the number of {@code <beat-unit-dot/>} or {@code <metronome-dot/>} children
+     * @return the unit {@link #entryFor} maps to that token and dot count, or {@code null} if
+     *     no unit does
      */
     @Nullable
-    static BeatUnit forBeatUnit(String token, int dotCount) {
+    static BeatUnit beatUnitFor(String token, int dotCount) {
         return REVERSE_MAP.get(new BeatUnitKey(token, dotCount));
     }
 

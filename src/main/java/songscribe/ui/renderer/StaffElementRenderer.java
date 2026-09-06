@@ -27,8 +27,11 @@ import java.awt.geom.RoundRectangle2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.BarElement;
 import songscribe.dom.ElementType;
+import songscribe.dom.GlyphElement;
 import songscribe.dom.KeyChangeElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.LedgerLine;
@@ -95,29 +98,15 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         StaffElement element,
         Graphics2D g2
     ) {
-        var elementType = element.getType();
-
-        if (elementType.isRest()) {
-            RestRenderer.getInstance().render(invariants, frame, element, g2);
-            return;
+        switch (element) {
+            case GlyphElement glyph when glyph.getType().isRest() ->
+                RestRenderer.getInstance().render(invariants, frame, glyph, g2);
+            case GlyphElement breathMark -> renderBreathMark(breathMark, g2, invariants, frame);
+            case BarElement bar -> BarRenderer.getInstance().render(invariants, frame, bar, g2);
+            case KeyChangeElement keyChange ->
+                KeySignatureRenderer.getInstance().renderMidLine(invariants, frame, keyChange, g2);
+            case NoteElement note -> renderNote(note, g2, invariants, frame);
         }
-
-        if (elementType.isBar()) {
-            BarRenderer.getInstance().render(invariants, frame, element, g2);
-            return;
-        }
-
-        if (elementType.isBreathMark()) {
-            renderBreathMark(element, g2, invariants, frame);
-            return;
-        }
-
-        if (element instanceof KeyChangeElement keyChange) {
-            KeySignatureRenderer.getInstance().renderMidLine(invariants, frame, keyChange, g2);
-            return;
-        }
-
-        renderNote(element, g2, invariants, frame);
     }
 
     // ==========================================================================
@@ -126,7 +115,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
     /** Draws a note or a grace note: its head, its ledger lines and its accidental. */
     private void renderNote(
-        StaffElement element,
+        NoteElement element,
         Graphics2D g2,
         LineInvariants invariants,
         ElementFrame frame
@@ -152,23 +141,22 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     private void renderBreathMark(
-        StaffElement element,
+        GlyphElement element,
         Graphics2D g2,
         LineInvariants invariants,
         ElementFrame frame
     ) {
         var noteX = frame.resolveElementXSs(element, invariants);
 
-        // Derived from the element's staff position — half a staff space above the top staff
-        // line — rather than written out again here. The hit rect is built from that same staff
-        // position, so deriving both from it is what keeps the clickable area on the glyph; the
-        // two were once separate numbers and drifted a full staff space apart.
+        // The glyph and its seat both come from the element's type, and the hit rect is built
+        // from that same staff position, so the drawn glyph and its clickable area cannot
+        // disagree.
         var breathY = NoteGeometry.noteStaffPositionToCoordinateSs(
             element.getStaffPosition(), invariants.getMiddleLineYSs());
 
         RenderingUtils.drawBravuraGlyph(
             g2,
-            SMuFLGlyph.BREATH_MARK_COMMA,
+            element.glyph(),
             noteX,
             breathY,
             true
@@ -181,12 +169,12 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
     private void renderNoteHead(
         Graphics2D g2,
-        StaffElement note,
+        NoteElement note,
         boolean beamed,
         LineInvariants invariants
     ) {
         var noteType = note.getType();
-        var glyph = noteType.notehead().glyph();
+        var glyph = note.notehead().glyph();
         var direction = NoteGeometry.effectiveDirection(note);
 
         // Note: Don't set color here - respect the color set by the caller
@@ -220,7 +208,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Returns the flag attachment point (x = stem left edge, y = stem tip), or null if no stem.
     private Point2D.@Nullable Double renderStem(
         Graphics2D g2,
-        StaffElement note,
+        NoteElement note,
         StaffElement.Direction direction,
         boolean beamed,
         ElementType noteType,
@@ -231,8 +219,8 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
 
         var upper = direction.isUp();
-        var geom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
-        var stemWidthSs = StemMetrics.THICKNESS_SS;
+        var geom = NoteGeometry.computeBaseStemGeometry(note, direction);
+        var stemWidthSs = StemMetrics.thicknessSs();
 
         // Both stem directions keep their exact (sub-pixel) position. The score draws glyphs with
         // FRACTIONALMETRICS_ON (GraphicUtils.setRenderingHints), so the notehead's origin is NOT
@@ -360,7 +348,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
     private void renderDots(
         Graphics2D g2,
-        StaffElement note,
+        NoteElement note,
         boolean beamed,
         StaffElement.Direction direction
     ) {
@@ -381,7 +369,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Ledger Line Rendering
     // ==========================================================================
 
-    private void renderLedgerLines(Graphics2D g2, StaffElement note, LineInvariants invariants) {
+    private void renderLedgerLines(Graphics2D g2, NoteElement note, LineInvariants invariants) {
         if (!NoteGeometry.noteNeedsLedgerLines(note)) {
             return;
         }

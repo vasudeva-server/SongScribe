@@ -162,7 +162,12 @@ public final class NoteTypeMapping {
     // Public API
     // -------------------------------------------------------------------------
 
-    /** Returns the MusicXML {@code <type>} token for the given {@link NoteValue}. */
+    /**
+     * Returns the MusicXML {@code <type>} token for the given {@link NoteValue}.
+     *
+     * @param value the written note value
+     * @return the {@code note-type-value} token MusicXML spells that value with
+     */
     public static String typeToken(NoteValue value) {
         return switch (value) {
             case WHOLE -> TYPE_WHOLE;
@@ -190,9 +195,14 @@ public final class NoteTypeMapping {
      * Returns the {@link ElementType} for the given MusicXML {@code <type>} token
      * and note-shape flags, or {@code null} if the token is not recognised.
      *
-     * @param typeToken the MusicXML {@code <type>} text content (e.g. {@code "quarter"})
+     * @param typeToken the MusicXML {@code <type>} text content (e.g. {@code "quarter"}),
+     *                  already trimmed
      * @param isRest    {@code true} if a {@code <rest/>} child was present in the {@code <note>}
-     * @param isGrace   {@code true} if a {@code <grace>} child was present in the {@code <note>}
+     * @param isGrace   {@code true} if a {@code <grace>} child was present in the {@code <note>};
+     *                  when {@code true} the token is not consulted, since the one grace type
+     *                  is the answer whatever the token says
+     * @return the grace type when {@code isGrace}; otherwise the rest or the note of the value
+     *     the token names, or {@code null} if the token names no value
      */
     @Nullable
     public static ElementType forTypeToken(String typeToken, boolean isRest, boolean isGrace) {
@@ -214,6 +224,9 @@ public final class NoteTypeMapping {
      * element in MusicXML output: a pitched note or a rest does; a grace note does not,
      * because SongScribe assigns it zero playback time and never steals from the host
      * note. A type that is none of those has no duration at all.
+     *
+     * @param type the element type being written
+     * @return {@code true} for a pitched note or a rest; {@code false} for every other type
      */
     public static boolean hasDuration(ElementType type) {
         return type.isDuration();

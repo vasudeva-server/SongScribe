@@ -31,15 +31,17 @@ import songscribe.smufl.SMuFLGlyph;
 
 /**
  * An element occupying a column of a staff line: a note, a rest, a barline, a breath mark, a
- * mid-line key change. Abstract, and instantiated only through one of its leaves —
- * {@link NoteElement} for a note, {@link StructuralElement} for everything non-sounding,
- * {@link KeyChangeElement} for a key change — so that the class always matches the
- * {@link ElementType}, which {@link ElementType#newInstance()} is the general way to get right.
+ * mid-line key change. Abstract, and instantiated only through one of its leaves, one per
+ * {@link ElementAppearance} arm — {@link NoteElement} for a note, {@link GlyphElement} for a
+ * rest or a breath mark, {@link BarElement} for a barline or a repeat, {@link KeyChangeElement}
+ * for a key change — so that the class always states what the {@link ElementType} is drawn
+ * from, which {@link ElementType#newInstance()} is the general way to get right.
  *
- * <p>Abstract for {@link #copySubtypeStateFrom}'s sake: a subtype that adds state must be made to
- * say how that state is copied, and a root that is also a leaf has no way to demand it.
+ * <p>Abstract because every element is one of those leaves: the root states what all of them
+ * share and is never an element on its own.
  */
-public abstract class StaffElement extends LineElement implements Cloneable {
+public abstract sealed class StaffElement extends LineElement implements Cloneable
+    permits NoteElement, StructuralElement {
 
     protected @Nullable Slide slide;
 
@@ -104,11 +106,15 @@ public abstract class StaffElement extends LineElement implements Cloneable {
     /** Attachments on this note (tempo, fermata, dynamics, etc.) */
     private final List<Attachment> attachments = new ArrayList<>();
 
-    @Nullable
+    /**
+     * Written by the constructor and by {@link #copyStateFrom}, which undo replay uses to
+     * restore a type change in place. A leaf answers its appearance from this field, so a type
+     * restored here is drawn as the restored type with nothing else to keep current.
+     */
     private ElementType type;
 
-    protected StaffElement(ElementType noteType) {
-        type = noteType;
+    protected StaffElement(ElementType type) {
+        this.type = type;
     }
 
     /**
@@ -121,7 +127,7 @@ public abstract class StaffElement extends LineElement implements Cloneable {
      *
      * <p>A factory rather than a constructor because the class of the result follows
      * {@code targetType} rather than the class of {@code source} — a rest is a
-     * {@link StructuralElement} and a key change a {@link KeyChangeElement} however the
+     * {@link GlyphElement} and a key change a {@link KeyChangeElement} however the
      * element it displaces was built. {@link ElementType#newInstance()} is what settles that,
      * so the conversion and the type registry cannot disagree about which class a type gets.
      *
@@ -224,23 +230,20 @@ public abstract class StaffElement extends LineElement implements Cloneable {
 
     /**
      * Copies onto this element the state {@code source} carries beyond
-     * {@link #copyStateFrom}'s field list. Empty in a subtype that adds none.
+     * {@link #copyStateFrom}'s field list. Does nothing here: a leaf that adds state of its own
+     * overrides it, and a leaf whose every answer derives from its type has nothing to add.
      *
-     * <p>Abstract so that a subtype adding state has to say how it travels. Both copy paths —
-     * {@link #clone()} and undo replay of an {@code ElementModification} — go through
-     * {@link #copyStateFrom}, so a subtype that answered here with silence would get an
-     * identity-preserving restore that quietly dropped that state, which reaches the notator as
-     * an element still holding the value the undone edit gave it.
+     * <p>Both copy paths — {@link #clone()} and undo replay of an {@code ElementModification} —
+     * go through {@link #copyStateFrom}, so a leaf that adds a field and does not override this
+     * gets an identity-preserving restore that quietly drops that field, which reaches the
+     * notator as an element still holding the value the undone edit gave it.
      *
      * @param source an element of this element's own class, whose subtype state to copy
      */
-    protected abstract void copySubtypeStateFrom(StaffElement source);
+    protected void copySubtypeStateFrom(StaffElement source) {
+    }
 
     public ElementType getType() {
-        if (type == null) {
-            throw RuntimeError.exit("type not initialized");
-        }
-
         return type;
     }
 

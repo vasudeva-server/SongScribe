@@ -59,6 +59,8 @@ public final class SMuFLMetadata {
     /** Indexed by {@link StemmedNotehead#ordinal()}. */
     private final StemAnchors[] stemAnchors;
 
+    private final double stemThicknessSs;
+
     private SMuFLMetadata(JsonObject root) {
         bboxesSs = parseBBoxes(
                 requiredObject(root, "glyphBBoxes", "glyph bounding boxes"));
@@ -66,6 +68,9 @@ public final class SMuFLMetadata {
                 requiredObject(root, "glyphAdvanceWidths", "glyph advance widths"));
         stemAnchors = parseStemAnchors(
                 requiredObject(root, "glyphsWithAnchors", "glyph anchors"));
+        stemThicknessSs = requiredDouble(
+                requiredObject(root, "engravingDefaults", "engraving defaults"),
+                "stemThickness", "stem thickness");
     }
 
     /**
@@ -98,6 +103,18 @@ public final class SMuFLMetadata {
      */
     public static StemAnchors stemAnchors(StemmedNotehead notehead) {
         return Holder.INSTANCE.stemAnchors[notehead.ordinal()];
+    }
+
+    /**
+     * How wide the font expects a stem to be drawn. The stem itself is no glyph, but it butts
+     * against two that are: it starts at the notehead's stem anchor and a flag hangs off its
+     * edge, and both of those are cut for a stem of this width. A stem drawn any wider reaches
+     * past the anchor into the notehead's counter.
+     *
+     * @return the stem thickness in staff spaces
+     */
+    public static double stemThicknessSs() {
+        return Holder.INSTANCE.stemThicknessSs;
     }
 
     // --- Parsing ---

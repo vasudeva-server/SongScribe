@@ -1,31 +1,27 @@
 /*
-    SongScribe song notation program
-    Copyright (C) Sri Chinmoy Centres International
-
-    This file is part of SongScribe.
-
-    SongScribe is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 3 of the License, or
-    (at your option) any later version.
-
-    SongScribe is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
+ * SongScribe song notation program
+ * Copyright (C) Sri Chinmoy Centres International
+ *
+ * This file is part of SongScribe.
+ *
+ * SongScribe is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * SongScribe is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 package songscribe.ui.renderer;
 
 import java.awt.Graphics2D;
-import java.util.EnumMap;
 
-import songscribe.dom.ElementType;
-import songscribe.dom.GlyphAppearance;
-import songscribe.dom.StaffElement;
+import songscribe.dom.GlyphElement;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
@@ -36,37 +32,17 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import static songscribe.util.GraphicsState.Property.TRANSFORM;
 
 /**
- * Renders rest glyphs (whole, half, quarter, eighth, sixteenth, thirty-second rests).
+ * Renders rest elements.
  * <p>
- * Rest glyphs are rendered at the note's position using SMuFL/Bravura glyphs.
+ * A rest is drawn as its type's glyph at its type's seat, followed by its augmentation dots.
  * All coordinates are in staff-space units; the Graphics2D scale transform
  * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
-public final class RestRenderer implements ElementRenderer<StaffElement> {
+public final class RestRenderer implements ElementRenderer<GlyphElement> {
 
-    // ==========================================================================
-    // Rest Glyphs (SMuFL/Bravura)
-    // ==========================================================================
-
-    // Dot positioning derived from SMuFL metadata, in staff-space units.
-    // The Graphics2D scale transform handles pixel conversion.
-    private static final double DOT_GAP_SS = 0.5; // ss gap between rest glyph right edge and first dot
-    private static final EnumMap<ElementType, Float> FIRST_DOT_X_SS = new EnumMap<>(ElementType.class);
-
-    static {
-        // Compute first dot X for each rest type from its advance width (in ss)
-        for (var elementType : ElementType.values()) {
-            if (!elementType.isRest()) {
-                continue;
-            }
-
-            if (elementType.appearance() instanceof GlyphAppearance(var glyph, var ignoredSeat)) {
-                var advanceWidth = SMuFLMetadata.advanceWidthSs(glyph);
-                FIRST_DOT_X_SS.put(elementType, (float) (advanceWidth + DOT_GAP_SS));
-            }
-        }
-    }
+    // Gap in staff spaces between the rest glyph's advance and its first dot.
+    private static final double DOT_GAP_SS = 0.5;
 
     // Singleton instance
     private static final RestRenderer INSTANCE = new RestRenderer();
@@ -88,87 +64,48 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
     // Rendering
     // ==========================================================================
 
-    /**
-     * Resolves the X coordinate for a rest from the layout result,
-     * snapped to device pixels for crisp rendering.
-     */
-    private static double resolveRestXSs(
-        Graphics2D g2,
-        StaffElement note,
-        LineInvariants invariants,
-        ElementFrame frame
-    ) {
-        double noteX;
-
-        if (frame.hasOverrideElementX()) {
-            noteX = frame.overrideElementXSs();
-        } else {
-            noteX = invariants.getLayoutResult().getElementXSs(note);
-        }
-
-        return noteX;
-    }
-
     @Override
     public void render(
         LineInvariants invariants,
         ElementFrame frame,
-        StaffElement element,
+        GlyphElement element,
         Graphics2D g2
     ) {
-        var noteType = element.getType();
-
-        if (!noteType.isRest()) {
-            return;
-        }
-
-        // Get rest position in staff-space units
-        var noteX = resolveRestXSs(g2, element, invariants, frame);
-        var noteY = calculateRestYSs(element, invariants.getMiddleLineYSs());
+        var restX = frame.resolveElementXSs(element, invariants);
+        var restY = calculateRestYSs(element, invariants.getMiddleLineYSs());
 
         try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            g2.translate(noteX, noteY);
+            g2.translate(restX, restY);
             g2.setFont(RenderingUtils.MUSIC_FONT);
             // Note: Don't set color here - respect the color set by the caller
             // (e.g., blue for insertion notes, black for song notes)
-
-            // Draw rest glyph
-            if (noteType.appearance() instanceof GlyphAppearance(var glyph, var ignoredSeat)) {
-                g2.drawString(glyph.asString(), 0f, 0f);
-            }
-
-            // Draw dots
-            renderDots(g2, element, noteType);
+            g2.drawString(element.glyph().asString(), 0f, 0f);
+            renderDots(g2, element);
         }
     }
 
     /**
      * Calculates the Y position for a rest in staff-space units, from its type's glyph seat.
      */
-    double calculateRestYSs(StaffElement note, double middleLineYSs) {
-        return middleLineYSs + StaffPosition.toSs(note.getStaffPosition());
+    double calculateRestYSs(GlyphElement rest, double middleLineYSs) {
+        return middleLineYSs + StaffPosition.toSs(rest.getStaffPosition());
     }
 
     /**
-     * Renders dots for dotted rests.
+     * Renders the augmentation dots of a dotted rest, the first one {@link #DOT_GAP_SS} past the
+     * glyph's advance width.
      */
-    private void renderDots(Graphics2D g2, StaffElement note, ElementType noteType) {
-        if (note.getDotCount() == 0) {
+    private void renderDots(Graphics2D g2, GlyphElement rest) {
+        if (rest.getDotCount() == 0) {
             return;
         }
 
-        var firstDotX = FIRST_DOT_X_SS.get(noteType);
+        var dotX = (float) (SMuFLMetadata.advanceWidthSs(rest.glyph()) + DOT_GAP_SS);
 
-        if (firstDotX == null) {
-            return;
-        }
-
-        // Draw augmentation dots using SMuFL glyph
         try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
-            float dotX = firstDotX;
 
-            for (var i = 0; i < note.getDotCount(); i++) {
+            for (var i = 0; i < rest.getDotCount(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
                 dotX += NoteGeometry.DOT_SPACING_SS;
             }

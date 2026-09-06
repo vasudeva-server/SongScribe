@@ -20,7 +20,7 @@
 
 package songscribe.layout;
 
-import songscribe.dom.StaffElement;
+import songscribe.dom.NoteElement;
 import songscribe.engraving.StemMetrics;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -73,12 +73,12 @@ public final class NoteColumnGeometry {
      * @param beamed whether the note belongs to a beam group (affects dot placement)
      * @return the stem-free column extent
      */
-    public static ColumnExtent glissandoAttachExtentSs(StaffElement note, boolean beamed) {
+    public static ColumnExtent glissandoAttachExtentSs(NoteElement note, boolean beamed) {
         var noteType = note.getType();
         var direction = NoteGeometry.effectiveDirection(note);
 
         // ---- notehead ----
-        var glyph = noteType.notehead().glyph();
+        var glyph = note.notehead().glyph();
         var noteheadBBox = SMuFLMetadata.bboxSs(glyph);
         var offsetX = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
         var leftSs = offsetX + noteheadBBox.leftSs();
@@ -107,7 +107,7 @@ public final class NoteColumnGeometry {
      * @param beamed whether the note belongs to a beam group (affects dot placement)
      * @return the full column extent
      */
-    public static ColumnExtent extentSs(StaffElement note, boolean beamed) {
+    public static ColumnExtent extentSs(NoteElement note, boolean beamed) {
         return extentSs(note, glissandoAttachExtentSs(note, beamed));
     }
 
@@ -121,24 +121,21 @@ public final class NoteColumnGeometry {
      * @param stemFree the stem-free extent for the same note, from {@link #glissandoAttachExtentSs}
      * @return the full column extent
      */
-    public static ColumnExtent extentSs(StaffElement note, ColumnExtent stemFree) {
-        var noteType = note.getType();
+    public static ColumnExtent extentSs(NoteElement note, ColumnExtent stemFree) {
         var leftSs = stemFree.leftSs();
         var rightSs = stemFree.rightSs();
 
-        // Both widening guards below are inert with Bravura: its stem anchors sit exactly on the
-        // notehead's outer bbox edges (grace stems sit well inside), so a stem never protrudes.
-        // They are kept for fonts that place the anchors differently. NoteColumnGeometryTest pins
-        // that premise, so a font change making these guards live is reported rather than
-        // silently altering layout.
-        if (noteType.isNoteWithStem()) {
+        // The guards below widen the extent when a stem protrudes past the notehead's bbox, which
+        // no Bravura notehead does: its stem anchors sit exactly on the outer bbox edges, and the
+        // grace stem sits well inside.
+        if (note.getType().isNoteWithStem()) {
             var direction = NoteGeometry.effectiveDirection(note);
-            var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, direction);
+            var stemGeom = NoteGeometry.computeBaseStemGeometry(note, direction);
             var stemLeftXSs = stemGeom.stemLeftXSs();
 
             if (direction.isUp()) {
                 // Stem-up: stem is to the right of the notehead.
-                var stemRightXSs = stemLeftXSs + StemMetrics.THICKNESS_SS;
+                var stemRightXSs = stemLeftXSs + StemMetrics.thicknessSs();
 
                 if (stemRightXSs > rightSs) {
                     rightSs = stemRightXSs;

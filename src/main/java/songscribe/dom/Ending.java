@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import java.util.List;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 
@@ -32,6 +33,14 @@ import songscribe.engraving.EngravingConstants;
  * <p>
  * Endings are the "1." and "2." brackets drawn above the staff to indicate
  * which measures to play on each repetition. They can span multiple measures.
+ *
+ * @invariant a bar whose type {@link ElementType#closesRepeat()} lies strictly between the
+ *            anchor and the end — the split at which the two brackets part. Every creator
+ *            establishes it before building an ending: the editor's validation refuses a
+ *            selection without one, and the file readers ask {@link #hasRepeatSplit} and drop
+ *            an ending that lacks one. Every edit that would remove the split — deleting it, or
+ *            replacing it with a bar that does not close a repeat — invalidates the ending
+ *            instead, so no attached ending is ever without its split
  */
 public class Ending extends Span {
 
@@ -142,26 +151,58 @@ public class Ending extends Span {
     }
 
     /**
-     * Returns the element index of the REPEAT_RIGHT or REPEAT_LEFT_RIGHT that separates
-     * the first and second sub-spans of this ending, computed live from the line.
-     * <p>
-     * Every ending must have a split: the two brackets are meaningless without a repeat
-     * between them. A missing split therefore signals corrupt state — a split-less ending
-     * that should have been rejected on import or removed by invalidation — and throws.
-     * Callers that merely <em>detect</em> whether a split exists must use the tolerant
-     * {@link #findRepeatSplitElement} instead of this method.
-     * <p>
-     * This recomputes from the current line state rather than relying on a value cached
-     * during layout, so it is reliable during MIDI generation.
+     * Returns the element index of the bar that separates the first and second sub-spans of
+     * this ending — the one {@link #getSplitElement} answers — computed live from the line
+     * rather than from a value cached during layout, so it is reliable during MIDI generation.
+     *
+     * @param line the line this ending is on
+     * @return the split bar's index in {@code line}
      */
     public int getSplitIndex(Line line) {
-        var splitIndex = findRepeatSplitIndex(line);
+        return line.getElementIndex(getSplitElement(line));
+    }
 
-        if (splitIndex < 0) {
-            throw noSplitElementException(getAnchorElementIndex(), getEndElementIndex());
-        }
+    /**
+     * Returns the bar that separates the first and second sub-spans of this ending — the
+     * element {@link #getSplitIndex} indexes — computed live from the line.
+     *
+     * @param line the line this ending is on
+     * @return the first bar between the anchor and the end whose type
+     *     {@link ElementType#closesRepeat()}, which the class invariant guarantees exists
+     */
+    public BarElement getSplitElement(Line line) {
+        return closingRepeatsBetween(line, getAnchorElementIndex(), getEndElementIndex())
+            .findFirst()
+            .orElseThrow();
+    }
 
-        return splitIndex;
+    /**
+     * Whether an ending anchored at {@code anchorIndex} and ending at {@code endIndex} would
+     * have a split: the question a file reader asks before building one, since a file may hold
+     * an ending the editor could never have created.
+     *
+     * @param line        the line the ending would be on
+     * @param anchorIndex the index of the element the ending would anchor on
+     * @param endIndex    the index of the element the ending would end on
+     * @return {@code true} when some bar strictly between the two indices
+     *     {@link ElementType#closesRepeat()}
+     */
+    public static boolean hasRepeatSplit(Line line, int anchorIndex, int endIndex) {
+        return closingRepeatsBetween(line, anchorIndex, endIndex).findFirst().isPresent();
+    }
+
+    /**
+     * The bars strictly between {@code anchorIndex} and {@code endIndex} whose type closes a
+     * repeat, in line order.
+     */
+    private static Stream<BarElement> closingRepeatsBetween(
+        Line line, int anchorIndex, int endIndex
+    ) {
+        return IntStream.range(anchorIndex + 1, endIndex)
+            .mapToObj(line::getElement)
+            .filter(BarElement.class::isInstance)
+            .map(BarElement.class::cast)
+            .filter(bar -> bar.getType().closesRepeat());
     }
 
     /**
@@ -252,21 +293,6 @@ public class Ending extends Span {
     }
 
     /**
-     * Builds the exception thrown when an ending is found to have no REPEAT splitting its
-     * two brackets — corrupt state that should have been rejected on import or removed by
-     * invalidation. Shared by {@link #getSplitIndex} and the layout-side bracket-range
-     * computation, which enforces the same invariant.
-     *
-     * @param anchorIndex index of the ending's anchor element
-     * @param endIndex    index of the ending's end element
-     */
-    public static IllegalStateException noSplitElementException(int anchorIndex, int endIndex) {
-        return new IllegalStateException(
-            "Ending spanning elements [" + anchorIndex + ',' + endIndex
-                + "] has no split element; every ending must have a REPEAT between its two brackets");
-    }
-
-    /**
      * Returns the bracket ranges computed during layout.
      */
     public List<BracketRange> getBracketRanges() {
@@ -307,42 +333,26 @@ public class Ending extends Span {
     @Override
     @SuppressWarnings("SlowListContainsAll")
     protected boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
-        // Condition 2: REPEAT_RIGHT split element is deleted
-        var splitElement = findRepeatSplitElement(line);
+        // Condition 2: the split element is deleted
+        var splitElement = getSplitElement(line);
 
-        if (splitElement != null && deletedElements.contains(splitElement)) {
+        if (deletedElements.contains(splitElement)) {
             return true;
         }
 
         // Condition 4: all content elements in either sub-span are deleted
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
-
-        if (anchorIndex < 0 || endIndex < 0) {
-            return false;
-        }
-
-        if (splitElement != null) {
-            var splitIndex = line.getElementIndex(splitElement);
-            var firstContent = IntStream.range(anchorIndex + 1, splitIndex)
-                .mapToObj(line::getElement)
-                .filter(el -> el.getType().isDuration())
-                .toList();
-            var secondContent = IntStream.range(splitIndex + 1, endIndex)
-                .mapToObj(line::getElement)
-                .filter(el -> el.getType().isDuration())
-                .toList();
-
-            return (!firstContent.isEmpty() && deletedElements.containsAll(firstContent))
-                || (!secondContent.isEmpty() && deletedElements.containsAll(secondContent));
-        }
-
-        var singleContent = IntStream.range(anchorIndex + 1, endIndex)
+        var splitIndex = line.getElementIndex(splitElement);
+        var firstContent = IntStream.range(getAnchorElementIndex() + 1, splitIndex)
+            .mapToObj(line::getElement)
+            .filter(el -> el.getType().isDuration())
+            .toList();
+        var secondContent = IntStream.range(splitIndex + 1, getEndElementIndex())
             .mapToObj(line::getElement)
             .filter(el -> el.getType().isDuration())
             .toList();
 
-        return !singleContent.isEmpty() && deletedElements.containsAll(singleContent);
+        return (!firstContent.isEmpty() && deletedElements.containsAll(firstContent))
+            || (!secondContent.isEmpty() && deletedElements.containsAll(secondContent));
     }
 
     /**
@@ -366,11 +376,10 @@ public class Ending extends Span {
                 : new EndingEffect.Invalidate(this);
         }
 
-        var splitEl = findRepeatSplitElement(line);
+        var splitEl = getSplitElement(line);
 
         // Condition 2 — split element replaced
-        //noinspection ConditionCoveredByFurtherCondition -- false positive
-        if (splitEl != null && oldElement == splitEl) {
+        if (oldElement == splitEl) {
             if (newType == ElementType.REPEAT_RIGHT) {
                 // REPEAT_RIGHT → REPEAT_RIGHT: no change needed
                 if (splitEl.getType() == ElementType.REPEAT_RIGHT) {
@@ -399,7 +408,7 @@ public class Ending extends Span {
                 return new EndingEffect.Invalidate(this);
             }
 
-            var splitType = splitEl == null ? ElementType.REPEAT_RIGHT : splitEl.getType();
+            var splitType = splitEl.getType();
 
             if (isValidEnd(splitType, newType)) {
                 return EndingEffect.None.INSTANCE;
@@ -460,40 +469,4 @@ public class Ending extends Span {
             insertedIndex > anchorIndex && insertedIndex < endIndex;
     }
 
-    /**
-     * Finds the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that splits the first
-     * and second sub-spans, scanning live indices between anchor and end.
-     * <p>
-     * Returns {@code null} if no such element exists or the anchor/end indices are invalid.
-     * Shared by {@link #isInvalidatedByDeletion} and the replacement/insertion checks.
-     */
-    public @Nullable StaffElement findRepeatSplitElement(Line line) {
-        var splitIndex = findRepeatSplitIndex(line);
-
-        return splitIndex < 0 ? null : line.getElement(splitIndex);
-    }
-
-    /**
-     * Finds the live element index of the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT)
-     * that splits the first and second sub-spans, scanning between anchor and end. Returns
-     * the index directly so callers avoid a second {@code getElementIndex} lookup.
-     * <p>
-     * Returns -1 if no such element exists or the anchor/end indices are invalid.
-     */
-    private int findRepeatSplitIndex(Line line) {
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
-
-        if (anchorIndex < 0 || endIndex < 0) {
-            return -1;
-        }
-
-        return IntStream.range(anchorIndex + 1, endIndex)
-            .filter(i -> {
-                var type = line.getElement(i).getType();
-                return type == ElementType.REPEAT_RIGHT || type == ElementType.REPEAT_LEFT_RIGHT;
-            })
-            .findFirst()
-            .orElse(-1);
-    }
 }

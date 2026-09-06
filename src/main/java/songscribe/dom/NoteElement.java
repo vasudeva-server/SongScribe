@@ -17,25 +17,44 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-
 package songscribe.dom;
 
+import songscribe.smufl.Notehead;
+import songscribe.smufl.StemmedNotehead;
+
 /**
- * A sounding element: a note, with a pitch, a stem, an optional accidental and everything else
- * {@link StaffElement} holds. The one leaf that answers {@link StaffElement}'s questions as they
- * are asked, where {@link StructuralElement} answers several of them from its type instead.
+ * A sounding element: a note or a grace note, drawn from a notehead, with a pitch, a stem, an
+ * optional accidental and everything else {@link StaffElement} holds. The one leaf that answers
+ * {@link StaffElement}'s questions as they are asked, where {@link StructuralElement} answers
+ * several of them from its type instead.
  *
- * <p>Adds no state of its own — a note is exactly what {@link StaffElement} describes — which is
- * why its {@link #copySubtypeStateFrom} is empty. It exists so that {@link StaffElement} can be
- * abstract, and every element's class can therefore follow its {@link ElementType}.
+ * <p>Answers its notehead from its type's {@link NoteheadAppearance}, so a question only a note
+ * can answer — which notehead, which stem anchors — is total here and always answered from what
+ * the type declares. {@link ElementType#newInstance()} builds one for every type whose
+ * appearance is a notehead and for no other, which is what makes the narrowing to that arm
+ * sound.
  */
 public final class NoteElement extends StaffElement {
 
-    /**
-     * @param type the note's type; a type for which {@link ElementType#isNote()} is true
-     */
-    public NoteElement(ElementType type) {
+    NoteElement(ElementType type) {
         super(type);
+    }
+
+    /**
+     * @return the notehead this note is drawn with
+     */
+    public Notehead notehead() {
+        return ((NoteheadAppearance) getType().appearance()).notehead();
+    }
+
+    /**
+     * The notehead, narrowed to the arm a stem attaches to. Ask it only of a note whose type
+     * {@link ElementType#isNoteWithStem()}: a whole note has no stemmed notehead to answer.
+     *
+     * @return this note's notehead as a {@link StemmedNotehead}
+     */
+    public StemmedNotehead stemmedNotehead() {
+        return (StemmedNotehead) notehead();
     }
 
     @Override
@@ -44,10 +63,5 @@ public final class NoteElement extends StaffElement {
         copy.copyStateFrom(this);
 
         return copy;
-    }
-
-    /** A note carries no state beyond {@link StaffElement#copyStateFrom}'s field list. */
-    @Override
-    protected void copySubtypeStateFrom(StaffElement source) {
     }
 }

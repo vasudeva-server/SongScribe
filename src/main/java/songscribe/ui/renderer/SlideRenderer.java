@@ -27,6 +27,7 @@ import java.awt.geom.Rectangle2D;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
@@ -111,9 +112,7 @@ public final class SlideRenderer {
         var line = invariants.requireCurrentLine();
 
         for (var i = 0; i < line.effectiveElementCount(); i++) {
-            var note = line.getElement(i);
-
-            if (note.getSlide() != null) {
+            if (line.getElement(i) instanceof NoteElement note && note.getSlide() != null) {
                 renderSlide(g2, line, note, i, invariants, frame);
             }
         }
@@ -133,7 +132,7 @@ public final class SlideRenderer {
     public void renderSlide(
         Graphics2D g2,
         Line line,
-        StaffElement note,
+        NoteElement note,
         int noteIndex,
         LineInvariants invariants,
         ElementFrame frame
@@ -234,8 +233,12 @@ public final class SlideRenderer {
             return;
         }
 
+        if (!(line.getElement(sourceIndex) instanceof NoteElement source)) {
+            return;
+        }
+
         var layoutResult = invariants.getLayoutResult();
-        var src = noteContextSs(line.getElement(sourceIndex), sourceIndex, line, layoutResult, NO_SHIFT_SS);
+        var src = noteContextSs(source, sourceIndex, line, layoutResult, NO_SHIFT_SS);
         var tgt = targetContextSs(sourceIndex, line, layoutResult, NO_SHIFT_SS);
 
         drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
@@ -261,18 +264,16 @@ public final class SlideRenderer {
         Graphics2D g2,
         int sourceIndex,
         Line line,
-        StaffElement previewElement,
+        NoteElement previewElement,
         double previewElementXSs,
         LineInvariants invariants
     ) {
-        if (!line.hasIndex(sourceIndex)) {
+        if (!line.hasIndex(sourceIndex)
+            || !(line.getElement(sourceIndex) instanceof NoteElement source)) {
             return;
         }
 
-        var src = noteContextSs(
-            line.getElement(sourceIndex), sourceIndex, line,
-            invariants.getLayoutResult(), NO_SHIFT_SS
-        );
+        var src = noteContextSs(source, sourceIndex, line, invariants.getLayoutResult(), NO_SHIFT_SS);
 
         // A preview element is not on the line, so no beam can span it.
         var tgt = SlideGeometry.noteContextAt(previewElement, previewElementXSs, false, LAYOUT_MIDLINE_Y_SS);
@@ -325,7 +326,7 @@ public final class SlideRenderer {
      * stretches the line rather than translating it.
      */
     private static SlideGeometry.@Nullable Endpoints glissandoEndpointsSs(
-        StaffElement note, int noteIndex, Line line, LayoutResult layoutResult, ElementFrame frame
+        NoteElement note, int noteIndex, Line line, LayoutResult layoutResult, ElementFrame frame
     ) {
         if (!frame.hasPreviewShift()) {
             var slideLayout = layoutResult.getSlideLayout(note);
@@ -350,7 +351,7 @@ public final class SlideRenderer {
      * displaced by {@code shiftSs} from where the layout put it.
      */
     private static SlideGeometry.NoteContext noteContextSs(
-        StaffElement element, int elementIndex, Line line, LayoutResult layoutResult, double shiftSs
+        NoteElement element, int elementIndex, Line line, LayoutResult layoutResult, double shiftSs
     ) {
         return SlideGeometry.noteContextAt(
             element,
@@ -376,9 +377,7 @@ public final class SlideRenderer {
             return null;
         }
 
-        var target = line.getElement(targetIndex);
-
-        if (!target.getType().isNote()) {
+        if (!(line.getElement(targetIndex) instanceof NoteElement target)) {
             return null;
         }
 

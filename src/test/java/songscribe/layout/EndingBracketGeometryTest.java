@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.BarAppearance;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
@@ -185,7 +186,7 @@ class EndingBracketGeometryTest extends UnitTest {
 
         double expectedFirstX1Ss;
 
-        if (isBarOrRepeat(opening)) {
+        if (opening.isBar()) {
             expectedFirstX1Ss = openingAnchorXSs(OPENING_INDEX, opening);
         }
         else {
@@ -207,7 +208,7 @@ class EndingBracketGeometryTest extends UnitTest {
 
         double expectedSecondX2Ss;
 
-        if (isBarOrRepeat(closing)) {
+        if (closing.isBar()) {
             expectedSecondX2Ss = closingAnchorXSs(END_INDEX, closing);
         }
         else {
@@ -220,7 +221,7 @@ class EndingBracketGeometryTest extends UnitTest {
 
         assertThat(secondBracket.hasClosingStroke())
             .as("only a bar that ends a repeated section is struck through at the bracket's end")
-            .isEqualTo(closesRepeatedSection(closing));
+            .isEqualTo(closing.closesSection());
 
         assertThat(firstBracket.hasClosingStroke())
             .as("the first bracket is always struck through, since the repeat loops back there")
@@ -254,7 +255,7 @@ class EndingBracketGeometryTest extends UnitTest {
 
         assertThat(secondBracket.hasClosingStroke())
             .as("the bar run on to decides the closing stroke, as it would were it the end element")
-            .isEqualTo(closesRepeatedSection(following));
+            .isEqualTo(following.closesSection());
     }
 
     /**
@@ -407,7 +408,7 @@ class EndingBracketGeometryTest extends UnitTest {
         elements.add(crotchet());
         elements.add(closing.newInstance());
 
-        if (!isBarOrRepeat(closing)) {
+        if (!closing.isBar()) {
             elements.add(crotchet());
         }
 
@@ -457,12 +458,16 @@ class EndingBracketGeometryTest extends UnitTest {
 
     /** Where a bracket opening on the bar in column {@code index} puts its left stroke. */
     private static double openingAnchorXSs(int index, ElementType type) {
-        return columnXSs(index) + type.voltaOpeningXOffsetSs();
+        return columnXSs(index) + barOf(type).openingAnchorSs();
     }
 
     /** Where a bracket closing on the bar in column {@code index} puts its right end. */
     private static double closingAnchorXSs(int index, ElementType type) {
-        return columnXSs(index) + type.voltaClosingXOffsetSs();
+        return columnXSs(index) + barOf(type).closingAnchorSs();
+    }
+
+    private static BarAppearance barOf(ElementType type) {
+        return (BarAppearance) type.appearance();
     }
 
     /** Where a bracket opening on the note in column {@code index} puts its left stroke. */
@@ -474,16 +479,5 @@ class EndingBracketGeometryTest extends UnitTest {
     private static double noteClosingXSs(int index) {
         return columnXSs(index) + COLUMN_RIGHT_EXTENT_SS
             + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
-    }
-
-    private static boolean isBarOrRepeat(ElementType type) {
-        return type.isBarLine() || type.isRepeat();
-    }
-
-    /** The bars that end a repeated section, and so take a closing stroke on the bracket. */
-    private static boolean closesRepeatedSection(ElementType type) {
-        return type == ElementType.REPEAT_RIGHT
-            || type == ElementType.REPEAT_LEFT_RIGHT
-            || type == ElementType.FINAL_DOUBLE_BARLINE;
     }
 }
