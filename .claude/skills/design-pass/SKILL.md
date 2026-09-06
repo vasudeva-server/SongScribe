@@ -1,8 +1,6 @@
 ---
 name: design-pass
 description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
-model: fable
-effort: low
 disable-model-invocation: true
 ---
 
@@ -85,16 +83,20 @@ Each document states, for its step:
 Then:
 
 - **Read `~/.claude/skills/roughdraft/SKILL.md`** before the first gate of a
-  pass. It holds the CriticMarkup the review comes back in and the form your own
+  pass. It holds the roughdraft flavored markup (rfm) the review comes back in and the form your own
   replies must take, and a reply in the wrong form is one the user's tool will
   not thread.
 - **Open it.** `roughdraft open "<absolute path to the document>"`. The command
   **blocks until the user closes the review session**, so the waiting is the tool
   call itself, not a turn you end and hope to be woken from. Nothing changes
   while it is open: no production file, no test file, no `docs/` file, no
-  register row.
+  register row. **The document you open is plain Markdown**: never write a
+  `<span id="rd-…">` or any other review anchor into it yourself — those are
+  written by the reviewer's tool when a comment is placed, and an earlier
+  findings document that carries them carries the marks of its review, not a
+  format to copy.
 - **Resolve.** When it returns, read the file back from disk. The review is
-  CriticMarkup — comments, insertions, deletions, substitutions — and **every
+  rfm — comments, insertions, deletions, substitutions — and **every
   mark gets an answer written into the document**, as a reply whose `re:` names
   the id it answers. A suggestion you are applying is answered too; silently
   taking one leaves the user unable to tell agreement from oversight.
