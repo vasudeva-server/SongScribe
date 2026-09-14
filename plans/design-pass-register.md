@@ -123,7 +123,7 @@ table, never up the numbers.
 | 2  | **Glyph registry** | `smufl` | ✅ | Every lookup is total. A font that cannot answer fails the application, so no caller holds a glyph whose measurements are unknown. Stem anchors are asked for by `StemmedNotehead` rather than by glyph, which is what makes the one genuinely partial measurement total. The registry now holds only glyphs the application draws. Outside `smufl`, an element type declares its own appearance, so which glyph an element is drawn with cannot be asked of a type that has no answer, and the barline and repeat stroke sequence is stated once instead of in six places. The design it arrived at is `smufl/package-info.java`. |
 | 3  | Staff geometry | `engraving` | ✅ | Every stroke width is base × named multiplier, with no bare literal standing in for one. `EngravingConstants` collects the LilyPond base thickness and everything derived from it that has no single owner; `StemMetrics`, `BeamMetrics`, `LedgerLine`, `StaffPosition` and `BarStroke` are new types that each own one measurement, replacing `LineThickness` and `SMuFLConstants`, both dissolved. `StaffPosition` carries its own `MIN`/`MAX` range and clamps into it, so the two callers that used to check a raw `int` cannot skip the check. The accidental-advance rule — ink width plus natural kerning — moved off `StaffHeaderMetrics` onto `Key.DrawnAccidental` in `dom`, which is total over its own value and its neighbour's rather than partial in its contract. The ledger-line threshold, stated twice before, is now `LedgerLine.forEachOffsetSs`, read by both its callers. The design it arrived at is `engraving/package-info.java`. |
 | 4  | Durations and element types | `dom`: `BeatUnit`, `NoteValue`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ✅ | The vocabulary every element is built from. `Duration` is now `BeatUnit`, an enum over `(NoteValue, dotted)`; `ElementType` carries a `Kind` and an `ElementAppearance` — sealed over `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied through the constructor, so the appearance mapping is total and the bounds computation is one exhaustive switch with no lookup that can miss. Every appearance arm has its own element leaf (`NoteElement`, `GlyphElement`, `BarElement`, `KeyChangeElement`), sealed under `StaffElement`/`StructuralElement`; the notehead and volta accessors that used to live on `ElementType` moved to the appearance types that actually carry them. `ElementLocation` stays a plain address record — its guard and its transposable `matches` method are both gone, since nothing produces the out-of-range value they existed to catch. Seven runtime guards, six `@Nullable`s and two sentinel values retired; four types introduced (`Kind`, `NoteValue`, `ElementBounds`, `PreviewHover`), each replacing a set of parallel fields or a partial lookup with a total one. |
-| 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Clef`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ⏳ | Everything except key state, which pass 0 settled. |
+| 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ⏳ | Everything except key state, which pass 0 settled. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
@@ -232,17 +232,26 @@ the reason for it is still in hand.
 - **→ Pass 7.** `Beam` names its members by index, so `BeamGroupRenderer.beamedNoteAt`
   narrows each end to a `NoteElement` with a throw nothing can reach. A beam
   that hands out its notes retires it.
-- **→ Pass 5.** `StaffElement.slide` and its setters sit on the base class, so a
-  rest or a bar can be given a slide — the legacy reader does so on any element —
-  while every reader of a slide now matches `NoteElement` and skips one on
-  anything else. The slide belongs on `NoteElement`, with the two readers
-  converting at the boundary.
-- **→ Pass 5.** `StaffElement.setStaffPosition`, `setDotCount` and `setAccidental`
-  are writable on every leaf while `StructuralElement` answers the reads from
-  its type, so a write to a bar's dots is accepted and silently ignored.
 - **→ Pass 18.** `NoteGeometry.getLedgerLineBaseExtentSs` and `getLedgerLineExtentSs`
   (L639, L649) have no caller in either tree; only a Javadoc `{@link}` at L811
   names them. Dead.
+- **→ Pass 18.** `layout/stacking/StackingUtils` is a `final` class of 13
+  constants and 18 static methods over stacking geometry — the `*Utils` shape
+  `design.md` names wherever it's found.
+- **→ Pass 24.** `ui/action`'s toggling-action framework hands every state-
+  selecting action a bare `boolean selected` through
+  `NoteOnlyAction.applyToElement(Line, int, NoteElement, boolean)` —
+  `FermataAction`, `DotAction`, `AccidentalInParensAction`, `ArticulationAction`,
+  `DynamicMarkingAction` all override it with that signature. `FermataAction`
+  already branches on the boolean into `FermataAttachment.addFermata`/
+  `removeFermata` at its own boundary; the boolean is the framework's parameter.
+- **→ Pass 9.** `Lyric`'s constructor now carries the whole content model — it
+  refuses text on a carrier and blank text with `Extend.START`, both by
+  `IllegalArgumentException`, where `StaffElement.setLyricForVerse` used to
+  check these in front of it and threw `IllegalStateException`.
+  `Lyric.carrier(verse, extend)` and `Lyric.withExtend(extend)` are the two
+  factories the chain repairs share. Row 9 judges whether the record's
+  remaining surface still fits this content model.
 - **→ Pass 12.** Two diagrams sit outside pass 4's target and were not judged at
   its step 9: `Song.java` L909 and L977 (pseudocode for the line-insertion and
   line-deletion mutation sequences), and `SongMetadata.java` L38 (the per-field
