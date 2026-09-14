@@ -20,14 +20,9 @@
 
 package songscribe.ui.component;
 
-import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.RenderingHints;
-import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
@@ -35,14 +30,20 @@ import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.BarElement;
+import songscribe.dom.BreathMarkElement;
+import songscribe.dom.DiatonicPitch;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
+import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
+import songscribe.dom.RestElement;
 import songscribe.dom.StaffElement;
-import songscribe.io.musicxml.PitchSpelling;
 import songscribe.message.MessageSubscription;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.font.LocalFonts;
 import songscribe.util.StringUtils;
 import songscribe.util.UIUtils;
 
@@ -54,78 +55,18 @@ import songscribe.util.UIUtils;
 public final class StatusBar extends JPanel {
 
     private static final String EMPTY_CONTENT = " ";
-    private static final double ACCIDENTAL_FONT_SIZE_FACTOR = 1.2;
-    private static final int ACCIDENTAL_HORIZONTAL_PADDING_PX = 1;
-
-    /** Chord-symbol accidental glyphs from Bravura, which sit on the text baseline without adjustment. */
-    private enum Accidental {
-        FLAT('\uED60'),
-        DOUBLE_FLAT('\uED64'),
-        SHARP('\uED62'),
-        DOUBLE_SHARP('\uED63');
-
-        private final char codepoint;
-
-        Accidental(char codepoint) {
-            this.codepoint = codepoint;
-        }
-
-        public String codePoint() {
-            return String.valueOf(codepoint);
-        }
-    }
 
     private final JLabel baseLabel = new JLabel(EMPTY_CONTENT);
-
-    // Bravura's font-wide ascent/descent are sized for a five-line staff, not a single
-    // glyph, so JLabel's default ascent-based text layout places the glyph far above
-    // where it should sit. Painting it manually at baseLabel's baseline instead avoids
-    // relying on that metric.
-    private final JLabel accidentalLabel = new JLabel() {
-        @Override
-        public Dimension getPreferredSize() {
-            var preferredSize = super.getPreferredSize();
-            return new Dimension(preferredSize.width, baseLabel.getPreferredSize().height);
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            var text = getText();
-
-            if (text.isEmpty()) {
-                return;
-            }
-
-            var g2d = (Graphics2D) g;
-            g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2d.setFont(getFont());
-            g2d.setColor(getForeground());
-
-            var insets = getInsets();
-            var baseline = insets.top + baseLabel.getFontMetrics(baseLabel.getFont()).getAscent();
-            g2d.drawString(text, insets.left, baseline);
-        }
-    };
     private final JLabel octaveDurationLabel = new JLabel();
-
-    private @Nullable Accidental resolvedAccidental;
 
     public StatusBar() {
         setLayout(new GridBagLayout());
         setOpaque(true);
         setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
 
-        accidentalLabel.setFont(LocalFonts.load("Bravura.otf",
-            (float) (accidentalLabel.getFont().getSize() * ACCIDENTAL_FONT_SIZE_FACTOR)
-        ));
-        accidentalLabel.setBorder(BorderFactory.createEmptyBorder(
-            0, ACCIDENTAL_HORIZONTAL_PADDING_PX * 2, 0, ACCIDENTAL_HORIZONTAL_PADDING_PX * 2
-        ));
-
         var notePanel = new JPanel(new FlowLayout(FlowLayout.LEADING, 0, 0));
         notePanel.setOpaque(false);
         notePanel.add(baseLabel);
-        notePanel.add(accidentalLabel);
         notePanel.add(octaveDurationLabel);
 
         // BorderLayout stretches CENTER/LINE_END children to the bar's full height, but
@@ -156,61 +97,36 @@ public final class StatusBar extends JPanel {
 
     @Handler
     public void previewElementDidChange(PreviewElementDidChangeNotification message) {
-        setContent(message.getPreviewElement(), message.getLine(), message.getIndex());
+        setContent(message.getPreviewElement(), message.getLine());
     }
 
-    private void setContent(@Nullable StaffElement previewElement, @Nullable Line line, int index) {
+    private void setContent(@Nullable StaffElement previewElement, @Nullable Line line) {
         // Clear the bar unless the element was posted with its line context: a null
-        // line means there is no positioned element to describe. The check also lets
-        // NullAway know line is non-null where it is passed below.
+        // line means there is no positioned element to describe.
         if (previewElement == null || line == null) {
-            baseLabel.setText(EMPTY_CONTENT);
-            clearNoteDetails();
+            showWithoutNoteDetails(EMPTY_CONTENT);
             return;
         }
 
-        var type = previewElement.getType();
-
-        if (type.isRest()) {
-            baseLabel.setText(getDurationText(previewElement));
-            clearNoteDetails();
-            return;
+        switch (previewElement) {
+            case RestElement rest -> showWithoutNoteDetails(getDurationText(rest));
+            case NoteElement note -> setNoteContent(note);
+            case BreathMarkElement _, BarElement _, KeyChangeElement _ -> showWithoutNoteDetails(EMPTY_CONTENT);
         }
-
-        if (type.isNote()) {
-            setNoteContent(previewElement, line, index);
-            return;
-        }
-
-        baseLabel.setText(EMPTY_CONTENT);
-        clearNoteDetails();
     }
 
-    private void clearNoteDetails() {
-        resolvedAccidental = null;
-        accidentalLabel.setVisible(false);
+    private void showWithoutNoteDetails(String text) {
+        baseLabel.setText(text);
         octaveDurationLabel.setVisible(false);
     }
 
-    private void setNoteContent(StaffElement note, Line line, int index) {
-        var pitch = PitchSpelling.spell(note.getStaffPosition());
-        baseLabel.setText(String.valueOf(pitch.step()));
-
-        var accidental = note.getAccidental();
-
-        // If the note has no accidental, resolve it to the effective accidental at this point.
-        if (accidental == null) {
-            accidental = note.findEffectiveAccidental(line, index);
-        }
-
-        resolvedAccidental = resolveAccidental(accidental);
-
-        if (resolvedAccidental == null) {
-            accidentalLabel.setVisible(false);
-        } else {
-            accidentalLabel.setText(resolvedAccidental.codePoint());
-            accidentalLabel.setVisible(true);
-        }
+    /**
+     * Names the note by the letter, octave and duration of its staff position, never its
+     * accidental: a preview note that adopts what is in force has no pitch until it is placed.
+     */
+    private void setNoteContent(NoteElement note) {
+        var pitch = DiatonicPitch.at(note.getStaffPosition().value());
+        baseLabel.setText(pitch.pitchClass().name());
 
         octaveDurationLabel.setText(
             Strings.get(Strings.STATUS_BAR_OCTAVE_DURATION, pitch.octave(), getDurationText(note))
@@ -218,32 +134,16 @@ public final class StatusBar extends JPanel {
         octaveDurationLabel.setVisible(true);
     }
 
-    /**
-     * Maps a note's accidental to the chord-symbol accidental shown beside the pitch name.
-     * A natural has no chord-symbol glyph — the pitch name alone already says "natural" —
-     * so it resolves to nothing, as does a note with no accidental at all.
-     */
-    private static @Nullable Accidental resolveAccidental(StaffElement.@Nullable Accidental accidental) {
-        return switch (accidental) {
-            case null -> null;
-            case StaffElement.Accidental.NATURAL -> null;
-            case StaffElement.Accidental.FLAT -> Accidental.FLAT;
-            case StaffElement.Accidental.SHARP -> Accidental.SHARP;
-            case StaffElement.Accidental.DOUBLE_FLAT -> Accidental.DOUBLE_FLAT;
-            case StaffElement.Accidental.DOUBLE_SHARP -> Accidental.DOUBLE_SHARP;
-        };
-    }
-
-    private static String getDurationText(StaffElement element) {
+    private static <E extends StaffElement & Dottable> String getDurationText(E element) {
         return StringUtils.capitalizeSentence(
-            getDotPrefix(element.getDotCount()) + element.getType().label());
+            getDotPrefix(element.dots()) + element.getType().label());
     }
 
-    private static String getDotPrefix(int dotCount) {
-        return switch (dotCount) {
-            case 1 -> Strings.get(Strings.STATUS_BAR_DURATION_DOTTED) + ' ';
-            case 2 -> Strings.get(Strings.STATUS_BAR_DURATION_DOUBLE_DOTTED) + ' ';
-            default -> "";
+    private static String getDotPrefix(Dots dots) {
+        return switch (dots) {
+            case NONE -> "";
+            case ONE -> Strings.get(Strings.STATUS_BAR_DURATION_DOTTED) + ' ';
+            case TWO -> Strings.get(Strings.STATUS_BAR_DURATION_DOUBLE_DOTTED) + ' ';
         };
     }
 }

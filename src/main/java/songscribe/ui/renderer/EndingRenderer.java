@@ -75,7 +75,7 @@ public final class EndingRenderer {
         var line = invariants.requireCurrentLine();
 
         for (var ending : line.findEndings()) {
-            var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
+            var decorationLayout = invariants.getLayoutResult().decorationLayouts().getDecorationLayout(ending);
 
             // StructuralStacker.stackEndings writes no layout for an ending whose
             // anchor/end note is missing or whose bracket ranges are empty. This loop

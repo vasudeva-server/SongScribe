@@ -45,12 +45,20 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.DiatonicPitch;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
 import songscribe.dom.StaffElement;
+// The document model's stem arms, imported by their nested names: the simple name Stem is the
+// ProxyMusic <stem> node here.
+import songscribe.dom.Stem.Auto;
+import songscribe.dom.Stem.Forced;
 import songscribe.dom.Tuplet;
 
 /**
@@ -137,14 +145,13 @@ final class NoteBuilder {
         // value and takes no <time-modification> (refs #592).
         var tuplet = isGrace ? null : line.findTupletAt(elementIndex);
 
-        // default-x is the layout-assigned position; relative-x is the user's own horizontal
-        // offset, emitted only when non-zero.
-        pmNote.setDefaultX(MusicXmlUnits.ssAsTenths(element.getXSs()));
+        // relative-x is the user's own horizontal offset, emitted only when non-zero, and
+        // declared by SupportedFeature.NOTE_RELATIVE_X. No default-x: an element
+        // carries no layout position, and layout is solved from scratch on load.
+        var userXOffsetSs = element.getUserXOffsetSs();
 
-        var xOffsetPx = element.getXOffsetPx();
-
-        if (xOffsetPx != 0) {
-            pmNote.setRelativeX(MusicXmlUnits.ssAsTenths(DocumentScale.pxToSs(xOffsetPx)));
+        if (userXOffsetSs != 0) {
+            pmNote.setRelativeX(MusicXmlUnits.ssAsTenths(userXOffsetSs));
         }
 
         // <grace slash="no"/> — no steal-time-following: SongScribe gives grace notes zero
@@ -156,16 +163,20 @@ final class NoteBuilder {
             pmNote.setGrace(grace);
         }
 
-        if (isRest) {
+        // Every element with a note value is a note or a rest, and both take dots.
+        var writtenDots = ((Dottable) element).dots();
+        var note = element instanceof NoteElement pitched ? pitched : null;
+
+        if (note == null) {
             pmNote.setRest(factory.createRest());
         } else {
-            pmNote.setPitch(buildPitch(ctx, element));
+            pmNote.setPitch(buildPitch(ctx, note));
         }
 
         // <duration> is the *performed* duration, which is what MusicXML means by it: a tuplet
         // member sounds shorter than its <type> says. Grace notes have none.
         if (NoteTypeMapping.hasDuration(type)) {
-            pmNote.setDuration(BigDecimal.valueOf(performedTicks(value, element.getDotCount(), tuplet)));
+            pmNote.setDuration(BigDecimal.valueOf(performedTicks(value, writtenDots, tuplet)));
         }
 
         var noteType = factory.createNoteType();
@@ -173,14 +184,14 @@ final class NoteBuilder {
         pmNote.setType(noteType);
 
         // Grace notes never carry dots.
-        var dotCount = isGrace ? 0 : element.getDotCount();
+        var dotCount = isGrace ? 0 : writtenDots.count();
 
         for (var i = 0; i < dotCount; i++) {
             pmNote.getDot().add(factory.createEmptyPlacement());
         }
 
-        if (!isRest) {
-            pmNote.setAccidental(buildAccidental(ctx, element));
+        if (note != null) {
+            pmNote.setAccidental(buildAccidental(ctx, note));
         }
 
         // Emitted on every note in a tuplet span, rests included.
@@ -188,7 +199,9 @@ final class NoteBuilder {
             pmNote.setTimeModification(buildTimeModification(ctx, tuplet));
         }
 
-        pmNote.setStem(buildStem(ctx, element, isGrace));
+        if (note != null) {
+            pmNote.setStem(buildStem(ctx, note));
+        }
 
         buildNotations(ctx, element, pmNote);
 
@@ -287,21 +300,24 @@ final class NoteBuilder {
      */
     private static void buildNotations(BuildContext ctx, StaffElement element, Note pmNote) {
         var factory = ctx.factory();
-        var articulations = element.getArticulations();
-        var hasFall = element.hasFall();
 
-        if (!articulations.isEmpty() || hasFall) {
-            var members = articulationsOf(ctx, pmNote).getAccentOrStrongAccentOrStaccato();
+        if (element instanceof NoteElement note) {
+            var articulations = note.getArticulations();
+            var hasFall = note.hasFall();
 
-            for (var articulation : articulations) {
-                members.add(switch (articulation.getType()) {
-                    case ACCENT -> factory.createArticulationsAccent(factory.createEmptyPlacement());
-                    case STACCATO -> factory.createArticulationsStaccato(factory.createEmptyPlacement());
-                });
-            }
+            if (!articulations.isEmpty() || hasFall) {
+                var members = articulationsOf(ctx, pmNote).getAccentOrStrongAccentOrStaccato();
 
-            if (hasFall) {
-                members.add(factory.createArticulationsFalloff(factory.createEmptyLine()));
+                for (var articulation : articulations) {
+                    members.add(switch (articulation.getType()) {
+                        case ACCENT -> factory.createArticulationsAccent(factory.createEmptyPlacement());
+                        case STACCATO -> factory.createArticulationsStaccato(factory.createEmptyPlacement());
+                    });
+                }
+
+                if (hasFall) {
+                    members.add(factory.createArticulationsFalloff(factory.createEmptyLine()));
+                }
             }
         }
 
@@ -359,12 +375,12 @@ final class NoteBuilder {
      * Builds {@code <pitch>} for {@code element}. {@code <alter>} is emitted only when the note
      * actually sounds altered — a natural sign is an accidental, not an alteration.
      */
-    private static Pitch buildPitch(BuildContext ctx, StaffElement element) {
-        var spelling = PitchSpelling.spell(element.getStaffPosition());
+    private static Pitch buildPitch(BuildContext ctx, NoteElement element) {
+        var spelling = DiatonicPitch.at(element.getStaffPosition().value());
         var alterSemitones = PitchSpelling.soundingAlterFor(element);
         var pmPitch = ctx.factory().createPitch();
 
-        pmPitch.setStep(Step.fromValue(String.valueOf(spelling.step())));
+        pmPitch.setStep(Step.fromValue(spelling.pitchClass().name()));
 
         if (alterSemitones != 0) {
             pmPitch.setAlter(BigDecimal.valueOf(alterSemitones));
@@ -376,12 +392,11 @@ final class NoteBuilder {
     }
 
     /**
-     * Builds {@code <accidental>} for {@code element}, or returns {@code null} when it carries
-     * none. A parenthesized accidental is a cautionary one: {@code cautionary="yes"
-     * parentheses="yes"}.
+     * Builds {@code <accidental>} for {@code element}, or returns {@code null} when it draws
+     * none.
      */
-    private static @Nullable Accidental buildAccidental(BuildContext ctx, StaffElement element) {
-        var accidental = element.getAccidental();
+    private static @Nullable Accidental buildAccidental(BuildContext ctx, NoteElement element) {
+        var accidental = element.drawnAccidental();
 
         if (accidental == null) {
             return null;
@@ -389,11 +404,6 @@ final class NoteBuilder {
 
         var pmAccidental = ctx.factory().createAccidental();
         pmAccidental.setValue(AccidentalValue.fromValue(AccidentalMapping.forAccidental(accidental)));
-
-        if (element.isAccidentalInParentheses()) {
-            pmAccidental.setCautionary(YesNo.YES);
-            pmAccidental.setParentheses(YesNo.YES);
-        }
 
         return pmAccidental;
     }
@@ -407,23 +417,25 @@ final class NoteBuilder {
      * the middle line plus the standard extension; the sign is negated because staff positions
      * increase downward while MusicXML's Y is positive upward.
      */
-    private static @Nullable Stem buildStem(BuildContext ctx, StaffElement element, boolean isGrace) {
-        if (!isGrace && element.isStemDirectionAuto()) {
-            return null;
-        }
-
-        var pmStem = ctx.factory().createStem();
-
-        if (isGrace) {
+    private static @Nullable Stem buildStem(BuildContext ctx, NoteElement element) {
+        if (element.getType().isGraceNote()) {
+            var pmStem = ctx.factory().createStem();
             pmStem.setValue(StemValue.UP);
             pmStem.setDefaultY(BigDecimal.valueOf(
-                element.getStaffPosition() * -MusicXmlUnits.TENTHS_PER_STAFF_POSITION
+                element.getStaffPosition().value() * -MusicXmlUnits.TENTHS_PER_STAFF_POSITION
                     + MusicXmlUnits.GRACE_STEM_EXTENSION_TENTHS));
-        } else {
-            pmStem.setValue(element.isUpper() ? StemValue.UP : StemValue.DOWN);
+
+            return pmStem;
         }
 
-        return pmStem;
+        return switch (element.stem()) {
+            case Auto _ -> null;
+            case Forced forced -> {
+                var pmStem = ctx.factory().createStem();
+                pmStem.setValue(forced.direction().isUp() ? StemValue.UP : StemValue.DOWN);
+                yield pmStem;
+            }
+        };
     }
 
     /**
@@ -461,7 +473,7 @@ final class NoteBuilder {
 
             var normalDots = timeModification.getNormalDot();
 
-            for (var i = 0; i < tuplet.getNoteValueDots(); i++) {
+            for (var i = 0; i < tuplet.getNoteValueDots().count(); i++) {
                 normalDots.add(factory.createEmpty());
             }
         }
@@ -498,14 +510,14 @@ final class NoteBuilder {
      * {@code normalNotes / grade} when the note belongs to a resolved tuplet.
      *
      * <p>{@link NoteTypeMapping#DIVISIONS} is chosen so that this scaling is exact for every
-     * note value, dot count and tuplet ratio the validator accepts, so an inexact result means
+     * note value, dots and tuplet ratio the validator accepts, so an inexact result means
      * {@code DIVISIONS} itself is wrong. That throws rather than rounding, mirroring
-     * {@link NoteTypeMapping#ticks}.
+     * {@link Dots#augment}.
      *
      * @param tuplet the tuplet this note belongs to, or {@code null} if none
      */
-    private static int performedTicks(NoteValue value, int dotCount, @Nullable Tuplet tuplet) {
-        var writtenTicks = NoteTypeMapping.ticks(value, dotCount);
+    private static int performedTicks(NoteValue value, Dots dots, @Nullable Tuplet tuplet) {
+        var writtenTicks = dots.augment(NoteTypeMapping.baseTicks(value));
 
         // An unresolved tuplet states no ratio to scale by — the post-load pass derives one, so
         // until then the written duration is all there is.
@@ -518,7 +530,7 @@ final class NoteBuilder {
 
         if (product % grade != 0) {
             throw new ArithmeticException(
-                "Performed duration is not an integer for " + value + " dotCount=" + dotCount
+                "Performed duration is not an integer for " + value + " dots=" + dots
                 + " in a " + grade + ':' + tuplet.getNormalNotes() + " tuplet"
                 + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
             );

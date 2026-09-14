@@ -20,25 +20,32 @@
 
 package songscribe.ui.component.score;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AccidentalChain;
+import songscribe.dom.AccidentalScanView;
+import songscribe.dom.ChainEdit;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.Dottable;
+import songscribe.dom.NoteElement;
+import songscribe.dom.ProjectedEdit;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.layout.AccidentalMaterializer;
-import songscribe.layout.AccidentalReconciliation;
+import songscribe.dom.StaffElementRun;
+import songscribe.engraving.StaffPosition;
+import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.undo.OpNames;
@@ -49,8 +56,8 @@ import songscribe.undo.OpNames;
  * The tracking state the click resolves against — which line, which insertion index, whether the
  * pointer is over an existing element head — belongs to {@link PreviewElementManager} and is read
  * from it here. What lives in this class is everything that happens once the click is known to be
- * legal: accidental reconciliation, the spring-solver fit check, the confirmations, and the
- * mutations themselves.
+ * legal: the chain walk over the line as the click will leave it, the spring-solver fit check
+ * with the walk's accidentals in place, the confirmations, and the mutations themselves.
  */
 final class PreviewElementInserter {
 
@@ -128,32 +135,106 @@ final class PreviewElementInserter {
         // click that then does something else.
         var appends = insertionIndex == line.elementCount();
         var replacesExisting = !appends && !forceInsert && overElementX;
+        var opLabel = OpNames.addLabel(previewElement.getType());
 
-        // Replacing a note takes its explicit accidental away, so this path asks the same question
-        // every other removal path does — here, before the bracket opens, since a dialog must never
-        // be open inside one. An append or an insert removes nothing and is never asked.
-        var staffPositionSp = hover.staffPositionSp();
-        var decision = replacesExisting
-            ? confirmReplacementRestatements(lc, line, insertionIndex, staffPositionSp, previewElement)
-            : AccidentalRestatements.Decision.PROCEED;
+        // Every action runs in a modification bracket so the line.add/setElement calls inside
+        // accumulate mutations and fire a SongDidChangeNotification, which the
+        // ScoreViewController uses to invalidate the line's cached layout.
+        if (replacesExisting) {
+            // The replacement is built and gated before the bracket opens, so a refusal leaves
+            // nothing recorded and no undo step.
+            var existing = line.getElement(insertionIndex);
+            var replacement = replacementFor(previewElement, existing, hover.staffPosition());
 
-        if (decision.isCancelled()) {
+            if (!replacementFits(lc, line, insertionIndex, replacement)) {
+                return;
+            }
+
+            line.withModification(opLabel, () -> modifyExistingElement(lc, insertionIndex, replacement, line));
             return;
         }
 
-        // Determine action based on position. Wrap in a modification bracket so the
-        // line.add/setElement calls inside actually accumulate mutations and fire a
-        // SongDidChangeNotification, which the ScoreViewController uses to
-        // invalidate the line's cached layout.
-        line.withModification(OpNames.addLabel(previewElement.getType()), () -> {
+        line.withModification(opLabel, () -> {
             if (appends) {
                 addPreviewElement(lc, line);
-            } else if (replacesExisting) {
-                modifyExistingElement(lc, insertionIndex, staffPositionSp, line, decision);
             } else {
                 insertElement(lc, insertionIndex, line);
             }
         });
+    }
+
+    /**
+     * Returns the element a click on {@code existing} with {@code previewElement} active puts in
+     * its place: {@code existing} converted to the preview's type, so every decoration the
+     * conversion keeps carries over, with the note-entry attributes the notator sets on the
+     * preview via the toolbar and menu written over it.
+     *
+     * @param previewElement     The active preview element
+     * @param existing           The element being replaced, left untouched
+     * @param hoverStaffPosition The staff position the hover resolved the mouse Y to
+     * @return A detached element, in no line, whose accidental state is the preview's
+     */
+    private static StaffElement replacementFor(
+        StaffElement previewElement, StaffElement existing, StaffPosition hoverStaffPosition) {
+
+        var replacement = StaffElement.convertedFrom(previewElement.getType(), existing);
+
+        // The replacement and the preview are of the same type, so they are the same leaf: the
+        // note-entry attributes the preview carries are exactly the ones the replacement takes.
+        if (replacement instanceof Dottable dottable && previewElement instanceof Dottable previewDottable) {
+            dottable.setDots(previewDottable.dots());
+        }
+
+        if (replacement instanceof NoteElement note && previewElement instanceof NoteElement previewNote) {
+            // The preview note is Chosen or Adopting; the walk in the fit gate decides what the
+            // replacement sounds and stamps it before the replacement lands.
+            note.setAccidentalState(previewNote.accidentalState());
+
+            // Articulations are a note-entry decoration the user sets on the preview element via
+            // the toolbar/menu, exactly like the accidental above. Carry them over from the
+            // preview, overriding any inherited from the existing element. Other attachments
+            // (dynamics, annotations, trills, fermata) are not preview-settable, so they remain
+            // copied from the existing element by the conversion.
+            note.copyArticulationsFrom(previewNote);
+
+            // A note takes the mouse Y position; anything else has no staff position to take.
+            note.setStaffPosition(hoverStaffPosition);
+            note.setStem(previewNote.stem());
+        }
+
+        return replacement;
+    }
+
+    /**
+     * Returns whether {@code line} still fits once {@code replacement} stands at {@code index} in
+     * place of the element there, with every accidental the chain walk stamps for that
+     * replacement drawn, showing the line-full error when it does not. Mutates no live note; on a
+     * true answer {@code replacement} is left stamped as the walk decided.
+     */
+    private static boolean replacementFits(LineComponent lc, Line line, int index, StaffElement replacement) {
+        var edit = ProjectedEdit.replacing(line, new StaffElementRun.EffectiveRange(index, index), List.of(replacement));
+        var restamps = edit.walk();
+
+        // The auto-maintained terminal barline is not measured: layout pins it flush-right, and
+        // its column is built from the live element.
+        var effectiveProjection = edit.elements().subList(0, line.effectiveElementCount());
+        var lyricRenderMetrics = lc.getLyricRenderMetrics();
+
+        var fits = AccidentalFitGate.fits(
+            line, restamps, List.of(replacement), lyricRenderMetrics,
+            () -> effectiveProjection.isEmpty()
+                || InsertionSpacingCalculator.fitsInPlace(line, effectiveProjection, lyricRenderMetrics));
+
+        if (!fits) {
+            OptionDialogs.showErrorMessage(
+                null,
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_LINE_FULL_ELEMENT,
+                replacement.getType().kind().label()
+            );
+        }
+
+        return fits;
     }
 
     /**
@@ -177,11 +258,11 @@ final class PreviewElementInserter {
      * @param line    The line to insert into
      * @param element The element to insert
      * @param index   The insertion index
-     * @param layout  Layout result for position lookup; null falls back to {@code xOffset}
+     * @param layout  The line's current layout, which the projection measures from
      * @return The insertion result, or null if the line is full
      */
     private static InsertionSpacingCalculator.@Nullable InsertionResult calculateInsertionOrShowError(
-        LineComponent lc, Line line, StaffElement element, int index, @Nullable LayoutResult layout
+        LineComponent lc, Line line, StaffElement element, int index, LayoutResult layout
     ) {
         var insertion = InsertionSpacingCalculator.calculateInsertion(
             line, element, index, layout, lc.getLyricRenderMetrics());
@@ -201,17 +282,17 @@ final class PreviewElementInserter {
     }
 
     /**
-     * Reconciles the accidentals this insertion changes, applies them, and returns the insertion
-     * result — or null when the insertion is refused, in which case nothing has been mutated.
+     * Walks the chains this insertion changes, gates the insertion with the walk's accidentals in
+     * place, and returns the insertion result — or null when the insertion is refused, in which
+     * case nothing has been mutated.
      * <p>
-     * The inserted element itself is never materialized: it is a note the user is creating, so it
-     * has no pitch it "had" and the invariant (every note keeps the pitch it had, unless the user
-     * changed that note) does not reach it. That is what the empty prior-accidental list below
-     * says — {@link AccidentalReconciliation} reads an empty list as "no source context, never
-     * materialize these elements themselves". What does need reconciling is the other direction:
-     * an element arriving with an explicit accidental changes the context reaching the following
-     * notes at its staff position — and so does a barline or repeat, which carries no accidental of
-     * its own but cancels every accidental before it.
+     * The walk runs over a projection of the line with {@code previewElement} at {@code index}.
+     * A preview note arrives {@code Chosen} or {@code Adopting} and is decided by the walk like any
+     * note it reaches; a barline, repeat or key change decides nothing of its own but changes what
+     * the notes after it are decided against. Either way the fit check measures the accidentals
+     * the insertion will draw. A refusal leaves every live note as it was; an acceptance leaves the
+     * preview element stamped as the walk decided, and the song's own walk once the bracket closes
+     * is what stamps the live notes.
      *
      * @param lc             The LineComponent whose line is being inserted into
      * @param line           The line to insert into
@@ -221,29 +302,18 @@ final class PreviewElementInserter {
      *                       element is known to fit; false means the insertion is refused
      * @return The insertion result, or null when refused
      */
-    private static InsertionSpacingCalculator.@Nullable InsertionResult materializeAndCalculateInsertion(
+    private static InsertionSpacingCalculator.@Nullable InsertionResult walkAndCalculateInsertion(
         LineComponent lc, Line line, StaffElement previewElement, int index, BooleanSupplier confirmed) {
 
-        // Reconcile unconditionally: an element with no explicit accidental of its own can still
-        // change the context reaching the notes after it (a barline or repeat cancels every prior
-        // accidental), so "no accidental" never meant "nothing to reconcile". This pass is cheap —
-        // one line's elements, once per insertion — so it is not worth guessing when to skip it.
-        var accidentalChanges = AccidentalReconciliation.reconcile(
-            AccidentalReconciliation.ReachedLine.receiving(
-                line,
-                new AccidentalReconciliation.Insertion(
-                    index,
-                    null,
-                    AccidentalReconciliation.ArrivingElements.fresh(List.of(previewElement))),
-                List.of()));
+        var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement)).walk();
 
-        // The gate runs inside the materializer, with the accidentals applied so the projection
+        // The gate runs inside the fit gate, with the walk's accidentals stamped so the projection
         // measures the right widths, so its result has to escape the lambda through a holder.
         var insertion = new InsertionSpacingCalculator.InsertionResult[1];
 
-        var accepted = AccidentalMaterializer.applyIfAccepted(
-            line, accidentalChanges, List.of(previewElement), () -> {
-                var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.getLayoutResult());
+        var accepted = AccidentalFitGate.fits(
+            line, restamps, List.of(previewElement), lc.getLyricRenderMetrics(), () -> {
+                var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.requireLayoutResult());
 
                 if ((result == null) || !confirmed.getAsBoolean()) {
                     return false;
@@ -281,13 +351,12 @@ final class PreviewElementInserter {
 
         // Appending needs no further confirmation: nothing follows the new element, so it can
         // invalidate no ending.
-        var insertion = materializeAndCalculateInsertion(lc, line, previewElement, elementCount, () -> true);
+        var insertion = walkAndCalculateInsertion(lc, line, previewElement, elementCount, () -> true);
 
         if (insertion == null) {
             return;
         }
 
-        previewElement.setXOffsetPx(DocumentScale.ssToPx(insertion.insertedElementXSs()).positionPx());
         line.addElement(previewElement);
 
         var newLastIndex = line.elementCount() - 1;
@@ -333,15 +402,13 @@ final class PreviewElementInserter {
 
         // The ending confirm runs inside the insertion gate: declining it must leave the line
         // exactly as it was, on the same terms as a refusal for want of room.
-        var insertion = materializeAndCalculateInsertion(lc, line, previewElement, xIndex,
+        var insertion = walkAndCalculateInsertion(lc, line, previewElement, xIndex,
             () -> !line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())
                 || EndingConfirms.confirmInvalidation(lc));
 
         if (insertion == null) {
             return;
         }
-
-        previewElement.setXOffsetPx(DocumentScale.ssToPx(insertion.insertedElementXSs()).positionPx());
 
         // Grace mode inserts its grace note with mutation tracking suspended, so a repair made
         // here would never reach the undo record. It takes the repairs over, running them
@@ -358,98 +425,27 @@ final class PreviewElementInserter {
             line.repairNeighborsAfterInsertion(xIndex, previewElement);
         }
 
-        var shift = DocumentScale.ssToPx(insertion.shiftForSubsequentElementsSs()).positionPx();
-
-        for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
-            var element = line.getElement(i);
-            element.setXOffsetPx(element.getXOffsetPx() + shift);
-        }
-
         EditModeManager.previewElementDidChange(line, xIndex);
     }
 
     /**
-     * Asks whether replacing the element at {@code elementIndex} should also take away the later
-     * notes that restate the accidental it removes.
+     * Replaces an existing element with {@code replacement}, built by {@link #replacementFor}
+     * and already through the fit gate. Called when the user clicks on an existing element head
+     * with the preview element active.
      *
-     * <p>The replacement carries the old accidental's staff position forward only when it lands at
-     * that same position as a pitched note — a replacement that is not a pitched note bears no
-     * accidental at all, whatever the preview holds, since applying the staff position snaps it to
-     * its default place too. Anything else gives the old accidental up.
-     *
-     * <p>Must be called before the modification bracket opens, and its answer honored — Cancel
-     * means the click does nothing at all.
-     */
-    private static AccidentalRestatements.Decision confirmReplacementRestatements(
-        LineComponent lc, Line line, int elementIndex, int hoverStaffPositionSp,
-        StaffElement previewElement) {
-
-        var existing = line.getElement(elementIndex);
-        var staffPosition = existing.getStaffPosition();
-        var landsAtSamePosition = previewElement.getType().isPitchedNote()
-            && (hoverStaffPositionSp == staffPosition);
-
-        return AccidentalRestatements.confirm(
-            lc,
-            line,
-            List.of(new AccidentalRestatements.EditedNote(
-                elementIndex,
-                staffPosition,
-                existing.getAccidental(),
-                landsAtSamePosition ? previewElement.getAccidental() : null)));
-    }
-
-    /**
-     * Replaces an existing element with the current preview element's type and pitch.
-     * Note-entry decorations the user sets on the preview element via the toolbar/menu
-     * (accidental, dot count, articulations) are taken from the preview. Other
-     * decorations not settable on the preview (trill, annotation, tempo/beat change,
-     * dynamic attachments, lyrics, fermata, x position) are preserved from the existing element.
-     * Called when the user clicks on an existing element head with the preview element active.
-     *
-     * @param lc                   The LineComponent
-     * @param elementIndex         The index of the element to replace
-     * @param hoverStaffPositionSp The staff position the hover resolved the mouse Y to
-     * @param line                 The line containing the element
-     * @param decision             The restatements the user accepted for this replacement, from
-     *                             {@link #confirmReplacementRestatements}
+     * @param lc           The LineComponent
+     * @param elementIndex The index of the element to replace
+     * @param replacement  The element to put in its place, stamped as the fit gate's walk decided
+     * @param line         The line containing the element
      */
     private static void modifyExistingElement(
-        LineComponent lc, int elementIndex, int hoverStaffPositionSp, Line line,
-        AccidentalRestatements.Decision decision) {
+        LineComponent lc, int elementIndex, StaffElement replacement, Line line) {
 
-        var previewElement = validateAndGetPreviewElement(line, elementIndex);
-
-        if (previewElement == null) {
+        if (validateAndGetPreviewElement(line, elementIndex) == null) {
             return;
         }
 
-        // Deep-copy the existing element under the new type to carry over all decorations
-        // (fermata, trill, annotation, tempo/beat change, articulations, attachments, lyrics,
-        // x position), then override with the preview's note-entry attributes.
-        var existing = line.getElement(elementIndex);
-        var previewType = previewElement.getType();
-        var replacement = StaffElement.convertedFrom(previewType, existing);
-        replacement.setDotCount(previewElement.getDotCount());
-        replacement.setAccidental(previewElement.getAccidental());
-        replacement.setAccidentalInParentheses(previewElement.isAccidentalInParentheses());
-        replacement.setStemDirectionAuto(previewElement.isStemDirectionAuto());
-
-        // Articulations are a note-entry decoration the user sets on the preview element via the
-        // toolbar/menu, exactly like the accidental above. Carry them over from the preview,
-        // overriding any inherited from the existing element. Other attachments (dynamics,
-        // annotations, trills, fermata) are not preview-settable, so they remain copied from
-        // the existing element by the copy constructor.
-        replacement.copyArticulationsFrom(previewElement);
-
-        // A pitched note takes the mouse Y position; anything else answers from its type
-        PreviewElementManager.applyStaffPosition(replacement, hoverStaffPositionSp);
-
-        if (replacement.isStemDirectionAuto()) {
-            replacement.setDirection(StaffElement.defaultDirection(replacement));
-        } else {
-            replacement.setDirection(previewElement.getDirection());
-        }
+        var previewType = replacement.getType();
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
@@ -476,12 +472,6 @@ final class PreviewElementInserter {
             }
             case Ending.EndingEffect.None _ -> {}
         }
-
-        // Every bail-out is behind us, so the replacement is going to happen: record the accepted
-        // restatements in the same bracket, making them and the replacement one undo step. Ahead of
-        // setElement so the scan still reads the pre-replacement line, and because undo replays a
-        // step in reverse — the accidentals come back last, once the old element is back.
-        AccidentalRestatements.commitAllLines(decision);
 
         // The beam sweep goes here rather than earlier, next to the element's own preparation:
         // a confirm above can still turn the user away, and a cancelled replacement that had
@@ -514,14 +504,18 @@ final class PreviewElementInserter {
         if (line.isHostOfPairedGraceNote(elementIndex)
                 && !previewType.isPitchedNote()) {
             var graceNoteIndex = elementIndex - 1;
-            var graceNote = line.getElement(graceNoteIndex);
 
             // setElement carried the old host's lyrics onto the replacement, which is not a
             // pitched note and has no business holding a melisma carrier. Strip the glissando
             // first so the sync sees an unpaired grace and converges to teardown, removing the
             // carrier outright instead of leaving an empty lyric behind on the replacement.
             // No hand-back here: the host the syllable would return to no longer exists.
-            line.modifyElement(graceNoteIndex, ElementField.SLIDE, graceNote::removeSlide);
+            // isHostOfPairedGraceNote answered true, so the element in front is a paired grace
+            // note, which is a note.
+            if (line.getElement(graceNoteIndex) instanceof NoteElement graceNote) {
+                line.modifyElement(graceNoteIndex, ElementField.SLIDE, graceNote::removeSlide);
+            }
+
             line.syncGraceHostMelisma(graceNoteIndex);
 
             // Any melisma reaching past this pair still has to be unwound before the grace

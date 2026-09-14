@@ -27,11 +27,12 @@ import songscribe.dom.Attribution;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.CollisionRegion;
 import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.StaffElement.Direction;
+import songscribe.dom.Direction;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.layout.AttributionContent;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.ElementSeat;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResultBuilder;
@@ -140,7 +141,7 @@ public class SystemStacker {
             content.widthSs(),
             TEMPO_MARGIN_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder,
+            builder.decorationLayouts(),
             content);
     }
 
@@ -173,7 +174,7 @@ public class SystemStacker {
             widthSs,
             Attribution.ATTRIBUTION_MARGIN_BOTTOM_SS,
             StackingUtils.TOP_STAFF_LINE_POSITION,
-            builder,
+            builder.decorationLayouts(),
             content);
     }
 
@@ -226,7 +227,7 @@ public class SystemStacker {
         }
 
         var columnXSs = column.getXSs();
-        var staffPosition = note.getStaffPosition();
+        var staffPosition = ElementSeat.seatSp(note).value();
         var annotationFont = fonts.getAnnotationFont();
         var widthSs = annotation.computeContentWidthSs(annotationFont);
         var heightSs = annotation.computeContentHeightSs(annotationFont);
@@ -249,7 +250,7 @@ public class SystemStacker {
         StackingUtils.stackAtAnchor(Direction.UP, systemExtents, annotation, xSs,
             widthSs, heightSs,
             ANNOTATION_MARGIN_SS,
-            staffPosition, builder);
+            staffPosition, builder.decorationLayouts());
     }
 
     private void stackMetronomeAttachment(
@@ -259,7 +260,7 @@ public class SystemStacker {
         LayoutResultBuilder builder) {
 
         var xSs = column.getXSs();
-        var staffPosition = column.getElement().getStaffPosition();
+        var staffPosition = ElementSeat.seatSp(column.getElement()).value();
         var font = fonts.getAnnotationFont();
         var content = switch (attachment) {
             case BeatChangeAttachment beatChangeAttachment ->
@@ -275,6 +276,6 @@ public class SystemStacker {
         }
 
         stackAboveWithRegions(systemExtents, attachment, content.regions(), xSs,
-            content.widthSs(), marginSs, staffPosition, builder, content);
+            content.widthSs(), marginSs, staffPosition, builder.decorationLayouts(), content);
     }
 }

@@ -27,7 +27,8 @@ import javax.swing.KeyStroke;
 import songscribe.Strings;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
@@ -94,12 +95,12 @@ public final class ArticulationAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesElement(StaffElement element) {
+    public boolean matchesElement(NoteElement element) {
         return element.hasArticulation(articulationType);
     }
 
     @Override
-    public void applyToElement(StaffElement element, boolean selected) {
+    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
         var existing = element.findArticulation(articulationType);
 
         if (existing != null) {
@@ -107,7 +108,7 @@ public final class ArticulationAction extends NoteOnlyAction {
         }
 
         if (selected) {
-            element.addArticulation(new Articulation(element, articulationType));
+            element.addArticulation(new Articulation(articulationType));
         }
     }
 

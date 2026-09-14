@@ -28,18 +28,24 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
 import songscribe.hit.HitTarget;
-import songscribe.layout.AccidentalReconciliation;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
 import songscribe.ui.Mode;
-import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.MidiController;
+import songscribe.ui.playback.PlayThread;
 
 /**
- * Handles press/drag/release for pitch-dragging a note head in SELECT mode.
+ * Handles press/drag/release for pitch-dragging a note head in SELECT mode, driving
+ * {@link PitchShifter}'s single definition of moving a selection's pitch live across many mouse
+ * steps. A dragged note has no pitch of its own at the staff position it lands on: it adopts
+ * whatever the song's chain walk decides is in force there once the drag is committed on
+ * release. There is no prompt and no fit gate, and the dragged anchor is played only after that
+ * walk has run.
  * <p>
  * One instance per {@link LineComponent}. The owning component delegates its
  * mouse events here before passing them on to other handlers.
@@ -142,9 +148,7 @@ class NoteDragHandler {
             return false;
         }
 
-        var note = line.getElement(hitIndex);
-
-        if (!note.getType().isNote()) {
+        if (!(line.getElement(hitIndex) instanceof NoteElement note)) {
             return false;
         }
 
@@ -174,17 +178,13 @@ class NoteDragHandler {
         // Build the drag group from the captured selection range (which may be multi-note).
         // The press gate above admits any note (isNote), and buildPitchShiftGroup includes
         // every note in the range, so the group is never empty for an admitted hit.
-        //
-        // Each entry's beforeClone is also the accidental reconciliation's input: it is the only
-        // record of the pre-drag line once handleDrag starts mutating it. See
-        // reconcileVacatedPositions.
         dragGroup.clear();
         dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
         resolveForeignLineComponents();
 
-        // Save state for possible revert on a press+release without drag
+        // Save state for the drag and for a press+release without drag
         dragElementIndex = hitIndex;
-        originalDragStaffPositionSp = note.getStaffPosition();
+        originalDragStaffPositionSp = note.getStaffPosition().value();
         lastPlayedStaffPositionSp = originalDragStaffPositionSp;
         dragLine = line;
         dragPressScreenYPx = e.getYOnScreen();
@@ -233,8 +233,8 @@ class NoteDragHandler {
             return;
         }
 
-        // Shared with arrow-key shifting: move the whole group and play the dragged note.
-        PitchShifter.moveGroupAndPlayAnchor(dragLine, dragGroup, dragElementIndex, clampedDelta);
+        // Shared with arrow-key shifting: move the whole group to its new staff positions.
+        PitchShifter.moveGroup(dragLine, dragGroup, dragElementIndex, clampedDelta);
 
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + clampedDelta;
 
@@ -287,7 +287,7 @@ class NoteDragHandler {
     }
 
     /**
-     * Handles mouse release, finalizing or reverting the pitch change.
+     * Handles mouse release, committing the pitch change the drag already applied live.
      */
     void handleRelease() {
         if (dragLine == null) {
@@ -304,30 +304,16 @@ class NoteDragHandler {
         }
 
         if (dragMoved) {
-            // The last drag noteOn is still sounding — let it ring for the standard
-            // duration, then stop it. Shared with arrow-key shifting. Ahead of the revert below
-            // because it reads the anchor's current pitch, which is the one that is sounding.
-            PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
+            // The pitch mutations were already applied live during handleDrag, so
+            // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
+            // press-time beforeClone, then the grace-note cleanup — one bracket, one undo step.
+            PitchShifter.commitPitchShift(dragLine, dragGroup);
 
-            // Asked before any modification bracket opens, like every other removal path. Unlike
-            // them, this one has already mutated the line: the drag moved the notes live, so
-            // Cancel has to put them back rather than merely decline to go forward.
-            var decision = PitchShifter.confirmRestatements(lc, dragLine, dragGroup);
-
-            if (decision.isCancelled()) {
-                revertDrag();
-            } else {
-                // The pitch mutations were already applied during handleDrag, so
-                // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
-                // press-time beforeClone, then the accidental changes, then the grace-note
-                // cleanup — one bracket, one undo step.
-                PitchShifter.commitPitchShift(
-                    dragLine,
-                    dragGroup,
-                    reconcileVacatedPositions(
-                        dragLine, lastPlayedStaffPositionSp - originalDragStaffPositionSp,
-                        decision),
-                    decision);
+            // Nothing sounds during the live drag itself; the anchor is played only now, once
+            // the song's chain walk run by commitPitchShift has decided what it sounds.
+            if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+                PlayThread.sendNoteOn(dragLine.noteAt(dragElementIndex).getPitch());
+                PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
             }
         }
 
@@ -338,78 +324,5 @@ class NoteDragHandler {
         foreignLineComponents.clear();
 
         PreviewElementManager.restorePreviewElement(lc);
-    }
-
-    /**
-     * Puts every dragged note back the way it was at press time, for the one answer that abandons
-     * the drag. Nothing was recorded — {@link PitchShifter#commitPitchShift} is what opens the
-     * bracket, and it has not run — so this is a plain restore from each entry's press-time clone,
-     * leaving no undo step behind and no modified flag set.
-     *
-     * <p>This is the only path on which a release does not commit.
-     *
-     * <p>Each entry is restored through its own line: a group formed across a cross-line tie
-     * holds an entry whose index only means something in the adjacent line.
-     */
-    private void revertDrag() {
-        for (var entry : dragGroup) {
-            entry.line().getElement(entry.index()).copyStateFrom(entry.beforeClone());
-        }
-
-        invalidateDraggedLines();
-        lc.repaint();
-    }
-
-    /**
-     * The accidentals this drag must reconcile so no pitch the user did not touch changes: each
-     * staff position the drag group vacates may have been lending its explicit accidental to a
-     * later note sitting at that position, and a note that was given one by an earlier edit may no
-     * longer need it.
-     * <p>
-     * The lifecycle differs from every other reconciliation call site. Everywhere else the
-     * reconciliation runs once against a line that has not been mutated yet; a drag mutates the
-     * line live on every mouse step, so by the time the move is finalized the "before" state is
-     * gone from the line. It is not gone from {@code dragGroup}, though — each entry's
-     * {@code beforeClone} was captured at press, before the first move. So the group is rolled
-     * back onto the line, the reconciliation reads the pre-drag line it needs, and the final
-     * state is put back. Running this per mouse step instead would be both wrong (the second step
-     * would read the first step's result as its "before") and pointless work.
-     * <p>
-     * Scoped to the entries that sit on {@code line}, because the reconciliation reads and
-     * indexes into that one line: a group formed across a cross-line tie also holds an entry
-     * whose index is an index into the adjacent line, and means nothing here. The partner note
-     * still moves and still gives up its own accidental — it is only the "which later notes were
-     * leaning on the accidental this vacates" search that stops at the line boundary, exactly as
-     * {@link PitchShifter#confirmRestatements} does.
-     *
-     * @param line       The dragged line, in its post-drag state
-     * @param finalDelta The staff positions the group moved by, in total
-     * @param decision   The restatements the user accepted for this drag, folded into the same
-     *                   reconciliation so they clear on this line and suppress its materialization
-     * @return The accidental changes to apply, keyed to live elements of {@code line}
-     */
-    private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(
-        Line line, int finalDelta, AccidentalRestatements.Decision decision) {
-
-        var entriesOnLine = PitchShifter.entriesOnLine(dragGroup, line);
-        var changes = PitchShifter.intendedChanges(dragGroup, line, finalDelta);
-        var afterClones = new ArrayList<StaffElement>(entriesOnLine.size());
-
-        for (var entry : entriesOnLine) {
-            var note = line.getElement(entry.index());
-            afterClones.add(note.clone());
-            note.copyStateFrom(entry.beforeClone());
-        }
-
-        // The roll-forward is in a finally because the line is live between the two loops: leaving
-        // it rolled back would silently strand the user's notes at their pre-drag pitches, with no
-        // error and nothing to suggest the drag had not taken.
-        try {
-            return AccidentalReconciliation.reconcileModification(line, changes, decision.removal());
-        } finally {
-            for (var i = 0; i < entriesOnLine.size(); i++) {
-                line.getElement(entriesOnLine.get(i).index()).copyStateFrom(afterClones.get(i));
-            }
-        }
     }
 }

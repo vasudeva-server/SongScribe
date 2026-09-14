@@ -20,7 +20,6 @@
 
 package songscribe.dom;
 
-import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,78 +27,53 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Abstract base class for elements within a staff line.
- * <p>
- * LineElement provides a DOM-like hierarchy for elements rendered within a Line component.
- * Each element has:
+ * The root of everything that lives in a staff line: a {@link StaffElement} occupying a column,
+ * the children hung on one — an {@link Articulation}, an {@link Attachment} — and a
+ * {@link Span} joining two columns. What they share is a place in the element tree and the
+ * notator's manual offset from wherever layout puts them. An element's position itself lives
+ * in the layout result, not on the element.
+ *
+ * <p><b>The parent line.</b> {@link #getParentLine()} is the authoritative answer to "is this
+ * element live in the document?": {@code null} means in no line, whether never added or
+ * detached by a removal, and no membership scan is needed to decide. Which line it answers
+ * follows the element's kind:
  * <ul>
- *   <li>A position relative to the parent line origin</li>
- *   <li>Content and margin bounds (simplified 2-layer box model)</li>
- *   <li>Optional parent/child relationships for composite elements</li>
+ *   <li>A {@code StaffElement} is in the line whose element list holds it, and that is a
+ *       two-way tie holding at modification-bracket boundaries: {@code parentLine == L} exactly
+ *       when {@code L}'s elements contain it. Inside a bracket a re-parent may briefly have
+ *       attached the element to one line while another's list still holds it.</li>
+ *   <li>A child shares its host's line, taking it when it is added to the host and whenever the
+ *       host attaches or detaches, and losing it when removed from the host.</li>
+ *   <li>A {@code Span} is never in a line this way: it answers {@code null} for its whole life,
+ *       and {@code Span.isIn(Line)} derives its lines from its endpoints, which is what lets a
+ *       cross-line span be in two lines at once. That derived relation is one-directional — a
+ *       span in a line is in that line's span list, but a span whose endpoints are both
+ *       detached is in no line and still sits in the list it was added to.</li>
  * </ul>
- * <p>
- * The hierarchy supports CSS-style margin collapsing between adjacent elements.
+ *
+ * <p><b>The parent element.</b> {@code null} for an element the line holds directly; the host
+ * for a child. The element tree is built only from inside {@code dom}, through
+ * {@link #addChild} and {@link #removeChild}, which own both pointers together.
+ *
+ * <p><b>The offsets.</b> Where the notator dragged the element from the position layout gave it,
+ * in staff spaces: X positive to the right, Y positive downward, both 0 until adjusted. The
+ * drawn position is the calculated position plus the offset.
  */
 public abstract class LineElement {
 
     /**
-     * The line this element is in right now, or {@code null} when it is in no line —
-     * either not yet added, or detached by a removal. Removals maintain it, so this is
-     * the authoritative answer to "is this element live in the document?"; no membership
-     * scan is needed to decide.
-     * <p>
-     * Two kinds of element reach this field; a {@link Span} never does. A {@code StaffElement}
-     * lives in {@code Line.elements}, and {@code Line.attach}/{@code Line.detach} are the only
-     * writers of its {@code parentLine}. Its children — {@code Articulation},
-     * {@code FermataAttachment} and the rest — get theirs from {@code LineElement.addChild} and
-     * {@code removeChild}, and from {@code propagateParentLine} when the host attaches or
-     * detaches. A {@code Span} (tie, beam, tuplet, …) lives in {@code Line.spans} instead; its
-     * {@code parentLine} stays null for its whole life, and {@code Span.isIn(Line)} derives
-     * parentage from its endpoints.
-     * <p>
-     * For an element in Line's {@code elements} list the invariant is
-     * {@code parentLine == L ⟺ L.elements contains this}, holding at
-     * modification-bracket boundaries. Inside a bracket a re-parent may briefly have
-     * attached to B while A's list still holds the element; {@code Line.detach}'s
-     * {@code != this} guard is what makes that ordering-independent.
-     * <p>
-     * A span has no such two-way tie. It is never attached, so a cross-line span can be
-     * in two lines at once, and the derived invariant is one-directional:
-     * {@code span.isIn(L)} ⟹ {@code L.spans} contains the span. The converse does not
-     * hold — a span whose endpoints are both detached is in no line yet remains in the
-     * list it was added to.
+     * {@code Line.attach} and {@code Line.detach} are the only writers for a staff element;
+     * {@link #addChild}, {@link #removeChild} and {@link #propagateParentLine} the only ones
+     * for a child. {@code Line.detach}'s {@code != this} guard is what makes the two-way tie in
+     * the class Javadoc ordering-independent inside a bracket.
      */
     private @Nullable Line parentLine;
 
-    /** Parent element (null for direct children of Line). */
     private @Nullable LineElement parentElement;
 
-    /** Position relative to parent line origin. */
-    private Point2D positionSs = new Point2D.Double(0, 0);
-
-    /**
-     * User's manual horizontal offset from the layout-calculated position.
-     * <p>
-     * Final X position = calculated position + userXOffsetSs
-     * <p>
-     * Default is 0 (no user adjustment). Positive values move right, negative left.
-     */
     private double userXOffsetSs = 0;
 
-    /**
-     * User's manual vertical offset from the layout-calculated position.
-     * <p>
-     * Final Y position = calculated position + userYOffsetSs
-     * <p>
-     * Default is 0 (no user adjustment). Positive values move down, negative up.
-     */
     private double userYOffsetSs = 0;
-
-    /** CSS-style margins: top, right, bottom, left (in staff spaces). */
-    private double marginTopSs = 0;
-    private double marginRightSs = 0;
-    private double marginBottomSs = 0;
-    private double marginLeftSs = 0;
 
     /** Child elements (for composite elements like notes with articulations). */
     private final List<LineElement> children = new ArrayList<>();
@@ -109,7 +83,10 @@ public abstract class LineElement {
     // ========================================================================
 
     /**
-     * Returns the Line that contains this element.
+     * Returns the line this element is in.
+     *
+     * @return the line, or {@code null} when the element is in no line — never added, detached
+     *     by a removal, or a {@link Span}, which is in no line this way
      */
     public @Nullable Line getParentLine() {
         return parentLine;
@@ -118,7 +95,7 @@ public abstract class LineElement {
     /**
      * Sets the Line that contains this element. For an element in Line's {@code elements}
      * list the only callers are {@code Line.attach} and {@code Line.detach}; calling it
-     * elsewhere breaks the invariant documented on {@link #parentLine}. Package-private
+     * elsewhere breaks the two-way tie in the class Javadoc. Package-private
      * so the compiler enforces that, rather than leaving it to a reader of this comment.
      */
     void setParentLine(@Nullable Line parentLine) {
@@ -134,7 +111,9 @@ public abstract class LineElement {
     }
 
     /**
-     * Returns the parent element (null for direct children of Line).
+     * Returns the element this one is a child of.
+     *
+     * @return the host, or {@code null} for an element the line holds directly
      */
     public @Nullable LineElement getParentElement() {
         return parentElement;
@@ -150,169 +129,67 @@ public abstract class LineElement {
     }
 
     // ========================================================================
-    // Position
-    // ========================================================================
-
-    /**
-     * Returns the position relative to the parent line origin.
-     */
-    public Point2D getPositionSs() {
-        return positionSs;
-    }
-
-    /**
-     * Returns the X position relative to the parent line origin.
-     */
-    public double getXSs() {
-        return positionSs.getX();
-    }
-
-    /**
-     * Returns the Y position relative to the parent line origin.
-     */
-    public double getYSs() {
-        return positionSs.getY();
-    }
-
-    /**
-     * Sets the position relative to the parent line origin.
-     */
-    public void setPosition(Point2D positionSs) {
-        this.positionSs = positionSs;
-    }
-
-    /**
-     * Sets the position relative to the parent line origin.
-     */
-    public void setPosition(double xSs, double ySs) {
-        positionSs = new Point2D.Double(xSs, ySs);
-    }
-
-    // ========================================================================
     // User Offsets
     // ========================================================================
 
     /**
-     * Returns the user's horizontal offset from the calculated position.
+     * Returns the notator's horizontal offset from the calculated position.
+     *
+     * @return the offset in staff spaces, positive to the right; 0 until adjusted
      */
     public double getUserXOffsetSs() {
         return userXOffsetSs;
     }
 
     /**
-     * Sets the user's horizontal offset from the calculated position.
+     * Sets the notator's horizontal offset from the calculated position.
+     *
+     * @param userXOffsetSs the offset in staff spaces, positive to the right
      */
     public void setUserXOffsetSs(double userXOffsetSs) {
         this.userXOffsetSs = userXOffsetSs;
     }
 
     /**
-     * Returns the user's vertical offset from the calculated position.
+     * Returns the notator's vertical offset from the calculated position.
+     *
+     * @return the offset in staff spaces, positive downward; 0 until adjusted
      */
     public double getUserYOffsetSs() {
         return userYOffsetSs;
     }
 
     /**
-     * Sets the user's vertical offset from the calculated position.
+     * Sets the notator's vertical offset from the calculated position.
+     *
+     * @param userYOffsetSs the offset in staff spaces, positive downward
      */
     public void setUserYOffsetSs(double userYOffsetSs) {
         this.userYOffsetSs = userYOffsetSs;
     }
 
     // ========================================================================
-    // Margins
+    // State Copying
     // ========================================================================
 
     /**
-     * Sets uniform margin on all sides.
-     */
-    public void setMarginSs(double margin) {
-        marginTopSs = margin;
-        marginRightSs = margin;
-        marginBottomSs = margin;
-        marginLeftSs = margin;
-    }
-
-    /**
-     * Sets CSS-style margins.
+     * Copies this class's own state — the two user offsets — from {@code source} onto this
+     * element.
+     * <p>
+     * Every route that copies one element's state onto another ends up here, so a field added
+     * to this class is carried by all of them at once and no route can omit it. The routes are
+     * {@link StaffElement#copyStateFrom}, {@link StaffElement#convertedFrom}, {@link Span#copy},
+     * {@link Attachment#copy} and {@link Articulation#copy}. The
+     * parent line, the parent element and the children are deliberately not copied: they are
+     * the copy's place in the document, which its caller decides, not the state being copied.
      *
-     * @param top    Top margin in staff spaces
-     * @param right  Right margin in staff spaces
-     * @param bottom Bottom margin in staff spaces
-     * @param left   Left margin in staff spaces
+     * @param source the element whose base state to take
+     * @effects replaces this element's base state; leaves its identity and its place in the
+     *          document alone
      */
-    public void setMarginSs(double top, double right, double bottom, double left) {
-        marginTopSs = top;
-        marginRightSs = right;
-        marginBottomSs = bottom;
-        marginLeftSs = left;
-    }
-
-    public double getMarginTopSs() {
-        return marginTopSs;
-    }
-
-    public void setMarginTopSs(double marginTopSs) {
-        this.marginTopSs = marginTopSs;
-    }
-
-    public double getMarginRightSs() {
-        return marginRightSs;
-    }
-
-    public void setMarginRightSs(double marginRightSs) {
-        this.marginRightSs = marginRightSs;
-    }
-
-    public double getMarginBottomSs() {
-        return marginBottomSs;
-    }
-
-    public void setMarginBottomSs(double marginBottomSs) {
-        this.marginBottomSs = marginBottomSs;
-    }
-
-    public double getMarginLeftSs() {
-        return marginLeftSs;
-    }
-
-    public void setMarginLeftSs(double marginLeftSs) {
-        this.marginLeftSs = marginLeftSs;
-    }
-
-    // ========================================================================
-    // Bounds Calculation
-    // ========================================================================
-
-
-
-
-
-    // ========================================================================
-    // Margin Collapsing
-    // ========================================================================
-
-    /**
-     * Calculates the collapsed vertical margin between this element and the one below.
-     * CSS-style: the larger margin wins.
-     *
-     * @param below The element below this one
-     * @return The effective margin between the two elements
-     */
-    public double collapsedVerticalMarginWith(LineElement below) {
-        return Math.max(marginBottomSs, below.marginTopSs);
-    }
-
-    /**
-     * Calculates the collapsed horizontal margin between this element and the one to its right.
-     * CSS-style: the larger margin wins.
-     *
-     * @param right The element to the right of this one
-     * @return The effective margin between the two elements
-     */
-    public double collapsedHorizontalMarginWith(LineElement right) {
-        return Math.max(marginRightSs, right.marginLeftSs);
+    protected final void copyBaseStateFrom(LineElement source) {
+        userXOffsetSs = source.userXOffsetSs;
+        userYOffsetSs = source.userYOffsetSs;
     }
 
     // ========================================================================
@@ -322,30 +199,18 @@ public abstract class LineElement {
     /**
      * Returns an unmodifiable view of this element's children.
      */
-    public List<LineElement> getChildren() {
+    List<LineElement> getChildren() {
         return Collections.unmodifiableList(children);
     }
 
     /**
-     * Returns the number of children.
-     */
-    public int getChildCount() {
-        return children.size();
-    }
-
-    /**
-     * Returns whether this element has children.
-     */
-    public boolean hasChildren() {
-        return !children.isEmpty();
-    }
-
-    /**
-     * Adds a child element.
+     * Adds a child element. Package-private: the element tree is built only from inside
+     * {@code dom}, which is what makes {@link Articulation#owner()}'s cast to
+     * {@link NoteElement} sound.
      *
      * @param child The element to add
      */
-    public void addChild(LineElement child) {
+    void addChild(LineElement child) {
         child.parentElement = this;
         child.parentLine = parentLine;
         children.add(child);
@@ -356,21 +221,10 @@ public abstract class LineElement {
      *
      * @param child The element to remove
      */
-    public void removeChild(LineElement child) {
+    void removeChild(LineElement child) {
         if (children.remove(child)) {
             child.parentElement = null;
             child.parentLine = null;
         }
-    }
-
-    /**
-     * Returns the child at the given index.
-     *
-     * @param index Index of the child
-     * @return The child element
-     * @throws IndexOutOfBoundsException if index is out of range
-     */
-    public LineElement getChild(int index) {
-        return children.get(index);
     }
 }

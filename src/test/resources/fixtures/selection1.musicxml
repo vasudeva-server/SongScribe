@@ -219,7 +219,7 @@
         </pitch>
         <duration>480</duration>
         <type>quarter</type>
-        <accidental cautionary="yes" parentheses="yes">flat</accidental>
+        <accidental>flat</accidental>
       </note>
       <note default-x="0.00" relative-x="838.75">
         <pitch>

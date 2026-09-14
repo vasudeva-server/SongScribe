@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import org.audiveris.proxymusic.AboveBelow;
 import org.audiveris.proxymusic.Attributes;
@@ -52,6 +53,8 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -213,8 +216,12 @@ final class MeasureMapper {
     // to its replacement; carried into SongLoadResult.Success by the caller.
     private boolean accidentalsConverted = false;
 
-    private MeasureMapper(Song song) {
+    // The features the document declares; decides which per-note attributes the walk honors.
+    private final Set<SupportedFeature> features;
+
+    private MeasureMapper(Song song, Set<SupportedFeature> features) {
         this.song = song;
+        this.features = features;
     }
 
     // -------------------------------------------------------------------------
@@ -222,7 +229,8 @@ final class MeasureMapper {
     // -------------------------------------------------------------------------
 
     /**
-     * Maps {@code score}'s first part onto {@code song}'s lines.
+     * Maps {@code score}'s first part onto {@code song}'s lines, honoring only the
+     * per-note attributes {@code features} declares.
      *
      * @return true when any note's {@code <accidental>} was a retired legacy token
      *         converted to its replacement
@@ -231,8 +239,8 @@ final class MeasureMapper {
      *                      can hold, or a mid-measure {@code <key>} with no barline
      *                      before it)
      */
-    static boolean map(ScorePartwise score, Song song) throws SAXException {
-        var mapper = new MeasureMapper(song);
+    static boolean map(ScorePartwise score, Song song, Set<SupportedFeature> features) throws SAXException {
+        var mapper = new MeasureMapper(song, features);
         var part = ProxyMusicAccess.firstPart(score);
 
         if (part != null) {
@@ -577,7 +585,7 @@ final class MeasureMapper {
 
     private void walkNote(ChildSite site, Note pmNote) throws SAXException {
         var line = requireCurrentLine("<note>");
-        var mapped = NoteMapper.map(pmNote, line);
+        var mapped = NoteMapper.map(pmNote, line, features);
         var element = mapped.element();
 
         if (mapped.usedLegacyAccidental()) {
@@ -715,7 +723,7 @@ final class MeasureMapper {
      * first, which is what this program's own documents never contain, so the loss is
      * logged rather than silent.
      */
-    private static void resolveAnnotations(List<ChildSite> sites) {
+    private static void resolveAnnotations(List<ChildSite> sites) throws SAXException {
         ReadAnnotation pending = null;
 
         for (var site : sites) {
@@ -831,6 +839,14 @@ final class MeasureMapper {
      * the measure the direction sits — the writer emits it as the measure's first child,
      * but files written before that change carry it immediately before the first note,
      * and both must load the same way.
+     *
+     * <p>A second tempo or metric modulation arriving before the note replaces the first,
+     * which is what this program's own documents never contain, so the loss is logged
+     * rather than silent. The note takes each through
+     * {@link DocumentValidation#attachUnique}, so a note the document has already given a
+     * tempo change or a beat change refuses the document.
+     *
+     * @throws SAXException if a bound note already carries a tempo change or a beat change
      */
     private void resolveMetronomes(List<ChildSite> sites) throws SAXException {
         if (sites.isEmpty()) {
@@ -859,6 +875,11 @@ final class MeasureMapper {
                     var beatChange = buildBeatChange(metronomeNotes);
 
                     if (beatChange != null) {
+                        if (pendingBeatChange != null) {
+                            LOG.warn(
+                                "Dropping unbound metric-modulation <direction>: a second one arrived before a note to bind it to");
+                        }
+
                         pendingBeatChange = beatChange;
                     }
 
@@ -876,6 +897,11 @@ final class MeasureMapper {
                     songTempoTaken = true;
                     song.setTempo(tempo);
                 } else {
+                    if (pendingTempo != null) {
+                        LOG.warn(
+                            "Dropping unbound tempo <direction>: a second one arrived before a note to bind it to");
+                    }
+
                     pendingTempo = tempo;
                 }
 
@@ -891,12 +917,12 @@ final class MeasureMapper {
             var element = noteSite.element();
 
             if (pendingTempo != null) {
-                element.addAttachment(new TempoChangeAttachment(element, pendingTempo));
+                DocumentValidation.attachUnique(LOG, element, new TempoChangeAttachment(pendingTempo));
                 pendingTempo = null;
             }
 
             if (pendingBeatChange != null) {
-                element.addAttachment(new BeatChangeAttachment(element, pendingBeatChange));
+                DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(pendingBeatChange));
                 pendingBeatChange = null;
             }
         }
@@ -1183,20 +1209,20 @@ final class MeasureMapper {
      * itself marked on read.
      */
     private static void resolveSlides(List<NoteSite> notes) {
-        StaffElement start = null;
+        NoteElement start = null;
 
         for (var note : notes) {
             var slideType = NoteMapper.slideType(note.pmNote());
 
             if (MusicXmlTags.SLIDE_STOP.equals(slideType)) {
                 if (start != null) {
-                    start.setGlissando();
+                    start.setSlide(Slide.GLISSANDO);
                     start = null;
                 }
                 // A stop with no open start is stray; ignore it.
             } else if (MusicXmlTags.SLIDE_START.equals(slideType)) {
                 warnDanglingStart(start, SLIDE_START_MARKER);
-                start = note.element();
+                start = markedNote(note, SLIDE_START_MARKER);
             }
         }
 
@@ -1209,19 +1235,24 @@ final class MeasureMapper {
      * {@code end} builds the span.
      */
     private static void resolveBeams(List<NoteSite> notes) {
-        StaffElement begin = null;
+        NoteElement begin = null;
 
         for (var note : notes) {
             var beamType = NoteMapper.primaryBeamType(note.pmNote());
 
             if (MusicXmlTags.BEAM_BEGIN.equals(beamType)) {
                 warnDanglingStart(begin, BEAM_BEGIN_MARKER);
-                begin = note.element();
+                begin = markedNote(note, BEAM_BEGIN_MARKER);
             } else if (MusicXmlTags.BEAM_END.equals(beamType)) {
-                if (begin == null) {
+                var end = markedNote(note, BEAM_END_MARKER);
+
+                if (end == null) {
+                    // The marker closed the run; there is just no span to build from it.
+                    begin = null;
+                } else if (begin == null) {
                     warnOrphanStop(BEAM_END_MARKER);
                 } else {
-                    note.line().addBeaming(new Beam(begin, note.element()));
+                    note.line().addBeaming(new Beam(begin, end));
                     begin = null;
                 }
             }
@@ -1237,23 +1268,28 @@ final class MeasureMapper {
      * and immediately re-opens the next, producing one tie per adjacent pair.
      */
     private static void resolveTies(List<NoteSite> notes) {
-        StaffElement start = null;
+        NoteElement start = null;
 
         for (var note : notes) {
             var marker = NoteMapper.tieMarker(note.pmNote());
 
             if (marker.stop()) {
-                if (start == null) {
+                var end = markedNote(note, TIED_STOP_MARKER);
+
+                if (end == null) {
+                    // The marker closed the pair; there is just no tie to build from it.
+                    start = null;
+                } else if (start == null) {
                     warnOrphanStop(TIED_STOP_MARKER);
                 } else {
-                    note.line().addTie(new Tie(start, note.element()));
+                    note.line().addTie(new Tie(start, end));
                     start = null;
                 }
             }
 
             if (marker.start()) {
                 warnDanglingStart(start, TIED_START_MARKER);
-                start = note.element();
+                start = markedNote(note, TIED_START_MARKER);
             }
         }
 
@@ -1318,7 +1354,7 @@ final class MeasureMapper {
             tuplet = Tuplet.withUnresolvedRatio(open.anchor(), end.element(), marker.actualNotes());
         } else {
             tuplet = new Tuplet(open.anchor(), end.element(), marker.actualNotes(),
-                marker.normalNotes(), noteValue, marker.normalDotCount());
+                marker.normalNotes(), noteValue, marker.normalDots());
         }
 
         if (!tuplet.hasValidSpan(line)) {
@@ -1411,5 +1447,23 @@ final class MeasureMapper {
     /** Warns that a closing marker arrived with no run open for it to close. */
     private static void warnOrphanStop(String marker) {
         LOG.warn("Ignoring {} with no matching start", marker);
+    }
+
+    /**
+     * Narrows the note a beam, tie or slide marker sits on. Each of those spans joins notes, so a
+     * marker on a rest or a barline describes a span the document model cannot hold, and whatever
+     * it would have formed is dropped.
+     *
+     * @param note   the site the marker was read from
+     * @param marker what the marker would have opened or closed, for the diagnostic
+     * @return the site's element as a note, or null when the element is not a note
+     */
+    private static @Nullable NoteElement markedNote(NoteSite note, String marker) {
+        if (note.element() instanceof NoteElement markedNote) {
+            return markedNote;
+        }
+
+        LOG.warn("Ignoring {} on {}, which is not a note", marker, note.element());
+        return null;
     }
 }

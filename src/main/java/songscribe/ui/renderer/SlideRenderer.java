@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
@@ -42,9 +43,9 @@ import songscribe.util.GraphicsState;
 import static songscribe.util.GraphicsState.Property.COLOR;
 
 /**
- * Draws the two {@link StaffElement.Slide} subtypes attached to a note: a connecting
- * {@link StaffElement.Glissando} (a filled rectangle between two notes) and a trailing
- * {@link StaffElement.Fall} (the {@code brassFallLipShort} glyph hanging off the note's right).
+ * Draws the two {@link Slide} kinds attached to a note: a connecting {@link Slide#GLISSANDO} (a
+ * filled rectangle between two notes) and a trailing {@link Slide#FALL} (the
+ * {@code brassFallLipShort} glyph hanging off the note's right).
  * <p>
  * The geometry itself is computed at layout time by {@link SlideGeometry} and stored on the line's
  * {@link LayoutResult} as a {@link LayoutResult.SlideLayout}, so this class only reads it and
@@ -55,7 +56,7 @@ import static songscribe.util.GraphicsState.Property.COLOR;
  * the layout has nothing stored for them and they compute their geometry through
  * {@link SlideGeometry} directly.
  * <p>
- * Slide data is stored on the source note via {@link StaffElement#getSlide()}.
+ * Slide data is stored on the source note via {@link NoteElement#getSlide()}.
  */
 public final class SlideRenderer {
 
@@ -119,8 +120,8 @@ public final class SlideRenderer {
     }
 
     /**
-     * Renders the slide attached to a specific note: a trailing {@link StaffElement.Fall} glyph or a
-     * connecting {@link StaffElement.Glissando} line.
+     * Renders the slide attached to a specific note: a trailing {@link Slide#FALL} glyph or a
+     * connecting {@link Slide#GLISSANDO} line.
      *
      * @param g2        Graphics context
      * @param line      The line containing the note
@@ -147,30 +148,31 @@ public final class SlideRenderer {
         var middleLineYSs = invariants.getMiddleLineYSs();
         var color = determineSlideColor(note, noteIndex, invariants);
 
-        // A fall is a standalone trailing glyph with no target note, so it never looks at the
-        // following element — which would crash on a non-renderable type such as a barline at
-        // the line end.
-        if (slide instanceof StaffElement.Fall) {
-            var fallBoundsSs = fallBoundsSs(note, noteIndex, layoutResult, frame);
+        switch (slide) {
+            // A fall is a standalone trailing glyph with no target note, so it never looks at
+            // the following element — which would crash on a non-renderable type such as a
+            // barline at the line end.
+            case FALL -> {
+                var fallBoundsSs = fallBoundsSs(note, noteIndex, layoutResult, frame);
 
-            if (fallBoundsSs != null) {
-                drawFallGlyph(g2, fallBoundsSs, middleLineYSs, color);
+                if (fallBoundsSs != null) {
+                    drawFallGlyph(g2, fallBoundsSs, middleLineYSs, color);
+                }
             }
 
-            return;
-        }
+            case GLISSANDO -> {
+                // The layout already withholds geometry for a glissando between two notes at
+                // one pitch, but the grace-note insert preview below recomputes endpoints
+                // rather than reading the layout, so the check is needed here to cover that
+                // branch too.
+                if (!line.isSamePitchAsFollower(noteIndex)) {
+                    var endpoints = glissandoEndpointsSs(note, noteIndex, line, layoutResult, frame);
 
-        // The layout already withholds geometry for a glissando between two notes at one pitch,
-        // but the grace-note insert preview below recomputes endpoints rather than reading the
-        // layout, so the check is needed here to cover that branch too.
-        if (line.isSamePitchAsFollower(noteIndex)) {
-            return;
-        }
-
-        var endpoints = glissandoEndpointsSs(note, noteIndex, line, layoutResult, frame);
-
-        if (endpoints != null) {
-            drawGlissando(g2, endpoints, middleLineYSs, color);
+                    if (endpoints != null) {
+                        drawGlissando(g2, endpoints, middleLineYSs, color);
+                    }
+                }
+            }
         }
     }
 
@@ -189,7 +191,7 @@ public final class SlideRenderer {
      * @param noteIndex that note's index on the line
      */
     Color determineSlideColor(
-        StaffElement note,
+        NoteElement note,
         int noteIndex,
         LineInvariants invariants
     ) {
@@ -290,7 +292,7 @@ public final class SlideRenderer {
      * this note.
      */
     private static Rectangle2D.@Nullable Double fallBoundsSs(
-        StaffElement note, int noteIndex, LayoutResult layoutResult, ElementFrame frame
+        NoteElement note, int noteIndex, LayoutResult layoutResult, ElementFrame frame
     ) {
         var slideLayout = layoutResult.getSlideLayout(note);
 

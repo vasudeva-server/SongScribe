@@ -98,10 +98,8 @@ can be handed its subject is testable with nothing on screen, which is what
 `AttachmentDialogControllerTest` relies on.
 
 **`commit` may itself ask a yes/no question before it opens its bracket.**
-`AccidentalRestatements.confirm` must run in an edit's decide phase, before any
-modification bracket opens — the same rule the ending confirms follow.
-`KeyChangeDialogController.changeLineKey`/`insertKeyChange` are two more
-callers of that rule, alongside `ScoreViewController`, `PitchShifter`,
+Such a question runs in an edit's decide phase, before any modification bracket
+opens — the rule the ending confirms follow in `ScoreViewController`,
 `PreviewElementInserter` and `SelectionActionApplier`. This is not the
 `validate`/`showFailure` presentation path — nothing was rejected, and no
 `ValidationFailure` is shown. It is a decide-phase question about a change

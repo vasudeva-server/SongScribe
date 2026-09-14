@@ -178,6 +178,14 @@ exactly one of three classes:
 | display-only | ignored, re-derived on write | title, composer, lyricist, arranger, date, rights, place |
 | write-forward | ignored, recomputed or constant | encoding metadata, scaling, music font, positioning for foreign renderers |
 
+One piece of encoding metadata is read: the `<supports>` entries. Each names a
+feature the writer supports, and the reader honors what a feature governs only
+when the document declares that feature. A feature whose meaning changed between
+writer versions is gated this way, so a document written before the change is
+read as its own writer meant it rather than as the current one does. The list of
+features is one definition shared by the writer and the reader, so neither can
+name one the other does not know.
+
 ## Where a key change goes
 
 A key lives in the attributes of the measure it **takes effect in**, and that

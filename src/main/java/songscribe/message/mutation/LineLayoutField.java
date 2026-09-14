@@ -27,10 +27,7 @@ package songscribe.message.mutation;
  */
 public enum LineLayoutField {
     /** Y-position of lyrics baseline (staff spaces). */
-    LYRICS_Y_POS_SS(Double.class),
-
-    /** Ratio multiplier for horizontal element spacing. */
-    ELEMENT_SPACING_RATIO(Float.class);
+    LYRICS_Y_POS_SS(Double.class);
 
     private final Class<?> expectedType;
 

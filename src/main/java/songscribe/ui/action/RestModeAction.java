@@ -23,13 +23,15 @@ package songscribe.ui.action;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
-public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable {
+public final class RestModeAction extends SelectableUIAction implements UIAction.Reflectable<StaffElement> {
 
     public static RestModeAction createAction(MainFrame mainFrame) {
         return new RestModeAction(mainFrame);
@@ -56,8 +58,8 @@ public final class RestModeAction extends SelectableUIAction implements UIAction
     }
 
     @Override
-    public boolean appliesTo(StaffElement element) {
-        return element.getType().isDuration();
+    public @Nullable StaffElement admit(StaffElement element) {
+        return element.getType().isDuration() ? element : null;
     }
 
     @Override

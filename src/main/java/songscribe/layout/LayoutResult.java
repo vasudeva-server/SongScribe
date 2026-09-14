@@ -22,7 +22,6 @@ package songscribe.layout;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -30,14 +29,9 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Attachment;
 import songscribe.dom.Beam;
-import songscribe.dom.Clef;
 import songscribe.dom.KeyChangeElement;
-import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
-import songscribe.dom.LineElement;
-import songscribe.dom.Span;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -58,7 +52,9 @@ import songscribe.hit.HitRegistry;
  *   <li>Total line height for vertical spacing</li>
  * </ul>
  * <p>
- * This class is immutable after construction. Use {@link LayoutResultBuilder} to create instances.
+ * This class is immutable after construction; the {@link DecorationLayouts} it carries is written
+ * only by the stacking pass that precedes construction. Use {@link LayoutResultBuilder} to
+ * create instances.
  */
 public final class LayoutResult {
 
@@ -72,12 +68,9 @@ public final class LayoutResult {
      */
     private final Map<StaffElement, StemLayout> allStemLayouts;
     private final Map<Tie, TieLayout> tieLayouts;
-    private final Map<LineElement, DecorationLayout> decorationLayouts;
+    private final DecorationLayouts decorationLayouts;
     private final Map<StaffElement, SlideLayout> slideLayouts;
-    @Nullable
-    private final Clef clef;
-    @Nullable
-    private final KeySignature keySignature;
+    private final StaffHeader staffHeader;
     private final double contentAboveStaffSs;
     private final double contentBelowStaffSs;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
@@ -96,7 +89,9 @@ public final class LayoutResult {
      * @param beamLayouts      Map of beam spans to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
      * @param tieLayouts       Map of tie spans to their computed tie geometry
+     * @param decorationLayouts The decoration table the stacking pass filled for this line
      * @param slideLayouts     Map of slide-owning notes to their computed slide geometry
+     * @param staffHeader      The clef and key signature this line opens with
      * @param contentAboveStaffSs True extent of this line's content above the staff top, in staff
      *                           spaces, and also the staff top's Y position within the line's local
      *                           coordinate frame
@@ -114,10 +109,9 @@ public final class LayoutResult {
         Map<Beam, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
         Map<Tie, TieLayout> tieLayouts,
-        Map<LineElement, DecorationLayout> decorationLayouts,
+        DecorationLayouts decorationLayouts,
         Map<StaffElement, SlideLayout> slideLayouts,
-        @Nullable Clef clef,
-        @Nullable KeySignature keySignature,
+        StaffHeader staffHeader,
         double contentAboveStaffSs,
         double contentBelowStaffSs,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
@@ -136,10 +130,9 @@ public final class LayoutResult {
 
         allStemLayouts = Map.copyOf(mergedStems);
         this.tieLayouts = Map.copyOf(tieLayouts);
-        this.decorationLayouts = Map.copyOf(decorationLayouts);
+        this.decorationLayouts = decorationLayouts;
         this.slideLayouts = Map.copyOf(slideLayouts);
-        this.clef = clef;
-        this.keySignature = keySignature;
+        this.staffHeader = staffHeader;
         this.contentAboveStaffSs = contentAboveStaffSs;
         this.contentBelowStaffSs = contentBelowStaffSs;
         var copiedBoxes = new HashMap<StaffElement, List<LyricBoxLayout>>(lyricBoxes.size() * 2);
@@ -167,8 +160,7 @@ public final class LayoutResult {
         tieLayouts = source.tieLayouts;
         decorationLayouts = source.decorationLayouts;
         slideLayouts = source.slideLayouts;
-        clef = source.clef;
-        keySignature = source.keySignature;
+        staffHeader = source.staffHeader;
         contentAboveStaffSs = source.contentAboveStaffSs;
         contentBelowStaffSs = source.contentBelowStaffSs;
         lyricBoxes = source.lyricBoxes;
@@ -306,92 +298,13 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the decoration layout for an above-staff decoration element.
+     * Returns the decoration table of this line: the placed bounds of every decorated element,
+     * queried by element, by type, or by the element a decoration hangs off.
      *
-     * @param element The decoration element to look up
-     * @return The decoration layout, or null if not computed
+     * @return the line's decoration layouts; empty when nothing on the line is decorated
      */
-    public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
-        return decorationLayouts.get(element);
-    }
-
-    /**
-     * Returns an unmodifiable view of all decoration layouts.
-     *
-     * @return Map of decoration elements to their layouts
-     */
-    public Map<LineElement, DecorationLayout> getDecorationLayouts() {
+    public DecorationLayouts decorationLayouts() {
         return decorationLayouts;
-    }
-
-    /**
-     * Returns all decoration layout entries whose key is an instance of the given type.
-     * <p>
-     * Used by renderers to iterate all elements of a specific type (e.g., all Trills,
-     * all Crescendos) in a single pass, regardless of whether they originated from
-     * new spans or were bridged from legacy flags during layout.
-     *
-     * @param type The element type to filter by
-     * @return List of matching entries (element + layout)
-     */
-    public <T extends LineElement> List<Map.Entry<T, DecorationLayout>> getDecorationLayoutsByType(
-        Class<? extends T> type) {
-
-        var result = new ArrayList<Map.Entry<T, DecorationLayout>>();
-
-        for (var entry : decorationLayouts.entrySet()) {
-            if (type.isInstance(entry.getKey())) {
-                result.add(Map.entry(type.cast(entry.getKey()), entry.getValue()));
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Finds the decoration layout for an attachment with the given owner element and type.
-     * <p>
-     * Used by renderers that need to look up layout results for attachments
-     * but don't have direct access to the attachment object created during layout.
-     *
-     * @param ownerElement   The element the attachment is attached to
-     * @param attachmentType The type of attachment to find
-     * @return The decoration layout if found, null otherwise
-     */
-    public @Nullable DecorationLayout findAttachmentDecorationLayout(
-        StaffElement ownerElement,
-        Class<? extends Attachment> attachmentType) {
-
-        return findByAttachment(decorationLayouts, ownerElement, attachmentType);
-    }
-
-    /**
-     * Finds the decoration layout for a span with the given anchor element and type.
-     * <p>
-     * Used by renderers that need to look up layout results for spans
-     * but don't have direct access to the span object created during layout.
-     *
-     * @param anchorElement    The anchor (start) element of the range
-     * @param spanType The type of span to find
-     * @return The decoration layout if found, null otherwise
-     */
-    public @Nullable DecorationLayout findSpanDecorationLayout(
-        StaffElement anchorElement,
-        Class<? extends Span> spanType) {
-
-        for (var entry : decorationLayouts.entrySet()) {
-            var element = entry.getKey();
-
-            if (spanType.isInstance(element)) {
-                var span = (Span) element;
-
-                if (span.getAnchorElement() == anchorElement) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
     }
 
     // ==========================================================================
@@ -412,45 +325,17 @@ public final class LayoutResult {
     }
 
     // ==========================================================================
-    // Header Element Access
+    // Staff Header Access
     // ==========================================================================
 
     /**
-     * Returns the clef element for this line.
+     * Returns the header this line opens with — the clef and the key signature, at the positions
+     * layout gave them. Every line has one, an empty line included.
      *
-     * @return The clef, or null if not yet created (empty line)
+     * @return the line's staff header
      */
-    public @Nullable Clef getClef() {
-        return clef;
-    }
-
-    /**
-     * Returns the key signature element for this line.
-     *
-     * @return The key signature, or null if not yet created (empty line)
-     */
-    public @Nullable KeySignature getKeySignature() {
-        return keySignature;
-    }
-
-    private <T> @Nullable T findByAttachment(
-        Map<LineElement, T> map,
-        StaffElement ownerElement,
-        Class<? extends Attachment> attachmentType) {
-
-        for (var entry : map.entrySet()) {
-            var element = entry.getKey();
-
-            if (attachmentType.isInstance(element)) {
-                var attachment = (Attachment) element;
-
-                if (attachment.getOwnerElement() == ownerElement) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
+    public StaffHeader staffHeader() {
+        return staffHeader;
     }
 
     // ==========================================================================
@@ -817,12 +702,13 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Creates a new builder for LayoutResult.
+     * Creates a new builder for a LayoutResult opening with {@code staffHeader}.
      *
+     * @param staffHeader the clef and key signature the line opens with
      * @return A new builder instance
      */
-    public static LayoutResultBuilder builder() {
-        return new LayoutResultBuilder();
+    public static LayoutResultBuilder builder(StaffHeader staffHeader) {
+        return new LayoutResultBuilder(staffHeader);
     }
 
     @Override

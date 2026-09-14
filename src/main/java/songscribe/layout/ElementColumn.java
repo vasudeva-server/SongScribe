@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Direction;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
@@ -34,7 +35,6 @@ import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
-import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.StaffPosition;
 
 /**
@@ -207,23 +207,18 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns whether this column's element renders a stem (a pitched or grace note shorter than
-     * a whole note).
-     */
-    public boolean hasStem() {
-        return element.getType().isNoteWithStem();
-    }
-
-    /**
      * Returns the <em>drawn</em> stem direction of this column's element
      * ({@link NoteGeometry#effectiveDirection}), so a grace note reports {@code UP} — the only
-     * direction it ever renders — rather than whatever direction it happens to store. Only
-     * meaningful when {@link #hasStem()} is {@code true}: for rests, whole notes, and barlines this
-     * returns whatever direction the underlying element happens to hold (default {@code DOWN}),
-     * which callers must not treat as a real stem direction.
+     * direction it ever renders — rather than whatever direction it happens to store.
+     *
+     * @return the drawn stem direction, or {@code null} when this column's element renders no stem
+     *     (a rest, a whole note, a barline, or anything else that is not a pitched or grace note
+     *     shorter than a whole note)
      */
-    public StaffElement.Direction getDirection() {
-        return NoteGeometry.effectiveDirection(element);
+    public @Nullable Direction stemDirection() {
+        return element.getType().isNoteWithStem() && element instanceof NoteElement note
+            ? NoteGeometry.effectiveDirection(note)
+            : null;
     }
 
     // ==========================================================================
@@ -313,13 +308,16 @@ public final class ElementColumn {
      * @param neighbourBottomYSs bottom (lower, numerically larger) of the neighbour's vertical span
      */
     public double getRightExtentFacingSs(double neighbourTopYSs, double neighbourBottomYSs) {
+        var direction = stemDirection();
+
         if (getFlagExtentSs() <= 0
             || rightExtentSs > rightExtentExcludingAugmentationSs
-            || !(element instanceof NoteElement note)) {
+            || !(element instanceof NoteElement note)
+            || direction == null) {
             return rightExtentSs;
         }
 
-        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, getDirection(), beamed);
+        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(note, direction, beamed);
 
         if (flagBoundsSs == null) {
             return rightExtentSs;
@@ -437,7 +435,7 @@ public final class ElementColumn {
      * spacing corrections.
      */
     public double getPositionSs() {
-        return StaffPosition.toSs(element.getStaffPosition());
+        return ElementSeat.seatSs(element);
     }
 
     /**
@@ -615,7 +613,7 @@ public final class ElementColumn {
      * Returns whether this element has an outgoing glissando.
      */
     public boolean hasGlissando() {
-        return element.hasGlissando();
+        return element instanceof NoteElement note && note.hasGlissando();
     }
 
     // ==========================================================================

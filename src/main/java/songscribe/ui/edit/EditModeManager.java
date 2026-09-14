@@ -23,10 +23,14 @@ package songscribe.ui.edit;
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.AccidentalState;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
@@ -327,46 +331,36 @@ public final class EditModeManager {
      * @param element The element to decorate
      */
     public static void decorateElement(StaffElement element) {
-        var type = element.getType();
-
-        // Only notes and rests can be decorated; barlines, repeats, and other
-        // non-duration elements never carry dots, accidentals, or articulations.
-        if (!type.isNote() && !type.isRest()) {
-            return;
+        // Only a note and a rest can be decorated; a barline, a repeat, a breath mark and a key
+        // change carry no dots, accidentals or articulations.
+        if (element instanceof Dottable dottable) {
+            var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
+            dottable.setDots((dotAction != null) ? dotAction.dots() : Dots.NONE);
         }
 
-        var dotAction = Actions.DOT_ACTION_GROUP.getSelected();
-        element.setDotCount(
-            (dotAction != null) ? dotAction.getDotLevel().ordinal() + 1 : 0
-        );
-
-        // Rests don't get any other decorations
-        if (type.isRest()) {
+        // A rest takes no other decoration
+        if (!(element instanceof NoteElement note)) {
             return;
         }
 
         var accidentalAction = Actions.ACCIDENTAL_ACTION_GROUP.getSelected();
-        element.setAccidental(
+        note.setAccidentalState(
             (accidentalAction != null)
-                ? accidentalAction.getAccidental()
-                : null
+                ? new AccidentalState.Chosen(accidentalAction.getAccidental())
+                : new AccidentalState.Adopting()
         );
 
-        element.setAccidentalInParentheses(
-            Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
-        );
-
-        element.clearArticulations();
+        note.clearArticulations();
 
         if (Actions.ACCENT_ACTION.isSelected()) {
-            element.addArticulation(
-                new Articulation(element, ArticulationType.ACCENT)
+            note.addArticulation(
+                new Articulation(ArticulationType.ACCENT)
             );
         }
 
         if (Actions.STACCATO_ACTION.isSelected()) {
-            element.addArticulation(
-                new Articulation(element, ArticulationType.STACCATO)
+            note.addArticulation(
+                new Articulation(ArticulationType.STACCATO)
             );
         }
     }
@@ -397,7 +391,6 @@ public final class EditModeManager {
 
             if (prevElement.getType() == ElementType.REPEAT_RIGHT) {
                 var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-                repeatLeftRight.setXOffsetPx(prevElement.getXOffsetPx());
                 line.setElement(elementIndex - 1, repeatLeftRight);
                 return true;
             }
@@ -408,7 +401,6 @@ public final class EditModeManager {
 
             if (nextElement.getType() == ElementType.REPEAT_LEFT) {
                 var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-                repeatLeftRight.setXOffsetPx(nextElement.getXOffsetPx());
                 line.setElement(elementIndex, repeatLeftRight);
                 return true;
             }
@@ -435,21 +427,17 @@ public final class EditModeManager {
 
         // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
-        var shouldPlayNote = inst.playInsertedNote && insertedElement.getType().isNote();
+        var playedNote = inst.playInsertedNote && insertedElement instanceof NoteElement note ? note : null;
 
         var nextElement = inst.previewElement.getType().newInstance();
-
-        // After inserting an element, turn off accidental parentheses
-        Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
 
         // Add any other element decorations
         decorateElement(nextElement);
         inst.scoreActions.setPreviewElement(nextElement);
-        inst.scoreActions.drawWidthIfWiderLine(line, false);
         inst.scoreActions.repaint();
 
-        if (shouldPlayNote) {
-            new PlayThread(insertedElement.getPitch()).start();
+        if (playedNote != null) {
+            new PlayThread(playedNote.getPitch()).start();
         }
     }
 

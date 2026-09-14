@@ -101,7 +101,7 @@ class LedgerLineTest extends UnitTest {
     void testANoteGetsOneLedgerLinePerStaffLineBetweenItAndTheStaff(LedgerLineCase testCase) {
         var offsetsSs = new ArrayList<Double>();
 
-        LedgerLine.forEachOffsetSs(testCase.staffPositionSp(), offsetsSs::add);
+        LedgerLine.forEachOffsetSs(new StaffPosition(testCase.staffPositionSp()), offsetsSs::add);
 
         assertThat(offsetsSs).containsExactlyElementsOf(testCase.expectedYSs());
     }
@@ -110,7 +110,7 @@ class LedgerLineTest extends UnitTest {
     void testCasesCoverEveryStaffPositionANoteMayTake() {
         assertThat(ledgerLineCases().map(LedgerLineCase::staffPositionSp))
             .containsExactlyInAnyOrderElementsOf(
-                IntStream.rangeClosed(StaffPosition.MIN_SP, StaffPosition.MAX_SP)
+                IntStream.rangeClosed(StaffPosition.MIN.value(), StaffPosition.MAX.value())
                     .boxed()
                     .toList());
     }

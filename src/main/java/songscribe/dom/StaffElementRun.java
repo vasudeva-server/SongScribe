@@ -101,6 +101,25 @@ public interface StaffElementRun {
         return index >= 0 && index < elementCount();
     }
 
+    /**
+     * Returns the note at {@code index}, for a caller whose index is known to name one: a beam
+     * member, the owner of a slide, the anchor of a pitch shift. The question a caller asks when
+     * it already knows the answer's kind and wants the element narrowed rather than tested.
+     *
+     * @param index an index of this run
+     * @return the element at {@code index}, as a note
+     * @throws IllegalStateException if the element at {@code index} is not a note
+     */
+    default NoteElement noteAt(int index) {
+        var element = getElement(index);
+
+        if (element instanceof NoteElement note) {
+            return note;
+        }
+
+        throw new IllegalStateException("expected a note at index " + index + " but found " + element);
+    }
+
     // -------------------------------------------------------------------------
     // Pairing
     // -------------------------------------------------------------------------
@@ -114,7 +133,7 @@ public interface StaffElementRun {
      * {@link songscribe.ui.clipboard.Fragment#capture} recognize the orphan it has to trim.
      */
     default boolean isPairedGraceNote(int index) {
-        return hasIndex(index) && getElement(index).isPairedGraceNote();
+        return hasIndex(index) && getElement(index) instanceof NoteElement note && note.isPairedGraceNote();
     }
 
     /** Whether the element at {@code index} is the host of a paired grace note. */
@@ -363,6 +382,37 @@ public interface StaffElementRun {
      */
     default @Nullable Key lastKeyChangeKey() {
         return lastKeyChangeKeyFrom(FIRST_LEGAL_KEY_CHANGE_INDEX);
+    }
+
+    /**
+     * Returns the key this run leaves off in when it starts in {@code runningKey}: its last key
+     * change's key when it holds one, and {@code runningKey} when it does not.
+     *
+     * <p>A run holding a key change ends in that change's key however it began, because a key
+     * change establishes an absolute key rather than transposing the one before it.
+     *
+     * @param runningKey the key to suppose this run begins in
+     * @return the key in effect after this run's last element under that supposition
+     */
+    default Key keyAtEndUnder(Key runningKey) {
+        return keyAtEndUnder(FIRST_LEGAL_KEY_CHANGE_INDEX, runningKey);
+    }
+
+    /**
+     * As {@link #keyAtEndUnder(Key)}, counting only key changes at or after {@code fromIndex}.
+     *
+     * <p>The bounded form is what an edit inserting a key change at {@code fromIndex} needs: the
+     * key it establishes reaches the end of the run only when no existing key change already
+     * stands after it, and {@code runningKey} is then the inserted key.
+     *
+     * @param fromIndex  the lowest element index to count a key change at
+     * @param runningKey the key to suppose is in effect from {@code fromIndex} onward
+     * @return the key in effect after this run's last element under that supposition
+     */
+    default Key keyAtEndUnder(int fromIndex, Key runningKey) {
+        var lastKeyChangeKey = lastKeyChangeKeyFrom(fromIndex);
+
+        return lastKeyChangeKey != null ? lastKeyChangeKey : runningKey;
     }
 
     /** The inclusive element range a deletion or a copy actually covers. */

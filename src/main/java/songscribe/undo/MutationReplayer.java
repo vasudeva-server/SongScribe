@@ -215,10 +215,11 @@ public final class MutationReplayer {
     }
 
     private static void applyLineLayoutField(Line line, LineLayoutField field, @Nullable Object value) {
-        switch (field) {
-            case LYRICS_Y_POS_SS -> line.setLyricsYPosSs(cast(value, Double.class));
-            case ELEMENT_SPACING_RATIO -> line.setElementSpacingRatioAbsolute(cast(value, Float.class));
-        }
+        Runnable action = switch (field) {
+            case LYRICS_Y_POS_SS -> () -> line.setLyricsYPosSs(cast(value, Double.class));
+        };
+
+        action.run();
     }
 
     private static void applyMetadataField(Song song, MetadataField field, @Nullable Object value) {

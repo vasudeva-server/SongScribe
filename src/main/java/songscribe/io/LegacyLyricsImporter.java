@@ -22,6 +22,9 @@ package songscribe.io;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 
@@ -53,6 +56,8 @@ import songscribe.dom.Lyric;
  * {@link #deriveSyllabic} assigns {@code MIDDLE} or {@code END} to the first syllable.
  */
 public final class LegacyLyricsImporter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LegacyLyricsImporter.class);
 
     private static final String COMPOUND_WORD_MARKER = "--";
 
@@ -202,8 +207,13 @@ public final class LegacyLyricsImporter {
             var syllabic = deriveSyllabic(inWord, hasDelimiter);
             inWord = hasDelimiter;
 
-            line.getElement(elementIdx).lyrics.add(
-                new Lyric(1, word, extend, syllabic, compound));
+            if (word.isBlank()) {
+                LOG.warn("Dropping blank lyric syllable in legacy lyrics block");
+            } else {
+                line.getElement(elementIdx).putLyric(
+                    new Lyric(1, word, extend, syllabic, compound));
+            }
+
             elementIdx++;
             elementIdx += continuations;
         }

@@ -39,6 +39,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.SongData;
 import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.ElementRangeDeletion;
@@ -84,8 +85,8 @@ import songscribe.util.StringUtils;
  *
  * <p>The inherited half lives here too, in {@link #inheritedKeys}, for the same reason: what a line
  * inherits is a fact about where it sits in this list, so the class that owns the list is the one
- * that can keep it true. {@link #runningKeyAt} is the query, and it is total — nothing about the
- * key chain can be broken badly enough to have no answer.
+ * that can keep it true. {@link Line#getRunningKey()} is the query, and it is total — nothing about
+ * the key chain can be broken badly enough to have no answer.
  */
 public final class Song implements Disposable {
 
@@ -1188,6 +1189,27 @@ public final class Song implements Disposable {
     }
 
     /**
+     * The value-returning form of {@link #withoutMutationTracking(Runnable)}, for a body whose
+     * outcome the caller must inspect after tracking resumes — the pair mirrors
+     * {@link #withModification(Runnable)} / {@link #withModificationResult}. {@code body} runs
+     * under the same suspension and the same assertion: it owes no undo entry of its own.
+     *
+     * @param body The work to run with tracking suspended
+     * @return Whatever {@code body} returns
+     * @effects tracking is suspended for the duration of {@code body} and resumed afterwards,
+     *     whether {@code body} returns or throws
+     */
+    public <T> T withoutMutationTrackingResult(Supplier<T> body) {
+        modifications.beginSuspendMutationTracking();
+
+        try {
+            return body.get();
+        } finally {
+            modifications.endSuspendMutationTracking();
+        }
+    }
+
+    /**
      * Runs {@code body} in replay mode: mutations are still recorded, but the helpers'
      * companion side-work is suppressed and the {@link Line} terminal guards are bypassed,
      * because the batch being replayed already carries every change. Nestable.
@@ -1325,6 +1347,16 @@ public final class Song implements Disposable {
      * would be wrong pitches on every line downstream with no error and nothing visible to
      * notice. An ordinary note edit costs one type test and no walk.
      *
+     * <p>Every recorded change is then followed by the chain walk ({@link AccidentalChain#walk}
+     * over {@link ChainEdit#of the edit the mutation made}), so no edit decides accidental
+     * states and none can skip it: each restamp the walk returns is recorded here as an
+     * {@link ElementField#ACCIDENTAL} modification of its note, inside the same bracket. The
+     * walk runs after the key invariant because it reads the keys the invariant maintains. It
+     * does not run on a replay of undo or redo, which applies the restamps the batch already
+     * recorded, nor under suspended tracking, where nothing is recorded: the suspended path in
+     * {@link Line#applyChange} runs no walk either, which leaves a file reader's notes for the
+     * load pass and makes grace mode's untracked insertion walk itself.
+     *
      * @throws IllegalStateException if called outside a modification bracket
      * @see ModificationSession#applyChange
      */
@@ -1338,6 +1370,26 @@ public final class Song implements Disposable {
         modifications.applyChange(mutation, mutator);
 
         maintainKeyInvariant(mutation, startingKeyBefore);
+
+        if (isReplaying() || isMutationTrackingSuspended()) {
+            return;
+        }
+
+        var edit = ChainEdit.of(mutation);
+
+        if (edit == null) {
+            return;
+        }
+
+        for (var restamp : AccidentalChain.walk(new AccidentalScanView.Live(this), edit)) {
+            var line = restamp.line();
+            var note = restamp.note();
+            var state = new AccidentalState.Stamped(restamp.state());
+
+            line.modifyElement(
+                line.getElementIndex(note), ElementField.ACCIDENTAL, () -> note.setAccidentalState(state)
+            );
+        }
     }
 
     private static boolean promotesLineZero(Mutation mutation) {
@@ -1354,35 +1406,12 @@ public final class Song implements Disposable {
         return ownKey != null ? ownKey : inheritedKeys.get(firstLine);
     }
 
-    /**
-     * Returns the key in effect at the <em>start</em> of {@code line}: its own key where it
-     * establishes one, and otherwise the key in effect at the end of the line before it.
-     *
-     * <p>Total, and deliberately so — this is what {@link Line#getRunningKey()} bottoms out in, and
-     * a model getter has no business terminating the application. A line that establishes no key
-     * and inherits none is in {@link Key#DEFAULT}: that is the key a document naming no key
-     * anywhere is in, not a stand-in for a broken invariant. It is reachable while a reader is
-     * part-way through a load, and for a line that is not one of this song's lines.
-     *
-     * @param line the line to resolve, which need not be one of this song's lines
-     * @return the key in effect at the start of {@code line}; never null
-     */
-    public Key runningKeyAt(Line line) {
-        var ownKey = line.getKey();
-
-        if (ownKey != null) {
-            return ownKey;
-        }
-
-        var inherited = inheritedKeys.get(line);
-        return inherited != null ? inherited : Key.DEFAULT;
-    }
 
     /**
      * Returns the key {@code line} inherits — the key in effect at the end of the line before it —
      * regardless of whether the line establishes a key of its own and so overrides it.
      *
-     * <p>Distinct from {@link #runningKeyAt} in exactly the case that matters to
+     * <p>Distinct from {@link Line#getRunningKey()} in exactly the case that matters to
      * {@link Line#setKey}'s no-op normalization: a line asking whether the key it is being given is
      * the one it would inherit anyway needs the inherited value, not its own.
      *
@@ -1432,30 +1461,25 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Where a mutation's key move begins, as the line indices the move is felt from, and where the
-     * forward walk it starts is first allowed to stop.
+     * Where a mutation's key move is felt from: the line whose end key every line inheriting past
+     * it follows, and the first line whose drawn key content the move changes.
      *
-     * <p>The first two differ because a line's own key and the key it inherits are separate
-     * storage: a line given a key of its own starts running in it immediately while still
-     * inheriting what it always did, and a mid-line key change moves neither of that line's two
-     * keys — only the key it leaves off in, which the line after it inherits.
+     * <p>The two differ because a line's own key and the key it inherits are separate storage: a
+     * line whose start changes — given a key of its own, or newly arrived — runs in its new key from
+     * its own start, so the cautionary on the line before it changes too, while a mid-line key
+     * change moves only the key its line leaves off in.
      *
-     * @param inheritedFromIndex the first line whose <em>inherited</em> key the move can change,
-     *                           which is where {@link #propagateInheritedKeys} starts
-     * @param runningFromIndex   the first line whose <em>running</em> key the move can change,
-     *                           which is where {@link #keyMoveReach} starts drawing differently
-     * @param firstStoppableIndex the lowest index at which a line establishing a key of its own
-     *                           may stop the walk — see the stopping rule and the exception an
-     *                           insertion makes to it in {@code docs/key-changes.md}
+     * @param originIndex    the line {@link #inheritanceFrom} is asked about: it re-derives what it
+     *                       inherits from the line before it, and every line after it, through the
+     *                       first establishing a key of its own, re-derives what it inherits
+     * @param reachFromIndex the first line {@link #keyMoveReach} names, at or before
+     *                       {@code originIndex}
      */
-    private record KeyMove(int inheritedFromIndex, int runningFromIndex, int firstStoppableIndex) {
-        KeyMove(int inheritedFromIndex, int runningFromIndex) {
-            this(inheritedFromIndex, runningFromIndex, inheritedFromIndex);
-        }
+    private record KeyMove(int originIndex, int reachFromIndex) {
     }
 
     /**
-     * Returns where {@code mutation}'s key move begins, or null when it moves no key.
+     * Returns where {@code mutation}'s key move is felt from, or null when it moves no key.
      *
      * <p>This is the one enumeration of the mutations that can move a key.
      * {@link #maintainKeyInvariant} reads it to bring the inherited keys back up to date, and
@@ -1464,21 +1488,15 @@ public final class Song implements Disposable {
      * rendering the key it was in before the edit, with nothing to explain it.
      *
      * @param mutation the mutation just applied, or about to be replayed
-     * @return where the move begins, or {@code null} when {@code mutation} moves no key — which
-     *     is every mutation not listed here, and every listed one that carried no key change
-     *     or names a line no longer in this song
+     * @return where the move is felt from, or {@code null} when {@code mutation} moves no key —
+     *     which is every mutation not listed here, every listed one that carried no key change,
+     *     and every one naming a line no longer in this song or leaving no line to re-derive from
      */
     private @Nullable KeyMove keyMoveOf(Mutation mutation) {
         return switch (mutation) {
-            // A line arriving at or leaving an index changes what the line now at that index
-            // inherits, and therefore what it runs in: both start there. An arriving line also
-            // gives the line behind it a new predecessor, which is why the walk may not stop until
-            // one line further on; a departing one leaves every line behind the gap following what
-            // it always followed.
-            case LineInsertion insertion -> new KeyMove(
-                insertion.lineIndex(), insertion.lineIndex(), insertion.lineIndex() + 1);
-            case LineDeletion deletion -> new KeyMove(deletion.lineIndex(), deletion.lineIndex());
-            case LineKeyChange change -> ownKeyMove(change.line());
+            case LineInsertion insertion -> lineStartKeyMove(insertion.line());
+            case LineDeletion deletion -> departingLineKeyMove(deletion.lineIndex());
+            case LineKeyChange change -> lineStartKeyMove(change.line());
             case ElementInsertion insertion -> midLineKeyMove(
                 insertion.line(),
                 changesKey(insertion.element()));
@@ -1499,24 +1517,45 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The move a change to {@code line}'s own key makes: the line runs in the new key from its own
-     * start, while what it inherits is untouched, so the inheritance walk begins after it.
+     * The move a line makes when the key it starts in changes — it has just arrived, or its own
+     * key has changed: the chain is re-derived from the line itself, whatever key of its own it
+     * has, and the cautionary on the line before it changes too.
      *
-     * @param line the line whose own key changed
+     * @param line the line that arrived or whose own key changed
      * @return the move, or null when {@code line} is not in this song and so moves nothing
      */
-    private @Nullable KeyMove ownKeyMove(Line line) {
+    private @Nullable KeyMove lineStartKeyMove(Line line) {
         if (!contains(line)) {
             return null;
         }
 
         var lineIndex = line.index();
-        return new KeyMove(lineIndex + 1, lineIndex);
+        return new KeyMove(lineIndex, Math.max(lineIndex - 1, 0));
+    }
+
+    /**
+     * The move a line leaving {@code lineIndex} makes: the line now standing there follows the
+     * line before the gap, so the chain is re-derived from that line — or from the new line 0
+     * when the first line left, which holds a key of its own once the song repairs it.
+     *
+     * @param lineIndex the index the departed line stood at
+     * @return the move, or null when no line stands where the chain is re-derived from: the song
+     *     is now empty, or a later mutation in the same batch has since shortened it
+     */
+    private @Nullable KeyMove departingLineKeyMove(int lineIndex) {
+        var originIndex = Math.max(lineIndex - 1, 0);
+
+        if (originIndex >= lines.size()) {
+            return null;
+        }
+
+        return new KeyMove(originIndex, originIndex);
     }
 
     /**
      * The move a mid-line key change written into or taken out of {@code line} makes: the line's
-     * own two keys stand, and only the key it leaves off in moves, so both walks begin after it.
+     * own two keys stand, and only the key it leaves off in moves, so the chain is re-derived from
+     * it and the reach starts at it.
      *
      * @param line the line the mutation touched
      * @param movesKey whether the elements the mutation carried were key changes at all
@@ -1533,13 +1572,18 @@ public final class Song implements Disposable {
         }
 
         var lineIndex = line.index();
-        return new KeyMove(lineIndex + 1, lineIndex + 1);
+        return new KeyMove(lineIndex, lineIndex);
     }
 
     /**
-     * Returns the lines {@code mutation}'s key move changes the drawn key content of: every line
-     * whose running key it moved, and the line before the first of those, whose cautionary key
-     * signature depicts the boundary the move created. Empty when the mutation moves no key.
+     * Returns the lines whose drawn key content {@code mutation}'s key move can have changed: the
+     * line the move is felt from, the line before it when the move changes the key that line's
+     * cautionary key signature warns of, and every following line that runs in the key it
+     * inherits, through the end of the inheritance chain. Empty when the mutation moves no key.
+     *
+     * <p>The set is the whole chain rather than exactly the lines whose running key moved, because
+     * it follows the same stopping rule propagation runs on. A line in it whose key did not move
+     * draws what it drew before, so re-solving it costs work and never draws anything wrong.
      *
      * <p>A view holding per-line geometry needs this. A line's header signature and the spacing
      * around it are solved from the key that line runs in, and the room kept clear at its end is
@@ -1563,12 +1607,14 @@ public final class Song implements Disposable {
             return List.of();
         }
 
-        var firstIndex = Math.max(keyMove.runningFromIndex() - 1, 0);
-        var lastIndex = firstKeyedLineFrom(keyMove.firstStoppableIndex()) - 1;
+        var origin = lines.get(keyMove.originIndex());
+        var reach = new ArrayList<>(lines.subList(keyMove.reachFromIndex(), keyMove.originIndex() + 1));
 
-        return firstIndex > lastIndex
-            ? List.of()
-            : List.copyOf(lines.subList(firstIndex, lastIndex + 1));
+        for (var inheritance : inheritanceFrom(origin, origin.keyAtEndOfLine()).inheriting()) {
+            reach.add(inheritance.line());
+        }
+
+        return List.copyOf(reach);
     }
 
     private static boolean changesKey(StaffElement element) {
@@ -1619,10 +1665,9 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Reassigns the inherited key of every line from {@code keyMove}'s inherited-from index
-     * forward, stopping after the first line that establishes a key of its own — no earlier than
-     * {@link KeyMove#firstStoppableIndex}. A song with a key on every line therefore costs one
-     * step, or two where a line has just arrived.
+     * Brings up to date the inherited key of every line {@code keyMove} re-derives: the origin's
+     * own, from the line before it, then every line {@link #inheritanceFrom} reports after it, the
+     * line that stops the chain included.
      */
     private void propagateInheritedKeys(KeyMove keyMove) {
         // A document under construction may not have put line 0 in a key yet, and until it does
@@ -1632,42 +1677,121 @@ public final class Song implements Disposable {
             return;
         }
 
-        // Line 0 inherits nothing, so propagation always starts at line 1 or later. The line the
-        // walk stops at is reassigned before it stops: its own key overrides what it inherits, so
-        // the entry is never read, but leaving it stale would leave the map disagreeing with the
-        // document.
-        var firstIndex = Math.max(keyMove.inheritedFromIndex(), 1);
-        var lastIndex = Math.min(firstKeyedLineFrom(keyMove.firstStoppableIndex()), lines.size() - 1);
+        var originIndex = keyMove.originIndex();
+        var origin = lines.get(originIndex);
 
-        for (var lineIndex = firstIndex; lineIndex <= lastIndex; lineIndex++) {
-            inheritedKeys.put(lines.get(lineIndex), lines.get(lineIndex - 1).keyAtEndOfLine());
+        // Line 0 inherits nothing. Any other origin is refreshed whether or not it has a new
+        // predecessor: the entry is derived, so refreshing one that did not move stores what was
+        // already there.
+        if (originIndex > 0) {
+            inheritedKeys.put(origin, lines.get(originIndex - 1).keyAtEndOfLine());
+        }
+
+        var chain = inheritanceFrom(origin, origin.keyAtEndOfLine());
+
+        for (var inheritance : chain.inheriting()) {
+            inheritedKeys.put(inheritance.line(), inheritance.inheritedKey());
+        }
+
+        var stop = chain.stop();
+
+        if (stop != null) {
+            inheritedKeys.put(stop.line(), stop.inheritedKey());
         }
     }
 
     /**
-     * Returns the index of the first line at or after {@code fromIndex} that establishes a key of
-     * its own, or {@link #lineCount()} when none does.
+     * One line of an inheritance chain that runs in the key it inherits.
      *
-     * <p>This is the stopping rule the whole feature runs on — <em>forward to the first line with
-     * its own key</em> — in one place: that line's running key cannot have moved, so nothing past
-     * it can either. The scan starts at line 1 whatever it is asked for, because line 0 always
-     * establishes a key of its own and so is never the line a forward walk stops at.
-     *
-     * <p>See {@code docs/key-changes.md}.
-     *
-     * @param fromIndex where to start looking; clamped up to 1, since line 0 always establishes
-     *                  its own key and so is never where a forward walk stops
-     * @return that line's index, or {@link #lineCount()} when no line at or after
-     *     {@code fromIndex} establishes a key of its own
+     * @param line         the line, which establishes no key of its own
+     * @param inheritedKey the key the line before it leaves off in, and so the key this line
+     *                     starts in
      */
-    private int firstKeyedLineFrom(int fromIndex) {
-        for (var lineIndex = Math.max(fromIndex, 1); lineIndex < lines.size(); lineIndex++) {
-            if (lines.get(lineIndex).getKey() != null) {
-                return lineIndex;
-            }
+    public record Inheritance(Line line, Key inheritedKey) {
+
+        /**
+         * The key the line leaves off in: its last mid-line key change's key, else the key it
+         * inherits.
+         *
+         * @return the key the line after it inherits
+         */
+        public Key keyAtEnd() {
+            return line.keyAtEndUnder(inheritedKey);
+        }
+    }
+
+    /**
+     * The lines a key reaches forward from one line: every line that runs in the key it inherits,
+     * and the line with a key of its own that ends the run.
+     *
+     * @param inheriting the lines after the origin that run in the key they inherit, consecutive
+     *                   and in song order; empty when the line after the origin has a key of its
+     *                   own or the origin is the last line
+     * @param stop       the first line after them that establishes a key of its own, or null when
+     *                   the inheriting lines run to the end of the song
+     */
+    public record InheritanceChain(List<Inheritance> inheriting, @Nullable Stop stop) {
+
+        public InheritanceChain {
+            inheriting = List.copyOf(inheriting);
         }
 
-        return lines.size();
+        /**
+         * The line that ends an inheritance chain by establishing a key of its own.
+         *
+         * @param line         the line
+         * @param inheritedKey the key the line before it leaves off in, which the line runs in the
+         *                     moment it gives up its own key
+         * @param ownKey       the key the line establishes, and so the key it starts in
+         */
+        public record Stop(Line line, Key inheritedKey, Key ownKey) {
+        }
+    }
+
+    /**
+     * Returns the inheritance chain after {@code origin}, supposing {@code origin} leaves off in
+     * {@code originEndKey}: every line after it that runs in the key it inherits, each with that
+     * key, and the first line after them that establishes a key of its own.
+     *
+     * <p>This is the stopping rule the whole feature runs on — <em>forward to the first line with
+     * its own key</em> — stated once: that line's running key cannot move, so nothing past it can
+     * either. The line that stops the chain is still reported, because what it inherits is kept
+     * current too: giving that line a key is compared against it, and clearing that line's key
+     * makes it the key the line runs in. See {@code docs/key-changes.md}.
+     *
+     * <p>Pure: it reads each line's own key and elements and never the inherited keys this song
+     * keeps. A caller projecting an edit that has not happened yet therefore gets the chain the
+     * edit will leave, provided the edit changes nothing after {@code origin} but the key
+     * {@code origin} leaves off in — not a later line's own key, its elements, or which lines
+     * exist.
+     *
+     * @param origin       the line the chain starts after; one of this song's lines
+     * @param originEndKey the key to suppose {@code origin} leaves off in
+     * @return the chain; with no inheriting lines and no stop when {@code origin} is the last line
+     * @invariant the inheriting lines, then the stop, are consecutive, the first being the line
+     *     after {@code origin}
+     * @invariant the first line reported inherits {@code originEndKey}
+     * @invariant each later line reported inherits the {@link Inheritance#keyAtEnd() end key} of
+     *     the inheriting line before it
+     */
+    public InheritanceChain inheritanceFrom(Line origin, Key originEndKey) {
+        var inheriting = new ArrayList<Inheritance>();
+        var inheritedKey = originEndKey;
+
+        for (var lineIndex = origin.index() + 1; lineIndex < lines.size(); lineIndex++) {
+            var line = lines.get(lineIndex);
+            var ownKey = line.getKey();
+
+            if (ownKey != null) {
+                return new InheritanceChain(inheriting, new InheritanceChain.Stop(line, inheritedKey, ownKey));
+            }
+
+            var inheritance = new Inheritance(line, inheritedKey);
+            inheriting.add(inheritance);
+            inheritedKey = inheritance.keyAtEnd();
+        }
+
+        return new InheritanceChain(inheriting, null);
     }
 
     /**
@@ -1746,6 +1870,28 @@ public final class Song implements Disposable {
     public void settleKeysAfterParsing() {
         rebuildInheritedKeysAfterParsing();
         removeStrandedKeyChangesAfterParsing();
+    }
+
+    /**
+     * Decides every note's accidental state by one chain walk over the whole song, and stamps each
+     * note with what the walk decided.
+     *
+     * <p>A freshly parsed song needs this once. It is read under suspended mutation tracking, where
+     * no chain walk runs, so its notes are {@link AccidentalState.Chosen Chosen} where the file
+     * writes an accidental and {@link AccidentalState.Adopting Adopting} where it is bare, while
+     * every edit afterwards assumes a note on a line is {@link AccidentalState.Stamped Stamped}.
+     * The walk reads each line's running key, so the inherited keys must be settled first — see
+     * {@link #rebuildInheritedKeysAfterParsing()}.
+     *
+     * <p>The stamps are recorded nowhere — no mutation, no undo entry — because they establish the
+     * state the document is read in rather than editing it.
+     *
+     * @effects every note of this song is {@link AccidentalState.Stamped Stamped} afterwards
+     */
+    public void stampAccidentalsAfterParsing() {
+        for (var restamp : AccidentalChain.walkSong(new AccidentalScanView.Live(this))) {
+            restamp.note().setAccidentalState(new AccidentalState.Stamped(restamp.state()));
+        }
     }
 
     /**

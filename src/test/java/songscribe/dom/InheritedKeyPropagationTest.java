@@ -32,20 +32,25 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.SongFactory.LineBuilder;
+import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SongFactory.notesAroundKeyChange;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.keyChange;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
- * What a line arriving at or leaving an index does to the keys the lines behind it run in.
+ * What an edit that moves a key does to the keys the lines behind it run in: a line's own key
+ * changing, a mid-line key change inserted, removed, replaced or edited in place, and a line
+ * arriving at or leaving an index.
  *
- * <p>Such an edit moves no key of its own, and that is what makes it the dangerous one: it changes
- * which line each later line <em>follows</em>, so a line the edit never named ends up running in a
- * key nothing put it in. Nothing reports the miss — the line simply draws a different header
- * signature and re-spells every note under it — so what each case asserts is the key
- * <em>every</em> line runs in, not the one line the edit was about.
+ * <p>A line arriving or leaving moves no key of its own, and that is what makes it the dangerous
+ * one: it changes which line each later line <em>follows</em>, so a line the edit never named ends
+ * up running in a key nothing put it in. Nothing reports the miss — the line simply draws a
+ * different header signature and re-spells every note under it — so what each case asserts is the
+ * key <em>every</em> line runs in, not the one line the edit was about.
  *
  * <p>The forward walk that re-derives those keys stops at the first line establishing a key of its
  * own, which is sound only while that line keeps the same predecessor. An arriving line is the one
@@ -68,9 +73,13 @@ class InheritedKeyPropagationTest extends UnitTest {
 
     private static final int FIRST_LINE = 0;
     private static final int SECOND_LINE = 1;
+    private static final int THIRD_LINE = 2;
+
+    /** Where {@link SongFactory#notesAroundKeyChange} puts its key change. */
+    private static final int KEY_CHANGE_INDEX = 2;
 
     /**
-     * One line-list edit, and the key every line is left running in.
+     * One edit that moves a key, and the key every line is left running in.
      *
      * @param description  the case, which doubles as the parameterized display name
      * @param song         the song to edit, built fresh for the case
@@ -173,12 +182,68 @@ class InheritedKeyPropagationTest extends UnitTest {
                 "a keyed line arriving at index 0 keeps its own key and displaces the line there",
                 () -> songWithKeyMoveOnTheSecondLine(OWN_KEY, inheritingLine()),
                 moveLine(SECOND_LINE, FIRST_LINE),
-                List.of(OWN_KEY, DOCUMENT_KEY, DOCUMENT_KEY)));
+                List.of(OWN_KEY, DOCUMENT_KEY, DOCUMENT_KEY)),
+            new PropagationCase(
+                "a line's own key changing leaves the lines past its mid-line key change where they were",
+                () -> songWithKeyMoveOnTheSecondLine(null, inheritingLine(), inheritingLine()),
+                song -> song.withModification(() -> song.getLine(SECOND_LINE).setKey(OWN_KEY)),
+                List.of(DOCUMENT_KEY, OWN_KEY, MID_LINE_KEY, MID_LINE_KEY)),
+            new PropagationCase(
+                "a mid-line key change removed hands the line's own key on to the lines inheriting "
+                    + "past it, up to a line with its own key",
+                () -> songWithKeyMoveOnTheSecondLine(
+                    OWN_KEY, inheritingLine(), keyedLine(), inheritingLine()),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    song.withModification(
+                        () -> line.deleteRange(line.effectiveRange(KEY_CHANGE_INDEX, KEY_CHANGE_INDEX)));
+                },
+                List.of(DOCUMENT_KEY, OWN_KEY, OWN_KEY, FOLLOWER_KEY, FOLLOWER_KEY)),
+            new PropagationCase(
+                "a mid-line key change inserted moves the lines inheriting past it",
+                () -> songWithKeyMoveOnTheSecondLine(null, inheritingLine(), inheritingLine()),
+                song -> {
+                    var line = song.getLine(THIRD_LINE);
+                    song.withModification(() -> {
+                        line.addElement(singleBarline());
+                        line.addElement(keyChange(OWN_KEY));
+                        line.addElement(crotchet());
+                    });
+                },
+                List.of(DOCUMENT_KEY, DOCUMENT_KEY, MID_LINE_KEY, OWN_KEY)),
+            new PropagationCase(
+                "a mid-line key change edited in place moves the lines inheriting past it",
+                () -> songWithKeyMoveOnTheSecondLine(null, inheritingLine(), inheritingLine()),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    var keyChange = (KeyChangeElement) line.getElement(KEY_CHANGE_INDEX);
+                    song.withModification(() -> line.modifyElement(
+                        KEY_CHANGE_INDEX, ElementField.KEY, () -> keyChange.setKey(OWN_KEY)));
+                },
+                List.of(DOCUMENT_KEY, DOCUMENT_KEY, OWN_KEY, OWN_KEY)),
+            new PropagationCase(
+                "a mid-line key change removed on its own hands the line's own key on to the lines "
+                    + "inheriting past it",
+                () -> songWithKeyMoveOnTheSecondLine(OWN_KEY, inheritingLine(), inheritingLine()),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    song.withModification(() -> line.removeElement(KEY_CHANGE_INDEX));
+                },
+                List.of(DOCUMENT_KEY, OWN_KEY, OWN_KEY, OWN_KEY)),
+            new PropagationCase(
+                "a mid-line key change replaced by one establishing another key moves the lines "
+                    + "inheriting past it",
+                () -> songWithKeyMoveOnTheSecondLine(null, inheritingLine(), inheritingLine()),
+                song -> {
+                    var line = song.getLine(SECOND_LINE);
+                    song.withModification(() -> line.setElement(KEY_CHANGE_INDEX, keyChange(OWN_KEY)));
+                },
+                List.of(DOCUMENT_KEY, DOCUMENT_KEY, OWN_KEY, OWN_KEY)));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("propagationCases")
-    void testALineListEditLeavesEveryLineInTheKeyTheLineBeforeItEndsIn(PropagationCase testCase) {
+    void testAKeyMovingEditLeavesEveryLineInTheKeyTheLineBeforeItEndsIn(PropagationCase testCase) {
         var song = testCase.song().get();
 
         testCase.edit().accept(song);

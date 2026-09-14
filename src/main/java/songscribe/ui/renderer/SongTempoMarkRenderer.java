@@ -62,7 +62,7 @@ public final class SongTempoMarkRenderer implements ElementRenderer<SongTempoMar
         SongTempoMark element,
         Graphics2D g2
     ) {
-        var decorationLayout = invariants.getLayoutResult().getDecorationLayout(element);
+        var decorationLayout = invariants.getLayoutResult().decorationLayouts().getDecorationLayout(element);
 
         // Anything but a typeset layout means the mark was never stacked — a line other than the
         // first, or a tempo with nothing to draw. The mark is stacked with its content or not at

@@ -23,25 +23,25 @@ package songscribe.dom;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Represents a tie connecting two elements of the same pitch.
+ * Represents a tie connecting two notes of the same pitch.
  * <p>
- * Ties connect exactly two elements and are rendered as a curved arc.
- * The placement (above or below) depends on the stem direction of the elements.
+ * Ties connect exactly two notes and are rendered as a curved arc.
+ * The placement (above or below) depends on the stem direction of the notes.
  */
-public class Tie extends Span {
+public final class Tie extends NoteSpan {
 
     /**
-     * Creates a new tie between two elements.
+     * Creates a new tie between two notes.
      *
-     * @param anchorElement The first (starting) element of the tie
-     * @param endElement    The second (ending) element of the tie
+     * @param anchorElement The first (starting) note of the tie
+     * @param endElement    The second (ending) note of the tie
      */
-    public Tie(StaffElement anchorElement, StaffElement endElement) {
+    public Tie(NoteElement anchorElement, NoteElement endElement) {
         super(anchorElement, endElement);
     }
 
     @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected NoteSpan createNoteCopy(NoteElement newAnchor, NoteElement newEnd) {
         return new Tie(newAnchor, newEnd);
     }
 
@@ -220,18 +220,15 @@ public class Tie extends Span {
             return !isLegalSeparator(newElement.getType());
         }
 
-        // An endpoint. The tie was legal before the edit, so it stays legal exactly when the
-        // incoming note sounds what the outgoing one did: same staff position, same explicit
-        // accidental. Only the written duration is then free to change.
-        //
-        // Deliberately not a getPitch() comparison against the note at the other end. Pitch
-        // resolves an omitted accidental from the key and from what a tie carries
-        // across a barline, neither of which newElement can answer for while it is still
-        // outside the line — and neither of which a replacement that leaves the staff position
-        // and the accidental alone can have changed.
-        return !newElement.getType().isPitchedNote()
-            || newElement.getStaffPosition() != oldElement.getStaffPosition()
-            || newElement.getAccidental() != oldElement.getAccidental();
+        // An endpoint. Both notes are Stamped when a replacement lands, because a replacement's
+        // state is decided by its gate's projection before Line.setElement runs. The tie was
+        // legal before the edit, so it stays legal exactly when the incoming note sounds what
+        // the outgoing one did: pitched, same staff position, same sounding accidental. Only the
+        // written duration is then free to change.
+        return !(newElement instanceof NoteElement newNote && oldElement instanceof NoteElement oldNote)
+            || newNote.accidentalState() instanceof AccidentalState.Adopting
+            || !newNote.getStaffPosition().equals(oldNote.getStaffPosition())
+            || newNote.soundingAccidental() != oldNote.soundingAccidental();
     }
 
     /**
@@ -255,7 +252,7 @@ public class Tie extends Span {
      * ({@link #isAbove()} → {@code <tied orientation>}). All three must agree, so a
      * conflicting-stem tie renders, seeds, and exports on the same side.
      *
-     * <p>The <em>visual</em> arc direction ({@code tieDir}, a {@link StaffElement.Direction}
+     * <p>The <em>visual</em> arc direction ({@code tieDir}, a {@link Direction}
      * where UP = arc bulges up = tie above) follows LilyPond's {@code get_default_dir}
      * fallthrough tree, keying off <em>both</em> noteheads' stems. Each rule below is tried in
      * order; a rule that does not apply falls through to the next.
@@ -285,53 +282,47 @@ public class Tie extends Span {
     /**
      * Computes the tie's <em>visual</em> arc direction (UP = arc bulges up = tie above)
      * via the fallthrough tree documented on {@link #arcSign()}. Reads both notes'
-     * {@link ElementType#isNoteWithStem()}, {@link StaffElement#getDirection()}, and
-     * {@link StaffElement#getStaffPosition()}.
+     * {@link ElementType#isNoteWithStem()}, {@link NoteElement#direction()}, and
+     * {@link NoteElement#getStaffPosition()}.
      */
-    private StaffElement.Direction tieArcDirection() {
+    private Direction tieArcDirection() {
         var left = getAnchorElement();
         var right = getEndElement();
-
-        // Either endpoint null → neutral default (mirrors the former isAbove() null guard).
-        if (left == null || right == null) {
-            return StaffElement.Direction.UP;
-        }
-
         var leftHasStem = left.getType().isNoteWithStem();
         var rightHasStem = right.getType().isNoteWithStem();
 
         if (leftHasStem && rightHasStem) {
             // Both stems up → tie below; any other pairing (both down, or conflicting) falls
             // through to the neutral default.
-            if (left.getDirection().isUp() && right.getDirection().isUp()) {
-                return StaffElement.Direction.DOWN;
+            if (left.direction().isUp() && right.direction().isUp()) {
+                return Direction.DOWN;
             }
 
-            return StaffElement.Direction.UP;
+            return Direction.UP;
         }
 
         if (leftHasStem) {
-            return left.getDirection().opposite();
+            return left.direction().opposite();
         }
 
         if (rightHasStem) {
-            return right.getDirection().opposite();
+            return right.direction().opposite();
         }
 
         // Neither note has a stem → key off staff position. getStaffPosition() is Y-down
         // (0 = middle line, positive = below), so above the middle line is negative.
         // Same-pitch tie ⇒ both notes share a staff position; read the left.
-        var staffPosition = left.getStaffPosition();
+        var staffPositionSp = left.getStaffPosition().value();
 
-        if (staffPosition < 0) {
-            return StaffElement.Direction.UP;
+        if (staffPositionSp < 0) {
+            return Direction.UP;
         }
 
-        if (staffPosition > 0) {
-            return StaffElement.Direction.DOWN;
+        if (staffPositionSp > 0) {
+            return Direction.DOWN;
         }
 
         // Exactly on the middle line → neutral default.
-        return StaffElement.Direction.UP;
+        return Direction.UP;
     }
 }

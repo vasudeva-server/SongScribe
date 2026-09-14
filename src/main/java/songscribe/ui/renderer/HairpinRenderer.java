@@ -143,13 +143,13 @@ public final class HairpinRenderer {
         Graphics2D g2,
         LineInvariants invariants
     ) {
-        var layoutResult = invariants.getLayoutResult();
+        var decorationLayouts = invariants.getLayoutResult().decorationLayouts();
 
-        for (var entry : layoutResult.getDecorationLayoutsByType(Crescendo.class)) {
+        for (var entry : decorationLayouts.getDecorationLayoutsByType(Crescendo.class)) {
             renderSingleHairpin(entry.getKey(), entry.getValue(), g2, invariants);
         }
 
-        for (var entry : layoutResult.getDecorationLayoutsByType(Diminuendo.class)) {
+        for (var entry : decorationLayouts.getDecorationLayoutsByType(Diminuendo.class)) {
             renderSingleHairpin(entry.getKey(), entry.getValue(), g2, invariants);
         }
     }

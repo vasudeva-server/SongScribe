@@ -341,6 +341,13 @@ unchanged. Those are the only `.mssw` fixtures left: `damaged`, `newer-version`,
 `lyrics-date-invalid`, and `full-line`. Reach for `UnitTest.fixtureFile` (`.mssw`-only)
 just when the legacy reader itself is the subject.
 
+**A case table is not a fixture.** Rows of inputs and expected outputs — a corpus of
+pure-function answers, an enumerated domain and its results — belong inline in the test
+class, in Java, where the compiler names the columns and the reader sees the table beside
+the promise it states. A resource file turns those columns into string parsing, puts the
+corpus out of the reader's sight, and needs a parser that is itself untested. A fixture
+file holds a *document*: a song the reader under test must read.
+
 A fixture loaded once in `@BeforeAll` is part of the class's environment, and a
 class whose tests mutate it cumulatively pins its order as
 [Test Environments](#test-environments) states.

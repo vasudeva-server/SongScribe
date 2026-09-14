@@ -93,7 +93,7 @@ public final class TempoChangeController extends AttachmentDialogController<Temp
             if (existing != null) {
                 existing.setTempo(change);
             } else {
-                element.addAttachment(new TempoChangeAttachment(element, change));
+                element.addAttachment(new TempoChangeAttachment(change));
             }
         }));
     }

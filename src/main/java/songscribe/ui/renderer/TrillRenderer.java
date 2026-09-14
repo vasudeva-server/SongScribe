@@ -141,7 +141,7 @@ public final class TrillRenderer {
     ) {
         var layoutResult = invariants.getLayoutResult();
 
-        for (var entry : layoutResult.getDecorationLayoutsByType(Trill.class)) {
+        for (var entry : layoutResult.decorationLayouts().getDecorationLayoutsByType(Trill.class)) {
             var trill = entry.getKey();
             var layout = entry.getValue();
             var anchor = trill.getAnchorElement();

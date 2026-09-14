@@ -88,7 +88,7 @@ public final class NoteColumnGeometry {
             note, beamed, direction, noteType.getElementWidthSs());
 
         // ---- accidental (extend left only) ----
-        if (note.getAccidental() != null) {
+        if (note.drawnAccidental() != null) {
             var accidentalStartXSs = NoteGeometry.getAccidentalStartXSs(note);
 
             if (accidentalStartXSs < leftSs) {

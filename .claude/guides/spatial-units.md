@@ -119,7 +119,7 @@ with an allocation cost — flag it in review.
 | Type | Unit | When |
 |------|------|------|
 | `double` | `Ss` | the default for every spatial field |
-| `int` | `Sp` | discrete pitch-grid steps |
+| `StaffPosition` | — | a discrete pitch-grid step; the type names its own unit the way `DocPx` and `ViewPx` do. The `Sp` suffix stays for a raw count of half-space steps, such as a shift delta, that is not itself a position |
 | `int` | `DocPx` | a whole-pixel offset the document persists as such |
 
 The document model never holds view pixels: zoom is per-view state, and a stored

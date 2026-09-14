@@ -32,7 +32,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
-import songscribe.dom.SlideZone;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
@@ -140,26 +140,28 @@ public final class OpNames {
 
     /**
      * Names a slide insertion by the kind of slide being attached: {@code Add Fall} for
-     * {@link SlideZone#FALL}, {@code Add Glissando} for {@link SlideZone#GLISSANDO}.
+     * {@link Slide#FALL}, {@code Add Glissando} for {@link Slide#GLISSANDO}.
      *
+     * @param slide the kind of slide being attached
      * @return the localized name for the insertion
      */
-    public static String addSlideLabel(SlideZone zone) {
-        return Strings.get(zone == SlideZone.FALL
+    public static String addSlideLabel(Slide slide) {
+        return Strings.get(slide == Slide.FALL
             ? Strings.ACTION_EDIT_OP_ADD_FALL
             : Strings.ACTION_EDIT_OP_ADD_GLISSANDO);
     }
 
     /**
-     * Names a slide deletion by subtype: {@code Remove Fall} for a {@link
-     * StaffElement.Fall}, otherwise {@code Remove Glissando}. A slide is taken off the note that
-     * carries it rather than deleted as an element of its own, so it is worded as a removal
-     * even though the sibling labels here read {@code Delete}.
+     * Names a slide deletion by kind: {@code Remove Fall} for {@link Slide#FALL}, otherwise
+     * {@code Remove Glissando}. A slide is taken off the note that carries it rather than deleted
+     * as an element of its own, so it is worded as a removal even though the sibling labels here
+     * read {@code Delete}.
      *
+     * @param slide the kind of slide being removed
      * @return the localized name for the removal
      */
-    public static String deleteSlideLabel(StaffElement.Slide slide) {
-        return Strings.get(slide instanceof StaffElement.Fall
+    public static String deleteSlideLabel(Slide slide) {
+        return Strings.get(slide == Slide.FALL
             ? Strings.ACTION_EDIT_OP_DELETE_FALL
             : Strings.ACTION_EDIT_OP_DELETE_GLISSANDO);
     }

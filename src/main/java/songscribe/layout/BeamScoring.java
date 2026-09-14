@@ -44,7 +44,7 @@ import songscribe.util.LogUtils;
  *  Every Y-up ↔ Y-down conversion happens ONLY at the LayoutEngine ↔ BeamScoring
  *  boundary. Inside this class everything is Y-up.
  *
- *      IN  (per stem):  headYUpSs  = -StaffPosition.toSs(staffPosition)
+ *      IN  (per stem):  headYUpSs  = -staffPosition.toSs()
  *                       headHalfPos = -staffPosition
  *
  *      OUT (per group): a beam position is (leftY, rightY) — the Y of the CENTER

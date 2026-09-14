@@ -25,8 +25,6 @@ import java.awt.Graphics2D;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicsState;
@@ -86,18 +84,8 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        LayoutResult layoutResult;
-
-        if (frame.hasOverrideElementX()) {
-            // Insertion note preview: compute layouts using the same stacking logic.
-            layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, frame.overrideElementXSs());
-        } else {
-            layoutResult = invariants.getLayoutResult();
-        }
-
-        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
-            element, FermataAttachment.class);
+        var decorationLayout = frame.decorationLayoutsFor(element, invariants)
+            .findAttachmentDecorationLayout(element, FermataAttachment.class);
 
         if (decorationLayout == null) {
             return;

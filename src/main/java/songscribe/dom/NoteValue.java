@@ -76,7 +76,7 @@ public enum NoteValue {
      *                  the left
      * @return the flag glyph, or {@code null} for a whole, half or quarter, which carry none
      */
-    public @Nullable SMuFLGlyph flagGlyph(StaffElement.Direction direction) {
+    public @Nullable SMuFLGlyph flagGlyph(Direction direction) {
         return switch (this) {
             case EIGHTH -> direction.isUp() ? SMuFLGlyph.FLAG_8TH_UP : SMuFLGlyph.FLAG_8TH_DOWN;
             case SIXTEENTH -> direction.isUp() ? SMuFLGlyph.FLAG_16TH_UP : SMuFLGlyph.FLAG_16TH_DOWN;
@@ -90,7 +90,21 @@ public enum NoteValue {
      * @return whether a note of this value carries a flag — an eighth or shorter
      */
     public boolean hasFlag() {
-        return flagGlyph(StaffElement.Direction.UP) != null;
+        return flagCount() > 0;
+    }
+
+    /**
+     * @return the number of flags a stemmed note of this value carries, and the number of beams
+     *     it replaces when the note is beamed instead: 0 for a whole, half or quarter, 1 for an
+     *     eighth, 2 for a sixteenth, 3 for a thirty-second
+     */
+    public int flagCount() {
+        return switch (this) {
+            case WHOLE, HALF, QUARTER -> 0;
+            case EIGHTH -> 1;
+            case SIXTEENTH -> 2;
+            case THIRTY_SECOND -> 3;
+        };
     }
 
     /**

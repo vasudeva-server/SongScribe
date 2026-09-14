@@ -79,13 +79,15 @@ runs (end):      C        C        G                 G        D        D
 None of lines 1–3 establishes a key, so the walk passes through all three — line
 2 included, whose mid-line change is separate storage from its (absent) own key
 and stops nothing by itself. The walk stops *after* line 4: that line's inherited
-entry is still brought up to date before the check, but because it has a key of
-its own the entry is never read, and line 5 needs nothing re-derived.
+entry is still brought up to date, because it is the key the line runs in the
+moment its own key is taken away, and what a key given to it is compared
+against. Line 5 needs nothing re-derived.
 
-**This one rule governs five things that never call each other**: inherited-key
-propagation, how far accidental reconciliation reaches, where a cautionary is
-derived, which lines a view must re-solve, and which measure a key is written into
-on save. Stating it once is the point; five restatements would drift.
+**This one rule answers every question about which lines a key move reaches**,
+and the song states it in one place: which lines' inherited keys are re-derived,
+which lines a view must re-solve, which key changes an edit strands, and which
+lines a key edit is measured over before it commits. Stating it once is the
+point; four restatements would drift.
 
 ## An edit moves more lines than it names
 
@@ -146,10 +148,11 @@ document is invisible for the reason above, so no edit is ever prompted to reach
 it — reading is the only thing that ever sees the whole song at once.
 
 Removing such a change moves the key in effect nowhere, which is what lets the
-whole sweep be planned before the edit commits. What it does move is the
-accidental context, so the notes after the removed pair are reconciled like any
-other pitch the user did not touch — see [clipboard.md](clipboard.md) for that
-reconciliation.
+whole sweep be planned before the edit commits. What it does move is what is in
+force: the removed change ended every accidental before it, and without it a
+chain reaches across the position it occupied. The notes after the removed pair
+keep their pitches and the chain walk decides their states, like after any
+other change — see [accidentals.md](accidentals.md) for what the walk decides.
 
 ## What a change draws depends on where it is
 
@@ -220,15 +223,16 @@ disappears, not as a menu item that will not run.
 
 ## Changing a key changes pitches
 
-A key change cancels accidentals the way a barline does: a later note at the same
-staff position inherits nothing across it and falls back to the key.
+A key change ends every accidental in force. It is the only thing that does:
+barlines, repeats and line breaks end nothing. See
+[accidentals.md](accidentals.md) for what is in force and how a chain crosses
+everything but a key change.
 
-And because it moves what every uncovered note sounds, it is reconciled like any
-other edit that disturbs accidental context — except in reach. Its reach is the
-inheritance chain, which makes a key edit **the only edit in the program whose
-reconciliation can span more than one line**, and the user sees one prompt for the
-whole range rather than one per line. See [clipboard.md](clipboard.md) for the
-reconciliation itself.
+Every note keeps its pitch through a key change. What moves is what is written:
+the chain walk decides every note's state from the change to the next key
+change, so a note the old key covered and the new one does not gains an
+accidental, and one the new key covers loses it, with nothing asked of the
+notator.
 
 Six edits move a key and owe that reach, and the interesting member of the set is
 the one that does not: **inserting a line moves no key**, because the new line is
@@ -260,12 +264,15 @@ fitting after a page-size or font change renders overflowing and flagged rather
 than being silently corrected or refused, because refusing there would make an
 existing document unopenable.
 
-**Paste is not gated on the lines it re-keys.** Its own gate measures the line
-actually receiving elements and nothing beyond it, so a line further down the
-inheritance chain that the fragment's key widens falls to the best-effort
-behaviour above. Deleting elements and deleting a line need no gate at all:
-removing content only frees room, so a sweep can never turn an edit that fitted
-into one that does not.
+**Paste is not gated on the signatures of the lines it re-keys.** Its own gate
+measures the line actually receiving elements, so a line further down the
+inheritance chain that the fragment's key signature widens falls to the
+best-effort behaviour above. Paste does measure every line whose accidentals it
+changes: it decides states on a projection of the song as it will stand, and a
+line the projected accidentals widen past its fit refuses the paste — see
+[accidentals.md](accidentals.md). Deleting elements and deleting a line need no
+gate at all: removing content only frees room, so a sweep can never turn an
+edit that fitted into one that does not.
 
 This diverges deliberately from lyric editing, where an edit that leaves a line
 overflowing is allowed to commit — the user may be shortening a syllable to

@@ -104,15 +104,15 @@ public class Tuplet extends Span {
     private final int grade;
     private int normalNotes;
     private @Nullable ElementType noteValue;
-    private int noteValueDots;
+    private Dots noteValueDots;
     private int verticalPositionSs = 0;
 
     /**
      * Creates a fully specified tuplet grouping: {@code grade} notes played in the
      * time normally occupied by {@code normalNotes} notes of the written value
-     * {@code noteValue} carrying {@code noteValueDots} dots.
+     * {@code noteValue} carrying {@code noteValueDots}.
      * <p>
-     * The written value is stored as a base type plus a dot count rather than as a
+     * The written value is stored as a base type plus its dots rather than as a
      * tick duration, so that it is notatable by construction and needs no
      * decomposition on the way out to MusicXML.
      *
@@ -121,10 +121,10 @@ public class Tuplet extends Span {
      * @param grade         The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param normalNotes   The count of {@code noteValue} notes whose time the group occupies
      * @param noteValue     The tuplet's written note value, as a base element type
-     * @param noteValueDots The dot count of the written note value
+     * @param noteValueDots The dots of the written note value
      */
     public Tuplet(StaffElement anchorElement, StaffElement endElement,
-        int grade, int normalNotes, ElementType noteValue, int noteValueDots) {
+        int grade, int normalNotes, ElementType noteValue, Dots noteValueDots) {
         super(anchorElement, endElement);
         this.grade = grade;
         this.normalNotes = normalNotes;
@@ -138,7 +138,7 @@ public class Tuplet extends Span {
         this.grade = grade;
         normalNotes = UNRESOLVED_NORMAL_NOTES;
         noteValue = null;
-        noteValueDots = 0;
+        noteValueDots = Dots.NONE;
     }
 
     /**
@@ -196,11 +196,11 @@ public class Tuplet extends Span {
 
     /**
      * X of the visual bracket's left edge — where the left arm is drawn — given the anchor column's
-     * reference X, the anchor note's stem direction, and the stem thickness. The arm sits on the
-     * anchor note's stem side (insetting a full notehead width for a down-stem, only the stem width
-     * for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it. A stemless anchor — a
-     * whole note — has no stem for the arm to sit on, so it insets the full head width whatever
-     * direction the element happens to store, putting the arm outside the head's left edge.
+     * reference X, whether the anchor draws an upward stem, and the stem thickness. The arm sits
+     * on the anchor note's stem side (insetting a full notehead width for a down-stem, only the
+     * stem width for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it. An anchor
+     * with no upward stem — a down-stem, a whole note, a rest — insets the full head width,
+     * putting the arm outside the head's left edge.
      * <p>
      * Shared by the renderer ({@code TupletRenderer.renderTupletsFromLine}) and the stacker's sloped
      * clearance ({@code StructuralStacker.computeTupletClearanceLeftYSs}) so the reserved arm position
@@ -208,17 +208,30 @@ public class Tuplet extends Span {
      * X-bounds {@code x0}/{@code x1} for both slope and placement (tuplet-bracket.cc).
      *
      * @param anchorXSs      X of the anchor column's reference point
-     * @param anchorHasStem  whether the anchor note draws a stem at all
-     * @param anchorStemUp   whether the anchor note's stem points up; meaningless, and ignored,
-     *                       when {@code anchorHasStem} is false
+     * @param anchorStemUp   whether the anchor draws an upward stem ({@link #anchorStemUp()})
      * @param stemSs         stem thickness in staff spaces
      * @param noteheadWidthSs the anchor note's own head width in staff spaces
      */
-    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorHasStem,
-        boolean anchorStemUp, double stemSs, double noteheadWidthSs) {
-        var insetSs = anchorHasStem && anchorStemUp ? stemSs : noteheadWidthSs;
+    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorStemUp,
+        double stemSs, double noteheadWidthSs) {
+        var insetSs = anchorStemUp ? stemSs : noteheadWidthSs;
 
         return anchorXSs + noteheadWidthSs - insetSs - ARM_EXTENSION_SS;
+    }
+
+    /**
+     * Whether this tuplet's anchor draws an upward stem: a stemmed note whose stem points up.
+     * An anchor with no stem to draw — a whole note, a rest — never does, whatever direction it
+     * would answer. The one statement of the test every bracket edge and the number-only rule
+     * read, so the drawn bracket, its reserved room and its hit region agree on which side of
+     * the anchor the arm sits.
+     *
+     * @return {@code true} when the anchor is a stemmed note whose stem points up
+     */
+    public boolean anchorStemUp() {
+        return getAnchorElement() instanceof NoteElement note
+            && note.getType().isNoteWithStem()
+            && note.direction().isUp();
     }
 
     /**
@@ -238,11 +251,9 @@ public class Tuplet extends Span {
      * at both its anchor and end index and its anchor note has upward stems.
      */
     public boolean isNumberOnly(Line line) {
-        var anchor = getAnchorElement();
-
         return line.findBeamAt(getAnchorElementIndex()) != null
             && line.findBeamAt(getEndElementIndex()) != null
-            && anchor.getDirection().isUp();
+            && anchorStemUp();
     }
 
     /**
@@ -316,7 +327,7 @@ public class Tuplet extends Span {
             return false;
         }
 
-        return oldType != newType || oldElement.getDotCount() != newElement.getDotCount();
+        return oldType != newType || Dottable.dotsOf(oldElement) != Dottable.dotsOf(newElement);
     }
 
     /**
@@ -356,9 +367,9 @@ public class Tuplet extends Span {
     }
 
     /**
-     * Returns the dot count of V, this tuplet's written note value.
+     * Returns the dots of V, this tuplet's written note value.
      */
-    public int getNoteValueDots() {
+    public Dots getNoteValueDots() {
         return noteValueDots;
     }
 
@@ -377,7 +388,7 @@ public class Tuplet extends Span {
      * Package-private on purpose: the dom-package load pass is the only caller, so
      * that no outside code can retroactively re-time a tuplet the user already sees.
      */
-    void resolveRatio(int normalNotes, ElementType noteValue, int noteValueDots) {
+    void resolveRatio(int normalNotes, ElementType noteValue, Dots noteValueDots) {
         this.normalNotes = normalNotes;
         this.noteValue = noteValue;
         this.noteValueDots = noteValueDots;

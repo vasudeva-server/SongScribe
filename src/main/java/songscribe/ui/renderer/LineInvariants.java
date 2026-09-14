@@ -74,8 +74,8 @@ public final class LineInvariants {
 
     /**
      * Element index to pass to {@link #colorFor(HitTarget, int)} for the target variants that
-     * ignore it. Only {@link HitTarget.Element} and {@link HitTarget.Accidental} consult the
-     * index; naming the absence keeps a bare {@code -1} out of the call sites.
+     * ignore it. Only {@link HitTarget.Element} consults the index; naming the absence keeps a
+     * bare {@code -1} out of the call sites.
      */
     public static final int NO_ELEMENT_INDEX = -1;
 
@@ -373,20 +373,18 @@ public final class LineInvariants {
      * <p>
      * {@code elementIndex} is <b>not</b> derived here: it is only ever fed to the three
      * index-keyed predicates ({@link #isElementPlaying}, {@link #isElementInPlayingTie},
-     * {@link #isElementHovered}), and only {@link HitTarget.Element} and
-     * {@link HitTarget.Accidental} consult them. Every other variant ignores the argument —
-     * pass {@link #NO_ELEMENT_INDEX}. Every call site that draws the two variants that do
-     * use it already has the index from its own loop, so deriving it here would repeat a
-     * lookup the caller has already done, for nothing.
+     * {@link #isElementHovered}), and only {@link HitTarget.Element} consults them. Every
+     * other variant ignores the argument — pass {@link #NO_ELEMENT_INDEX}. The call site that
+     * draws the one variant that does use it already has the index from its own loop, so
+     * deriving it here would repeat a lookup the caller has already done, for nothing.
      *
      * @param target       the thing being drawn, as a click would address it
      * @param elementIndex the owning element's index, or {@link #NO_ELEMENT_INDEX}
      */
     public Color colorFor(HitTarget target, int elementIndex) {
         // Playback and the hover highlight are properties of a note, not of the things
-        // hanging off it, so they apply to exactly these two variants.
-        var indexedChecksApply = target instanceof HitTarget.Element
-                || target instanceof HitTarget.Accidental;
+        // hanging off it, so they apply to exactly this variant.
+        var indexedChecksApply = target instanceof HitTarget.Element;
 
         if (indexedChecksApply
                 && (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex))) {

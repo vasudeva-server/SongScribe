@@ -126,7 +126,7 @@ public final class SelectionCoordinator implements Disposable {
     // Applicability cache: maps action to whether it applies to any element in the selection.
     @Nullable
     private ElementSelection applicabilityCacheSelection = null;
-    private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
+    private final Map<UIAction.Reflectable<?>, Boolean> applicabilityCache = new IdentityHashMap<>();
 
     private final MessageSubscription subscription;
 
@@ -866,11 +866,13 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Returns whether the given reflectable action is applicable to any element
-     * in the current selection. Results are cached per selection.
-     * Returns {@code false} if there is no active selection.
+     * Returns whether the given reflectable action is applicable to the current selection: it
+     * admits at least one selected element, and {@link UIAction.Reflectable#canToggle} holds for
+     * every element it admits. Results are cached per selection, and dropped when the song
+     * changes, since the second condition reads element state. Returns {@code false} if there is
+     * no active selection.
      */
-    public boolean isApplicableToSelection(UIAction.Reflectable action) {
+    public <E extends StaffElement> boolean isApplicableToSelection(UIAction.Reflectable<E> action) {
         var selection = getSelection();
 
         if (selection == null) {
@@ -883,16 +885,23 @@ public final class SelectionCoordinator implements Disposable {
             applicabilityCache.clear();
         }
 
-        return applicabilityCache.computeIfAbsent(action, a -> {
+        return applicabilityCache.computeIfAbsent(action, ignored -> {
             var line = selection.line();
+            var applicable = false;
 
             for (var i = selection.begin(); i <= selection.end(); i++) {
-                if (a.appliesTo(line.getElement(i))) {
-                    return true;
+                if (action.admit(line.getElement(i)) == null) {
+                    continue;
                 }
+
+                if (!action.canToggle(line, i)) {
+                    return false;
+                }
+
+                applicable = true;
             }
 
-            return false;
+            return applicable;
         });
     }
 

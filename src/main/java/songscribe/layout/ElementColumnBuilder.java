@@ -27,6 +27,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
+import songscribe.dom.Direction;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -169,8 +170,8 @@ public class ElementColumnBuilder {
 
         // Calculate horizontal extents
         var leftExtentSs = calculateLeftExtentSs(element);
-        var rightExtentSs = calculateRightExtentSs(element, beamed, element.getDirection());
-        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed, element.getDirection());
+        var rightExtentSs = calculateRightExtentSs(element, beamed);
+        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, beamed);
 
         // Calculate stem positions
         var stemTopSs = calculateStemTopSs(element);
@@ -249,8 +250,8 @@ public class ElementColumnBuilder {
         var extentSs = 0.0;
 
         // Subtract accidental width if present
-        if (element.getAccidental() != null) {
-            var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(element);
+        if (element instanceof NoteElement note && note.drawnAccidental() != null) {
+            var accidentalWidthSs = NoteGeometry.getAccidentalWidthSs(note);
             extentSs -= (accidentalWidthSs + NoteGeometry.ACCIDENTAL_PADDING_SS);
         }
 
@@ -266,11 +267,10 @@ public class ElementColumnBuilder {
      *
      * @param element   The element
      * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
-     * @param direction The stem direction; affects which stem anchor is used
      * @return Right extent in ss relative to element head left edge (glyph origin)
      */
-    public static double calculateRightExtentSs(StaffElement element, boolean beamed, StaffElement.Direction direction) {
-        return calculateRightExtentInternal(element, beamed, direction, true);
+    public static double calculateRightExtentSs(StaffElement element, boolean beamed) {
+        return calculateRightExtentInternal(element, beamed, true);
     }
 
     /**
@@ -282,17 +282,20 @@ public class ElementColumnBuilder {
      *
      * @param element   The element
      * @param beamed    {@code true} if the element is part of a beam group (flags are suppressed)
-     * @param direction The stem direction; affects which stem anchor is used
      * @return Right extent in ss relative to element head left edge (glyph origin), dots and fall excluded
      */
-    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed, StaffElement.Direction direction) {
-        return calculateRightExtentInternal(element, beamed, direction, false);
+    public static double calculateRightExtentExcludingAugmentationSs(StaffElement element, boolean beamed) {
+        return calculateRightExtentInternal(element, beamed, false);
     }
 
+    /**
+     * The direction that decides a note's right extent is the drawn one
+     * ({@link NoteGeometry#effectiveDirection}): the flag hangs off the stem the renderer
+     * draws, and the dots sit beside it.
+     */
     private static double calculateRightExtentInternal(
         StaffElement element,
         boolean beamed,
-        StaffElement.Direction direction,
         boolean includeAugmentation) {
 
         // Non-note elements (rests, barlines, breath marks, repeats) use their
@@ -300,6 +303,8 @@ public class ElementColumnBuilder {
         if (!(element instanceof NoteElement note)) {
             return element.getGlyphWidthSs();
         }
+
+        var direction = NoteGeometry.effectiveDirection(note);
 
         // Element head right edge — per type, so a whole note is measured as a whole note and a
         // grace note as the grace-scaled head.
@@ -326,7 +331,7 @@ public class ElementColumnBuilder {
         // Gated on includeAugmentation (like dots) so the fall only expands the minimum-spacing
         // extent, not the comfortable-spacing extent — the next element shifts only when the minimum
         // gap would otherwise be violated (refs #492).
-        if (includeAugmentation && element.hasFall()) {
+        if (includeAugmentation && note.hasFall()) {
             var fallAdvanceWidthSs = SMuFLMetadata.advanceWidthSs(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
             // The fall anchors after the notehead/dots right edge, not the flag, so compute its
             // extent independently and take the max to avoid stacking it on top of the flag width.
@@ -364,17 +369,15 @@ public class ElementColumnBuilder {
         var elementType = element.getType();
 
         // Rests and stemless elements: use the element's own glyph bbox top
-        if (!elementType.isNoteWithStem()) {
+        if (!(element instanceof NoteElement note) || !elementType.isNoteWithStem()) {
             return elementType.getNoteheadTopOffsetSs();
         }
 
-        var direction = NoteGeometry.effectiveDirection(element);
+        var direction = NoteGeometry.effectiveDirection(note);
 
         // Stem up: stem extends upward, so the top is the stem tip (shortened if forced)
         if (direction.isUp()) {
-            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
-                element.getStaffPosition(), direction, elementType.isGraceNote());
-            return -(NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs);
+            return -(NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note));
         }
 
         // Stem down: top is the notehead top
@@ -400,17 +403,15 @@ public class ElementColumnBuilder {
         var elementType = element.getType();
 
         // Rests and stemless elements: use the element's own glyph bbox bottom
-        if (!elementType.isNoteWithStem()) {
+        if (!(element instanceof NoteElement note) || !elementType.isNoteWithStem()) {
             return elementType.getNoteheadBottomOffsetSs();
         }
 
-        var direction = NoteGeometry.effectiveDirection(element);
+        var direction = NoteGeometry.effectiveDirection(note);
 
         // Stem down: stem extends downward, so the bottom is the stem tip (shortened if forced)
         if (direction.isDown()) {
-            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
-                element.getStaffPosition(), direction, elementType.isGraceNote());
-            return NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs;
+            return NoteGeometry.stemLengthSs(elementType) - NoteGeometry.forcedShorteningSs(note);
         }
 
         // Stem up: bottom is the notehead bottom

@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
@@ -32,9 +31,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.DocumentScale;
-import songscribe.dom.SlideZone;
-import songscribe.dom.Song;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 
 /**
@@ -58,9 +55,8 @@ import songscribe.dom.StaffElement;
  * <p>
  * The columns surrounding the insertion point carry their real syllable widths whenever a
  * {@link LyricRenderMetrics} is supplied, so previews are spaced by the same lyric rules as the
- * committed layout. Callers with no lyric metrics to hand (file load, where the positions are
- * bootstrap values the first layout overwrites) may pass {@code null}, which falls back to
- * syllable-less columns.
+ * committed layout. Callers with no lyric metrics to hand may pass {@code null}, which falls
+ * back to syllable-less columns.
  */
 public final class InsertionSpacingCalculator {
 
@@ -141,51 +137,18 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Result of a fragment insertion spacing calculation: the X position of every fragment clone,
-     * the single shift to apply to all surviving elements after the fragment, and the projected
-     * spring chain its fit gate solves. The multi-element analogue of {@link InsertionResult}.
+     * Result of a fragment insertion spacing calculation: the projected spring chain its fit gate
+     * solves. The multi-element analogue of {@link InsertionResult}.
      *
-     * @param cloneXPositionsSs            X position for each fragment clone, in fragment order
-     * @param shiftForSubsequentElementsSs Amount to shift every surviving element after the
-     *                                     fragment (negative when a paste-replace pulls the
-     *                                     tail left)
-     * @param line                         The line the fragment lands on
-     * @param projectedColumns             The line's columns as {@link LayoutEngine} will build them
-     *                                     after the operation — the surviving columns with the
-     *                                     fragment's clones spliced in, including the terminal
-     *                                     barline — what {@link #fitsWithinLine} solves
+     * @param line             The line the fragment lands on
+     * @param projectedColumns The line's columns as {@link LayoutEngine} will build them after the
+     *                         operation — the surviving columns with the fragment's clones spliced
+     *                         in, including the terminal barline — what {@link #fitsWithinLine}
+     *                         solves
      */
-    public record FragmentInsertionResult(
-        List<Double> cloneXPositionsSs,
-        double shiftForSubsequentElementsSs,
-        Line line,
-        List<ElementColumn> projectedColumns
-    ) {
+    public record FragmentInsertionResult(Line line, List<ElementColumn> projectedColumns) {
         public FragmentInsertionResult {
-            cloneXPositionsSs = List.copyOf(cloneXPositionsSs);
             projectedColumns = List.copyOf(projectedColumns);
-        }
-
-        /**
-         * Pairs each of {@code fragment}'s elements with the position solved for it, ready for
-         * {@link Line#insertRun}. The pairing is made here because this is where both halves were
-         * produced together, so no caller has to keep two lists in step.
-         *
-         * @param fragment the same fragment this result was calculated for, in the same order
-         * @return the elements with their positions, in fragment order
-         * @throws IllegalArgumentException if {@code fragment} is not the length this result was
-         *     calculated for, which means it is not the fragment these positions describe
-         */
-        public List<Line.PlacedElement> place(List<? extends StaffElement> fragment) {
-            if (fragment.size() != cloneXPositionsSs.size()) {
-                throw new IllegalArgumentException(
-                    "fragment of " + fragment.size() + " elements does not match "
-                        + cloneXPositionsSs.size() + " solved positions");
-            }
-
-            return IntStream.range(0, fragment.size())
-                .mapToObj(i -> new Line.PlacedElement(fragment.get(i), cloneXPositionsSs.get(i)))
-                .toList();
         }
 
         /**
@@ -241,56 +204,6 @@ public final class InsertionSpacingCalculator {
         // Prevent instantiation - utility class with static methods only
     }
 
-    private static double elementXSs(StaffElement element, @Nullable LayoutResult layout) {
-        return layout != null
-            ? layout.getElementXSs(element)
-            : DocumentScale.pxToSs(element.getXOffsetPx());
-    }
-
-    /**
-     * Calculates the X position for appending an element to the end of a line.
-     *
-     * @param line               The line to append to
-     * @param elementToAppend    The element being appended
-     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return X position in staff spaces where the element should be placed
-     */
-    public static double calculateAppendPositionSs(
-        Line line,
-        StaffElement elementToAppend,
-        @Nullable LayoutResult layout,
-        @Nullable LyricRenderMetrics lyricRenderMetrics) {
-
-        return calculateInsertion(line, elementToAppend, line.elementCount(), layout, lyricRenderMetrics)
-            .insertedElementXSs();
-    }
-
-    /**
-     * Calculates the X position for {@code nextElement} when placed after {@code currentElement},
-     * using the current X position of {@code currentElement}.
-     * <p>
-     * This is useful for paste operations where elements have already been positioned and
-     * you need to determine where the next element in sequence should go. Neither element is
-     * looked up on a line, so the pair is spaced with no lyric context.
-     *
-     * @param currentElement An element with its X position already set
-     * @param nextElement    The element to be placed after currentElement
-     * @return X position where nextElement should be placed
-     */
-    public static double calculateNextElementXSs(StaffElement currentElement, StaffElement nextElement) {
-        var currentColumn = createLightweightColumn(currentElement);
-        currentColumn.setXSs(elementXSs(currentElement, null));
-        var nextColumn = createLightweightColumn(nextElement);
-
-        // No line is involved in this paste-position lookup, so there is no song line rest to read;
-        // the pair is spaced against the default line rest.
-        return currentColumn.getXSs()
-            + HorizontalSpacingCalculator.buildSpring(
-                currentColumn, nextColumn, Song.DEFAULT_REST_LENGTH_SS).naturalLengthSs();
-    }
-
     /**
      * Calculates both the X position for an inserted element and the shift amount for subsequent elements.
      * <p>
@@ -300,7 +213,8 @@ public final class InsertionSpacingCalculator {
      * @param line               The line being modified (before insertion)
      * @param insertedElement    The element being inserted
      * @param insertIndex        The index where the element will be inserted (0-based)
-     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param layout             The line's current layout, which the neighbours' positions are
+     *                           read from
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return An {@link InsertionResult} with the element's X position, the shift for subsequent
@@ -310,7 +224,7 @@ public final class InsertionSpacingCalculator {
         Line line,
         StaffElement insertedElement,
         int insertIndex,
-        @Nullable LayoutResult layout,
+        LayoutResult layout,
         @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var elementCount = line.elementCount();
@@ -343,7 +257,7 @@ public final class InsertionSpacingCalculator {
             insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         } else {
             var prevElement = columns.get(splicedIndex - 1).getElement();
-            insertedElementXSs = elementXSs(prevElement, layout) + springs.get(splicedIndex - 1).naturalLengthSs();
+            insertedElementXSs = layout.getElementXSs(prevElement) + springs.get(splicedIndex - 1).naturalLengthSs();
         }
 
         insertedColumn.setXSs(insertedElementXSs);
@@ -355,7 +269,7 @@ public final class InsertionSpacingCalculator {
             var requiredNextXSs = insertedElementXSs + springs.get(splicedIndex).naturalLengthSs();
             // Shift = (where next needs to be) - (where it currently is), never negative:
             // a gap that is already wide enough stays as it is.
-            shiftSs = Math.max(0, requiredNextXSs - elementXSs(nextElement, layout));
+            shiftSs = Math.max(0, requiredNextXSs - layout.getElementXSs(nextElement));
         }
 
         // Projected line width: max of the inserted element's right edge and the last real
@@ -449,16 +363,14 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates positions and fit for inserting a multi-element fragment at {@code insertIndex},
+     * Calculates the fit for inserting a multi-element fragment at {@code insertIndex},
      * optionally replacing a deleted range (paste-replace). Pure measurement — the line and the
-     * fragment elements are never mutated; all positioning happens on lightweight columns.
+     * fragment elements are never mutated; the projection is built on lightweight columns.
      * <p>
      * The multi-element analogue of {@link #calculateInsertion}: it builds the projected line the
      * commit will produce — surviving predecessors, the fragment's clones, then the surviving
-     * successors — spaces the clones by the natural spring lengths from the predecessor's current
-     * position, and derives the single trailing shift for the tail. Fit is the same compress-to-fit
-     * solve over the same chain the layout engine runs, including the terminal barline, so an insert
-     * the gate accepts always lays out.
+     * successors. Fit is the same compress-to-fit solve over the same chain the layout engine
+     * runs, including the terminal barline, so an insert the gate accepts always lays out.
      * <p>
      * The surrounding columns and the fragment's own clones carry their real syllable widths
      * whenever a {@link LyricRenderMetrics} is supplied, mirroring {@link #calculateInsertion}.
@@ -469,18 +381,15 @@ public final class InsertionSpacingCalculator {
      * @param insertIndex        The index where the fragment's first element will land
      *                           (must equal {@code deleteRange.begin()} when a range is given)
      * @param deleteRange        The effective range a paste-replace deletes first, or null for pure insertion
-     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
-     * @return A {@link FragmentInsertionResult} with per-clone X positions, the trailing shift,
-     *         and the projected spring chain its fit gate solves
+     * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate solves
      */
     public static FragmentInsertionResult calculateFragmentInsertion(
         Line line,
         List<? extends StaffElement> fragment,
         int insertIndex,
         @Nullable DeletedRange deleteRange,
-        @Nullable LayoutResult layout,
         @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (fragment.isEmpty()) {
@@ -507,8 +416,7 @@ public final class InsertionSpacingCalculator {
             }
         }
 
-        // The positioning chain, terminal barline excluded (layout pins it flush-right rather
-        // than shifting it): surviving predecessors, the fragment's clones, then the surviving
+        // The projected chain: surviving predecessors, the fragment's clones, then the surviving
         // successors — the line as it will read after delete+insert. A paste-replace drops the
         // deleted range by skipping straight from the predecessors to the element past the range.
         var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
@@ -519,7 +427,6 @@ public final class InsertionSpacingCalculator {
             columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
         }
 
-        var fragmentStart = columns.size();
         var activeVerse = line.getSong().getActiveVerse();
 
         // A key signature's width depends on the key it cancels as well as the key it establishes,
@@ -546,53 +453,12 @@ public final class InsertionSpacingCalculator {
             columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
         }
 
-        // Natural spring lengths drive where each clone lands, measured from the predecessor's
-        // CURRENT position so only what follows the insertion point moves — the same rule
-        // calculateInsertion uses for a single element, chained across the fragment's clones.
-        var springs = LyricLift.applyLyricLift(
-            HorizontalSpacingCalculator.buildSprings(columns, line), columns);
-        var cloneXPositionsSs = new ArrayList<Double>(fragment.size());
-        double cloneXSs;
+        // The fit gate solves the SAME chain LayoutEngine will after the commit — the projected
+        // columns PLUS the auto-maintained terminal barline — through the shared solveLine,
+        // exactly as calculateInsertion does for a single element.
+        appendTerminalIfPresent(columns, line, columnBuilder);
 
-        if (fragmentStart == 0) {
-            cloneXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-        } else {
-            var predecessor = columns.get(fragmentStart - 1).getElement();
-            cloneXSs = elementXSs(predecessor, layout) + springs.get(fragmentStart - 1).naturalLengthSs();
-        }
-
-        cloneXPositionsSs.add(cloneXSs);
-
-        for (var k = 1; k < fragment.size(); k++) {
-            cloneXSs += springs.get(fragmentStart + k - 1).naturalLengthSs();
-            cloneXPositionsSs.add(cloneXSs);
-        }
-
-        // The single trailing shift for every surviving successor: where the first survivor must
-        // sit (last clone position + its spring) minus where it currently sits. A pure insertion
-        // only ever pushes the tail right; a paste-replace may pull it left when the fragment is
-        // narrower than the deleted range.
-        var lastCloneIndex = fragmentStart + fragment.size() - 1;
-        var shiftSs = 0.0;
-
-        if (lastCloneIndex + 1 < columns.size()) {
-            var successor = columns.get(lastCloneIndex + 1).getElement();
-            var requiredSuccessorXSs = cloneXSs + springs.get(lastCloneIndex).naturalLengthSs();
-            shiftSs = requiredSuccessorXSs - elementXSs(successor, layout);
-
-            if (deleteRange == null) {
-                shiftSs = Math.max(0, shiftSs);
-            }
-        }
-
-        // The fit gate solves the SAME chain LayoutEngine will after the commit — the positioning
-        // columns PLUS the auto-maintained terminal barline (excluded above because layout pins it
-        // flush-right, not shifted) — through the shared solveLine, exactly as calculateInsertion
-        // does for a single element.
-        var fitColumns = new ArrayList<ElementColumn>(columns);
-        appendTerminalIfPresent(fitColumns, line, columnBuilder);
-
-        return new FragmentInsertionResult(cloneXPositionsSs, shiftSs, line, fitColumns);
+        return new FragmentInsertionResult(line, columns);
     }
 
     /**
@@ -655,57 +521,19 @@ public final class InsertionSpacingCalculator {
      *
      * @param line               The line to check (before insertion)
      * @param atIndex            The index where the grace note would be inserted
-     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param layout             The line's current layout, which the neighbours' positions are
+     *                           read from
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return {@code true} if the grace note fits on the line
      */
     public static boolean hasRoomForGraceNote(
-        Line line, int atIndex, @Nullable LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        Line line, int atIndex, LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var staffRightMarginSs = line.getSong().getLineWidthSs().value();
         var graceNote = ElementType.GRACE_QUAVER.newInstance();
         return calculateInsertion(line, graceNote, atIndex, layout, lyricRenderMetrics)
             .fitsWithinLine(staffRightMarginSs);
-    }
-
-    /**
-     * Determines whether a host note (crotchet) will fit on a line immediately after the grace
-     * note at the given index. The grace note must already be in the line.
-     * <p>
-     * Uses element xOffset values since the layout may be stale after grace note insertion.
-     *
-     * @param line               The line containing the grace note (after insertion)
-     * @param graceNoteIndex     The index of the grace note already in the line
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return {@code true} if a host note fits after the grace note
-     */
-    public static boolean hasRoomForHostNoteAfterGrace(
-        Line line, int graceNoteIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
-
-        var staffRightMarginSs = line.getSong().getLineWidthSs().value();
-        var hostNote = ElementType.CROTCHET.newInstance();
-        return calculateInsertion(line, hostNote, graceNoteIndex + 1, null, lyricRenderMetrics)
-            .fitsWithinLine(staffRightMarginSs);
-    }
-
-    /**
-     * Determines whether a fall will fit on a line when applied to the element at the given index.
-     * <p>
-     * A single-index convenience over {@link #hasRoomForSlides}, which holds the implementation and
-     * documents the projection.
-     *
-     * @param line               The line to check
-     * @param sourceIndex        The index of the element the fall would be applied to
-     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
-     *                           line as if it had no lyrics
-     * @return {@code true} if the fall fits on the line
-     */
-    public static boolean hasRoomForFall(
-        Line line, int sourceIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
-
-        return hasRoomForSlides(line, new int[] { sourceIndex }, SlideZone.FALL, lyricRenderMetrics);
     }
 
     /**
@@ -734,13 +562,13 @@ public final class InsertionSpacingCalculator {
      *                           terminal cannot carry a slide, and an index naming it would leave
      *                           that slide out of the projection entirely, so one that does refuses
      *                           the whole batch
-     * @param zone               The kind of slide being applied
+     * @param slide              The kind of slide being applied
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return {@code true} if the slides fit on the line
      */
     public static boolean hasRoomForSlides(
-        Line line, int[] sourceIndices, SlideZone zone, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        Line line, int[] sourceIndices, Slide slide, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -753,12 +581,12 @@ public final class InsertionSpacingCalculator {
                 return false;
             }
 
-            var sourceElement = line.getElement(sourceIndex);
+            var sourceElement = line.noteAt(sourceIndex);
 
             // Slide already present — it claims no further space, so the live element measures it.
-            if (!zone.matches(sourceElement)) {
+            if (sourceElement.getSlide() != slide) {
                 var sourceWithSlide = sourceElement.clone();
-                zone.applyTo(sourceWithSlide);
+                sourceWithSlide.setSlide(slide);
                 sourcesWithSlide.put(sourceIndex, sourceWithSlide);
             }
         }
@@ -774,6 +602,37 @@ public final class InsertionSpacingCalculator {
             projectedElements.add(sourcesWithSlide.getOrDefault(i, line.getElement(i)));
         }
 
+        return fitsInPlace(line, projectedElements, lyricRenderMetrics);
+    }
+
+    /**
+     * Returns whether {@code line} still fits its song's line width once it reads as
+     * {@code projectedElements}: the in-place gate every modification that widens a column asks —
+     * a slide, a dot, a duration swap, or a chain walk stamping an accidental on a note that drew
+     * none. Pure measurement — neither the line nor the projected elements are mutated.
+     * <p>
+     * The verdict is {@link #calculateModification}'s
+     * {@link ModificationResult#fitsWithinLine compress-to-fit} solve at the song's line width, so a
+     * modification this accepts always lays out, and a step added to the solve reaches this gate on
+     * its own.
+     *
+     * @param line               The line being modified, in its pre-modification state
+     * @param projectedElements  The line's effective elements as they will read after the
+     *                           modification, in element order: detached stand-ins at the changed
+     *                           positions and the live elements everywhere else, or the live
+     *                           elements throughout to measure the line as it stands
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
+     * @return {@code true} unless the projected line overflows the song's line width with every
+     *         gap frozen at its strut
+     * @throws IllegalArgumentException when {@code projectedElements} is empty, or its size differs
+     *                                  from {@code line.effectiveElementCount()}
+     */
+    public static boolean fitsInPlace(
+        Line line,
+        List<? extends StaffElement> projectedElements,
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
         return calculateModification(line, projectedElements, lyricRenderMetrics)
             .fitsWithinLine(line.getSong().getLineWidthSs().value());
     }
@@ -784,7 +643,7 @@ public final class InsertionSpacingCalculator {
      * {@code baseWidthSs} unchanged when the line has no effective elements.
      */
     private static double projectedWidthWithLastShiftSs(
-        Line line, double baseWidthSs, double shiftSs, @Nullable LayoutResult layout) {
+        Line line, double baseWidthSs, double shiftSs, LayoutResult layout) {
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -794,7 +653,7 @@ public final class InsertionSpacingCalculator {
 
         var lastElement = line.getElement(effectiveCount - 1);
         var lastColumn = createLightweightColumn(lastElement);
-        lastColumn.setXSs(elementXSs(lastElement, layout) + shiftSs);
+        lastColumn.setXSs(layout.getElementXSs(lastElement) + shiftSs);
 
         return Math.max(baseWidthSs, lastColumn.getRightEdgeXSs());
     }
@@ -813,8 +672,8 @@ public final class InsertionSpacingCalculator {
     private static ElementColumn createLightweightColumn(StaffElement element) {
         // Calculate geometric extents using ElementColumnBuilder's static methods
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
-        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false, element.getDirection());
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false);
+        var rightExtentExcludingAugmentationSs = ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false);
 
         // For insertion operations, we don't need stem positions or beam group info
         // since we're only calculating horizontal spacing

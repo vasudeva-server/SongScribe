@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.lifecycle.Disposable;
@@ -141,19 +142,47 @@ public class UIAction extends AbstractAction implements Disposable {
         }
     }
 
-    public interface Reflectable extends Selectable {
+    /**
+     * An action reflecting or editing one attribute of an element of type {@code E}. For
+     * example, an accidental action's {@code E} is {@link songscribe.dom.NoteElement}; a
+     * barline action's is {@link StaffElement} itself.
+     */
+    public interface Reflectable<E extends StaffElement> extends Selectable {
         /**
-         * Whether this action's attribute is applicable to the given element.
-         * For example, accidental actions return false for rests;
-         * barline actions return false for notes.
+         * Narrows the given element to the type this action's attribute lives on, or returns
+         * {@code null} when this action does not act on it at all — for example, an accidental
+         * action admits no rest, and a barline action admits no note.
+         *
+         * @param element the element to test
+         * @return the same element, narrowed, or {@code null} if this action does not apply to it
          */
-        boolean appliesTo(StaffElement element);
+        @Nullable E admit(StaffElement element);
 
         /**
          * Whether the given element has the attribute this action represents.
-         * Only called when appliesTo() returns true.
+         *
+         * @param element an element {@link #admit} returned
+         * @return {@code true} when the element carries the attribute, so the action shows as
+         *     selected for it
          */
-        boolean matchesElement(StaffElement element);
+        boolean matchesElement(E element);
+
+        /**
+         * Whether toggling this action on the element at {@code index} is allowed now:
+         * selecting it where {@link #matchesElement} is {@code false}, deselecting it where it
+         * is {@code true}. An action whose attribute can always be applied and removed inherits
+         * the default; one whose toggle depends on the element's surroundings — an accidental,
+         * which the chain at its staff position decides — overrides it.
+         *
+         * @param line  the line holding the element
+         * @param index the element's index in {@code line}; the element there is one
+         *              {@link #admit} returned
+         * @return {@code true} when the toggle is allowed, which is what enables the action's
+         *     control for that element; {@code true} by default
+         */
+        default boolean canToggle(Line line, int index) {
+            return true;
+        }
     }
 
     /**
@@ -177,13 +206,15 @@ public class UIAction extends AbstractAction implements Disposable {
     /**
      * A reflectable action that modifies an element's attributes in place.
      */
-    public interface ElementModifiable extends Reflectable {
+    public interface ElementModifiable<E extends StaffElement> extends Reflectable<E> {
         /**
-         * Apply or remove this action's attribute on the given element.
-         * @param element  the element to modify
+         * Apply or remove this action's attribute on the given element. {@code line} and
+         * {@code index} locate the element the call acts on or stands in for.
+         *
+         * @param element  the element to modify, an element {@link #admit} returned
          * @param selected true to apply the attribute, false to remove it
          */
-        void applyToElement(StaffElement element, boolean selected);
+        void applyToElement(Line line, int index, E element, boolean selected);
 
         /**
          * The set of {@link ElementField} tags identifying which element fields
@@ -208,7 +239,7 @@ public class UIAction extends AbstractAction implements Disposable {
      * site, so a new width-changing action states that fact where it is defined instead of
      * silently skipping the check.
      */
-    public interface WidensColumn extends Reflectable {
+    public interface WidensColumn<E extends StaffElement> extends Reflectable<E> {
     }
 
     /**
@@ -218,14 +249,15 @@ public class UIAction extends AbstractAction implements Disposable {
      * <p>Always widens: a replacement can be any element type, so its extent is unrelated to the
      * one it displaces.
      */
-    public interface ElementReplaceable extends WidensColumn {
+    public interface ElementReplaceable<E extends StaffElement> extends WidensColumn<E> {
         /**
          * Create a replacement element with this action's attribute applied.
-         * @param element  the source element to base the replacement on
+         * @param element  the source element to base the replacement on, an element
+         *                 {@link #admit} returned
          * @param selected true to apply the attribute, false to skip
          * @return the replacement element
          */
-        StaffElement createReplacement(StaffElement element, boolean selected);
+        StaffElement createReplacement(E element, boolean selected);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UIAction.class);
@@ -667,7 +699,7 @@ public class UIAction extends AbstractAction implements Disposable {
 
         var coordinator = scoreView.getSelectionCoordinator();
 
-        if (this instanceof Reflectable reflectable) {
+        if (this instanceof Reflectable<?> reflectable) {
             return coordinator.isApplicableToSelection(reflectable);
         }
 
@@ -735,7 +767,7 @@ public class UIAction extends AbstractAction implements Disposable {
      * @return true if the action was applied to the selection (caller should skip normal flow)
      */
     protected boolean applyToSelectionIfActive() {
-        if (!(this instanceof Reflectable reflectable)) {
+        if (!(this instanceof Reflectable<?> reflectable)) {
             return false;
         }
 

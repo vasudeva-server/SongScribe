@@ -22,120 +22,76 @@ package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.shape.AccentShape;
-import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
-
 /**
- * Represents an articulation marking on a staff element.
+ * One articulation marking on a note: a {@link NoteElement} child whose only state of its own is
+ * its {@link ArticulationType}, which decides what it draws and how much room it takes.
  * <p>
- * Articulations modify how an element is played (staccato, accent, etc.).
- * They are drawn opposite the stem, outward from the staff:
- * <ul>
- *   <li>For downward stems: articulations go above the staff</li>
- *   <li>For upward stems: articulations go below the staff</li>
- * </ul>
+ * The note owns it. {@link NoteElement#addArticulation} makes the note its parent and
+ * {@link NoteElement#removeArticulation} detaches it, so {@link #owner()} is answered from the
+ * parent-element pointer every {@link LineElement} carries rather than from a pointer of its own.
  */
-public class Articulation extends LineElement implements IntrinsicHeight {
+public final class Articulation extends LineElement implements IntrinsicHeight {
 
-    // SMuFL bbox-derived dimensions in staff-space units
-    private static final double STACCATO_WIDTH_SS;
-    private static final double STACCATO_HEIGHT_SS;
-
-    // AccentShape is a custom (non-SMuFL) wedge, so its dimensions come from its own bounds.
-    private static final double ACCENT_WIDTH_SS;
-    private static final double ACCENT_HEIGHT_SS;
-
-    static {
-        var staccatoBBox = SMuFLMetadata.bboxSs(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-        STACCATO_WIDTH_SS = staccatoBBox.widthSs();
-        STACCATO_HEIGHT_SS = staccatoBBox.heightSs();
-
-        var accentBounds = AccentShape.accent().getBounds2D();
-        ACCENT_WIDTH_SS = accentBounds.getWidth();
-        ACCENT_HEIGHT_SS = accentBounds.getHeight();
-    }
-
-    /** The staff element this articulation belongs to. */
-    private @Nullable StaffElement ownerElement;
-
-    /** The type of articulation (STACCATO, ACCENT, etc.). */
-    private ArticulationType type;
+    private final ArticulationType type;
 
     /**
-     * Creates a new articulation of the specified type.
+     * Creates an articulation of the given kind, not yet on any note.
      *
-     * @param type The articulation type
+     * @param type the articulation kind
      */
     public Articulation(ArticulationType type) {
         this.type = type;
     }
 
     /**
-     * Creates a new articulation attached to a staff element.
+     * Returns a copy of this articulation, on no note yet, carrying its type and its
+     * {@link LineElement}-level state. {@link NoteElement#copyArticulationsFrom} reaches it, and
+     * gives the copy its note.
+     * <p>
+     * The class is final so this is the whole copy: there is no subclass whose state could be
+     * left behind, and the base state travels through {@link LineElement#copyBaseStateFrom}
+     * rather than being restated here.
      *
-     * @param parent The owner element
-     * @param type   The articulation type
+     * @return an articulation sharing no mutable state with this one
      */
-    public Articulation(@Nullable StaffElement parent, ArticulationType type) {
-        ownerElement = parent;
-        this.type = type;
-        // The parent and line pointers are not set here. StaffElement.addArticulation —
-        // which every caller reaches immediately — routes through LineElement.addChild,
-        // and that owns both.
+    public Articulation copy() {
+        var copy = new Articulation(type);
+        copy.copyBaseStateFrom(this);
+
+        return copy;
     }
 
     /**
-     * Returns the staff element this articulation belongs to.
+     * Returns the note this articulation is on.
+     *
+     * @return the owning note, or {@code null} while it is on none — before
+     *         {@link NoteElement#addArticulation} and after {@link NoteElement#removeArticulation}
      */
-    public @Nullable StaffElement getOwnerElement() {
-        return ownerElement;
+    public @Nullable NoteElement owner() {
+        return (NoteElement) getParentElement();
     }
 
     /**
-     * Sets the staff element this articulation belongs to.
-     */
-    public void setOwnerElement(@Nullable StaffElement ownerElement) {
-        this.ownerElement = ownerElement;
-    }
-
-    /**
-     * Returns the articulation type.
+     * Returns what kind of articulation this is.
+     *
+     * @return the type; fixed for the articulation's life
      */
     public ArticulationType getType() {
         return type;
     }
 
     /**
-     * Sets the articulation type.
-     */
-    public void setType(ArticulationType type) {
-        this.type = type;
-    }
-
-    /**
-     * Returns whether this is a staccato articulation.
-     */
-    public boolean isStaccato() {
-        return type == ArticulationType.STACCATO;
-    }
-
-    /**
-     * Returns whether this is an accent articulation.
-     */
-    public boolean isAccent() {
-        return type == ArticulationType.ACCENT;
-    }
-
-    /**
-     * Returns the glyph's own width in staff-space units, derived from SMuFL bounding box data.
+     * Returns the width of this articulation's ink, which is what the stacker reserves for it.
+     *
+     * @return {@link ArticulationType#intrinsicWidthSs()} for this articulation's type, in
+     *     staff spaces
      */
     public double intrinsicWidthSs() {
-        return isStaccato() ? STACCATO_WIDTH_SS : ACCENT_WIDTH_SS;
+        return type.intrinsicWidthSs();
     }
 
     @Override
     public double intrinsicHeightSs() {
-        return isStaccato() ? STACCATO_HEIGHT_SS : ACCENT_HEIGHT_SS;
+        return type.intrinsicHeightSs();
     }
 }

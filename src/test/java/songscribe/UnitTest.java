@@ -359,7 +359,7 @@ public abstract class UnitTest {
         var line = detachedLine();
         var note = crotchet();
         line.addElement(note);
-        note.addAttachment(new AnnotationAttachment(note, new Annotation(text)));
+        note.addAttachment(new AnnotationAttachment(new Annotation(text)));
         return line;
     }
 

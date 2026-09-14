@@ -27,7 +27,6 @@ import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.Song;
-import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
@@ -36,32 +35,20 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
      * A successfully loaded song, plus everything the loader wants to tell the
      * caller about how it got there.
      *
-     * @param song                 the loaded song
-     * @param fonts                the document's fonts
-     * @param warnings             every non-fatal problem detected during the load,
-     *                             in the order it was detected; empty when the file
-     *                             was clean
-     * @param accidentalsConverted whether retired accidentals were converted
-     * @param tupletReport         every tuplet the post-parse pass removed or
-     *                             completed, in document order; empty when the
-     *                             file's tuplets were taken as they stood
+     * @param song       the loaded song
+     * @param fonts      the document's fonts
+     * @param warnings   every non-fatal problem detected during the load, in the
+     *                   order it was detected; empty when the file was clean
+     * @param migrations what the load's post-parse passes changed in the document
      */
-    record Success(Song song, DocumentFonts fonts, List<LoadWarning> warnings,
-                   boolean accidentalsConverted, TupletLoadPass.Report tupletReport)
-            implements SongLoadResult {
+    record Success(
+        Song song, DocumentFonts fonts, List<LoadWarning> warnings, LoadMigrations migrations
+    ) implements SongLoadResult {
 
         // Defensive copy — the record's contract is immutability, and both readers
         // build the warning list incrementally before handing it over.
         public Success {
             warnings = List.copyOf(warnings);
-        }
-
-        /**
-         * Convenience factory for the common case: no warnings, no retired
-         * accidental conversion, no tuplet migration.
-         */
-        public static Success of(Song song, DocumentFonts fonts) {
-            return new Success(song, fonts, List.of(), false, TupletLoadPass.Report.empty());
         }
     }
 
@@ -72,6 +59,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             SongLoadResult.LineWidthTooLarge,
             SongLoadResult.WrongSoftware,
             SongLoadResult.UnsupportedFileFormat,
+            SongLoadResult.InvalidFileFormat,
             SongLoadResult.UnsupportedVersion {
         File file();
     }
@@ -93,10 +81,27 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         }
     }
 
-    record UnsupportedFileFormat(File file, @Nullable String detail) implements Failure {
+    /**
+     * The result for a file whose extension SongScribe does not open at all.
+     */
+    record UnsupportedFileFormat(File file, String extension) implements Failure {
 
-        public static String message(@Nullable String detail) {
-            return "Unsupported file format: " + detail;
+        public static String message(String extension) {
+            return "Unsupported file type: " + extension;
+        }
+    }
+
+    /**
+     * The result for a {@code .musicxml}/{@code .xml} document that cannot be read as this
+     * program's format: either it breaks the MusicXML schema SongScribe implements, or it
+     * states, in valid MusicXML, something SongScribe cannot represent.
+     *
+     * @param detail the specific reason, as the reader's throw site stated it
+     */
+    record InvalidFileFormat(File file, String detail) implements Failure {
+
+        public static String message(String detail) {
+            return "Invalid file format: " + detail;
         }
     }
 
@@ -118,7 +123,8 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
             case LineWidthTooLarge e -> throw new IOException(
                 "Line width " + e.actualInches() + " inches exceeds maximum " + e.maxInches() + " inches");
             case WrongSoftware e -> throw new IOException(WrongSoftware.message(e.software()));
-            case UnsupportedFileFormat e -> throw new IOException(UnsupportedFileFormat.message(e.detail()));
+            case UnsupportedFileFormat e -> throw new IOException(UnsupportedFileFormat.message(e.extension()));
+            case InvalidFileFormat e -> throw new IOException(InvalidFileFormat.message(e.detail()));
             case UnsupportedVersion e -> throw new IOException(
                 "Unsupported SongScribe version: " + e.version());
         };

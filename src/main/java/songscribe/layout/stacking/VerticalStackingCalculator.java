@@ -31,11 +31,13 @@ import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
+import songscribe.layout.DecorationLayouts;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutEngine.TempoMark;
 import songscribe.layout.LayoutResult;
@@ -204,7 +206,7 @@ public class VerticalStackingCalculator {
             return contentAboveStaffSs;
         }
 
-        var finalLayout = builder.requireDecorationLayout(attribution);
+        var finalLayout = builder.decorationLayouts().requireDecorationLayout(attribution);
         var aboveFromAttribution = -finalLayout.ySs() - Staff.STAFF_HALF_SS;
 
         return Math.max(contentAboveStaffSs, aboveFromAttribution);
@@ -231,8 +233,11 @@ public class VerticalStackingCalculator {
         StaffExtents structuralExtents) {
 
         for (var column : columns) {
-            var element = column.getElement();
-            var bounds = NoteGeometry.getAccidentalBoundsSs(element);
+            if (!(column.getElement() instanceof NoteElement note)) {
+                continue;
+            }
+
+            var bounds = NoteGeometry.getAccidentalBoundsSs(note);
 
             if (bounds == null) {
                 continue;
@@ -243,10 +248,10 @@ public class VerticalStackingCalculator {
             var accXSs = column.getXSs() + bounds.leftSs();
 
             // bounds Y values are relative to the note center; shift to staff coordinates.
-            var centerYSs = StaffPosition.toSs(element.getStaffPosition());
+            var centerYSs = note.getStaffPosition().toSs();
 
             structuralExtents.ySet(true, accXSs, bounds.widthSs(), bounds.topSs() + centerYSs);
-            structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.botSs() + centerYSs);
+            structuralExtents.ySet(false, accXSs, bounds.widthSs(), bounds.bottomSs() + centerYSs);
         }
     }
 
@@ -272,15 +277,15 @@ public class VerticalStackingCalculator {
      * </ul>
      */
     private void applyManualOffsets(LayoutResultBuilder builder) {
-        applyDecorationOffsets(builder);
+        applyDecorationOffsets(builder.decorationLayouts());
     }
 
     /**
      * Applies manual offsets to all {@link LayoutResult.DecorationLayout} entries.
      */
-    void applyDecorationOffsets(LayoutResultBuilder builder) {
+    void applyDecorationOffsets(DecorationLayouts.Builder decorationLayouts) {
         // Collect entries to avoid ConcurrentModificationException during iteration
-        var entries = List.copyOf(builder.getDecorationLayoutEntries());
+        var entries = List.copyOf(decorationLayouts.getDecorationLayouts().entrySet());
 
         for (var entry : entries) {
             var element = entry.getKey();
@@ -309,7 +314,7 @@ public class VerticalStackingCalculator {
             if (xOffsetSs != 0 || yOffsetSs != 0 || x1ExtraSs != 0 || x2ExtraSs != 0) {
                 // For hairpins, x1ExtraSs shifts the left edge and x2ExtraSs shifts the right edge
                 // independently. Translate that into (xSs + x1, widthSs + x2 - x1).
-                builder.putDecorationLayout(element, layout.shiftedBy(
+                decorationLayouts.putDecorationLayout(element, layout.shiftedBy(
                     xOffsetSs + x1ExtraSs, yOffsetSs, x2ExtraSs - x1ExtraSs));
             }
         }

@@ -143,7 +143,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         Class<? extends MetronomeAttachment> attachmentClass,
         LineInvariants invariants
     ) {
-        var decorationLayout = invariants.getLayoutResult().findAttachmentDecorationLayout(
+        var decorationLayout = invariants.getLayoutResult().decorationLayouts().findAttachmentDecorationLayout(
             note, attachmentClass);
 
         if (!(decorationLayout instanceof LayoutResult.DecorationLayout.Typeset typeset)) {

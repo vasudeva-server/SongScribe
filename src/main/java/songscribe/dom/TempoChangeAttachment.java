@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Represents a tempo marking attachment on a note.
  * <p>
@@ -33,12 +31,6 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     private Tempo tempo;
 
     public TempoChangeAttachment(Tempo tempo) {
-        super(Alignment.LEFT);
-        this.tempo = tempo;
-    }
-
-    public TempoChangeAttachment(@Nullable StaffElement parent, Tempo tempo) {
-        super(parent, Alignment.LEFT);
         this.tempo = tempo;
     }
 
@@ -46,14 +38,14 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
      * {@inheritDoc}
      *
      * <p>Deliberately <em>not</em> routed through
-     * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
+     * {@link Song#withBeatDefiningEdit}: the copy is not yet in the document, so there
      * is no position to validate from. The clipboard is the only caller that copies a tempo
      * into a different beat context, and paste re-validates the tuplets it carries in
      * {@code PasteSpanReconciliation}.
      */
     @Override
-    protected Attachment createCopy(StaffElement newOwner) {
-        return new TempoChangeAttachment(newOwner, tempo);
+    protected Attachment createCopy() {
+        return new TempoChangeAttachment(tempo);
     }
 
     public Tempo getTempo() {
@@ -70,6 +62,6 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
      * that helper and read its result.
      */
     public void setTempo(Tempo tempo) {
-        Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.tempo = tempo);
+        Song.withBeatDefiningEditOn(owner(), () -> this.tempo = tempo);
     }
 }

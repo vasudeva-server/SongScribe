@@ -108,7 +108,7 @@ class AttachmentDialogControllerTest extends UnitTest {
                 "annotation",
                 AnnotationController.class,
                 element -> element.addAttachment(
-                    new AnnotationAttachment(element, annotation(ANNOTATION_TEXT))),
+                    new AnnotationAttachment(annotation(ANNOTATION_TEXT))),
                 target -> new AnnotationController(target)
                     .dataWasModified(annotation(ANNOTATION_TEXT)),
                 target -> new AnnotationController(target)
@@ -118,7 +118,7 @@ class AttachmentDialogControllerTest extends UnitTest {
                 "beat change",
                 BeatChangeController.class,
                 element -> element.addAttachment(
-                    new BeatChangeAttachment(element, beatChange(BeatUnit.CROTCHET_DOTTED))),
+                    new BeatChangeAttachment(beatChange(BeatUnit.CROTCHET_DOTTED))),
                 target -> new BeatChangeController(target)
                     .dataWasModified(beatChange(BeatUnit.CROTCHET_DOTTED)),
                 target -> new BeatChangeController(target)
@@ -128,7 +128,7 @@ class AttachmentDialogControllerTest extends UnitTest {
                 "tempo change",
                 TempoChangeController.class,
                 element -> element.addAttachment(
-                    new TempoChangeAttachment(element, tempo(BPM))),
+                    new TempoChangeAttachment(tempo(BPM))),
                 target -> new TempoChangeController(target)
                     .dataWasModified(tempo(BPM)),
                 target -> new TempoChangeController(target)

@@ -20,7 +20,12 @@
 
 package songscribe.ui.renderer;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
+import songscribe.layout.DecorationLayouts;
+import songscribe.layout.stacking.NoteAttachedStacker;
 
 /**
  * Per-element rendering state, built fresh for each element a {@code LineRenderer}
@@ -29,24 +34,34 @@ import songscribe.dom.StaffElement;
  * Together with {@code LineInvariants} this replaces the mutable per-element setters
  * that {@code ElementRenderContext} exposed: an immutable frame cannot carry stale
  * state from a previous element.
- *
- * @param currentElementIndex  index of the element being rendered within the line,
- *                             or {@code -1} during line-level passes
- * @param overrideElementXSs   exact X coordinate in staff spaces to use instead of the
- *                             laid-out position, or {@link Double#NaN} when no override applies
- * @param previewShiftFromIndex first element index (inclusive) to displace for the
- *                             grace-note insert preview, or {@code -1} when no shift applies
- * @param previewShiftSs       preview shift amount in staff spaces
+ * <p>
+ * {@link #decorationLayoutsFor} memoizes its result: every renderer that draws a note's
+ * decorations calls it against the same frame instance for the same element and
+ * invariants, so the underlying table — a full preview stacking pass when an override X
+ * is active — is computed at most once per frame.
  */
-public record ElementFrame(
-    int currentElementIndex,
-    double overrideElementXSs,
-    int previewShiftFromIndex,
-    double previewShiftSs
-) {
+public final class ElementFrame {
 
     /** Canonical frame for line-level passes: no element index, no override, no preview shift. */
     public static final ElementFrame LINE_LEVEL = new ElementFrame(-1, Double.NaN, -1, 0.0);
+
+    private final int currentElementIndex;
+    private final double overrideElementXSs;
+    private final int previewShiftFromIndex;
+    private final double previewShiftSs;
+
+    private @Nullable StaffElement decorationLayoutsElement;
+    private @Nullable LineInvariants decorationLayoutsInvariants;
+    private @Nullable DecorationLayouts decorationLayoutsCache;
+
+    private ElementFrame(
+        int currentElementIndex, double overrideElementXSs, int previewShiftFromIndex, double previewShiftSs
+    ) {
+        this.currentElementIndex = currentElementIndex;
+        this.overrideElementXSs = overrideElementXSs;
+        this.previewShiftFromIndex = previewShiftFromIndex;
+        this.previewShiftSs = previewShiftSs;
+    }
 
     /**
      * Returns a line-level frame (no element index, no override) carrying the given
@@ -75,6 +90,35 @@ public record ElementFrame(
      */
     public ElementFrame withElement(int elementIndex, double overrideXSs) {
         return new ElementFrame(elementIndex, overrideXSs, previewShiftFromIndex, previewShiftSs);
+    }
+
+    /**
+     * Index of the element being rendered within the line, or {@code -1} during
+     * line-level passes.
+     */
+    public int currentElementIndex() {
+        return currentElementIndex;
+    }
+
+    /**
+     * Exact X coordinate in staff spaces to use instead of the laid-out position, or
+     * {@link Double#NaN} when no override applies.
+     */
+    public double overrideElementXSs() {
+        return overrideElementXSs;
+    }
+
+    /**
+     * First element index (inclusive) to displace for the grace-note insert preview, or
+     * {@code -1} when no shift applies.
+     */
+    public int previewShiftFromIndex() {
+        return previewShiftFromIndex;
+    }
+
+    /** Preview shift amount in staff spaces. */
+    public double previewShiftSs() {
+        return previewShiftSs;
     }
 
     /** Returns whether an override element X is active (i.e. {@link #overrideElementXSs} is not NaN). */
@@ -106,5 +150,42 @@ public record ElementFrame(
         }
 
         return invariants.getLayoutResult().getElementXSs(element);
+    }
+
+    /**
+     * Returns the decoration layouts {@code element}'s note-attached decorations are drawn from
+     * in this frame: for a note carrying this frame's override — the position an insertion
+     * preview is being dragged through — the layouts the preview stacks for that note alone,
+     * and the line's solved table otherwise.
+     *
+     * <p>Every renderer of a note-attached decoration asks this, so a previewed note's
+     * articulations, fermata and dynamic stack where the committed note's would. A previewed
+     * element that is not a note has no such decorations to preview, so it reads the line's
+     * table like any other element. Those renderers all ask against the same frame instance
+     * for the same element and invariants, so the result is computed once per frame and
+     * cached rather than re-running the stacking pass for each renderer.
+     *
+     * @param element    the element whose decorations are being drawn
+     * @param invariants the line invariants carrying the solved layout
+     * @return the decoration layouts to draw from
+     */
+    public DecorationLayouts decorationLayoutsFor(StaffElement element, LineInvariants invariants) {
+        if (decorationLayoutsCache == null
+            || decorationLayoutsElement != element
+            || decorationLayoutsInvariants != invariants) {
+            decorationLayoutsElement = element;
+            decorationLayoutsInvariants = invariants;
+            decorationLayoutsCache = computeDecorationLayoutsFor(element, invariants);
+        }
+
+        return decorationLayoutsCache;
+    }
+
+    private DecorationLayouts computeDecorationLayoutsFor(StaffElement element, LineInvariants invariants) {
+        if (hasOverrideElementX() && element instanceof NoteElement note) {
+            return NoteAttachedStacker.computePreviewDecorationLayouts(note, overrideElementXSs);
+        }
+
+        return invariants.getLayoutResult().decorationLayouts();
     }
 }

@@ -27,6 +27,7 @@ import java.awt.geom.Rectangle2D;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.component.ScoreView;
@@ -185,8 +186,9 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
 
         NoteGeometry.initializeAccidentalWidths();
 
-        previewElement.setStaffPosition(hover.staffPositionSp());
-        previewElement.setDirection(StaffElement.defaultDirection(previewElement));
+        if (previewElement instanceof NoteElement note) {
+            note.setStaffPosition(hover.staffPosition());
+        }
 
         var lineFrame = line.gracePreviewLineFrame();
         var frame = lineFrame.withElement(lineFrame.currentElementIndex(), 0);
@@ -198,8 +200,8 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
 
         // The override X remains set, so the decoration renderers place themselves against the
         // same origin as the note head.
-        if (!previewElement.getArticulations().isEmpty()) {
-            ArticulationRenderer.getInstance().render(invariants, frame, previewElement, recorder);
+        if (previewElement instanceof NoteElement note && !note.getArticulations().isEmpty()) {
+            ArticulationRenderer.getInstance().render(invariants, frame, note, recorder);
         }
 
         if (previewElement.findAttachment(FermataAttachment.class) != null) {

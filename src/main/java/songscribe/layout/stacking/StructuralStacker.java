@@ -36,12 +36,14 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.IntrinsicHeight;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Direction;
+import songscribe.dom.Direction;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.StemMetrics;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.ElementSeat;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.HairpinEndpoints;
 import songscribe.layout.LayoutResult;
@@ -190,9 +192,8 @@ public class StructuralStacker {
             // over the note — stays clear. Compute the arm X positions the same way the renderer does
             // (shared Tuplet helpers) so reserved and drawn geometry match.
             var endXSs = anchorXSs + widthSs;
-            var anchorStemUp = anchor.getDirection().isUp();
-            var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-                anchorStemUp, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
+            var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
+                StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
             var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
@@ -212,7 +213,7 @@ public class StructuralStacker {
             // sizing see the tilted silhouette rather than a flat approximation of it.
             structuralExtents.ySetSloped(true, anchorXSs, endXSs, finalLeftYSs, finalLeftYSs + dySs);
 
-            builder.putDecorationLayout(tuplet,
+            builder.decorationLayouts().putDecorationLayout(tuplet,
                 new LayoutResult.DecorationLayout.Sloped(
                     anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs));
         }
@@ -350,8 +351,8 @@ public class StructuralStacker {
         var element = column.getElement();
         var naturalTopYSs = column.getAbsoluteTopYSs();
 
-        if (column.isBeamed() && element.getDirection().isUp()) {
-            return StackingUtils.resolvedStemTopYSs(context.getBuilder(), element, naturalTopYSs);
+        if (column.isBeamed() && element instanceof NoteElement note && note.direction().isUp()) {
+            return StackingUtils.resolvedStemTopYSs(context.getBuilder(), note, naturalTopYSs);
         }
 
         return naturalTopYSs;
@@ -370,9 +371,14 @@ public class StructuralStacker {
      * trill/fermata (which float outside the bracket) are ignored.
      */
     private List<ScriptObstacle> scriptObstacles(ElementColumn column) {
-        var note = column.getElement();
-        var builder = context.getBuilder();
         var obstacles = new ArrayList<ScriptObstacle>();
+
+        // Only a note carries scripts.
+        if (!(column.getElement() instanceof NoteElement note)) {
+            return obstacles;
+        }
+
+        var builder = context.getBuilder();
 
         for (var type : List.of(ArticulationType.STACCATO, ArticulationType.ACCENT)) {
             var articulation = note.findArticulation(type);
@@ -381,7 +387,7 @@ public class StructuralStacker {
                 continue;
             }
 
-            var layout = builder.getDecorationLayout(articulation);
+            var layout = builder.decorationLayouts().getDecorationLayout(articulation);
 
             if (layout == null) {
                 continue;
@@ -483,7 +489,8 @@ public class StructuralStacker {
 
         // Step 2: contour veto (chord-free). A valid ascending/descending contour has tipRise and
         // staffRise pointing the same way; if they disagree — or either is flat — force flat.
-        var staffRise = rightEnd.getElement().getStaffPosition() - leftEnd.getElement().getStaffPosition();
+        var staffRise = ElementSeat.seatSp(rightEnd.getElement()).value()
+            - ElementSeat.seatSp(leftEnd.getElement()).value();
 
         if (Math.signum(tipRise) != Math.signum((double) staffRise)) {
             slope = 0.0;
@@ -523,8 +530,9 @@ public class StructuralStacker {
         // Left endpoint contributes its LEFT edge. An up-stem is bounded by the stem, whose left
         // edge sits one stem thickness inside the head's right edge; any other column (down-stem
         // or stemless) by the head's outer (left) edge.
-        var element = column.getElement();
-        var isUpStem = element.getType().isNoteWithStem() && element.getDirection().isUp();
+        var isUpStem = column.getElement() instanceof NoteElement note
+            && note.getType().isNoteWithStem()
+            && note.direction().isUp();
         return isUpStem ? headRightXSs - StemMetrics.thicknessSs() : headLeftXSs;
     }
 
@@ -576,7 +584,7 @@ public class StructuralStacker {
             StackingUtils.placeAtInnerEdge(Direction.UP, structuralExtents, placement.element(),
                 placement.xSs(), widthSs, placement.heightSs(),
                 groupReferenceYSs + placement.innerEdgeOffsetSs(),
-                StaffExtents.Profile.flat(widthSs), placement.marginSs(), builder);
+                StaffExtents.Profile.flat(widthSs), placement.marginSs(), builder.decorationLayouts());
         }
     }
 
@@ -649,7 +657,8 @@ public class StructuralStacker {
         var widthSs = endpoints.widthSs();
         var innerEdgeOffsetSs = hairpin.intrinsicHeightSs() / 2;
         var innerEdgeYSs = StackingUtils.anchoredInnerEdgeYSs(Direction.UP, structuralExtents,
-            xSs, widthSs, HAIRPIN_MARGIN_SS, endpoints.spanColumns().anchor().getStaffPosition());
+            xSs, widthSs, HAIRPIN_MARGIN_SS,
+            ElementSeat.seatSp(endpoints.spanColumns().anchor()).value());
 
         return new DynamicPlacement<>(hairpin, xSs, widthSs, HAIRPIN_MARGIN_SS,
             innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
@@ -725,7 +734,7 @@ public class StructuralStacker {
 
         stackAbove(structuralExtents, hairpin,
             endpoints.x1Ss(), endpoints.widthSs(), HAIRPIN_MARGIN_SS,
-            endpoints.spanColumns().anchor().getStaffPosition(), builder);
+            ElementSeat.seatSp(endpoints.spanColumns().anchor()).value(), builder.decorationLayouts());
     }
 
 
@@ -752,7 +761,7 @@ public class StructuralStacker {
             centeredXSs, contentWidthSs,
             StaffExtents.Profiles.flat(contentWidthSs),
             NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
-            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS, builder);
+            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS, builder.decorationLayouts());
     }
 
     /**
@@ -804,12 +813,12 @@ public class StructuralStacker {
             // Overall width = from first bracket start to last bracket end
             var widthSs = brackets.getLast().x2Ss() - anchorXSs;
 
-            var staffPosition = anchor.getStaffPosition();
+            var staffPosition = ElementSeat.seatSp(anchor).value();
 
             stackAboveWithRegions(structuralExtents, ending, allRegions,
                 anchorXSs, widthSs,
                 ENDING_MARGIN_SS,
-                staffPosition, builder, null);
+                staffPosition, builder.decorationLayouts(), null);
         }
     }
 

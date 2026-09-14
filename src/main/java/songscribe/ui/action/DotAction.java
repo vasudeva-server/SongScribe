@@ -26,22 +26,25 @@ import java.util.EnumSet;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
+import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
 // Widens: each dot is drawn to the right of the notehead, inside the note's column.
-public final class DotAction extends PreviewElementAction
-    implements UIAction.ElementModifiable, UIAction.WidensColumn {
+public final class DotAction<E extends StaffElement & Dottable> extends PreviewElementAction
+    implements UIAction.ElementModifiable<E>, UIAction.WidensColumn<E> {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.DOT_COUNT);
 
-    private final DotLevel dotLevel;
+    private final Dots dots;
 
-    public static DotAction createDotAction(MainFrame mainFrame) {
-        return new DotAction(
+    public static DotAction<?> createDotAction(MainFrame mainFrame) {
+        return new DotAction<>(
             mainFrame,
-            DotLevel.SINGLE,
+            Dots.ONE,
             Strings.get(Strings.ACTION_DOT_SINGLE), "@\uF372", 18,
             "add-dot", Strings.get(Strings.ACTION_DOT_SINGLE_TOOLTIP),
             KeyEvent.VK_PERIOD, 0,
@@ -49,10 +52,10 @@ public final class DotAction extends PreviewElementAction
         );
     }
 
-    public static DotAction createDoubleDotAction(MainFrame mainFrame) {
-        return new DotAction(
+    public static DotAction<?> createDoubleDotAction(MainFrame mainFrame) {
+        return new DotAction<>(
             mainFrame,
-            DotLevel.DOUBLE,
+            Dots.TWO,
             Strings.get(Strings.ACTION_DOT_DOUBLE), "@\uF395", 18,
             "add-double-dot", Strings.get(Strings.ACTION_DOT_DOUBLE_TOOLTIP),
             0, 0,
@@ -60,9 +63,13 @@ public final class DotAction extends PreviewElementAction
         );
     }
 
+    /**
+     * @param dots the dots this action toggles on and off; never {@link Dots#NONE}, since an
+     *     action for "no dots" is what deselecting either factory's action already means
+     */
     private DotAction(
         MainFrame mainFrame,
-        DotLevel dotLevel,
+        Dots dots,
         @Nullable String name,
         @Nullable String icon,
         int size,
@@ -87,42 +94,36 @@ public final class DotAction extends PreviewElementAction
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED
         );
-        this.dotLevel = dotLevel;
+        this.dots = dots;
         setUndoOpNameKey(undoOpNameKey);
     }
 
-    public DotLevel getDotLevel() {
-        return dotLevel;
+    public Dots dots() {
+        return dots;
+    }
+
+    /**
+     * A type that occupies time is a pitched note or a rest, and both take dots, so a
+     * duration-typed element is always {@link Dottable}.
+     */
+    @Override
+    @SuppressWarnings("unchecked") // safe: every element of a duration type is Dottable
+    public @Nullable E admit(StaffElement element) {
+        return element.getType().isDuration() ? (E) element : null;
     }
 
     @Override
-    public boolean appliesTo(StaffElement element) {
-        return element.getType().isDuration();
+    public boolean matchesElement(E element) {
+        return element.dots() == dots;
     }
 
     @Override
-    public boolean matchesElement(StaffElement element) {
-        return element.getDotCount() == dotLevel.dotCount;
-    }
-
-    @Override
-    public void applyToElement(StaffElement element, boolean selected) {
-        element.setDotCount(selected ? dotLevel.dotCount : 0);
+    public void applyToElement(Line line, int index, E element, boolean selected) {
+        element.setDots(selected ? dots : Dots.NONE);
     }
 
     @Override
     public EnumSet<ElementField> modifiedFields() {
         return MODIFIED_FIELDS;
-    }
-
-    public enum DotLevel {
-        SINGLE(1),
-        DOUBLE(2);
-
-        final int dotCount;
-
-        DotLevel(int dotCount) {
-            this.dotCount = dotCount;
-        }
     }
 }

@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.DynamicAttachment;
+import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
@@ -156,7 +157,7 @@ public final class HorizontalSpacingCalculator {
     /**
      * Returns the X position of the key signature's left edge, in staff-space units —
      * one clef width past the clef, plus {@link StaffHeaderMetrics#CLEF_GAP_SS}. This is the
-     * only place that gap is applied; the {@code Clef} object does not carry it.
+     * only place that gap is applied; {@link StaffHeader} does not carry it.
      */
     public static double calculateKeySignatureXSs() {
         return LayoutEngine.CLEF_X_POSITION_SS
@@ -831,7 +832,7 @@ public final class HorizontalSpacingCalculator {
         sb.append(String.format(
             "%n         corr: opposite=%+.2f same=%+.2f barline=%+.2f", oppositeSs, sameSs, barlineSs));
 
-        if (prev.hasStem() && curr.hasStem()) {
+        if (prev.stemDirection() != null && curr.stemDirection() != null) {
             sb.append(String.format(
                 " (overlap=%.2f deltaPos=%+.2f)",
                 OpticalSpacing.verticalOverlapSs(prev, curr),
@@ -847,15 +848,16 @@ public final class HorizontalSpacingCalculator {
      */
     private static String describeForLog(ElementColumn column) {
         var type = column.getElement().getType();
+        var direction = column.stemDirection();
 
-        if (!column.hasStem()) {
+        if (direction == null) {
             return type.name();
         }
 
         return String.format(
             "%s(%s@%.1f %.1f..%.1f)",
             type.name(),
-            column.getDirection(),
+            direction,
             column.getPositionSs(),
             column.getAbsoluteTopYSs(),
             column.getAbsoluteBottomYSs());
@@ -1284,12 +1286,13 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Returns whether both beamed columns are shorter than an eighth note (sixteenths or faster),
-     * the condition for the tight beam-internal gap. {@link LayoutEngine#beamCount} returns 1 for
-     * an eighth note (quaver) and a larger value for shorter notes (refs #418).
+     * the condition for the tight beam-internal gap. {@link ElementType#beamCount} returns 1 for
+     * an eighth note (quaver), a larger value for shorter notes, and 0 for a type that is not
+     * beamable (refs #418).
      */
     private static boolean bothShorterThanEighth(ElementColumn prev, ElementColumn curr) {
-        return LayoutEngine.beamCount(prev.getElement()) > 1
-            && LayoutEngine.beamCount(curr.getElement()) > 1;
+        return prev.getElement().getType().beamCount() > 1
+            && curr.getElement().getType().beamCount() > 1;
     }
 
 }

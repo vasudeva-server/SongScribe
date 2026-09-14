@@ -111,47 +111,38 @@ public interface LyricRun extends StaffElementRun {
         }
 
         var prevElement = getElement(prevIndex);
-        var lyrics = prevElement.lyrics;
-        var indicesToClear = new ArrayList<Integer>();
+        var lyricsToClear = new ArrayList<Lyric>();
 
-        for (var j = 0; j < lyrics.size(); j++) {
-            var lyric = lyrics.get(j);
-            var syllabic = lyric.syllabic();
-
-            if (!Lyric.syllabicContinues(syllabic)) {
+        for (var lyric : prevElement.getLyrics()) {
+            if (!Lyric.syllabicContinues(lyric.syllabic())) {
                 continue;
             }
 
             if (deletedElement == null) {
-                indicesToClear.add(j);
+                lyricsToClear.add(lyric);
             } else {
-                var matchingDeletedLyric = deletedElement.lyrics.stream()
-                    .filter(deletedLyric -> deletedLyric.verse() == lyric.verse())
-                    .findFirst()
-                    .orElse(null);
-
+                var matchingDeletedLyric = deletedElement.getLyricForVerse(lyric.verse());
                 var deletedSyllabic = matchingDeletedLyric != null ? matchingDeletedLyric.syllabic() : null;
 
                 if (!Lyric.syllabicContinues(deletedSyllabic)) {
-                    indicesToClear.add(j);
+                    lyricsToClear.add(lyric);
                 }
             }
         }
 
-        if (indicesToClear.isEmpty()) {
+        if (lyricsToClear.isEmpty()) {
             return;
         }
 
         modifyElement(prevIndex, ElementField.LYRIC, () -> {
-            for (var lyricIndex : indicesToClear) {
-                var lyric = lyrics.get(lyricIndex);
+            for (var lyric : lyricsToClear) {
                 var prevOfPrevLyric = prevIndex > 0
                     ? getElement(prevIndex - 1).getLyricForVerse(lyric.verse()) : null;
                 var prevOfPrevSyllabic = prevOfPrevLyric != null ? prevOfPrevLyric.syllabic() : null;
                 var prevContinues = prevOfPrevSyllabic == Lyric.Syllabic.BEGIN
                     || prevOfPrevSyllabic == Lyric.Syllabic.MIDDLE;
                 var newSyllabic = prevContinues ? Lyric.Syllabic.END : Lyric.Syllabic.SINGLE;
-                lyrics.set(lyricIndex,
+                prevElement.putLyric(
                     new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, false));
             }
         });
@@ -178,28 +169,26 @@ public interface LyricRun extends StaffElementRun {
         }
 
         var successor = getElement(successorIndex);
-        var lyrics = successor.lyrics;
-        var indicesToAdjust = new ArrayList<Integer>();
+        var lyricsToAdjust = new ArrayList<Lyric>();
 
-        for (var j = 0; j < lyrics.size(); j++) {
-            var syllabic = lyrics.get(j).syllabic();
+        for (var lyric : successor.getLyrics()) {
+            var syllabic = lyric.syllabic();
 
             if (syllabic == Lyric.Syllabic.MIDDLE || syllabic == Lyric.Syllabic.END) {
-                indicesToAdjust.add(j);
+                lyricsToAdjust.add(lyric);
             }
         }
 
-        if (indicesToAdjust.isEmpty()) {
+        if (lyricsToAdjust.isEmpty()) {
             return;
         }
 
         modifyElement(successorIndex, ElementField.LYRIC, () -> {
-            for (var lyricIndex : indicesToAdjust) {
-                var lyric = lyrics.get(lyricIndex);
+            for (var lyric : lyricsToAdjust) {
                 var newSyllabic = lyric.syllabic() == Lyric.Syllabic.MIDDLE
                     ? Lyric.Syllabic.BEGIN
                     : Lyric.Syllabic.SINGLE;
-                lyrics.set(lyricIndex,
+                successor.putLyric(
                     new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, lyric.compound()));
             }
         });
@@ -235,22 +224,19 @@ public interface LyricRun extends StaffElementRun {
         // One pending rewrite of the predecessor's melisma extend, in the one method that
         // makes them: the list is built before the modification bracket opens and applied
         // inside it, so the before/after clones bracket every verse's fix together.
-        record ExtendFix(int lyricIndex, int verse, Lyric.Extend newExtend) {}
+        record ExtendFix(Lyric lyric, Lyric.Extend newExtend) {}
 
         if (predecessorIndex < 0 || predecessorIndex >= effectiveElementCount()) {
             return;
         }
 
         var predecessorElement = getElement(predecessorIndex);
-        var lyrics = predecessorElement.lyrics;
         var fixes = new ArrayList<ExtendFix>();
 
-        for (var i = 0; i < lyrics.size(); i++) {
-            var lyric = lyrics.get(i);
-
+        for (var lyric : predecessorElement.getLyrics()) {
             switch (lyric.extend()) {
-                case START -> fixes.add(new ExtendFix(i, lyric.verse(), Lyric.Extend.NONE));
-                case CONTINUE -> fixes.add(new ExtendFix(i, lyric.verse(), Lyric.Extend.STOP));
+                case START -> fixes.add(new ExtendFix(lyric, Lyric.Extend.NONE));
+                case CONTINUE -> fixes.add(new ExtendFix(lyric, Lyric.Extend.STOP));
                 default -> { }
             }
         }
@@ -261,15 +247,14 @@ public interface LyricRun extends StaffElementRun {
 
         modifyElement(predecessorIndex, ElementField.LYRIC, () -> {
             for (var fix : fixes) {
-                var lyricIndex = fix.lyricIndex();
-                var lyric = lyrics.get(lyricIndex);
-                lyrics.set(lyricIndex,
+                var lyric = fix.lyric();
+                predecessorElement.putLyric(
                     new Lyric(lyric.verse(), lyric.text(), fix.newExtend(), lyric.syllabic(), lyric.compound()));
             }
         });
 
         for (var fix : fixes) {
-            cascadeClearExtend(cascadeStartIndex, fix.verse());
+            cascadeClearExtend(cascadeStartIndex, fix.lyric().verse());
         }
     }
 
@@ -359,12 +344,10 @@ public interface LyricRun extends StaffElementRun {
         // Inserting another pitched note simply re-targets it, but inserting anything else
         // (rest, breath mark, grace note, barline, key change) leaves it with no valid
         // target, so remove it from the preceding note.
-        if (!getElement(firstInsertedIndex).getType().isPitchedNote() && firstInsertedIndex > 0) {
-            var precedingElement = getElement(firstInsertedIndex - 1);
-
-            if (precedingElement.hasGlissando()) {
-                modifyElement(firstInsertedIndex - 1, ElementField.SLIDE, precedingElement::removeSlide);
-            }
+        if (!getElement(firstInsertedIndex).getType().isPitchedNote() && firstInsertedIndex > 0
+            && getElement(firstInsertedIndex - 1) instanceof NoteElement precedingNote
+            && precedingNote.hasGlissando()) {
+            modifyElement(firstInsertedIndex - 1, ElementField.SLIDE, precedingNote::removeSlide);
         }
 
         // A pitched insertion between a grace note and its host re-targets the glissando, so
@@ -426,7 +409,7 @@ public interface LyricRun extends StaffElementRun {
 
         var deletedElement = getElement(deletedIndex);
 
-        for (var lyric : deletedElement.lyrics) {
+        for (var lyric : deletedElement.getLyrics()) {
             switch (lyric.extend()) {
                 case START -> cascadeClearExtend(deletedIndex + 1, lyric.verse());
                 case STOP -> adjustPrecedingForStopDeletion(deletedIndex - 1, lyric.verse());
@@ -438,15 +421,9 @@ public interface LyricRun extends StaffElementRun {
     private void cascadeClearExtend(int startIndex, int verse) {
         for (var i = startIndex; i < effectiveElementCount(); i++) {
             var element = getElement(i);
-            var lyricIndex = element.indexOfLyricForVerse(verse);
+            var lyric = element.getLyricForVerse(verse);
 
-            if (lyricIndex < 0) {
-                break;
-            }
-
-            var lyric = element.lyrics.get(lyricIndex);
-
-            if (lyric.extend() == Lyric.Extend.NONE) {
+            if (lyric == null || lyric.extend() == Lyric.Extend.NONE) {
                 break;
             }
 
@@ -458,10 +435,10 @@ public interface LyricRun extends StaffElementRun {
             // its START, which are carriers by construction, so the else branch is unreachable
             // as things stand; it is there to keep a malformed chain from losing its text.
             if (lyric.isCarrier()) {
-                modifyElement(i, ElementField.LYRIC, () -> element.lyrics.remove(lyricIndex));
+                modifyElement(i, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
             } else {
                 modifyElement(i, ElementField.LYRIC, () ->
-                    element.lyrics.set(lyricIndex,
+                    element.putLyric(
                         new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
             }
 
@@ -476,14 +453,13 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        var precedingElement = getElement(precedingIndex);
-        var lyricIndex = precedingElement.indexOfLyricForVerse(verse);
+        var precedingLyric = getElement(precedingIndex).getLyricForVerse(verse);
 
-        if (lyricIndex < 0) {
+        if (precedingLyric == null) {
             return;
         }
 
-        var existingExtend = precedingElement.lyrics.get(lyricIndex).extend();
+        var existingExtend = precedingLyric.extend();
 
         if (existingExtend != Lyric.Extend.CONTINUE && existingExtend != Lyric.Extend.START) {
             return;
@@ -504,10 +480,9 @@ public interface LyricRun extends StaffElementRun {
      */
     default void backfillSyllabic() {
         for (var index = 0; index < elementCount(); index++) {
-            var lyrics = getElement(index).lyrics;
-
-            for (var lyric : lyrics) {
-                backfillSyllabicAt(index, lyric.verse());
+            // Snapshot the verses first: backfillSyllabicAt writes the element's lyrics.
+            for (var verse : verseNumbersOf(getElement(index))) {
+                backfillSyllabicAt(index, verse);
             }
         }
     }
@@ -517,19 +492,17 @@ public interface LyricRun extends StaffElementRun {
      * with the syllabic chain. BEGIN/MIDDLE on the predecessor means this element is in the middle
      * or end of a word; BEGIN on this element (from an initial best-guess load) means it continues
      * to the next. No-op when the element has no lyric for the verse, the lyric is a carrier, or
-     * the stored value already matches. Mutates the lyric list in place — the caller is
-     * responsible for any required modification bracket.
+     * the stored value already matches. Writes the element directly, outside any bracket — the
+     * caller is responsible for any required modification bracket.
      */
     private void backfillSyllabicAt(int index, int verse) {
         var element = getElement(index);
-        var lyrics = element.lyrics;
-        var lyricIndex = element.indexOfLyricForVerse(verse);
+        var lyric = element.getLyricForVerse(verse);
 
-        if (lyricIndex < 0) {
+        if (lyric == null) {
             return;
         }
 
-        var lyric = lyrics.get(lyricIndex);
         var extend = lyric.extend();
 
         // Carriers never need backfill — their syllabic is always null.
@@ -551,7 +524,7 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        lyrics.set(lyricIndex, new Lyric(lyric.verse(), lyric.text(), lyric.extend(), derived, lyric.compound()));
+        element.putLyric(new Lyric(lyric.verse(), lyric.text(), lyric.extend(), derived, lyric.compound()));
     }
 
     /**
@@ -607,7 +580,7 @@ public interface LyricRun extends StaffElementRun {
 
         if (newSyllabic != lyric.syllabic() || newCompound != lyric.compound()) {
             modifyElement(index, ElementField.LYRIC, () ->
-                replaceSyllabicAndCompound(index, verse, newSyllabic, newCompound));
+                replaceSyllabicAndCompound(index, lyric, newSyllabic, newCompound));
         }
 
         fixSuccessorSyllabic(index, verse, !isWordEnd);
@@ -626,11 +599,10 @@ public interface LyricRun extends StaffElementRun {
      * <em>not</em> changing.
      *
      * <p>The syllabic follows the lyric's own kind: {@code null} for a melisma carrier (which
-     * has no syllable of its own), and the chain-derived value for a text-bearing syllable. For
-     * an erased syllable it is {@link Lyric.Syllabic#SINGLE}, but that value never reaches
-     * storage — blank text with {@link Lyric.Extend#NONE} makes
-     * {@link StaffElement#setLyricForVerse} drop the verse entry outright, so the syllabic is
-     * discarded along with it.
+     * has no syllable of its own), and the chain-derived value for a text-bearing syllable.
+     * Blank text on a non-carrier is an erasure rather than a syllable — {@link Lyric}'s
+     * constructor rejects blank text on anything but a carrier — so this removes the verse
+     * entry outright and returns before any {@link Lyric} is derived or constructed.
      *
      * <p>Must be called from inside a {@link Line#withModification(Runnable)} bracket.
      *
@@ -646,26 +618,24 @@ public interface LyricRun extends StaffElementRun {
             boolean isWordEnd, boolean isCompound) {
         var isCarrier = Lyric.isCarrier(extend);
 
-        // isBlank, not isEmpty, to match StaffElement.setLyricForVerse: it drops the entry for
-        // any blank text, so whitespace-only text must not be treated as a syllable here or the
-        // successor would be re-lettered as though one followed it.
-        var letters = !isCarrier && !text.isBlank();
+        // isBlank, not isEmpty: whitespace-only text erases the syllable exactly as an empty
+        // string does. Decided before any Lyric is derived or constructed, since Lyric's
+        // constructor now rejects blank text on a non-carrier outright.
+        if (!isCarrier && text.isBlank()) {
+            trace("writeLyricForVerse({}, '{}', {}): blank, erasing", index, text, extend);
+            removeLyricForVerse(index, verse);
+            return;
+        }
 
         // Stricter than isWordEnd alone: a lyric with no text of its own continues nothing,
         // whatever the caller asked for. Callers that pre-compute a commit's continues-status
         // from isWordEnd by itself (LyricEditor.CommitIntent) must therefore never pass a
         // continuing request with blank text, or their answer and this one diverge.
-        var continuesIntoNext = letters && !isWordEnd;
+        var continuesIntoNext = !isCarrier && !isWordEnd;
 
-        Lyric.@Nullable Syllabic syllabic;
-
-        if (isCarrier) {
-            syllabic = null;
-        } else if (letters) {
-            syllabic = deriveSyllabic(previousLyricContinues(index, verse), continuesIntoNext);
-        } else {
-            syllabic = Lyric.Syllabic.SINGLE;
-        }
+        Lyric.@Nullable Syllabic syllabic = isCarrier
+            ? null
+            : deriveSyllabic(previousLyricContinues(index, verse), continuesIntoNext);
 
         var compound = continuesIntoNext && isCompound;
 
@@ -678,35 +648,29 @@ public interface LyricRun extends StaffElementRun {
         // fixSuccessorSyllabic do: an ElementModification costs two element clones plus an undo
         // entry the user could step back into for no visible change.
         if (!storesSameLyric(element.getLyricForVerse(verse), text, extend, syllabic, compound)) {
-            modifyElement(index, ElementField.LYRIC, () ->
-                element.setLyricForVerse(verse, syllabic, compound, text, extend));
+            var lyric = isCarrier
+                ? Lyric.carrier(verse, extend)
+                : new Lyric(verse, text, extend, syllabic, compound);
+            modifyElement(index, ElementField.LYRIC, () -> element.putLyric(lyric));
         }
 
-        if (letters) {
+        if (!isCarrier) {
             fixSuccessorSyllabic(index, verse, continuesIntoNext);
         }
     }
 
     /**
-     * Whether {@code existing} already holds exactly what {@link #writeLyricForVerse} would store
-     * for these values, making the write a no-op. Mirrors {@link StaffElement#setLyricForVerse}'s
-     * truth table, and deliberately reports "different" for the combinations that method rejects
-     * (text on a carrier, blank text with {@link Lyric.Extend#START}) so the write still runs and
-     * still throws.
+     * Whether {@code existing} already holds exactly what {@link #writeLyricForVerse} would
+     * store for these values, making the write a no-op. {@code text} is never blank here:
+     * {@link #writeLyricForVerse} routes a blank non-carrier syllable to
+     * {@link #removeLyricForVerse} before this is ever reached.
      */
     private static boolean storesSameLyric(@Nullable Lyric existing, String text,
             Lyric.Extend extend, Lyric.@Nullable Syllabic syllabic, boolean compound) {
-        var isBlank = text.isBlank();
-
         if (Lyric.isCarrier(extend)) {
             // A carrier's stored state is fixed by its extend alone: empty text, null syllabic,
             // not compound.
-            return isBlank && existing != null && existing.extend() == extend;
-        }
-
-        if (isBlank) {
-            // Blank text with NONE removes the verse entry rather than storing anything.
-            return extend == Lyric.Extend.NONE && existing == null;
+            return existing != null && existing.extend() == extend;
         }
 
         return existing != null
@@ -755,17 +719,18 @@ public interface LyricRun extends StaffElementRun {
 
         if (newSyllabic != lyric.syllabic()) {
             modifyElement(index, ElementField.LYRIC, () ->
-                replaceSyllabicAndCompound(index, verse, newSyllabic, lyric.compound()));
+                replaceSyllabicAndCompound(index, lyric, newSyllabic, lyric.compound()));
         }
     }
 
-    private void replaceSyllabicAndCompound(int index, int verse,
+    /**
+     * Rewrites {@code lyric} on the element at {@code index} with the given syllabic and
+     * compound flag, keeping its verse, text and extend. {@code lyric} must be that element's
+     * current lyric for its verse.
+     */
+    private void replaceSyllabicAndCompound(int index, Lyric lyric,
             Lyric.@Nullable Syllabic syllabic, boolean compound) {
-        var element = getElement(index);
-        var lyrics = element.lyrics;
-        var lyricIndex = element.indexOfLyricForVerse(verse);
-        var lyric = lyrics.get(lyricIndex);
-        lyrics.set(lyricIndex, new Lyric(
+        getElement(index).putLyric(new Lyric(
             lyric.verse(), lyric.text(), lyric.extend(), syllabic, compound));
     }
 
@@ -904,9 +869,7 @@ public interface LyricRun extends StaffElementRun {
                     index, backIndex);
                 var backElement = getElement(backIndex);
                 modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(verse,
-                        backLyric.syllabic(), backLyric.compound(), backLyric.text(),
-                        Lyric.Extend.STOP));
+                    backElement.putLyric(backLyric.withExtend(Lyric.Extend.STOP)));
                 return;
             }
 
@@ -970,15 +933,14 @@ public interface LyricRun extends StaffElementRun {
 
         // Blank text + NONE is setLyricForVerse's "remove the entry" case, which keeps the
         // removal inside the API that enforces the carrier/text-bearing invariants.
-        modifyElement(index, ElementField.LYRIC, () ->
-            element.setLyricForVerse(verse, null, false, null, Lyric.Extend.NONE));
+        modifyElement(index, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
     }
 
     /** The verse number of every lyric on {@code element}, in list order. */
     private static List<Integer> verseNumbersOf(StaffElement element) {
         var verses = new ArrayList<Integer>();
 
-        for (var lyric : element.lyrics) {
+        for (var lyric : element.getLyrics()) {
             verses.add(lyric.verse());
         }
 
@@ -1015,19 +977,18 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        // Read off the source before anything is written: setLyricForVerse drops the
-        // target's existing verse entry before adding the incoming syllable.
+        // Read off the source before anything is written: putLyric replaces the target's
+        // existing verse entry with the incoming syllable.
         var targetElement = getElement(toIndex);
         modifyElement(toIndex, ElementField.LYRIC, () ->
-            targetElement.setLyricForVerse(verse, sourceLyric.syllabic(), sourceLyric.compound(),
-                sourceLyric.text(), Lyric.Extend.NONE));
+            targetElement.putLyric(sourceLyric.withExtend(Lyric.Extend.NONE)));
         removeLyricForVerse(fromIndex, verse);
     }
 
     /**
      * Moves every verse's syllable from {@code fromIndex} to {@code toIndex} via
-     * {@link #transferLyricForVerse}. Verse enumeration lives here because a caller
-     * outside this package cannot see an element's lyric list.
+     * {@link #transferLyricForVerse}, so a caller moving a whole element's lyrics does not
+     * enumerate the verses itself.
      *
      * <p>Must be called inside a modification bracket.
      */
@@ -1157,7 +1118,7 @@ public interface LyricRun extends StaffElementRun {
 
             var hostHadSyllable = hostLyric != null;
             modifyElement(hostIndex, ElementField.LYRIC, () ->
-                hostElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.STOP));
+                hostElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
 
             // The host's own syllable is gone, so its neighbors' syllabic chain has to heal
             // exactly as it would after a deletion. adjustNeighborsForLyricDeletion documents
@@ -1189,20 +1150,14 @@ public interface LyricRun extends StaffElementRun {
      */
     private void setExtendForVerse(int index, int verse, Lyric.Extend extend) {
         var element = getElement(index);
-        var lyricIndex = element.indexOfLyricForVerse(verse);
+        var lyric = element.getLyricForVerse(verse);
 
-        if (lyricIndex < 0) {
-            return;
-        }
-
-        var lyric = element.lyrics.get(lyricIndex);
-
-        if (lyric.extend() == extend) {
+        if (lyric == null || lyric.extend() == extend) {
             return;
         }
 
         modifyElement(index, ElementField.LYRIC, () ->
-            element.lyrics.set(lyricIndex,
+            element.putLyric(
                 new Lyric(lyric.verse(), lyric.text(), extend, lyric.syllabic(), lyric.compound())));
     }
 

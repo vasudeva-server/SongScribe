@@ -22,7 +22,8 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.List;
-import songscribe.dom.StaffElement;
+
+import songscribe.dom.Direction;
 import songscribe.engraving.Staff;
 
 /**
@@ -183,11 +184,14 @@ public final class OpticalSpacing {
      * as part of the summed correction.
      */
     static double oppositeStemCorrectionSs(ElementColumn prev, ElementColumn curr) {
-        if (!prev.hasStem() || !curr.hasStem()) {
+        var prevDirection = prev.stemDirection();
+        var currDirection = curr.stemDirection();
+
+        if (prevDirection == null || currDirection == null) {
             return 0.0;
         }
 
-        if (prev.getDirection() == curr.getDirection()) {
+        if (prevDirection == currDirection) {
             return 0.0;
         }
 
@@ -203,7 +207,7 @@ public final class OpticalSpacing {
             return 0.0;
         }
 
-        return saturatedMagnitudeSs(overlapSs, OPPOSITE_STEM_MAX_CORRECTION_SS) * prev.getDirection().sign();
+        return saturatedMagnitudeSs(overlapSs, OPPOSITE_STEM_MAX_CORRECTION_SS) * prevDirection.sign();
     }
 
     /**
@@ -214,11 +218,14 @@ public final class OpticalSpacing {
      * as part of the summed correction.
      */
     static double sameDirectionCorrectionSs(ElementColumn prev, ElementColumn curr) {
-        if (!prev.hasStem() || !curr.hasStem()) {
+        var prevDirection = prev.stemDirection();
+        var currDirection = curr.stemDirection();
+
+        if (prevDirection == null || currDirection == null) {
             return 0.0;
         }
 
-        if (prev.getDirection() != curr.getDirection()) {
+        if (prevDirection != currDirection) {
             return 0.0;
         }
 
@@ -247,7 +254,7 @@ public final class OpticalSpacing {
      * as part of the summed correction.
      */
     static double downstemAfterBarlineCorrectionSs(ElementColumn prev, ElementColumn curr) {
-        if (!prev.isBarline() || !curr.hasStem() || curr.getDirection() != StaffElement.Direction.DOWN) {
+        if (!prev.isBarline() || curr.stemDirection() != Direction.DOWN) {
             return 0.0;
         }
 

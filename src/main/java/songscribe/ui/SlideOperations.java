@@ -26,8 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Line;
-import songscribe.dom.SlideZone;
-import songscribe.error.RuntimeError;
+import songscribe.dom.Slide;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.mutation.ElementField;
@@ -45,18 +44,18 @@ import songscribe.undo.OpNames;
  * same {@link RangeQueries} eligibility predicate, so the two modes can never disagree about
  * what is eligible.
  *
- * <p>{@link SlideZone} is the kind parameter: {@code matches()} is the "already carries this
- * slide" test and {@code applyTo()} is the mutation, so one kernel serves both slide kinds and
- * the test and the mutation cannot drift apart.
+ * <p>{@link Slide} is the kind parameter: comparing an element's {@code getSlide()} against it is
+ * the "already carries this slide" test and {@code setSlide()} is the mutation, so one kernel
+ * serves both slide kinds.
  *
  * <p>The toggle decision, over the affected indices — one glissando source, or every pitched index
  * in a range:
  *
  * <ol>
  *   <li>No indices at all: {@code REFUSED}.
- *   <li>If {@code zone.matches(element)} holds for <em>every</em> index, remove the slide from all
- *       of them, labeling the step with {@code deleteSlideLabel(getSlide())}.
- *   <li>Otherwise add to every index that does not match yet, labeled with
+ *   <li>If every index already carries {@code slide}, remove it from all of them, labeling the
+ *       step with {@code deleteSlideLabel(getSlide())}.
+ *   <li>Otherwise add to every index that does not carry it yet, labeled with
  *       {@code addSlideLabel}. A mixed selection therefore always adds; it never clears.
  *   <li>If {@code hasRoomForSlides} refuses the added indices, nothing is modified: the line-full
  *       error dialog is shown and the result is {@code REPORTED}.
@@ -83,7 +82,7 @@ public final class SlideOperations {
             return EditResult.REFUSED;
         }
 
-        return applySlides(range.line(), new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics);
+        return applySlides(range.line(), new int[] { sourceIndex }, Slide.GLISSANDO, lyricRenderMetrics);
     }
 
     /**
@@ -111,7 +110,7 @@ public final class SlideOperations {
             return EditResult.REFUSED;
         }
 
-        return applySlides(line, new int[] { sourceIndex }, SlideZone.GLISSANDO, lyricRenderMetrics);
+        return applySlides(line, new int[] { sourceIndex }, Slide.GLISSANDO, lyricRenderMetrics);
     }
 
     /**
@@ -120,7 +119,7 @@ public final class SlideOperations {
      * @see RangeQueries#fallIndices
      */
     public static EditResult toggleFall(ElementSelection range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
-        return applySlides(range.line(), RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
+        return applySlides(range.line(), RangeQueries.fallIndices(range), Slide.FALL, lyricRenderMetrics);
     }
 
     /**
@@ -136,7 +135,7 @@ public final class SlideOperations {
 
         var range = ElementSelection.single(line, elementIndex);
 
-        return applySlides(line, RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
+        return applySlides(line, RangeQueries.fallIndices(range), Slide.FALL, lyricRenderMetrics);
     }
 
     /**
@@ -154,7 +153,7 @@ public final class SlideOperations {
      * a batch that jointly overruns the line.
      */
     private static EditResult applySlides(
-        Line line, int[] indices, SlideZone zone, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        Line line, int[] indices, Slide slide, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (indices.length == 0) {
             return EditResult.REFUSED;
@@ -163,33 +162,26 @@ public final class SlideOperations {
         // No index left to add to means every index already carries the slide, so this is the
         // remove branch and nothing claims further space. Anything less adds, mixed or not.
         var addedIndices = Arrays.stream(indices)
-            .filter(index -> !zone.matches(line.getElement(index)))
+            .filter(index -> line.noteAt(index).getSlide() != slide)
             .toArray();
         var removing = addedIndices.length == 0;
         String label;
 
         if (removing) {
-            // Non-null wherever the zone matches: matching is precisely carrying that slide.
-            var slide = line.getElement(indices[0]).getSlide();
-
-            if (slide == null) {
-                throw RuntimeError.exit("slide missing on an element its zone matched");
-            }
-
             label = OpNames.deleteSlideLabel(slide);
         } else {
-            if (!InsertionSpacingCalculator.hasRoomForSlides(line, addedIndices, zone, lyricRenderMetrics)) {
-                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_INSERT_ERROR, lineFullMessage(zone));
+            if (!InsertionSpacingCalculator.hasRoomForSlides(line, addedIndices, slide, lyricRenderMetrics)) {
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_INSERT_ERROR, lineFullMessage(slide));
 
                 return EditResult.REPORTED;
             }
 
-            label = OpNames.addSlideLabel(zone);
+            label = OpNames.addSlideLabel(slide);
         }
 
         line.withModification(label, () -> {
             for (var index : indices) {
-                var element = line.getElement(index);
+                var element = line.noteAt(index);
 
                 if (removing) {
                     // Capture before the removal: stripping the glissando un-pairs the grace
@@ -206,8 +198,8 @@ public final class SlideOperations {
                     if (wasPairedGraceNote) {
                         line.syncGraceHostMelisma(index);
                     }
-                } else if (!zone.matches(element)) {
-                    line.modifyElement(index, ElementField.SLIDE, () -> zone.applyTo(element));
+                } else if (element.getSlide() != slide) {
+                    line.modifyElement(index, ElementField.SLIDE, () -> element.setSlide(slide));
                 }
             }
         });
@@ -216,7 +208,10 @@ public final class SlideOperations {
     }
 
     /** Names the "no room on this line" message for the kind of slide that would not fit. */
-    private static String lineFullMessage(SlideZone zone) {
-        return zone == SlideZone.FALL ? Strings.ERROR_LINE_FULL_FALL : Strings.ERROR_LINE_FULL_GLISSANDO;
+    private static String lineFullMessage(Slide slide) {
+        return switch (slide) {
+            case FALL -> Strings.ERROR_LINE_FULL_FALL;
+            case GLISSANDO -> Strings.ERROR_LINE_FULL_GLISSANDO;
+        };
     }
 }

@@ -94,7 +94,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -106,7 +106,7 @@
           <text>open=SINGLE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -126,7 +126,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -135,7 +135,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -159,7 +159,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -172,7 +172,7 @@
           <text>open=DOUBLE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -191,7 +191,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -200,7 +200,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -229,7 +229,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -241,7 +241,7 @@
           <text>open=REPEAT_LEFT</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -261,7 +261,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -269,7 +269,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -295,7 +295,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -308,7 +308,7 @@
           <text>open=REPEAT_RIGHT</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -327,7 +327,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -336,7 +336,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -365,7 +365,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -378,7 +378,7 @@
           <text>open=RLR</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -398,7 +398,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -406,7 +406,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -426,7 +426,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -438,7 +438,7 @@
           <text>open=NOTE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -458,7 +458,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -467,7 +467,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -491,7 +491,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -504,7 +504,7 @@
           <text>close=SINGLE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -523,7 +523,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -532,7 +532,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -557,7 +557,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -569,7 +569,7 @@
           <text>close=DOUBLE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -589,7 +589,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -597,7 +597,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -622,7 +622,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -635,7 +635,7 @@
           <text>close=REPEAT_LEFT</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -654,7 +654,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -663,7 +663,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -696,7 +696,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -709,7 +709,7 @@
           <text>close=REPEAT_RIGHT</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -730,7 +730,7 @@
         <ending number="2" type="start"/>
         <repeat direction="forward"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -738,7 +738,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -764,7 +764,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -776,7 +776,7 @@
           <text>close=RLR</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -797,7 +797,7 @@
         <ending number="2" type="start"/>
         <repeat direction="forward"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -806,7 +806,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -840,7 +840,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -853,7 +853,7 @@
           <text>close=NOTE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -872,7 +872,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -881,7 +881,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -894,7 +894,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="discontinue"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -917,7 +917,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -930,7 +930,7 @@
           <text>close=NOTE_THEN_BAR</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -949,7 +949,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -958,7 +958,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -986,7 +986,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -998,7 +998,7 @@
           <text>split=RLR</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -1019,7 +1019,7 @@
         <ending number="2" type="start"/>
         <repeat direction="forward"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -1027,7 +1027,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -1044,7 +1044,7 @@
     </measure>
     <measure number="44">
       <print new-system="yes"/>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -1057,7 +1057,7 @@
           <text>anchor=RLR</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -1076,7 +1076,7 @@
         <bar-style>heavy-light</bar-style>
         <repeat direction="forward"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -1085,7 +1085,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -1104,7 +1104,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>
@@ -1113,7 +1113,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>E</step>
           <alter>-1</alter>
@@ -1138,7 +1138,7 @@
         <bar-style>none</bar-style>
         <ending number="1" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>F</step>
           <octave>4</octave>
@@ -1150,7 +1150,7 @@
           <text>close=FINAL_DOUBLE</text>
         </lyric>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>G</step>
           <alter>-1</alter>
@@ -1170,7 +1170,7 @@
         <bar-style>none</bar-style>
         <ending number="2" type="start"/>
       </barline>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>C</step>
           <octave>4</octave>
@@ -1178,7 +1178,7 @@
         <duration>13440</duration>
         <type>quarter</type>
       </note>
-      <note default-x="0.00">
+      <note>
         <pitch>
           <step>D</step>
           <alter>-1</alter>

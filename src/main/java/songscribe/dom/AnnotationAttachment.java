@@ -38,23 +38,17 @@ public final class AnnotationAttachment extends Attachment {
     private Annotation annotation;
 
     /**
-     * Creates an annotation attachment attached to a note.
+     * Creates an annotation attachment.
      *
-     * @param parent     The parent note
      * @param annotation The annotation data
      */
-    public AnnotationAttachment(@Nullable StaffElement parent, Annotation annotation) {
+    public AnnotationAttachment(Annotation annotation) {
         this.annotation = annotation;
-        setOwnerElement(parent);
-        setAlignment(Alignment.LEFT);
-        // The line pointer is not set here. StaffElement.addAttachment — which every
-        // caller reaches immediately — routes through LineElement.addChild, and that
-        // owns it.
     }
 
     @Override
-    protected Attachment createCopy(StaffElement newOwner) {
-        return new AnnotationAttachment(newOwner, annotation);
+    protected Attachment createCopy() {
+        return new AnnotationAttachment(annotation);
     }
 
     /**

@@ -30,17 +30,27 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.Accidental;
+import songscribe.dom.AccidentalState;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.BeatUnit;
+import songscribe.dom.Direction;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Lyric;
+import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Stem;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.engraving.PitchOutOfRangeException;
+import songscribe.engraving.StaffPosition;
 
 public final class StaffElementIO {
 
@@ -121,7 +131,7 @@ public final class StaffElementIO {
         Map.entry("GRACESEMIQUAVER", ElementType.GRACE_QUAVER)
     );
 
-    private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
+    private static final Map<String, Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
 
     // Every name in ACCIDENTAL_MAP that belongs to a retired accidental, so a reader
@@ -130,7 +140,7 @@ public final class StaffElementIO {
     private static final Set<String> LEGACY_ACCIDENTAL_NAMES = new HashSet<>();
 
     static {
-        for (var accidental : StaffElement.Accidental.values()) {
+        for (var accidental : Accidental.values()) {
             putAccidentalNameWithAlias(accidental.name(), accidental, false);
         }
 
@@ -146,7 +156,7 @@ public final class StaffElementIO {
 
     private static void putAccidentalNameWithAlias(
         String accidentalName,
-        StaffElement.Accidental accidental,
+        Accidental accidental,
         boolean isLegacy
     ) {
         putAccidentalName(accidentalName, accidental, isLegacy);
@@ -158,7 +168,7 @@ public final class StaffElementIO {
 
     private static void putAccidentalName(
         String accidentalName,
-        StaffElement.Accidental accidental,
+        Accidental accidental,
         boolean isLegacy
     ) {
         ACCIDENTAL_MAP.put(accidentalName, accidental);
@@ -227,6 +237,13 @@ public final class StaffElementIO {
         // LineIO.LineReader reads this after each note and coalesces runs into Trill spans.
         private boolean trillFlagged = false;
 
+        // The legacy stem tags of the current element, combined when the element closes: the
+        // <stemdirectionauto> tag marks a stem the notator forced, and <upper> says which way.
+        // An <upper> on a stem the notator did not force is a stale cached direction and is
+        // ignored, as the layout of the day would have overwritten it.
+        private boolean stemForced = false;
+        private boolean stemUp = false;
+
         // True once any element read by this reader named a retired accidental that was
         // converted to its replacement. Unlike trillFlagged this is never reset: it answers
         // "did anything in this file get converted", which the loader reports so a converted
@@ -260,6 +277,8 @@ public final class StaffElementIO {
                 lastTag = null;
                 where = Where.ELEMENT;
                 trillFlagged = false;
+                stemForced = false;
+                stemUp = false;
                 var type = attributes.getValue(XML_TYPE);
 
                 if (type.equals("NEWLINE")) {
@@ -293,6 +312,8 @@ public final class StaffElementIO {
                 lastTag = null;
                 where = Where.ELEMENT;
                 trillFlagged = false;
+                stemForced = false;
+                stemUp = false;
 
                 var type = attributes.getValue(XML_TYPE);
 
@@ -327,7 +348,7 @@ public final class StaffElementIO {
                             if (typeStr != null) {
                                 try {
                                     var dynamicType = DynamicAttachment.DynamicType.valueOf(typeStr);
-                                    element.addAttachment(new DynamicAttachment(element, dynamicType));
+                                    DocumentValidation.attachUnique(LOG, element, new DynamicAttachment(dynamicType));
                                 } catch (IllegalArgumentException e) {
                                     LOG.warn("Unknown dynamic type: {}, skipping", typeStr);
                                 }
@@ -340,8 +361,7 @@ public final class StaffElementIO {
 
                         if (duration != null && beat != null && element != null) {
                             // New two-attribute format (v2.5+)
-                            element.addAttachment(new BeatChangeAttachment(
-                                element,
+                            DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(
                                 new BeatChange(BeatUnit.valueOf(duration), BeatUnit.valueOf(beat))
                             ));
                         } else {
@@ -380,7 +400,7 @@ public final class StaffElementIO {
                 var t = tempoReader.endElement11(qName);
 
                 if (t != null) {
-                    element.addAttachment(new TempoChangeAttachment(element, t));
+                    DocumentValidation.attachUnique(LOG, element, new TempoChangeAttachment(t));
                     where = Where.ELEMENT;
                 }
             } else if (where == Where.ANNOTATION) {
@@ -412,9 +432,14 @@ public final class StaffElementIO {
                         compound = stripped.hadMarker();
                     }
 
-                    element.lyrics.add(
-                        new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
-                    );
+                    if (!Lyric.isCarrier(lyricExtend) && lyricText.isBlank()) {
+                        LOG.warn("Dropping blank lyric syllable for verse {}", lyricNumber);
+                    } else {
+                        element.putLyric(
+                            new Lyric(lyricNumber, lyricText, lyricExtend, syllabic, compound)
+                        );
+                    }
+
                     where = Where.ELEMENT;
                 } else //noinspection PointlessNullCheck
                     if (lastTag != null && qName.equals(lastTag)) {
@@ -431,6 +456,10 @@ public final class StaffElementIO {
                     return null;
                 }
                 if (qName.equals(XML_NOTE)) {
+                    if (stemForced && element instanceof NoteElement note) {
+                        note.setStem(new Stem.Forced(stemUp ? Direction.UP : Direction.DOWN));
+                    }
+
                     return element;
                 }
                 //noinspection PointlessNullCheck
@@ -438,57 +467,22 @@ public final class StaffElementIO {
                     var str = value.toString();
 
                     if (lastTag.equals(XML_XPOS)) {
-                        element.setXOffsetPx(Integer.parseInt(str));
-                    } else if (lastTag.equals(XML_STAFF_POSITION) ||
-                        lastTag.equals(XML_YPOS)) {
-                        element.setStaffPosition(Integer.parseInt(str));
+                        // The stored layout position of a v1.1/v1.2 file. An element carries no
+                        // position; layout re-spaces every line after load.
                     } else if (lastTag.equals(XML_DOTTED)) {
-                        element.setDotCount(Integer.parseInt(str));
-                    } else if (lastTag.equals(XML_PREFIX)) {
-                        var accidental = ACCIDENTAL_MAP.get(str);
-
-                        if (accidental == null) {
-                            throw new IllegalArgumentException(
-                                "Unknown accidental: " + str);
+                        // A legacy file may write dots on an element that takes none; they
+                        // have nowhere to go.
+                        if (element instanceof Dottable dottable) {
+                            dottable.setDots(Dots.of(DocumentValidation.parseIntOrThrow(LOG, lastTag, str)));
                         }
-
-                        if (LEGACY_ACCIDENTAL_NAMES.contains(str)) {
-                            sawLegacyAccidental = true;
-                        }
-
-                        element.setAccidental(accidental);
-                    } else if (lastTag.equals(XML_PREFIX_IN_PARENTHESIS)) {
-                        element.setAccidentalInParentheses(true);
-                    } else if (
-                        lastTag.equals(XML_VOLUME) && str.equals("LOUDER")
-                    ) { //old
-                        element.addArticulation(
-                            new Articulation(element, ArticulationType.ACCENT)
-                        );
-                    } else if (lastTag.equals(XML_FORCE_ARTICULATION)) {
-                        element.addArticulation(
-                            new Articulation(element, ArticulationType.ACCENT)
-                        );
-                    } else if (lastTag.equals(XML_DURATION_ARTICULATION)) {
-                        element.addArticulation(
-                            new Articulation(element, ArticulationType.STACCATO)
-                        );
-                    } else if (lastTag.equals(XML_GLISSANDO)) {
-                        // Legacy fall glissandos (saved as "SLIDE_OUT") load as falls. Everything else —
-                        // "CONNECTED", an empty new-style <glissando/> tag, or a legacy
-                        // integer pitch — loads as a connecting glissando.
-                        if ("SLIDE_OUT".equals(str)) {
-                            element.setFall();
-                        } else {
-                            element.setGlissando();
-                        }
-                    } else if (lastTag.equals(XML_FALL)) {
-                        element.setFall();
+                    } else if (element instanceof NoteElement note && applyNoteTag(note, lastTag, str)) {
+                        // A tag only a note carries, written onto the note. A legacy file may
+                        // write one on an element that is not a note; it has nowhere to go.
                     } else if (lastTag.equals(XML_GLISSANDO_X1_TRANSLATE)
                         || lastTag.equals(XML_GLISSANDO_X2_TRANSLATE)) {
                         // Legacy manual-adjustment offsets — no longer supported; ignore (issue #455).
                     } else if (lastTag.equals(XML_UPPER)) {
-                        element.setUpper(true);
+                        stemUp = true;
                     } else if (lastTag.equals(XML_SYLLABLE_MOVEMENT)
                         || lastTag.equals(XML_SYLLABLE_RELATION_MOVEMENT)
                         || lastTag.equals(XML_FORCE_SYLLABLE)) {
@@ -497,14 +491,14 @@ public final class StaffElementIO {
                         // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill spans.
                         trillFlagged = true;
                     } else if (lastTag.equals(XML_FERMATA)) {
-                        element.addAttachment(new FermataAttachment(element));
+                        DocumentValidation.attachUnique(LOG, element, new FermataAttachment());
                     } else if (lastTag.equals(XML_STEM_DIRECTION_AUTO)) {
-                        element.setStemDirectionAuto(false);
+                        stemForced = true;
                     } else if (lastTag.equals(XML_INVERT_FRACTION_BEAM_ORIENTATION)) {
                         // Silently ignored — partial beam stub direction is now automatic.
                     } else if (lastTag.equals(XML_BEAT_CHANGE)) {
-                        element.addAttachment(new BeatChangeAttachment(
-                            element, BeatChange.fromLegacyName(str)));
+                        DocumentValidation.attachUnique(LOG, element, new BeatChangeAttachment(
+                            BeatChange.fromLegacyName(str)));
                     }
                 }
             }
@@ -512,6 +506,65 @@ public final class StaffElementIO {
             value.delete(0, value.length());
             lastTag = null;
             return null;
+        }
+
+        /**
+         * Applies a tag only a note carries — its staff position, accidental, articulations and
+         * slide — to {@code note}, and returns whether {@code tag} was one of those.
+         *
+         * @param note the note being read
+         * @param tag  the tag just closed
+         * @param str  the tag's text content
+         * @return {@code true} when {@code tag} is a note-only tag, whether or not its content
+         *     changed the note
+         * @throws IllegalArgumentException if {@code tag} names an accidental and {@code str} is
+         *     not one of the accidental names this reader knows
+         * @throws SAXException if {@code tag} names a staff position and {@code str} is not an
+         *     integer, or is one that lies outside the grid {@link StaffPosition#MIN}..
+         *     {@link StaffPosition#MAX}
+         */
+        private boolean applyNoteTag(NoteElement note, String tag, String str) throws SAXException {
+            if (tag.equals(XML_STAFF_POSITION) || tag.equals(XML_YPOS)) {
+                var staffPositionSp = DocumentValidation.parseIntOrThrow(LOG, tag, str);
+
+                try {
+                    note.setStaffPosition(new StaffPosition(staffPositionSp));
+                } catch (PitchOutOfRangeException e) {
+                    throw DocumentValidation.corrupt(LOG, "Corrupt document: {}", e.detail());
+                }
+            } else if (tag.equals(XML_PREFIX)) {
+                var accidental = ACCIDENTAL_MAP.get(str);
+
+                if (accidental == null) {
+                    throw new IllegalArgumentException(
+                        "Unknown accidental: " + str);
+                }
+
+                if (LEGACY_ACCIDENTAL_NAMES.contains(str)) {
+                    sawLegacyAccidental = true;
+                }
+
+                note.setAccidentalState(new AccidentalState.Chosen(accidental));
+            } else if (tag.equals(XML_PREFIX_IN_PARENTHESIS)) {
+                // Read and ignored: parentheses are no longer tracked.
+            } else if (tag.equals(XML_VOLUME) && str.equals("LOUDER")) { //old
+                note.addArticulation(new Articulation(ArticulationType.ACCENT));
+            } else if (tag.equals(XML_FORCE_ARTICULATION)) {
+                note.addArticulation(new Articulation(ArticulationType.ACCENT));
+            } else if (tag.equals(XML_DURATION_ARTICULATION)) {
+                note.addArticulation(new Articulation(ArticulationType.STACCATO));
+            } else if (tag.equals(XML_GLISSANDO)) {
+                // Legacy fall glissandos (saved as "SLIDE_OUT") load as falls. Everything else —
+                // "CONNECTED", an empty new-style <glissando/> tag, or a legacy
+                // integer pitch — loads as a connecting glissando.
+                note.setSlide("SLIDE_OUT".equals(str) ? Slide.FALL : Slide.GLISSANDO);
+            } else if (tag.equals(XML_FALL)) {
+                note.setSlide(Slide.FALL);
+            } else {
+                return false;
+            }
+
+            return true;
         }
 
         private Lyric.@Nullable Syllabic getSyllabic() {

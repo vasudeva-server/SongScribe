@@ -48,33 +48,45 @@ class LineTest extends UnitTest {
     /** The index the run lands at in every fixture here: after the line's first element. */
     private static final int RUN_INDEX = 1;
 
-    private static final double RUN_POSITION_SS = 0.0;
-
-    private static final int NO_TAIL_SHIFT_PX = 0;
-
     private static final String SYLLABLE = "la";
 
     @Test
     void testANonPitchedRunStripsThePredecessorsOrphanedGlissando() {
         var line = detachedLine();
         var source = crotchet();
-        source.setGlissando();
+        source.setSlide(Slide.GLISSANDO);
         line.addElement(source);
         line.addElement(crotchet());
 
         insertRun(line, List.of(singleBarline(), keyChange(Key.NO_ACCIDENTALS)));
 
-        assertThat(line.getElement(0).hasGlissando())
+        assertThat(((NoteElement) line.getElement(0)).hasGlissando())
             .as("the glissando's target is no longer the element after it, so it cannot survive")
             .isFalse();
+    }
+
+    @Test
+    void testANonPitchedRunLeavesThePredecessorsFallAlone() {
+        var line = detachedLine();
+        var source = crotchet();
+        source.setSlide(Slide.FALL);
+        line.addElement(source);
+        line.addElement(crotchet());
+
+        insertRun(line, List.of(singleBarline(), keyChange(Key.NO_ACCIDENTALS)));
+
+        assertThat(((NoteElement) line.getElement(0)).getSlide())
+            .as("a fall trails off the note itself and has no target to be orphaned from, so the "
+                + "repair that strips a glissando must leave it standing")
+            .isEqualTo(Slide.FALL);
     }
 
     @Test
     void testAPitchedRunLandingInsideAGraceHostPairRemakesTheMelismaAgainstItsFirstElement() {
         var line = detachedLine();
         var grace = graceQuaver();
-        grace.setGlissando();
-        grace.setLyricForVerse(Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
+        grace.setSlide(Slide.GLISSANDO);
+        grace.putLyric(new Lyric(Lyric.FIRST_VERSE, SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         line.addElement(grace);
         line.addElement(crotchet());
 
@@ -128,7 +140,7 @@ class LineTest extends UnitTest {
         line.addElement(crotchet());
 
         var successor = crotchet();
-        successor.setLyricForVerse(Lyric.FIRST_VERSE, Lyric.Syllabic.MIDDLE, false, SYLLABLE, Lyric.Extend.NONE);
+        successor.putLyric(new Lyric(Lyric.FIRST_VERSE, SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
         line.addElement(successor);
 
         insertRun(line, testCase.run());
@@ -166,7 +178,7 @@ class LineTest extends UnitTest {
         line.addElement(crotchet());
 
         var grace = graceQuaver();
-        grace.setGlissando();
+        grace.setSlide(Slide.GLISSANDO);
         line.addElement(grace);
         line.addElement(crotchet());
 
@@ -213,9 +225,6 @@ class LineTest extends UnitTest {
     }
 
     private static void insertRun(Line line, List<StaffElement> elements) {
-        line.insertRun(
-            RUN_INDEX,
-            elements.stream().map(element -> new Line.PlacedElement(element, RUN_POSITION_SS)).toList(),
-            NO_TAIL_SHIFT_PX);
+        line.insertRun(RUN_INDEX, elements);
     }
 }

@@ -28,6 +28,8 @@ import java.awt.geom.Path2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Beam;
+import songscribe.dom.Direction;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.NoteElement;
@@ -36,9 +38,7 @@ import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.StaffPosition;
 import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
-import songscribe.layout.BeamMath;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
 import songscribe.util.GraphicsState;
 
 import static songscribe.util.GraphicsState.Property.CLIP;
@@ -98,7 +98,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     }
 
     /**
-     * Renders beams for notes in a beaming span.
+     * Renders the beams of one beam group.
      * <p>
      * Entry point for rendering beams directly from a Line's beaming spans.
      */
@@ -106,13 +106,16 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         Graphics2D g2,
         LineInvariants invariants,
         ElementFrame frame,
-        int beginIndex,
-        int endIndex
+        Beam beam
     ) {
         var line = invariants.requireCurrentLine();
-        var level = getBeamLevel(line, beginIndex, endIndex);
+        var beginIndex = beam.getAnchorElementIndex();
+        var endIndex = beam.getEndElementIndex();
         var highlightColor = getBeamHighlightColor(invariants, beginIndex, endIndex);
-        drawBeams(g2, level, line, invariants, frame, beginIndex, endIndex, highlightColor != null,
+        var beamLayout = invariants.getLayoutResult().getBeamLayout(beam);
+        var outerNotes = new Point(beginIndex, endIndex);
+        doDrawBeams(g2, beam.beamLevel(), line, invariants, frame, beam, outerNotes,
+            beginIndex, endIndex, beginIndex, endIndex, false, 0, highlightColor != null, beamLayout,
             highlightColor != null ? highlightColor : invariants.getSelectionColor());
     }
 
@@ -177,39 +180,13 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         return null;
     }
 
-    /**
-     * Determines the beam level based on the shortest note in the range.
-     * Delegates to {@link BeamMath#beamLevel}.
-     */
-    int getBeamLevel(Line line, int beginIndex, int endIndex) {
-        return BeamMath.beamLevel(line, beginIndex, endIndex);
-    }
-
-    private void drawBeams(
-        Graphics2D g2,
-        int level,
-        Line line,
-        LineInvariants invariants,
-        ElementFrame frame,
-        int beginIndex,
-        int endIndex,
-        boolean selected,
-        Color selectionColor
-    ) {
-        var outerNotes = new Point(beginIndex, endIndex);
-        var beam = line.findBeamAt(beginIndex);
-        var beamLayout = (beam != null)
-            ? invariants.getLayoutResult().getBeamLayout(beam) : null;
-        doDrawBeams(g2, level, line, invariants, frame, outerNotes,
-            beginIndex, endIndex, beginIndex, endIndex, false, 0, selected, beamLayout, selectionColor);
-    }
-
     private void doDrawBeams(
         Graphics2D g2,
         int level,
         Line line,
         LineInvariants invariants,
         ElementFrame frame,
+        Beam beam,
         Point outerNotes,
         int beginIndex,
         int endIndex,
@@ -226,7 +203,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         var beginNote = line.getElement(beginIndex);
-        var direction = beginNote.getDirection();
+        var direction = beam.direction();
         var leftOriented = false;
 
         // Half beam (single note at this level)
@@ -256,11 +233,11 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            drawBeam(g2, line, invariants, begin, end, direction, type, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, beam, invariants, begin, end, direction, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            drawBeam(g2, line, invariants, beginIndex, endIndex, direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, beam, invariants, beginIndex, endIndex, direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
@@ -268,13 +245,13 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var startSubBeam = -1;
 
         for (var i = beginIndex; i <= endIndex + 1; i++) {
-            if (i <= endIndex && isNoteTypeInLevel(line, i, beamLevel)) {
+            if (i <= endIndex && beam.noteTypeInLevel(i, beamLevel)) {
                 if (startSubBeam == -1) {
                     startSubBeam = i;
                 }
             } else {
                 if (startSubBeam != -1) {
-                    doDrawBeams(g2, beamLevel, line, invariants, frame, outerNotes,
+                    doDrawBeams(g2, beamLevel, line, invariants, frame, beam, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
                         leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
                     startSubBeam = -1;
@@ -283,25 +260,21 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
     }
 
-    boolean isNoteTypeInLevel(Line line, int noteIndex, int level) {
-        return BeamMath.noteTypeInLevel(line, noteIndex, level);
-    }
-
     private void drawBeam(
         Graphics2D g2,
-        Line line,
+        Beam beam,
         LineInvariants invariants,
         int beginIndex,
         int endIndex,
-        StaffElement.Direction direction,
+        Direction direction,
         BeamType type,
         int recursionLevel,
         boolean selected,
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        var beginNote = beamedNoteAt(line, beginIndex);
-        var endNote = beamedNoteAt(line, endIndex);
+        var beginNote = beam.noteAt(beginIndex);
+        var endNote = beam.noteAt(endIndex);
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
         var isUpper = direction.isUp();
@@ -342,16 +315,16 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var blotRadiusSs = BeamMetrics.BEAM_BLOT_DIAMETER_SS / 2.0;
         var towardInnerSs = isUpper ? blotRadiusSs : -blotRadiusSs;
 
-        var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
-        beam.moveTo(firstX + blotRadiusSs, firstOuterY + towardInnerSs);
-        beam.lineTo(lastX - blotRadiusSs, lastOuterY + towardInnerSs);
-        beam.lineTo(lastX - blotRadiusSs, lastInnerY - towardInnerSs);
-        beam.lineTo(firstX + blotRadiusSs, firstInnerY - towardInnerSs);
-        beam.closePath();
+        var beamShape = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
+        beamShape.moveTo(firstX + blotRadiusSs, firstOuterY + towardInnerSs);
+        beamShape.lineTo(lastX - blotRadiusSs, lastOuterY + towardInnerSs);
+        beamShape.lineTo(lastX - blotRadiusSs, lastInnerY - towardInnerSs);
+        beamShape.lineTo(firstX + blotRadiusSs, firstInnerY - towardInnerSs);
+        beamShape.closePath();
 
         try (var _ = GraphicsState.save(g2, CLIP, COLOR, STROKE)) {
             if (type != BeamType.FULL) {
-                var clip = beam.getBounds2D();
+                var clip = beamShape.getBounds2D();
                 var x1 = (type == BeamType.ATTACH_LEFT)
                     ? firstX - CLIP_SLOP_SS
                     : lastX - BEAM_STUB_SS;
@@ -365,24 +338,11 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
             g2.setColor(selected ? selectionColor : RenderingUtils.ELEMENT_COLOR);
             g2.setStroke(BLOT_STROKE);
-            g2.fill(beam);
-            g2.draw(beam);
+            g2.fill(beamShape);
+            g2.draw(beamShape);
         }
     }
 
-    /**
-     * The note a beam's end index names. A beam spans beamable notes and nothing else —
-     * {@code Beam} admits no other member — so the element at one of its indices is a note.
-     *
-     * @throws IllegalStateException if the element at {@code index} is not a note
-     */
-    private static NoteElement beamedNoteAt(Line line, int index) {
-        if (line.getElement(index) instanceof NoteElement note) {
-            return note;
-        }
-
-        throw new IllegalStateException("beam spans a non-note element at index " + index);
-    }
 
     /**
      * Returns the Y offset from {@code middleLineYSs} to the beam-connection end of the stem
@@ -394,8 +354,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
      */
     static double stemTipYSsOffset(
         LayoutResult.@Nullable StemLayout layout,
-        StaffElement.Direction direction,
-        StaffElement element
+        Direction direction,
+        NoteElement element
     ) {
         if (layout != null) {
             // topYSs = smaller Y (higher screen) = stem tip for stem-up
@@ -404,7 +364,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         }
 
         // Fallback: approximate from staff position + standard stem length
-        var elementYSs = StaffPosition.toSs(element.getStaffPosition());
+        var elementYSs = element.getStaffPosition().toSs();
         return direction.isUp()
             ? elementYSs - StemMetrics.STEM_LENGTH_SS
             : elementYSs + StemMetrics.STEM_LENGTH_SS;

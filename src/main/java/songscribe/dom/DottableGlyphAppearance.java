@@ -20,16 +20,14 @@
 
 package songscribe.dom;
 
+import songscribe.smufl.SMuFLGlyph;
+
 /**
- * Represents the treble clef at the start of a staff line.
- * <p>
- * The Clef is positioned absolutely at the line start and does not contribute
- * to Staff's bounds. The gap from here to the key signature belongs to the layout,
- * not to this object — see {@code StaffHeaderMetrics.CLEF_GAP_SS}. So does the glyph's
- * width, which the header reads from the font's advance rather than from this element.
- * What this class carries is the clef's identity and its position in the line.
- * <p>
- * Note: This application only uses treble clef.
+ * A glyph that takes augmentation dots after it — the rests. An element of this appearance is
+ * a {@link RestElement}, which is where the dot count lives.
+ *
+ * @param glyph  the glyph the element is drawn with
+ * @param seatSp the staff position the glyph is drawn at and hit-tested at, in staff-position
+ *               units from the middle line
  */
-public class Clef extends LineElement {
-}
+public record DottableGlyphAppearance(SMuFLGlyph glyph, int seatSp) implements GlyphAppearance {}

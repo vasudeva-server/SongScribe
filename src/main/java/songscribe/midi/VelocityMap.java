@@ -23,6 +23,7 @@ package songscribe.midi;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 
 /**
@@ -80,7 +81,7 @@ public final class VelocityMap {
                 var baseVelocity = (int) Math.round(masterVelocity * lastFraction);
 
                 // Apply accent boost
-                if (element.hasArticulation(ArticulationType.ACCENT)) {
+                if (element instanceof NoteElement note && note.hasArticulation(ArticulationType.ACCENT)) {
                     baseVelocity = Math.min(baseVelocity + ACCENT_BOOST, MAX_VELOCITY);
                 }
 

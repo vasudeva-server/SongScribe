@@ -72,7 +72,7 @@ import songscribe.message.mutation.TupletRemoval;
  *
  * <p>What a line <em>inherits</em> is not held here. {@link Song} owns it, keyed by line, because
  * it is a fact about a line's position in the song rather than about the line — see
- * {@link Song#runningKeyAt}. A line therefore cannot carry a stale inherited key out of the song
+ * {@link Song#inheritedKeyOf}. A line therefore cannot carry a stale inherited key out of the song
  * it was removed from.
  *
  * <p><b>Pairing.</b> Which elements cannot outlive their partner, and how a range widens to cover
@@ -175,9 +175,6 @@ public class Line implements LyricRun, SpanLookup {
      */
     public static final int SPAN_ADJACENCY_REACH = 1;
 
-    /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
-    private float elementSpacingRatio = 1f;
-
     public Line(Song song) {
         this.song = song;
     }
@@ -222,7 +219,8 @@ public class Line implements LyricRun, SpanLookup {
      *
      * <p>Either way the song's key invariant is restored afterwards. The suspended
      * path is not a shortcut past it: a key edit made under suspended tracking moves
-     * the same keys as one made inside a bracket, so it owes the same maintenance.
+     * the same keys as one made inside a bracket, so it owes the same maintenance. The
+     * suspended path maintains the key invariant but runs no chain walk.
      *
      * @throws IllegalStateException if the song has neither an open modification
      *     bracket nor suspended tracking
@@ -342,15 +340,23 @@ public class Line implements LyricRun, SpanLookup {
      * when it has one, and otherwise the key in effect at the end of the previous line, which
      * accounts for any mid-line key change that line carried.
      *
-     * <p>Equals {@link #getKey()} whenever that is non-null. Where it is null the answer comes from
-     * {@link Song#runningKeyAt}, which is total — a line that establishes no key and has nothing to
-     * inherit from is in {@link Key#DEFAULT}, the key a document that names none is in.
+     * <p>Equals {@link #getKey()} whenever that is non-null. Total, and deliberately so — a model
+     * getter has no business terminating the application. A line that establishes no key and has
+     * nothing to inherit from — line 0 before it is keyed, a line removed from its song, or any line
+     * while a file is part-way through loading — is in {@link Key#DEFAULT}, the key a document that
+     * names none is in, not a stand-in for a broken invariant.
      *
      * @return the key in effect at the start of this line; never null
      */
     public Key getRunningKey() {
         var ownKey = key;
-        return ownKey != null ? ownKey : song.runningKeyAt(this);
+
+        if (ownKey != null) {
+            return ownKey;
+        }
+
+        var inheritedKey = song.inheritedKeyOf(this);
+        return (inheritedKey != null) ? inheritedKey : Key.DEFAULT;
     }
 
     /**
@@ -398,44 +404,7 @@ public class Line implements LyricRun, SpanLookup {
      *         the line is empty; never null
      */
     public Key keyAtEndOfLine() {
-        return keyAtEndOfLineUnder(getRunningKey());
-    }
-
-    /**
-     * Returns the key this line would leave off in if it were running in {@code runningKey}: its
-     * last mid-line {@link KeyChangeElement}'s key when it holds one, and {@code runningKey}
-     * when it does not.
-     *
-     * <p>This is {@link #keyAtEndOfLine()} under a <em>hypothetical</em> running key, which is what
-     * every caller projecting an edit needs — a fit pre-check walking the inheritance chain, an
-     * accidental reconciliation deriving that chain's reach, and an insertion asking what its own
-     * key changes downstream. A line holding a mid-line change ends in that change's key however
-     * it began, and that is the asymmetry each of them would otherwise re-derive.
-     *
-     * @param runningKey the key to suppose this line begins in
-     * @return the key in effect after this line's last element under that supposition; never null
-     */
-    public Key keyAtEndOfLineUnder(Key runningKey) {
-        return keyAtEndOfLineUnder(FIRST_LEGAL_KEY_CHANGE_INDEX, runningKey);
-    }
-
-    /**
-     * As {@link #keyAtEndOfLineUnder(Key)}, counting only key changes at or after
-     * {@code fromIndex}.
-     *
-     * <p>The bounded form is what an edit inserting a key change at {@code fromIndex} needs:
-     * the key it establishes reaches the end of the line only when no existing key change
-     * already stands after it, and {@code runningKey} is then the inserted key rather than the
-     * line's own.
-     *
-     * @param fromIndex the lowest element index to count a key change at
-     * @param runningKey the key to suppose is in effect from {@code fromIndex} onward
-     * @return the key in effect after this line's last element under that supposition; never null
-     */
-    public Key keyAtEndOfLineUnder(int fromIndex, Key runningKey) {
-        var lastKeyChangeKey = lastKeyChangeKeyFrom(fromIndex);
-
-        return lastKeyChangeKey != null ? lastKeyChangeKey : runningKey;
+        return keyAtEndUnder(getRunningKey());
     }
 
     /**
@@ -443,14 +412,14 @@ public class Line implements LyricRun, SpanLookup {
      * the last key change surviving after the range, and otherwise the key in effect
      * immediately before it.
      *
-     * <p>This is what a deletion needs and {@link #keyAtEndOfLineUnder(int, Key)} cannot give.
+     * <p>This is what a deletion needs and {@link #keyAtEndUnder(int, Key)} cannot give.
      * Removing a mid-line key change moves the key every following line inherits, so the
-     * deletion owes the same cross-line accidental reconciliation an inserted key change owes
-     * — {@code AccidentalReconciliation.linesInheriting} takes this key as its starting point.
+     * deletion owes the same cross-line stranding sweep an inserted key change owes
+     * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point.
      * See {@code docs/key-changes.md}.
      *
      * <p>A deletion that removes no key change answers with the key the line already leaves
-     * off in, so its caller derives an empty reach and reconciles nothing downstream. That is why
+     * off in, so its caller derives an empty reach and sweeps nothing downstream. That is why
      * the reach is computed unconditionally rather than behind a "does the range hold a key
      * change" test.
      *
@@ -684,23 +653,11 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * An element and the X position it lands at, bound together so an insertion cannot pair them
-     * up wrongly. Two parallel lists would have to agree in length and in order, and a caller
-     * that got either wrong would place every element after the mismatch at the wrong position —
-     * a visibly wrong line with nothing near the insertion to explain it.
-     *
-     * @param element     the element to insert
-     * @param xPositionSs where it lands, in staff spaces
-     */
-    public record PlacedElement(StaffElement element, double xPositionSs) {}
-
-    /**
-     * Inserts {@code run} at {@code index} as one run: positions each element, adds them in
-     * order, repairs the seams the run breaks on either side, and pushes the tail over to make
-     * room.
+     * Inserts {@code run} at {@code index} as one run: adds the elements in order and repairs
+     * the seams the run breaks on either side.
      *
      * <p><b>This is the whole of a multi-element insertion, and it exists so that no caller
-     * assembles one out of parts.</b> The four steps are not independent — {@link
+     * assembles one out of parts.</b> The steps are not independent — {@link
      * LyricRun#repairNeighborsBeforeInsertion} reads pre-insertion indices, so it must run before
      * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} keys its
      * two halves off opposite ends of the run, so it must run after the last. A caller that
@@ -712,31 +669,18 @@ public class Line implements LyricRun, SpanLookup {
      * undo step.
      *
      * @param index the index the first element lands at
-     * @param run the elements to insert with the positions they land at, in the order they land;
-     *            must not be empty
-     * @param tailShiftPx how far to move every element after the run, in pixels; may be negative
-     *                    where the insertion replaces something wider than itself
-     * @effects mutates this line and records the insertion, the repairs and the shift into the
-     *          open modification bracket
+     * @param run the elements to insert, in the order they land; must not be empty
+     * @effects mutates this line and records the insertion and the repairs into the open
+     *          modification bracket
      */
-    public void insertRun(int index, List<PlacedElement> run, int tailShiftPx) {
-        var elements = run.stream().map(PlacedElement::element).toList();
-        repairNeighborsBeforeInsertion(index, elements);
+    public void insertRun(int index, List<? extends StaffElement> run) {
+        repairNeighborsBeforeInsertion(index, run);
 
-        var insertedCount = run.size();
-
-        for (var i = 0; i < insertedCount; i++) {
-            var placed = run.get(i);
-            placed.element().setXOffsetPx(DocumentScale.ssToPx(placed.xPositionSs()).positionPx());
-            addElement(index + i, placed.element());
+        for (var i = 0; i < run.size(); i++) {
+            addElement(index + i, run.get(i));
         }
 
-        repairNeighborsAfterInsertion(index, elements);
-
-        for (var i = index + insertedCount; i < effectiveElementCount(); i++) {
-            var element = getElement(i);
-            element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
-        }
+        repairNeighborsAfterInsertion(index, run);
     }
 
     /**
@@ -941,9 +885,9 @@ public class Line implements LyricRun, SpanLookup {
      * one line means working from the last to the first: removing an earlier range shifts the
      * indices of every later one. {@link #deleteRanges} discharges that.
      * <p>
-     * Reconciles no accidentals and asks nothing. A deletion that moves a key owes a reconciliation
-     * over every line that key reaches, and this line's share of it has to be recorded against the
-     * indices it was computed at, so the caller records it inside the bracket before calling this.
+     * Sweeps no stranded key change and asks nothing. A deletion that moves a key owes a stranding
+     * sweep over every line that key reaches, and this line's share of it names the indices it was
+     * computed at, so the caller runs it inside the bracket before calling this.
      *
      * @param range the range to delete
      * @effects Posts one {@link ElementRangeDeletion}, or one {@link ElementDeletion} per element
@@ -967,25 +911,12 @@ public class Line implements LyricRun, SpanLookup {
         var rangeBegin = range.begin();
         var rangeEnd = range.end();
 
-        // Shift elements after the range to fill the gap, mirroring the per-element xPos
-        // adjustment that deleteElement performs.
-        if (rangeEnd < effectiveElementCount() - 1) {
-            var shift = getElement(rangeBegin).getXOffsetPx() - getElement(rangeEnd + 1).getXOffsetPx();
-
-            for (var i = rangeEnd + 1; i < effectiveElementCount(); i++) {
-                getElement(i).setXOffsetPx(getElement(i).getXOffsetPx() + shift);
-            }
-        }
-
         // Clean up the element before the range: its glissando has nothing left to point at.
         // Recorded like every other change here — stripping it raw would leave undo restoring the
         // deleted elements but not the glissando.
-        if (rangeBegin > 0) {
-            var prevElement = getElement(rangeBegin - 1);
-
-            if (prevElement.hasGlissando()) {
-                modifyElement(rangeBegin - 1, ElementField.SLIDE, prevElement::removeSlide);
-            }
+        if (rangeBegin > 0 && getElement(rangeBegin - 1) instanceof NoteElement prevNote
+            && prevNote.hasGlissando()) {
+            modifyElement(rangeBegin - 1, ElementField.SLIDE, prevNote::removeSlide);
         }
 
         // Adjust syllable relations and melisma extends on neighbors before removing. Both helpers
@@ -1055,23 +986,12 @@ public class Line implements LyricRun, SpanLookup {
         // the deleted note, it is also being removed, so the gap starts there.
         var firstDeletedIndex = hasPrecedingPairedGraceNote ? index - 1 : index;
 
-        if (index < (effectiveElementCount() - 1)) {
-            var shift = getElement(firstDeletedIndex).getXOffsetPx() - getElement(index + 1).getXOffsetPx();
-
-            for (var i = index + 1; i < effectiveElementCount(); i++) {
-                getElement(i).setXOffsetPx(getElement(i).getXOffsetPx() + shift);
-            }
-        }
-
         // If the previous note is a paired grace note, it disappears entirely —
         // no need to strip its glissando separately. Otherwise remove any standalone
         // incoming glissando from the previous note.
-        if (!hasPrecedingPairedGraceNote && index > 0) {
-            var prevElement = getElement(index - 1);
-
-            if (prevElement.hasGlissando()) {
-                modifyElement(index - 1, ElementField.SLIDE, prevElement::removeSlide);
-            }
+        if (!hasPrecedingPairedGraceNote && index > 0
+            && getElement(index - 1) instanceof NoteElement prevNote && prevNote.hasGlissando()) {
+            modifyElement(index - 1, ElementField.SLIDE, prevNote::removeSlide);
         }
 
         // Adjust syllable relations and melisma extends before removing —
@@ -1200,7 +1120,7 @@ public class Line implements LyricRun, SpanLookup {
 
     /**
      * Returns whether inserting at the given index would conflict with a paired grace note.
-     * A grace note is paired when it has a connecting {@link StaffElement.Glissando}
+     * A grace note is paired when it has a connecting {@link Slide#GLISSANDO}
      * linking it to the following note.
      * <p>
      * This returns {@code true} in two cases:
@@ -1248,14 +1168,9 @@ public class Line implements LyricRun, SpanLookup {
             return false;
         }
 
-        var element = elements.get(index);
-        var follower = elements.get(index + 1);
-
-        if (!element.getType().isNote() || !follower.getType().isNote()) {
-            return false;
-        }
-
-        return element.getPitch() == follower.getPitch();
+        return elements.get(index) instanceof NoteElement note
+            && elements.get(index + 1) instanceof NoteElement follower
+            && note.getPitch() == follower.getPitch();
     }
 
     /**
@@ -1373,33 +1288,6 @@ public class Line implements LyricRun, SpanLookup {
             new LineLayoutChange(this, LineLayoutField.LYRICS_Y_POS_SS, old, lyricsYPosSs),
             () -> this.lyricsYPosSs = lyricsYPosSs
         );
-    }
-
-    public void changeElementSpacingRatio(float ratio) {
-        var old = elementSpacingRatio;
-        var newRatio = old * ratio;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.ELEMENT_SPACING_RATIO, old, newRatio),
-            () -> elementSpacingRatio = newRatio
-        );
-    }
-
-    /**
-     * Sets the spacing ratio to an absolute value, emitting the same
-     * {@link LineLayoutChange} as {@link #changeElementSpacingRatio(float)}.
-     * Exists for undo replay: the multiplying setter would accumulate float
-     * error across undo/redo cycles.
-     */
-    public void setElementSpacingRatioAbsolute(float ratio) {
-        var old = elementSpacingRatio;
-        applyChange(
-            new LineLayoutChange(this, LineLayoutField.ELEMENT_SPACING_RATIO, old, ratio),
-            () -> elementSpacingRatio = ratio
-        );
-    }
-
-    public float getElementSpacingRatio() {
-        return elementSpacingRatio;
     }
 
     /**

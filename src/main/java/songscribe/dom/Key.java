@@ -88,8 +88,10 @@ public enum Key implements Copyable<Key> {
     public static final Key DEFAULT = FIVE_FLATS;
 
     // FLATS order: B E A D G C F; SHARPS order: F C G D A E B.
-    private static final int[] FLAT_PITCH_INDICES = {0, 3, 6, 2, 5, 1, 4};
-    private static final int[] SHARP_PITCH_INDICES = {4, 1, 5, 2, 6, 3, 0};
+    private static final PitchClass[] FLAT_PITCH_CLASSES =
+        {PitchClass.B, PitchClass.E, PitchClass.A, PitchClass.D, PitchClass.G, PitchClass.C, PitchClass.F};
+    private static final PitchClass[] SHARP_PITCH_CLASSES =
+        {PitchClass.F, PitchClass.C, PitchClass.G, PitchClass.D, PitchClass.A, PitchClass.E, PitchClass.B};
 
     // Staff positions for accidentals, relative to the middle line (0 = B4), in accidental
     // order. Flats: B E A D G C F. Sharps: F C G D A E B.
@@ -187,24 +189,29 @@ public enum Key implements Copyable<Key> {
     }
 
     /**
-     * Returns whether this key places an accidental on the given pitch class.
+     * Returns whether this key places an accidental on {@code pitchClass}.
      *
-     * @param pitchIndex the pitch class: 0 for B, 1 for C, 2 for D, 3 for E,
-     *                   4 for F, 5 for G, 6 for A
-     * @return {@code true} when this key's accidentals include {@code pitchIndex};
-     *         always {@code false} for {@link #NO_ACCIDENTALS}
+     * @return always {@code false} for {@link #NO_ACCIDENTALS}
      */
-    public boolean altersPitchClass(int pitchIndex) {
+    private boolean altersPitchClass(PitchClass pitchClass) {
         // NO_ACCIDENTALS needs no guard: its count is zero, so this loop never runs.
-        var pitchIndices = isFlatKey() ? FLAT_PITCH_INDICES : SHARP_PITCH_INDICES;
+        var pitchClasses = isFlatKey() ? FLAT_PITCH_CLASSES : SHARP_PITCH_CLASSES;
 
         for (var i = 0; i < accidentalCount; i++) {
-            if (pitchIndices[i] == pitchIndex) {
+            if (pitchClasses[i] == pitchClass) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * The alteration this key applies to {@code pitchClass}: NATURAL where the key does not
+     * alter it.
+     */
+    public Accidental alterationFor(PitchClass pitchClass) {
+        return altersPitchClass(pitchClass) ? signatureAccidental() : Accidental.NATURAL;
     }
 
     /**
@@ -441,7 +448,12 @@ public enum Key implements Copyable<Key> {
      * caller here has already excluded it.
      */
     private SMuFLGlyph accidentalGlyph() {
-        return isFlatKey() ? SMuFLGlyph.ACCIDENTAL_FLAT : SMuFLGlyph.ACCIDENTAL_SHARP;
+        return signatureAccidental().glyph();
+    }
+
+    /** The accidental type this key's signature draws: flats for a flat key, sharps otherwise. */
+    private Accidental signatureAccidental() {
+        return isFlatKey() ? Accidental.FLAT : Accidental.SHARP;
     }
 
     /**

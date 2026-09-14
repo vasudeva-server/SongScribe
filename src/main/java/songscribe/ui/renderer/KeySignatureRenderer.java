@@ -25,9 +25,8 @@ import java.util.List;
 
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
-import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
-import songscribe.engraving.StaffPosition;
+import songscribe.engraving.Staff;
 import songscribe.layout.CautionaryKeySignature;
 import songscribe.util.GraphicsState;
 
@@ -35,17 +34,18 @@ import static songscribe.util.GraphicsState.Property.COLOR;
 import static songscribe.util.GraphicsState.Property.FONT;
 
 /**
- * Renders key signatures (sharps or flats) at the start of a staff line, and the
+ * Renders the key signature runs of a staff line: the one in the header
+ * ({@link StaffHeaderRenderer} places it), a key change part-way through the line, and the
  * cautionary key change at the end of one.
  * <p>
- * The key signature follows the clef and shows the sharps or flats
- * in the order they appear (FCGDAEB for sharps, BEADGCF for flats).
+ * A run shows the sharps or flats in the order they appear (FCGDAEB for sharps, BEADGCF for
+ * flats).
  * <p>
  * <b>What</b> is drawn — which accidentals, in which order, at which staff positions, and
  * how wide the run is — belongs to {@link Key}, in {@code songscribe.dom}, because layout and
  * MusicXML need the same answers. This class only paints what it is given.
  */
-public final class KeySignatureRenderer implements ElementRenderer<KeySignature> {
+public final class KeySignatureRenderer {
 
     // Singleton instance
     private static final KeySignatureRenderer INSTANCE = new KeySignatureRenderer();
@@ -61,23 +61,6 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
      */
     public static KeySignatureRenderer getInstance() {
         return INSTANCE;
-    }
-
-    // ==========================================================================
-    // Rendering
-    // ==========================================================================
-
-    @Override
-    public void render(
-        LineInvariants invariants,
-        ElementFrame frame,
-        KeySignature element,
-        Graphics2D g2
-    ) {
-        try (var _ = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(RenderingUtils.ELEMENT_COLOR);
-            drawRun(g2, element.getKey().signatureAccidentals(), element.getXSs(), invariants);
-        }
     }
 
     // ==========================================================================
@@ -134,8 +117,10 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         CautionaryKeySignature cautionary,
         LineInvariants invariants
     ) {
+        var layoutResult = invariants.getLayoutResult();
         var placement = cautionary.placeIn(
-            invariants.getLayoutResult(),
+            layoutResult.overflowsStaffWidth(),
+            layoutResult.contentRightEdgeSs(),
             invariants.getSong().getLineWidthSs().value());
 
         try (var _ = GraphicsState.save(g2, COLOR)) {
@@ -153,9 +138,15 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
     /**
      * Paints an already laid-out run of accidentals starting at {@code xPosSs}, in the color the
      * caller set. Every caller either is an element of the line, which is colored by the paint
-     * loop for selection and playback, or has set the element color itself.
+     * loop for selection and playback, or has set the element color itself — as the header's
+     * renderer does, the header being no element of the line.
+     *
+     * @param g2          Graphics context
+     * @param accidentals The run to draw, in drawing order
+     * @param xPosSs      X of the run's left edge in staff spaces
+     * @param invariants  Line invariants, for the staff's middle line
      */
-    private static void drawRun(
+    static void drawRun(
         Graphics2D g2,
         List<Key.DrawnAccidental> accidentals,
         double xPosSs,
@@ -173,7 +164,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
 
             for (var i = 0; i < accidentals.size(); i++) {
                 var accidental = accidentals.get(i);
-                var y = middleLineYSs + StaffPosition.toSs(accidental.staffPositionSp());
+                var y = middleLineYSs + accidental.staffPositionSp() * Staff.HALF_SPACE_SS;
                 var next = i + 1 < accidentals.size() ? accidentals.get(i + 1) : null;
 
                 penXSs += accidental.leadingGapSs();

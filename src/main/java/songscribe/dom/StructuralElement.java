@@ -19,34 +19,18 @@
  */
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * A non-sounding element: a rest, a barline, a repeat, a breath mark or a key change. Has no
- * pitch, so it carries no accidental, and spans the staff, so the middle line is its position by
- * definition. Each leaf holds the appearance arm it is drawn from — {@link GlyphElement},
- * {@link BarElement}, {@link KeyChangeElement} — and overrides what that arm answers
- * differently: a glyph sits at its own seat, and a rest takes dots.
+ * pitch, and so none of the state a pitch brings with it: no staff position, no accidental, no
+ * stem, no slide. Each leaf holds the appearance arm it is drawn from — {@link RestElement} for a
+ * rest, which sits at its own seat and takes dots; {@link BreathMarkElement} for a breath mark,
+ * which sits at its own seat and takes nothing; {@link BarElement}; {@link KeyChangeElement} —
+ * and answers from that arm what its own kind can answer.
  */
 public abstract sealed class StructuralElement extends StaffElement
-    permits GlyphElement, BarElement, KeyChangeElement {
+    permits RestElement, BreathMarkElement, BarElement, KeyChangeElement {
 
     protected StructuralElement(ElementType type) {
         super(type);
-    }
-
-    @Override
-    public int getStaffPosition() {
-        return 0;
-    }
-
-    @Override
-    public int getDotCount() {
-        return 0;
-    }
-
-    @Override
-    public StaffElement.@Nullable Accidental getAccidental() {
-        return null;
     }
 }

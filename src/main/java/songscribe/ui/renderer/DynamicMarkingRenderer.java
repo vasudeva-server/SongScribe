@@ -25,8 +25,6 @@ import java.awt.Graphics2D;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicsState;
 
@@ -76,18 +74,8 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
 
         var glyph = attachment.getType().getGlyph();
 
-        LayoutResult layoutResult;
-
-        if (frame.hasOverrideElementX()) {
-            // Insertion note preview: compute layouts using the same stacking logic.
-            layoutResult = NoteAttachedStacker.computePreviewDecorationLayouts(
-                element, frame.overrideElementXSs());
-        } else {
-            layoutResult = invariants.getLayoutResult();
-        }
-
-        var decorationLayout = layoutResult.findAttachmentDecorationLayout(
-            element, DynamicAttachment.class);
+        var decorationLayout = frame.decorationLayoutsFor(element, invariants)
+            .findAttachmentDecorationLayout(element, DynamicAttachment.class);
 
         if (decorationLayout == null) {
             return;

@@ -41,10 +41,6 @@ public class Attribution extends LineElement {
     /** Margin from the staff right edge to the attribution block's right edge. */
     public static final double ATTRIBUTION_RIGHT_MARGIN_SS = 0.5;
 
-    public Attribution() {
-        setMarginSs(0, 0, ATTRIBUTION_MARGIN_BOTTOM_SS, 0);
-    }
-
     /**
      * Always returns {@code 0.0}. The attribution is always right-aligned to the
      * staff right edge; horizontal position is never user-adjustable.

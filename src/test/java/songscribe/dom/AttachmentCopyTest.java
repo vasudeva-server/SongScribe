@@ -19,7 +19,7 @@
  */
 package songscribe.dom;
 
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -49,22 +49,15 @@ class AttachmentCopyTest extends UnitTest {
 
     private static final double USER_X_OFFSET_SS = 1.5;
     private static final double USER_Y_OFFSET_SS = -2.25;
-    private static final double MARGIN_TOP_SS = 0.25;
-    private static final double MARGIN_RIGHT_SS = 0.5;
-    private static final double MARGIN_BOTTOM_SS = 0.75;
-    private static final double MARGIN_LEFT_SS = 1.25;
-
-    /** An alignment no attachment kind's constructor establishes, so a copy must carry it. */
-    private static final Attachment.Alignment ALIGNMENT = Attachment.Alignment.RIGHT;
 
     /**
      * One attachment kind and how to build one.
      *
      * @param kind    the concrete type, which pins the table to the sealed hierarchy
-     * @param builder builds an attachment of that kind owned by the given element
+     * @param builder builds an attachment of that kind
      */
     private record AttachmentCase(
-        Class<? extends Attachment> kind, Function<StaffElement, Attachment> builder
+        Class<? extends Attachment> kind, Supplier<Attachment> builder
     ) {
 
         @Override
@@ -77,19 +70,19 @@ class AttachmentCopyTest extends UnitTest {
         return Stream.of(
             new AttachmentCase(
                 AnnotationAttachment.class,
-                owner -> new AnnotationAttachment(owner, new Annotation("dolce"))),
+                () -> new AnnotationAttachment(new Annotation("dolce"))),
             new AttachmentCase(
                 BeatChangeAttachment.class,
-                owner -> new BeatChangeAttachment(
-                    owner, new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET))),
+                () -> new BeatChangeAttachment(
+                    new BeatChange(BeatUnit.CROTCHET_DOTTED, BeatUnit.CROTCHET))),
             new AttachmentCase(
                 TempoChangeAttachment.class,
-                owner -> new TempoChangeAttachment(owner, new Tempo())),
+                () -> new TempoChangeAttachment(new Tempo())),
             new AttachmentCase(
                 FermataAttachment.class, FermataAttachment::new),
             new AttachmentCase(
                 DynamicAttachment.class,
-                owner -> new DynamicAttachment(owner, DynamicAttachment.DynamicType.FORTE))
+                () -> new DynamicAttachment(DynamicAttachment.DynamicType.FORTE))
         );
     }
 
@@ -99,51 +92,38 @@ class AttachmentCopyTest extends UnitTest {
      *         something no constructor would leave behind
      */
     private static Attachment placedAttachment(AttachmentCase testCase) {
-        var owner = lineWith(ElementType.CROTCHET).getElement(0);
-        var attachment = testCase.builder().apply(owner);
+        var attachment = testCase.builder().get();
+        lineWith(ElementType.CROTCHET).getElement(0).addAttachment(attachment);
 
-        attachment.setAlignment(ALIGNMENT);
         attachment.setUserXOffsetSs(USER_X_OFFSET_SS);
         attachment.setUserYOffsetSs(USER_Y_OFFSET_SS);
-        attachment.setMarginSs(MARGIN_TOP_SS, MARGIN_RIGHT_SS, MARGIN_BOTTOM_SS, MARGIN_LEFT_SS);
 
         return attachment;
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("attachmentCases")
-    void testACopyKeepsTheOffsetsAndMarginsTheOriginalWasPlacedAt(AttachmentCase testCase) {
-        var newOwner = lineWith(ElementType.CROTCHET).getElement(0);
-
-        var copy = placedAttachment(testCase).copy(newOwner);
+    void testACopyKeepsTheOffsetsTheOriginalWasPlacedAt(AttachmentCase testCase) {
+        var copy = placedAttachment(testCase).copy();
 
         assertThat(copy.getUserXOffsetSs()).isEqualTo(USER_X_OFFSET_SS);
         assertThat(copy.getUserYOffsetSs()).isEqualTo(USER_Y_OFFSET_SS);
-        assertThat(copy.getMarginTopSs()).isEqualTo(MARGIN_TOP_SS);
-        assertThat(copy.getMarginRightSs()).isEqualTo(MARGIN_RIGHT_SS);
-        assertThat(copy.getMarginBottomSs()).isEqualTo(MARGIN_BOTTOM_SS);
-        assertThat(copy.getMarginLeftSs()).isEqualTo(MARGIN_LEFT_SS);
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("attachmentCases")
-    void testACopyKeepsTheAlignmentAndIsOfTheSameKind(AttachmentCase testCase) {
-        var newOwner = lineWith(ElementType.CROTCHET).getElement(0);
-
-        var copy = placedAttachment(testCase).copy(newOwner);
+    void testACopyIsOfTheSameKind(AttachmentCase testCase) {
+        var copy = placedAttachment(testCase).copy();
 
         assertThat(copy).isInstanceOf(testCase.kind());
-        assertThat(copy.getAlignment()).isEqualTo(ALIGNMENT);
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("attachmentCases")
-    void testACopyIsOwnedByTheElementItWasCopiedFor(AttachmentCase testCase) {
-        var newOwner = lineWith(ElementType.CROTCHET).getElement(0);
+    void testACopyIsOnNoElementUntilOneAddsIt(AttachmentCase testCase) {
+        var copy = placedAttachment(testCase).copy();
 
-        var copy = placedAttachment(testCase).copy(newOwner);
-
-        assertThat(copy.getOwnerElement()).isSameAs(newOwner);
+        assertThat(copy.owner()).isNull();
     }
 
     @Test

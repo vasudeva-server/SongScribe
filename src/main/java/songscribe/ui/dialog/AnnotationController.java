@@ -87,7 +87,7 @@ public final class AnnotationController extends AttachmentDialogController<Annot
             if (existing != null) {
                 existing.setAnnotation(change);
             } else {
-                element.addAttachment(new AnnotationAttachment(element, change));
+                element.addAttachment(new AnnotationAttachment(change));
             }
         });
     }

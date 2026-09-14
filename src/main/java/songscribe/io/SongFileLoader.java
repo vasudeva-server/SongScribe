@@ -55,7 +55,7 @@ public final class SongFileLoader {
      *
      * .musicxml and .xml go to MusicXmlReader.read. That reader rejects a root element other than
      * <score-partwise>, and a version that is missing, unparseable or below 4.0, with an
-     * UnsupportedFormatException; and before mapping anything, the <software> value is judged by
+     * InvalidFormatException; and before mapping anything, the <software> value is judged by
      * SoftwareProvenance.check, which raises the two exceptions the catch clauses below map.
      * Otherwise it returns
      * Success, carrying the tuplet load report if there is one. The catch clauses below map those
@@ -67,7 +67,8 @@ public final class SongFileLoader {
      * trace so the bug stays findable, then reported as a damaged file, because taking the whole
      * application down is the wrong answer to a file the user merely tried to open.
      *
-     * Anything else (.pdf, .txt, no extension, …) is an UnsupportedFileFormat naming the extension.
+     * Anything else (.pdf, .txt, no extension, …) falls through to the final return, the only
+     * producer of UnsupportedFileFormat, which names the extension.
      */
     public static SongLoadResult load(File file) {
         if (FileUtils.hasExtension(file, FileExtensions.SONGWRITER)) {
@@ -81,8 +82,8 @@ public final class SongFileLoader {
                 return new SongLoadResult.WrongSoftware(file, e.software());
             } catch (MusicXmlReader.UnsupportedVersionException e) {
                 return new SongLoadResult.UnsupportedVersion(file, e.version());
-            } catch (MusicXmlReader.UnsupportedFormatException e) {
-                return new SongLoadResult.UnsupportedFileFormat(file, e.detail());
+            } catch (MusicXmlReader.InvalidFormatException e) {
+                return new SongLoadResult.InvalidFileFormat(file, e.detail());
             } catch (SAXException e) {
                 return new SongLoadResult.ParseError(file, e);
             } catch (IOException e) {

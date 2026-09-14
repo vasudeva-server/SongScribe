@@ -23,17 +23,26 @@ package songscribe.ui.edit;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AccidentalChain;
+import songscribe.dom.AccidentalScanView;
+import songscribe.dom.AccidentalState;
+import songscribe.dom.ChainEdit;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
+import songscribe.engraving.StaffPosition;
 import songscribe.layout.ElementColumnBuilder;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -84,7 +93,7 @@ public final class GraceModeManager {
     private State state = State.INACTIVE;
 
     @Nullable
-    private StaffElement graceNote;
+    private NoteElement graceNote;
 
     private int graceNoteIndex = -1;
 
@@ -122,6 +131,17 @@ public final class GraceModeManager {
 
     // True when the insertion path took that offer, so the pairing owes the repairs.
     private boolean insertionRepairsOwed = false;
+
+    /**
+     * A note the untracked grace insertion's chain walk restamped, with the state it held
+     * before. The pairing bracket records the restamp from {@code saved}, so undo puts that
+     * state back; an abort's removal walk restores it without a record.
+     */
+    private record SavedAccidentalState(Line line, NoteElement note, AccidentalState saved) {}
+
+    // The notes the untracked insertion's walk restamped, in walk order, until the pairing
+    // records them or the abort drops them.
+    private final List<SavedAccidentalState> savedAccidentalStates = new ArrayList<>();
 
     public GraceModeManager(SelectionCoordinator selectionCoordinator) {
         this.selectionCoordinator = selectionCoordinator;
@@ -309,7 +329,7 @@ public final class GraceModeManager {
 
         var result = InsertionSpacingCalculator.calculateInsertion(
             graceLine, previewElement, getHostInsertionIndex(),
-            graceLineComponent.getLayoutResult(), graceLineComponent.getLyricRenderMetrics()
+            graceLineComponent.requireLayoutResult(), graceLineComponent.getLyricRenderMetrics()
         );
 
         if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs().value())) {
@@ -361,7 +381,7 @@ public final class GraceModeManager {
         }
 
         if (!InsertionSpacingCalculator.hasRoomForGraceNote(
-                line, xIndex, lineComponent.getLayoutResult(), lineComponent.getLyricRenderMetrics())) {
+                line, xIndex, lineComponent.requireLayoutResult(), lineComponent.getLyricRenderMetrics())) {
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(lineComponent),
                 Strings.ALERT_TITLE_GRACE_NOTE_ERROR,
@@ -573,7 +593,31 @@ public final class GraceModeManager {
         // click. Since handleClick may have appended (insertion index == elementCount before
         // insert), we need to check the last element in that case.
         graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
-        graceNote = line.getElement(graceNoteIndex);
+
+        // handleClick inserted the grace quaver the preview held, which is a note.
+        if (!(line.getElement(graceNoteIndex) instanceof NoteElement insertedGraceNote)) {
+            throw new IllegalStateException(
+                "grace insertion landed a non-note at index " + graceNoteIndex);
+        }
+
+        graceNote = insertedGraceNote;
+
+        // The suspended insertion ran no chain walk, so the grace note and every note its
+        // landing reaches are still undecided. Walk now and stamp them plainly — this is not
+        // yet an undo step — keeping what each held so the pairing can record the restamp.
+        var song = line.getSong();
+
+        var restamps = AccidentalChain.walk(
+            new AccidentalScanView.Live(song),
+            ChainEdit.inserted(line.index(), graceNoteIndex, List.of(insertedGraceNote))
+        );
+
+        for (var restamp : restamps) {
+            var restampedNote = restamp.note();
+            savedAccidentalStates.add(
+                new SavedAccidentalState(restamp.line(), restampedNote, restampedNote.accidentalState()));
+            restampedNote.setAccidentalState(new AccidentalState.Stamped(restamp.state()));
+        }
 
         // Deselect all embellishment actions. This must precede the duration selection
         // below: that selection synchronously rebuilds the preview element, decorating it
@@ -663,28 +707,27 @@ public final class GraceModeManager {
         // already exists on the line; for a host-note insertion the pitch comes from the
         // preview element about to be inserted. Validating before opening the modification
         // bracket lets a same-pitch pairing be rejected leaving no undo step.
-        int hostStaffPosition;
+        StaffPosition hostStaffPosition;
 
         if (connectNext) {
-            if (hostNoteIndex >= line.elementCount()) {
+            if (hostNoteIndex >= line.elementCount()
+                || !(line.getElement(hostNoteIndex) instanceof NoteElement host)) {
                 abort();
                 return;
             }
 
-            hostStaffPosition = line.getElement(hostNoteIndex).getStaffPosition();
+            hostStaffPosition = host.getStaffPosition();
         } else {
-            var previewElement = EditModeManager.getPreviewElement();
-
-            if (previewElement == null) {
+            if (!(EditModeManager.getPreviewElement() instanceof NoteElement previewNote)) {
                 abort();
                 return;
             }
 
-            hostStaffPosition = previewElement.getStaffPosition();
+            hostStaffPosition = previewNote.getStaffPosition();
         }
 
         // Grace note and host note must have different pitches.
-        if (note.getStaffPosition() == hostStaffPosition) {
+        if (note.getStaffPosition().equals(hostStaffPosition)) {
             // abort() removes the grace note before showErrorMessage pumps the EDT, so no
             // intervening repaint renders its (never-added) connecting slide.
             abort();
@@ -707,6 +750,23 @@ public final class GraceModeManager {
             // empty (the PitchShifter pattern) — the record exists only to drive undo/redo.
             line.applyChange(new ElementInsertion(line, graceNoteIndex, note), () -> {});
 
+            // The states the insertion's untracked walk decided are already on the notes, so
+            // the song's own walk after that record changes nothing. Each is put back to what
+            // it replaced and recorded from there, so undo restores the state the walk
+            // replaced, not the one it decided.
+            for (var savedState : savedAccidentalStates) {
+                var restampedNote = savedState.note();
+                var restampedLine = savedState.line();
+                var decided = restampedNote.accidentalState();
+                restampedNote.setAccidentalState(savedState.saved());
+
+                restampedLine.modifyElement(
+                    restampedLine.getElementIndex(restampedNote),
+                    ElementField.ACCIDENTAL,
+                    () -> restampedNote.setAccidentalState(decided)
+                );
+            }
+
             // The repairs the insertion deferred, recorded here so undo can put back the
             // syllabic and melisma chains the grace note broke, and the connecting glissando
             // it took away from the note in front of it. They run before the host insertion
@@ -726,7 +786,7 @@ public final class GraceModeManager {
             var hostNote = line.getElement(hostNoteIndex);
 
             // Connect the grace note to the host note with a connecting glissando.
-            line.modifyElement(graceNoteIndex, ElementField.SLIDE, note::setGlissando);
+            line.modifyElement(graceNoteIndex, ElementField.SLIDE, () -> note.setSlide(Slide.GLISSANDO));
 
             if (connectNext) {
                 // The syllable of a grace-host pair belongs to the grace note, so an
@@ -752,12 +812,23 @@ public final class GraceModeManager {
      * operation must not appear in the undo history.
      */
     private void abort() {
+        var note = graceNote;
         var line = graceLine;
         var component = graceLineComponent;
         var idx = graceNoteIndex;
 
-        if (graceNote != null && line != null && idx != -1) {
-            line.getSong().withoutMutationTracking(() -> line.removeElement(idx));
+        if (note != null && line != null && idx != -1) {
+            var song = line.getSong();
+            song.withoutMutationTracking(() -> line.removeElement(idx));
+
+            // The suspended removal ran no chain walk either; the notes the insertion's walk
+            // restamped are walked back the same way, plainly, leaving no undo step.
+            var restamps = AccidentalChain.walk(
+                new AccidentalScanView.Live(song), ChainEdit.removed(line.index(), idx, List.of(note)));
+
+            for (var restamp : restamps) {
+                restamp.note().setAccidentalState(new AccidentalState.Stamped(restamp.state()));
+            }
 
             // No SongDidChangeNotification fires while tracking is suspended, so
             // invalidate the line's layout directly to reflect the removal.
@@ -811,6 +882,7 @@ public final class GraceModeManager {
         pendingConnect = false;
         deferringInsertionRepairs = false;
         insertionRepairsOwed = false;
+        savedAccidentalStates.clear();
 
         // The host preview's connecting glissando is gated on the state cleared just above, and
         // nothing else takes the overlays down on the way out of grace mode: a commit would leave

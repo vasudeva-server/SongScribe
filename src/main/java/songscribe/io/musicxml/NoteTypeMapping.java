@@ -37,9 +37,10 @@ import songscribe.dom.NoteValue;
  * corresponding pitched note, which is why the tables key on the value rather than
  * on the {@link ElementType}.
  *
- * <p>This class owns the {@code ticks(value, dotCount)} duration math: the
+ * <p>This class owns the undotted {@code <duration>} tick count of each value: the
  * {@code <type>} token and the tick count both key off the same {@link NoteValue},
- * so they share one class rather than two parallel tables.
+ * so they share one class rather than two parallel tables. Dots lengthen that base
+ * through {@link songscribe.dom.Dots#augment}.
  *
  * <p>Special-shape rules:
  * <ul>
@@ -153,9 +154,6 @@ public final class NoteTypeMapping {
         TYPE_32ND,    NoteValue.THIRTY_SECOND
     );
 
-    // Maximum supported dot count (double-dotted).
-    static final int MAX_DOT_COUNT = 2;
-
     private NoteTypeMapping() {}
 
     // -------------------------------------------------------------------------
@@ -179,8 +177,12 @@ public final class NoteTypeMapping {
         };
     }
 
-    /** The undotted {@code <duration>} tick count of {@code value}. */
-    private static int baseTicks(NoteValue value) {
+    /**
+     * The undotted {@code <duration>} tick count of {@code value}.
+     *
+     * @return the undotted tick count
+     */
+    static int baseTicks(NoteValue value) {
         return switch (value) {
             case WHOLE -> WHOLE_TICKS;
             case HALF -> HALF_TICKS;
@@ -232,41 +234,4 @@ public final class NoteTypeMapping {
         return type.isDuration();
     }
 
-    /**
-     * Returns the {@code <duration>} tick count for the given {@link NoteValue}
-     * and dot count, as an exact integer.
-     *
-     * <p>The formula is {@code baseTicks × (2^(d+1) − 1) / 2^d} where {@code d}
-     * is {@code dotCount} (0, 1, or 2). {@link #DIVISIONS} is chosen so that this
-     * always produces an exact integer: the worst case is a double-dotted 32nd,
-     * which yields {@code 1680 × 7 / 4 = 2940} ticks.
-     *
-     * @param value    the written note value
-     * @param dotCount number of augmentation dots (0, 1, or 2)
-     * @return the exact integer tick count
-     * @throws IllegalArgumentException if {@code dotCount} is out of range
-     * @throws ArithmeticException      if the result is not an exact integer
-     *                                  (indicates {@link #DIVISIONS} is wrong)
-     */
-    public static int ticks(NoteValue value, int dotCount) {
-        if (dotCount < 0 || dotCount > MAX_DOT_COUNT) {
-            throw new IllegalArgumentException("dotCount must be 0–" + MAX_DOT_COUNT + ", got " + dotCount);
-        }
-
-        var baseTicks = baseTicks(value);
-
-        // Dot augmentation: base × (2^(d+1) − 1) / 2^d
-        var numerator   = (1 << (dotCount + 1)) - 1;
-        var denominator = 1 << dotCount;
-        var product     = baseTicks * numerator;
-
-        if (product % denominator != 0) {
-            throw new ArithmeticException(
-                "Tick count is not an integer for " + value + " dotCount=" + dotCount
-                + " (DIVISIONS=" + DIVISIONS + " is wrong)"
-            );
-        }
-
-        return product / denominator;
-    }
 }

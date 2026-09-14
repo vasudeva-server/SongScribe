@@ -26,6 +26,7 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
@@ -327,7 +328,6 @@ class LineSelectionHandler {
             case HitTarget.Ending ending -> selectTarget(ending);
             case HitTarget.Articulation articulation -> selectTarget(articulation);
             case HitTarget.Attachment attachment -> selectTarget(attachment);
-            case HitTarget.Accidental accidental -> selectTarget(accidental);
             case HitTarget.Tie tie -> selectTarget(tie);
             case HitTarget.Beam beam -> selectTarget(beam);
             case HitTarget.Trill trill -> selectTarget(trill);
@@ -631,10 +631,8 @@ class LineSelectionHandler {
             return;
         }
 
-        var element = line.getElement(elementIndex);
-
-        if (element.getType().isNote()) {
-            new PlayThread(element.getPitch()).start();
+        if (line.getElement(elementIndex) instanceof NoteElement note) {
+            new PlayThread(note.getPitch()).start();
         }
     }
 

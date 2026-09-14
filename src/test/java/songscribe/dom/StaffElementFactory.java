@@ -22,106 +22,101 @@ package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.engraving.StaffPosition;
+
 /** Shared factory methods for {@link StaffElement} instances used across test classes. */
 public final class StaffElementFactory {
 
     private StaffElementFactory() {}
 
     /**
-     * A crotchet at {@code staffPosition} carrying {@code accidental}.
+     * A crotchet at {@code staffPosition}, {@link AccidentalState.Chosen Chosen} to sound
+     * {@code accidental}, or bare and {@link AccidentalState.Adopting Adopting} what is in force
+     * where it lands.
      *
      * @param staffPosition the note's staff position
-     * @param accidental the accidental to write on it, or null for a note that carries none
+     * @param accidental the accidental it is pitched with, or null for a note that adopts what is
+     *     in force where it lands
      * @return the note
      */
-    public static StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
+    public static NoteElement note(int staffPosition, @Nullable Accidental accidental) {
         var note = crotchet();
-        note.setStaffPosition(staffPosition);
-        note.setAccidental(accidental);
+        note.setStaffPosition(new StaffPosition(staffPosition));
+
+        if (accidental != null) {
+            note.setAccidentalState(new AccidentalState.Chosen(accidental));
+        }
+
         return note;
     }
 
     /**
-     * A crotchet at {@code staffPosition} carrying no accidental — one that sounds whatever the
-     * key in effect there says it does.
+     * A crotchet at {@code staffPosition}, bare — one that adopts whatever is in force where it
+     * lands.
      *
      * @param staffPosition the note's staff position
      * @return the note
      */
-    public static StaffElement note(int staffPosition) {
-        return note(staffPosition, null);
+    public static NoteElement note(int staffPosition) {
+        return note(staffPosition, (Accidental) null);
     }
 
-    public static StaffElement semibreve() {
-        return ElementType.SEMIBREVE.newInstance();
+    /**
+     * A crotchet at {@code staffPosition} whose stem is decided by {@code stem}.
+     *
+     * @param staffPosition the note's staff position
+     * @param stem the forced direction, or {@link Stem#AUTO}
+     * @return the note
+     */
+    public static NoteElement note(int staffPosition, Stem stem) {
+        var note = crotchet();
+        note.setStaffPosition(new StaffPosition(staffPosition));
+        note.setStem(stem);
+        return note;
     }
 
-    public static StaffElement semibreveRest() {
-        return ElementType.SEMIBREVE_REST.newInstance();
+    public static NoteElement crotchet() {
+        return (NoteElement) ElementType.CROTCHET.newInstance();
     }
 
-    public static StaffElement minim() {
-        return ElementType.MINIM.newInstance();
+    public static RestElement crotchetRest() {
+        return (RestElement) ElementType.CROTCHET_REST.newInstance();
     }
 
-    public static StaffElement minimRest() {
-        return ElementType.MINIM_REST.newInstance();
+    public static NoteElement quaver() {
+        return (NoteElement) ElementType.QUAVER.newInstance();
     }
 
-    public static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
+    public static NoteElement graceQuaver() {
+        return (NoteElement) ElementType.GRACE_QUAVER.newInstance();
     }
 
-    public static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
+    public static BreathMarkElement breathMark() {
+        return (BreathMarkElement) ElementType.BREATH_MARK.newInstance();
     }
 
-    public static StaffElement quaver() {
-        return ElementType.QUAVER.newInstance();
+    public static BarElement repeatLeft() {
+        return (BarElement) ElementType.REPEAT_LEFT.newInstance();
     }
 
-    public static StaffElement quaverRest() {
-        return ElementType.QUAVER_REST.newInstance();
+    public static BarElement repeatRight() {
+        return (BarElement) ElementType.REPEAT_RIGHT.newInstance();
     }
 
-    public static StaffElement semiquaver() {
-        return ElementType.SEMIQUAVER.newInstance();
+    public static BarElement repeatLeftRight() {
+        return (BarElement) ElementType.REPEAT_LEFT_RIGHT.newInstance();
     }
 
-    public static StaffElement demiSemiquaver() {
-        return ElementType.DEMI_SEMIQUAVER.newInstance();
+    public static BarElement singleBarline() {
+        return (BarElement) ElementType.SINGLE_BARLINE.newInstance();
     }
 
-    public static StaffElement graceQuaver() {
-        return ElementType.GRACE_QUAVER.newInstance();
+    public static BarElement doubleBarline() {
+        return (BarElement) ElementType.DOUBLE_BARLINE.newInstance();
     }
 
-    public static StaffElement breathMark() {
-        return ElementType.BREATH_MARK.newInstance();
-    }
-
-    public static StaffElement repeatLeft() {
-        return ElementType.REPEAT_LEFT.newInstance();
-    }
-
-    public static StaffElement repeatRight() {
-        return ElementType.REPEAT_RIGHT.newInstance();
-    }
-
-    public static StaffElement repeatLeftRight() {
-        return ElementType.REPEAT_LEFT_RIGHT.newInstance();
-    }
-
-    public static StaffElement singleBarline() {
-        return ElementType.SINGLE_BARLINE.newInstance();
-    }
-
-    public static StaffElement doubleBarline() {
-        return ElementType.DOUBLE_BARLINE.newInstance();
-    }
-
-    public static StaffElement finalDoubleBarline() {
-        return ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+    public static BarElement finalDoubleBarline() {
+        return (BarElement) ElementType.FINAL_DOUBLE_BARLINE.newInstance();
     }
 
     /**
@@ -132,12 +127,5 @@ public final class StaffElementFactory {
      */
     public static KeyChangeElement keyChange(Key key) {
         return new KeyChangeElement(key);
-    }
-
-    public static StaffElement createNote(int staffPosition, boolean upper) {
-        var note = ElementType.CROTCHET.newInstance();
-        note.setStaffPosition(staffPosition);
-        note.setUpper(upper);
-        return note;
     }
 }

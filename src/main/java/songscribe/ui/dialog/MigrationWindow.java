@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.dom.TupletLoadPass;
 import songscribe.dom.TupletValidator;
+import songscribe.io.LoadMigrations;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
@@ -79,9 +80,7 @@ public final class MigrationWindow extends JDialog {
     /** The root is hidden, so the rows the user reads as top level are one level below it. */
     private static final int TOP_LEVEL = 1;
 
-    private MigrationWindow(
-        @Nullable Window owner, TupletLoadPass.Report report, boolean accidentalsConverted
-    ) {
+    private MigrationWindow(@Nullable Window owner, LoadMigrations migrations) {
         super(owner, Strings.get(Strings.DIALOG_MIGRATION_TITLE));
 
         // A utility window floats beside the score rather than joining the window
@@ -94,7 +93,7 @@ public final class MigrationWindow extends JDialog {
         content.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_STD_PADDING));
         content.add(new JLabel(Strings.get(Strings.DIALOG_MIGRATION_MESSAGE)), BorderLayout.NORTH);
 
-        var tree = buildTree(report, accidentalsConverted);
+        var tree = buildTree(migrations);
         var scrollPane = new JScrollPane(tree);
         scrollPane.setPreferredSize(new Dimension(TREE_WIDTH, TREE_HEIGHT));
         content.add(scrollPane, BorderLayout.CENTER);
@@ -105,23 +104,23 @@ public final class MigrationWindow extends JDialog {
     }
 
     /**
-     * Shows the window for {@code report}, unless dialogs are suppressed.
+     * Shows the window for {@code migrations}, unless dialogs are suppressed.
      *
-     * @param owner                the window to center on, or null to center on the screen
-     * @param report               what the tuplet pass did
-     * @param accidentalsConverted whether retired accidentals were converted as well
+     * @param owner      the window to center on, or null to center on the screen
+     * @param migrations what the load's post-parse passes changed
      */
-    public static void show(
-        @Nullable Window owner, TupletLoadPass.Report report, boolean accidentalsConverted
-    ) {
+    public static void show(@Nullable Window owner, LoadMigrations migrations) {
         if (OptionDialogs.isSuppressed()) {
-            LOG.info("Migration window suppressed: {} tuplets dropped, {} updated, accidentals converted: {}",
-                report.dropped(), report.migrated(), accidentalsConverted);
+            var report = migrations.tupletReport();
+
+            LOG.info(
+                "Migration window suppressed: {} tuplets dropped, {} updated, accidentals converted: {}",
+                report.dropped(), report.migrated(), migrations.accidentalsConverted());
 
             return;
         }
 
-        new MigrationWindow(owner, report, accidentalsConverted).setVisible(true);
+        new MigrationWindow(owner, migrations).setVisible(true);
     }
 
     /**
@@ -129,7 +128,9 @@ public final class MigrationWindow extends JDialog {
      * it, so a file with dozens of them opens as a short summary the user chooses to
      * unfold. Groups with nothing in them are left out rather than shown empty.
      */
-    private static JTree buildTree(TupletLoadPass.Report report, boolean accidentalsConverted) {
+    private static JTree buildTree(LoadMigrations migrations) {
+        var report = migrations.tupletReport();
+        var accidentalsConverted = migrations.accidentalsConverted();
         var root = new DefaultMutableTreeNode();
         var groups = new ArrayList<DefaultMutableTreeNode>();
         var removed = changesOfKind(report, TupletLoadPass.Change.Removed.class);

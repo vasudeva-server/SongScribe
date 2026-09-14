@@ -92,7 +92,7 @@ public final class TupletRenderer {
         var layoutResult = invariants.getLayoutResult();
 
         for (var tuplet : line.findSpans(Tuplet.class)) {
-            var decorLayout = layoutResult.getDecorationLayout(tuplet);
+            var decorLayout = layoutResult.decorationLayouts().getDecorationLayout(tuplet);
 
             // StructuralStacker.stackTuplets writes no layout for a tuplet whose
             // anchor/end note (or their column) is missing. This loop iterates the same
@@ -110,10 +110,8 @@ public final class TupletRenderer {
 
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
-            var anchorType = anchorNote.getType();
-            var isUpper = anchorNote.getDirection().isUp();
-            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorType.isNoteWithStem(),
-                isUpper, StemMetrics.thicknessSs(), anchorType.getElementWidthSs());
+            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
+                StemMetrics.thicknessSs(), anchorNote.getType().getElementWidthSs());
             var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
 

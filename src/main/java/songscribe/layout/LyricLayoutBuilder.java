@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Lyric;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 
 /**
@@ -377,13 +378,14 @@ public final class LyricLayoutBuilder {
      * {@code Line.isHostOfPairedGraceNote} asked of the columns being laid out.
      * <p>
      * Asked of the columns, not of a line, because {@code index} is a column index and pairing is
-     * something a grace note carries on its own ({@link StaffElement#isPairedGraceNote}). Reading
+     * something a grace note carries on its own ({@link NoteElement#isPairedGraceNote}). Reading
      * it here needs no line, so columns built from elements in no line — a clipboard fragment, a
      * projected insertion — get the same answer as columns built from a live line.
      */
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
         return index >= 1 && index <= columns.size()
-            && columns.get(index - 1).getElement().isPairedGraceNote();
+            && columns.get(index - 1).getElement() instanceof NoteElement note
+            && note.isPairedGraceNote();
     }
 
     /**

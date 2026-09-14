@@ -136,9 +136,6 @@ public final class FormatMigrator {
                         attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() / pps);
                     }
                 }
-
-                // Reset stale layout pixel xPos — layout now writes to LayoutResult, not Note
-                note.setXOffsetPx(0);
             }
 
             // Convert per-instance Span offsets (Ending, Trill)
@@ -302,7 +299,7 @@ public final class FormatMigrator {
 
         // Only add a DynamicAttachment if one does not already exist.
         if (note.findAttachment(DynamicAttachment.class) == null) {
-            note.addAttachment(new DynamicAttachment(note, dynamicType));
+            note.addAttachment(new DynamicAttachment(dynamicType));
         }
     }
 

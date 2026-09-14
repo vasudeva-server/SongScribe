@@ -1,19 +1,18 @@
 package songscribe.layout;
 
 import java.awt.geom.Rectangle2D;
-import java.util.EnumMap;
 import java.util.function.BiConsumer;
-import java.util.function.BinaryOperator;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.AccidentalBounds;
+import songscribe.dom.Direction;
+import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
 import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Accidental;
+import songscribe.dom.Accidental;
 import songscribe.engraving.LedgerLine;
-import songscribe.engraving.StaffPosition;
+import songscribe.engraving.Staff;
 import songscribe.engraving.StemMetrics;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.BBox;
@@ -117,11 +116,11 @@ public final class NoteGeometry {
      * to the right of the note's right-most obstruction. That obstruction is the notehead, unless an
      * unbeamed up-stem flag extends further right.
      */
-    public static double firstDotXSs(NoteElement note, boolean beamed, StaffElement.Direction direction) {
+    public static double firstDotXSs(NoteElement note, boolean beamed, Direction direction) {
         var obstructionRightSs = SMuFLMetadata.bboxSs(note.notehead().glyph()).rightSs();
 
         if (direction.isUp()) {
-            var flagBBox = flagBBoxLocalSs(note, StaffElement.Direction.UP, beamed);
+            var flagBBox = flagBBoxLocalSs(note, Direction.UP, beamed);
 
             if (flagBBox != null) {
                 obstructionRightSs = Math.max(obstructionRightSs, flagBBox.getMaxX());
@@ -137,19 +136,19 @@ public final class NoteGeometry {
      * relative to the note's glyph origin.
      */
     public static void forEachDotPosition(
-        NoteElement note, boolean beamed, StaffElement.Direction direction,
+        NoteElement note, boolean beamed, Direction direction,
         BiConsumer<? super Double, ? super Double> consumer
     ) {
-        if (note.getDotCount() == 0) {
+        if (note.dots() == Dots.NONE) {
             return;
         }
 
         // Dots shift up when note is on a line (even staff position)
-        var yOffset = StaffPosition.isOnLine(note.getStaffPosition()) ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
+        var yOffset = note.getStaffPosition().isOnLine() ? DOT_ON_LINE_Y_SHIFT_SS : 0.0;
 
         var dotX = firstDotXSs(note, beamed, direction);
 
-        for (var i = 0; i < note.getDotCount(); i++) {
+        for (var i = 0; i < note.dots().count(); i++) {
             consumer.accept(dotX, yOffset);
             dotX += DOT_SPACING_SS;
         }
@@ -162,9 +161,9 @@ public final class NoteGeometry {
      * actually painted.
      */
     public static double dotsRightExtentSs(
-        NoteElement note, boolean beamed, StaffElement.Direction direction, double baseRightSs
+        NoteElement note, boolean beamed, Direction direction, double baseRightSs
     ) {
-        if (note.getDotCount() == 0) {
+        if (note.dots() == Dots.NONE) {
             return baseRightSs;
         }
 
@@ -182,45 +181,36 @@ public final class NoteGeometry {
     // ==========================================================================
 
     /**
-     * Resolves the effective stem direction for a note. Grace notes always stem up,
-     * regardless of the note's own stored direction; every other note uses its own direction.
+     * Resolves the <em>drawn</em> stem direction for a note. A grace note is always drawn with
+     * its stem up, whatever direction it answers; every other note draws the direction it
+     * answers ({@link NoteElement#direction()}).
      */
-    public static StaffElement.Direction effectiveDirection(StaffElement note) {
-        return note.getType().isGraceNote() ? StaffElement.Direction.UP : note.getDirection();
+    public static Direction effectiveDirection(NoteElement note) {
+        return note.getType().isGraceNote() ? Direction.UP : note.direction();
     }
 
     /**
      * Returns the amount (≥ 0, ss) a stem is shortened because it points in its <em>forced</em>
      * (unnatural) direction, per Ross &amp; Gourlay (LilyPond {@code stem.cc:519-555}).
      *
-     * <p>A stem is forced when its direction opposes the default: an up-stem at or above the middle
-     * line ({@code staffPosition <= 0}) or a down-stem below it ({@code staffPosition > 0}). Because
-     * an auto stem always equals the default direction, it is never forced, so this returns 0 for
-     * every auto stem regardless of when direction is resolved. Grace stems are never shortened.
+     * <p>A stem is forced when the direction it answers opposes its
+     * {@link NoteElement#naturalDirection()}, whoever turned it — the notator, or the beam
+     * group it belongs to. An unbeamed auto stem always points its natural way, so it is never
+     * shortened. Grace stems are never shortened.
      *
      * <p>The shortening grows {@link #FORCED_SHORTEN_PER_STEP_SS} per diatonic step of distance from
      * the middle line and caps at {@link #MAX_FORCED_SHORTEN_SS}, reaching the cap (a
      * {@link #FORCED_STEM_FLOOR_SS} residual stem) one diatonic step beyond the top staff line.
      *
-     * @param staffPosition integer diatonic steps from the middle line (positive = below)
-     * @param direction     the note's stem direction
-     * @param isGraceNote   whether the note is a grace note
-     * @return the shortening in staff spaces (0 for natural, auto, and grace stems)
+     * @param note the note whose stem is measured
+     * @return the shortening in staff spaces (0 for natural and grace stems)
      */
-    public static double forcedShorteningSs(
-        int staffPosition, StaffElement.Direction direction, boolean isGraceNote) {
-        if (isGraceNote) {
+    public static double forcedShorteningSs(NoteElement note) {
+        if (note.getType().isGraceNote() || note.direction() == note.naturalDirection()) {
             return 0.0;
         }
 
-        var forcedUp = direction.isUp() && staffPosition <= 0;
-        var forcedDown = direction.isDown() && staffPosition > 0;
-
-        if (!forcedUp && !forcedDown) {
-            return 0.0;
-        }
-
-        var shortenSs = FORCED_SHORTEN_PER_STEP_SS * (1 + Math.abs(staffPosition));
+        var shortenSs = FORCED_SHORTEN_PER_STEP_SS * (1 + Math.abs(note.getStaffPosition().value()));
         return Math.min(MAX_FORCED_SHORTEN_SS, shortenSs);
     }
 
@@ -245,7 +235,7 @@ public final class NoteGeometry {
      * @param direction UP for stem-up, DOWN for stem-down
      * @return The base stem geometry
      */
-    public static StemGeometry computeBaseStemGeometry(NoteElement note, StaffElement.Direction direction) {
+    public static StemGeometry computeBaseStemGeometry(NoteElement note, Direction direction) {
         var noteType = note.getType();
         var isGrace = noteType.isGraceNote();
         var anchor = isGrace ? GRACE_STEM_UP_SE : stemSideAnchor(note.stemmedNotehead(), direction);
@@ -266,7 +256,7 @@ public final class NoteGeometry {
      * {@link songscribe.ui.renderer.RenderingUtils#stemCenterXOffsetSs} so the anchor lookup is
      * defined once.
      */
-    public static Anchor stemSideAnchor(StemmedNotehead notehead, StaffElement.Direction direction) {
+    public static Anchor stemSideAnchor(StemmedNotehead notehead, Direction direction) {
         var anchors = SMuFLMetadata.stemAnchors(notehead);
 
         return direction.isUp() ? anchors.stemUpSE() : anchors.stemDownNW();
@@ -288,7 +278,7 @@ public final class NoteGeometry {
          * @param direction UP for stem-up (tip above notehead), DOWN for stem-down
          * @return stem tip Y in staff spaces
          */
-        public double stemTipYSs(StaffElement.Direction direction) {
+        public double stemTipYSs(Direction direction) {
             return direction.isUp() ? anchorYSs - lengthSs : anchorYSs + lengthSs;
         }
     }
@@ -314,41 +304,11 @@ public final class NoteGeometry {
     public static final float GRACE_ACCIDENTAL_PADDING_SS =
         ElementType.GRACE_NOTE_SCALE * ACCIDENTAL_PADDING_SS;
 
-    // Kerning adjustments for parenthesized accidentals (in staff-space units).
-    // Positive = more space, negative = less space.
-    // Package-private so NoteGeometryTest reads the real values instead of duplicating them.
-    static final EnumMap<SMuFLGlyph, Float> PAREN_LEFT_KERNING = new EnumMap<>(SMuFLGlyph.class);
-    static final EnumMap<SMuFLGlyph, Float> PAREN_RIGHT_KERNING = new EnumMap<>(SMuFLGlyph.class);
-
-    static {
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, 0.125f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 0.125f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 0.125f);
-        PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, 0.125f);
-
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, -0.125f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_NATURAL, 0.125f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_SHARP, 0.125f);
-        PAREN_RIGHT_KERNING.put(SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT, -0.125f);
-    }
-
     // Cached accidental widths (computed on first use via initializeAccidentalWidths())
     private static float @Nullable [] baseAccidentalWidthsSs = null;
-    private static float @Nullable [] baseAccidentalParenthesisWidthsSs = null;
 
     // Cached accidental bounding boxes, indexed by Accidental.ordinal().
-    private static @Nullable AccidentalBounds @Nullable [] baseAccidentalBoundsSs = null;
-    private static @Nullable AccidentalBounds @Nullable [] baseAccidentalParenthesisBoundsSs = null;
-
-    // Cached bounding boxes of only the note-adjacent (rightmost) glyph of a parenthesized
-    // accidental — the right paren — indexed by Accidental.ordinal(). Used for ledger-line
-    // shortening, which checks only the glyph closest to the notehead. Unparenthesized accidentals
-    // draw a single glyph, so their closest-glyph bounds are baseAccidentalBoundsSs.
-    private static @Nullable AccidentalBounds @Nullable [] closestAccidentalParenthesisBoundsSs = null;
-
-    // Accidental-bbox combiner that keeps the most recently visited (rightmost) glyph, isolating the
-    // note-adjacent glyph for ledger-line shortening. Contrast BBox::union, which keeps the full span.
-    private static final BinaryOperator<BBox> KEEP_RIGHTMOST = (previous, rightmost) -> rightmost;
+    private static @Nullable BBox @Nullable [] baseAccidentalBoundsSs = null;
 
     private NoteGeometry() {}
 
@@ -374,30 +334,10 @@ public final class NoteGeometry {
             baseAccidentalWidthsSs[i] = (float) SMuFLMetadata.advanceWidthSs(accidentals[i].glyph());
         }
 
-        var beginParenthesisWidthSs = (float) SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-        var endParenthesisWidthSs = (float) SMuFLMetadata.advanceWidthSs(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-
-        baseAccidentalParenthesisWidthsSs = new float[count];
+        baseAccidentalBoundsSs = new BBox[count];
 
         for (var i = 0; i < count; i++) {
-            baseAccidentalParenthesisWidthsSs[i] =
-                baseAccidentalWidthsSs[i] + beginParenthesisWidthSs + endParenthesisWidthSs;
-            baseAccidentalParenthesisWidthsSs[i] += parenthesizedAccidentalKerningSs(accidentals[i].glyph());
-        }
-
-        baseAccidentalBoundsSs = new AccidentalBounds[count];
-        baseAccidentalParenthesisBoundsSs = new AccidentalBounds[count];
-        closestAccidentalParenthesisBoundsSs = new AccidentalBounds[count];
-
-        for (var i = 0; i < count; i++) {
-            var glyph = accidentals[i].glyph();
-
-            baseAccidentalBoundsSs[i] = computeAccidentalBounds(
-                glyph, false, baseAccidentalWidthsSs[i], BBox::union);
-            baseAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
-                glyph, true, baseAccidentalParenthesisWidthsSs[i], BBox::union);
-            closestAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
-                glyph, true, baseAccidentalParenthesisWidthsSs[i], KEEP_RIGHTMOST);
+            baseAccidentalBoundsSs[i] = computeAccidentalBounds(accidentals[i].glyph(), baseAccidentalWidthsSs[i]);
         }
     }
 
@@ -408,27 +348,22 @@ public final class NoteGeometry {
     /**
      * Returns the drawn width of the accidental for a note, in staff spaces. Grace notes use the
      * regular glyphs drawn at {@link ElementType#GRACE_NOTE_SCALE}, so their width is the regular
-     * width scaled by that factor (this must agree with the scaled advance used in
-     * {@link #walkAccidentalGlyphs}).
+     * width scaled by that factor.
      */
-    public static float getAccidentalWidthSs(StaffElement note) {
-        var accidental = note.getAccidental();
+    public static float getAccidentalWidthSs(NoteElement note) {
+        var accidental = note.drawnAccidental();
 
         if (accidental == null) {
             return 0;
         }
 
-        var ordinal = accidental.ordinal();
         var baseWidths = baseAccidentalWidthsSs;
-        var parenWidths = baseAccidentalParenthesisWidthsSs;
 
-        if (baseWidths == null || parenWidths == null) {
+        if (baseWidths == null) {
             throw RuntimeError.exit("getAccidentalWidthSs() called before initializeAccidentalWidths()");
         }
 
-        var widthSs = note.isAccidentalInParentheses()
-            ? parenWidths[ordinal]
-            : baseWidths[ordinal];
+        var widthSs = baseWidths[accidental.ordinal()];
 
         return note.getType().isGraceNote() ? ElementType.GRACE_NOTE_SCALE * widthSs : widthSs;
     }
@@ -443,21 +378,12 @@ public final class NoteGeometry {
      * <p>The renderer and {@code NoteColumnGeometry} must share this so the drawn glyphs and the
      * glissando-clearance geometry cannot drift apart.
      */
-    public static float getAccidentalStartXSs(StaffElement note) {
+    public static float getAccidentalStartXSs(NoteElement note) {
         var paddingSs = note.getType().isGraceNote()
             ? GRACE_ACCIDENTAL_PADDING_SS
             : ACCIDENTAL_PADDING_SS;
 
         return -paddingSs - getAccidentalWidthSs(note);
-    }
-
-    /**
-     * Returns the font scale for drawing {@code note}'s glyphs: {@link ElementType#GRACE_NOTE_SCALE}
-     * for grace notes, otherwise {@code 1f}. Pair with the grace-aware font from {@code RenderingUtils}
-     * so the scale and the font always agree, and feed it to {@link #walkAccidentalGlyphs}.
-     */
-    public static float getGlyphScale(StaffElement note) {
-        return note.getType().isGraceNote() ? ElementType.GRACE_NOTE_SCALE : 1f;
     }
 
     /**
@@ -470,32 +396,18 @@ public final class NoteGeometry {
      * grace-note accidentals are deliberately not reserved into the structural stacking layer
      * (see {@code VerticalStackingCalculator.seedAccidentalsIntoStructural}), so this returns no
      * bounds for them rather than scaled bounds.
+     *
+     * @return the accidental's bounds relative to the notehead glyph's origin, or {@code null}
      */
-    public static @Nullable AccidentalBounds getAccidentalBoundsSs(StaffElement note) {
-        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs, baseAccidentalParenthesisBoundsSs);
+    public static @Nullable BBox getAccidentalBoundsSs(NoteElement note) {
+        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs);
     }
 
-    /**
-     * Returns the bounding box of only the glyph nearest the notehead, in staff-space units, using
-     * the same coordinate convention as {@link #getAccidentalBoundsSs}.
-     *
-     * <p>The accidental glyphs are laid out left to right with the notehead to the right, so the
-     * nearest glyph is the rightmost one: the right parenthesis for a parenthesized accidental,
-     * otherwise the accidental glyph itself. Ledger-line shortening checks only this glyph rather
-     * than the full accidental span.
-     *
-     * <p>Returns {@code null} under the same conditions as {@link #getAccidentalBoundsSs}.
-     */
-    public static @Nullable AccidentalBounds getClosestAccidentalGlyphBoundsSs(StaffElement note) {
-        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs, closestAccidentalParenthesisBoundsSs);
-    }
-
-    private static @Nullable AccidentalBounds accidentalBoundsFromTables(
-        StaffElement note,
-        @Nullable AccidentalBounds @Nullable [] baseTable,
-        @Nullable AccidentalBounds @Nullable [] parenthesisTable
+    private static @Nullable BBox accidentalBoundsFromTables(
+        NoteElement note,
+        @Nullable BBox @Nullable [] table
     ) {
-        var accidental = note.getAccidental();
+        var accidental = note.drawnAccidental();
 
         if (accidental == null) {
             return null;
@@ -505,8 +417,6 @@ public final class NoteGeometry {
         if (note.getType().isGraceNote()) {
             return null;
         }
-
-        var table = note.isAccidentalInParentheses() ? parenthesisTable : baseTable;
 
         if (table == null) {
             throw RuntimeError.exit("accidentalBoundsFromTables() called before initializeAccidentalWidths()");
@@ -538,7 +448,7 @@ public final class NoteGeometry {
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + StaffPosition.toSs(staffPosition);
+        return middleLineYSs + staffPosition * Staff.HALF_SPACE_SS;
     }
 
     /**
@@ -567,7 +477,7 @@ public final class NoteGeometry {
      */
     public record LedgerLineGeometry(
         LedgerExtentSs baseExtentSs,
-        @Nullable AccidentalBounds closestAccidentalSs,
+        @Nullable BBox closestAccidentalSs,
         double headLeftSs
     ) {
         /**
@@ -583,11 +493,11 @@ public final class NoteGeometry {
             // left_shorten = max(dist - ledgerLeft, 0)); there is no accRight > ledgerLeft precondition.
             if (closestAccidentalSs == null
                 || yOffsetSs < closestAccidentalSs.topSs()
-                || yOffsetSs > closestAccidentalSs.botSs()) {
+                || yOffsetSs > closestAccidentalSs.bottomSs()) {
                 return baseExtentSs;
             }
 
-            var accidentalRightSs = closestAccidentalSs.leftSs() + closestAccidentalSs.widthSs();
+            var accidentalRightSs = closestAccidentalSs.rightSs();
             var ledgerLeftSs = Math.max(baseExtentSs.leftSs(), (accidentalRightSs + headLeftSs) / 2);
 
             return new LedgerExtentSs(ledgerLeftSs, baseExtentSs.rightSs());
@@ -600,7 +510,7 @@ public final class NoteGeometry {
      * @return {@code true} when the note's staff position lies beyond what the staff reaches
      */
     public static boolean noteNeedsLedgerLines(NoteElement note) {
-        return StaffPosition.needsLedgerLines(note.getStaffPosition());
+        return note.getStaffPosition().needsLedgerLines();
     }
 
     /**
@@ -628,7 +538,7 @@ public final class NoteGeometry {
         var extensionSs = LedgerLine.LENGTH_FRACTION * widthSs;
         var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
 
-        return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalGlyphBoundsSs(note), headLeftSs);
+        return new LedgerLineGeometry(baseExtentSs, getAccidentalBoundsSs(note), headLeftSs);
     }
 
     /**
@@ -657,7 +567,7 @@ public final class NoteGeometry {
      * stem width; that shift only pushed the whole note off its reference and has been removed.)
      */
     @SuppressWarnings("SameReturnValue")
-    public static float getNoteheadXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
+    public static float getNoteheadXOffsetSs(ElementType noteType, Direction direction) {
         return 0f;
     }
 
@@ -669,8 +579,7 @@ public final class NoteGeometry {
      * accent or a dynamic is wider than the head itself.
      */
     public static double getNoteheadCenterXSs(StaffElement note) {
-        var noteType = note.getType();
-        return noteType.getElementCenterXSs() + getNoteheadXOffsetSs(noteType, note.getDirection());
+        return note.getType().getElementCenterXSs();
     }
 
     /**
@@ -714,7 +623,7 @@ public final class NoteGeometry {
      * {@link ElementType#GRACE_NOTE_SCALE}.
      */
     @Nullable
-    public static Rectangle2D flagBBoxLocalSs(NoteElement note, StaffElement.Direction direction, boolean beamed) {
+    public static Rectangle2D flagBBoxLocalSs(NoteElement note, Direction direction, boolean beamed) {
         var noteType = note.getType();
 
         if (beamed || !noteType.isNoteWithStem()) {
@@ -751,86 +660,16 @@ public final class NoteGeometry {
     }
 
     // ==========================================================================
-    // Helpers (also used by StaffElementRenderer for drawing)
-    // ==========================================================================
-
-    /**
-     * Walks the glyph sequence that renders an accidental (optional left paren,
-     * the accidental glyph, optional right paren), invoking {@code visitor} with each glyph
-     * and its pen-position X. Centralises the advance-width and kerning bookkeeping
-     * so the draw pass and bounds computation cannot drift apart.
-     *
-     * <p>{@code scale} multiplies every advance and paren kerning so the pen positions track
-     * glyphs drawn at a scaled font size. Pass {@code 1f} for full-size accidentals and
-     * {@link ElementType#GRACE_NOTE_SCALE} for grace-note accidentals.
-     */
-    public static void walkAccidentalGlyphs(
-        SMuFLGlyph accidentalGlyph,
-        boolean parenthesized,
-        float startX,
-        float scale,
-        BiConsumer<? super SMuFLGlyph, ? super Float> visitor
-    ) {
-        var x = startX;
-
-        if (parenthesized) {
-            visitor.accept(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, x);
-            x = advancePast(x, SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, scale);
-            x += scale * PAREN_LEFT_KERNING.getOrDefault(accidentalGlyph, 0f);
-        }
-
-        visitor.accept(accidentalGlyph, x);
-        x = advancePast(x, accidentalGlyph, scale);
-
-        if (parenthesized) {
-            x += scale * PAREN_RIGHT_KERNING.getOrDefault(accidentalGlyph, 0f);
-            visitor.accept(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT, x);
-        }
-    }
-
-    private static float advancePast(float x, SMuFLGlyph glyph, float scale) {
-        return x + scale * (float) SMuFLMetadata.advanceWidthSs(glyph);
-    }
-
-    // ==========================================================================
     // Private Helpers
     // ==========================================================================
 
-    private static float parenthesizedAccidentalKerningSs(SMuFLGlyph accidentalGlyph) {
-        return PAREN_LEFT_KERNING.getOrDefault(accidentalGlyph, 0f)
-            + PAREN_RIGHT_KERNING.getOrDefault(accidentalGlyph, 0f);
-    }
-
     /**
-     * Folds the bounding boxes of a note's accidental glyphs into a single {@link AccidentalBounds},
-     * combining successive (left-to-right) glyph boxes with {@code combine}.
-     *
-     * <p>{@code combine} selects what the result represents: {@link BBox#union} yields the full
-     * accidental span, while {@link #KEEP_RIGHTMOST} yields only the glyph nearest the notehead —
-     * the rightmost one, which is the right parenthesis of a parenthesized accidental — used for
-     * ledger-line shortening (see {@link #getLedgerLineExtentSs}).
+     * Computes the bounding box of an accidental glyph drawn at its pen-start X, relative to the
+     * notehead glyph's origin.
      */
-    private static @Nullable AccidentalBounds computeAccidentalBounds(
-        SMuFLGlyph accidentalGlyph,
-        boolean parenthesized,
-        float totalWidthSs,
-        BinaryOperator<BBox> combine
-    ) {
+    private static BBox computeAccidentalBounds(SMuFLGlyph accidentalGlyph, float totalWidthSs) {
         var startX = -ACCIDENTAL_PADDING_SS - totalWidthSs;
-        var accumulator = new BBox[]{null};
 
-        // Base (non-grace) bounds: glyphs are laid out at full size.
-        walkAccidentalGlyphs(accidentalGlyph, parenthesized, startX, 1f, (glyph, xSs) -> {
-            var shifted = SMuFLMetadata.bboxSs(glyph).translateXSs(xSs);
-            accumulator[0] = (accumulator[0] == null) ? shifted : combine.apply(accumulator[0], shifted);
-        });
-
-        var box = accumulator[0];
-
-        if (box == null) {
-            return null;
-        }
-
-        return new AccidentalBounds(box.leftSs(), box.widthSs(), box.topSs(), box.bottomSs());
+        return SMuFLMetadata.bboxSs(accidentalGlyph).translateXSs(startX);
     }
 }

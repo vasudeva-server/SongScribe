@@ -20,7 +20,6 @@
 
 package songscribe.layout;
 
-import java.util.List;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
@@ -62,9 +61,6 @@ class CautionaryKeySignatureTest extends UnitTest {
      */
     private static final double OVERFLOWING_CONTENT_RIGHT_EDGE_SS = 120.0;
 
-    /** The ink width of the one column the overflowing fixture holds. */
-    private static final double COLUMN_INK_WIDTH_SS = 1.0;
-
     /** Staff spaces within which two computed coordinates count as the same. */
     private static final double TOLERANCE_SS = 1e-9;
 
@@ -91,24 +87,6 @@ class CautionaryKeySignatureTest extends UnitTest {
 
     /** One pair of keys that warns of nothing, so no cautionary is drawn. */
     private record NoCautionaryCase(String description, LineKeys keys) {}
-
-    /**
-     * A solved layout whose content overflows the staff, ending at
-     * {@link #OVERFLOWING_CONTENT_RIGHT_EDGE_SS}. One column carries that edge, since the content
-     * edge is the rightmost column edge rather than a value a caller states.
-     */
-    private static LayoutResult overflowingLayout() {
-        var element = crotchet();
-        var column = new ElementColumn(
-            element, List.of(), 0.0, COLUMN_INK_WIDTH_SS, COLUMN_INK_WIDTH_SS, 0.0, 0.0, null, 0.0, false);
-
-        column.setXSs(OVERFLOWING_CONTENT_RIGHT_EDGE_SS - COLUMN_INK_WIDTH_SS);
-
-        return LayoutResult.builder()
-            .setOverflowsStaffWidth(true)
-            .putElementColumn(element, column)
-            .build();
-    }
 
     static Stream<LineEndingCase> lineEndingCases() {
         var drawnLeadInSs = LINE_REST_SS
@@ -165,7 +143,7 @@ class CautionaryKeySignatureTest extends UnitTest {
 
         assertThat(cautionary).isNotNull();
 
-        var placement = cautionary.placeIn(LayoutResult.builder().build(), LINE_WIDTH_SS);
+        var placement = cautionary.placeIn(false, 0.0, LINE_WIDTH_SS);
         var accidentalsXSs = placement.accidentalsXSs();
         var lastElementInkEndSs = LINE_WIDTH_SS - cautionary.reservationSs();
 
@@ -197,7 +175,7 @@ class CautionaryKeySignatureTest extends UnitTest {
 
         assertThat(cautionary).isNotNull();
 
-        var placement = cautionary.placeIn(overflowingLayout(), LINE_WIDTH_SS);
+        var placement = cautionary.placeIn(true, OVERFLOWING_CONTENT_RIGHT_EDGE_SS, LINE_WIDTH_SS);
         var accidentalsXSs = placement.accidentalsXSs();
 
         assertThat(accidentalsXSs - OVERFLOWING_CONTENT_RIGHT_EDGE_SS)

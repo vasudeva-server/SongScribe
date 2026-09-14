@@ -29,8 +29,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
@@ -128,21 +127,20 @@ class KeyChangeSiteTest extends UnitTest {
     }
 
     /**
-     * A line that establishes no key of its own, running in {@link #INHERITED_KEY} because the
-     * line before it left off there.
-     *
-     * <p>The song is a mock stubbed to answer that inheritance, because what the fixture needs is
-     * a line whose own key is absent while its running key is not — and a real two-line song would
-     * arrange nothing this one does not.
+     * The second line of a two-line song whose first line establishes {@link #INHERITED_KEY}, so
+     * it runs in that key while establishing no key of its own.
      *
      * @return the line, in {@link #INHERITED_KEY} but holding no key
      */
     private static Line inheritingLine() {
-        var song = minimalSongMock();
+        var song = buildSong(
+            line -> {
+                line.setKey(INHERITED_KEY);
+                line.addElement(crotchet());
+            },
+            line -> line.addElement(crotchet()));
 
-        when(song.runningKeyAt(any(Line.class))).thenReturn(INHERITED_KEY);
-
-        return new Line(song);
+        return song.getLine(1);
     }
 
     @ParameterizedTest(name = "{0}")

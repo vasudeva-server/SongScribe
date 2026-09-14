@@ -19,38 +19,65 @@
  */
 package songscribe.io.musicxml;
 
+import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.writeToString;
 
 /**
- * How a note's hand-placed horizontal offset survives a write and a read, through the
- * px &rarr; ss &rarr; tenths &rarr; ss &rarr; px conversion {@code <relative-x>} carries it
- * through.
+ * How a note's hand-placed horizontal nudge survives a write and a read, through the
+ * ss &rarr; tenths &rarr; ss conversion {@code <relative-x>} carries it through.
  */
 class MusicXmlOffsetRoundTripTest extends UnitTest {
 
     @Test
     void testAnElementsXOffsetSurvivesAWriteAndAReadThroughTenths() throws Exception {
-        var song = songWithXOffset(X_OFFSET_PX);
+        var xOffsetSs = DocumentScale.pxToSs(X_OFFSET_PX);
+        var song = songWithXOffset(xOffsetSs);
 
         var restored = roundTrip(song).getLine(0).getElement(0);
 
-        assertThat(restored.getXOffsetPx()).isEqualTo(X_OFFSET_PX);
+        assertThat(restored.getUserXOffsetSs()).isEqualTo(xOffsetSs);
     }
 
-    /** A one-line song whose only note carries {@code xOffsetPx} as its hand-placed X offset. */
-    private static Song songWithXOffset(int xOffsetPx) {
+    /**
+     * A document without the {@code <supports element="note" attribute="relative-x">}
+     * entry was written when {@code relative-x} carried the layout position, so the
+     * reader must leave the offset at zero rather than take that position for a nudge.
+     */
+    @Test
+    void testRelativeXIsIgnoredWhenTheDocumentDoesNotVouchForIt() throws Exception {
+        var song = songWithXOffset(DocumentScale.pxToSs(X_OFFSET_PX));
+        var xml = writeToString(song);
+
+        var withoutDeclaration = NOTE_RELATIVE_X_SUPPORTS.matcher(xml).replaceAll("");
+        assertThat(withoutDeclaration).isNotEqualTo(xml);
+
+        var restored = parse(withoutDeclaration).getLine(0).getElement(0);
+
+        assertThat(restored.getUserXOffsetSs()).isZero();
+    }
+
+    /** The emitted {@code <supports>} entry for note {@code relative-x}, whatever its attribute order. */
+    private static final Pattern NOTE_RELATIVE_X_SUPPORTS = Pattern.compile(
+        "<" + MusicXmlTags.SUPPORTS + "[^>]*" + MusicXmlTags.ATTR_RELATIVE_X + "[^>]*/>");
+
+    /** A one-line song whose only note carries {@code xOffsetSs} as its hand-placed X nudge. */
+    private static Song songWithXOffset(double xOffsetSs) {
         return buildSong(line -> {
             var note = crotchet();
-            note.setXOffsetPx(xOffsetPx);
+            note.setUserXOffsetSs(xOffsetSs);
             line.addElement(note);
         });
     }

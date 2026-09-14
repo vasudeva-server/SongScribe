@@ -30,10 +30,12 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.StaffPosition;
+import songscribe.layout.ElementSeat;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
@@ -81,14 +83,14 @@ public final class PreviewElementManager {
      *
      * @param line             the line showing the preview element
      * @param insertionIndex   the slot the preview element would be inserted at
-     * @param staffPositionSp  the mouse Y in staff-position units
+     * @param staffPosition    the mouse Y resolved to the pitch grid
      * @param overElementX     whether the mouse X lies within an existing element's head
      * @param overElementHead  whether the mouse also lies within that head vertically
      */
     public record PreviewHover(
         LineComponent line,
         int insertionIndex,
-        int staffPositionSp,
+        StaffPosition staffPosition,
         boolean overElementX,
         boolean overElementHead) {
     }
@@ -579,7 +581,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        var staffPosition = (int) resolvedPosition;
+        var staffPosition = resolvedPosition;
 
         // Calculate X index and element-head match from mouse using layout result
         var layoutResult = lc.getLayoutResult();
@@ -635,7 +637,7 @@ public final class PreviewElementManager {
         // the same xIndex) is not silently dropped.
         var newXMatch = elementAtX >= 0;
         var newYMatch = newXMatch
-            && Math.abs(staffPosition - line.getElement(elementAtX).getStaffPosition()) <= 1;
+            && Math.abs(staffPosition.value() - ElementSeat.seatSp(line.getElement(elementAtX)).value()) <= 1;
 
         // A breath mark must be inserted between or after a note or rest; it may not sit at
         // index 0 or over an existing element (it never replaces one). At any such position
@@ -664,7 +666,7 @@ public final class PreviewElementManager {
         // rebuilds stay rare even though the mouse moves continuously.
         var configurationChanged = previous == null
             || lc != previous.line()
-            || staffPosition != previous.staffPositionSp()
+            || !staffPosition.equals(previous.staffPosition())
             || newXMatch != previous.overElementX()
             || newYMatch != previous.overElementHead();
 
@@ -812,7 +814,7 @@ public final class PreviewElementManager {
         // isDuration() rejects an invalid host (e.g. a grace note); hasGlissando() rejects
         // a valid host that would have its glissando to the following note broken.
         return !precedingType.isDuration()
-            || precedingElement.hasGlissando()
+            || (precedingElement instanceof NoteElement precedingNote && precedingNote.hasGlissando())
             || (xIndex < line.effectiveElementCount() && line.getElement(xIndex).getType().isBreathMark());
     }
 
@@ -843,7 +845,7 @@ public final class PreviewElementManager {
      * gestures both believing the click is theirs.
      * <p>
      * The answer is point-dependent, not merely mode-dependent: {@link #trackMouse} clears the
-     * preview outside {@link StaffPosition#MIN_SP} .. {@link StaffPosition#MAX_SP},
+     * preview outside {@link StaffPosition#MIN} .. {@link StaffPosition#MAX},
      * so the same line can answer differently from one click to the next depending on where
      * within it the pointer lands.
      *
@@ -891,12 +893,12 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Sets the mouse-derived staff position on a pitched note. Any other element answers its
-     * staff position from its type, so there is nothing to set.
+     * Sets the mouse-derived staff position on a note. Any other element has no staff position
+     * to set.
      */
-    static void applyStaffPosition(StaffElement element, int staffPositionSp) {
-        if (element.getType().isPitchedNote()) {
-            element.setStaffPosition(staffPositionSp);
+    static void applyStaffPosition(StaffElement element, StaffPosition staffPosition) {
+        if (element instanceof NoteElement note) {
+            note.setStaffPosition(staffPosition);
         }
     }
 }

@@ -19,7 +19,6 @@
  */
 package songscribe.ui.menu;
 
-import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JMenu;
 import javax.swing.JRadioButtonMenuItem;
 
@@ -33,8 +32,5 @@ public class AccidentalMenu extends JMenu {
         for (var action : Actions.ACCIDENTAL_ACTION_GROUP.getActions()) {
             add(new JRadioButtonMenuItem(action));
         }
-
-        addSeparator();
-        add(new JCheckBoxMenuItem(Actions.ACCIDENTAL_IN_PARENS_ACTION));
     }
 }

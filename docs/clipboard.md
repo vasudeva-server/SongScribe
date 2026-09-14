@@ -6,17 +6,14 @@ promises; this is the arrangement they sit in.
 ## The pieces
 
 The clipboard holds **one fragment** — a run of staff elements taken from a song
-together with the spans wholly inside it. Five roles act on it:
+together with the spans wholly inside it. Four roles act on it:
 
-- **capture** takes a run off a line, normalizing the selection's boundaries and
-  recording the accidental context each element had where it came from;
+- **capture** takes a run off a line, normalizing the selection's boundaries;
 - **instantiation** produces a fresh, independent copy for each paste, so the
   held fragment is never itself inserted and pasting twice yields two results
   sharing nothing;
 - **reconciliation** decides what happens to spans the paste lands inside;
-- **placement** picks the spot when there is no selection to replace;
-- **accidental reconciliation** preserves the pitches of notes the user did not
-  edit.
+- **placement** picks the spot when there is no selection to replace.
 
 A fragment carries what the music *is*, never how it was placed: horizontal
 nudges are discarded on the way in, because a nudge is meaningful only under the
@@ -101,66 +98,46 @@ a line are inert, so the next click is always a placement or a cancel.
 
 ## Keeping pitches through an edit
 
-Anything that changes which explicit accidentals sit on a line — or where — can
-silently change how a note the user never touched sounds. Reconciliation exists
-to stop that, and it always runs; no call site decides for itself whether it is
-needed.
+A pasted note carries its pitch in its own state: every note stores what it
+sounds, so a note copied from one context and pasted into another sounds there
+what it sounded where it was copied from, whatever is in force at the spot it
+lands. Nothing about the source context travels with the fragment, because
+nothing needs to — the pitch is already on the note.
 
-Two populations are protected: material arriving from elsewhere keeps the pitch
-it had in its source context, and material already present keeps the pitch it had
-before the edit. A note the user themselves changed is never protected. A note
-ending a tie is never a candidate either — a tie asserts that two notes are one
-sounding pitch, so the tied note has no pitch of its own to keep.
+What is *written* on it after the paste is not the fragment's to say. The song
+decides every note's state after the paste, as it does after every recorded
+change, walking from the paste until each touched staff position reaches a
+note the paste did not move. A pasted note that sounds what is in force where
+it lands shows nothing; one that sounds something else gains an accidental; a
+note already on the line whose chain the paste breaks or extends is decided
+again with the same pitch it had. See [accidentals.md](accidentals.md) for the
+states and the walk.
 
-The comparison is by how a note *sounds*, never by which accidental is written,
-since an absent accidental and an explicit natural sound alike. The key
-never enters the comparison directly: it is the last fallback of the resolver, so
-resolving before the edit against the source and after against the destination
-compares the two keys implicitly. That is what lets a key change be handled by the
-same walk as everything else.
-
-Where a note would otherwise change, it is given an explicit accidental. The
-mirror case removes one: an accidental already present is cleared when the edit
-moved the context arriving at that note *and* left the accidental saying nothing
-new. Both conditions together are what let a deliberate restatement or a courtesy
-accidental survive every edit that does not move its context.
-
-**Reach is the part that surprises.** The backward scan is bounded within a line,
-but how many lines one reconciliation covers is a separate question, and what
-decides it is whether the edit **moves a key** — not which edit it is. Accidental
-context resets at a line boundary; what crosses one is the key. An edit that
-leaves every line running in the key it already ran in reaches one line. An edit
-that moves a key runs forward to the first line establishing a key of its own,
-which is the only way a reconciliation spans more than one line.
-
-A paste is either. A fragment carrying a key change moves the key the destination
-line leaves off in, so that paste reaches the whole inheritance chain past it and
-is reconciled exactly as a key change written by hand is; a fragment carrying none
-reaches its destination line alone. The user sees one prompt for the whole of it
-either way — never one per line, and never a second prompt because the paste both
-overwrote a selection and re-keyed what followed.
-
-A key change the fragment brings in can also arrive stranded, landing where its
-key is already running — see [key-changes.md](key-changes.md) for why that
-state is not allowed to exist. **The fragment is reduced before anything measures
+A fragment carrying a key change moves the key the destination line leaves off
+in, so the walk after that paste continues to the next key change, across
+lines. A fragment carrying none is decided on its destination line alone. A
+key change the fragment brings in can also arrive stranded, landing where its
+key is already running — see [key-changes.md](key-changes.md) for why that state
+is not allowed to exist. **The fragment is reduced before anything measures
 it**, rather than pasted whole and swept afterwards, and that ordering is the
-point: the fit gate, the accidental reconciliation and the span reconciliation all
-read the arriving run, so all three have to see the run that actually lands.
+point: the fit gate and the span reconciliation both read the arriving run, so
+both have to see the run that actually lands.
 
-**Order matters against layout.** Accidentals have to be materialized before the
-projected columns used for the fit check are built, because accidental width is a
-layout input. With that ordering both the fit gate and the committed layout are
-correct with no per-position shift machinery. Reconciliation itself only reads
-and reports; the caller applies the result, and only if the edit's fit check
-passed.
-
-An in-place change — an accidental toggle, a pitch shift, a duration swap — can
-widen a column without changing how many elements there are, so it is measured
-the same way an insertion is, on copies, before anything commits. Only changes
-that can alter a column's horizontal extent are gated; marks that stack
+**A paste measures its projected accidentals before it commits.** Accidental
+width is a layout input, so the fit check is made on a projection of the song
+as it will stand, states already decided, and the paste is refused when a line
+it would widen no longer fits. A paste that is refused changes nothing. The
+same gate covers preview insertion, preview replacement and any selection
+action that widens a column: a duration swap, an accidental toggle. Only
+changes that can alter a column's horizontal extent are gated; marks that stack
 vertically cannot make a line wider. Without the gate an impossible edit is not
 refused but surfaces later as a line laid out on its collision floors, running
 past the staff and clipped.
+
+A pitch shift is not measured for fit. It moves a note to another staff
+position, where the note adopts what is in force, and the states it changes may
+leave a line wider than its fit; that line renders overflowing and flagged, the
+program's ordinary best-effort behaviour.
 
 ## Not supported
 

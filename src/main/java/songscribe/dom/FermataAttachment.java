@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -37,35 +35,46 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
     private static final double FERMATA_WIDTH_SS;
     private static final double FERMATA_HEIGHT_SS;
 
+    private static final int HELD_NUMERATOR = 3;
+    private static final int HELD_DENOMINATOR = 2;
+
     static {
         var bbox = SMuFLMetadata.bboxSs(SMuFLGlyph.FERMATA_ABOVE);
         FERMATA_WIDTH_SS = bbox.widthSs();
         FERMATA_HEIGHT_SS = bbox.heightSs();
     }
 
-    /**
-     * Creates a fermata attachment.
-     */
-    public FermataAttachment() {
-        setAlignment(Alignment.CENTER);
-    }
-
-    /**
-     * Creates a fermata attachment attached to a note.
-     *
-     * @param parent The parent note
-     */
-    public FermataAttachment(@Nullable StaffElement parent) {
-        setOwnerElement(parent);
-        setAlignment(Alignment.CENTER);
-        // The line pointer is not set here. StaffElement.addAttachment — which every
-        // caller reaches immediately — routes through LineElement.addChild, and that
-        // owns it.
-    }
-
     @Override
-    protected Attachment createCopy(StaffElement newOwner) {
-        return new FermataAttachment(newOwner);
+    protected Attachment createCopy() {
+        return new FermataAttachment();
+    }
+
+    /**
+     * Puts a fermata on {@code element}. An element already holding one is left as it is, so
+     * the element never carries two.
+     *
+     * @param element the element to hold
+     * @effects afterwards {@code element.findAttachment(FermataAttachment.class)} is non-null;
+     *     nothing changes when it already was
+     */
+    public static void addFermata(StaffElement element) {
+        if (element.findAttachment(FermataAttachment.class) == null) {
+            element.addAttachment(new FermataAttachment());
+        }
+    }
+
+    /**
+     * Takes the fermata off {@code element}. An element holding none is left as it is.
+     *
+     * @param element the element to release
+     * @effects afterwards {@code element.findAttachment(FermataAttachment.class)} is null
+     */
+    public static void removeFermata(StaffElement element) {
+        var existing = element.findAttachment(FermataAttachment.class);
+
+        if (existing != null) {
+            element.removeAttachment(existing);
+        }
     }
 
     /**
@@ -78,5 +87,22 @@ public final class FermataAttachment extends Attachment implements IntrinsicHeig
     @Override
     public double intrinsicHeightSs() {
         return FERMATA_HEIGHT_SS;
+    }
+
+    /**
+     * Returns {@code ticks} lengthened by this fermata: half again as long, which is what a
+     * fermata is worth in this application's playback.
+     *
+     * <p>Integer division truncates, so an odd tick count loses its half tick. A double-dotted
+     * thirty-second note is written at 21 ticks and is held for 31 rather than 31.5. That is the
+     * arithmetic MIDI has always been given here — unlike {@link Dots#augment}, which refuses a
+     * duration it cannot lengthen exactly, this is a playback stretch rather than a notated
+     * value, and half a tick of it is inaudible.
+     *
+     * @param ticks the written duration
+     * @return the held duration, in the same ticks
+     */
+    public int heldDuration(int ticks) {
+        return ticks * HELD_NUMERATOR / HELD_DENOMINATOR;
     }
 }

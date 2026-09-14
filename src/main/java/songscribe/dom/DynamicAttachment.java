@@ -117,27 +117,11 @@ public final class DynamicAttachment extends Attachment implements IntrinsicHeig
      */
     public DynamicAttachment(DynamicType type) {
         this.type = type;
-        setAlignment(Alignment.CENTER);
-    }
-
-    /**
-     * Creates a dynamic attachment attached to a note.
-     *
-     * @param parent The parent note
-     * @param type   The dynamic type
-     */
-    public DynamicAttachment(@Nullable StaffElement parent, DynamicType type) {
-        this.type = type;
-        setAlignment(Alignment.CENTER);
-        setOwnerElement(parent);
-        // The line pointer is not set here. StaffElement.addAttachment — which every
-        // caller reaches immediately — routes through LineElement.addChild, and that
-        // owns it.
     }
 
     @Override
-    protected Attachment createCopy(StaffElement newOwner) {
-        return new DynamicAttachment(newOwner, type);
+    protected Attachment createCopy() {
+        return new DynamicAttachment(type);
     }
 
     /**

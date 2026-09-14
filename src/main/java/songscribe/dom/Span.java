@@ -35,6 +35,16 @@ import org.jspecify.annotations.Nullable;
  *   <li>An anchor element (first element in the range)</li>
  *   <li>Methods to determine the range extent</li>
  * </ul>
+ *
+ * <p><b>Endpoint typing.</b> The base holds {@link StaffElement} endpoints, because most span
+ * types legitimately reach over any staff element. A subtype whose endpoints are always of one
+ * kind narrows them: it declares a constructor taking the narrower type, overrides the two
+ * getters covariantly, and overrides {@link #acceptsEndpoint} to admit only that type. The
+ * override is what makes the narrowing a guarantee rather than a convention: every route by
+ * which an endpoint enters through a base reference — {@link #setAnchorElement},
+ * {@link #setEndElement} and {@link #copy} — consults it and refuses what it rejects, so a
+ * narrowed getter can never hand back anything but the narrower type. {@link NoteSpan} is the
+ * one narrowing in the codebase.
  */
 public abstract class Span extends LineElement {
 
@@ -64,9 +74,12 @@ public abstract class Span extends LineElement {
 
     /**
      * Sets the first element in this range.
+     *
+     * @throws IllegalArgumentException if this span's type does not
+     *     {@link #acceptsEndpoint accept} {@code anchorElement} as an endpoint
      */
     public void setAnchorElement(StaffElement anchorElement) {
-        this.anchorElement = anchorElement;
+        this.anchorElement = requireAccepted(anchorElement);
     }
 
     /**
@@ -78,9 +91,35 @@ public abstract class Span extends LineElement {
 
     /**
      * Sets the last element in this range.
+     *
+     * @throws IllegalArgumentException if this span's type does not
+     *     {@link #acceptsEndpoint accept} {@code endElement} as an endpoint
      */
     public void setEndElement(StaffElement endElement) {
-        this.endElement = endElement;
+        this.endElement = requireAccepted(endElement);
+    }
+
+    /**
+     * Whether {@code element} may be one of this span's endpoints. The base admits every staff
+     * element; a subtype that narrows its endpoint type overrides this to admit only that type,
+     * and the setters and {@link #copy} then refuse anything else. See the class Javadoc.
+     */
+    protected boolean acceptsEndpoint(StaffElement element) {
+        return true;
+    }
+
+    /**
+     * {@code element}, once {@link #acceptsEndpoint} has admitted it.
+     *
+     * @throws IllegalArgumentException if this span's type rejects {@code element}
+     */
+    private StaffElement requireAccepted(StaffElement element) {
+        if (!acceptsEndpoint(element)) {
+            throw new IllegalArgumentException(
+                getClass().getSimpleName() + " cannot end on " + element);
+        }
+
+        return element;
     }
 
     /**
@@ -378,30 +417,30 @@ public abstract class Span extends LineElement {
 
     /**
      * Creates a copy of this span anchored to the given elements, carrying over
-     * all {@link LineElement}-level user state (offsets, margins, position).
+     * all {@link LineElement}-level user state (the two user offsets).
      * <p>
-     * This is the single place LineElement-level state is copied, so a new subclass cannot
-     * forget it. Subclasses carry their own subclass-specific state in {@link #createCopy}.
-     * Does not set {@code parentLine} — no span ever has one; see {@link #isIn} — and does
-     * not copy derived caches.
+     * Base state travels through {@link LineElement#copyBaseStateFrom}, so a new subclass cannot
+     * forget it and a new base field needs no change here. Subclasses carry their own
+     * subclass-specific state in {@link #createCopy}. Does not set {@code parentLine} — no span
+     * ever has one; see {@link #isIn} — and does not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
      * @return A new span of the same concrete type as this one
+     * @throws IllegalArgumentException if this span's type does not
+     *     {@link #acceptsEndpoint accept} either element as an endpoint
      */
     public final Span copy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = createCopy(newAnchor, newEnd);
-        copy.setUserXOffsetSs(getUserXOffsetSs());
-        copy.setUserYOffsetSs(getUserYOffsetSs());
-        copy.setMarginSs(getMarginTopSs(), getMarginRightSs(), getMarginBottomSs(), getMarginLeftSs());
-        copy.setPosition(getPositionSs());
+        var copy = createCopy(requireAccepted(newAnchor), requireAccepted(newEnd));
+        copy.copyBaseStateFrom(this);
         return copy;
     }
 
     /**
      * Creates a new instance of this span's concrete subclass, anchored to the
      * given elements and carrying over any subclass-specific state. Called only by
-     * {@link #copy}, which layers on the shared {@link LineElement}-level state.
+     * {@link #copy}, which layers on the shared {@link LineElement}-level state and has
+     * already put both elements past {@link #acceptsEndpoint}.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy

@@ -107,9 +107,9 @@ public final class LyricEditFitCalculator {
      */
     private static void applyLyric(StaffElement element, int verse, @Nullable Lyric lyric) {
         if (lyric == null) {
-            element.setLyricForVerse(verse, null, false, null, Lyric.Extend.NONE);
+            element.removeLyricForVerse(verse);
         } else {
-            element.setLyricForVerse(verse, lyric.syllabic(), lyric.compound(), lyric.text(), lyric.extend());
+            element.putLyric(lyric);
         }
     }
 }

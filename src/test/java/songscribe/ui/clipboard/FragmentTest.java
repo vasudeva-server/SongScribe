@@ -41,11 +41,11 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  *
  * <p>A fragment carries the key of the line it came from, not the key of the line it is pasted
  * into, so the same clipboard content is stranded in one destination and meaningful in another.
- * Both questions a paste asks about that are here: which key the fragment leaves in effect behind
- * it, and which of its own key changes arrive restating what is already running.
+ * The question a paste asks about that is here: which of its own key changes arrive restating what
+ * is already running.
  *
- * <p>The reduction happens before the clones are inserted rather than after, so the accidental
- * reconciliation, the fit measurement and the span reconciliation all read the run that actually
+ * <p>The reduction happens before the clones are inserted rather than after, so the chain walk,
+ * the fit measurement and the span reconciliation all read the run that actually
  * lands. That is why it is asserted on the fragment rather than on the destination line.
  */
 class FragmentTest extends UnitTest {
@@ -56,16 +56,7 @@ class FragmentTest extends UnitTest {
     /** The key a fragment's own key change establishes when it is meant to be a real change. */
     private static final Key FRAGMENT_KEY = Key.TWO_SHARPS;
 
-    /** A third key, so a fragment holding two key changes has two that differ. */
-    private static final Key LATER_FRAGMENT_KEY = Key.THREE_FLATS;
-
     private static final int STAFF_POSITION = 6;
-
-    /** The accidental recorded for the fragment's leading note in its source context. */
-    private static final StaffElement.Accidental LEADING_PRIOR = StaffElement.Accidental.SHARP;
-
-    /** The accidental recorded for the fragment's trailing note in its source context. */
-    private static final StaffElement.Accidental TRAILING_PRIOR = StaffElement.Accidental.FLAT;
 
     /**
      * A fragment of {@code note, barline, key change, note} — the shape {@link Fragment#capture}
@@ -81,34 +72,12 @@ class FragmentTest extends UnitTest {
 
         return new Fragment(
             List.of(leading, barline, keyChange(key), trailing),
-            Arrays.asList(LEADING_PRIOR, null, null, TRAILING_PRIOR),
             List.of(new Ending(barline, trailing), new Ending(leading, leading)));
     }
 
     /** The elements of {@code spans}, so a survivor can be named by the elements it joins. */
     private static List<StaffElement> endpointsOf(Span span) {
         return Arrays.asList(span.getAnchorElement(), span.getEndElement());
-    }
-
-    @Test
-    void testTheKeyAtTheEndIsTheFragmentsLastKeyChangeWhenItCarriesOne() {
-        var leading = note(STAFF_POSITION);
-
-        var fragment = new Fragment(
-            List.of(leading, singleBarline(), keyChange(FRAGMENT_KEY),
-                singleBarline(), keyChange(LATER_FRAGMENT_KEY)),
-            Arrays.asList(LEADING_PRIOR, null, null, null, null),
-            List.of());
-
-        assertThat(fragment.keyAtEndUnder(DESTINATION_KEY)).isEqualTo(LATER_FRAGMENT_KEY);
-    }
-
-    @Test
-    void testTheKeyAtTheEndIsTheInsertionKeyWhenTheFragmentCarriesNoKeyChange() {
-        var fragment = new Fragment(
-            List.of(note(STAFF_POSITION)), Arrays.asList(LEADING_PRIOR), List.of());
-
-        assertThat(fragment.keyAtEndUnder(DESTINATION_KEY)).isEqualTo(DESTINATION_KEY);
     }
 
     @Test
@@ -131,9 +100,6 @@ class FragmentTest extends UnitTest {
         assertThat(reduced.elements())
             .as("the pair goes and the notes either side of it stay")
             .containsExactly(leading, trailing);
-        assertThat(reduced.priorAccidentals())
-            .as("the recorded source accidentals stay parallel to the elements that survive")
-            .containsExactly(LEADING_PRIOR, TRAILING_PRIOR);
         assertThat(reduced.spans().stream().map(FragmentTest::endpointsOf))
             .as("a span with an endpoint on either half of the pair goes with it, as it would if "
                 + "the user deleted the pair off a line")

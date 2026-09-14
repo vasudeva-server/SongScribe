@@ -47,7 +47,7 @@ public final class LedgerLine {
     private LedgerLine() {}
 
     /**
-     * Passes each ledger line a note head at {@code staffPositionSp} needs to
+     * Passes each ledger line a note head at {@code staffPosition} needs to
      * {@code consumer}, as a Y offset in staff spaces from that note head, working
      * inward from the line furthest from the staff.
      * <p>
@@ -56,24 +56,22 @@ public final class LedgerLine {
      * its offsets are half a staff space out of step with the note. A note the staff
      * reaches gets nothing.
      *
-     * @param staffPositionSp the note head's staff position in half staff spaces from
-     *                        the middle line, Y-down
-     * @param consumer        called once per ledger line, furthest from the staff first
+     * @param staffPosition the note head's staff position
+     * @param consumer      called once per ledger line, furthest from the staff first
      * @invariant nothing is passed unless
-     *            {@link StaffPosition#needsLedgerLines(int)} holds for
-     *            {@code staffPositionSp}
+     *            {@link StaffPosition#needsLedgerLines()} holds for {@code staffPosition}
      * @invariant every offset is an exact multiple of {@link Staff#HALF_SPACE_SS}, and
      *            successive offsets differ by one staff space
      */
-    public static void forEachOffsetSs(int staffPositionSp, DoubleConsumer consumer) {
-        var towardStaff = staffPositionSp > 0 ? -1 : 1;
-        var lineSp = StaffPosition.isOnLine(staffPositionSp)
-            ? staffPositionSp
-            : staffPositionSp + towardStaff;
+    public static void forEachOffsetSs(StaffPosition staffPosition, DoubleConsumer consumer) {
+        var towardStaff = staffPosition.value() > 0 ? -1 : 1;
+        var linePosition = staffPosition.isOnLine()
+            ? staffPosition
+            : new StaffPosition(staffPosition.value() + towardStaff);
 
-        while (StaffPosition.needsLedgerLines(lineSp)) {
-            consumer.accept(Staff.halfSpacesToSs(lineSp - staffPositionSp));
-            lineSp += towardStaff * StaffPosition.POSITIONS_PER_STAFF_LINE;
+        while (linePosition.needsLedgerLines()) {
+            consumer.accept(Staff.halfSpacesToSs(linePosition.value() - staffPosition.value()));
+            linePosition = new StaffPosition(linePosition.value() + towardStaff * StaffPosition.POSITIONS_PER_STAFF_LINE);
         }
     }
 }

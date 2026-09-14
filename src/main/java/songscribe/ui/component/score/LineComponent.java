@@ -34,7 +34,6 @@ import songscribe.dom.DocumentScale;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
-import songscribe.engraving.StaffPosition;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
@@ -277,16 +276,6 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns the Y coordinate of the middle staff line in pixels.
-     * <p>
-     * Bridge method for callers not yet converted to staff-space units.
-     * Will be removed when renderers and mouse code are converted.
-     */
-    public int getMiddleLineYPx() {
-        return (int) Math.round(DocumentScale.ssToPx(getMiddleLineYSs()).value() * getViewScale().factor());
-    }
-
-    /**
      * Returns the zoomed staff-space-to-pixel scale (document {@code pixelsPerStaffSpace} × the
      * view zoom factor) for this line.
      * <p>
@@ -297,18 +286,6 @@ public class LineComponent extends ScoreComponent
      */
     public double getViewPixelsPerStaffSpace() {
         return DocumentScale.PIXELS_PER_STAFF_SPACE * getViewScale().factor();
-    }
-
-    /**
-     * Converts a staff position to a Y pixel coordinate.
-     *
-     * @param staffPositionSp The staff position (0 = middle line)
-     * @return Y coordinate in pixels
-     */
-    public int staffPositionToYPx(int staffPositionSp) {
-        return getMiddleLineYPx()
-            + (int) Math.round(
-                DocumentScale.ssToPx(StaffPosition.toSs(staffPositionSp)).value() * getViewScale().factor());
     }
 
     /**
@@ -407,6 +384,26 @@ public class LineComponent extends ScoreComponent
         if (song != null && line != null && needsLayout()) {
             performLayout();
         }
+    }
+
+    /**
+     * Ensures the layout is up to date, then returns it.
+     *
+     * @return the layout result
+     * @throws RuntimeError.ExitInProgressError if layout ran and still produced none, and the
+     *         fatal-error dialog raised for that is already showing — see
+     *         {@link #unexpectedNullLayout}
+     */
+    public LayoutResult requireLayoutResult() {
+        ensureLayout();
+
+        var result = getLayoutResult();
+
+        if (result == null) {
+            throw unexpectedNullLayout();
+        }
+
+        return result;
     }
 
     /**

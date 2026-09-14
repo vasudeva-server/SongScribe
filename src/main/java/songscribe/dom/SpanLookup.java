@@ -129,13 +129,6 @@ public interface SpanLookup {
     // --- typed queries -----------------------------------------------------
 
     /**
-     * Returns all {@link Beam} spans overlapping [begin, end] inclusive.
-     */
-    default List<Beam> findBeamsOverlapping(int begin, int end) {
-        return findSpans(Beam.class, Span.overlapping(begin, end));
-    }
-
-    /**
      * Returns the first {@link Beam} span whose anchor-to-end range includes
      * {@code elementIndex}, or {@code null} if the element is not part of any beam.
      */

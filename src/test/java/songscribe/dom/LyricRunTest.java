@@ -47,10 +47,6 @@ class LyricRunTest extends UnitTest {
     /** The index every insertion here lands at: between the two elements carrying the chain. */
     private static final int INSERTION_INDEX = 1;
 
-    private static final double INSERTION_POSITION_SS = 0.0;
-
-    private static final int NO_TAIL_SHIFT_PX = 0;
-
     private static final String FIRST_SYLLABLE = "hal";
 
     private static final String LAST_SYLLABLE = "le";
@@ -137,13 +133,13 @@ class LyricRunTest extends UnitTest {
     private Line lineWithHyphenatedWord() {
         var line = detachedLine();
         var opening = crotchet();
-        opening.setLyricForVerse(
-            Lyric.FIRST_VERSE, Lyric.Syllabic.BEGIN, false, FIRST_SYLLABLE, Lyric.Extend.NONE);
+        opening.putLyric(
+            new Lyric(Lyric.FIRST_VERSE, FIRST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
         line.addElement(opening);
 
         var closing = crotchet();
-        closing.setLyricForVerse(
-            Lyric.FIRST_VERSE, Lyric.Syllabic.END, false, LAST_SYLLABLE, Lyric.Extend.NONE);
+        closing.putLyric(
+            new Lyric(Lyric.FIRST_VERSE, LAST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         line.addElement(closing);
 
         return line;
@@ -153,22 +149,19 @@ class LyricRunTest extends UnitTest {
     private Line lineWithMelisma() {
         var line = detachedLine();
         var syllable = crotchet();
-        syllable.setLyricForVerse(
-            Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, FIRST_SYLLABLE, Lyric.Extend.START);
+        syllable.putLyric(
+            new Lyric(Lyric.FIRST_VERSE, FIRST_SYLLABLE, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
         line.addElement(syllable);
 
         var carrier = crotchet();
-        carrier.setLyricForVerse(Lyric.FIRST_VERSE, null, false, null, Lyric.Extend.STOP);
+        carrier.putLyric(Lyric.carrier(Lyric.FIRST_VERSE, Lyric.Extend.STOP));
         line.addElement(carrier);
 
         return line;
     }
 
     private static void insert(Line line, InsertedElement testCase) {
-        line.insertRun(
-            INSERTION_INDEX,
-            List.of(new Line.PlacedElement(testCase.element().get(), INSERTION_POSITION_SS)),
-            NO_TAIL_SHIFT_PX);
+        line.insertRun(INSERTION_INDEX, List.of(testCase.element().get()));
     }
 
     private static Lyric.@Nullable Syllabic syllabicAt(Line line, int index) {

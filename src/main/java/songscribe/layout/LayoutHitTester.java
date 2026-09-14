@@ -26,6 +26,7 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Direction;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
@@ -132,7 +133,9 @@ public final class LayoutHitTester {
         }
 
         var song = line.getSong();
-        var startXSs = cautionary.placeIn(layoutResult, song.getLineWidthSs().value()).accidentalsXSs();
+        var startXSs = cautionary.placeIn(
+            layoutResult.overflowsStaffWidth(), layoutResult.contentRightEdgeSs(), song.getLineWidthSs().value()
+        ).accidentalsXSs();
 
         if (mouseXSs < startXSs || mouseXSs > startXSs + cautionary.accidentalsWidthSs()) {
             return null;
@@ -349,7 +352,7 @@ public final class LayoutHitTester {
                     // doesn't overflow the staff boundary.
                     if (line.getSong().isAutoMaintainedTerminal(element, line)) {
                         var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                                previewElement, false, StaffElement.Direction.UP);
+                                previewElement, false);
                         return elementX + column.getRightExtentSs() - previewRightExtentSs;
                     }
 
@@ -393,8 +396,8 @@ public final class LayoutHitTester {
                 previewElement,
                 Collections.emptyList(),
                 ElementColumnBuilder.calculateLeftExtentSs(previewElement),
-                ElementColumnBuilder.calculateRightExtentSs(previewElement, false, StaffElement.Direction.UP),
-                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false, StaffElement.Direction.UP),
+                ElementColumnBuilder.calculateRightExtentSs(previewElement, false),
+                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false),
                 0,
                 0,
                 null,  // a preview element carries no lyric

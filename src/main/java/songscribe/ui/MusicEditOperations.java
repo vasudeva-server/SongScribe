@@ -31,16 +31,18 @@ import songscribe.Strings;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.Direction;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
-import songscribe.dom.StaffElement;
+import songscribe.dom.Stem;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
@@ -123,9 +125,8 @@ public final class MusicEditOperations {
 
             //noinspection ObjectEquality
             if (beginBeam == null || beginBeam != line.findBeamAt(endIndex)) {
-                var anchorElement = line.getElement(beginIndex);
-                var endElement = line.getElement(endIndex);
-                line.addBeaming(new Beam(anchorElement, endElement));
+                // canToggleBeaming has admitted the range, so both endpoints are beamable notes.
+                line.addBeaming(new Beam(line.noteAt(beginIndex), line.noteAt(endIndex)));
             } else {
                 line.removeBeaming(beginBeam);
             }
@@ -191,16 +192,13 @@ public final class MusicEditOperations {
             line.withModification(() -> {
                 line.removeBeaming(predecessorBeam);
 
+                // Both selected elements are non-grace members of the beam, so they are notes.
                 if (anchorIndex < predecessorIndex) {
-                    line.addBeaming(new Beam(
-                        line.getElement(anchorIndex),
-                        line.getElement(predecessorIndex)));
+                    line.addBeaming(new Beam(predecessorBeam.getAnchorElement(), line.noteAt(predecessorIndex)));
                 }
 
                 if (elementIndex < endIndex) {
-                    line.addBeaming(new Beam(
-                        line.getElement(elementIndex),
-                        line.getElement(endIndex)));
+                    line.addBeaming(new Beam(line.noteAt(elementIndex), predecessorBeam.getEndElement()));
                 }
             });
 
@@ -217,10 +215,11 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var anchorElement = line.getElement(predecessorIndex);
-        var endElement = line.getElement(elementIndex);
+        // Both are beamable, so both are notes.
+        var anchorNote = line.noteAt(predecessorIndex);
+        var endNote = line.noteAt(elementIndex);
 
-        line.withModification(() -> line.addBeaming(new Beam(anchorElement, endElement)));
+        line.withModification(() -> line.addBeaming(new Beam(anchorNote, endNote)));
 
         return true;
     }
@@ -267,9 +266,8 @@ public final class MusicEditOperations {
             var exactTie = line.findExactTie(beginIndex, endIndex);
 
             if (exactTie == null) {
-                var anchorElement = line.getElement(beginIndex);
-                var endElement = line.getElement(endIndex);
-                line.addTie(new Tie(anchorElement, endElement));
+                // canToggleTie has admitted the range, so both endpoints are pitched notes.
+                line.addTie(new Tie(line.noteAt(beginIndex), line.noteAt(endIndex)));
             } else {
                 line.removeTie(exactTie);
             }
@@ -1066,38 +1064,32 @@ public final class MusicEditOperations {
 
     /**
      * Applies a stem change to the element at {@code index}. A non-null {@code newDirection}
-     * forces that direction; null restores automatic stem direction, letting the layout engine
-     * derive it.
+     * forces that direction; null hands the direction back to the score.
      */
     private static void applyStemChange(
         Line line,
         int index,
         EnumSet<ElementField> stemFields,
-        StaffElement.@Nullable Direction newDirection
+        @Nullable Direction newDirection
     ) {
-        // Rests, whole notes, and non-note elements carry no stem, so a direction change
-        // would be an invisible edit that still dirties the song and pushes an undo entry.
-        // Enforced here so it holds for every caller, including the beam-group loop.
-        if (!line.getElement(index).getType().isNoteWithStem()) {
+        // Rests, whole notes, and non-note elements carry no stem, and a grace note's stem is
+        // always up whatever the notator asks, so a direction change on any of them would be an
+        // invisible edit that still dirties the song and pushes an undo entry. Enforced here so
+        // it holds for every caller, including the beam-group loop.
+        if (!(line.getElement(index) instanceof NoteElement note)
+            || !note.getType().isNoteWithStem()
+            || note.getType().isGraceNote()) {
             return;
         }
 
-        if (newDirection == null) {
-            // Re-enabling auto on an already-auto element changes nothing. Recording a mutation
-            // anyway would mark the song modified and push an empty entry onto the undo stack.
-            if (line.getElement(index).isStemDirectionAuto()) {
-                return;
-            }
-
-            line.modifyElement(index, stemFields, () -> line.getElement(index).setStemDirectionAuto(true));
+        // Re-enabling auto on an already-auto note changes nothing. Recording a mutation
+        // anyway would mark the song modified and push an empty entry onto the undo stack.
+        if (newDirection == null && note.stem() instanceof Stem.Auto) {
             return;
         }
 
-        line.modifyElement(index, stemFields, () -> {
-            var target = line.getElement(index);
-            target.setStemDirectionAuto(false);
-            target.setDirection(newDirection);
-        });
+        var stem = newDirection == null ? Stem.AUTO : new Stem.Forced(newDirection);
+        line.modifyElement(index, stemFields, () -> note.setStem(stem));
     }
 
     private void modifyStemDirection(StemDirectionChange change) {
@@ -1108,18 +1100,16 @@ public final class MusicEditOperations {
         }
 
         var line = range.line();
-        var stemFields = EnumSet.of(ElementField.UPPER, ElementField.STEM_DIRECTION_AUTO);
+        var stemFields = EnumSet.of(ElementField.STEM);
 
         line.withModification(() -> {
             // Track which beam groups have already been processed to avoid modifying one twice.
             var processedBeams = new HashSet<Beam>();
 
             for (var i = range.begin(); i <= range.end(); i++) {
-                var note = line.getElement(i);
-
                 // applyStemChange already ignores stemless elements. Stopping here as well
                 // keeps one from dragging its entire beam group into the edit below.
-                if (!note.getType().isNoteWithStem()) {
+                if (!(line.getElement(i) instanceof NoteElement note) || !note.getType().isNoteWithStem()) {
                     continue;
                 }
 
@@ -1131,10 +1121,9 @@ public final class MusicEditOperations {
                     // Modify the whole beam group together, once per group. The group's new
                     // direction is derived once from its anchor so every member agrees.
                     if (processedBeams.add(beam)) {
-                        var anchorIndex = beam.getAnchorElementIndex();
-                        var newDirection = flippedDirection(line, anchorIndex, change);
+                        var newDirection = flippedDirection(beam.getAnchorElement(), change);
 
-                        for (var j = anchorIndex; j <= beam.getEndElementIndex(); j++) {
+                        for (var j = beam.getAnchorElementIndex(); j <= beam.getEndElementIndex(); j++) {
                             if (line.getElement(j).getType().isGraceNote()) {
                                 continue;
                             }
@@ -1143,7 +1132,7 @@ public final class MusicEditOperations {
                         }
                     }
                 } else {
-                    applyStemChange(line, i, stemFields, flippedDirection(line, i, change));
+                    applyStemChange(line, i, stemFields, flippedDirection(note, change));
                 }
             }
 
@@ -1192,26 +1181,26 @@ public final class MusicEditOperations {
                 }
             }
 
+            // The walk queued every index between a tie's two notes, and a legal separator — a
+            // barline, say — may sit there; only the notes take a stem change.
             for (var partnerIndex : tiePartnersToModify) {
-                applyStemChange(line, partnerIndex, stemFields, flippedDirection(line, partnerIndex, change));
+                if (line.getElement(partnerIndex) instanceof NoteElement partner) {
+                    applyStemChange(line, partnerIndex, stemFields, flippedDirection(partner, change));
+                }
             }
         });
     }
 
     /**
-     * Returns the direction a {@link StemDirectionChange#FLIP} of the element at {@code index}
-     * would install, or null when {@code change} does not need one.
+     * Returns the direction a {@link StemDirectionChange#FLIP} of {@code note} would install, or
+     * null when {@code change} does not need one.
      */
-    private static StaffElement.@Nullable Direction flippedDirection(
-        Line line,
-        int index,
-        StemDirectionChange change
-    ) {
+    private static @Nullable Direction flippedDirection(NoteElement note, StemDirectionChange change) {
         if (change != StemDirectionChange.FLIP) {
             return null;
         }
 
-        return line.getElement(index).getDirection().opposite();
+        return note.direction().opposite();
     }
 
     // ========== Tempo Operations ==========

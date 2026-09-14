@@ -100,9 +100,9 @@ public final class Actions {
     public static List<ElementTypeAction> NOTE_DURATION_ACTIONS;
     public static DurationActionGroup DURATION_ACTION_GROUP;
 
-    public static DotAction DOT_ACTION;
-    public static DotAction DOUBLE_DOT_ACTION;
-    public static ActionGroup<DotAction> DOT_ACTION_GROUP;
+    public static DotAction<?> DOT_ACTION;
+    public static DotAction<?> DOUBLE_DOT_ACTION;
+    public static ActionGroup<DotAction<?>> DOT_ACTION_GROUP;
 
     public static RestModeAction REST_ACTION;
 
@@ -111,7 +111,6 @@ public final class Actions {
     public static AccidentalAction NATURAL_ACTION;
     public static AccidentalAction SHARP_ACTION;
     public static AccidentalAction DOUBLE_SHARP_ACTION;
-    public static AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
 
     public static ActionGroup<AccidentalAction> ACCIDENTAL_ACTION_GROUP;
 
@@ -257,7 +256,6 @@ public final class Actions {
         NATURAL_ACTION = AccidentalAction.createNaturalAction(mainFrame);
         SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
         DOUBLE_SHARP_ACTION = AccidentalAction.createDoubleSharpAction(mainFrame);
-        ACCIDENTAL_IN_PARENS_ACTION = AccidentalInParensAction.createAction(mainFrame);
         ACCIDENTAL_ACTION_GROUP = new ActionGroup<>(
             DOUBLE_FLAT_ACTION,
             FLAT_ACTION,
@@ -399,15 +397,14 @@ public final class Actions {
 
     /**
      * Clears every toggle that {@link songscribe.ui.edit.EditModeManager#decorateElement}
-     * reads (dot, accidental, accidental-parentheses, and articulations), so this is the
-     * single place that set has to stay in sync. Callers that need a freshly-inserted
+     * reads (dot, accidental, and articulations), so this is the single place that set has
+     * to stay in sync. Callers that need a freshly-inserted
      * element to start undecorated — e.g. a grace note's host — should call this instead
      * of clearing the toggles individually.
      */
     public static void clearNoteDecorations() {
         DOT_ACTION_GROUP.clearSelection();
         ACCIDENTAL_ACTION_GROUP.clearSelection();
-        ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
         ACCENT_ACTION.setSelected(false);
         STACCATO_ACTION.setSelected(false);
     }

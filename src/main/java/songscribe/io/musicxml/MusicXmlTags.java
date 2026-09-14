@@ -265,7 +265,8 @@ public final class MusicXmlTags {
     static final String SCALING_TENTHS      = "40";
     static final String PAGE_HEIGHT_TENTHS  = "1596";
 
-    // Attribute values — <supports> element tokens (write-forward, always emitted).
+    // Attribute values — <supports> element tokens for the whole-element features in
+    // SupportedFeature, which is where every entry the writer emits is listed.
     static final String SUPPORTS_ACCIDENTAL = "accidental";
     static final String SUPPORTS_BEAM       = "beam";
     static final String SUPPORTS_STEM       = "stem";

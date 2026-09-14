@@ -21,7 +21,8 @@ package songscribe.ui.renderer;
 
 import java.awt.Graphics2D;
 
-import songscribe.dom.GlyphElement;
+import songscribe.dom.Dots;
+import songscribe.dom.RestElement;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
@@ -39,7 +40,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
  * applied by LineComponent handles pixel conversion.
  * Rests don't have stems, flags, or accidentals.
  */
-public final class RestRenderer implements ElementRenderer<GlyphElement> {
+public final class RestRenderer implements ElementRenderer<RestElement> {
 
     // Gap in staff spaces between the rest glyph's advance and its first dot.
     private static final double DOT_GAP_SS = 0.5;
@@ -68,7 +69,7 @@ public final class RestRenderer implements ElementRenderer<GlyphElement> {
     public void render(
         LineInvariants invariants,
         ElementFrame frame,
-        GlyphElement element,
+        RestElement element,
         Graphics2D g2
     ) {
         var restX = frame.resolveElementXSs(element, invariants);
@@ -87,16 +88,16 @@ public final class RestRenderer implements ElementRenderer<GlyphElement> {
     /**
      * Calculates the Y position for a rest in staff-space units, from its type's glyph seat.
      */
-    double calculateRestYSs(GlyphElement rest, double middleLineYSs) {
-        return middleLineYSs + StaffPosition.toSs(rest.getStaffPosition());
+    double calculateRestYSs(RestElement rest, double middleLineYSs) {
+        return middleLineYSs + rest.seatSp().toSs();
     }
 
     /**
      * Renders the augmentation dots of a dotted rest, the first one {@link #DOT_GAP_SS} past the
      * glyph's advance width.
      */
-    private void renderDots(Graphics2D g2, GlyphElement rest) {
-        if (rest.getDotCount() == 0) {
+    private void renderDots(Graphics2D g2, RestElement rest) {
+        if (rest.dots() == Dots.NONE) {
             return;
         }
 
@@ -105,7 +106,7 @@ public final class RestRenderer implements ElementRenderer<GlyphElement> {
         try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
 
-            for (var i = 0; i < rest.getDotCount(); i++) {
+            for (var i = 0; i < rest.dots().count(); i++) {
                 g2.drawString(SMuFLGlyph.AUGMENTATION_DOT.asString(), dotX, 0f);
                 dotX += NoteGeometry.DOT_SPACING_SS;
             }

@@ -42,15 +42,20 @@ import songscribe.util.StringUtils;
  *
  * @param verse    1-based verse number; a song's verses are the languages its lyrics are written
  *                 in, and {@link Song#getActiveVerse()} selects the one being shown
- * @param text     syllable text (may be empty when {@code extend} is {@link Extend#STOP} or
- *                 {@link Extend#CONTINUE} — those carriers mark melisma boundaries on notes
- *                 that have no text of their own)
+ * @param text     syllable text; blank for a carrier ({@link Extend#STOP} or
+ *                 {@link Extend#CONTINUE}), which marks a melisma boundary on a note that has no
+ *                 text of its own, and never blank otherwise — a text-bearing lyric bears text,
+ *                 so erasing a syllable removes its {@link Lyric} rather than storing one with
+ *                 blank text
  * @param extend   melisma extender state for this lyric (MusicXML-aligned)
  * @param syllabic syllabic position within the word ({@code null} only for carrier lyrics with
  *                 {@link Extend#STOP}/{@link Extend#CONTINUE})
  * @param compound {@code true} when this syllable joins the next via a compound-word boundary
  *                 ({@code =}); requires {@code syllabic} to be {@link Syllabic#BEGIN} or
  *                 {@link Syllabic#MIDDLE}
+ * @throws IllegalArgumentException if a carrier has non-blank text, a non-null syllabic or is
+ *     compound; if a non-carrier lyric has blank text or a null syllabic; or if a compound
+ *     lyric's syllabic is not one that continues into the next syllable
  */
 public record Lyric(int verse, String text, Extend extend,
         @Nullable Syllabic syllabic, boolean compound) {
@@ -85,26 +90,62 @@ public record Lyric(int verse, String text, Extend extend,
         text = StringUtils.processText(text, true);
 
         if (isCarrier(extend)) {
+            if (!text.isBlank()) {
+                throw new IllegalArgumentException(
+                    "carrier lyric (extend=" + extend + ") cannot have text; got: \"" + text + '"');
+            }
+
             if (syllabic != null) {
-                throw new IllegalStateException(
+                throw new IllegalArgumentException(
                     "carrier lyric (extend=" + extend + ") must have null syllabic, got " + syllabic);
             }
 
             if (compound) {
-                throw new IllegalStateException(
+                throw new IllegalArgumentException(
                     "carrier lyric (extend=" + extend + ") cannot be compound");
             }
         } else {
+            if (text.isBlank()) {
+                throw new IllegalArgumentException(
+                    "non-carrier lyric (extend=" + extend + ") requires non-blank text");
+            }
+
             if (syllabic == null) {
-                throw new IllegalStateException(
+                throw new IllegalArgumentException(
                     "non-carrier lyric requires non-null syllabic");
             }
 
             if (compound && !syllabicContinues(syllabic)) {
-                throw new IllegalStateException(
+                throw new IllegalArgumentException(
                     "compound lyric requires syllabic BEGIN or MIDDLE, got " + syllabic);
             }
         }
+    }
+
+    /**
+     * Returns a melisma carrier for {@code verse}: no text, no syllabic, not compound.
+     *
+     * @param verse  the verse number
+     * @param extend {@link Extend#STOP} or {@link Extend#CONTINUE}
+     * @return the carrier
+     * @throws IllegalArgumentException if {@code extend} is not a carrier state, since a
+     *     text-bearing lyric cannot have the null syllabic a carrier has
+     */
+    public static Lyric carrier(int verse, Extend extend) {
+        return new Lyric(verse, "", extend, null, false);
+    }
+
+    /**
+     * Returns this lyric with its extender state replaced and everything else kept.
+     *
+     * @param extend the new extender state
+     * @return this record when nothing changes, otherwise a lyric differing only in extend
+     * @throws IllegalArgumentException if the result would break the content model: a
+     *     text-bearing lyric given a carrier state, or a carrier (whose text is always blank)
+     *     given a non-carrier state
+     */
+    public Lyric withExtend(Extend extend) {
+        return this.extend == extend ? this : new Lyric(verse, text, extend, syllabic, compound);
     }
 
     /**

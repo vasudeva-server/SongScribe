@@ -23,14 +23,14 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.StaffElement.Accidental;
+import songscribe.dom.Accidental;
 
 /**
  * Bidirectional lookup between SongScribe {@link Accidental} values and
  * their MusicXML {@code <accidental>} glyph token.
  *
  * <p>The sounding {@code <alter>} semitone is <b>not</b> kept here: it is derived
- * from {@link songscribe.dom.StaffElement#getPitchAdjustment} (the same source
+ * from {@link songscribe.dom.Accidental#semitoneAdjustmentOf} (the same source
  * playback uses) via {@link PitchSpelling}, so there is a single source of truth
  * for the alteration.
  *

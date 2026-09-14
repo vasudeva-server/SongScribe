@@ -33,6 +33,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.Key;
 import songscribe.dom.Lyric;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementFactory;
 
@@ -109,7 +110,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testAHyphenOpenedOnAGraceNoteReachesPastTheHostThatCanBearNoSyllable() {
         var grace = StaffElementFactory.graceQuaver();
-        grace.setGlissando();
+        grace.setSlide(Slide.GLISSANDO);
 
         var opening = column(0, grace,
             new Lyric(VERSE, FIRST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));

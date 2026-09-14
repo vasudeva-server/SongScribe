@@ -20,6 +20,8 @@
 
 package songscribe.ui.action;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
@@ -53,13 +55,13 @@ public final class FinalDoubleBarlineAction extends ElementTypeAction {
             0, 0,
             null,
             // REQUIRES_SINGLE_SELECTION is what disables the entry when nothing is selected;
-            // appliesTo() below rules out every selection that is not the terminal.
+            // admit() below rules out every selection that is not the terminal.
             withFlags(NON_DURATION_FLAGS, Flag.REQUIRES_SINGLE_SELECTION)
         );
     }
 
     @Override
-    public boolean appliesTo(StaffElement element) {
-        return Song.isAutoMaintainedTerminalOfItsSong(element);
+    public @Nullable StaffElement admit(StaffElement element) {
+        return Song.isAutoMaintainedTerminalOfItsSong(element) ? element : null;
     }
 }

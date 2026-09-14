@@ -59,6 +59,7 @@ import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.error.RuntimeError;
@@ -456,16 +457,14 @@ public final class ScoreView
                 installDocumentFonts(success.fonts());
                 setSong(success.song());
 
-                var tupletReport = success.tupletReport();
-                var accidentalsConverted = success.accidentalsConverted();
+                var migrations = success.migrations();
 
-                if (!tupletReport.isEmpty() || accidentalsConverted) {
+                if (!migrations.isEmpty()) {
                     // setSong clears the modified flag internally; a migration that
                     // happens silently on load must still prompt the user to save the
                     // migrated version, so re-mark modified after installing the song.
                     success.song().setModified(true);
-                    MigrationWindow.show(
-                        SwingUtilities.getWindowAncestor(this), tupletReport, accidentalsConverted);
+                    MigrationWindow.show(SwingUtilities.getWindowAncestor(this), migrations);
                 }
 
                 if (onFileOpened != null) {
@@ -524,10 +523,16 @@ public final class ScoreView
                 LOG.error("Refused to open '{}': not created by SongScribe (software: {})", file.getName(), software);
                 yield false;
             }
+            case SongLoadResult.InvalidFileFormat e -> {
+                var fileName = file.getName();
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_INVALID, fileName);
+                LOG.error("Refused to open '{}': invalid MusicXML ({})", fileName, e.detail());
+                yield false;
+            }
             case SongLoadResult.UnsupportedFileFormat e -> {
                 var fileName = file.getName();
-                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_MUSICXML_UNSUPPORTED, fileName);
-                LOG.error("Refused to open '{}': unsupported file format ({})", fileName, e.detail());
+                OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_FILE_ERROR, Strings.ALERT_FILE_TYPE_UNSUPPORTED, fileName);
+                LOG.error("Refused to open '{}': unsupported file type ({})", fileName, e.extension());
                 yield false;
             }
             case SongLoadResult.UnsupportedVersion e -> {
@@ -641,13 +646,13 @@ public final class ScoreView
             var currentPreviewElement = EditModeManager.getPreviewElement();
 
             if (currentPreviewElement != null) {
-                element.setStaffPosition(currentPreviewElement.getStaffPosition());
-                element.setXOffsetPx(currentPreviewElement.getXOffsetPx());
+                if (element instanceof NoteElement note
+                    && currentPreviewElement instanceof NoteElement currentNote) {
+                    note.setStaffPosition(currentNote.getStaffPosition());
+                }
             } else {
                 EditModeManager.setPreviewElement(element);
             }
-
-            element.setDirection(StaffElement.defaultDirection(element));
         }
 
         EditModeManager.setPreviewElement(element);
@@ -892,16 +897,6 @@ public final class ScoreView
         // width leaves the model untouched — setLineWidthSs early-returns on an equal value.
         updatePageLayout(song.getLineWidthSs());
 
-        // The fit pass records ELEMENT_SPACING_RATIO changes through a
-        // mutation-tracked setter. On load there is no open modification bracket,
-        // and this normalization is not a user edit — suspend tracking so it
-        // neither throws nor pollutes undo history or the modified flag.
-        song.withoutMutationTracking(() -> {
-            for (var i = 0; i < song.lineCount(); i++) {
-                drawWidthIfWiderLine(song.getLine(i), true);
-            }
-        });
-
         song.setModified(false);
 
         if (!initialized) {
@@ -961,44 +956,6 @@ public final class ScoreView
 
     public int getSheetWidthPx() {
         return DocumentScale.ssToPx(getSong().getLineWidthSs().value()).sizePx();
-    }
-
-    @Override
-    public void drawWidthIfWiderLine(Line line, boolean revalidateOnly) {
-        // Exclude the auto-maintained FINAL_DOUBLE_BARLINE from stretch calculations:
-        // its position is fixed at the line's right edge and must not be treated as
-        // the end note when computing the ratio.
-        var effectiveCount = line.effectiveElementCount();
-
-        if (effectiveCount > 1) {
-            var endNote = line.getElement(effectiveCount - 1);
-            float idealSpace;
-
-            if (revalidateOnly) {
-                idealSpace = (float) DocumentScale.ssToPx(endNote.getAdvanceWidthSs()).value();
-            } else {
-                idealSpace =
-                    (float) DocumentScale.ssToPx(HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS).value() + 20;
-            }
-
-            var lineWidthPx = getSong().getLineWidthPx();
-
-            if (endNote.getXOffsetPx() > (lineWidthPx - idealSpace)) {
-                var firstX = line.getElement(0).getXOffsetPx();
-                var ratio =
-                    (lineWidthPx - idealSpace - firstX) /
-                        (endNote.getXOffsetPx() - firstX);
-
-                for (var i = 1; i < effectiveCount; i++) {
-                    var note = line.getElement(i);
-                    note.setXOffsetPx(
-                        firstX + Math.round((note.getXOffsetPx() - firstX) * ratio)
-                    );
-                }
-
-                line.changeElementSpacingRatio(ratio);
-            }
-        }
     }
 
     @Override

@@ -195,7 +195,7 @@ public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
      * @return {@code true} when a dialog was opened
      */
     public static boolean edit(MainFrame mainFrame, Attachment attachment, Line line) {
-        var target = AttachmentTarget.forElement(line, attachment.getOwnerElement());
+        var target = AttachmentTarget.forElement(line, attachment.owner());
 
         if (target == null) {
             return false;

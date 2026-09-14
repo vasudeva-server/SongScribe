@@ -73,8 +73,9 @@ import org.junit.jupiter.api.extension.TestWatcher;
 
 import songscribe.SongScribe;
 import songscribe.UnitTest;
-import songscribe.dom.DocumentScale;
 import songscribe.dom.Song;
+import songscribe.dom.Ss;
+import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.PageModel;
@@ -84,6 +85,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.BasePopupButton;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,6 +119,15 @@ public abstract class E2ETest {
 
     /** Margin between overlay bottom and screen bottom when scoreView extends below the screen. */
     private static final int OVERLAY_SCREEN_MARGIN_PX = 13;
+
+    /** Where a click lands on an empty line, measured from the line's left edge. */
+    private static final int EMPTY_LINE_X_VIEW_PX = 80;
+
+    /** How far past the last element of a line a click lands, to insert after it. */
+    private static final int PAST_LAST_ELEMENT_X_VIEW_PX = 30;
+
+    /** How far left of an element's layout position a click lands, to insert before it. */
+    private static final int BEFORE_ELEMENT_X_VIEW_PX = 10;
 
     private static final Object INIT_LOCK = new Object();
     private static boolean frameInitialized = false;
@@ -477,6 +488,22 @@ public abstract class E2ETest {
     // -- Coordinate helpers --
 
     /**
+     * Converts a distance in staff spaces to a position in view pixels, the regime a robot
+     * click lands in.
+     */
+    private int positionViewPx(double distanceSs) {
+        return scoreView().getViewScale().toViewPx(new Ss(distanceSs)).positionPx();
+    }
+
+    /**
+     * Returns the Y coordinate of a staff position on the given line, in view pixels relative
+     * to the top of the component.
+     */
+    private int staffPositionYViewPx(LineComponent lineComponent, int staffPositionSp) {
+        return positionViewPx(lineComponent.getMiddleLineYSs() + staffPositionSp * Staff.HALF_SPACE_SS);
+    }
+
+    /**
      * Returns the screen-relative pixel position of an existing note,
      * suitable for robot clicks.
      */
@@ -501,8 +528,8 @@ public abstract class E2ETest {
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + DocumentScale.ssToPx(hitRect.x + hitRect.width / 2).positionPx(),
-                locationOnScreen.y + DocumentScale.ssToPx(centerYSs).positionPx()
+                locationOnScreen.x + positionViewPx(hitRect.x + hitRect.width / 2),
+                locationOnScreen.y + positionViewPx(centerYSs)
             );
         });
         assertThat(result).isNotNull();
@@ -523,25 +550,23 @@ public abstract class E2ETest {
             var line = lc.getLine();
             assertThat(line).isNotNull();
 
-            int xPx;
+            int xViewPx;
 
             if (line.effectiveElementCount() == 0) {
-                // Fixed offset from left edge for empty lines
-                xPx = 80;
+                xViewPx = EMPTY_LINE_X_VIEW_PX;
             } else {
                 var lastNote = line.getElement(line.effectiveElementCount() - 1);
                 var layoutResult = lc.getLayoutResult();
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastNote) : 0.0;
-                // Place 30px past the last note
-                xPx = DocumentScale.ssToPx(lastXSs).positionPx() + 30;
+                xViewPx = positionViewPx(lastXSs) + PAST_LAST_ELEMENT_X_VIEW_PX;
             }
 
-            var yPx = lc.staffPositionToYPx(staffPositionSp);
+            var yViewPx = staffPositionYViewPx(lc, staffPositionSp);
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + xPx,
-                locationOnScreen.y + yPx
+                locationOnScreen.x + xViewPx,
+                locationOnScreen.y + yViewPx
             );
         });
         assertThat(result).isNotNull();
@@ -563,14 +588,14 @@ public abstract class E2ETest {
 
             var element = line.getElement(elementIndex);
             var elementXSs = layoutResult != null ? layoutResult.getElementXSs(element) : 0.0;
-            var xPx = DocumentScale.ssToPx(elementXSs).positionPx() - 10;
+            var xViewPx = positionViewPx(elementXSs) - BEFORE_ELEMENT_X_VIEW_PX;
 
-            var yPx = lc.staffPositionToYPx(staffPositionSp);
+            var yViewPx = staffPositionYViewPx(lc, staffPositionSp);
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
-                locationOnScreen.x + xPx,
-                locationOnScreen.y + yPx
+                locationOnScreen.x + xViewPx,
+                locationOnScreen.y + yViewPx
             );
         });
         assertThat(result).isNotNull();
@@ -587,9 +612,9 @@ public abstract class E2ETest {
         var endPoint = GuiActionRunner.execute(() -> {
             var lc = scoreView().getLineComponent(lineIndex);
             assertThat(lc).isNotNull();
-            var endYPx = lc.staffPositionToYPx(targetStaffPositionSp);
+            var endYViewPx = staffPositionYViewPx(lc, targetStaffPositionSp);
             var locationOnScreen = lc.getLocationOnScreen();
-            return new Point(startPoint.x, locationOnScreen.y + endYPx);
+            return new Point(startPoint.x, locationOnScreen.y + endYViewPx);
         });
         assertThat(endPoint).isNotNull();
 

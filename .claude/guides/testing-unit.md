@@ -59,16 +59,15 @@ Enumerated domain, one case per contract clause:
 
 ```java
 @ParameterizedTest
-@MethodSource("typesWithTickMapping")
-void testTicksReturnsExactIntegerForEveryValidDotCount(ElementType type) {
-    for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
-        assertThat(NoteTypeMapping.ticks(type, dotCount)).isPositive();
-    }
+@MethodSource("noteValueAndDotsCombinations")
+void testAugmentIsPositiveForEveryNoteValueAndDots(NoteValue value, Dots dots) {
+    assertThat(dots.augment(value.ticks())).isPositive();
 }
 
-static Stream<ElementType> typesWithTickMapping() {
-    return Stream.of(ElementType.values())
-        .filter(NoteTypeMapping::hasDuration);
+static Stream<Arguments> noteValueAndDotsCombinations() {
+    return Stream.of(NoteValue.values())
+        .flatMap(value -> Stream.of(Dots.values())
+            .map(dots -> Arguments.of(value, dots)));
 }
 ```
 
@@ -77,13 +76,13 @@ pinning one expected output per input:
 
 ```java
 @ParameterizedTest
-@MethodSource("typeAndTupletRatioCombinations")
-void testTicksScaleExactlyForEveryTupletRatioAndDotCount(ElementType type, int ratio) {
-    for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
-        var scaled = NoteTypeMapping.ticks(type, dotCount) * 2 / ratio;
+@MethodSource("noteValueAndDotsCombinations")
+void testAugmentNeverShrinksAndOnlyEqualsForNone(NoteValue value, Dots dots) {
+    var ticks = value.ticks();
+    var augmented = dots.augment(ticks);
 
-        assertThat(scaled * ratio).isEqualTo(NoteTypeMapping.ticks(type, dotCount) * 2);
-    }
+    assertThat(augmented).isGreaterThanOrEqualTo(ticks);
+    assertThat(augmented == ticks).isEqualTo(dots == Dots.NONE);
 }
 ```
 

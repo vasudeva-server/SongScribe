@@ -32,6 +32,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
@@ -50,7 +51,6 @@ import songscribe.ui.renderer.ArticulationRenderer;
 import songscribe.ui.renderer.AttributionRenderer;
 import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
-import songscribe.ui.renderer.ClefRenderer;
 import songscribe.ui.renderer.DynamicMarkingRenderer;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.EndingRenderer;
@@ -64,6 +64,7 @@ import songscribe.ui.renderer.StaffElementRenderer;
 import songscribe.ui.renderer.RenderingUtils;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.renderer.SongTempoMarkRenderer;
+import songscribe.ui.renderer.StaffHeaderRenderer;
 import songscribe.ui.renderer.TempoChangeRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
@@ -236,26 +237,15 @@ class LineRenderer {
     }
 
     /**
-     * Renders the line beginning (clef, key signature, and on the first line the song's tempo).
+     * Renders the line beginning (the staff header, and on the first line the song's tempo).
      *
      * @param g2    Graphics context
      * @param invariants   Line invariants
      * @param frame Element frame
      */
     private void renderLineBeginning(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var layoutResult = invariants.getLayoutResult();
-        var clef = layoutResult.getClef();
-
-        if (clef != null) {
-            ClefRenderer.getInstance().render(invariants, frame, clef, g2);
-        }
-
-        var keySig = layoutResult.getKeySignature();
-
-        if (keySig != null) {
-            KeySignatureRenderer.getInstance().render(invariants, frame, keySig, g2);
-        }
-
+        StaffHeaderRenderer.getInstance().render(
+            invariants, frame, invariants.getLayoutResult().staffHeader(), g2);
         renderSongTempoMark(g2, invariants, frame);
     }
 
@@ -420,9 +410,8 @@ class LineRenderer {
 
         for (var beam : line.findSpans(Beam.class)) {
             var anchorIdx = beam.getAnchorElementIndex();
-            var endIdx = beam.getEndElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
-                () -> beamRenderer.renderBeams(g2, invariants, frame, anchorIdx, endIdx));
+                () -> beamRenderer.renderBeams(g2, invariants, frame, beam));
         }
     }
 
@@ -561,6 +550,7 @@ class LineRenderer {
         }
 
         var layoutResult = invariants.getLayoutResult();
+        var decorationLayouts = layoutResult.decorationLayouts();
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             var attachmentShiftActive = false;
@@ -577,36 +567,36 @@ class LineRenderer {
                 var element = line.getElement(i);
 
                 // Tier 1: Articulations (near-note)
-                if (!element.getArticulations().isEmpty()) {
-                    articulationRenderer.render(invariants, frame, element, g2);
+                if (element instanceof NoteElement note && !note.getArticulations().isEmpty()) {
+                    articulationRenderer.render(invariants, frame, note, g2);
                 }
 
                 // Tier 2: Fermata (note decoration)
-                if (layoutResult.findAttachmentDecorationLayout(
+                if (decorationLayouts.findAttachmentDecorationLayout(
                         element, FermataAttachment.class) != null) {
                     fermataRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 3: Dynamic markings (below staff)
-                if (layoutResult.findAttachmentDecorationLayout(
+                if (decorationLayouts.findAttachmentDecorationLayout(
                         element, DynamicAttachment.class) != null) {
                     dynamicMarkingRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Tempo (system)
-                if (layoutResult.findAttachmentDecorationLayout(
+                if (decorationLayouts.findAttachmentDecorationLayout(
                         element, TempoChangeAttachment.class) != null) {
                     tempoRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Beat change (system)
-                if (layoutResult.findAttachmentDecorationLayout(
+                if (decorationLayouts.findAttachmentDecorationLayout(
                         element, BeatChangeAttachment.class) != null) {
                     beatChangeRenderer.render(invariants, frame, element, g2);
                 }
 
                 // Tier 4: Annotation (system)
-                if (layoutResult.findAttachmentDecorationLayout(
+                if (decorationLayouts.findAttachmentDecorationLayout(
                         element, AnnotationAttachment.class) != null) {
                     annotationRenderer.render(invariants, frame, element, g2);
                 }

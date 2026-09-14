@@ -19,25 +19,26 @@
  */
 package songscribe.dom;
 
+import songscribe.engraving.StaffPosition;
 import songscribe.smufl.SMuFLGlyph;
 
 /**
- * A rest or a breath mark: a non-sounding element drawn as one glyph at a seat of its own.
+ * A breath mark: a non-sounding element drawn as one glyph at a seat of its own, with nothing
+ * an editor can add to it.
  *
- * <p>Answers its glyph and its seat from its type's {@link GlyphAppearance}, so a question only
- * a glyph element can answer is total here and always answered from what the type declares.
- * {@link ElementType#newInstance()} builds one for every type whose appearance is a glyph and
- * for no other, which is what makes the narrowing to that arm sound. A rest takes augmentation
- * dots; a breath mark does not.
+ * <p>Answers its glyph and its seat from its type's {@link PlainGlyphAppearance}, so a question
+ * only a breath mark can answer is total here and always answered from what the type declares.
+ * {@link ElementType#newInstance()} builds one for every type whose appearance is a plain glyph
+ * and for no other, which is what makes the narrowing to that arm sound.
  */
-public final class GlyphElement extends StructuralElement {
+public final class BreathMarkElement extends StructuralElement {
 
-    GlyphElement(ElementType type) {
+    BreathMarkElement(ElementType type) {
         super(type);
     }
 
-    private GlyphAppearance appearance() {
-        return (GlyphAppearance) getType().appearance();
+    private PlainGlyphAppearance appearance() {
+        return (PlainGlyphAppearance) getType().appearance();
     }
 
     /**
@@ -47,19 +48,18 @@ public final class GlyphElement extends StructuralElement {
         return appearance().glyph();
     }
 
-    @Override
-    public int getStaffPosition() {
-        return appearance().seatSp();
+    /**
+     * Returns where this breath mark's glyph sits on the staff, which its type declares.
+     *
+     * @return the seat
+     */
+    public StaffPosition seatSp() {
+        return new StaffPosition(appearance().seatSp());
     }
 
     @Override
-    public int getDotCount() {
-        return getType().isRest() ? dotCount : 0;
-    }
-
-    @Override
-    public GlyphElement clone() {
-        var copy = new GlyphElement(getType());
+    public BreathMarkElement clone() {
+        var copy = new BreathMarkElement(getType());
         copy.copyStateFrom(this);
 
         return copy;

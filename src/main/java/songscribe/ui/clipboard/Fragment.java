@@ -21,13 +21,10 @@
 package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
@@ -48,15 +45,14 @@ import songscribe.dom.StaffElementRun;
  * and every paste:
  *
  * <p>{@code capture} extends the run past a trailing breath mark, drops an orphan paired grace note
- * at the tail, clones the elements into an identity map from original to clone, resolves each
- * element's effective accidental against the <em>original</em> line, demotes a final double barline
- * to a plain one, and ends every syllabic or melisma chain that would otherwise leave the run. A
- * span survives only when both its endpoints are in the map, and is copied onto the corresponding
- * clones.
+ * at the tail, clones the elements into an identity map from original to clone, demotes a final
+ * double barline to a plain one, and ends every syllabic or melisma chain that would otherwise
+ * leave the run. A span survives only when both its endpoints are in the map, and is copied onto
+ * the corresponding clones.
  *
- * <p>{@code instantiate} produces fresh clones and fresh spans, leaving the recorded prior
- * accidentals as they are. Each clone's {@code xOffset} is zeroed — a fragment carries semantic
- * content, not layout corrections. {@code PasteSpanReconciliation.reconcile} then runs <em>before
+ * <p>{@code instantiate} produces fresh clones and fresh spans. Each clone's {@code xOffset} is
+ * zeroed — a fragment carries semantic content, not layout corrections.
+ * {@code PasteSpanReconciliation.reconcile} then runs <em>before
  * any mutation</em>, removing straddled destination spans and invalidating fragment spans that
  * straddle a dropped one. The clones are inserted into the destination line, tuplets the
  * destination's beat context rejects have their brackets dropped (the notes stay), and the
@@ -66,32 +62,16 @@ import songscribe.dom.StaffElementRun;
  * are independent by construction. {@code docs/clipboard.md} gives the surrounding
  * arrangement this sits in.
  *
- * @param elements         The captured elements, cloned from the source line
- * @param priorAccidentals The effective accidental each element had on its source line,
- *                          parallel to {@code elements}; an element carrying an explicit
- *                          accidental of its own records that accidental, and one that
- *                          inherits records what it inherited. {@code null} only where the
- *                          element is unpitched (a barline, a breath mark, and so on)
- * @param spans            The {@link Span} spans fully contained within {@code elements}
+ * @param elements The captured elements, cloned from the source line
+ * @param spans    The {@link Span} spans fully contained within {@code elements}
  */
-public record Fragment(
-    List<StaffElement> elements, List<StaffElement.@Nullable Accidental> priorAccidentals,
-    List<Span> spans) {
+public record Fragment(List<StaffElement> elements, List<Span> spans) {
 
     // Defensive copies — the class contract is immutability, and both factories
-    // build their lists incrementally before handing them over. priorAccidentals
-    // can hold nulls (an unpitched or unaccidented element), and List.copyOf
-    // rejects those, so it gets an ArrayList-backed copy instead.
+    // build their lists incrementally before handing them over.
     public Fragment {
         elements = List.copyOf(elements);
-        priorAccidentals = Collections.unmodifiableList(new ArrayList<>(priorAccidentals));
         spans = List.copyOf(spans);
-
-        if (priorAccidentals.size() != elements.size()) {
-            throw new IllegalArgumentException(
-                "priorAccidentals must be parallel to elements: expected "
-                    + elements.size() + " but got " + priorAccidentals.size());
-        }
     }
 
     /**
@@ -150,7 +130,6 @@ public record Fragment(
 
         var originalToClone = new IdentityHashMap<StaffElement, StaffElement>();
         var elements = new ArrayList<StaffElement>();
-        var priorAccidentals = new ArrayList<StaffElement.@Nullable Accidental>();
 
         for (var i = effectiveBegin; i <= effectiveEnd; i++) {
             var original = line.getElement(i);
@@ -158,7 +137,6 @@ public record Fragment(
 
             originalToClone.put(original, clone);
             elements.add(clone);
-            priorAccidentals.add(priorAccidentalOf(line, original, i));
         }
 
         // A lyric chain says "the syllable next to me continues this word" by position, so a
@@ -167,8 +145,7 @@ public record Fragment(
         // chain inside it — the same repair an edit runs, applied to the same lyrics.
         new DetachedLyricRun(elements).endDanglingChains();
 
-        return new Fragment(
-            elements, priorAccidentals, cloneSpans(line.getSpans(), originalToClone));
+        return new Fragment(elements, cloneSpans(line.getSpans(), originalToClone));
     }
 
     /**
@@ -189,30 +166,6 @@ public record Fragment(
         }
 
         return original.clone();
-    }
-
-    /**
-     * The accidental {@code original} sounded with at index {@code index} of its own line,
-     * or null when it is unpitched.
-     *
-     * <p>Resolved against {@code original}, never against its clone: a clone is born
-     * detached, so {@code clone.findLastAccidental()} finds no line to scan and returns
-     * null — a wrong answer with no error, and one that says "no accidental" rather than
-     * "unknown".
-     */
-    private static StaffElement.@Nullable Accidental priorAccidentalOf(
-        Line line, StaffElement original, int index) {
-        var ownAccidental = original.getAccidental();
-
-        if (ownAccidental != null) {
-            return ownAccidental;
-        }
-
-        if (original.getType().isPitchedNote()) {
-            return original.findEffectiveAccidental(line, index);
-        }
-
-        return null;
     }
 
     /**
@@ -257,18 +210,11 @@ public record Fragment(
 
         for (var element : elements) {
             var clone = element.clone();
-
-            // A fragment carries semantic content, not layout corrections: xOffset is a
-            // nudge from the computed position under one specific spring solve, with
-            // specific neighbours, under a specific header width. Pasted elsewhere it is
-            // meaningless at best and at worst recreates the collision it was made to fix.
-            clone.setXOffsetPx(0);
-
             originalToClone.put(element, clone);
             clonedElements.add(clone);
         }
 
-        return new Fragment(clonedElements, priorAccidentals, cloneSpans(spans, originalToClone));
+        return new Fragment(clonedElements, cloneSpans(spans, originalToClone));
     }
 
     /**
@@ -285,20 +231,15 @@ public record Fragment(
 
     /**
      * Returns the key this fragment leaves in effect when its first element lands where
-     * {@code keyAtInsertion} is running: the key its last {@link KeyChangeElement} establishes
-     * when it carries one, and {@code keyAtInsertion} when it does not.
-     *
-     * <p>This is {@link Line#keyAtEndOfLineUnder(Key)} for a run that has not landed on a line,
-     * and it is what tells a paste which key it hands to the rest of the destination line and to
-     * every line inheriting past it.
+     * {@code keyAtInsertion} is running — {@link StaffElementRun#keyAtEndUnder(Key)} asked of a run
+     * that has not landed on a line. It tells a paste which key it hands to the rest of the
+     * destination line and to every line inheriting past it.
      *
      * @param keyAtInsertion the key in effect immediately before the insertion point
      * @return the key in effect after this fragment's last element; never null
      */
     public Key keyAtEndUnder(Key keyAtInsertion) {
-        var lastKeyChangeKey = run().lastKeyChangeKey();
-
-        return lastKeyChangeKey != null ? lastKeyChangeKey : keyAtInsertion;
+        return run().keyAtEndUnder(keyAtInsertion);
     }
 
     /**
@@ -308,7 +249,7 @@ public record Fragment(
      * <p>A fragment carries the key it was copied under, not the key it is pasted into, so the
      * same clipboard content is stranded in one destination and meaningful in another. Removing
      * such a key change <em>before</em> the clones are inserted rather than after is what keeps a
-     * paste one mutation: the accidental reconciliation, the fit measurement and the span
+     * paste one mutation: the chain walk, the fit measurement and the span
      * reconciliation all read the element list, and each of them must see the run that actually
      * lands.
      *
@@ -339,7 +280,6 @@ public record Fragment(
         }
 
         var keptElements = new ArrayList<StaffElement>();
-        var keptAccidentals = new ArrayList<StaffElement.@Nullable Accidental>();
         var removedElements = new ArrayList<StaffElement>();
 
         for (var index = 0; index < elements.size(); index++) {
@@ -349,7 +289,6 @@ public record Fragment(
             }
 
             keptElements.add(elements.get(index));
-            keptAccidentals.add(priorAccidentals.get(index));
         }
 
         // StaffElement overrides neither equals nor hashCode, so this compares by identity.
@@ -358,6 +297,6 @@ public record Fragment(
                 && !removedElements.contains(span.getEndElement()))
             .toList();
 
-        return new Fragment(keptElements, keptAccidentals, keptSpans);
+        return new Fragment(keptElements, keptSpans);
     }
 }

@@ -46,17 +46,4 @@ public abstract sealed class MetronomeAttachment extends Attachment
 
     /** Content height derived from the quarter note glyph, scaled to metronome note size. */
     public static final double QUARTER_NOTE_HEIGHT_SS = QUARTER_NOTE_BBOX.heightSs() * NOTE_SCALE;
-
-    protected MetronomeAttachment(Alignment alignment) {
-        setAlignment(alignment);
-    }
-
-    protected MetronomeAttachment(@Nullable StaffElement parent, Alignment alignment) {
-        setOwnerElement(parent);
-        setAlignment(alignment);
-        // The line pointer is not set here. StaffElement.addAttachment — which every
-        // caller reaches immediately — routes through LineElement.addChild, and that
-        // owns it.
-    }
-
 }

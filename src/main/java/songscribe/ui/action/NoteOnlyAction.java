@@ -22,15 +22,16 @@ package songscribe.ui.action;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
 /**
  * Abstract base for actions whose attributes apply only to notes
- * (not rests or barlines). Provides a shared {@link #appliesTo} implementation.
+ * (not rests or barlines). Provides a shared {@link #admit} implementation.
  */
 public abstract class NoteOnlyAction extends PreviewElementAction
-    implements UIAction.ElementModifiable {
+    implements UIAction.ElementModifiable<NoteElement> {
 
     public static final Flag[] FLAGS = new Flag[]{
         Flag.DISABLE_IN_REST_MODE,
@@ -67,7 +68,7 @@ public abstract class NoteOnlyAction extends PreviewElementAction
     }
 
     @Override
-    public boolean appliesTo(StaffElement element) {
-        return element.getType().isNote();
+    public @Nullable NoteElement admit(StaffElement element) {
+        return element instanceof NoteElement note ? note : null;
     }
 }

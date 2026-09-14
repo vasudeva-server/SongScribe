@@ -30,11 +30,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Beam;
-import songscribe.dom.Clef;
+import songscribe.dom.Direction;
+import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
-import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.BeamMetrics;
@@ -216,21 +217,11 @@ public class LayoutEngine {
      *                                    line; has no effect on any other line
      * @return the positioned elements; never null, since every line can be placed
      * @throws IllegalStateException if {@code line} is not in a song
-     * @effects resolves the line's automatic stem directions in the model
      */
     public LayoutResult layout(Line line, boolean hasLeadingLyricContinuation, TempoMark tempoMark) {
         // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
         // so layout never precedes initialisation, regardless of paint/layout ordering.
         NoteGeometry.initializeAccidentalWidths();
-
-        // Step 0: Resolve auto stem directions before building columns.
-        // ElementColumn bakes each note's stem-tip extent from its direction at
-        // construction time (final fields), and downstream vertical stacking
-        // (e.g. tuplet clearance) reads those extents. Freshly loaded notes carry
-        // the DOWN default until direction is resolved, so resolving here — rather
-        // than later in steps 5/5b — keeps the first layout after load consistent
-        // with every subsequent layout (refs #554).
-        resolveStemDirections(line);
 
         // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
@@ -242,11 +233,14 @@ public class LayoutEngine {
         // not have spaces itself as if it held that content (refs #630).
         var fitsStaffWidth = placeColumnsHorizontally(columns, line, line.isLast());
 
-        var builder = LayoutResult.builder();
-        builder.setOverflowsStaffWidth(!fitsStaffWidth);
+        // Step 3c: The notator's horizontal nudges land on the solved columns, before anything
+        // below reads a column's X.
+        applyHorizontalNudges(columns);
 
-        // Step 4: Create header elements (clef and key signature)
-        createHeaderElements(line, builder);
+        // Step 4: The header (clef and key signature) depends on the line's key alone, so the
+        // builder opens with it.
+        var builder = LayoutResult.builder(createStaffHeader(line));
+        builder.setOverflowsStaffWidth(!fitsStaffWidth);
 
         // Step 5: Calculate beam layouts for beamed note groups
         calculateBeams(line, columns, builder);
@@ -402,6 +396,33 @@ public class LayoutEngine {
     }
 
     /**
+     * Moves each column by its element's {@link StaffElement#getUserXOffsetSs() horizontal
+     * nudge}, after the spacing solve and the terminal snap have placed the columns.
+     * <p>
+     * The nudge moves the column, not the element within it. A column is everything drawn with
+     * its element — stem, flag, accidental, dots, syllable, the decorations stacked on it — and
+     * every later pass and every reader of an element's X, {@code LayoutResult.getElementXSs}
+     * included, reads the column's X, so moving the column is what keeps the note and what hangs
+     * on it together. On the terms {@code VerticalStackingCalculator.applyManualOffsets} states
+     * for decorations: the offset lands after spacing is solved, no collision pass re-runs, and
+     * the notator owns any overlap that results — a nudged column may sit on its neighbour, or
+     * past the staff margin.
+     *
+     * @param columns the line's columns, each with its solved X; a column whose element carries
+     *                no nudge is left where the solve put it
+     * @effects adds each element's nudge to its column's X, in place
+     */
+    private static void applyHorizontalNudges(List<ElementColumn> columns) {
+        for (var column : columns) {
+            var nudgeSs = column.getElement().getUserXOffsetSs();
+
+            if (nudgeSs != 0) {
+                column.setXSs(column.getXSs() + nudgeSs);
+            }
+        }
+    }
+
+    /**
      * Builds the final LayoutResult from calculated positions.
      * <p>
      * Populates the given builder with element columns and staff geometry,
@@ -434,111 +455,6 @@ public class LayoutEngine {
     }
 
     /**
-     * Resolves auto stem directions for every note in the line and applies them to the
-     * model, before columns are built. Manual overrides are left untouched.
-     * <p>
-     * Unbeamed notes default by staff position ({@link StaffElement#defaultDirection}); beamed
-     * groups then override their auto members with the shared group direction. This must run
-     * before {@code buildColumns} because {@link ElementColumn} bakes each note's stem-tip
-     * extent from its direction at construction time (refs #554).
-     */
-    private void resolveStemDirections(Line line) {
-        for (var i = 0; i < line.elementCount(); i++) {
-            var element = line.getElement(i);
-
-            if (element.getType().isNoteWithStem() && element.isStemDirectionAuto()) {
-                element.setDirection(StaffElement.defaultDirection(element));
-            }
-        }
-
-        var debugBeams = LogUtils.isTracingBeams(LOG);
-
-        for (var beam : line.findSpans(Beam.class)) {
-            var beamStart = beam.getAnchorElementIndex();
-            var beamEnd = beam.getEndElementIndex();
-            var direction = groupStemDirection(line, beamStart, beamEnd);
-
-            if (debugBeams) {
-                LOG.debug("stem dirs: group {}..{} -> {}", beamStart, beamEnd, direction);
-            }
-
-            for (var i = beamStart; i <= beamEnd; i++) {
-                var element = line.getElement(i);
-
-                if (!BeamMath.participatesInBeaming(element)) {
-                    if (debugBeams) {
-                        LOG.debug("  [{}] GRACE keeps its own direction {}", i, element.getDirection());
-                    }
-
-                    continue;
-                }
-
-                if (element.isStemDirectionAuto()) {
-                    element.setDirection(direction);
-                }
-            }
-        }
-    }
-
-    /**
-     * Determines the shared stem direction for a beamed group from its pitch contour.
-     * The first manual override in the group wins; otherwise the direction follows the
-     * contour (staff position 0 = middle line; positive = below midpoint in Y-down, so
-     * stems up). (min + max) is compared to 0 rather than dividing, to keep integer arithmetic.
-     * <p>
-     * Grace notes in the span are not members: neither their pitch nor a manual direction set on
-     * them may decide which way the group's stems point. They do get one say, though — a grace
-     * note whose stem would run into a beam placed above it sends the beam below instead.
-     */
-    private StaffElement.Direction groupStemDirection(Line line, int beamStart, int beamEnd) {
-        var minStaffPos = Integer.MAX_VALUE;
-        var maxStaffPos = Integer.MIN_VALUE;
-
-        for (var i = beamStart; i <= beamEnd; i++) {
-            var element = line.getElement(i);
-
-            if (!BeamMath.participatesInBeaming(element)) {
-                continue;
-            }
-
-            var pos = element.getStaffPosition();
-
-            if (pos < minStaffPos) {
-                minStaffPos = pos;
-            }
-
-            if (pos > maxStaffPos) {
-                maxStaffPos = pos;
-            }
-        }
-
-        // Scan for any manual override in the group; first one wins.
-        for (var i = beamStart; i <= beamEnd; i++) {
-            var element = line.getElement(i);
-
-            if (BeamMath.participatesInBeaming(element) && !element.isStemDirectionAuto()) {
-                return element.getDirection();
-            }
-        }
-
-        if ((minStaffPos + maxStaffPos) <= 0) {
-            return StaffElement.Direction.DOWN;
-        }
-
-        // The contour asks for an upward beam. A grace stem always points up, so an upward beam
-        // is the only one it can be trapped under; send the beam below rather than bury it.
-        if (BeamMath.graceStemTouchesBeamAbove(line, beamStart, beamEnd, minStaffPos)) {
-            if (LogUtils.isTracingBeams(LOG)) {
-                LOG.debug("  grace stem forces group {}..{} to beam below", beamStart, beamEnd);
-            }
-
-            return StaffElement.Direction.DOWN;
-        }
-
-        return StaffElement.Direction.UP;
-    }
-
-    /**
      * Calculates beam geometry for all beamed note groups in the line.
      * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam span.
      */
@@ -552,11 +468,7 @@ public class LayoutEngine {
         for (var beam : beams) {
             var beamStart = beam.getAnchorElementIndex();
             var beamEnd = beam.getEndElementIndex();
-
-            // Stem direction was already resolved and applied to the group by the
-            // Step 0 pre-pass (resolveStemDirections); recover it here for the beam
-            // geometry below.
-            var stemDirection = groupStemDirection(line, beamStart, beamEnd);
+            var stemDirection = beam.direction();
 
             // Collect the group's stems in BeamScoring's scoring space (Y-up positive,
             // y=0 at the middle staff line, X measured from the first stem).  Elements
@@ -568,19 +480,21 @@ public class LayoutEngine {
             var memberCount = 0;
 
             for (var i = beamStart; i <= beamEnd; i++) {
-                var element = line.getElement(i);
+                var element = beam.noteAt(i);
 
                 // A grace note inside the span is not one of the beam's stems: its pitch must
                 // not tilt the beam, skew the concaveness test, or dilute forcedFraction.
-                if (!BeamMath.participatesInBeaming(element)) {
+                if (element.getType().isGraceNote()) {
                     continue;
                 }
 
                 memberCount++;
 
-                // LilyPond Beam::forced_stem_count: a middle-line head is never "forced".
-                if (element.getStaffPosition() != 0
-                    && element.getDirection() != StaffElement.defaultDirection(element)) {
+                // LilyPond Beam::forced_stem_count: a stem is forced when it points away from
+                // its head's natural direction, whether the notator or the group turned it,
+                // and a middle-line head is never "forced".
+                if (element.getStaffPosition().value() != 0
+                    && element.direction() != element.naturalDirection()) {
                     forcedStemCount++;
                 }
 
@@ -596,9 +510,9 @@ public class LayoutEngine {
 
                 stemInputs.add(new BeamScoring.StemInput(
                     column.getXSs() - firstColumnXSs,
-                    -StaffPosition.toSs(element.getStaffPosition()),
-                    -element.getStaffPosition(),
-                    BeamMath.beamCount(element)));
+                    -element.getStaffPosition().toSs(),
+                    -element.getStaffPosition().value(),
+                    element.getType().beamCount()));
 
                 if (LogUtils.isTracingBeams(LOG)) {
                     LOG.debug(
@@ -606,8 +520,8 @@ public class LayoutEngine {
                         i,
                         element.getType(),
                         element.getStaffPosition(),
-                        element.getDirection(),
-                        BeamMath.beamCount(element));
+                        element.direction(),
+                        element.getType().beamCount());
                 }
             }
 
@@ -659,11 +573,11 @@ public class LayoutEngine {
                 for (var i = beamStart; i <= beamEnd; i++) {
                     // A grace note's stem stops at its own length instead of running to the
                     // beam, so it is left to calculateUnbeamedStems rather than measured here.
-                    if (!BeamMath.participatesInBeaming(line.getElement(i))) {
+                    if (beam.noteAt(i).getType().isGraceNote()) {
                         continue;
                     }
 
-                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
+                    var geometry = computeBeamElementGeometry(beam, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 
                     if (geometry == null) {
                         continue;
@@ -683,14 +597,14 @@ public class LayoutEngine {
                     var topYSs = stemDirection.isUp() ? beamYSs : elementYSs;
                     var bottomYSs = stemDirection.isUp() ? elementYSs : beamYSs;
 
-                    // Determine stub direction for partial-beam elements.
-                    // Delegated to BeamMath so the writer can use the same rule.
-                    var stubRight = BeamMath.stubRight(line, i, beamStart, beamEnd);
+                    // Determine stub direction for partial-beam elements. The beam owns the
+                    // rule so the writer can use the same one.
+                    var stubRight = beam.stubRight(i);
 
                     // How far back French beaming pulls the drawn stem. Resolved here rather
                     // than in StaffElementRenderer so the per-paint path stays a field read, matching
                     // stubRight above.
-                    var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
+                    var frenchShorteningLevels = beam.frenchBeamShortening(i);
 
                     if (LogUtils.isTracingBeams(LOG)) {
                         LOG.debug(
@@ -699,7 +613,7 @@ public class LayoutEngine {
                             i,
                             element.getType(),
                             element.getStaffPosition(),
-                            element.getDirection(),
+                            element.direction(),
                             String.format(STEM_LOG_FORMAT, elementYSs),
                             String.format(STEM_LOG_FORMAT, beamYSs),
                             String.format(STEM_LOG_FORMAT, stemLenSs),
@@ -723,16 +637,16 @@ public class LayoutEngine {
 
     @Nullable
     private BeamElementGeometry computeBeamElementGeometry(
-        Line line, int i, Map<StaffElement, ElementColumn> elementToColumn,
+        Beam beam, int i, Map<StaffElement, ElementColumn> elementToColumn,
         boolean stemsUp, double slope, double firstXSs, double startYSs) {
-        var element = line.getElement(i);
+        var element = beam.noteAt(i);
         var column = elementToColumn.get(element);
 
         if (column == null) {
             return null;
         }
 
-        var elementYSs = StaffPosition.toSs(element.getStaffPosition());
+        var elementYSs = element.getStaffPosition().toSs();
         var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
         var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
         return new BeamElementGeometry(element, elementYSs, beamYSs, stemLenSs);
@@ -752,17 +666,15 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResultBuilder builder) {
         for (var col : columns) {
-            var element = col.getElement();
-
-            if ((col.isBeamed() && BeamMath.participatesInBeaming(element))
+            if (!(col.getElement() instanceof NoteElement element)
+                || (col.isBeamed() && !element.getType().isGraceNote())
                 || !element.getType().isNoteWithStem()) {
                 continue;
             }
 
-            // Stem direction was resolved by the Step 0 pre-pass (resolveStemDirections).
-            var direction = element.getDirection();
+            var direction = element.direction();
             var isGraceNote = element.getType().isGraceNote();
-            var elementYSs = StaffPosition.toSs(element.getStaffPosition());
+            var elementYSs = element.getStaffPosition().toSs();
             var stemLenSs = isGraceNote
                 ? StemMetrics.GRACE_NOTE_STEM_LENGTH_SS
                 : MIN_STEM_SS;
@@ -778,8 +690,7 @@ public class LayoutEngine {
 
             // Shorten a stem forced into its unnatural direction (Ross & Gourlay). Disjoint from
             // lengthening — a stem is lengthened, natural, or shortened, never two at once.
-            var forcedShorteningSs =
-                NoteGeometry.forcedShorteningSs(element.getStaffPosition(), direction, isGraceNote);
+            var forcedShorteningSs = NoteGeometry.forcedShorteningSs(element);
             var effectiveLenSs = stemLenSs + lengtheningSs - forcedShorteningSs;
 
             // Y increases downward: stem-up tip has smaller Y; stem-down tip has larger Y.
@@ -836,7 +747,6 @@ public class LayoutEngine {
 
                     yield tieLayout(
                         tie,
-                        spanColumns.anchor(),
                         spanColumns.anchorColumn(),
                         spanColumns.endColumn(),
                         OpenSide.NONE,
@@ -846,10 +756,10 @@ public class LayoutEngine {
                 // The half this line owns keeps the column of the note that is in it; the other
                 // side gets no column, which is what makes it terminate at the line's edge.
                 case TieColumns.Half half when half.openSide() == OpenSide.END -> tieLayout(
-                    tie, half.attached(), half.attachedColumn(), null, OpenSide.END, openLimits);
+                    tie, half.attachedColumn(), null, OpenSide.END, openLimits);
 
                 case TieColumns.Half half -> tieLayout(
-                    tie, half.attached(), null, half.attachedColumn(), OpenSide.START, openLimits);
+                    tie, null, half.attachedColumn(), OpenSide.START, openLimits);
             };
 
             builder.putTieLayout(tie, layout);
@@ -922,9 +832,9 @@ public class LayoutEngine {
      * which of its ends is a staff edge rather than a notehead. The half is a complete arc in its
      * own right, so nothing downstream has to reconstruct the side that is missing.
      *
-     * @param tie          the tie being laid out
-     * @param seatNote     the note this line seats the arc against — a tie joins two same-pitch
-     *                     notes, so either endpoint yields the same staff position
+     * @param tie          the tie being laid out; the arc is seated against its anchor note, and
+     *                     a tie joins two same-pitch notes, so either endpoint would yield the
+     *                     same staff position
      * @param anchorColumn the anchor (left) note's column, or {@code null} when that note is in an
      *                     earlier line and this half enters from where the music starts
      * @param endColumn    the end (right) note's column, or {@code null} when that note is in a
@@ -935,7 +845,6 @@ public class LayoutEngine {
      */
     private LayoutResult.TieLayout tieLayout(
         Tie tie,
-        StaffElement seatNote,
         @Nullable ElementColumn anchorColumn,
         @Nullable ElementColumn endColumn,
         OpenSide openSide,
@@ -965,11 +874,12 @@ public class LayoutEngine {
         // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
         // The dot belongs to the left note and sits under the arc's path, so the check applies only
         // where that note is in this line: a half entering from the left edge passes over no dot.
-        var notePositionSp = seatNote.getStaffPosition();
+        var anchorNote = tie.getAnchorElement();
+        var notePosition = anchorNote.getStaffPosition();
         var dotRowCoincides = anchorColumn != null
-            && tieSeatRowHasDot(anchorColumn.getElement(), notePositionSp, arcSignSs);
-        var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
-        var endpointYSs = StaffPosition.toSs(notePositionSp) + arcSignSs * seatSs;
+            && tieSeatRowHasDot(anchorNote, notePosition, arcSignSs);
+        var seatSs = tieSeatSs(notePosition, arcSignSs, dotRowCoincides);
+        var endpointYSs = notePosition.toSs() + arcSignSs * seatSs;
 
         // Facing edge while the seat stays within the half-space-tall head box; notehead center
         // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
@@ -1047,7 +957,7 @@ public class LayoutEngine {
             LOG.debug(
                 "tie notePos={} arcSign={} seatSs={} width={} endpointPos={} apexPos={} heightSs={}"
                     + " openSide={}",
-                notePositionSp, arcSignSs, seatSs, tieWidthSs,
+                notePosition, arcSignSs, seatSs, tieWidthSs,
                 -2 * endpointYSs, -2 * shoulderYSs, heightSs, openSide);
         }
 
@@ -1063,9 +973,9 @@ public class LayoutEngine {
     }
 
     /**
-     * Calculates slide geometry for every note in the line carrying a
-     * {@link StaffElement.Glissando} or a {@link StaffElement.Fall}, and populates {@code builder}
-     * with a {@link LayoutResult.SlideLayout} for each one that has drawable geometry.
+     * Calculates slide geometry for every note in the line carrying a {@link Slide}, and
+     * populates {@code builder} with a {@link LayoutResult.SlideLayout} for each one that has
+     * drawable geometry.
      * <p>
      * Everything is computed in layout space — X line-local, Y relative to the staff midline — by
      * building each note context with {@code middleLineYSs = 0}. A connecting glissando that is
@@ -1095,30 +1005,29 @@ public class LayoutEngine {
 
             var src = slideNoteContext(note, i, line, elementToColumn);
 
-            // A fall is a standalone trailing glyph with no target note, so it never resolves the
-            // following element.
-            if (slide instanceof StaffElement.Fall) {
-                builder.putSlideLayout(note, LayoutResult.SlideLayout.ofFall(
+            switch (slide) {
+                // A fall is a standalone trailing glyph with no target note, so it never
+                // resolves the following element.
+                case FALL -> builder.putSlideLayout(note, LayoutResult.SlideLayout.ofFall(
                     SlideGeometry.computeFallBoundsSs(src)));
-                continue;
+
+                case GLISSANDO -> {
+                    // The slide tool refuses to create a glissando between two notes at one
+                    // pitch and a pitch move strips one that becomes so, leaving import as the
+                    // only way one can get here. Storing no geometry keeps hit-testing and the
+                    // MusicXML writer agreeing with the renderer, which draws nothing for it.
+                    if (line.isSamePitchAsFollower(i)) {
+                        continue;
+                    }
+
+                    var endpoints = SlideGeometry.computeEndpoints(
+                        src, slideTargetContext(i, line, elementToColumn));
+
+                    if (endpoints != null) {
+                        builder.putSlideLayout(note, LayoutResult.SlideLayout.ofGlissando(endpoints));
+                    }
+                }
             }
-
-            // The slide tool refuses to create a glissando between two notes at one pitch and a
-            // pitch move strips one that becomes so, leaving import as the only way one can get
-            // here. Storing no geometry keeps hit-testing and the MusicXML writer agreeing with
-            // the renderer, which draws nothing for it.
-            if (line.isSamePitchAsFollower(i)) {
-                continue;
-            }
-
-            var endpoints = SlideGeometry.computeEndpoints(
-                src, slideTargetContext(i, line, elementToColumn));
-
-            if (endpoints == null) {
-                continue;
-            }
-
-            builder.putSlideLayout(note, LayoutResult.SlideLayout.ofGlissando(endpoints));
         }
     }
 
@@ -1221,27 +1130,29 @@ public class LayoutEngine {
      * Placement is purely note-relative and independent of any articulation, matching LilyPond, where
      * the tie and the note's scripts are positioned independently.
      *
-     * @param notePositionSp  the tied notes' shared staff position (half staff-spaces)
+     * @param notePosition    the tied notes' shared staff position
      * @param arcSignSs       +1 when the arc bulges downward, -1 upward
      * @param dotRowCoincides whether the seat row coincides with the left note's dot row
      */
-    static double tieSeatSs(int notePositionSp, int arcSignSs, boolean dotRowCoincides) {
+    static double tieSeatSs(StaffPosition notePosition, int arcSignSs, boolean dotRowCoincides) {
         if (dotRowCoincides) {
             return Staff.HALF_SPACE_SS + TIE_DOT_ROW_NUDGE_SS;
         }
 
-        if (StaffPosition.isOnLine(notePositionSp)) {
+        if (notePosition.isOnLine()) {
             // Outer staff lines seat outside the staff (centered outside the notehead); inner lines
             // tuck into the adjacent space.
-            return isOuterRealStaffLine(notePositionSp)
+            return isOuterRealStaffLine(notePosition)
                 ? TIE_OUTER_STAFF_LINE_SEAT_SS
                 : STAFF_LINE_TIE_CLEARANCE_GAP_SS;
         }
 
         // A space note seats at the head-box edge; push past the edge row when it is a staff line.
-        var edgeRowSp = notePositionSp + arcSignSs;
+        // notePosition is off-line, so it is never MIN or MAX (both are on-line), and the
+        // adjacent row stays on the grid.
+        var edgeRow = new StaffPosition(notePosition.value() + arcSignSs);
 
-        if (isRealStaffLinePosition(edgeRowSp)) {
+        if (isRealStaffLinePosition(edgeRow)) {
             return Staff.HALF_SPACE_SS + STAFF_LINE_TIE_CLEARANCE_GAP_SS;
         }
 
@@ -1252,22 +1163,22 @@ public class LayoutEngine {
      * Whether the given staff position is one of the five real staff lines — an even position within
      * the staff — as opposed to a line position on a ledger row above or below the staff.
      *
-     * @param staffPositionSp a staff position, in half staff-spaces
+     * @param staffPosition a staff position
      */
-    private static boolean isRealStaffLinePosition(int staffPositionSp) {
-        return StaffPosition.isOnLine(staffPositionSp)
-            && Math.abs(staffPositionSp) <= StaffPosition.OUTERMOST_STAFF_LINE_SP;
+    private static boolean isRealStaffLinePosition(StaffPosition staffPosition) {
+        return staffPosition.isOnLine()
+            && Math.abs(staffPosition.value()) <= StaffPosition.OUTERMOST_STAFF_LINE_SP;
     }
 
     /**
      * Whether the given staff position is one of the two <em>outer</em> staff lines — the top or
      * bottom line, i.e. a line position exactly {@link Staff#STAFF_HALF_SS} from the middle line.
      *
-     * @param staffPositionSp a staff position, in half staff-spaces
+     * @param staffPosition a staff position
      */
-    private static boolean isOuterRealStaffLine(int staffPositionSp) {
-        return StaffPosition.isOnLine(staffPositionSp)
-            && Math.abs(staffPositionSp) == StaffPosition.OUTERMOST_STAFF_LINE_SP;
+    private static boolean isOuterRealStaffLine(StaffPosition staffPosition) {
+        return staffPosition.isOnLine()
+            && Math.abs(staffPosition.value()) == StaffPosition.OUTERMOST_STAFF_LINE_SP;
     }
 
     /**
@@ -1278,19 +1189,19 @@ public class LayoutEngine {
      * space keeps its dot on its own row — two half-spaces from the seat — so it never coincides, and an
      * on-line note whose tie arcs the other way seats opposite the (always up-displaced) dot.
      *
-     * @param note           the left (anchor) note of the tie
-     * @param notePositionSp the note's staff position (half staff-spaces)
-     * @param arcSignSs      +1 when the arc bulges downward, -1 upward
+     * @param note         the left (anchor) note of the tie
+     * @param notePosition the note's staff position
+     * @param arcSignSs    +1 when the arc bulges downward, -1 upward
      */
-    static boolean tieSeatRowHasDot(StaffElement note, int notePositionSp, int arcSignSs) {
-        if (note.getDotCount() == 0 || !StaffPosition.isOnLine(notePositionSp)) {
+    static boolean tieSeatRowHasDot(NoteElement note, StaffPosition notePosition, int arcSignSs) {
+        if (note.dots() == Dots.NONE || !notePosition.isOnLine()) {
             return false;
         }
 
         // Dot row = note row displaced up (Y-down); seat row = note row + one half-space in the arc
         // direction (LilyPond position_ += dir). They meet only for an upward arc into the dot's space.
-        var dotRowSp = notePositionSp + Staff.ssToHalfSpaces(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
-        var seatRowSp = notePositionSp + arcSignSs;
+        var dotRowSp = notePosition.value() + Staff.ssToHalfSpaces(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS);
+        var seatRowSp = notePosition.value() + arcSignSs;
 
         return dotRowSp == seatRowSp;
     }
@@ -1365,34 +1276,20 @@ public class LayoutEngine {
     }
 
     /**
-     * Creates the clef and key signature header elements and stores them in the builder.
+     * Creates the header {@code line} opens with.
      * <p>
      * The clef is placed at {@link #CLEF_X_POSITION_SS}. The key signature follows at
      * {@link HorizontalSpacingCalculator#calculateKeySignatureXSs()}, one clef width plus
-     * LilyPond's clef-to-key-signature gap further right.
-     * <p>
-     * The header draws the line's {@linkplain Line#getRunningKey() running key} — its own key
-     * where it establishes one, and the key it inherits where it does not — so every line's
-     * header shows the key actually in effect where the line begins.
-     */
-    private static void createHeaderElements(Line line, LayoutResultBuilder builder) {
-        var clef = new Clef();
-        clef.setPosition(CLEF_X_POSITION_SS, 0);
-        builder.setClef(clef);
-        var keySig = new KeySignature(line.getRunningKey());
-        keySig.setPosition(HorizontalSpacingCalculator.calculateKeySignatureXSs(), 0);
-        builder.setKeySignature(keySig);
-    }
-
-    /**
-     * Returns the number of beams (flag levels) for a note type.
-     * QUAVER = 1, SEMIQUAVER = 2, DEMI_SEMIQUAVER = 3.
+     * LilyPond's clef-to-key-signature gap further right, and draws the line's
+     * {@linkplain Line#getRunningKey() running key}.
      *
-     * <p>Delegates to {@link BeamMath#beamCount} — the single source of truth
-     * shared by the writer and renderer.
+     * @return the line's staff header
      */
-    static int beamCount(StaffElement note) {
-        return BeamMath.beamCount(note);
+    private static StaffHeader createStaffHeader(Line line) {
+        return new StaffHeader(
+            CLEF_X_POSITION_SS,
+            HorizontalSpacingCalculator.calculateKeySignatureXSs(),
+            line.getRunningKey());
     }
 
     /**
@@ -1403,7 +1300,7 @@ public class LayoutEngine {
     }
 
     private record BeamElementGeometry(
-        StaffElement element,
+        NoteElement element,
         double elementYSs,
         double beamYSs,
         double stemLenSs) {}

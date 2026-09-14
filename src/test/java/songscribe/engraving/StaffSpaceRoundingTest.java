@@ -36,8 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>The two conversions sit together because their contracts require they round alike and
  * differ only in how they handle a value outside the grid: a distance from the middle line
- * resolves to {@code null} when it rounds off {@link StaffPosition#MIN_SP}..{@link
- * StaffPosition#MAX_SP}, while a distance travelled has no grid to fall off.
+ * resolves to {@code null} when it rounds off {@link StaffPosition#MIN}..{@link
+ * StaffPosition#MAX}, while a distance travelled has no grid to fall off.
  */
 class StaffSpaceRoundingTest extends UnitTest {
 
@@ -58,9 +58,9 @@ class StaffSpaceRoundingTest extends UnitTest {
      *
      * @param description the case, as the test's display name
      * @param ss          the measurement, in staff spaces from the middle line, Y-down
-     * @param expectedSp  the staff position it must resolve to, in half staff spaces
+     * @param expectedSp  the staff position it must resolve to
      */
-    private record SsToSpCase(String description, double ss, int expectedSp) {}
+    private record SsToSpCase(String description, double ss, StaffPosition expectedSp) {}
 
     /**
      * Every case is exactly on a position, exactly half way between two, or just off half way,
@@ -72,21 +72,23 @@ class StaffSpaceRoundingTest extends UnitTest {
      */
     static Stream<SsToSpCase> ssToSpCases() {
         return Stream.of(
-            new SsToSpCase("the middle line is position zero", 0.0, 0),
-            new SsToSpCase("a whole staff space below is two positions down", 1.0, 2),
-            new SsToSpCase("a whole staff space above is two positions up", -1.0, -2),
-            new SsToSpCase("half way below the middle line rounds down the page", 0.25, 1),
-            new SsToSpCase("half way above the middle line also rounds down the page", -0.25, 0),
-            new SsToSpCase("just short of half way below stays on the middle line", 0.24, 0),
-            new SsToSpCase("just past half way above reaches the position above", -0.26, -1),
+            new SsToSpCase("the middle line is position zero", 0.0, new StaffPosition(0)),
+            new SsToSpCase("a whole staff space below is two positions down", 1.0, new StaffPosition(2)),
+            new SsToSpCase("a whole staff space above is two positions up", -1.0, new StaffPosition(-2)),
+            new SsToSpCase("half way below the middle line rounds down the page", 0.25, new StaffPosition(1)),
+            new SsToSpCase("half way above the middle line also rounds down the page", -0.25, new StaffPosition(0)),
+            new SsToSpCase("just short of half way below stays on the middle line", 0.24, new StaffPosition(0)),
+            new SsToSpCase("just past half way above reaches the position above", -0.26, new StaffPosition(-1)),
             new SsToSpCase("the highest valid position",
-                StaffPosition.toSs(StaffPosition.MIN_SP), StaffPosition.MIN_SP),
+                StaffPosition.MIN.toSs(), StaffPosition.MIN),
             new SsToSpCase("one position inside the highest valid one",
-                StaffPosition.toSs(StaffPosition.MIN_SP + 1), StaffPosition.MIN_SP + 1),
+                new StaffPosition(StaffPosition.MIN.value() + 1).toSs(),
+                new StaffPosition(StaffPosition.MIN.value() + 1)),
             new SsToSpCase("the lowest valid position",
-                StaffPosition.toSs(StaffPosition.MAX_SP), StaffPosition.MAX_SP),
+                StaffPosition.MAX.toSs(), StaffPosition.MAX),
             new SsToSpCase("one position inside the lowest valid one",
-                StaffPosition.toSs(StaffPosition.MAX_SP - 1), StaffPosition.MAX_SP - 1));
+                new StaffPosition(StaffPosition.MAX.value() - 1).toSs(),
+                new StaffPosition(StaffPosition.MAX.value() - 1)));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -119,21 +121,21 @@ class StaffSpaceRoundingTest extends UnitTest {
             new ContainsSsCase("the middle line is on the grid", 0.0, true),
             new ContainsSsCase("a whole staff space below is on the grid", 1.0, true),
             new ContainsSsCase("the highest valid position is on the grid",
-                StaffPosition.toSs(StaffPosition.MIN_SP), true),
+                StaffPosition.MIN.toSs(), true),
             new ContainsSsCase("the lowest valid position is on the grid",
-                StaffPosition.toSs(StaffPosition.MAX_SP), true),
+                StaffPosition.MAX.toSs(), true),
             new ContainsSsCase("half a position above the highest valid one rounds back onto it",
-                StaffPosition.toSs(StaffPosition.MIN_SP) - HALF_WAY_SS, true),
+                StaffPosition.MIN.toSs() - HALF_WAY_SS, true),
             new ContainsSsCase("a hair further above leaves the grid",
-                StaffPosition.toSs(StaffPosition.MIN_SP) - HALF_WAY_SS - A_HAIR_SS, false),
+                StaffPosition.MIN.toSs() - HALF_WAY_SS - A_HAIR_SS, false),
             new ContainsSsCase("just short of half a position below the lowest valid one stays on",
-                StaffPosition.toSs(StaffPosition.MAX_SP) + HALF_WAY_SS - A_HAIR_SS, true),
+                StaffPosition.MAX.toSs() + HALF_WAY_SS - A_HAIR_SS, true),
             new ContainsSsCase("half a position below the lowest valid one leaves the grid",
-                StaffPosition.toSs(StaffPosition.MAX_SP) + HALF_WAY_SS, false),
+                StaffPosition.MAX.toSs() + HALF_WAY_SS, false),
             new ContainsSsCase("a whole position above the highest valid one is off the grid",
-                StaffPosition.toSs(StaffPosition.MIN_SP - 1), false),
+                Staff.halfSpacesToSs(StaffPosition.MIN.value() - 1), false),
             new ContainsSsCase("a whole position below the lowest valid one is off the grid",
-                StaffPosition.toSs(StaffPosition.MAX_SP + 1), false));
+                Staff.halfSpacesToSs(StaffPosition.MAX.value() + 1), false));
     }
 
     /** The rows of {@link #containsSsCases()} that fall outside the grid. */
@@ -196,8 +198,8 @@ class StaffSpaceRoundingTest extends UnitTest {
      */
     static IntStream halfSpaceCounts() {
         return IntStream.rangeClosed(
-            StaffPosition.MIN_SP - HALF_SPACES_PAST_THE_GRID,
-            StaffPosition.MAX_SP + HALF_SPACES_PAST_THE_GRID);
+            StaffPosition.MIN.value() - HALF_SPACES_PAST_THE_GRID,
+            StaffPosition.MAX.value() + HALF_SPACES_PAST_THE_GRID);
     }
 
     @ParameterizedTest(name = "{0} half spaces")

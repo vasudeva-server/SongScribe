@@ -293,8 +293,8 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             var element = line.getElement(i);
 
             if (element.getType().isDuration()) {
-                element.setLyricForVerse(
-                    Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, label, Lyric.Extend.NONE);
+                element.putLyric(
+                    new Lyric(Lyric.FIRST_VERSE, label, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
                 return;
             }

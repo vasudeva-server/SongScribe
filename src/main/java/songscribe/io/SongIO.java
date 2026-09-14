@@ -391,8 +391,6 @@ public final class SongIO {
             try {
                 if ((majorVersion == 1) && (minorVersion == 0)) {
                     endElement10(qName);
-                } else if ((majorVersion == 1) && (minorVersion == 1)) {
-                    endElement11(qName);
                 } else {
                     endElement12(qName);
                 }
@@ -419,19 +417,12 @@ public final class SongIO {
                             return;
                         }
 
-                        // v1.0 carries no per-line key, so this auto-created line is in the
-                        // document key. It has to establish it here rather than at the end of the
-                        // load, because the append position below measures the header it draws.
-                        var autoCreatedLine = new Line(parsingSong);
-                        autoCreatedLine.setKey(documentKey());
-                        parsedLines.add(autoCreatedLine);
+                        // v1.0 carries no per-line key; the auto-created line takes the document
+                        // key at the end of the load, with every other keyless first line.
+                        parsedLines.add(new Line(parsingSong));
                     }
 
-                    var line = parsedLines.getLast();
-                    note.setXOffsetPx(DocumentScale.ssToPx(
-                        InsertionSpacingCalculator.calculateAppendPositionSs(line, note, null, null)).positionPx());
-                    note.setDirection(StaffElement.defaultDirection(note));
-                    line.addElement(note);
+                    parsedLines.getLast().addElement(note);
                 }
             } else if (where == Where.TEMPO_CHANGE) {
                 if (tempoReader == null) {
@@ -458,7 +449,7 @@ public final class SongIO {
                                 }
 
                                 var element = line.getElement(idx);
-                                element.addAttachment(new TempoChangeAttachment(element, tc));
+                                DocumentValidation.attachUnique(LOG, element, new TempoChangeAttachment(tc));
                                 break;
                             }
 
@@ -487,22 +478,6 @@ public final class SongIO {
 
             value.delete(0, value.length());
             lastTag = null;
-        }
-
-        public void endElement11(String qName) throws SAXException {
-            // No change except at the end of the line reading we set
-            // the quaver notes to upper position.
-            endElement12(qName);
-
-            if ((where == Where.LINES) && !parsedLines.isEmpty()) {
-                var lastLine = parsedLines.getLast();
-
-                for (var i = 0; i < lastLine.elementCount(); i++) {
-                    if (lastLine.getElement(i).getType().isGraceNote()) {
-                        lastLine.getElement(i).setDirection(StaffElement.Direction.UP);
-                    }
-                }
-            }
         }
 
         public void endElement12(String qName) throws SAXException {

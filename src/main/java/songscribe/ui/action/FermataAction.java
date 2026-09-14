@@ -25,7 +25,8 @@ import java.util.EnumSet;
 
 import songscribe.Strings;
 import songscribe.dom.FermataAttachment;
-import songscribe.dom.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
@@ -57,13 +58,17 @@ public final class FermataAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesElement(StaffElement element) {
+    public boolean matchesElement(NoteElement element) {
         return element.findAttachment(FermataAttachment.class) != null;
     }
 
     @Override
-    public void applyToElement(StaffElement element, boolean selected) {
-        element.setFermata(selected);
+    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
+        if (selected) {
+            FermataAttachment.addFermata(element);
+        } else {
+            FermataAttachment.removeFermata(element);
+        }
     }
 
     @Override

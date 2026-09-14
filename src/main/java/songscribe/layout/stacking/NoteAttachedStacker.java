@@ -27,13 +27,14 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Direction;
+import songscribe.dom.Direction;
 import songscribe.dom.Trill;
-import songscribe.engraving.StaffPosition;
+import songscribe.layout.DecorationLayouts;
 import songscribe.layout.ElementColumn;
+import songscribe.layout.ElementSeat;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
@@ -203,7 +204,7 @@ public class NoteAttachedStacker {
      */
     public void stackInner() {
         var columns = context.getColumns();
-        var builder = context.getBuilder();
+        var decorationLayouts = context.getBuilder().decorationLayouts();
 
         // Seed note bounding areas into noteAttachedExtents
         seedNoteBounds();
@@ -223,11 +224,11 @@ public class NoteAttachedStacker {
         // — leaves the articulations exactly where they'd sit untied, while a center-attached one,
         // which starts on top of the notehead, pushes them outward.
         for (var column : columns) {
-            stackStaccatoColumn(column, builder);
+            stackStaccatoColumn(column, decorationLayouts);
         }
 
         for (var column : columns) {
-            stackAccentColumn(column, builder);
+            stackAccentColumn(column, decorationLayouts);
         }
     }
 
@@ -245,13 +246,13 @@ public class NoteAttachedStacker {
      *                     the full pipeline, or this stacker's own layer where no bracket exists
      */
     public void stackOuterScripts(StaffExtents outerExtents) {
-        var builder = context.getBuilder();
+        var decorationLayouts = context.getBuilder().decorationLayouts();
 
         for (var column : context.getColumns()) {
-            stackFermata(column, outerExtents, builder);
+            stackFermata(column, outerExtents, decorationLayouts);
         }
 
-        stackTrills(outerExtents, builder);
+        stackTrills(outerExtents, decorationLayouts);
     }
 
     /**
@@ -261,8 +262,8 @@ public class NoteAttachedStacker {
      * passes) and the render path ({@code ArticulationRenderer}) so the "opposite the stem" rule
      * is defined exactly once.
      */
-    public static Direction articulationDirection(StaffElement note) {
-        return note.getDirection().opposite();
+    public static Direction articulationDirection(NoteElement note) {
+        return note.direction().opposite();
     }
 
     /**
@@ -270,7 +271,7 @@ public class NoteAttachedStacker {
      * <p>
      * Used by the insertion note preview, where no {@link LayoutResult} is available.
      * Creates a minimal {@link StaffExtents}, seeds note bounds, and runs the same
-     * stacking logic as the full pipeline (articulations, then fermata).
+     * stacking logic as the full pipeline (articulations, then fermata) into a table of its own.
      * <p>
      * Unlike the full pipeline's staccato and accent passes, this has no {@link StackingContext}
      * to update with the below-staff content extent (used for lyric placement) — the preview
@@ -279,9 +280,9 @@ public class NoteAttachedStacker {
      *
      * @param note the note to compute layouts for
      * @param xSs  X position in staff-space units
-     * @return a built {@link LayoutResult} containing {@link LayoutResult.DecorationLayout}s
+     * @return the note's decoration layouts, keyed by its articulations and its fermata
      */
-    public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
+    public static DecorationLayouts computePreviewDecorationLayouts(NoteElement note, double xSs) {
         var noteheadWidthSs = note.getType().getElementWidthSs();
 
         // Create minimal extents just wide enough to contain the note
@@ -293,18 +294,17 @@ public class NoteAttachedStacker {
         extents.ySet(true, xSs, noteheadWidthSs, bounds.topSs());
         extents.ySet(false, xSs, noteheadWidthSs, bounds.botSs());
 
-        var builder = new LayoutResultBuilder();
-        var staffPosition = note.getStaffPosition();
+        var decorationLayouts = new DecorationLayouts.Builder();
+        var staffPosition = ElementSeat.seatSp(note).value();
 
         // Tier 1: Articulations
         Articulation staccatoArticulation = null;
         Articulation accentArticulation = null;
 
-        for (var a : note.getArticulations()) {
-            if (a.isStaccato()) {
-                staccatoArticulation = a;
-            } else if (a.isAccent()) {
-                accentArticulation = a;
+        for (var articulation : note.getArticulations()) {
+            switch (articulation.getType()) {
+                case STACCATO -> staccatoArticulation = articulation;
+                case ACCENT -> accentArticulation = articulation;
             }
         }
 
@@ -313,13 +313,14 @@ public class NoteAttachedStacker {
         // No tie in the preview: place the staccato, then the accent just outside it —
         // equivalent to the full pipeline with no tie seeded ahead of the two passes.
         stackStaccatoOnly(staccatoArticulation, extents, note, xSs, STACCATO_PADDING_SS,
-            staffPosition, direction, builder);
-        stackAccentAboveExtents(accentArticulation, extents, note, xSs, direction, builder);
+            staffPosition, direction, decorationLayouts);
+        stackAccentAboveExtents(accentArticulation, extents, note, xSs, direction, decorationLayouts);
 
         // Tier 2: Fermata
-        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, note, xSs, builder);
+        stackFermataAt(note.findAttachment(FermataAttachment.class), extents, note, xSs,
+            decorationLayouts);
 
-        return builder.build();
+        return decorationLayouts.build();
     }
 
 
@@ -332,14 +333,21 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * Computes note vertical bounds from element type geometry alone (no stem layout).
+     * Computes an element's vertical bounds from its type's geometry alone (no stem layout):
+     * the glyph, reaching out to the stem tip for a note whose stem extends past it. An element
+     * that is not a note has no stem, so its bounds are its glyph's.
      */
     public static NoteBounds computeNoteBounds(StaffElement element) {
-        var centerYSs = StaffPosition.toSs(element.getStaffPosition());
+        var centerYSs = ElementSeat.seatSs(element);
         var type = element.getType();
-        var direction = element.getDirection();
         var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
         var noteheadBotSs = centerYSs + type.getNoteheadBottomOffsetSs();
+
+        if (!(element instanceof NoteElement note)) {
+            return new NoteBounds(noteheadTopSs, noteheadBotSs);
+        }
+
+        var direction = note.direction();
         var topSs = Math.min(centerYSs + type.getTopYOffsetSs(direction), noteheadTopSs);
         var botSs = Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
@@ -367,7 +375,7 @@ public class NoteAttachedStacker {
             double botSs;
 
             if (stemLayout != null) {
-                var centerYSs = StaffPosition.toSs(element.getStaffPosition());
+                var centerYSs = ElementSeat.seatSs(element);
                 var type = element.getType();
                 var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
                 var noteheadBotSs = centerYSs + type.getNoteheadBottomOffsetSs();
@@ -384,7 +392,7 @@ public class NoteAttachedStacker {
             noteAttachedExtents.ySet(false, xSs, noteheadWidthSs, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
-            var noteheadCenterYSs = StaffPosition.toSs(element.getStaffPosition());
+            var noteheadCenterYSs = ElementSeat.seatSs(element);
             context.updateLowestNoteBotSs(
                 noteheadCenterYSs + StackingUtils.NOTE_HEAD_RADIUS_SS);
 
@@ -534,9 +542,12 @@ public class NoteAttachedStacker {
      */
     private void stackStaccatoColumn(
         ElementColumn column,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
-        var note = column.getElement();
+        if (!(column.getElement() instanceof NoteElement note)) {
+            return;
+        }
+
         var staccato = findStaccato(note);
 
         if (staccato == null) {
@@ -545,7 +556,7 @@ public class NoteAttachedStacker {
 
         var direction = articulationDirection(note);
         var edgeYSs = stackStaccatoOnly(staccato, noteAttachedExtents, note, column.getXSs(),
-            STACCATO_PADDING_SS, note.getStaffPosition(), direction, builder);
+            STACCATO_PADDING_SS, note.getStaffPosition().value(), direction, decorationLayouts);
 
         updateBelowStaffContentExtent(direction, edgeYSs);
     }
@@ -561,9 +572,12 @@ public class NoteAttachedStacker {
      */
     private void stackAccentColumn(
         ElementColumn column,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
-        var note = column.getElement();
+        if (!(column.getElement() instanceof NoteElement note)) {
+            return;
+        }
+
         var accent = findAccent(note);
 
         if (accent == null) {
@@ -573,7 +587,7 @@ public class NoteAttachedStacker {
         var direction = articulationDirection(note);
 
         var edgeYSs = stackAccentAboveExtents(accent, noteAttachedExtents, note,
-            column.getXSs(), direction, builder);
+            column.getXSs(), direction, decorationLayouts);
 
         updateBelowStaffContentExtent(direction, edgeYSs);
     }
@@ -592,7 +606,7 @@ public class NoteAttachedStacker {
         StaffElement note,
         double columnXSs, double paddingSs, int staffPosition,
         Direction direction,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         if (staccato == null) {
             return null;
@@ -607,7 +621,7 @@ public class NoteAttachedStacker {
         return stackStaccato(direction, extents, staccato, xSs,
             widthSs, reserveProfile, paddingSs,
             scriptStaffPaddingSs(paddingSs), StackingUtils.SCRIPT_HORIZON_PADDING_SS,
-            staffPosition, builder);
+            staffPosition, decorationLayouts);
     }
 
     /**
@@ -625,7 +639,7 @@ public class NoteAttachedStacker {
         StaffElement note,
         double columnXSs,
         Direction direction,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         if (accent == null) {
             return null;
@@ -642,7 +656,7 @@ public class NoteAttachedStacker {
         return StackingUtils.placeAndReserveClamped(direction, extents, accent, xSs,
             widthSs, profiles,
             ACCENT_PADDING_SS, scriptStaffPaddingSs(ACCENT_PADDING_SS),
-            StackingUtils.SCRIPT_HORIZON_PADDING_SS, builder);
+            StackingUtils.SCRIPT_HORIZON_PADDING_SS, decorationLayouts);
     }
 
     /**
@@ -684,14 +698,14 @@ public class NoteAttachedStacker {
     /**
      * Returns the note's staccato articulation, or {@code null} if it has none.
      */
-    private static @Nullable Articulation findStaccato(StaffElement note) {
+    private static @Nullable Articulation findStaccato(NoteElement note) {
         return note.findArticulation(ArticulationType.STACCATO);
     }
 
     /**
      * Returns the note's accent articulation, or {@code null} if it has none.
      */
-    private static @Nullable Articulation findAccent(StaffElement note) {
+    private static @Nullable Articulation findAccent(NoteElement note) {
         return note.findArticulation(ArticulationType.ACCENT);
     }
 
@@ -704,12 +718,12 @@ public class NoteAttachedStacker {
     private void stackFermata(
         ElementColumn column,
         StaffExtents outerExtents,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var note = column.getElement();
 
         stackFermataAt(note.findAttachment(FermataAttachment.class), outerExtents,
-            note, column.getXSs(), builder);
+            note, column.getXSs(), decorationLayouts);
     }
 
     /**
@@ -731,7 +745,7 @@ public class NoteAttachedStacker {
         StaffExtents extents,
         StaffElement note,
         double columnXSs,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         if (fermata == null) {
             return;
@@ -744,7 +758,7 @@ public class NoteAttachedStacker {
             widthSs,
             StaffExtents.Profiles.flat(widthSs),
             FERMATA_PADDING_SS, scriptStaffPaddingSs(FERMATA_PADDING_SS),
-            FERMATA_HORIZON_PADDING_SS, builder);
+            FERMATA_HORIZON_PADDING_SS, decorationLayouts);
     }
 
     /**
@@ -753,13 +767,13 @@ public class NoteAttachedStacker {
      * Processes {@link Trill} spans from {@code line.findSpans(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
-    private void stackTrills(StaffExtents outerExtents, LayoutResultBuilder builder) {
+    private void stackTrills(StaffExtents outerExtents, DecorationLayouts.Builder decorationLayouts) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var trills = line.findSpans(Trill.class);
 
         for (var trill : trills) {
-            stackSingleTrill(trill, outerExtents, columnsByElement, builder);
+            stackSingleTrill(trill, outerExtents, columnsByElement, decorationLayouts);
         }
     }
 
@@ -780,7 +794,7 @@ public class NoteAttachedStacker {
         Trill trill,
         StaffExtents outerExtents,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var anchor = trill.getAnchorElement();
 
@@ -866,7 +880,7 @@ public class NoteAttachedStacker {
         // in, so the placement core adds no further margin.
         var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
         StackingUtils.placeAndReserve(Direction.UP, outerExtents, trill, anchorXSs, widthSs,
-            innerEdgeYSs, 0.0, builder);
+            innerEdgeYSs, 0.0, decorationLayouts);
     }
 
 }

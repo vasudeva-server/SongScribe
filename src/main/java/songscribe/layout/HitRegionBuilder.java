@@ -39,6 +39,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
@@ -153,7 +154,6 @@ public final class HitRegionBuilder {
         addAttachments(layoutResult, builder);
         addTrills(layoutResult, builder);
         addTuplets(line, layoutResult, builder);
-        addAccidentals(line, layoutResult, builder);
         addTies(line, layoutResult, builder);
         addBeams(line, layoutResult, builder);
         addAttribution(layoutResult, builder);
@@ -209,13 +209,13 @@ public final class HitRegionBuilder {
     }
 
     private static void addHairpins(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.<Hairpin>getDecorationLayoutsByType(Hairpin.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Hairpin>getDecorationLayoutsByType(Hairpin.class)) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Hairpin(entry.getKey()));
         }
     }
 
     private static void addEndings(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.<Ending>getDecorationLayoutsByType(Ending.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Ending>getDecorationLayoutsByType(Ending.class)) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Ending(entry.getKey()));
         }
     }
@@ -234,7 +234,10 @@ public final class HitRegionBuilder {
 
         // The auto-maintained terminal barline can own no slide, so the effective count is enough.
         for (var elementIndex = 0; elementIndex < line.effectiveElementCount(); elementIndex++) {
-            var note = line.getElement(elementIndex);
+            if (!(line.getElement(elementIndex) instanceof NoteElement note)) {
+                continue;
+            }
+
             var slideLayout = layoutResult.getSlideLayout(note);
 
             if (slideLayout == null) {
@@ -262,7 +265,7 @@ public final class HitRegionBuilder {
 
     /** Registers each articulation's expanded hit rect. */
     private static void addArticulations(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.<Articulation>getDecorationLayoutsByType(Articulation.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Articulation>getDecorationLayoutsByType(Articulation.class)) {
             addRegion(builder, decorationHitRectSs(entry.getValue()), new HitTarget.Articulation(entry.getKey()));
         }
     }
@@ -295,7 +298,7 @@ public final class HitRegionBuilder {
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        for (var entry : layoutResult.<T>getDecorationLayoutsByType(type)) {
+        for (var entry : layoutResult.decorationLayouts().<T>getDecorationLayoutsByType(type)) {
             addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attachment(entry.getKey()));
         }
     }
@@ -310,7 +313,7 @@ public final class HitRegionBuilder {
      * nothing below or above it.
      */
     private static void addTrills(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.<Trill>getDecorationLayoutsByType(Trill.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Trill>getDecorationLayoutsByType(Trill.class)) {
             var trill = entry.getKey();
             var anchor = trill.getAnchorElement();
 
@@ -365,7 +368,7 @@ public final class HitRegionBuilder {
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        for (var entry : layoutResult.<Tuplet>getDecorationLayoutsByType(Tuplet.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Tuplet>getDecorationLayoutsByType(Tuplet.class)) {
             var tuplet = entry.getKey();
             var shapeSs = tupletHitShapeSs(tuplet, line, layoutResult, entry.getValue());
 
@@ -374,37 +377,6 @@ public final class HitRegionBuilder {
             }
 
             addRegion(builder, shapeSs, new HitTarget.Tuplet(tuplet));
-        }
-    }
-
-    /**
-     * Registers each note's accidental as a sub-element hit rect, skipping notes with no
-     * accidental and grace notes (neither has bounds — see {@link NoteGeometry#getAccidentalBoundsSs}).
-     * <p>
-     * {@code AccidentalBounds} is relative to the notehead glyph origin (X) and the note center
-     * (Y), so both are added back in to land the rect in this builder's layout space.
-     */
-    private static void addAccidentals(
-        Line line,
-        LayoutResult layoutResult,
-        HitRegistry.Builder builder) {
-
-        for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
-            var element = line.getElement(elementIndex);
-            var boundsSs = NoteGeometry.getAccidentalBoundsSs(element);
-
-            if (boundsSs == null) {
-                continue;
-            }
-
-            var elementXSs = layoutResult.getElementXSs(element);
-            var noteCenterYSs = NoteGeometry.noteStaffPositionToCoordinateSs(element.getStaffPosition(), 0);
-            var rectSs = new Rectangle2D.Double(
-                elementXSs + boundsSs.leftSs(),
-                noteCenterYSs + boundsSs.topSs(),
-                boundsSs.widthSs(),
-                boundsSs.botSs() - boundsSs.topSs());
-            addRegion(builder, rectSs, new HitTarget.Accidental(element));
         }
     }
 
@@ -456,7 +428,7 @@ public final class HitRegionBuilder {
      * area would take clicks aimed at the music.
      */
     private static void addAttribution(LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var entry : layoutResult.<Attribution>getDecorationLayoutsByType(Attribution.class)) {
+        for (var entry : layoutResult.decorationLayouts().<Attribution>getDecorationLayoutsByType(Attribution.class)) {
             addRegion(builder, decorationInkRectSs(entry.getValue()), new HitTarget.Attribution());
         }
     }
@@ -547,8 +519,8 @@ public final class HitRegionBuilder {
         // A bracket reaches past the notes it spans at both ends, so the edges come from the same
         // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
         var anchorXSs = layout.xSs();
-        var leftEdgeXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
-            anchor.getDirection().isUp(), StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
+        var leftEdgeXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
+            StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
         var rightEdgeXSs = Tuplet.bracketRightEdgeXSs(
             anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
 
@@ -748,7 +720,7 @@ public final class HitRegionBuilder {
         var outerStartYSs = beamLayout.startYSs();
         var outerEndYSs = outerStartYSs + beamLayout.slope() * widthSs;
 
-        var levelCount = BeamMath.beamLevel(line, beam.getAnchorElementIndex(), beam.getEndElementIndex()) + 1;
+        var levelCount = beam.beamLevel() + 1;
         var totalDepthSs = BeamMetrics.beamStackHeightSs(levelCount, beamLayout.thickeningSs());
         var innerOffsetSs = beamLayout.stemsUp() ? totalDepthSs : -totalDepthSs;
 
@@ -760,7 +732,7 @@ public final class HitRegionBuilder {
             maxXSs, outerEndYSs + innerOffsetSs);
     }
 
-    private static HitTarget slideTarget(StaffElement note) {
+    private static HitTarget slideTarget(NoteElement note) {
         if (note.getType().isGraceNote()) {
             return new HitTarget.GraceGlissando(note);
         }

@@ -59,8 +59,8 @@ import org.jspecify.annotations.Nullable;
  * <ul>
  *   <li><b>Required values.</b> An absence that makes the document unreadable is
  *       rejected by {@link #require} or a {@code requireXxx} accessor, so the
- *       failure is a {@link MusicXmlReader.UnsupportedFormatException} carrying a
- *       specific {@link MusicXmlReader.UnsupportedFormatException#detail() detail}
+ *       failure is a {@link MusicXmlReader.InvalidFormatException} carrying a
+ *       specific {@link MusicXmlReader.InvalidFormatException#detail() detail}
  *       rather than an NPE. {@code MusicXmlReaderLenienceTest} is the
  *       specification for which values those are.</li>
  *   <li><b>Optional scalars that need converting.</b> A generated enum, a
@@ -109,11 +109,11 @@ final class ProxyMusicAccess {
     /**
      * Returns {@code value}, or rejects the document when it is absent.
      *
-     * @throws MusicXmlReader.UnsupportedFormatException if {@code value} is null
+     * @throws MusicXmlReader.InvalidFormatException if {@code value} is null
      */
-    static <T> T require(@Nullable T value, String detail) throws MusicXmlReader.UnsupportedFormatException {
+    static <T> T require(@Nullable T value, String detail) throws MusicXmlReader.InvalidFormatException {
         if (value == null) {
-            throw new MusicXmlReader.UnsupportedFormatException(detail);
+            throw new MusicXmlReader.InvalidFormatException(detail);
         }
 
         return value;
@@ -295,9 +295,9 @@ final class ProxyMusicAccess {
     /**
      * The {@code <type>} token of a note that must have one.
      *
-     * @throws MusicXmlReader.UnsupportedFormatException if the note omits {@code <type>}
+     * @throws MusicXmlReader.InvalidFormatException if the note omits {@code <type>}
      */
-    static String requireNoteTypeToken(Note note) throws MusicXmlReader.UnsupportedFormatException {
+    static String requireNoteTypeToken(Note note) throws MusicXmlReader.InvalidFormatException {
         return require(noteTypeToken(note), "<note> is missing its <type> element");
     }
 
@@ -343,15 +343,6 @@ final class ProxyMusicAccess {
     static @Nullable String accidentalToken(Note note) {
         var accidental = note.getAccidental();
         return accidental == null ? null : token(accidental.getValue(), AccidentalValue::value);
-    }
-
-    /**
-     * True when the note's {@code <accidental>} is drawn in parentheses — the writer
-     * emits either {@code cautionary} or {@code parentheses}.
-     */
-    static boolean accidentalIsParenthesized(Note note) {
-        var accidental = note.getAccidental();
-        return accidental != null && (isYes(accidental.getCautionary()) || isYes(accidental.getParentheses()));
     }
 
     /** True when the note carries a {@code <stem>} — a manual direction override. */

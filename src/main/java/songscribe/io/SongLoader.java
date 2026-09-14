@@ -28,8 +28,6 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
 
-import songscribe.dom.TupletLoadPass;
-
 /**
  * Loads a {@link songscribe.dom.Song} from a file without requiring a {@code ScoreView}.
  * <p>
@@ -66,18 +64,17 @@ public final class SongLoader {
 
             var song = reader.getSong();
 
-            // Both readers own the pass rather than the UI: the headless MIDI-export route
+            // Both readers own the passes rather than the UI: the headless MIDI-export route
             // comes through here, and leaving it to ScoreView would have it play tuplets the
             // UI had dropped — two different MIDI files from one document, with no error on
             // either.
-            var tupletReport = TupletLoadPass.run(song);
+            var migrations = LoadMigrations.run(song, reader.accidentalsConverted());
 
             return new SongLoadResult.Success(
                 song,
                 reader.getDocumentFonts(),
                 warnings,
-                reader.accidentalsConverted(),
-                tupletReport);
+                migrations);
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {

@@ -119,6 +119,30 @@ class StrandedKeyChangeTest extends UnitTest {
     }
 
     /**
+     * One list of elements, and the key {@link StaffElementRun#keyAtEndUnder(int, Key)} must say
+     * it leaves off in.
+     *
+     * @param description the case, which doubles as the parameterized display name
+     * @param elements    the elements to scan
+     * @param fromIndex   the lowest index to count a key change at
+     * @param runningKey  the key to suppose the run is in from {@code fromIndex} onward
+     * @param expected    the key the run leaves off in
+     */
+    private record EndKeyCase(
+        String description,
+        List<StaffElement> elements,
+        int fromIndex,
+        Key runningKey,
+        Key expected
+    ) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    /**
      * One kind of element a mid-line key change may stand behind, all of which the pair rule
      * treats alike.
      *
@@ -224,6 +248,67 @@ class StrandedKeyChangeTest extends UnitTest {
 
         assertThat(new DetachedLyricRun(testCase.elements())
             .lastKeyChangeKeyFrom(testCase.fromIndex()))
+            .isEqualTo(testCase.expected());
+    }
+
+    /**
+     * One list of elements, and the key {@link StaffElementRun#keyAtEndUnder(Key)} must say it
+     * leaves off in, counting every key change it holds.
+     *
+     * @param description the case, which doubles as the parameterized display name
+     * @param elements    the elements to scan
+     * @param runningKey  the key to suppose the run starts in
+     * @param expected    the key the run leaves off in
+     */
+    private record WholeRunEndKeyCase(
+        String description,
+        List<StaffElement> elements,
+        Key runningKey,
+        Key expected
+    ) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    static Stream<WholeRunEndKeyCase> wholeRunEndKeyCases() {
+        return Stream.of(
+            new WholeRunEndKeyCase(
+                "a run holding key changes leaves off in the last one's key",
+                twoKeyChangeRuns(OTHER_KEY, THIRD_KEY), RUNNING_KEY, THIRD_KEY),
+            new WholeRunEndKeyCase(
+                "a run holding no key change leaves off in the key it was supposed to start in",
+                List.of(crotchet(), singleBarline(), crotchet()), OTHER_KEY, OTHER_KEY));
+    }
+
+    static Stream<EndKeyCase> endKeyCases() {
+        return Stream.of(
+            new EndKeyCase(
+                "a key change at fromIndex decides the key the run leaves off in",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX, THIRD_KEY, OTHER_KEY),
+            new EndKeyCase(
+                "a key change below fromIndex leaves the run in the key it was supposed to be in",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX + 1, THIRD_KEY, THIRD_KEY));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("wholeRunEndKeyCases")
+    void testARunLeavesOffInItsLastKeyChangeElseTheKeyItWasSupposedToStartIn(
+        WholeRunEndKeyCase testCase) {
+
+        assertThat(new DetachedLyricRun(testCase.elements()).keyAtEndUnder(testCase.runningKey()))
+            .isEqualTo(testCase.expected());
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endKeyCases")
+    void testARunLeavesOffInItsLastKeyChangeAtOrAfterTheIndexElseTheKeySupposedFromThere(
+        EndKeyCase testCase) {
+
+        assertThat(new DetachedLyricRun(testCase.elements())
+            .keyAtEndUnder(testCase.fromIndex(), testCase.runningKey()))
             .isEqualTo(testCase.expected());
     }
 

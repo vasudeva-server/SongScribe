@@ -23,6 +23,9 @@ import org.slf4j.Logger;
 import org.slf4j.helpers.MessageFormatter;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.Attachment;
+import songscribe.dom.StaffElement;
+
 public final class DocumentValidation {
 
     private DocumentValidation() {}
@@ -45,6 +48,30 @@ public final class DocumentValidation {
         var message = MessageFormatter.arrayFormat(format, args).getMessage();
         log.error(message);
         return new SAXException(message);
+    }
+
+    /**
+     * Puts {@code attachment} on {@code element} for a reader, rejecting the document when the
+     * element already carries an attachment of that class. An element holds at most one of any
+     * class — {@link StaffElement#addAttachment}'s precondition — and a document that says
+     * otherwise is corrupt rather than something to merge.
+     *
+     * @param log        the logger of the reader
+     * @param element    the element the document attaches to
+     * @param attachment the attachment the document describes, on no element
+     * @throws SAXException if {@code element} already carries an attachment of
+     *     {@code attachment}'s class
+     * @effects on success, as {@link StaffElement#addAttachment}
+     */
+    public static void attachUnique(Logger log, StaffElement element, Attachment attachment)
+            throws SAXException {
+        var attachmentClass = attachment.getClass();
+
+        if (element.findAttachment(attachmentClass) != null) {
+            throw corrupt(log, "Corrupt document: element already carries a {}", attachmentClass.getSimpleName());
+        }
+
+        element.addAttachment(attachment);
     }
 
     static void requireIndexInRange(Logger log, int start, int end, int elementCount, String kind) throws SAXException {

@@ -52,8 +52,8 @@ import songscribe.dom.Song;
  * <p>
  * "Every line the change re-keys" is the inheritance chain: a line with no key of its own inherits
  * from the line before it, so a change propagates forward and stops at the first line that
- * establishes its own key — the same rule {@code Song}'s inherited-key propagation follows. Each
- * query walks exactly that far.
+ * establishes its own key. Each query measures the chain {@link Song#inheritanceFrom} reports, so
+ * it measures exactly the lines the song re-derives once the edit commits.
  * <p>
  * Every line is measured by the identical solve the committed layout runs
  * ({@link ElementColumnBuilder} + {@link HorizontalSpacingCalculator#solveLine}), over the same
@@ -90,7 +90,8 @@ public final class KeyEditFitCalculator {
      * holds a mid-line key change still leaves off in that key change's key, so the chain stops
      * being re-keyed where the document says it stops.
      *
-     * @param line               the line that would establish {@code key}
+     * @param line               the line that would establish {@code key}; one of its song's
+     *                           lines
      * @param key                the key it would establish
      * @param lyricRenderMetrics metrics for measuring the affected lines' syllables
      * @return {@code true} when every affected line still solves feasibly against its song's line
@@ -99,7 +100,7 @@ public final class KeyEditFitCalculator {
     public static boolean lineKeyChangeFits(Line line, Key key, LyricRenderMetrics lyricRenderMetrics) {
         var columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
 
-        return chainFits(line, columnBuilder.buildColumns(line), key, line.keyAtEndOfLineUnder(key), columnBuilder);
+        return chainFits(line, columnBuilder.buildColumns(line), key, line.keyAtEndUnder(key), columnBuilder);
     }
 
     /**
@@ -119,7 +120,8 @@ public final class KeyEditFitCalculator {
      * moves when the insertion is the last key change on it, and the following lines are then
      * re-keyed exactly as {@link #lineKeyChangeFits} describes.
      *
-     * @param line               the line the key change would be inserted into
+     * @param line               the line the key change would be inserted into; one of its
+     *                           song's lines
      * @param insertionIndex     the index the key change would land at; at least 1 and at most
      *                           {@link Line#effectiveElementCount()}, since a key change is
      *                           never the first element on a line
@@ -145,7 +147,7 @@ public final class KeyEditFitCalculator {
             line,
             columnsWithKeySignature(line, insertionIndex, key, columnBuilder),
             line.getRunningKey(),
-            line.keyAtEndOfLineUnder(insertionIndex, key),
+            line.keyAtEndUnder(insertionIndex, key),
             columnBuilder);
     }
 
@@ -165,7 +167,7 @@ public final class KeyEditFitCalculator {
      * line leaves off in moves when no later key change overrides it, and the following lines
      * are then re-keyed exactly as {@link #lineKeyChangeFits} describes.
      *
-     * @param line               the line the key change stands on
+     * @param line               the line the key change stands on; one of its song's lines
      * @param keyChangeIndex     its index on {@code line}
      * @param key                the key it would establish instead
      * @param lyricRenderMetrics metrics for measuring the affected lines' syllables
@@ -181,20 +183,17 @@ public final class KeyEditFitCalculator {
             line,
             columnsWithSwappedKeySignature(line, keyChangeIndex, key, columnBuilder),
             line.getRunningKey(),
-            line.keyAtEndOfLineUnder(keyChangeIndex + 1, key),
+            line.keyAtEndUnder(keyChangeIndex + 1, key),
             columnBuilder);
     }
 
     /**
      * Runs the fit check over every line an edit touches: the line before the edited one, for the
      * cautionary the edit creates at its end; the edited line, with the columns and keys the edit
-     * would leave it; and then forward along the inheritance chain, each line re-keyed by what the
-     * one before it now leaves off in, stopping at the first line that establishes its own key.
-     * <p>
-     * A line the song does not hold has neither a line before it nor one after it, so the walk
-     * measures it alone.
+     * would leave it; and then every line of the inheritance chain the song reports after it,
+     * each re-keyed by what the one before it would leave off in.
      *
-     * @param editedLine    the line the edit lands on
+     * @param editedLine    the line the edit lands on; one of its song's lines
      * @param editedColumns its columns as the edit would leave them
      * @param headerKey     the key its header would draw
      * @param endKey        the key it would leave off in
@@ -209,50 +208,56 @@ public final class KeyEditFitCalculator {
 
         var song = editedLine.getSong();
         var staffRightMarginSs = song.getLineWidthSs().value();
-        var lineIndex = song.contains(editedLine) ? editedLine.index() : -1;
 
-        if (lineIndex > 0 && !cautionaryFits(
-                song.getLine(lineIndex - 1), headerKey, columnBuilder, staffRightMarginSs)) {
+        if (!editedLine.isFirst() && !cautionaryFits(
+                song.getLine(editedLine.index() - 1), headerKey, columnBuilder, staffRightMarginSs)) {
             return false;
         }
 
+        var chain = song.inheritanceFrom(editedLine, endKey);
+        var inheriting = chain.inheriting();
         var currentLine = editedLine;
-        var currentIndex = lineIndex;
         var currentColumns = editedColumns;
         var currentHeaderKey = headerKey;
         var currentEndKey = endKey;
 
-        while (true) {
-            var nextLine = lineAfter(song, currentIndex);
-            var nextOwnKey = nextLine == null ? null : nextLine.getKey();
-            Key nextRunningKey = null;
-
-            if (nextLine != null) {
-                // A line establishing its own key begins in it whatever precedes; one that inherits
-                // begins in whatever this line now leaves off in.
-                nextRunningKey = nextOwnKey != null ? nextOwnKey : currentEndKey;
-            }
-
+        for (var position = 0; ; position++) {
             if (!fits(
                     currentColumns,
                     currentLine,
-                    new LineKeys(currentHeaderKey, currentEndKey, nextRunningKey),
+                    new LineKeys(currentHeaderKey, currentEndKey, runningKeyAt(chain, position)),
                     staffRightMarginSs)) {
                 return false;
             }
 
-            // Propagation stops at the first line with a key of its own: its header does not move,
-            // and nothing past it can either.
-            if (nextLine == null || nextOwnKey != null) {
+            // Past the inheriting lines the edit re-keys nothing: a line with a key of its own keeps
+            // its header, and nothing past it can move.
+            if (position == inheriting.size()) {
                 return true;
             }
 
-            currentIndex++;
-            currentLine = nextLine;
-            currentColumns = columnBuilder.buildColumns(nextLine);
-            currentHeaderKey = currentEndKey;
-            currentEndKey = nextLine.keyAtEndOfLineUnder(currentHeaderKey);
+            var next = inheriting.get(position);
+            currentLine = next.line();
+            currentColumns = columnBuilder.buildColumns(currentLine);
+            currentHeaderKey = next.inheritedKey();
+            currentEndKey = next.keyAtEnd();
         }
+    }
+
+    /**
+     * The key the line at {@code position} of {@code chain} starts in, counting its inheriting
+     * lines from 0: the key that line inherits, the stop's own key just past them, or null when
+     * the inheriting lines run to the end of the song and no line follows.
+     */
+    private static @Nullable Key runningKeyAt(Song.InheritanceChain chain, int position) {
+        var inheriting = chain.inheriting();
+
+        if (position < inheriting.size()) {
+            return inheriting.get(position).inheritedKey();
+        }
+
+        var stop = chain.stop();
+        return (stop != null) ? stop.ownKey() : null;
     }
 
     /**
@@ -278,15 +283,6 @@ public final class KeyEditFitCalculator {
 
         return columns.isEmpty()
             || !HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs, keys).isInfeasible();
-    }
-
-    /** The line after index {@code lineIndex}, or null at the last line or off the song entirely. */
-    private static @Nullable Line lineAfter(Song song, int lineIndex) {
-        if (lineIndex < 0 || lineIndex + 1 >= song.lineCount()) {
-            return null;
-        }
-
-        return song.getLine(lineIndex + 1);
     }
 
     /**

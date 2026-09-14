@@ -60,53 +60,46 @@ constraint (in)?
 
 ## The worked example
 
-`NoteTypeMapping.ticks` — high fan-in arithmetic whose correctness nothing in the
-type system can carry, so it earns a full contract and real tests.
+`Dots.augment` — arithmetic whose correctness nothing in the type system can
+carry, so it earns a full contract and real tests.
 
 ```java
 /**
- * Returns the {@code <duration>} tick count for the given {@link NoteValue}
- * and dot count, as an exact integer.
+ * Returns {@code ticks} lengthened by these dots, as an exact integer: each dot adds half of
+ * what the previous one added, so the result is {@code ticks × (2^(d+1) − 1) / 2^d} where
+ * {@code d} is {@link #count()}.
  *
- * <p>The formula is {@code baseTicks × (2^(d+1) − 1) / 2^d} where {@code d}
- * is {@code dotCount} (0, 1, or 2). {@link #DIVISIONS} is chosen so that this
- * always produces an exact integer: the worst case is a double-dotted 32nd,
- * which yields {@code 1680 × 7 / 4 = 2940} ticks.
+ * <p>At both tick bases in use — {@link songscribe.midi.MidiSequenceBuilder#PPQ} in the
+ * model and {@link songscribe.io.musicxml.NoteTypeMapping#DIVISIONS} in MusicXML — every
+ * {@link NoteValue} augments exactly, so the exception is reachable only by a caller
+ * supplying a base of its own.
  *
- * @param value    the written note value
- * @param dotCount number of augmentation dots (0, 1, or 2)
- * @return the exact integer tick count
- * @throws IllegalArgumentException if {@code dotCount} is out of range
- * @throws ArithmeticException      if the result is not an exact integer
- *                                  (indicates {@link #DIVISIONS} is wrong)
+ * @param ticks the undotted duration
+ * @return the dotted duration, in the same ticks
+ * @invariant {@code augment(ticks) >= ticks}, with equality exactly for {@link #NONE}
  */
-public static int ticks(NoteValue value, int dotCount)
+public int augment(int ticks)
 ```
 
 ### What it yields as tests
 
-Three cases, all of them properties rather than pinned outputs:
+Cases, all of them properties rather than pinned outputs:
 
 | Contract clause | Case |
 |---|---|
-| valid domain | every `NoteValue` × `dotCount` ∈ 0..`MAX_DOT_COUNT`, **enumerated** from the enum itself, not sampled |
-| the dot formula | `ticks(v, 1) == ticks(v, 0) * 3 / 2` and `ticks(v, 2) == ticks(v, 0) * 7 / 4`, for every `v` |
-| exactness under tuplets | the class invariant: every duration stays an exact integer after scaling by M/N for every ratio N in 2..7 |
+| valid domain | every `NoteValue` × `Dots` constant, **enumerated** from both enums, not sampled |
+| the dot formula | `ONE.augment(base) == base * 3 / 2` and `TWO.augment(base) == base * 7 / 4`, for every `base` |
+| the invariant | `augment(ticks) >= ticks` for every case, with equality only for `NONE` |
 
-**Both `@throws` clauses yield nothing.** `dotCount` out of range is a guard,
-reached only by a caller that does not exist, and the `ArithmeticException`
-clause promises something about a constant rather than about any input. Deriving a case per branch here is how a three-case contract
-turns into a nine-case test class. See *The testing floor* in
-[design.md](~/.claude/guides/design.md).
+Deriving a case per clause here is how a three-clause contract turns into a
+full test class, rather than one pinned example per note value. See *The
+testing floor* in [design.md](~/.claude/guides/design.md).
 
-**Writing the table is how a defect gets found, which is the point of writing
-it.** `hasDuration` answers `type.isDuration()`: true for a pitched note or a
-rest, false for a grace note and for every type that is not a note at all. The
-first version of that method returned `type != GRACE_QUAVER`, which answered
-`true` for a barline or a breath mark while `ticks` threw for both — a caller
-doing exactly what the contract instructed was not guarded, and no caller
-happened to do it, which is why nobody noticed until the table was written. A
-contract the implementation could violate is the only kind worth writing.
+**A contract naming two tick bases is a contract about both, not about
+whichever one the caller happens to test at.** The doc comment states
+exactness at {@link MidiSequenceBuilder#PPQ} and at
+{@link NoteTypeMapping#DIVISIONS} by name; a table exercising only the model's
+own base leaves the MusicXML base resting on the promise alone.
 
 ## Postconditions go through the public API
 

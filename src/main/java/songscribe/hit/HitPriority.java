@@ -61,9 +61,6 @@ public enum HitPriority {
      */
     TRILL(90),
 
-    /** A note's accidental — above the note so the sub-element stays reachable. */
-    ACCIDENTAL(85),
-
     /** A note head. */
     ELEMENT(80),
 

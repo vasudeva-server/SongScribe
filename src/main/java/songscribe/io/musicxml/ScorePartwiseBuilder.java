@@ -47,6 +47,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Beam;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
@@ -55,7 +56,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFontsHolder;
-import songscribe.layout.BeamMath;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineLayoutProvider;
 
@@ -270,7 +270,7 @@ final class ScorePartwiseBuilder {
             var emitted = lineOutput.emitted();
 
             for (var i = 0; i < emitted.size(); i++) {
-                if (emitted.get(i).getGlissando() != null) {
+                if (emitted.get(i) instanceof NoteElement note && note.hasGlissando()) {
                     sites.add(new GlissandoSite(lineOutput, i));
                 }
             }
@@ -299,7 +299,7 @@ final class ScorePartwiseBuilder {
                     continue;
                 }
 
-                addBeams(context, element, beamValues(line, i, anchorIndex, endIndex));
+                addBeams(context, element, beamValues(beam, i, anchorIndex, endIndex));
             }
         });
     }
@@ -335,32 +335,32 @@ final class ScorePartwiseBuilder {
      * never a hook. For each secondary level, the maximal contiguous run of notes at that
      * level containing {@code noteIndex} decides: a run of two or more emits
      * {@code begin}/{@code continue}/{@code end}, and a run of one is a partial-beam hook
-     * whose direction {@link BeamMath#stubRight} owns.
+     * whose direction {@link Beam#stubRight} owns.
      */
-    private static String[] beamValues(Line line, int noteIndex, int anchorIndex, int endIndex) {
-        var values = new String[BeamMath.LEVEL_COUNT];
+    private static String[] beamValues(Beam beam, int noteIndex, int anchorIndex, int endIndex) {
+        var values = new String[Beam.LEVEL_COUNT];
         Arrays.fill(values, MusicXmlUnits.NO_BEAM_AT_LEVEL);
         values[PRIMARY_BEAM_LEVEL] = runValue(noteIndex, anchorIndex, endIndex);
 
-        for (var level = PRIMARY_BEAM_LEVEL + 1; level < BeamMath.LEVEL_COUNT; level++) {
-            if (!BeamMath.noteTypeInLevel(line, noteIndex, level)) {
+        for (var level = PRIMARY_BEAM_LEVEL + 1; level < Beam.LEVEL_COUNT; level++) {
+            if (!beam.noteTypeInLevel(noteIndex, level)) {
                 continue;
             }
 
             var runStart = noteIndex;
 
-            while (runStart > anchorIndex && BeamMath.noteTypeInLevel(line, runStart - 1, level)) {
+            while (runStart > anchorIndex && beam.noteTypeInLevel(runStart - 1, level)) {
                 runStart--;
             }
 
             var runEnd = noteIndex;
 
-            while (runEnd < endIndex && BeamMath.noteTypeInLevel(line, runEnd + 1, level)) {
+            while (runEnd < endIndex && beam.noteTypeInLevel(runEnd + 1, level)) {
                 runEnd++;
             }
 
             if (runStart == runEnd) {
-                values[level] = BeamMath.stubRight(line, noteIndex, anchorIndex, endIndex)
+                values[level] = beam.stubRight(noteIndex)
                     ? MusicXmlTags.BEAM_FORWARD_HOOK
                     : MusicXmlTags.BEAM_BACKWARD_HOOK;
             } else {

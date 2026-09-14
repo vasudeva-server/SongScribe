@@ -19,6 +19,10 @@
  */
 package songscribe.io;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xml.sax.SAXException;
+
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.StaffElement;
@@ -42,16 +46,20 @@ import songscribe.dom.StaffElement;
  */
 public record ReadAnnotation(Annotation annotation, double userYOffsetSs) {
 
+    private static final Logger LOG = LoggerFactory.getLogger(ReadAnnotation.class);
+
     /**
      * Builds the attachment this describes and puts it on {@code element}.
      *
      * @param element the staff element the annotation binds to
+     * @throws SAXException if {@code element} already carries an annotation: the document names
+     *     two for one element
      * @effects adds one {@link AnnotationAttachment} to {@code element}
      */
-    public void attachTo(StaffElement element) {
-        var attachment = new AnnotationAttachment(element, annotation);
+    public void attachTo(StaffElement element) throws SAXException {
+        var attachment = new AnnotationAttachment(annotation);
 
         attachment.setUserYOffsetSs(userYOffsetSs);
-        element.addAttachment(attachment);
+        DocumentValidation.attachUnique(LOG, element, attachment);
     }
 }

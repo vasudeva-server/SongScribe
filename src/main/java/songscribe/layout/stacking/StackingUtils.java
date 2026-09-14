@@ -29,13 +29,14 @@ import songscribe.dom.IntrinsicHeight;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElement.Direction;
+import songscribe.dom.Direction;
 import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.DecorationContent;
+import songscribe.layout.DecorationLayouts;
 import songscribe.layout.StaffExtents;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -58,13 +59,13 @@ public final class StackingUtils {
     static final int TOP_STAFF_LINE_POSITION = -StaffPosition.OUTERMOST_STAFF_LINE_SP;
 
     // Y coordinate of the top staff line in the middleLineY=0 coordinate system
-    static final double STAFF_TOP_Y_SS = StaffPosition.toSs(TOP_STAFF_LINE_POSITION);
+    static final double STAFF_TOP_Y_SS = TOP_STAFF_LINE_POSITION * Staff.HALF_SPACE_SS;
 
     // Staff position of the bottom staff line (E4); positions >= this are at or below the staff
     static final int BOTTOM_STAFF_LINE_POSITION = StaffPosition.OUTERMOST_STAFF_LINE_SP;
 
     // Y coordinate of the bottom staff line in the middleLineY=0 coordinate system
-    static final double STAFF_BOT_Y_SS = StaffPosition.toSs(BOTTOM_STAFF_LINE_POSITION);
+    static final double STAFF_BOT_Y_SS = BOTTOM_STAFF_LINE_POSITION * Staff.HALF_SPACE_SS;
 
     // The outer ink edges of the outer staff lines: the top edge of the top line (above the staff)
     // and the bottom edge of the bottom line (below it). These, not the centerlines, are what an
@@ -125,24 +126,17 @@ public final class StackingUtils {
     }
 
     /**
-     * Returns the anchor ceiling Y for a note, without consulting extents.
+     * Returns the anchor ceiling Y for the given staff position, without consulting extents.
      * <p>
-     * Notes within or below the staff anchor at the top staff line.
-     * Notes at or above the top staff line anchor above the notehead.
-     */
-    public static double anchorCeilingSs(StaffElement note) {
-        return anchorCeilingSs(note.getStaffPosition());
-    }
-
-    /**
-     * Returns the anchor ceiling Y for the given staff position.
+     * A position within or below the staff anchors at the top staff line.
+     * A position at or above the top staff line anchors above the notehead.
      */
     public static double anchorCeilingSs(int staffPosition) {
         if (staffPosition > TOP_STAFF_LINE_POSITION) {
             return STAFF_TOP_Y_SS;
         }
 
-        var noteHeadYSs = StaffPosition.toSs(staffPosition);
+        var noteHeadYSs = staffPosition * Staff.HALF_SPACE_SS;
         return noteHeadYSs - NOTE_HEAD_RADIUS_SS;
     }
 
@@ -176,7 +170,7 @@ public final class StackingUtils {
             return STAFF_BOT_Y_SS;
         }
 
-        var noteHeadYSs = StaffPosition.toSs(staffPosition);
+        var noteHeadYSs = staffPosition * Staff.HALF_SPACE_SS;
         return noteHeadYSs + NOTE_HEAD_RADIUS_SS;
     }
 
@@ -194,8 +188,8 @@ public final class StackingUtils {
             return anchorCeilingSs(staffPosition);
         }
 
-        var noteHeadYSs = StaffPosition.toSs(staffPosition);
-        var distanceSs = StaffPosition.isOnLine(staffPosition)
+        var noteHeadYSs = staffPosition * Staff.HALF_SPACE_SS;
+        var distanceSs = staffPosition % 2 == 0
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
@@ -212,8 +206,8 @@ public final class StackingUtils {
             return anchorFloorSs(staffPosition);
         }
 
-        var noteHeadYSs = StaffPosition.toSs(staffPosition);
-        var distanceSs = StaffPosition.isOnLine(staffPosition)
+        var noteHeadYSs = staffPosition * Staff.HALF_SPACE_SS;
+        var distanceSs = staffPosition % 2 == 0
             ? STACCATO_ON_LINE_DISTANCE_SS
             : STACCATO_BETWEEN_LINES_DISTANCE_SS;
 
@@ -234,10 +228,10 @@ public final class StackingUtils {
         E element,
         double xSs, double widthSs, double marginSs,
         int staffPosition,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs,
-            element.intrinsicHeightSs(), marginSs, staffPosition, builder);
+            element.intrinsicHeightSs(), marginSs, staffPosition, decorationLayouts);
     }
 
     /**
@@ -254,10 +248,10 @@ public final class StackingUtils {
         E element,
         double xSs, double widthSs, double marginSs,
         int staffPosition,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs,
-            element.intrinsicHeightSs(), marginSs, staffPosition, builder);
+            element.intrinsicHeightSs(), marginSs, staffPosition, decorationLayouts);
     }
 
     /**
@@ -287,7 +281,7 @@ public final class StackingUtils {
         double marginSs, double staffPaddingSs,
         double horizonPaddingSs,
         int staffPosition,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var atOrBeyondStaffEdge = direction.isUp()
             ? staffPosition <= TOP_STAFF_LINE_POSITION
@@ -298,7 +292,7 @@ public final class StackingUtils {
                 StaffExtents.Profile.flat(widthSs), reserveProfile);
 
             return placeAndReserveClamped(direction, extents, element, xSs, widthSs,
-                profiles, marginSs, staffPaddingSs, horizonPaddingSs, builder);
+                profiles, marginSs, staffPaddingSs, horizonPaddingSs, decorationLayouts);
         }
 
         var centerSs = direction.isUp()
@@ -306,7 +300,7 @@ public final class StackingUtils {
             : staccatoAnchorFloorSs(staffPosition);
 
         return stackAtCenter(direction, extents, element, xSs, widthSs, reserveProfile,
-            marginSs, horizonPaddingSs, centerSs, builder);
+            marginSs, horizonPaddingSs, centerSs, decorationLayouts);
     }
 
     /**
@@ -327,14 +321,14 @@ public final class StackingUtils {
         StaffExtents extents,
         E element,
         double xSs, double widthSs, double boundSs, double marginSs,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var above = direction.isUp();
         var innerEdgeYSs = above ? boundSs - marginSs : boundSs + marginSs;
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs,
             element.intrinsicHeightSs(),
-            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, builder);
+            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, decorationLayouts);
     }
 
     /**
@@ -366,7 +360,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double innerEdgeYSs,
         StaffExtents.Profile reserveProfile, double decorationMarginSs,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var above = direction.isUp();
 
@@ -383,7 +377,7 @@ public final class StackingUtils {
 
         extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
-        builder.putDecorationLayout(element,
+        decorationLayouts.putDecorationLayout(element,
             new LayoutResult.DecorationLayout.Plain(
                 xSs, elementTopYSs, widthSs, heightSs, decorationMarginSs));
 
@@ -424,14 +418,14 @@ public final class StackingUtils {
         double xSs, double widthSs,
         StaffExtents.Profiles profiles,
         double paddingSs, double staffPaddingSs, double horizonPaddingSs,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var innerEdgeYSs = clampedInnerEdgeYSs(direction, extents, xSs, profiles.inner(),
             paddingSs, staffPaddingSs, horizonPaddingSs);
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs,
             element.intrinsicHeightSs(),
-            innerEdgeYSs, profiles.outer(), paddingSs, builder);
+            innerEdgeYSs, profiles.outer(), paddingSs, decorationLayouts);
     }
 
     /**
@@ -488,13 +482,13 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
         int staffPosition,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var innerEdgeYSs =
             anchoredInnerEdgeYSs(direction, extents, xSs, widthSs, marginSs, staffPosition);
 
         return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
-            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, builder);
+            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, decorationLayouts);
     }
 
     /**
@@ -529,7 +523,7 @@ public final class StackingUtils {
         StaffExtents.Profile reserveProfile,
         double marginSs, double horizonPaddingSs,
         double centerSs,
-        LayoutResultBuilder builder) {
+        DecorationLayouts.Builder decorationLayouts) {
 
         var above = direction.isUp();
         var heightSs = element.intrinsicHeightSs();
@@ -581,7 +575,7 @@ public final class StackingUtils {
         // it queries, so each tier-to-tier gap = the neighboring element's margin.
         extents.ySetProfile(above, xSs, reserveProfile, reserveEdgeYSs);
 
-        builder.putDecorationLayout(element,
+        decorationLayouts.putDecorationLayout(element,
             new LayoutResult.DecorationLayout.Plain(
                 xSs, elementTopYSs, widthSs, heightSs, marginSs));
 
@@ -611,7 +605,7 @@ public final class StackingUtils {
             rounded += above ? -1 : 1;
         }
 
-        return StaffPosition.toSs((int) rounded);
+        return rounded * Staff.HALF_SPACE_SS;
     }
 
     /**
@@ -632,7 +626,7 @@ public final class StackingUtils {
         List<CollisionRegion> regions,
         double xSs, double widthSs, double marginSs,
         int staffPosition,
-        LayoutResultBuilder builder,
+        DecorationLayouts.Builder decorationLayouts,
         @Nullable DecorationContent content
     ) {
         var anchorSs = anchorCeilingSs(staffPosition);
@@ -670,7 +664,7 @@ public final class StackingUtils {
                 overallHeightSs, region.yOffsetSs() + region.heightSs());
         }
 
-        builder.putDecorationLayout(element,
+        decorationLayouts.putDecorationLayout(element,
             LayoutResult.DecorationLayout.of(
                 xSs, elementYSs, widthSs, overallHeightSs, marginSs, content));
     }

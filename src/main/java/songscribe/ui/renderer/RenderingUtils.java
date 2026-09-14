@@ -26,6 +26,7 @@ import java.awt.Graphics2D;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Direction;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LedgerLine;
@@ -94,8 +95,7 @@ public final class RenderingUtils {
 
     /**
      * Returns the music font to draw {@code note}'s glyphs: {@link #GRACE_NOTE_FONT} for grace notes,
-     * else {@link #MUSIC_FONT}. Pair with {@link NoteGeometry#getGlyphScale} so the font and the pen
-     * advances stay in step.
+     * else {@link #MUSIC_FONT}.
      */
     public static Font getGlyphFont(StaffElement note) {
         return note.getType().isGraceNote() ? GRACE_NOTE_FONT : MUSIC_FONT;
@@ -325,7 +325,7 @@ public final class RenderingUtils {
      * @param direction stem direction: UP = stem-up SE anchor; DOWN = stem-down NW anchor
      * @return X offset from note reference point to stem center, in staff spaces
      */
-    static double stemCenterXOffsetSs(StemmedNotehead notehead, StaffElement.Direction direction) {
+    static double stemCenterXOffsetSs(StemmedNotehead notehead, Direction direction) {
         var anchorXSs = NoteGeometry.stemSideAnchor(notehead, direction).xSs();
         var upper = direction.isUp();
 

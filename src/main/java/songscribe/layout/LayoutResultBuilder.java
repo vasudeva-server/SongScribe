@@ -24,25 +24,24 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
-import songscribe.dom.Clef;
-import songscribe.dom.KeySignature;
-import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.hit.HitRegistry;
 import songscribe.layout.LayoutResult.BeamLayout;
-import songscribe.layout.LayoutResult.DecorationLayout;
 import songscribe.layout.LayoutResult.SlideLayout;
 import songscribe.layout.LayoutResult.StemLayout;
 import songscribe.layout.LayoutResult.TieLayout;
 
 /**
  * Builder for creating {@link LayoutResult} instances incrementally.
+ * <p>
+ * The staff header is the one part of a result that exists before layout begins — it depends
+ * on the line's key alone — so it is taken at construction rather than set later, and a builder
+ * cannot exist without it.
  */
 public class LayoutResultBuilder {
 
@@ -50,12 +49,9 @@ public class LayoutResultBuilder {
     private final Map<Beam, BeamLayout> beamLayouts;
     private final Map<StaffElement, StemLayout> stemLayouts;
     private final Map<Tie, TieLayout> tieLayouts;
-    private final Map<LineElement, DecorationLayout> decorationLayouts;
+    private final DecorationLayouts.Builder decorationLayouts;
     private final Map<StaffElement, SlideLayout> slideLayouts;
-    @Nullable
-    private Clef clef;
-    @Nullable
-    private KeySignature keySignature;
+    private final StaffHeader staffHeader;
     private double contentAboveStaffSs = 0;
     private double contentBelowStaffSs = 0;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
@@ -63,37 +59,23 @@ public class LayoutResultBuilder {
     private boolean hasTrailingLyricContinuation = false;
     private boolean overflowsStaffWidth = false;
 
-    public LayoutResultBuilder() {
+    /**
+     * Creates a builder for a line opening with {@code staffHeader}.
+     * <p>
+     * Package-private: {@link LayoutResult#builder} is the public entry point and wraps this.
+     *
+     * @param staffHeader the clef and key signature the line opens with
+     */
+    LayoutResultBuilder(StaffHeader staffHeader) {
+        this.staffHeader = staffHeader;
         elementColumns = new HashMap<>();
         beamLayouts = new HashMap<>();
         stemLayouts = new HashMap<>();
         tieLayouts = new HashMap<>();
-        decorationLayouts = new HashMap<>();
+        decorationLayouts = new DecorationLayouts.Builder();
         slideLayouts = new HashMap<>();
         lyricBoxes = new HashMap<>();
         lyricConnectors = new ArrayList<>();
-    }
-
-    /**
-     * Sets the clef element for this line.
-     *
-     * @param clef The clef element
-     * @return This builder for chaining
-     */
-    public LayoutResultBuilder setClef(Clef clef) {
-        this.clef = clef;
-        return this;
-    }
-
-    /**
-     * Sets the key signature element for this line.
-     *
-     * @param keySignature The key signature element
-     * @return This builder for chaining
-     */
-    public LayoutResultBuilder setKeySignature(KeySignature keySignature) {
-        this.keySignature = keySignature;
-        return this;
     }
 
     /**
@@ -233,57 +215,14 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Adds computed decoration layout for an above-staff decoration element.
+     * Returns the decoration table builder the stacking pass fills for this line. The built
+     * result freezes what is recorded here, so every layout recorded here is what the renderers
+     * read.
      *
-     * @param element          The decoration element
-     * @param decorationLayout The computed decoration geometry
-     * @return This builder for chaining
+     * @return the line's decoration layouts builder
      */
-    public LayoutResultBuilder putDecorationLayout(
-        LineElement element,
-        DecorationLayout decorationLayout
-    ) {
-        decorationLayouts.put(element, decorationLayout);
-        return this;
-    }
-
-    /**
-     * Returns the decoration layout entries for iteration.
-     * <p>
-     * Used by the post-layout offset application pass to read and update
-     * decoration positions with manual user offsets.
-     *
-     * @return The decoration layout entry set (mutable — callers may update via
-     * {@link #putDecorationLayout})
-     */
-    public Set<Map.Entry<LineElement, DecorationLayout>> getDecorationLayoutEntries() {
-        return decorationLayouts.entrySet();
-    }
-
-    /**
-     * Returns the decoration layout for a specific element, or null if not yet computed.
-     *
-     * @param element The decoration element to look up
-     * @return The decoration layout, or null if not present
-     */
-    public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
-        return decorationLayouts.get(element);
-    }
-
-    /**
-     * Returns the decoration layout recorded for an element that must have been stacked already.
-     *
-     * @param element the decoration element to look up
-     * @throws IllegalStateException if no layout is recorded for {@code element}
-     */
-    public DecorationLayout requireDecorationLayout(LineElement element) {
-        var decorationLayout = decorationLayouts.get(element);
-
-        if (decorationLayout == null) {
-            throw new IllegalStateException("no decoration layout recorded for " + element);
-        }
-
-        return decorationLayout;
+    public DecorationLayouts.Builder decorationLayouts() {
+        return decorationLayouts;
     }
 
     /**
@@ -328,10 +267,9 @@ public class LayoutResultBuilder {
             beamLayouts,
             stemLayouts,
             tieLayouts,
-            decorationLayouts,
+            decorationLayouts.build(),
             slideLayouts,
-            clef,
-            keySignature,
+            staffHeader,
             contentAboveStaffSs,
             contentBelowStaffSs,
             lyricBoxes,

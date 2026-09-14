@@ -43,12 +43,12 @@ public final class Staff {
      */
     public static final double HALF_SPACE_SS = 0.5;
 
-    /** Minimum staff-space amount reserved above the staff top, derived from {@link StaffPosition#MIN_SP}. */
+    /** Minimum staff-space amount reserved above the staff top, derived from {@link StaffPosition#MIN}. */
     public static final double MIN_ABOVE_STAFF_SS =
-        Math.abs(StaffPosition.MIN_SP) * HALF_SPACE_SS - STAFF_HALF_SS;
+        Math.abs(StaffPosition.MIN.value()) * HALF_SPACE_SS - STAFF_HALF_SS;
 
-    /** Minimum staff-space amount reserved below the staff bottom, derived from {@link StaffPosition#MAX_SP}. */
-    public static final double MIN_BELOW_STAFF_SS = StaffPosition.MAX_SP * HALF_SPACE_SS - STAFF_HALF_SS;
+    /** Minimum staff-space amount reserved below the staff bottom, derived from {@link StaffPosition#MAX}. */
+    public static final double MIN_BELOW_STAFF_SS = StaffPosition.MAX.value() * HALF_SPACE_SS - STAFF_HALF_SS;
 
     private Staff() {}
 
@@ -57,7 +57,7 @@ public final class Staff {
      * <p>
      * The argument is a distance — a difference between two staff positions, or an
      * offset expressed in half staff spaces — never a staff position itself. A
-     * position is converted by {@link StaffPosition#toSs(int)}. The two are the same
+     * position is converted by {@link StaffPosition#toSs()}. The two are the same
      * arithmetic, and only the name says which of them a call site means, so a site
      * that measures from the middle staff line belongs in the other method however
      * well this one compiles.

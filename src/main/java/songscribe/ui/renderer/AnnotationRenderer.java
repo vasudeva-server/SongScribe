@@ -62,7 +62,7 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var decorationLayout = invariants.getLayoutResult().findAttachmentDecorationLayout(
+        var decorationLayout = invariants.getLayoutResult().decorationLayouts().findAttachmentDecorationLayout(
             element, AnnotationAttachment.class);
 
         if (decorationLayout == null) {

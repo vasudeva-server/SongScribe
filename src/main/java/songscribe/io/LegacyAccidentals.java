@@ -23,7 +23,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.StaffElement.Accidental;
+import songscribe.dom.Accidental;
 
 /**
  * Lookups for the retired {@code NATURAL_FLAT}, {@code NATURAL_SHARP}, and

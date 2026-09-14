@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * Represents a beat change (metric modulation) attachment on a note.
  * <p>
@@ -40,18 +38,6 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
      * @param beatChange The beat change data
      */
     public BeatChangeAttachment(BeatChange beatChange) {
-        super(Alignment.CENTER);
-        this.beatChange = beatChange;
-    }
-
-    /**
-     * Creates a beat change attachment attached to a note.
-     *
-     * @param parent     The parent note
-     * @param beatChange The beat change data
-     */
-    public BeatChangeAttachment(@Nullable StaffElement parent, BeatChange beatChange) {
-        super(parent, Alignment.CENTER);
         this.beatChange = beatChange;
     }
 
@@ -59,14 +45,14 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
      * {@inheritDoc}
      *
      * <p>Deliberately <em>not</em> routed through
-     * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
+     * {@link Song#withBeatDefiningEdit}: the copy is not yet in the document, so there
      * is no position to validate from. The clipboard is the only caller that copies a beat
      * change into a different context, and paste re-validates the tuplets it carries in
      * {@code PasteSpanReconciliation}.
      */
     @Override
-    protected Attachment createCopy(StaffElement newOwner) {
-        return new BeatChangeAttachment(newOwner, beatChange);
+    protected Attachment createCopy() {
+        return new BeatChangeAttachment(beatChange);
     }
 
     /**
@@ -85,6 +71,6 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
      * edit in that helper and read its result.
      */
     public void setBeatChange(BeatChange beatChange) {
-        Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.beatChange = beatChange);
+        Song.withBeatDefiningEditOn(owner(), () -> this.beatChange = beatChange);
     }
 }

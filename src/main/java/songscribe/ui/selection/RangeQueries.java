@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -67,7 +68,7 @@ public final class RangeQueries {
      * A tie candidate spanning a line boundary, with {@code anchor} the endpoint earlier in
      * document order and {@code end} the endpoint later (#493).
      */
-    public record BoundaryTie(StaffElement anchor, StaffElement end) {}
+    public record BoundaryTie(NoteElement anchor, NoteElement end) {}
 
     /**
      * Returns the cross-line tie candidate for the element at {@code index} in {@code line},
@@ -81,22 +82,26 @@ public final class RangeQueries {
      */
     public static @Nullable BoundaryTie boundaryTieAt(Line line, int index) {
         var song = line.getSong();
-        var element = line.getElement(index);
+
+        if (!(line.getElement(index) instanceof NoteElement note)) {
+            return null;
+        }
+
         BoundaryTie candidate = null;
 
         if (index == tieEntryIndex(line) && !line.isFirst()) {
             var previousLine = song.getLine(line.index() - 1);
             var anchorIndex = tieExitIndex(previousLine);
 
-            if (anchorIndex >= 0) {
-                candidate = new BoundaryTie(previousLine.getElement(anchorIndex), element);
+            if (anchorIndex >= 0 && previousLine.getElement(anchorIndex) instanceof NoteElement anchor) {
+                candidate = new BoundaryTie(anchor, note);
             }
         } else if (index == tieExitIndex(line) && !line.isLast()) {
             var nextLine = song.getLine(line.index() + 1);
             var endIndex = tieEntryIndex(nextLine);
 
-            if (endIndex >= 0) {
-                candidate = new BoundaryTie(element, nextLine.getElement(endIndex));
+            if (endIndex >= 0 && nextLine.getElement(endIndex) instanceof NoteElement end) {
+                candidate = new BoundaryTie(note, end);
             }
         }
 
@@ -115,7 +120,7 @@ public final class RangeQueries {
      * for a pair selected within one line, {@link #boundaryTieAt} for a pair straddling a line
      * break — and a rule written twice is a rule that changes in one place only.
      */
-    private static boolean canBeTied(StaffElement anchor, StaffElement end) {
+    private static boolean canBeTied(NoteElement anchor, NoteElement end) {
         return anchor.getType().isPitchedNote()
             && end.getType().isPitchedNote()
             && anchor.getPitch() == end.getPitch();
@@ -254,7 +259,10 @@ public final class RangeQueries {
         var line = range.line();
         var begin = range.begin();
         var end = range.end();
-        if (!canBeTied(line.getElement(begin), line.getElement(end))) {
+
+        if (!(line.getElement(begin) instanceof NoteElement anchorNote)
+            || !(line.getElement(end) instanceof NoteElement endNote)
+            || !canBeTied(anchorNote, endNote)) {
             return false;
         }
 
@@ -396,7 +404,7 @@ public final class RangeQueries {
         var sourceElement = line.getElement(sourceIndex);
 
         // Removal answers before any add-only gate runs.
-        if (sourceElement.hasGlissando()) {
+        if (sourceElement instanceof NoteElement sourceNote && sourceNote.hasGlissando()) {
             return sourceIndex;
         }
 
@@ -437,11 +445,8 @@ public final class RangeQueries {
         var line = range.line();
 
         return IntStream.rangeClosed(range.begin(), range.end())
-            .filter(i -> {
-                var element = line.getElement(i);
-
-                return element.hasFall() || element.getType().isPitchedNote();
-            })
+            .filter(i -> line.getElement(i) instanceof NoteElement note
+                && (note.hasFall() || note.getType().isPitchedNote()))
             .toArray();
     }
 

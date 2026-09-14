@@ -25,7 +25,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StemMetrics;
-import songscribe.smufl.Notehead;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.smufl.StemmedNotehead;
@@ -62,9 +61,9 @@ import static songscribe.engraving.BarStroke.THIN;
  * </pre>
  *
  * The predicates that state a rule rather than name a category — accidental cancellation,
- * lyric-chain behavior, annotation capacity, and the bar rules below — are not in the matrix,
- * and two of them, {@link #isNoteWithStem()} and {@link #isBeamable()}, do not answer from the
- * kind at all.
+ * lyric-chain behavior, annotation capacity, beaming eligibility, ending-anchor eligibility,
+ * and the bar rules below — are not in the matrix, and two of them,
+ * {@link #isNoteWithStem()} and {@link #isBeamable()}, do not answer from the kind at all.
  *
  * <p>A grace note sounds a pitch and occupies no time, so it is a note that is neither a duration
  * nor a non-duration: {@link #isDuration()} and {@link #isNonDuration()} do not partition the
@@ -97,13 +96,16 @@ public enum ElementType {
         new NoteheadAppearance(StemmedNotehead.BLACK)),
 
     // Rests
-    SEMIBREVE_REST(Kind.REST, NoteValue.WHOLE, new GlyphAppearance(SMuFLGlyph.REST_WHOLE, -2)),
-    MINIM_REST(Kind.REST, NoteValue.HALF, new GlyphAppearance(SMuFLGlyph.REST_HALF, 0)),
-    CROTCHET_REST(Kind.REST, NoteValue.QUARTER, new GlyphAppearance(SMuFLGlyph.REST_QUARTER, 0)),
-    QUAVER_REST(Kind.REST, NoteValue.EIGHTH, new GlyphAppearance(SMuFLGlyph.REST_8TH, 0)),
-    SEMIQUAVER_REST(Kind.REST, NoteValue.SIXTEENTH, new GlyphAppearance(SMuFLGlyph.REST_16TH, 0)),
+    SEMIBREVE_REST(Kind.REST, NoteValue.WHOLE,
+        new DottableGlyphAppearance(SMuFLGlyph.REST_WHOLE, -2)),
+    MINIM_REST(Kind.REST, NoteValue.HALF, new DottableGlyphAppearance(SMuFLGlyph.REST_HALF, 0)),
+    CROTCHET_REST(Kind.REST, NoteValue.QUARTER,
+        new DottableGlyphAppearance(SMuFLGlyph.REST_QUARTER, 0)),
+    QUAVER_REST(Kind.REST, NoteValue.EIGHTH, new DottableGlyphAppearance(SMuFLGlyph.REST_8TH, 0)),
+    SEMIQUAVER_REST(Kind.REST, NoteValue.SIXTEENTH,
+        new DottableGlyphAppearance(SMuFLGlyph.REST_16TH, 0)),
     DEMI_SEMIQUAVER_REST(Kind.REST, NoteValue.THIRTY_SECOND,
-        new GlyphAppearance(SMuFLGlyph.REST_32ND, 0)),
+        new DottableGlyphAppearance(SMuFLGlyph.REST_32ND, 0)),
 
     // Grace notes
     GRACE_QUAVER(Kind.GRACE_NOTE, NoteValue.EIGHTH, new NoteheadAppearance(StemmedNotehead.BLACK)),
@@ -116,7 +118,7 @@ public enum ElementType {
     // Half a staff space above the top staff line. This is the single source for where a
     // breath mark sits: StaffElementRenderer.renderBreathMark() derives the glyph's Y from it and the
     // hit rect is built from it, so the drawn glyph and its clickable area cannot disagree.
-    BREATH_MARK(Kind.BREATH_MARK, new GlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA, -5)),
+    BREATH_MARK(Kind.BREATH_MARK, new PlainGlyphAppearance(SMuFLGlyph.BREATH_MARK_COMMA, -5)),
 
     // Barlines
     SINGLE_BARLINE(Kind.BARLINE, BarAppearance.SINGLE_BARLINE),
@@ -203,7 +205,10 @@ public enum ElementType {
     public StaffElement newInstance() {
         return switch (appearance) {
             case NoteheadAppearance ignored -> new NoteElement(this);
-            case GlyphAppearance ignored -> new GlyphElement(this);
+            case GlyphAppearance glyph -> switch (glyph) {
+                case DottableGlyphAppearance ignored -> new RestElement(this);
+                case PlainGlyphAppearance ignored -> new BreathMarkElement(this);
+            };
             case BarAppearance ignored -> new BarElement(this);
             case KeySignatureAppearance ignored -> new KeyChangeElement(Key.NO_ACCIDENTALS);
         };
@@ -223,7 +228,7 @@ public enum ElementType {
      * @return the height of an element of this type from its highest to its lowest ink with its
      *     stem in {@code direction}; the glyph's own height for a type with no stem
      */
-    public double getElementHeightSs(StaffElement.Direction direction) {
+    public double getElementHeightSs(Direction direction) {
         return direction.isUp() ? bounds.heightUpSs() : bounds.heightDownSs();
     }
 
@@ -292,7 +297,7 @@ public enum ElementType {
      *     {@code direction}, negative: the stem tip when the stem is up, otherwise
      *     {@link #getNoteheadTopOffsetSs()}
      */
-    public double getTopYOffsetSs(StaffElement.Direction direction) {
+    public double getTopYOffsetSs(Direction direction) {
         return direction.isUp() ? bounds.topOffsetUpSs() : bounds.topOffsetDownSs();
     }
 
@@ -375,6 +380,17 @@ public enum ElementType {
     }
 
     /**
+     * The number of beams a beamed note of this type carries: the flags its value would carry
+     * on its own. Asked of any type, so a walk over a beam's members need not test first; a type
+     * that cannot take part in a beam answers 0.
+     *
+     * @return {@code value.flagCount()} for a beamable type, 0 for anything else
+     */
+    public int beamCount() {
+        return isBeamable() && value != null ? value.flagCount() : 0;
+    }
+
+    /**
      * @return {@code true} for a repeat sign, whichever way it faces
      */
     public boolean isRepeat() {
@@ -413,26 +429,18 @@ public enum ElementType {
     }
 
     /**
-     * Whether this element cancels every accidental written before it, so that a later note at the
-     * same staff position inherits nothing from across it and falls back to the key.
-     * Convention: any structural marker cancels. A breath mark deliberately does not — it cancels
-     * nothing.
-     *
-     * <p>Both places that resolve which accidental is sounding ask this: the resolver that reads
-     * the live line ({@link StaffElement#findEffectiveAccidental}) and the one that reads a
-     * projection of how the line will look after an edit ({@code AccidentalReconciliation}). They
-     * have to agree, or an edit's preview and its result would disagree about a note's pitch.
-     *
-     * <p>{@link #isBar()} is asked elsewhere in the codebase for unrelated reasons — closing a
-     * MusicXML measure, bounding an ending, choosing a glyph — so this is deliberately narrow
-     * rather than a general "is a structural marker". A key change belongs here, and only here:
-     * a new key change resets what a later note at the same staff position inherits, but it
-     * does not close a measure, bound an ending or pick a glyph.
-     *
-     * @return {@code true} for a bar or a key change
+     * Whether this element ends every accidental in force: a key change.
      */
-    public boolean cancelsAccidentals() {
-        return isBar() || isKeyChange();
+    public boolean endsAccidentalsInForce() {
+        return isKeyChange();
+    }
+
+    /**
+     * Whether this element intervenes before the next note at any staff position: a barline or
+     * a repeat.
+     */
+    public boolean intervenesInChain() {
+        return isBar();
     }
 
     /**
@@ -662,7 +670,7 @@ public enum ElementType {
      *     type that is not a note
      */
     @Nullable
-    public SMuFLGlyph getFlagGlyph(StaffElement.Direction direction) {
+    public SMuFLGlyph getFlagGlyph(Direction direction) {
         return flagGlyph(kind, value, direction);
     }
 
@@ -672,11 +680,11 @@ public enum ElementType {
      */
     @Nullable
     private static SMuFLGlyph flagGlyph(
-        Kind kind, @Nullable NoteValue value, StaffElement.Direction direction
+        Kind kind, @Nullable NoteValue value, Direction direction
     ) {
         return switch (kind) {
             // A grace note's stem is always up, whatever direction the caller asks for.
-            case GRACE_NOTE -> value == null ? null : value.flagGlyph(StaffElement.Direction.UP);
+            case GRACE_NOTE -> value == null ? null : value.flagGlyph(Direction.UP);
             case NOTE -> value == null ? null : value.flagGlyph(direction);
             case REST, BARLINE, REPEAT, BREATH_MARK, KEY_CHANGE -> null;
         };
@@ -705,7 +713,7 @@ public enum ElementType {
             case NoteheadAppearance(WholeNotehead notehead) ->
                 computeGlyphBoundsSs(notehead.glyph());
 
-            case GlyphAppearance(SMuFLGlyph glyph, int ignored) -> computeGlyphBoundsSs(glyph);
+            case GlyphAppearance glyph -> computeGlyphBoundsSs(glyph.glyph());
 
             case BarAppearance bar -> ElementBounds.symmetric(
                 new Size(bar.widthSs(), Staff.STAFF_HEIGHT_SS), -Staff.STAFF_HALF_SS);
@@ -730,7 +738,7 @@ public enum ElementType {
 
         // Width: max of notehead and stem-up flag extent
         var widthSs = headRightSs;
-        var flagGlyph = flagGlyph(kind, value, StaffElement.Direction.UP);
+        var flagGlyph = flagGlyph(kind, value, Direction.UP);
 
         if (flagGlyph != null) {
             widthSs = Math.max(widthSs, stemUpXSs + SMuFLMetadata.bboxSs(flagGlyph).rightSs());
@@ -765,7 +773,7 @@ public enum ElementType {
 
         var upTopSs = stemUpYSs - StemMetrics.GRACE_NOTE_STEM_LENGTH_SS;
         var widthSs = headRightSs;
-        var flagGlyph = flagGlyph(kind, value, StaffElement.Direction.UP);
+        var flagGlyph = flagGlyph(kind, value, Direction.UP);
 
         if (flagGlyph != null) {
             var flagRightSs = SMuFLMetadata.bboxSs(flagGlyph).rightSs() * scale;

@@ -88,7 +88,7 @@ public final class BeatChangeController extends AttachmentDialogController<BeatC
             if (existing != null) {
                 existing.setBeatChange(change);
             } else {
-                element.addAttachment(new BeatChangeAttachment(element, change));
+                element.addAttachment(new BeatChangeAttachment(change));
             }
         }));
     }

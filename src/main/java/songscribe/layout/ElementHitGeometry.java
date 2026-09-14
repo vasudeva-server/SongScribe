@@ -76,9 +76,9 @@ public final class ElementHitGeometry {
         var naturalWidthSs = element.getGlyphWidthSs();
         var naturalHeightSs = elementType.getFullElementHeightSs();
 
-        // Layout space puts the staff midline at Y = 0, so the note's Y is its staff position
+        // Layout space puts the staff midline at Y = 0, so the element's Y is the seat of its ink
         // alone — the same quantity the UI hit test read from LineComponent.getMiddleLineYSs().
-        var elementYSs = NoteGeometry.noteStaffPositionToCoordinateSs(element.getStaffPosition(), 0);
+        var elementYSs = NoteGeometry.noteStaffPositionToCoordinateSs(ElementSeat.seatSp(element).value(), 0);
         var topOffsetSs = elementType.getNoteheadTopOffsetSs();
 
         if (!expandToMinimum) {

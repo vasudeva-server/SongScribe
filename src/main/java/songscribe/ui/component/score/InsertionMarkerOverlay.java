@@ -40,7 +40,7 @@ import songscribe.util.GraphicsState;
  * Exactly one instance exists for the lifetime of the owning {@link ScoreView}; it is retargeted
  * and shown or hidden by {@code InsertionPointMode} rather than being recreated. Its height is
  * identical on every line — it is bounded by the compile-time constants
- * {@link StaffPosition#MIN_SP} and {@link StaffPosition#MAX_SP} — so only its x
+ * {@link StaffPosition#MIN} and {@link StaffPosition#MAX} — so only its x
  * position and the zoom-driven scale ever change.
  */
 public final class InsertionMarkerOverlay extends LineOverlayComponent {
@@ -112,8 +112,8 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
             + previewElement.getGlyphWidthSs() / 2;
 
         var middleLineYSs = line.getMiddleLineYSs();
-        var topYSs = middleLineYSs + StaffPosition.toSs(StaffPosition.MIN_SP);
-        var bottomYSs = middleLineYSs + StaffPosition.toSs(StaffPosition.MAX_SP);
+        var topYSs = middleLineYSs + StaffPosition.MIN.toSs();
+        var bottomYSs = middleLineYSs + StaffPosition.MAX.toSs();
         var halfThicknessSs = INSERTION_POINT_THICKNESS_SS / 2;
 
         return new Rectangle2D.Double(

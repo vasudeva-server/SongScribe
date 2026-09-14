@@ -25,7 +25,8 @@ import java.util.EnumSet;
 import songscribe.Strings;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
-import songscribe.dom.StaffElement;
+import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.component.MainFrame;
 
@@ -91,13 +92,13 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
     }
 
     @Override
-    public boolean matchesElement(StaffElement element) {
+    public boolean matchesElement(NoteElement element) {
         var existing = element.findAttachment(DynamicAttachment.class);
         return existing != null && existing.getType() == dynamicType;
     }
 
     @Override
-    public void applyToElement(StaffElement element, boolean selected) {
+    public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
         var existing = element.findAttachment(DynamicAttachment.class);
 
         if (existing != null) {
@@ -110,7 +111,7 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
         }
 
         if (selected) {
-            element.addAttachment(new DynamicAttachment(element, dynamicType));
+            element.addAttachment(new DynamicAttachment(dynamicType));
         }
     }
 

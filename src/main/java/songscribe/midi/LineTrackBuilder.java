@@ -28,10 +28,10 @@ import javax.sound.midi.Track;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.NoteElement;
+import songscribe.dom.Slide;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -69,7 +69,7 @@ public class LineTrackBuilder {
      */
     public int getElementDurationWithTuplet(int elementIndex) {
         var element = line.getElement(elementIndex);
-        var writtenTicks = element.getDuration();
+        var writtenTicks = element.playedDuration();
         var tuplet = line.findTupletAt(elementIndex);
 
         if ((tuplet == null) || !tuplet.isResolved()) {
@@ -81,7 +81,7 @@ public class LineTrackBuilder {
         var writtenTicksBefore = 0L;
 
         for (var i = tuplet.getAnchorElementIndex(); i < elementIndex; i++) {
-            writtenTicksBefore += line.getElement(i).getDuration();
+            writtenTicksBefore += line.getElement(i).playedDuration();
         }
 
         var startOffset = scaledOffset(writtenTicksBefore, normalNotes, grade);
@@ -320,16 +320,16 @@ public class LineTrackBuilder {
         var type = element.getType();
         var trackTicks = ticks;
 
-        if (type.isGraceNote()) {
+        if (element instanceof NoteElement graceNote && type.isGraceNote()) {
             // Grace notes always have a connected glissando: zero duration,
             // just store the pitch for the next note's slide-in
-            slideHelper.setPendingGracePitch(element.getPitch());
-        } else if (type.isNote() || type.isRest()) {
+            slideHelper.setPendingGracePitch(graceNote.getPitch());
+        } else if (type.isDuration()) {
             var duration = getElementDurationWithTuplet(elementIndex);
 
-            if (type.isNote()) {
+            if (element instanceof NoteElement note) {
                 var tieSpan = line.findTieAt(elementIndex);
-                var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
+                var velocity = noteVelocity(note, velocityMap, lineIndex, elementIndex);
 
                 // Receiver-relative resolution. Reading the indices off the tie would compare
                 // an index resolved in the anchor's line with elementIndex in this one, so a
@@ -346,23 +346,21 @@ public class LineTrackBuilder {
 
                     if (slideHelper.hasPendingGracePitch()) {
                         addGraceGlissandoSlideIn(
-                            track, trackTicks, duration, element, velocity, slideHelper
+                            track, trackTicks, duration, note, velocity, slideHelper
                         );
                     } else {
-                        addNoteOn(track, trackTicks, element, velocity);
+                        addNoteOn(track, trackTicks, note, velocity);
                     }
                 }
 
                 if (releasesNote) {
-                    var slide = element.getSlide();
+                    var slide = note.getSlide();
 
                     if (slide != null) {
-                        addSlideMessages(
-                            track, trackTicks, duration, elementIndex,
-                            element, settings, slideHelper, slide instanceof StaffElement.Glissando
-                        );
+                        var slideEvent = new SlideEvent(trackTicks, duration, elementIndex, note, slide);
+                        addSlideMessages(track, slideEvent, settings, slideHelper);
                     } else {
-                        addNormalNoteOff(track, trackTicks, duration, element, settings);
+                        addNormalNoteOff(track, trackTicks, duration, note, settings);
                     }
                 }
             }
@@ -374,6 +372,13 @@ public class LineTrackBuilder {
     }
 
     /**
+     * The note event a slide's pitch bend and note-off messages are emitted for.
+     */
+    private record SlideEvent(
+        int trackTicks, int duration, int elementIndex, NoteElement element, Slide slide
+    ) {}
+
+    /**
      * Adds slide pitch bend messages and note-off for a note with a slide.
      * For connecting glissandos, the note sustains for its full written duration (ignoring
      * staccato) and slides toward the next note's pitch. For a fall, the sounding
@@ -381,33 +386,29 @@ public class LineTrackBuilder {
      */
     private void addSlideMessages(
         Track track,
-        int trackTicks,
-        int duration,
-        int elementIndex,
-        StaffElement element,
+        SlideEvent event,
         PlaybackSettings settings,
-        SlideMidiHelper slideHelper,
-        boolean connecting
+        SlideMidiHelper slideHelper
     ) throws InvalidMidiDataException {
+        var trackTicks = event.trackTicks();
+        var duration = event.duration();
+        var elementIndex = event.elementIndex();
+        var element = event.element();
+        var connecting = event.slide() == Slide.GLISSANDO;
         var sourcePitch = element.getPitch();
         int targetPitch;
         int soundingDuration;
 
         if (connecting) {
             // Need the next note's pitch; fall back to normal note-off if unavailable
-            if (elementIndex + 1 >= line.elementCount()) {
+            if (elementIndex + 1 >= line.elementCount()
+                || !(line.getElement(elementIndex + 1) instanceof NoteElement nextNote)
+                || !nextNote.getType().isPitchedNote()) {
                 addNormalNoteOff(track, trackTicks, duration, element, settings);
                 return;
             }
 
-            var nextElement = line.getElement(elementIndex + 1);
-
-            if (!nextElement.getType().isPitchedNote()) {
-                addNormalNoteOff(track, trackTicks, duration, element, settings);
-                return;
-            }
-
-            targetPitch = nextElement.getPitch();
+            targetPitch = nextNote.getPitch();
             soundingDuration = duration;
         } else {
             targetPitch = SlideMidiHelper.resolveTargetPitch(sourcePitch);
@@ -464,7 +465,7 @@ public class LineTrackBuilder {
         Track track,
         int trackTicks,
         int duration,
-        StaffElement element,
+        NoteElement element,
         int velocity,
         SlideMidiHelper slideHelper
     ) throws InvalidMidiDataException {
@@ -499,7 +500,7 @@ public class LineTrackBuilder {
         Track track,
         int trackTicks,
         int duration,
-        StaffElement element,
+        NoteElement element,
         PlaybackSettings settings
     ) throws InvalidMidiDataException {
         addNoteOff(track, trackTicks + calculateSoundingDuration(duration, element, settings), element);
@@ -510,7 +511,7 @@ public class LineTrackBuilder {
      */
     int calculateSoundingDuration(
         int duration,
-        StaffElement element,
+        NoteElement element,
         PlaybackSettings settings
     ) {
         return (int) ((duration * (long) calculateSoundingPercent(element, settings)) / PERCENT);
@@ -520,9 +521,9 @@ public class LineTrackBuilder {
      * Returns the sounding duration percentage for a note, considering articulation
      * overrides and the global noteDurationPercent setting.
      */
-    static int calculateSoundingPercent(StaffElement element, PlaybackSettings settings) {
+    static int calculateSoundingPercent(NoteElement element, PlaybackSettings settings) {
         var midiOverride = element.findMidiDurationOverride();
-        return (midiOverride < 0) ? settings.noteDurationPercent() : midiOverride;
+        return (midiOverride == null) ? settings.noteDurationPercent() : midiOverride;
     }
 
     /**
@@ -531,7 +532,7 @@ public class LineTrackBuilder {
      * Otherwise falls back to the legacy binary logic (accented or not).
      */
     static int noteVelocity(
-        StaffElement note,
+        NoteElement note,
         @Nullable VelocityMap velocityMap,
         int lineIndex,
         int noteIndex
@@ -548,7 +549,7 @@ public class LineTrackBuilder {
     /**
      * Adds a note-on MIDI message to the track with an explicit velocity.
      */
-    private void addNoteOn(Track track, int ticks, StaffElement note, int velocity)
+    private void addNoteOn(Track track, int ticks, NoteElement note, int velocity)
         throws InvalidMidiDataException {
         var down = new ShortMessage();
         down.setMessage(ShortMessage.NOTE_ON, 0, note.getPitch(), velocity);
@@ -558,7 +559,7 @@ public class LineTrackBuilder {
     /**
      * Adds a note-off MIDI message to the track.
      */
-    private void addNoteOff(Track track, int ticks, StaffElement note) throws InvalidMidiDataException {
+    private void addNoteOff(Track track, int ticks, NoteElement note) throws InvalidMidiDataException {
         var up = new ShortMessage();
         up.setMessage(ShortMessage.NOTE_OFF, 0, note.getPitch(), 0);
         track.add(new MidiEvent(up, ticks));

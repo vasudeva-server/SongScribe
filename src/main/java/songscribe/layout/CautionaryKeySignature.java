@@ -219,16 +219,19 @@ public record CautionaryKeySignature(
      *       overflowing line for the same reason.</li>
      * </ul>
      *
-     * @param layoutResult the line's solved layout
-     * @param lineWidthSs  the width of the staff line
+     * @param overflowsStaffWidth whether the line's content
+     *                            {@link LayoutResult#overflowsStaffWidth() overflows the staff}
+     * @param contentRightEdgeSs  the line's {@link LayoutResult#contentRightEdgeSs() rightmost
+     *                            solved column edge}
+     * @param lineWidthSs         the width of the staff line
      * @return the coordinates to draw from, and the ones a hit test on the glyphs reads;
      *     a {@link Placement.WithBarLine} exactly when {@link #drawsBarLine()} is true
      */
-    public Placement placeIn(LayoutResult layoutResult, double lineWidthSs) {
+    public Placement placeIn(boolean overflowsStaffWidth, double contentRightEdgeSs, double lineWidthSs) {
         double accidentalsXSs;
 
-        if (layoutResult.overflowsStaffWidth()) {
-            accidentalsXSs = layoutResult.contentRightEdgeSs() + leadInSs();
+        if (overflowsStaffWidth) {
+            accidentalsXSs = contentRightEdgeSs + leadInSs();
         } else {
             accidentalsXSs =
                 lineWidthSs - EngravingConstants.KEY_SIGNATURE_PADDING_SS - accidentalsWidthSs();

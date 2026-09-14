@@ -26,8 +26,8 @@ import org.xml.sax.SAXException;
 
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
+import songscribe.io.LoadMigrations;
 import songscribe.io.SongLoadResult;
 import songscribe.util.Utils;
 
@@ -52,10 +52,10 @@ final class SongMapper {
      *
      * @param document the unmarshalled score, with the root element name and {@code version}
      *                 attribute as the document actually wrote them
-     * @return the mapped song, its document fonts, the load warnings, the
-     *         accidentals-converted flag and the tuplet load-pass report
+     * @return the mapped song, its document fonts, the load warnings and what the
+     *         post-parse migration passes changed
      * @throws SAXException if the document is not a supported MusicXML version
-     *                      ({@link MusicXmlReader.UnsupportedFormatException}), was not
+     *                      ({@link MusicXmlReader.InvalidFormatException}), was not
      *                      written by SongScribe
      *                      ({@link MusicXmlReader.ForeignSoftwareException}), carries an
      *                      unsupported SongScribe version
@@ -85,7 +85,7 @@ final class SongMapper {
 
         try {
             HeaderMapper.map(score, song, documentFonts);
-            accidentalsConverted = MeasureMapper.map(score, song);
+            accidentalsConverted = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
 
             // Restore the terminal invariant while tracking is still suspended so the
             // fix-ups are silent: the writer emits a line's closing barline only as a
@@ -110,14 +110,13 @@ final class SongMapper {
         // Run here rather than in the UI: SongLoader's headless route runs it too, and a
         // song whose tuplets were settled in only one of the two routes would export a
         // different MIDI file than it displays.
-        var tupletReport = TupletLoadPass.run(song);
+        var migrations = LoadMigrations.run(song, accidentalsConverted);
 
         return new SongLoadResult.Success(
             song,
             documentFonts,
             List.of(),
-            accidentalsConverted,
-            tupletReport);
+            migrations);
     }
 
     /**
@@ -132,17 +131,17 @@ final class SongMapper {
      */
     private static void checkFormat(
         MusicXmlSerializer.ParsedDocument document
-    ) throws MusicXmlReader.UnsupportedFormatException {
+    ) throws MusicXmlReader.InvalidFormatException {
         var rootElement = document.rootElement();
 
         if (!MusicXmlTags.SCORE_PARTWISE.equals(rootElement)) {
-            throw new MusicXmlReader.UnsupportedFormatException("root <" + rootElement + '>');
+            throw new MusicXmlReader.InvalidFormatException("root <" + rootElement + '>');
         }
 
         var version = document.version();
 
         if (version == null) {
-            throw new MusicXmlReader.UnsupportedFormatException("missing version attribute");
+            throw new MusicXmlReader.InvalidFormatException("missing version attribute");
         }
 
         int comparison;
@@ -150,11 +149,11 @@ final class SongMapper {
         try {
             comparison = Utils.compareVersions(version, MusicXmlTags.VERSION_VALUE);
         } catch (NumberFormatException e) {
-            throw new MusicXmlReader.UnsupportedFormatException("unparseable version '" + version + '\'');
+            throw new MusicXmlReader.InvalidFormatException("unparseable version '" + version + '\'');
         }
 
         if (comparison < 0) {
-            throw new MusicXmlReader.UnsupportedFormatException(
+            throw new MusicXmlReader.InvalidFormatException(
                 "unsupported MusicXML version '" + version +
                 "'; requires " + MusicXmlTags.VERSION_VALUE + " or later"
             );

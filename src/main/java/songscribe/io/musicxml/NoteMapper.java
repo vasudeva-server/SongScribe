@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import jakarta.xml.bind.JAXBElement;
 
@@ -40,17 +41,26 @@ import org.audiveris.proxymusic.TiedType;
 import org.audiveris.proxymusic.Tuplet;
 import org.audiveris.proxymusic.WavyLine;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.AccidentalState;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.Direction;
+import songscribe.dom.Dots;
+import songscribe.dom.Dottable;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Stem;
+import songscribe.engraving.PitchOutOfRangeException;
+import songscribe.io.DocumentValidation;
 import songscribe.io.LegacyAccidentals;
 
 /**
@@ -78,6 +88,8 @@ import songscribe.io.LegacyAccidentals;
  * one per span kind, each returning exactly what its pass consumes.
  */
 final class NoteMapper {
+
+    private static final Logger LOG = LoggerFactory.getLogger(NoteMapper.class);
 
     private NoteMapper() {}
 
@@ -117,7 +129,7 @@ final class NoteMapper {
         int actualNotes,
         int normalNotes,
         @Nullable String normalTypeToken,
-        int normalDotCount
+        Dots normalDots
     ) {}
 
     /**
@@ -129,18 +141,21 @@ final class NoteMapper {
     /**
      * Maps {@code pmNote} to a {@link StaffElement}, appends it to {@code line},
      * and resolves its non-span attachments (articulations, fermata, dynamic,
-     * fall) and its lyrics.
+     * fall) and its lyrics. {@code relative-x} is taken as the user's horizontal offset
+     * only when {@code features} declares it.
      *
-     * @throws SAXException if the note is missing its {@code <type>} element, or
-     *                      carries an unrecognised one
+     * @throws SAXException if the note is missing its {@code <type>} element, or carries an
+     *                      unrecognised one; a {@code <pitch>} that is unspellable or lies
+     *                      off the staff; more than two {@code <dot>} elements; or a second
+     *                      fermata or dynamic for the element
      */
-    static MappedNote map(Note pmNote, Line line) throws SAXException {
+    static MappedNote map(Note pmNote, Line line, Set<SupportedFeature> features) throws SAXException {
         var typeToken = ProxyMusicAccess.requireNoteTypeToken(pmNote).trim();
         var isRest = ProxyMusicAccess.isRest(pmNote);
         var elementType = NoteTypeMapping.forTypeToken(typeToken, isRest, ProxyMusicAccess.isGrace(pmNote));
 
         if (elementType == null) {
-            throw new MusicXmlReader.UnsupportedFormatException("Unrecognised <type> token: '" + typeToken + '\'');
+            throw new MusicXmlReader.InvalidFormatException("Unrecognised <type> token: '" + typeToken + '\'');
         }
 
         var element = elementType.newInstance();
@@ -148,29 +163,48 @@ final class NoteMapper {
         // <step> + <octave> are authoritative for pitch (key-independent); <alter>
         // is ignored on read. Rests carry no pitch.
         var pitch = ProxyMusicAccess.pitch(pmNote);
+        var usedLegacyAccidental = false;
 
-        if (pitch != null) {
-            element.setStaffPosition(PitchSpelling.staffPositionFor(pitch.step(), pitch.octave()));
+        if (element instanceof NoteElement note) {
+            if (pitch != null) {
+                // A pitch beyond the outermost ledger line is valid MusicXML stating something
+                // this program cannot represent, not a bug in the mapper, so it is refused here
+                // rather than left to the reader's runtime-exception backstop. Its detail is the
+                // only thing that reaches the user, and it names only the staff position, which
+                // the document never states, so the pitch as the document spells it leads it.
+                try {
+                    note.setStaffPosition(PitchSpelling.staffPositionFor(pitch.step(), pitch.octave()));
+                } catch (PitchOutOfRangeException e) {
+                    throw new MusicXmlReader.InvalidFormatException(
+                        "<pitch> " + pitch.step() + pitch.octave() + ": " + e.detail());
+                }
+            }
+
+            usedLegacyAccidental = applyAccidental(pmNote, note);
+
+            // A present <stem> is a manual override; its absence means auto direction. A grace
+            // note's stem is always up, whatever the document says, so it never carries a
+            // forced stem: NoteElement.direction() answers UP for it before consulting the stem.
+            if (ProxyMusicAccess.hasStem(pmNote) && !note.getType().isGraceNote()) {
+                note.setStem(new Stem.Forced(
+                    ProxyMusicAccess.stemIsUp(pmNote) ? Direction.UP : Direction.DOWN));
+            } else {
+                note.setStem(Stem.AUTO);
+            }
         }
 
-        element.setDotCount(pmNote.getDot().size());
-
-        var usedLegacyAccidental = applyAccidental(pmNote, element);
-
-        // A present <stem> is a manual override; its absence means auto direction.
-        if (ProxyMusicAccess.hasStem(pmNote)) {
-            element.setUpper(ProxyMusicAccess.stemIsUp(pmNote));
-            element.setStemDirectionAuto(false);
-        } else {
-            element.setStemDirectionAuto(true);
+        if (element instanceof Dottable dottable) {
+            dottable.setDots(dotsOf(pmNote.getDot().size(), MusicXmlTags.DOT));
         }
 
-        var relativeXTenths = ProxyMusicAccess.decimal(pmNote.getRelativeX());
+        // A document that does not declare relative-x wrote its layout position there,
+        // so taking it as an offset would displace every note by its own X.
+        if (features.contains(SupportedFeature.NOTE_RELATIVE_X)) {
+            var relativeXTenths = ProxyMusicAccess.decimal(pmNote.getRelativeX());
 
-        if (relativeXTenths != null) {
-            element.setXOffsetPx(
-                DocumentScale.ssToPx(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE).positionPx()
-            );
+            if (relativeXTenths != null) {
+                element.setUserXOffsetSs(relativeXTenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE);
+            }
         }
 
         // Append before adding attachments so each attachment's parent line is wired.
@@ -178,7 +212,7 @@ final class NoteMapper {
 
         var notations = readNotations(pmNote);
         applyNotationAttachments(notations, element);
-        element.lyrics.addAll(mapLyrics(pmNote));
+        putLyrics(pmNote, element);
 
         return new MappedNote(element, usedLegacyAccidental, notations.hasBreathMark());
     }
@@ -188,12 +222,13 @@ final class NoteMapper {
     // -------------------------------------------------------------------------
 
     /**
-     * Applies the displayed accidental glyph, which comes from {@code <accidental>}
-     * and never from {@code <alter>}. Returns true when the token was a retired
-     * legacy one converted to its replacement — the caller ORs that into the
-     * document-wide accidentals-converted flag.
+     * Applies the accidental state, which comes from {@code <accidental>} and never
+     * from {@code <alter>}. A note without an {@code <accidental>} stays {@code Adopting}.
+     * Returns true when the token was a retired legacy one converted to its
+     * replacement — the caller ORs that into the document-wide accidentals-converted
+     * flag.
      */
-    private static boolean applyAccidental(Note pmNote, StaffElement element) {
+    private static boolean applyAccidental(Note pmNote, NoteElement element) {
         var accidentalToken = ProxyMusicAccess.accidentalToken(pmNote);
 
         if (accidentalToken == null) {
@@ -210,10 +245,7 @@ final class NoteMapper {
         }
 
         if (accidental != null) {
-            element.setAccidental(accidental);
-            // setAccidentalInParentheses must follow setAccidental: it only takes
-            // effect when an accidental is present.
-            element.setAccidentalInParentheses(ProxyMusicAccess.accidentalIsParenthesized(pmNote));
+            element.setAccidentalState(new AccidentalState.Chosen(accidental));
         }
 
         return usedLegacyAccidental;
@@ -340,27 +372,40 @@ final class NoteMapper {
         );
     }
 
-    private static void applyNotationAttachments(NoteNotations notations, StaffElement element) {
-        if (notations.hasAccent()) {
-            element.addArticulation(new Articulation(element, ArticulationType.ACCENT));
-        }
+    /**
+     * Puts the note-borne attachments on {@code element}. A {@code <notations>} set may state
+     * one fermata and one dynamic, and the element holds at most one of each class, so each
+     * goes on through {@link DocumentValidation#attachUnique}, which refuses the document
+     * rather than the attachment when the element already carries one.
+     *
+     * @throws SAXException if {@code element} already carries a fermata or a dynamic
+     */
+    private static void applyNotationAttachments(NoteNotations notations, StaffElement element)
+            throws SAXException {
+        // Only a note takes articulations and a fall; a rest's <notations> can carry the
+        // fermata and the dynamic below.
+        if (element instanceof NoteElement note) {
+            if (notations.hasAccent()) {
+                note.addArticulation(new Articulation(ArticulationType.ACCENT));
+            }
 
-        if (notations.hasStaccato()) {
-            element.addArticulation(new Articulation(element, ArticulationType.STACCATO));
+            if (notations.hasStaccato()) {
+                note.addArticulation(new Articulation(ArticulationType.STACCATO));
+            }
+
+            if (notations.hasFall()) {
+                note.setSlide(songscribe.dom.Slide.FALL);
+            }
         }
 
         if (notations.hasFermata()) {
-            element.addAttachment(new FermataAttachment(element));
+            DocumentValidation.attachUnique(LOG, element, new FermataAttachment());
         }
 
         var dynamicType = notations.dynamicType();
 
         if (dynamicType != null) {
-            element.addAttachment(new DynamicAttachment(element, dynamicType));
-        }
-
-        if (notations.hasFall()) {
-            element.setFall();
+            DocumentValidation.attachUnique(LOG, element, new DynamicAttachment(dynamicType));
         }
     }
 
@@ -416,8 +461,11 @@ final class NoteMapper {
      * This note's {@code <tuplet>} bracket marker and the {@code <time-modification>}
      * beside it. The vertical offset is carried on the start bracket, which is where
      * the writer puts it.
+     *
+     * @throws SAXException if the {@code <time-modification>} states more than two
+     *                      {@code <normal-dot>} elements
      */
-    static TupletMarker tupletMarker(Note pmNote) {
+    static TupletMarker tupletMarker(Note pmNote) throws SAXException {
         var start = false;
         var stop = false;
         var verticalPositionSs = 0;
@@ -438,7 +486,7 @@ final class NoteMapper {
         var timeModification = pmNote.getTimeModification();
 
         if (timeModification == null) {
-            return new TupletMarker(start, stop, verticalPositionSs, 0, 0, null, 0);
+            return new TupletMarker(start, stop, verticalPositionSs, 0, 0, null, Dots.NONE);
         }
 
         return new TupletMarker(
@@ -448,8 +496,26 @@ final class NoteMapper {
             ProxyMusicAccess.integer(timeModification.getActualNotes(), 0),
             ProxyMusicAccess.integer(timeModification.getNormalNotes(), 0),
             timeModification.getNormalType(),
-            timeModification.getNormalDot().size()
+            dotsOf(timeModification.getNormalDot().size(), MusicXmlTags.NORMAL_DOT)
         );
+    }
+
+    /**
+     * Converts a dot count the document states into {@link Dots}, refusing the document when
+     * the count is one this program cannot represent. Valid MusicXML may state any number of
+     * dots; the model holds at most two.
+     *
+     * @param count   the number of dot elements the document carries
+     * @param element the name of the dot element counted, so the detail names it
+     * @throws SAXException if {@code count} is more than {@link Dots} can hold
+     */
+    private static Dots dotsOf(int count, String element) throws SAXException {
+        try {
+            return Dots.of(count);
+        } catch (IllegalArgumentException e) {
+            throw new MusicXmlReader.InvalidFormatException(
+                "<" + element + "> count " + count + " exceeds the two dots SongScribe can represent");
+        }
     }
 
     /**
@@ -486,25 +552,26 @@ final class NoteMapper {
     // -------------------------------------------------------------------------
 
     /**
-     * Maps this note's {@code <lyric>} children, one {@link Lyric} per verse.
-     * Mirrors {@code StaffElementIO.endElement11}'s lyric-close branch: a carrier
+     * Maps this note's {@code <lyric>} children onto {@code element}, one {@link Lyric} per
+     * verse. Mirrors {@code StaffElementIO.endElement11}'s lyric-close branch: a carrier
      * ({@code <extend type="stop|continue"/>} with no text of its own) gets a null
      * syllabic and empty text; for a BEGIN/MIDDLE syllabic a trailing compound-word
      * marker is stripped and {@code compound} set, so the word boundary
      * round-trips. The {@link Lyric} constructor re-validates the
-     * carrier/syllabic contract.
+     * carrier/syllabic contract. A blank text-bearing syllable carries nothing a user wrote,
+     * so {@link #mapLyric} drops it rather than the whole document.
      */
-    private static List<Lyric> mapLyrics(Note pmNote) {
-        var lyrics = new ArrayList<Lyric>(pmNote.getLyric().size());
-
+    private static void putLyrics(Note pmNote, StaffElement element) {
         for (var pmLyric : pmNote.getLyric()) {
-            lyrics.add(mapLyric(pmLyric));
-        }
+            var lyric = mapLyric(pmLyric);
 
-        return lyrics;
+            if (lyric != null) {
+                element.putLyric(lyric);
+            }
+        }
     }
 
-    private static Lyric mapLyric(org.audiveris.proxymusic.Lyric pmLyric) {
+    private static @Nullable Lyric mapLyric(org.audiveris.proxymusic.Lyric pmLyric) {
         var verse = ProxyMusicAccess.lyricVerse(pmLyric);
         var syllabicToken = "";
         var text = "";
@@ -553,6 +620,11 @@ final class NoteMapper {
                 text = stripped.text();
                 compound = stripped.hadMarker();
             }
+        }
+
+        if (!Lyric.isCarrier(extend) && text.isBlank()) {
+            LOG.warn("Dropping blank lyric syllable for verse {}", verse);
+            return null;
         }
 
         return new Lyric(verse, text, extend, syllabic, compound);

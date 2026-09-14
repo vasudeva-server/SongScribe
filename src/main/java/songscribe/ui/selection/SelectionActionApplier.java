@@ -26,18 +26,22 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AccidentalChain;
+import songscribe.dom.AccidentalScanView;
 import songscribe.dom.Beam;
+import songscribe.dom.ChainEdit;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
+import songscribe.dom.ProjectedEdit;
 import songscribe.dom.StaffElement;
-import songscribe.layout.AccidentalMaterializer;
-import songscribe.layout.AccidentalReconciliation;
+import songscribe.dom.StaffElementRun;
+import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.edit.AccidentalRestatements;
 
 /**
  * Applies one {@link UIAction.Reflectable} to every element of a selection, in one undo step.
@@ -83,9 +87,9 @@ public final class SelectionActionApplier {
      *                    song-wide lyric metrics the fit gate measures syllable widths with; null in
      *                    tests, which space the projection as if the line had no lyrics
      */
-    public static void apply(
+    public static <E extends StaffElement> void apply(
         SelectionCoordinator coordinator,
-        UIAction.Reflectable action,
+        UIAction.Reflectable<E> action,
         boolean selected,
         @Nullable ScoreView score) {
 
@@ -110,8 +114,10 @@ public final class SelectionActionApplier {
      *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
      *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
      *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
-     *   <li><b>Reconcile and gate</b> — over the indices that proceed; still mutates nothing, so a
-     *       refusal leaves the score untouched and creates no undo step.</li>
+     *   <li><b>Gate</b> — over the indices that proceed, for an action that widens a column: the
+     *       chain walk over the line as the action will leave it, then the fit check with the
+     *       walk's accidentals in place. Still mutates nothing, so a refusal leaves the score
+     *       untouched and creates no undo step.</li>
      *   <li><b>Apply</b> — inside the modification bracket.</li>
      * </ol>
      *
@@ -125,10 +131,10 @@ public final class SelectionActionApplier {
      *                    tests, which space the projection as if the line had no lyrics
      * @param opLabel     the undo step's op-name, or null to fall back to the generic op-name
      */
-    public static void apply(
+    public static <E extends StaffElement> void apply(
         SelectionCoordinator coordinator,
         ElementSelection selection,
-        UIAction.Reflectable action,
+        UIAction.Reflectable<E> action,
         boolean selected,
         @Nullable ScoreView score,
         @Nullable String opLabel) {
@@ -140,26 +146,10 @@ public final class SelectionActionApplier {
             return;
         }
 
-        // Still the decide phase: the prompt must run before any modification bracket opens, for
-        // the same reason the ending confirms above do.
-        var decision = AccidentalRestatements.confirm(score, line, editedNotes(line, changes));
-
-        if (decision.isCancelled()) {
-            return;
-        }
-
-        // The accidentals this modification must make explicit so no pitch the user did not touch
-        // changes — removing an explicit accidental is exactly as context-changing as adding one —
-        // plus the ones it makes redundant and so takes away again, plus any restatement the user
-        // accepted above.
-        var accidentalChanges = AccidentalReconciliation.reconcileModification(
-            line, intendedChanges(changes), decision.removal());
-
-        if (action instanceof UIAction.WidensColumn
-            && !fitsAfterModification(line, changes, accidentalChanges, score)) {
-            // A removal can still overflow the line — reconciliation may need to add accidentals
-            // to other notes to preserve their pitch — so it gets its own operation-neutral
-            // wording instead of the insert phrasing, which would misdescribe a deletion.
+        if (action instanceof UIAction.WidensColumn<?>
+            && !fitsWithChainsWalked(selection, changes, score)) {
+            // A removal can still overflow the line, so it gets its own operation-neutral wording
+            // instead of the insert phrasing, which would misdescribe a deletion.
             if (selected) {
                 OptionDialogs.showErrorMessage(
                     score,
@@ -180,7 +170,7 @@ public final class SelectionActionApplier {
 
         // Only a replacement can invalidate a beam or a tuplet; an in-place modification leaves
         // element types alone.
-        var needsSpanCleanup = action instanceof UIAction.ElementReplaceable;
+        var needsSpanCleanup = action instanceof UIAction.ElementReplaceable<?>;
 
         line.withOptionallyNamedModification(opLabel, () -> {
             for (var change : changes) {
@@ -195,24 +185,29 @@ public final class SelectionActionApplier {
                     EndingConfirms.applyCompensatingSplitChange(line, compensateSplit);
                 }
 
-                if (action instanceof UIAction.ElementReplaceable) {
+                if (action instanceof UIAction.ElementReplaceable<?>) {
                     // An Invalidate effect needs no compensation here: setElement removes the
                     // ending itself via isInvalidatedByReplacement.
                     line.setElement(index, change.standIn());
-                } else if (action instanceof UIAction.ElementModifiable modifiable) {
+                } else if (action instanceof UIAction.ElementModifiable<?>) {
+                    // Safe: action's own type parameter is E throughout this call, and
+                    // ElementModifiable<?> here is a capture of that same E.
+                    @SuppressWarnings("unchecked")
+                    var modifiable = (UIAction.ElementModifiable<E>) action;
+
                     line.modifyElement(
                         index,
                         modifiable.modifiedFields(),
-                        () -> modifiable.applyToElement(line.getElement(index), selected)
+                        () -> {
+                            var admitted = action.admit(line.getElement(index));
+
+                            if (admitted != null) {
+                                modifiable.applyToElement(line, index, admitted, selected);
+                            }
+                        }
                     );
                 }
             }
-
-            // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
-            AccidentalMaterializer.commit(line, accidentalChanges);
-
-            // Accepted restatements on later lines join the same step.
-            AccidentalRestatements.commitOtherLines(decision, line);
 
             if (needsSpanCleanup) {
                 validateSpans(line, selection.begin(), selection.end());
@@ -227,25 +222,30 @@ public final class SelectionActionApplier {
      * An index the user declines an ending confirm for is simply left out of the result, so the
      * gate and the apply pass see only the elements that really change.
      */
-    private static List<PendingChange> decideChanges(
-        UIAction.Reflectable action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
+    private static <E extends StaffElement> List<PendingChange> decideChanges(
+        UIAction.Reflectable<E> action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
 
         var line = selection.line();
         var changes = new ArrayList<PendingChange>();
 
         for (var i = selection.begin(); i <= selection.end(); i++) {
-            var element = line.getElement(i);
+            var admitted = action.admit(line.getElement(i));
 
-            if (!action.appliesTo(element)) {
+            if (admitted == null) {
                 continue;
             }
 
-            if (action instanceof UIAction.ElementReplaceable replaceable) {
+            if (action instanceof UIAction.ElementReplaceable<?>) {
                 if (!selected) {
                     continue;
                 }
 
-                var replacement = replaceable.createReplacement(element, true);
+                // Safe: action's own type parameter is E throughout this call, and
+                // ElementReplaceable<?> here is a capture of that same E.
+                @SuppressWarnings("unchecked")
+                var replaceable = (UIAction.ElementReplaceable<E>) action;
+
+                var replacement = replaceable.createReplacement(admitted, true);
                 var effect = line.findEndingReplacementEffect(i, replacement);
                 Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
 
@@ -272,11 +272,23 @@ public final class SelectionActionApplier {
                 }
 
                 changes.add(new PendingChange(i, replacement, compensation));
-            } else if (action instanceof UIAction.ElementModifiable modifiable) {
+            } else if (action instanceof UIAction.ElementModifiable<?>) {
+                // Safe: action's own type parameter is E throughout this call, and
+                // ElementModifiable<?> here is a capture of that same E.
+                @SuppressWarnings("unchecked")
+                var modifiable = (UIAction.ElementModifiable<E>) action;
+
                 // Safe on a detached clone: applyToElement takes the element as a parameter and
-                // touches nothing else.
-                var standIn = element.clone();
-                modifiable.applyToElement(standIn, selected);
+                // touches nothing else. admit() narrows it back to E: a clone shares its
+                // source's class, so it is admitted by the same rule the source was.
+                var standIn = admitted.clone();
+                var admittedStandIn = action.admit(standIn);
+
+                if (admittedStandIn == null) {
+                    continue;
+                }
+
+                modifiable.applyToElement(line, i, admittedStandIn, selected);
                 changes.add(new PendingChange(i, standIn, Ending.EndingEffect.None.INSTANCE));
             }
         }
@@ -285,60 +297,41 @@ public final class SelectionActionApplier {
     }
 
     /**
-     * The post-change state of every element this modification touches, as
-     * {@link AccidentalReconciliation} describes it. These are the notes the user changed
-     * deliberately, so they are never materialized themselves — only the notes that inherit
-     * their context are.
+     * Pass 2 — whether the line still fits once the changes are in place, with every accidental
+     * the chain walk stamps for them drawn. The walk runs over a projection of the line holding
+     * each stand-in at its index, so a stand-in that changes what a note sounds is decided along
+     * with every later note in its chain. Mutates no live note: a refusal leaves every live
+     * element as it was, and an acceptance leaves each stand-in stamped as the walk decided.
      */
-    private static List<AccidentalReconciliation.IntendedChange> intendedChanges(List<PendingChange> changes) {
-        var intended = new ArrayList<AccidentalReconciliation.IntendedChange>(changes.size());
+    private static boolean fitsWithChainsWalked(
+        ElementSelection selection, List<PendingChange> changes, @Nullable ScoreView score) {
+
+        var line = selection.line();
+        var begin = selection.begin();
+        var end = selection.end();
+        var inserted = new ArrayList<StaffElement>(line.getElements(begin, end));
 
         for (var change : changes) {
-            var standIn = change.standIn();
-            intended.add(new AccidentalReconciliation.IntendedChange(
-                change.index(), standIn.getAccidental(), standIn.getStaffPosition()));
+            inserted.set(change.index() - begin, change.standIn());
         }
 
-        return intended;
+        var restamps = ProjectedEdit.replacing(line, new StaffElementRun.EffectiveRange(begin, end), inserted).walk();
+
+        var standIns = changes.stream().map(PendingChange::standIn).toList();
+        var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
+
+        return AccidentalFitGate.fits(
+            line, restamps, standIns, lyricRenderMetrics,
+            () -> fitsAfterModification(line, changes, lyricRenderMetrics));
     }
 
     /**
-     * This action's changes, described for the restatement prompt: each changed note's accidental
-     * now, and the one its stand-in will carry instead — which is none for a toggle-off or for a
-     * replacement that bears no accidental.
-     *
-     * <p>The staff position is the live note's, which is the position the accidental being removed
-     * was written at. An in-place modification never moves it, but taking it from the stand-in
-     * would state the wrong thing if one ever did.
-     */
-    private static List<AccidentalRestatements.EditedNote> editedNotes(
-        Line line, List<PendingChange> changes) {
-
-        var edited = new ArrayList<AccidentalRestatements.EditedNote>(changes.size());
-
-        for (var change : changes) {
-            var element = line.getElement(change.index());
-
-            edited.add(new AccidentalRestatements.EditedNote(
-                change.index(),
-                element.getStaffPosition(),
-                element.getAccidental(),
-                change.standIn().getAccidental()));
-        }
-
-        return edited;
-    }
-
-    /**
-     * Pass 2 — whether the line still fits once the changes and the accidentals they force are
-     * in place. Mutates nothing: the projection is built from stand-ins and clones, so a refusal
-     * leaves every live element as it was.
+     * The fit check itself: whether the line still fits once the changes are in place. Mutates
+     * nothing: the projection is built from stand-ins, so a refusal leaves every live element as
+     * it was.
      */
     private static boolean fitsAfterModification(
-        Line line,
-        List<PendingChange> changes,
-        List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
-        @Nullable ScoreView score) {
+        Line line, List<PendingChange> changes, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -362,113 +355,18 @@ public final class SelectionActionApplier {
             }
         }
 
-        // Accidental width is a layout input, so the gate has to measure the reconciled
-        // accidentals — on clones, because the live notes must stay untouched until the gate
-        // has accepted.
-        for (var accidentalChange : accidentalChanges) {
-            var index = line.getElementIndex(accidentalChange.note());
-
-            if (index < effectiveCount) {
-                var note = accidentalChange.note().clone();
-                note.setAccidental(accidentalChange.accidental());
-                projected.set(index, note);
-            }
-        }
-
-        var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
-
-        return InsertionSpacingCalculator.calculateModification(line, projected, lyricRenderMetrics)
-            .fitsWithinLine(line.getSong().getLineWidthSs().value());
+        return InsertionSpacingCalculator.fitsInPlace(line, projected, lyricRenderMetrics);
     }
 
-    // Validates beam and tuplet spans after batch element replacement.
+    // Removes the tuplets a batch element replacement leaves illegal.
     //
-    // Tie repair is omitted because Line.setElement already does it, on every
-    // path: Tie.isInvalidatedByReplacement removes exactly the ties a replacement
-    // makes illegal. Independently, no replacement reachable from this call site
-    // can invalidate a tie in the first place — the replacement preserves pitch
-    // and rest-ness, grace notes are disabled in select mode via
-    // Flag.DISABLE_IN_SELECT_MODE, and ElementModifiable actions do not touch
-    // element type — so nothing here relies on that second argument holding.
+    // Beams and ties need nothing here: Line.setElement already asks each span
+    // whether the replacement breaks it, on every path, and both
+    // Beam.isInvalidatedByReplacement and Tie.isInvalidatedByReplacement remove
+    // exactly the ones it does. A tuplet is the one span whose legality depends on
+    // the whole replaced range rather than on any single replacement in it.
     private static void validateSpans(Line line, int begin, int end) {
-        repairBeamings(line, begin, end);
         line.removeOverlappingTuplets(begin, end);
     }
 
-    // Trim-and-kill repair for beams that overlap [begin, end] after a batch
-    // element replacement. For each overlapping beam:
-    //   1. Trim non-beamable elements from the left and right ends.
-    //   2. If the trimmed span still contains a non-beamable element in the
-    //      interior, kill the beam entirely (no replacement).
-    //   3. If the trimmed span is identical to the original, no-op.
-    //   4. If the trimmed span has fewer than two elements, kill without re-add.
-    //   5. Otherwise, remove the original beam and add a new one for the
-    //      trimmed sub-range.
-    //
-    // The bidirectional trim handles configurations where both ends become
-    // non-beamable but the interior is still valid, leaving the logic resilient
-    // to a future disjoint-selection capability.
-    //
-    // Behavior change vs. legacy repairSpanSet: a beam with a non-beamable
-    // element in the middle is now killed entirely instead of being split into
-    // sub-beams.
-    private static void repairBeamings(Line line, int begin, int end) {
-        var overlapping = line.findBeamsOverlapping(begin, end);
-
-        for (var beam : overlapping) {
-            var anchorIdx = beam.getAnchorElementIndex();
-            var endIdx = beam.getEndElementIndex();
-            var newStart = anchorIdx;
-
-            while (newStart <= endIdx && !line.getElement(newStart).getType().isBeamable()) {
-                newStart++;
-            }
-
-            var newEnd = endIdx;
-
-            while (newEnd >= newStart && !line.getElement(newEnd).getType().isBeamable()) {
-                newEnd--;
-            }
-
-            // No valid elements remain in the trimmed span — kill outright.
-            if (newStart > newEnd) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Check for any non-beamable element in the interior of the trimmed span.
-            // Grace notes are exempt: they are not beam members, so a beam legitimately
-            // passes over one (refs #592).
-            var hasInteriorInvalid = false;
-
-            for (var i = newStart; i <= newEnd; i++) {
-                var type = line.getElement(i).getType();
-
-                if (!type.isBeamable() && !type.isGraceNote()) {
-                    hasInteriorInvalid = true;
-                    break;
-                }
-            }
-
-            if (hasInteriorInvalid) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Trimmed span is identical to the original — no-op.
-            if (newStart == anchorIdx && newEnd == endIdx) {
-                continue;
-            }
-
-            // Fewer than two elements — kill without re-add.
-            if (newEnd - newStart < 1) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Trimmed span shrank but is all valid — replace with the truncated beam.
-            line.removeBeaming(beam);
-            line.addBeaming(new Beam(line.getElement(newStart), line.getElement(newEnd)));
-        }
-    }
 }

@@ -65,7 +65,7 @@ public final class AttributionRenderer {
      * Draws the song's attribution block, if the line being rendered carries one.
      */
     public void render(LineInvariants invariants, Graphics2D g2) {
-        var layout = invariants.getLayoutResult()
+        var layout = invariants.getLayoutResult().decorationLayouts()
             .getDecorationLayout(invariants.getSong().getAttributionElement());
 
         // Anything but a typeset layout means the block was never stacked — any line but the

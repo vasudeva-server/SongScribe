@@ -21,6 +21,7 @@ package songscribe.io;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -33,7 +34,9 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
+import songscribe.dom.Span;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -236,11 +239,7 @@ public final class LineIO {
          */
         private void createBeamsFromPending(Line line) throws SAXException {
             for (var pair : pendingBeamPairs) {
-                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "beam");
-
-                var anchorElement = line.getElement(pair[0]);
-                var endElement = line.getElement(pair[1]);
-                line.addSpan(new Beam(anchorElement, endElement));
+                addNoteSpanFromPair(line, pair, "beam", Beam::new);
             }
 
             pendingBeamPairs.clear();
@@ -252,15 +251,49 @@ public final class LineIO {
          */
         private void createTiesFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTiePairs) {
-                DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "tie");
-
-                var anchorElement = line.getElement(pair[0]);
-                var endElement = line.getElement(pair[1]);
-                var tie = new Tie(anchorElement, endElement);
-                line.addSpan(tie);
+                addNoteSpanFromPair(line, pair, "tie", Tie::new);
             }
 
             pendingTiePairs.clear();
+        }
+
+        /**
+         * Adds one span built from a pair of element indices, which is all the legacy format stores
+         * for a beam or a tie. Both kinds span notes, so an index naming anything else is a corrupt
+         * file rather than a state the document model can hold.
+         *
+         * @param line        the line the pair indexes, and the line to add the span to
+         * @param pair        the anchor index and the end index, in that order
+         * @param label       the span kind, for the diagnostic a bad pair produces
+         * @param spanFactory builds the span from the two notes the indices name
+         * @throws SAXException if either index is out of range or does not name a note
+         */
+        private void addNoteSpanFromPair(
+            Line line, int[] pair, String label, BiFunction<NoteElement, NoteElement, Span> spanFactory)
+            throws SAXException {
+            DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), label);
+            line.addSpan(spanFactory.apply(
+                noteEndpoint(line, pair[0], label), noteEndpoint(line, pair[1], label)));
+        }
+
+        /**
+         * Narrows one endpoint index of a legacy beam or tie to the note it must name.
+         *
+         * @param line  the line the index names an element of
+         * @param index the endpoint index
+         * @param label the span kind, for the diagnostic
+         * @return the element at {@code index}, as a note
+         * @throws SAXException if the element at {@code index} is not a note
+         */
+        private static NoteElement noteEndpoint(Line line, int index, String label) throws SAXException {
+            var element = line.getElement(index);
+
+            if (element instanceof NoteElement note) {
+                return note;
+            }
+
+            throw DocumentValidation.corrupt(
+                LOG, "{} endpoint at index {} is not a note: {}", label, index, element);
         }
 
         /**
@@ -493,7 +526,9 @@ public final class LineIO {
                     switch (lastTag) {
                         case XML_KEYS -> parsedKeyAccidentalCount = DocumentValidation.parseIntOrThrow(LOG, XML_KEYS, str);
                         case XML_KEYTYPE -> parsedKeyType = LegacyKeyType.parse(LOG, str);
-                        case XML_NOTE_DIST_CHANGE -> line.changeElementSpacingRatio(DocumentValidation.parseFloatOrThrow(LOG, XML_NOTE_DIST_CHANGE, str));
+                        // Legacy line-compression ratio - nothing reads it; ignore for backwards compatibility
+                        case XML_NOTE_DIST_CHANGE -> {
+                        }
                         case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
                         case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);
                         case XML_LYRICS_YPOS -> line.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));

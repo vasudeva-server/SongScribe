@@ -25,14 +25,14 @@ import java.awt.geom.Rectangle2D;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.NoteElement;
-import songscribe.dom.StaffElement;
+import songscribe.dom.Slide;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Layout-time geometry for the two {@link StaffElement.Slide} subtypes attached to a note: a
- * connecting {@link StaffElement.Glissando} (a line between two notes) and a trailing
- * {@link StaffElement.Fall} (the {@code brassFallLipShort} glyph hanging off the note's right).
+ * Layout-time geometry for the two {@link Slide} kinds attached to a note: a connecting
+ * {@link Slide#GLISSANDO} (a line between two notes) and a trailing {@link Slide#FALL} (the
+ * {@code brassFallLipShort} glyph hanging off the note's right).
  * <p>
  * A connecting glissando attaches at the stem-free extents of the two notes — the leading note's
  * right edge and the trailing note's left edge (notehead, augmentation dots, and accidental, but
@@ -120,7 +120,7 @@ public final class SlideGeometry {
     public static NoteContext noteContextAt(
         NoteElement note, double elementXSs, boolean beamed, double middleLineYSs
     ) {
-        var cy = NoteGeometry.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
+        var cy = NoteGeometry.noteStaffPositionToCoordinateSs(note.getStaffPosition().value(), middleLineYSs);
 
         // Compute the stem-free attach extent once and widen it to the stem-full extent for the
         // fall anchor, rather than recomputing the notehead/dots/accidental geometry twice.

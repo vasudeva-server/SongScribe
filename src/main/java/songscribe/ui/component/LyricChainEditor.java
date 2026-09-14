@@ -129,7 +129,7 @@ final class LyricChainEditor {
 
         var currentElement = line.getElement(currentIndex);
         line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-            currentElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.NONE));
+            currentElement.removeLyricForVerse(verse));
         breakChainAtCurrentElement(currentIndex);
     }
 
@@ -203,7 +203,7 @@ final class LyricChainEditor {
 
             trace("clearForwardCarriers: clearing the {} carrier on {}", extend, i);
             line.modifyElement(i, ElementField.LYRIC, () ->
-                forwardElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.NONE));
+                forwardElement.removeLyricForVerse(verse));
 
             if (extend == Lyric.Extend.STOP) {
                 return;
@@ -240,7 +240,7 @@ final class LyricChainEditor {
             if (backExtend == Lyric.Extend.STOP) {
                 // STOP carrier: flip back to CONTINUE so the new chain extends through it.
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.CONTINUE));
+                    backElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
             } else if (backExtend != Lyric.Extend.CONTINUE) {
                 // Text-bearing (NONE or START): rewrite extend to START, preserving the text.
                 // The syllable it hyphenated to is now a carrier, so the word ends here — and a
@@ -249,20 +249,19 @@ final class LyricChainEditor {
                 // syllabic.
                 var backSyllabic = wordFinalSyllabic(backLyric.syllabic());
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(verse,
-                        backSyllabic, false,
-                        backLyric.text(), Lyric.Extend.START));
+                    backElement.putLyric(
+                        new Lyric(verse, backLyric.text(), Lyric.Extend.START, backSyllabic, false)));
             }
             // CONTINUE carrier: leave unchanged — the chain already extends through it.
 
             for (var i = backIndex + 1; i < currentIndex; i++) {
                 var midElement = line.getElement(i);
                 line.modifyElement(i, ElementField.LYRIC, () ->
-                    midElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.CONTINUE));
+                    midElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
             }
 
             line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-                currentElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.STOP));
+                currentElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
 
             // Any syllable this element hyphenated to now follows a melisma, so it starts a word.
             line.adjustSuccessorAfterMelismaCarrier(currentIndex, verse);
@@ -288,12 +287,12 @@ final class LyricChainEditor {
             }
 
             line.modifyElement(i, ElementField.LYRIC, () ->
-                midElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.CONTINUE));
+                midElement.putLyric(Lyric.carrier(verse, Lyric.Extend.CONTINUE)));
         }
 
         var nextElement = line.getElement(nextIndex);
         line.modifyElement(nextIndex, ElementField.LYRIC, () ->
-            nextElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.STOP));
+            nextElement.putLyric(Lyric.carrier(verse, Lyric.Extend.STOP)));
 
         // The commit's boundary fix stops at the carrier; the first syllable past the chain
         // still has to lose any word continuation that ran through it.
@@ -303,8 +302,7 @@ final class LyricChainEditor {
     private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {
         var indexElement = line.getElement(index);
         line.modifyElement(index, ElementField.LYRIC, () ->
-            indexElement.setLyricForVerse(verse,
-                existing.syllabic(), existing.compound(), existing.text(), newExtend));
+            indexElement.putLyric(existing.withExtend(newExtend)));
     }
 
     /** Whether a lyric with this extender state hands a melisma on to the elements after it. */

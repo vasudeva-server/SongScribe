@@ -103,7 +103,7 @@ class MusicXmlAnnotationTest extends UnitTest {
             var note = crotchet();
             line.addElement(note);
 
-            var attachment = new AnnotationAttachment(note, annotation);
+            var attachment = new AnnotationAttachment(annotation);
             attachment.setUserYOffsetSs(userYOffsetSs);
             note.addAttachment(attachment);
         });

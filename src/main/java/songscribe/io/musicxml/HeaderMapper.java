@@ -56,8 +56,10 @@ import songscribe.util.DateUtils;
  *   <li><b>Display-only</b>, ignored and re-derived on write: the title credit and
  *       the composer, lyricist, arranger, date, rights and place credits.</li>
  *   <li><b>Write-forward</b>, ignored and recomputed or constant on write: rights,
- *       software, encoding-date, supports, scaling, music-font, and the
- *       {@code default-x}/{@code default-y} an external renderer needs.</li>
+ *       software, encoding-date, scaling, music-font, and the
+ *       {@code default-x}/{@code default-y} an external renderer needs. The
+ *       {@code <supports>} entries are read by {@link SupportedFeature}, which says
+ *       which of them gate anything.</li>
  * </ul>
  *
  * <p>See {@code docs/musicxml-object-model.md} for the full routing table.
@@ -182,8 +184,9 @@ final class HeaderMapper {
     /**
      * Reads the canonical head values out of {@code <identification>}: the
      * {@code <creator>}s and the {@code <miscellaneous-field>}s. {@code <rights>},
-     * {@code <encoding-date>} and {@code <supports>} are write-forward and are not
-     * read; {@code <software>} is read only by {@link #checkProvenance}.
+     * and {@code <encoding-date>} are write-forward and are not read;
+     * {@code <software>} is read only by {@link #checkProvenance}, and
+     * {@code <supports>} only by {@link SupportedFeature#declaredIn}.
      */
     private void mapIdentification(ScorePartwise score) throws SAXException {
         var identification = score.getIdentification();

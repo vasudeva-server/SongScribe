@@ -141,8 +141,8 @@ final class HeaderBuilder {
     }
 
     /**
-     * Builds the {@code <encoding>} block: {@code <software>}, {@code <encoding-date>}, and three
-     * {@code <supports>} entries for accidental, beam and stem, each with {@code type="yes"}.
+     * Builds the {@code <encoding>} block: {@code <software>}, {@code <encoding-date>}, and one
+     * {@code <supports type="yes">} entry per {@link SupportedFeature}.
      *
      * <p>{@code Encoding.getEncodingDateOrEncoderOrSoftware()} is a {@code List<JAXBElement<?>>}, so
      * every item is wrapped by the matching {@code ObjectFactory} method rather than added raw.
@@ -153,16 +153,18 @@ final class HeaderBuilder {
 
         items.add(factory.createEncodingSoftware(SoftwareProvenance.SOFTWARE));
         items.add(factory.createEncodingEncodingDate(toEncodingDate(headerText.encodingDate())));
-        items.add(factory.createEncodingSupports(newSupports(factory, MusicXmlTags.SUPPORTS_ACCIDENTAL)));
-        items.add(factory.createEncodingSupports(newSupports(factory, MusicXmlTags.SUPPORTS_BEAM)));
-        items.add(factory.createEncodingSupports(newSupports(factory, MusicXmlTags.SUPPORTS_STEM)));
+
+        for (var feature : SupportedFeature.values()) {
+            items.add(factory.createEncodingSupports(newSupports(factory, feature)));
+        }
 
         return encoding;
     }
 
-    private static Supports newSupports(ObjectFactory factory, String element) {
+    private static Supports newSupports(ObjectFactory factory, SupportedFeature feature) {
         var supports = factory.createSupports();
-        supports.setElement(element);
+        supports.setElement(feature.element);
+        supports.setAttribute(feature.attribute);
         // #REQUIRED in the schema; JAXB omits a null silently, so this must always be set.
         supports.setType(YesNo.YES);
         return supports;

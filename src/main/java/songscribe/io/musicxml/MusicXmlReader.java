@@ -115,23 +115,20 @@ public final class MusicXmlReader {
     }
 
     /**
-     * Thrown when a document cannot be read as this program's format: the root element
-     * is not {@code <score-partwise>}; its {@code version} is missing, unparseable, or
-     * older than {@link MusicXmlTags#VERSION_VALUE}; a required element the mappers
-     * cannot proceed without is absent (see {@link ProxyMusicAccess#require}); or a
-     * token names something no model value maps to.
+     * Thrown when a document cannot be read as this program's format: either it breaks the
+     * MusicXML schema SongScribe implements, or it states, in valid MusicXML, something
+     * SongScribe cannot represent — a pitch beyond the outermost ledger line, a note with three
+     * or more dots.
      *
-     * <p>{@link #detail()} carries the specific reason, which
-     * {@code SongFileLoader.load} surfaces to the user via
-     * {@code SongLoadResult.UnsupportedFileFormat}, so each throw site states a
-     * distinct one.
+     * <p>{@link #detail()} carries the specific reason, and each throw site states a distinct
+     * one, since the detail is what reaches the user.
      */
-    public static final class UnsupportedFormatException extends SAXException {
+    public static final class InvalidFormatException extends SAXException {
 
         private final String detail;
 
-        UnsupportedFormatException(String detail) {
-            super("Unsupported MusicXML format: " + detail);
+        InvalidFormatException(String detail) {
+            super("Invalid MusicXML format: " + detail);
             this.detail = detail;
         }
 

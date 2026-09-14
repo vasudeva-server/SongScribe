@@ -23,6 +23,7 @@ package songscribe.hit;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.LineElement;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 
 /**
@@ -122,7 +123,7 @@ public sealed interface HitTarget {
     }
 
     /** A glissando or fall drawn from {@code owner}. */
-    record Slide(StaffElement owner) implements Selectable {
+    record Slide(NoteElement owner) implements Selectable {
 
         @Override
         public HitPriority priority() {
@@ -135,7 +136,7 @@ public sealed interface HitTarget {
      * variant exists so the click can be reported and answered with an explanation
      * rather than silently ignored.
      */
-    record GraceGlissando(StaffElement owner) implements HitTarget {
+    record GraceGlissando(NoteElement owner) implements HitTarget {
 
         @Override
         public HitPriority priority() {
@@ -210,21 +211,6 @@ public sealed interface HitTarget {
         @Override
         public LineElement owner() {
             return attachment;
-        }
-    }
-
-    /**
-     * The accidental of {@code owner}, as distinct from the note itself.
-     *
-     * <p>This is the one sub-element variant, and it is what makes accidentals
-     * selectable at all: an accidental is not a {@code LineElement} but a field on its
-     * note, so neither an element reference nor an index can name it on its own.
-     */
-    record Accidental(StaffElement owner) implements Selectable {
-
-        @Override
-        public HitPriority priority() {
-            return HitPriority.ACCIDENTAL;
         }
     }
 

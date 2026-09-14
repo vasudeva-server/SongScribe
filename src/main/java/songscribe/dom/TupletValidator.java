@@ -43,7 +43,7 @@ import org.jspecify.annotations.Nullable;
  * durations. A gcd would renumber ordinary mixed-value notation — a quarter plus two
  * eighths under a 3 — into a sextuplet.
  *
- * <p>Written duration always comes from {@link StaffElement#getDefaultDurationWithDots()},
+ * <p>Written duration always comes from {@link StaffElement#writtenDuration()},
  * never from {@code getDuration()}: the latter inflates a fermata's value by half again,
  * which is a performance instruction rather than a change to the written rhythm. That
  * inflation is also why constraint 4 excludes a span containing a fermata outright — with
@@ -95,9 +95,6 @@ public final class TupletValidator {
     /** Largest printed tuplet number this editor can create or a file may state. */
     public static final int MAX_GRADE = 7;
 
-    /** Dot counts a written note value may carry: none, one or two. */
-    private static final int MAX_DOT_COUNT = 2;
-
     /** The only grade the compound-beat fallback in {@link #chooseNormalNotes} applies to. */
     private static final int COMPOUND_DUPLET_GRADE = 2;
 
@@ -144,7 +141,7 @@ public final class TupletValidator {
         @Nullable Reason reason,
         int normalNotes,
         @Nullable ElementType noteValue,
-        int noteValueDots
+        Dots noteValueDots
     ) {}
 
     /**
@@ -160,8 +157,8 @@ public final class TupletValidator {
         boolean crossesStructuralBoundary
     ) {}
 
-    /** A written note value: a base element type plus a dot count. */
-    private record NotatableValue(ElementType type, int dots) {}
+    /** A written note value: a base element type plus its dots. */
+    private record NotatableValue(ElementType type, Dots dots) {}
 
     /**
      * Measures a span once, so every candidate grade can be tested against it without
@@ -271,13 +268,13 @@ public final class TupletValidator {
      * @param grade         N, as stated
      * @param normalNotes   M, as stated
      * @param noteValue     the base type of V, as stated
-     * @param noteValueDots the dot count of V, as stated
+     * @param noteValueDots the dots of V, as stated
      * @param strictness    how much of the placement rule set to enforce
      * @return a valid result echoing the stated ratio, or the reason it was rejected
      */
     public static Result validateStated(
         SpanContext context, int grade, int normalNotes,
-        ElementType noteValue, int noteValueDots, Strictness strictness
+        ElementType noteValue, Dots noteValueDots, Strictness strictness
     ) {
         if (normalNotes <= 0 || grade == normalNotes) {
             return invalid(Reason.BAD_RATIO);
@@ -464,7 +461,7 @@ public final class TupletValidator {
             var type = element.getType();
 
             if (!type.isGraceNote()) {
-                writtenTicks += element.getDefaultDurationWithDots();
+                writtenTicks += element.writtenDuration();
             }
 
             if (element.findAttachment(FermataAttachment.class) != null) {
@@ -499,7 +496,7 @@ public final class TupletValidator {
             var element = line.getElement(index);
 
             if (!element.getType().isGraceNote()) {
-                ticks += element.getDefaultDurationWithDots();
+                ticks += element.writtenDuration();
             }
         }
 
@@ -659,18 +656,18 @@ public final class TupletValidator {
     }
 
     /** The duration of a stated written value in PPQ ticks, or {@value #NOT_NOTATABLE_TICKS}. */
-    private static int notatableTicks(ElementType type, int dots) {
+    private static int notatableTicks(ElementType type, Dots dots) {
         var ticks = TICKS_BY_NOTATABLE.get(new NotatableValue(type, dots));
 
         return ticks == null ? NOT_NOTATABLE_TICKS : ticks;
     }
 
     private static Result invalid(Reason reason) {
-        return new Result(false, reason, 0, null, 0);
+        return new Result(false, reason, 0, null, Dots.NONE);
     }
 
     /**
-     * Every pitched note type at every legal dot count, keyed by duration. Rests are
+     * Every pitched note type at every {@link Dots} value, keyed by duration. Rests are
      * excluded because they duplicate the note durations; the note table itself has no
      * collisions.
      */
@@ -680,10 +677,10 @@ public final class TupletValidator {
         for (var value : NoteValue.values()) {
             var type = value.note();
 
-            for (var dots = 0; dots <= MAX_DOT_COUNT; dots++) {
-                var probe = type.newInstance();
-                probe.setDotCount(dots);
-                table.put(probe.getDefaultDurationWithDots(), new NotatableValue(type, dots));
+            for (var dots : Dots.values()) {
+                var probe = (NoteElement) type.newInstance();
+                probe.setDots(dots);
+                table.put(probe.writtenDuration(), new NotatableValue(type, dots));
             }
         }
 

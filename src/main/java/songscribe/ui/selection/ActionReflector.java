@@ -64,7 +64,7 @@ public final class ActionReflector implements Disposable {
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
     @Nullable
-    private List<UIAction.Reflectable> reflectableActions = null;
+    private List<UIAction.Reflectable<?>> reflectableActions = null;
 
     // Lazy-initialized list of all actions whose state is managed during selection.
     @Nullable
@@ -140,12 +140,19 @@ public final class ActionReflector implements Disposable {
         return result;
     }
 
-    private List<UIAction.Reflectable> getReflectableActions() {
+    private List<UIAction.Reflectable<?>> getReflectableActions() {
         if (reflectableActions == null) {
-            reflectableActions = collectActions(
-                UIAction.Reflectable.class,
-                action -> true
-            );
+            // A class literal names only the raw interface, so discovery cannot see each
+            // implementor's type argument. Nothing below needs to: every use captures the
+            // wildcard through reflectionOf, which is where the argument has to stay consistent.
+            @SuppressWarnings("unchecked")
+            var discovered =
+                (List<UIAction.Reflectable<?>>) (List<?>) collectActions(
+                    UIAction.Reflectable.class,
+                    action -> true
+                );
+
+            reflectableActions = discovered;
         }
 
         return reflectableActions;
@@ -359,8 +366,9 @@ public final class ActionReflector implements Disposable {
 
         // Only the mutations targeting the selected line can change the checked
         // state of the reflectable actions. Asked per mutation rather than through
-        // getLine(), which reports no line at all for an edit spanning several — as an
-        // accepted restatement removal does — and would leave the toolbar stuck in its
+        // getLine(), which reports no line at all for an edit spanning several — as a key
+        // change's stranding sweep or the chain walk's restamps on later lines do — and would
+        // leave the toolbar stuck in its
         // pre-undo state when such an edit is undone.
         if (!message.touchesLine(selection.line())) {
             return;
@@ -424,13 +432,15 @@ public final class ActionReflector implements Disposable {
                     hasGraceNote = true;
                 }
 
-                if (!reflectable.appliesTo(element)) {
+                var reflection = reflectionOf(reflectable, element);
+
+                if (reflection == Reflection.NOT_ADMITTED) {
                     continue;
                 }
 
                 applicable = true;
 
-                if (!reflectable.matchesElement(element)) {
+                if (reflection == Reflection.DIFFERS) {
                     matched = false;
                     break;
                 }
@@ -448,12 +458,45 @@ public final class ActionReflector implements Disposable {
      */
     public void reflectElement(StaffElement element) {
         for (var reflectable : getReflectableActions()) {
-            reflectable.setSelected(
-                reflectable.appliesTo(element) && reflectable.matchesElement(element)
-            );
+            reflectable.setSelected(reflectionOf(reflectable, element) == Reflection.MATCHES);
         }
 
         updateGraceNoteActionEnabled(element.getType().isGraceNote());
+    }
+
+    /** How one reflectable action stands toward one element. */
+    private enum Reflection {
+        /** The action does not act on an element of this kind at all. */
+        NOT_ADMITTED,
+
+        /** The action acts on this element, and the element already carries its attribute. */
+        MATCHES,
+
+        /** The action acts on this element, and the element carries something else. */
+        DIFFERS
+    }
+
+    /**
+     * Narrows {@code element} to the type {@code reflectable} acts on and asks whether it already
+     * matches. Both questions live here so the element the match is asked about is the narrowed
+     * one, which is what the action's type argument promises and what a wildcard alone cannot hold
+     * across two separate calls.
+     *
+     * @param reflectable the action to interrogate
+     * @param element     the element to test
+     * @param <E>         the element type this action acts on, captured from {@code reflectable}
+     * @return how the action stands toward the element
+     */
+    private static <E extends StaffElement> Reflection reflectionOf(
+        UIAction.Reflectable<E> reflectable, StaffElement element) {
+
+        var admitted = reflectable.admit(element);
+
+        if (admitted == null) {
+            return Reflection.NOT_ADMITTED;
+        }
+
+        return reflectable.matchesElement(admitted) ? Reflection.MATCHES : Reflection.DIFFERS;
     }
 
     // Grace notes can only be inserted, not applied to existing notes.

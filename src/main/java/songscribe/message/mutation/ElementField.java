@@ -39,20 +39,20 @@ public enum ElementField {
     /** The element's trill flag was toggled. Emitted by {@code toggleTrill}. */
     TRILL,
 
-    /** The element's stem direction (upper/lower) was changed. Emitted by {@code modifyStemDirection}. */
-    UPPER,
-
-    /** The element's stem-direction-auto flag was changed. Emitted by {@code modifyStemDirection}. */
-    STEM_DIRECTION_AUTO,
+    /**
+     * The note's {@code Stem} was changed — forced to a direction, or handed back to the score.
+     * Emitted by {@code modifyStemDirection}.
+     */
+    STEM,
 
     /** The element's fermata flag was toggled. Emitted by {@code FermataAction}. */
     FERMATA,
 
-    /** The element's accidental was changed. Emitted by {@code AccidentalAction}. */
+    /**
+     * The note's {@code AccidentalState}, set by a selection action's intent, a pitch shift's
+     * {@code Adopting}, or the chain walk's restamp.
+     */
     ACCIDENTAL,
-
-    /** The element's accidental-in-parentheses flag was toggled. Emitted by {@code AccidentalInParensAction}. */
-    ACCIDENTAL_IN_PARENS,
 
     /**
      * The element's dot count was changed. Emitted by {@code DotAction}.

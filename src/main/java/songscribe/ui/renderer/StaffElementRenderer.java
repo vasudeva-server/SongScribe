@@ -28,10 +28,13 @@ import java.awt.geom.RoundRectangle2D;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.BarElement;
+import songscribe.dom.BreathMarkElement;
+import songscribe.dom.Direction;
+import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
-import songscribe.dom.GlyphElement;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.NoteElement;
+import songscribe.dom.RestElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.LedgerLine;
@@ -99,9 +102,9 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         Graphics2D g2
     ) {
         switch (element) {
-            case GlyphElement glyph when glyph.getType().isRest() ->
-                RestRenderer.getInstance().render(invariants, frame, glyph, g2);
-            case GlyphElement breathMark -> renderBreathMark(breathMark, g2, invariants, frame);
+            case RestElement rest ->
+                RestRenderer.getInstance().render(invariants, frame, rest, g2);
+            case BreathMarkElement breathMark -> renderBreathMark(breathMark, g2, invariants, frame);
             case BarElement bar -> BarRenderer.getInstance().render(invariants, frame, bar, g2);
             case KeyChangeElement keyChange ->
                 KeySignatureRenderer.getInstance().renderMidLine(invariants, frame, keyChange, g2);
@@ -124,7 +127,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         // (e.g., blue for insertion notes, black for song notes)
         try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = frame.resolveElementXSs(element, invariants);
-            var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
+            var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition().value(), invariants.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
             g2.setFont(RenderingUtils.MUSIC_FONT);
@@ -141,7 +144,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // ==========================================================================
 
     private void renderBreathMark(
-        GlyphElement element,
+        BreathMarkElement element,
         Graphics2D g2,
         LineInvariants invariants,
         ElementFrame frame
@@ -152,7 +155,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         // from that same staff position, so the drawn glyph and its clickable area cannot
         // disagree.
         var breathY = NoteGeometry.noteStaffPositionToCoordinateSs(
-            element.getStaffPosition(), invariants.getMiddleLineYSs());
+            element.seatSp().value(), invariants.getMiddleLineYSs());
 
         RenderingUtils.drawBravuraGlyph(
             g2,
@@ -209,7 +212,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     private Point2D.@Nullable Double renderStem(
         Graphics2D g2,
         NoteElement note,
-        StaffElement.Direction direction,
+        Direction direction,
         boolean beamed,
         ElementType noteType,
         LineInvariants invariants
@@ -308,7 +311,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     private void renderFlags(
         Graphics2D g2,
         StaffElement note,
-        StaffElement.Direction direction,
+        Direction direction,
         ElementType noteType,
         Point2D.@Nullable Double stemTip
     ) {
@@ -350,9 +353,9 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         Graphics2D g2,
         NoteElement note,
         boolean beamed,
-        StaffElement.Direction direction
+        Direction direction
     ) {
-        if (note.getDotCount() == 0) {
+        if (note.dots() == Dots.NONE) {
             return;
         }
 
@@ -391,11 +394,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     /**
      * Draws {@code note}'s accidental, if it has one.
      * <p>
-     * An accidental is selectable in its own right, so it is the one part of a note that can
-     * carry a color the rest of the note does not. The {@link GraphicsState} block keeps that
-     * scoped: the color set here is restored before the caller draws anything else.
-     * <p>
-     * The ambient color the caller set is left alone unless the accidental itself resolves to
+     * The ambient color the caller set is left alone unless the note's own color resolves to
      * something other than plain black. That ambient color is what carries the insertion
      * preview, the grace-cancel red and the slide-preview highlight — a preview note is not on
      * the line and can never be selected, so overwriting its color unconditionally would draw
@@ -403,21 +402,19 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
      */
     private void renderAccidental(
         Graphics2D g2,
-        StaffElement note,
+        NoteElement note,
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var accidental = note.getAccidental();
+        var accidental = note.drawnAccidental();
 
         if (accidental == null) {
             return;
         }
 
-        var accidentalGlyph = accidental.glyph();
-
         try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             var accidentalColor = invariants.colorFor(
-                new HitTarget.Accidental(note), frame.currentElementIndex());
+                new HitTarget.Element(note), frame.currentElementIndex());
 
             if (!LineInvariants.isDefaultColor(accidentalColor)) {
                 g2.setColor(accidentalColor);
@@ -425,19 +422,11 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
             // Grace-note accidentals are drawn at grace scale, matching the clearance reserved
             // by NoteColumnGeometry via getAccidentalStartXSs (the two must agree or the glissando
-            // gap is computed against the wrong glyph size). The same scale feeds walkAccidentalGlyphs so
-            // the pen advances track the scaled-down glyphs and the right edge sits flush against
-            // the notehead padding.
+            // gap is computed against the wrong glyph size).
             g2.setFont(RenderingUtils.getGlyphFont(note));
-            var scale = NoteGeometry.getGlyphScale(note);
 
             var startX = NoteGeometry.getAccidentalStartXSs(note);
-            NoteGeometry.walkAccidentalGlyphs(
-                accidentalGlyph,
-                note.isAccidentalInParentheses(),
-                startX,
-                scale,
-                (glyph, x) -> g2.drawString(glyph.asString(), x, 0f));
+            g2.drawString(accidental.glyph().asString(), startX, 0f);
         }
     }
 

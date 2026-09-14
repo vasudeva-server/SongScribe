@@ -35,7 +35,7 @@ import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.ui.component.MainFrame;
 
-public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable {
+public class ElementTypeAction extends StickyUIAction implements UIAction.ElementReplaceable<StaffElement> {
 
     public enum Role {DURATION, NON_DURATION}
 
@@ -250,31 +250,31 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
     }
 
     @Override
-    public boolean appliesTo(StaffElement element) {
+    public @Nullable StaffElement admit(StaffElement element) {
         if (role == Role.DURATION) {
-            return element.getType().isDuration();
+            return element.getType().isDuration() ? element : null;
         }
 
         // Breath marks and barlines/repeats are distinct non-duration subcategories
         if (type == ElementType.BREATH_MARK) {
-            return element.getType() == ElementType.BREATH_MARK;
+            return element.getType() == ElementType.BREATH_MARK ? element : null;
         }
 
         if (!element.getType().isBar()) {
-            return false;
+            return null;
         }
 
         // The terminal accepts only the two valid terminal types, so only the two entries
         // standing for one of them apply to it.
         if (Song.isAutoMaintainedTerminalOfItsSong(element)) {
-            return type.isValidSongTerminal();
+            return type.isValidSongTerminal() ? element : null;
         }
 
-        return true;
+        return element;
     }
 
     // The terminal needs no case of its own: an entry stands only for its own type, so
-    // comparing against that type answers the terminal too. It is appliesTo() that keeps the
+    // comparing against that type answers the terminal too. It is admit() that keeps the
     // entries standing for no terminal type from ever being asked.
     @Override
     public boolean matchesElement(StaffElement element) {

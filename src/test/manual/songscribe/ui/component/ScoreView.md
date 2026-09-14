@@ -1,7 +1,7 @@
 # Score View
 
-Exercises: `ScoreViewController`, `PasteModeManager`, `Fragment`, `KeyChangeReconciliation`,
-`AccidentalReconciliation`
+Exercises: `ScoreViewController`, `PasteModeManager`, `Fragment`, `KeyChangeStranding`,
+`AccidentalChain`
 
 ## A key move that strands a mid-line key change
 

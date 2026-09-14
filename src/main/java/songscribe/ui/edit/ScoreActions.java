@@ -70,14 +70,6 @@ public interface ScoreActions {
     void setPreviewElement(@Nullable StaffElement element);
 
     /**
-     * Adjusts the drawing width if the line is wider than the current width.
-     *
-     * @param line The line to check
-     * @param revalidateOnly Whether to only revalidate without changing width
-     */
-    void drawWidthIfWiderLine(Line line, boolean revalidateOnly);
-
-    /**
      * Synchronizes playback-related preferences. Reads exactly the keys named in
      * {@link #PLAYBACK_SYNC_PREFS_KEYS} — a caller adding a key to that set must add the
      * matching read here, and vice versa.

@@ -31,27 +31,33 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AccidentalState;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.StaffPosition;
-import songscribe.layout.AccidentalMaterializer;
-import songscribe.layout.AccidentalReconciliation;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.playback.PlayThread;
 
 /**
  * Shifts the pitch of a range of notes as a single recorded mutation. This is the
- * one definition of "move a selection's pitch," shared by two callers that differ
+ * one definition of moving a selection's pitch, shared by two callers that differ
  * only in cadence: a mouse drag ({@link NoteDragHandler}) runs the move live across
  * many mouse steps, an arrow-key press runs it once. Housing the logic here — rather
  * than on the drag handler — keeps it independent of mouse dragging, which an arrow
  * press is not.
+ * <p>
+ * A moved note has no pitch of its own at its new staff position: it adopts whatever
+ * the song's chain walk decides is in force there once the move is committed. There is
+ * no prompt and no fit gate — a pitch shift changes no element's horizontal extent, so
+ * nothing it does can widen a line past its fit. The anchor note — the one the user
+ * grabbed or pressed an arrow key on — is played only after that walk has run, since
+ * only then is its sounding pitch known.
  */
 public final class PitchShifter {
 
@@ -63,11 +69,12 @@ public final class PitchShifter {
      * {@code line} is the note's own line — a group formed across a cross-line tie holds
      * entries from two different lines, so every entry carries the line {@code index}
      * resolves into rather than assuming the group's caller-supplied line. {@code beforeClone}
-     * is a pre-mutation snapshot used as the {@link ElementModification#beforeElement()} for the
-     * mutation record; {@code originalStaffPositionSp} is the staff position the shift delta is
-     * added to.
+     * is a pre-mutation snapshot the note is put back to before {@link #commitPitchShift}
+     * records its move, so the {@link ElementModification#beforeElement()} of that record is
+     * the note's real prior state; {@code originalStaffPosition} is the staff position the
+     * shift delta is added to.
      */
-    record PitchShiftEntry(Line line, int index, int originalStaffPositionSp, StaffElement beforeClone) {}
+    record PitchShiftEntry(Line line, int index, StaffPosition originalStaffPosition, NoteElement beforeClone) {}
 
     /**
      * Shifts the pitch of every pitched note in the inclusive {@code [begin, end]}
@@ -79,26 +86,21 @@ public final class PitchShifter {
      * A tie chain that reaches {@code line}'s edge through a cross-line tie pulls the partner
      * note in the adjacent line into the group as well, so both endpoints move together. The
      * whole move — both lines — is one modification bracket, so one undo restores every note it
-     * touched (see {@link #moveGroupAndPlayAnchor}).
+     * touched (see {@link #moveGroup}).
      * <p>
      * {@code deltaSp} is clamped so no note leaves the valid staff range; if the
      * range holds no notes or the clamped delta is zero, nothing happens.
      * Pre-mutation clones for the {@link ElementModification} records are captured
-     * before the shift is applied. The move, the single note played, and the commit
-     * are the exact same operations a mouse drag performs — a drag runs them live
-     * across many mouse steps, an arrow key runs them once per press.
+     * before the shift is applied. The move, the commit, and the single note played once the
+     * commit's chain walk has decided its sounding pitch are the exact same operations a mouse
+     * drag performs on release.
      * <p>
      * A grace-note/host collapse during the commit removes an element, shifting every
      * later index down by one. The active selection range is spliced through that removal
      * by the same mechanism every other structural mutation uses, so this method itself
      * has nothing to report back to its caller.
-     *
-     * @param parent The component to parent the restatement prompt on, or null when there is no
-     *               owning window. Without it the prompt is placed against the screen rather than
-     *               the score window
      */
-    public static void shiftPitch(
-            @Nullable Component parent, Line line, int begin, int end, int deltaSp) {
+    public static void shiftPitch(Line line, int begin, int end, int deltaSp) {
         var group = buildPitchShiftGroup(line, begin, end);
 
         if (group.isEmpty()) {
@@ -115,183 +117,50 @@ public final class PitchShifter {
         // drag: the group's anchor, the only note played as feedback.
         var anchorIndex = group.getFirst().index();
 
-        // Asked before anything is mutated, so Cancel is simply "nothing happened" — the same
-        // contract the two early returns above already have.
-        var decision = confirmRestatements(parent, line, group);
+        // Exactly what a mouse drag does on each move: shift the group.
+        moveGroup(line, group, anchorIndex, clampedDelta);
 
-        if (decision.isCancelled()) {
-            return;
+        commitPitchShift(line, group);
+
+        // Played only now, after the song's chain walk run by commitPitchShift has decided what
+        // the moved anchor sounds. A drag fires this on mouse release; an arrow press has no
+        // release, so fire it here to let the played note ring for its standard duration.
+        if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
+            PlayThread.sendNoteOn(line.noteAt(anchorIndex).getPitch());
+            scheduleAnchorNoteOff(line, anchorIndex);
         }
-
-        // The accidentals this shift must make explicit so no pitch the user did not touch
-        // changes: each note the group vacates may have been lending its explicit accidental to a
-        // later note at the same staff position. Must run here, while the line is still
-        // unmutated — the reconciliation reads the live line as its "before".
-        //
-        // No fit gate: a pitch shift changes no element's horizontal extent, and clearing the
-        // moved notes' accidentals only ever narrows them. A materialization on a following note
-        // can widen the line, but each vacated staff position yields at most one materialization
-        // and the moved note gave up its own accidental glyph in exchange.
-        var accidentalChanges = AccidentalReconciliation.reconcileModification(
-            line, intendedChanges(group, line, clampedDelta), decision.removal());
-
-        // Exactly what a mouse drag does on each move: shift the group, play the anchor.
-        moveGroupAndPlayAnchor(line, group, anchorIndex, clampedDelta);
-
-        // A drag fires this on mouse release; an arrow press has no release, so fire it
-        // here to let the played note ring for its standard duration.
-        scheduleAnchorNoteOff(line, anchorIndex);
-
-        commitPitchShift(line, group, accidentalChanges, decision);
     }
 
     /**
      * Moves every note in {@code group} — each on its own entry's line, so a group reaching
      * across a cross-line tie moves the partner note in the adjacent line right along with it —
-     * to its original staff position plus {@code clampedDelta}, and plays the {@code anchorIndex}
-     * note's pitch transition — note-off its pre-move pitch, note-on its post-move pitch — when
-     * {@link PrefsKey#PLAY_SELECTED_NOTE} is on. This is the single definition of
-     * WHAT happens on one pitch move, shared by mouse drag (called live for each
-     * mouse step) and arrow keys (called once per keypress). Only the anchor sounds,
-     * exactly as a drag plays only the grabbed note. {@code anchorIndex} is always resolved
-     * against {@code line}, since the anchor is the note the caller's own selection or drag
-     * grabbed, which is always on {@code line} itself. {@code clampedDelta} must
-     * already be clamped via {@link #clampDelta}.
+     * to its original staff position plus {@code clampedDelta}. This is the single definition of
+     * moving a selection's pitch, shared by mouse drag (called live for each mouse step) and
+     * arrow keys (called once per keypress). {@code anchorIndex} is always resolved against
+     * {@code line}, since the anchor is the note the caller's own selection or drag grabbed,
+     * which is always on {@code line} itself. {@code clampedDelta} must already be clamped via
+     * {@link #clampDelta}.
      * <p>
-     * Every moved note's explicit accidental is <b>cleared</b>. That is intended, matching
-     * MuseScore: an accidental is written for the staff position it was written on, and a note
-     * that leaves that position has no claim to it. Undo restores it — {@link #commitPitchShift}
-     * records an {@link ElementModification} carrying the pre-move clone, and undo restores that
-     * snapshot whole via {@link StaffElement#copyStateFrom}, which copies the accidental. The
-     * {@code EnumSet<ElementField>} on the record only tells subscribers which fields changed; it
-     * does not restrict what undo restores.
+     * A moved note's accidental is left untouched here: the note has landed at a new staff
+     * position, and what sounds there — and what the moved note itself now sounds — is for the
+     * song's chain walk to decide once the move is committed, not for this method to guess at.
      */
-    static void moveGroupAndPlayAnchor(Line line, List<PitchShiftEntry> group, int anchorIndex, int clampedDelta) {
-        var playSelected = Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
-
-        // Note-off the anchor's currently-sounding (pre-move) pitch
-        if (playSelected) {
-            PlayThread.sendNoteOff(line.getElement(anchorIndex).getPitch());
-        }
-
+    static void moveGroup(Line line, List<PitchShiftEntry> group, int anchorIndex, int clampedDelta) {
         for (var entry : group) {
-            var note = entry.line().getElement(entry.index());
-            note.setStaffPosition(entry.originalStaffPositionSp() + clampedDelta);
-
-            // See the javadoc: the accidental belonged to the staff position, not to the note.
-            note.setAccidental(null);
-
-            if (note.isStemDirectionAuto()) {
-                note.setDirection(StaffElement.defaultDirection(note));
-            }
-        }
-
-        // Note-on the anchor's new (post-move) pitch
-        if (playSelected) {
-            PlayThread.sendNoteOn(line.getElement(anchorIndex).getPitch());
+            var note = entry.line().noteAt(entry.index());
+            note.setStaffPosition(new StaffPosition(entry.originalStaffPosition().value() + clampedDelta));
         }
     }
 
     /**
-     * Asks whether this shift should also take away the later notes that restate the accidentals
-     * it removes — every explicit accidental in {@code group}, since a note that leaves a staff
-     * position gives up the accidental written for it, which is why each entry states no accidental
-     * at all as its post-shift one.
-     *
-     * <p>Read off each entry's {@code beforeClone} rather than the live element, because a drag has
-     * already moved and cleared the live notes by the time it asks. Must be called before any
-     * modification bracket opens, and its answer honored — Cancel means the shift does not happen.
-     *
-     * <p>{@link AccidentalRestatements#confirm} indexes every note it is given into one line, so
-     * a group reaching across a cross-line tie is filtered to the entries that actually sit on
-     * {@code line} before asking — the restatement offer stays scoped to the line the caller is
-     * editing, exactly as it was before cross-line groups existed. The partner note in the
-     * adjacent line still shifts and still clears its own accidental (see
-     * {@link #moveGroupAndPlayAnchor}); it is only the "later notes restating what this removed"
-     * search that does not extend past {@code line}.
-     *
-     * @param parent The component to parent the dialog on, or null when there is no owning window
-     * @param line   The line the group sits on, in its pre-shift state for an arrow press and its
-     *               post-drag state for a drag; only the group's indices are read off it
-     * @param group  The notes being shifted
-     */
-    static AccidentalRestatements.Decision confirmRestatements(
-            @Nullable Component parent, Line line, List<PitchShiftEntry> group) {
-
-        var entriesOnLine = entriesOnLine(group, line);
-        var edited = new ArrayList<AccidentalRestatements.EditedNote>(entriesOnLine.size());
-
-        for (var entry : entriesOnLine) {
-            edited.add(new AccidentalRestatements.EditedNote(
-                    entry.index(),
-                    entry.originalStaffPositionSp(),
-                    entry.beforeClone().getAccidental(),
-                    null));
-        }
-
-        return AccidentalRestatements.confirm(parent, line, edited);
-    }
-
-    /**
-     * The entries of {@code group} whose own line is {@code line}, in {@code group}'s order.
-     * <p>
-     * A cross-line group holds entries from two lines, but every accidental-reconciliation
-     * call ({@link AccidentalRestatements#confirm}, {@link AccidentalReconciliation}) — here
-     * and in {@link NoteDragHandler}, which runs the same reconciliation on mouse release —
-     * indexes its input into a single line. Filtering to one line's entries here is what keeps
-     * a same-line group's behavior identical to before this method existed — the filter is a
-     * no-op when every entry already shares one line.
-     */
-    static List<PitchShiftEntry> entriesOnLine(List<PitchShiftEntry> group, Line line) {
-        var entries = new ArrayList<PitchShiftEntry>(group.size());
-
-        for (var entry : group) {
-            //noinspection ObjectEquality
-            if (entry.line() == line) {
-                entries.add(entry);
-            }
-        }
-
-        return entries;
-    }
-
-    /**
-     * The post-shift state of every note in {@code group} <em>that sits on {@code line}</em>, as
-     * {@link AccidentalReconciliation} describes it. These are the notes the user moved
-     * deliberately, so they are never materialized themselves — only the notes that inherited
-     * the accidental they are taking away are. The accidental is always null because
-     * {@link #moveGroupAndPlayAnchor} clears it.
-     * <p>
-     * Takes {@code line} and filters by it rather than trusting the caller to have done so:
-     * every index it emits is indexed straight into one line by
-     * {@link AccidentalReconciliation}, and a group reaching across a cross-line tie holds
-     * entries whose indices belong to the adjacent line. Passing those through would reconcile
-     * against whatever note happened to sit at that index here, or run off the end of a
-     * shorter line. The filter is a no-op for a group that is already all on one line.
-     */
-    static List<AccidentalReconciliation.IntendedChange> intendedChanges(
-            List<PitchShiftEntry> group, Line line, int clampedDelta) {
-
-        var entries = entriesOnLine(group, line);
-        var changes = new ArrayList<AccidentalReconciliation.IntendedChange>(entries.size());
-
-        for (var entry : entries) {
-            changes.add(new AccidentalReconciliation.IntendedChange(
-                    entry.index(), null, entry.originalStaffPositionSp() + clampedDelta));
-        }
-
-        return changes;
-    }
-
-    /**
-     * Lets the anchor note that {@link #moveGroupAndPlayAnchor} last sounded ring for
-     * its standard duration, then stops it. Called once a move is finalized — mouse
-     * release for a drag, keypress for an arrow shift — because the last note-on is
-     * left sustaining.
+     * Lets the anchor note last sounded on this move ring for its standard duration, then
+     * stops it. Called once a move is finalized and its chain walk has run — mouse release for
+     * a drag, {@link #shiftPitch} for an arrow shift — because the note-on that sounded the
+     * anchor's post-walk pitch is left sustaining.
      */
     static void scheduleAnchorNoteOff(Line line, int anchorIndex) {
         if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
-            new PlayThread(line.getElement(anchorIndex).getPitch(), false).start();
+            new PlayThread(line.noteAt(anchorIndex).getPitch(), false).start();
         }
     }
 
@@ -334,14 +203,15 @@ public final class PitchShifter {
         for (var element : groupElements) {
             var elementLine = element.getParentLine();
 
-            if (elementLine == null) {
-                // Detached mid-traversal (should not happen on a live selection) — nothing to
-                // resolve an index or a staff position against.
+            // A tie chain's separator (see addTiePartnersOf) has no pitch to shift, so it is
+            // walked but never entered. An element detached mid-traversal (which should not
+            // happen on a live selection) has nothing to resolve an index against.
+            if (!(element instanceof NoteElement note) || elementLine == null) {
                 continue;
             }
 
-            var index = elementLine.getElementIndex(element);
-            group.add(new PitchShiftEntry(elementLine, index, element.getStaffPosition(), element.clone()));
+            var index = elementLine.getElementIndex(note);
+            group.add(new PitchShiftEntry(elementLine, index, note.getStaffPosition(), note.clone()));
         }
 
         return group;
@@ -373,11 +243,6 @@ public final class PitchShifter {
     private static void queueTieSpan(Tie tie, ArrayDeque<StaffElement> pending) {
         var anchor = tie.getAnchorElement();
         var endElement = tie.getEndElement();
-
-        if (anchor == null || endElement == null) {
-            return;
-        }
-
         var anchorLine = anchor.getParentLine();
         var endLine = endElement.getParentLine();
 
@@ -399,15 +264,15 @@ public final class PitchShifter {
 
     /**
      * Clamps {@code deltaSp} so that applying it leaves no note in {@code group}
-     * outside {@link StaffPosition#MIN_SP}..{@link StaffPosition#MAX_SP}.
+     * outside {@link StaffPosition#MIN}..{@link StaffPosition#MAX}.
      */
     static int clampDelta(List<PitchShiftEntry> group, int deltaSp) {
         var minDelta = Integer.MIN_VALUE;
         var maxDelta = Integer.MAX_VALUE;
 
         for (var entry : group) {
-            minDelta = Math.max(minDelta, StaffPosition.MIN_SP - entry.originalStaffPositionSp());
-            maxDelta = Math.min(maxDelta, StaffPosition.MAX_SP - entry.originalStaffPositionSp());
+            minDelta = Math.max(minDelta, StaffPosition.MIN.value() - entry.originalStaffPosition().value());
+            maxDelta = Math.min(maxDelta, StaffPosition.MAX.value() - entry.originalStaffPosition().value());
         }
 
         return Math.clamp(deltaSp, minDelta, maxDelta);
@@ -415,11 +280,19 @@ public final class PitchShifter {
 
     /**
      * Commits a pitch shift for every note in {@code group} as a single
-     * SongDidChangeNotification: one PITCH/ACCIDENTAL {@link ElementModification} per note
-     * (carrying its pre-mutation {@code beforeClone}), then {@code accidentalChanges},
+     * SongDidChangeNotification: one PITCH/ACCIDENTAL {@link ElementModification} per note,
      * then grace-note cleanup — all coalesced into one modification bracket, so the shift and
-     * the accidentals it forces on or takes away from other notes are one undo step. The staff
+     * the accidental restamps the song's chain walk makes for it are one undo step. The staff
      * positions must already have been mutated before this is called.
+     * <p>
+     * Every group note is first put back plainly to its {@code beforeClone}, and only then is
+     * each move recorded through {@link Line#modifyElement}. The song walks the chain after
+     * every recorded change and records its restamps between the moves, so a note whose move is
+     * recorded later may already have been restamped by an earlier one; recording from the
+     * restored notes gives each record the note's real prior state, which is what undo puts
+     * back. A note that lands on another staff position has no pitch of its own there and is
+     * recorded {@link AccidentalState.Adopting Adopting}, so the walk gives it what is in force
+     * where it landed.
      * <p>
      * A connected glissando whose two notes land on the same pitch is removed from the model,
      * not merely hidden — a same-pitch glissando is not a state the document may hold. The
@@ -434,31 +307,39 @@ public final class PitchShifter {
      * mutations recorded through the adjacent line's own {@code applyChange}/{@code removeElement}
      * coalesce into the same batch.
      */
-    static void commitPitchShift(
-            Line line,
-            List<PitchShiftEntry> group,
-            List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
-            AccidentalRestatements.Decision decision) {
-
+    static void commitPitchShift(Line line, List<PitchShiftEntry> group) {
         line.withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
-            for (var entry : group) {
-                var entryLine = entry.line();
+            // Every note goes back before any move is recorded: a record's before-element is
+            // the note as it stands when the record is made, and the walk run by an earlier
+            // record reads the later notes where they really were.
+            var landedPositions = new ArrayList<StaffPosition>(group.size());
 
-                entryLine.applyChange(
-                        new ElementModification(entryLine, entry.index(),
-                                EnumSet.of(ElementField.PITCH, ElementField.ACCIDENTAL),
-                                entry.beforeClone(), entryLine.getElement(entry.index()).clone()),
-                        () -> {}
-                );
+            for (var entry : group) {
+                var note = entry.line().noteAt(entry.index());
+                var before = entry.beforeClone();
+                landedPositions.add(note.getStaffPosition());
+                note.setStaffPosition(before.getStaffPosition());
+                note.setAccidentalState(before.accidentalState());
             }
 
-            // Recorded in the same bracket so the shift and its reconciliation are one undo step.
-            // Applied before the grace-note cleanup, while every index is still the one the
-            // reconciliation saw. Scoped to line: see confirmRestatements/entriesOnLine.
-            AccidentalMaterializer.commit(line, accidentalChanges);
+            for (var i = 0; i < group.size(); i++) {
+                var entry = group.get(i);
+                var landedPosition = landedPositions.get(i);
+                var note = entry.line().noteAt(entry.index());
+                var moved = !landedPosition.equals(note.getStaffPosition());
 
-            // Accepted restatements on later lines join the same step.
-            AccidentalRestatements.commitOtherLines(decision, line);
+                entry.line().modifyElement(
+                        entry.index(),
+                        EnumSet.of(ElementField.PITCH, ElementField.ACCIDENTAL),
+                        () -> {
+                            note.setStaffPosition(landedPosition);
+
+                            if (moved) {
+                                note.setAccidentalState(new AccidentalState.Adopting());
+                            }
+                        }
+                );
+            }
 
             // Runs before the grace-note cleanup, while every group index is still the one the
             // group was built with — the removals below shift them. A shifted note can be either
@@ -537,9 +418,7 @@ public final class PitchShifter {
             return;
         }
 
-        var owner = line.getElement(ownerIndex);
-
-        if (!owner.hasGlissando()) {
+        if (!(line.getElement(ownerIndex) instanceof NoteElement owner) || !owner.hasGlissando()) {
             return;
         }
 
