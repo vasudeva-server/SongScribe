@@ -69,16 +69,22 @@ argued early, because the earlier step's answer changes what the later question
 even is. This is also why the gate is per step and not one document up front: the
 tree step 5 reads is the tree step 3 left.
 
-Each document states, for its step:
+Each document states, for its step, two things and no more:
 
 1. **What it found** — the facts the step's own reading produced, with file and
    line.
-2. **What it proposes**, each item separately decidable, with the correct
-   structure stated concretely and the recommendation. Never one coherent
-   proposal the user can only agree to.
-3. **Open questions** — anything you cannot decide, and anything you decided but
-   are not certain of. A question you did not ask is a decision you made
-   silently.
+2. **What needs deciding** — one list holding everything that wants the user's
+   confirmation or the user's decision, each item separately decidable, with the
+   correct structure stated concretely. Never one coherent proposal the user can
+   only agree to.
+
+**A proposal and the question it turns on are one item.** Where an item cannot be
+settled from the code — a domain promise you would be guessing at, a fork whose
+answer changes which structure is right — the question is stated inside that
+item, with what each answer makes the correct structure. It never becomes a
+second list the user has to carry back to the proposal it decides. What you
+could not decide, and what you decided but are not certain of, both belong here:
+a question you did not ask is a decision you made silently.
 
 Then:
 
@@ -96,14 +102,17 @@ Then:
   findings document that carries them carries the marks of its review, not a
   format to copy.
 - **Resolve.** When it returns, read the file back from disk. The review is
-  rfm — comments, insertions, deletions, substitutions — and **every
-  mark gets an answer written into the document**, as a reply whose `re:` names
-  the id it answers. A suggestion you are applying is answered too; silently
-  taking one leaves the user unable to tell agreement from oversight.
-- **Then open it again**, so they see the answers. **The gate opens on a close
-  that leaves nothing unanswered** — not on the first close, and a mark you
-  interpreted rather than asked about is unanswered. Rounds are cheap; a
-  misread comment is what this whole gate exists to prevent.
+  rfm — comments, insertions, deletions, substitutions — and **every mark that
+  asks or suggests something gets an answer written into the document**, as a
+  reply whose `re:` names the id it answers. A suggestion you are applying is
+  answered too; silently taking one leaves the user unable to tell agreement
+  from oversight. **A mark that only approves — "ok", "agree", "yes" — is
+  answered by executing it, not by a reply.**
+- **Open it again only if you wrote a reply**, so they see the answers. **The
+  gate opens on a close that leaves nothing asked unanswered**, and a close that
+  asked nothing opens it at once. A mark you interpreted rather than asked about
+  is unanswered. Rounds are cheap; a misread comment is what this whole gate
+  exists to prevent.
 - **Then execute the step**, and snapshot.
 
 The findings documents are working memory on the same terms as the record, and
@@ -291,8 +300,8 @@ from the answer — so a change here is made before step 3 begins, not alongside
 it.
 
 The three answers and the architecture gate go into
-`plans/design-pass-<pass>/findings-1-2.md` beneath step 1's inventory, as *What it
-proposes* and *Open questions*. **Then the review gate: open, review, resolve.**
+`plans/design-pass-<pass>/findings-1-2.md` beneath step 1's inventory, as *What
+needs deciding*. **Then the review gate: open, review, resolve.**
 No type is created, split, dissolved or renamed until it is through.
 
 ## Step 3: Make illegal states unrepresentable
@@ -339,8 +348,8 @@ naming any caller, named as a verb on its arguments. A `*Utils` or `*Helper`
 static bag in the target is a finding: its contents are redistributed to the
 types owning the invariants, and anything left that names no owner **goes back
 to step 2** — a concept with no type is a class-design decision, not something
-this step can place, so it is an *Open question* in this step's document rather
-than a move you invent an owner for.
+this step can place, so it is an item in this step's *What needs deciding*,
+asking which type the concept wants, rather than a move you invent an owner for.
 
 Every move goes into `plans/design-pass-<pass>/findings-4.md`: what moves, to which
 type, and the invariant that type owns which makes it the owner. **Then the
@@ -374,15 +383,15 @@ Then **one row per class**: its three counts, and a line on what the class
 promises that makes them come out that way. A class whose count is `0 / 0 / 0` is
 still a row — that it earns nothing is the finding.
 
-Then two lists:
+Then *What needs deciding*, holding two kinds of item:
 
 - **Signature changes the rules below force** — a `record` replacing transposable
   parameters, an enum replacing a mode-selecting `boolean`, a rename. These are
   code changes, so they are proposed here and not performed.
-- **Open questions** — every domain promise you cannot settle from the code, in
-  the checkpoint form `reference/classification.md` specifies. Nothing mechanical
-  belongs here; a promise about notation you guessed at reads exactly like one
-  you knew, which is the whole reason this list exists.
+- **Every domain promise you cannot settle from the code**, in the checkpoint
+  form `reference/classification.md` specifies. Nothing mechanical is stated as a
+  question; a promise about notation you guessed at reads exactly like one you
+  knew, which is the whole reason these are asked.
 
 **Then the review gate: open, review, resolve.** No Javadoc is written and no
 signature changed before it. Then write, in this order: the method contracts as
