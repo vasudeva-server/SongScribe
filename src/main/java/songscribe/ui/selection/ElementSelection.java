@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import songscribe.dom.Line;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * A run of elements within a staff line, named by index.
@@ -31,18 +32,12 @@ import songscribe.dom.Line;
  * anchor to give: nothing was clicked.
  *
  * @param line  The staff line containing the selection
- * @param begin The index of the first selected element
- * @param end   The index of the last selected element (inclusive)
+ * @param range The selected elements, as the user chose them — not widened over paired elements
  */
-public record ElementSelection(Line line, int begin, int end) {
+public record ElementSelection(Line line, ElementRange range) {
 
     /** The single element at {@code elementIndex}. */
     public static ElementSelection single(Line line, int elementIndex) {
-        return new ElementSelection(line, elementIndex, elementIndex);
-    }
-
-    /** The number of elements the selection covers. */
-    public int size() {
-        return (end - begin) + 1;
+        return new ElementSelection(line, ElementRange.single(elementIndex));
     }
 }

@@ -70,13 +70,15 @@ public class LineTrackBuilder {
     public int getElementDurationWithTuplet(int elementIndex) {
         var element = line.getElement(elementIndex);
         var writtenTicks = element.playedDuration();
-        var tuplet = line.findTupletAt(elementIndex);
+        var tuplet = line.spanRegistry().findTupletAt(elementIndex);
 
-        if ((tuplet == null) || !tuplet.isResolved()) {
+        var ratio = (tuplet == null) ? null : tuplet.getRatio();
+
+        if ((tuplet == null) || (ratio == null)) {
             return writtenTicks;
         }
 
-        var normalNotes = tuplet.getNormalNotes();
+        var normalNotes = ratio.normalNotes();
         var grade = tuplet.getGrade();
         var writtenTicksBefore = 0L;
 
@@ -328,7 +330,8 @@ public class LineTrackBuilder {
             var duration = getElementDurationWithTuplet(elementIndex);
 
             if (element instanceof NoteElement note) {
-                var tieSpan = line.findTieAt(elementIndex);
+                var spans = line.spanRegistry();
+                var tieSpan = spans.findTieAt(elementIndex);
                 var velocity = noteVelocity(note, velocityMap, lineIndex, elementIndex);
 
                 // Receiver-relative resolution. Reading the indices off the tie would compare
@@ -338,8 +341,8 @@ public class LineTrackBuilder {
                 // wrong place, silently. Only an At bound names a position in this line, which
                 // is what suppresses the note-on for a note tied in from the previous line and
                 // the note-off for a note tied out into the next one.
-                var strikesNote = tieSpan == null || line.anchorIndexOf(tieSpan).isAt(elementIndex);
-                var releasesNote = tieSpan == null || line.endIndexOf(tieSpan).isAt(elementIndex);
+                var strikesNote = tieSpan == null || spans.anchorIndexOf(tieSpan).isAt(elementIndex);
+                var releasesNote = tieSpan == null || spans.endIndexOf(tieSpan).isAt(elementIndex);
 
                 if (strikesNote) {
                     slideHelper.createPendingResets(track, trackTicks, 0);

@@ -242,7 +242,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
 
         if (beamed) {
             var line = invariants.requireCurrentLine();
-            var beam = line.findBeamAt(line.getElementIndex(note));
+            var beam = line.spanRegistry().findBeamAt(line.getElementIndex(note));
 
             if (beam != null) {
                 var beamLayout = layoutResult.getBeamLayout(beam);
@@ -437,7 +437,7 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     private boolean isNoteBeamed(StaffElement note, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();
         var noteIndex = line.getElementIndex(note);
-        return line.findBeamAt(noteIndex) != null &&
+        return line.spanRegistry().findBeamAt(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;
     }
 }

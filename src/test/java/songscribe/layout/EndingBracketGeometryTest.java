@@ -423,7 +423,7 @@ class EndingBracketGeometryTest extends UnitTest {
                 line.addElement(element);
             }
 
-            line.addSpan(ending);
+            ending.addTo(line);
         });
         var columns = new ArrayList<ElementColumn>(elements.size());
 

@@ -20,19 +20,15 @@
 
 package songscribe.ui.component.score;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.AccidentalChain;
-import songscribe.dom.AccidentalScanView;
-import songscribe.dom.ChainEdit;
+import songscribe.dom.ElementChange;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
-import songscribe.dom.DocumentScale;
 import songscribe.dom.Dottable;
 import songscribe.dom.NoteElement;
 import songscribe.dom.ProjectedEdit;
@@ -150,11 +146,11 @@ final class PreviewElementInserter {
                 return;
             }
 
-            line.withModification(opLabel, () -> modifyExistingElement(lc, insertionIndex, replacement, line));
+            song.withModification(opLabel, () -> modifyExistingElement(lc, insertionIndex, replacement, line));
             return;
         }
 
-        line.withModification(opLabel, () -> {
+        song.withModification(opLabel, () -> {
             if (appends) {
                 addPreviewElement(lc, line);
             } else {
@@ -212,7 +208,8 @@ final class PreviewElementInserter {
      * true answer {@code replacement} is left stamped as the walk decided.
      */
     private static boolean replacementFits(LineComponent lc, Line line, int index, StaffElement replacement) {
-        var edit = ProjectedEdit.replacing(line, new StaffElementRun.EffectiveRange(index, index), List.of(replacement));
+        var edit = ProjectedEdit.replacing(
+            line, StaffElementRun.ElementRange.single(index), List.of(replacement));
         var restamps = edit.walk();
 
         // The auto-maintained terminal barline is not measured: layout pins it flush-right, and
@@ -394,16 +391,17 @@ final class PreviewElementInserter {
         }
 
         // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
-        var tuplet = line.findTupletAt(xIndex - 1);
+        var tuplet = line.spanRegistry().findTupletAt(xIndex - 1);
 
         if ((tuplet != null) && ((xIndex - 1) < tuplet.getEndElementIndex())) {
-            line.removeTuplet(tuplet);
+            tuplet.removeFrom(line);
         }
 
         // The ending confirm runs inside the insertion gate: declining it must leave the line
         // exactly as it was, on the same terms as a refusal for want of room.
         var insertion = walkAndCalculateInsertion(lc, line, previewElement, xIndex,
-            () -> !line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())
+            () -> !ElementChange.forInsertion(line, xIndex, previewElement.getType())
+                .removesConfirmableSpan()
                 || EndingConfirms.confirmInvalidation(lc));
 
         if (insertion == null) {
@@ -449,7 +447,7 @@ final class PreviewElementInserter {
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
-        var endingEffect = line.findEndingReplacementEffect(elementIndex, replacement);
+        var endingEffect = ElementChange.forReplacement(line, elementIndex, replacement).endingEffect();
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {
@@ -481,17 +479,17 @@ final class PreviewElementInserter {
         // hung off it.
         //
         // Ties and tuplets are not swept here: setElement removes exactly the ones the
-        // replacement invalidates, via Tie.isInvalidatedByReplacement and
-        // Tuplet.isInvalidatedByReplacement. Only the beam still needs a hand, because its
+        // replacement invalidates, each by its own outcomeFor. Only the beam still needs a hand, because its
         // repair is not a yes-or-no question — the select-mode path trims a beam to its
         // beamable middle rather than dropping it, which a removal hook cannot express.
 
         // Every beam touching this element — the new element type may not be beamable at all.
-        var beam = line.findBeamAt(elementIndex);
+        var spans = line.spanRegistry();
+        var beam = spans.findBeamAt(elementIndex);
 
         while (beam != null) {
-            line.removeBeaming(beam);
-            beam = line.findBeamAt(elementIndex);
+            beam.removeFrom(line);
+            beam = spans.findBeamAt(elementIndex);
         }
 
         // Replace the element entirely (line.setElement marks the song modified)

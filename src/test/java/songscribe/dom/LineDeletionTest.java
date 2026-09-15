@@ -139,7 +139,8 @@ class LineDeletionTest extends UnitTest {
         var elements = fixtureElements();
         var line = lineHolding(elements);
 
-        line.deleteRange(line.effectiveRange(testCase.begin(), testCase.end()));
+        line.deleteRange(line.effectiveRange(
+            new StaffElementRun.ElementRange(testCase.begin(), testCase.end())));
 
         assertThat(elementsOf(line))
             .containsExactlyElementsOf(at(elements, testCase.surviving()));
@@ -151,8 +152,8 @@ class LineDeletionTest extends UnitTest {
         var line = lineHolding(elements);
 
         line.deleteRanges(List.of(
-            new StaffElementRun.EffectiveRange(FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX),
-            new StaffElementRun.EffectiveRange(SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX)));
+            new StaffElementRun.ElementRange(FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX),
+            new StaffElementRun.ElementRange(SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX)));
 
         assertThat(elementsOf(line))
             .as("taken in ascending order the first removal would shift the second range onto the "

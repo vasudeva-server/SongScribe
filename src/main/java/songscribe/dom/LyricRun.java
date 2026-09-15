@@ -549,7 +549,7 @@ public interface LyricRun extends StaffElementRun {
      * new continues-status. Element rewrites that would not actually change the stored value are
      * skipped to avoid emitting redundant {@code ElementModification}s.
      *
-     * <p>Must be called from inside a {@link Line#withModification(Runnable)} bracket.
+     * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
      *
      * @param index      the element index in this run
      * @param verse      the verse number (typically 1)
@@ -604,7 +604,7 @@ public interface LyricRun extends StaffElementRun {
      * constructor rejects blank text on anything but a carrier — so this removes the verse
      * entry outright and returns before any {@link Lyric} is derived or constructed.
      *
-     * <p>Must be called from inside a {@link Line#withModification(Runnable)} bracket.
+     * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
      *
      * @param index      the element index in this run
      * @param verse      the verse number (typically 1)

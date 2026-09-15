@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import java.util.List;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
  * Base class for hairpin dynamic markings (crescendo and diminuendo).
  * <p>
@@ -105,6 +107,18 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
     public abstract Kind getKind();
 
     /**
+     * Absorbs every same-kind hairpin overlapping or adjacent to this one into it: a hairpin
+     * drawn flush against a same-type one continues it rather than starting a second — one
+     * uninterrupted dynamic gesture, one hairpin — so the reach is
+     * {@link LineSpans#SPAN_ADJACENCY_REACH}. The kind's concrete class is the merge type, so
+     * a crescendo never absorbs a diminuendo.
+     */
+    @Override
+    protected void applyDisplacementPolicy(Line line) {
+        line.spanRegistry().mergeOverlapping(this, getKind().spanType(), LineSpans.SPAN_ADJACENCY_REACH);
+    }
+
+    /**
      * Decides what happens to this hairpin when {@code change} lands, judged entirely
      * against {@link ElementChange#projectedElements} — the line as it will be.
      * <p>
@@ -136,7 +150,7 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         }
 
         if (change instanceof ElementChange.Deletion deletion) {
-            return outcomeForDeletion(deletion, line, anchorIndex, endIndex);
+            return outcomeForDeletion(deletion, line, new ElementRange(anchorIndex, endIndex));
         }
 
         // Every other shape removes no element, so none of them can pull an endpoint in and
@@ -163,16 +177,18 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         var anchorIndex = projectedEndpointIndexOf(change, anchor);
         var endIndex = projectedEndpointIndexOf(change, end);
 
-        if (anchorIndex < 0 || endIndex < 0) {
+        if (anchorIndex < 0 || endIndex <= anchorIndex) {
             return SpanOutcome.Simple.REMOVE;
         }
+
+        var span = new ElementRange(anchorIndex, endIndex);
 
         // Both predicates read the neighbours of the index they are given — the host after
         // an anchor, the run of durations before an end — so they are asked about the line
         // as it will be, rather than having their rules restated over the change alone.
-        if (canAnchorAt(projected, anchorIndex, endIndex)
+        if (canAnchorAt(projected, span)
             && canEndAt(projected, endIndex)
-            && hasEnoughColumns(projected, anchorIndex, endIndex)) {
+            && hasEnoughColumns(projected, span)) {
             return SpanOutcome.Simple.KEEP;
         }
 
@@ -195,16 +211,9 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      * Answers a deletion, pulling each endpoint in to the nearest survivor that can hold
      * it, or removing the hairpin when what survives is too narrow to slope across.
      *
-     * @param anchorIndex this hairpin's anchor index in the pre-deletion line
-     * @param endIndex    this hairpin's end index in the pre-deletion line
+     * @param span this hairpin's span in the pre-deletion line
      */
-    private SpanOutcome outcomeForDeletion(
-        ElementChange.Deletion deletion,
-        Line line,
-        int anchorIndex,
-        int endIndex
-    ) {
-        var elements = line.getElements();
+    private SpanOutcome outcomeForDeletion(ElementChange.Deletion deletion, Line line, ElementRange span) {
         var projected = deletion.projectedElements();
 
         // Nothing outside the range can fall between two elements inside it, so what
@@ -212,9 +221,9 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         var first = -1;
         var last = -1;
 
-        for (var i = anchorIndex; i <= endIndex; i++) {
+        for (var element : line.getElements(span)) {
             // Absent means the element is one of the doomed ones.
-            var projectedIndex = deletion.projectedIndexOf(elements.get(i));
+            var projectedIndex = deletion.projectedIndexOf(element);
 
             if (projectedIndex < 0) {
                 continue;
@@ -231,22 +240,28 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
             return SpanOutcome.Simple.REMOVE;
         }
 
-        var begin = resolveBeginIndex(first, last, projected);
-        var end = resolveEndIndex(first, last, projected);
+        var survivors = new ElementRange(first, last);
+        var begin = resolveBeginIndex(survivors, projected);
+        var end = resolveEndIndex(survivors, projected);
 
-        // A span the user could not have drawn leaves no gesture worth keeping. The
-        // column count subsumes begin >= end: a single element is at most one column,
-        // and so is a surviving grace note with its host.
-        if (begin < 0 || end < 0 || !hasEnoughColumns(projected, begin, end)) {
+        if (begin < 0 || end <= begin) {
             return SpanOutcome.Simple.REMOVE;
         }
 
-        return new SpanOutcome.Reshape(begin, end);
+        // A span the user could not have drawn leaves no gesture worth keeping. The column
+        // count also rejects a surviving grace note with its host, which is one column.
+        var reshaped = new ElementRange(begin, end);
+
+        if (!hasEnoughColumns(projected, reshaped)) {
+            return SpanOutcome.Simple.REMOVE;
+        }
+
+        return new SpanOutcome.Reshape(reshaped);
     }
 
     /**
-     * Returns whether the element at {@code index} in {@code candidates} can begin a
-     * hairpin.
+     * Returns whether the first element of {@code span} in {@code candidates} can begin a
+     * hairpin over {@code span}.
      * <p>
      * A pitched note always can. A grace note belongs to the note it precedes, so it
      * can begin one when that note is pitched — anchoring on the grace note rather than
@@ -258,14 +273,15 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      * placed one.
      *
      * @param candidates the elements to test against, in document order
-     * @param lastIndex  the last usable index, bounding the host lookahead
+     * @param span       the hairpin's span; its end bounds the host lookahead
      */
-    public static boolean canAnchorAt(List<? extends StaffElement> candidates, int index, int lastIndex) {
+    public static boolean canAnchorAt(List<? extends StaffElement> candidates, ElementRange span) {
+        var index = span.begin();
         var type = candidates.get(index).getType();
 
         return type.isPitchedNote()
             || (type.isGraceNote()
-                && index < lastIndex
+                && index < span.end()
                 && candidates.get(index + 1).getType().isPitchedNote());
     }
 
@@ -320,8 +336,8 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
     }
 
     /**
-     * Returns whether {@code [begin, end]} holds the {@value #MIN_COLUMNS} columns a
-     * hairpin needs to slope across.
+     * Returns whether {@code span} holds the {@value #MIN_COLUMNS} columns a hairpin needs
+     * to slope across.
      * <p>
      * The endpoint rules alone are not enough: a grace note and its host both pass
      * {@link #canAnchorAt} and {@link #canEndAt} respectively, yet occupy one column
@@ -332,25 +348,24 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      *
      * @param candidates the elements to test against, in document order
      */
-    public static boolean hasEnoughColumns(List<? extends StaffElement> candidates, int begin, int end) {
-        return countColumns(candidates, begin, end) >= MIN_COLUMNS;
+    public static boolean hasEnoughColumns(List<? extends StaffElement> candidates, ElementRange span) {
+        return countColumns(candidates, span) >= MIN_COLUMNS;
     }
 
     /**
-     * Counts what a hairpin has to slope across in the inclusive range
-     * {@code [begin, end]}: every pitched note, plus a rest at {@code end}. Grace notes
-     * and interior rests do not count.
+     * Counts what a hairpin has to slope across in {@code span}: every pitched note, plus a
+     * rest at its end. Grace notes and interior rests do not count.
      */
-    private static int countColumns(List<? extends StaffElement> candidates, int begin, int end) {
+    private static int countColumns(List<? extends StaffElement> candidates, ElementRange span) {
         var count = 0;
 
-        for (var index = begin; index <= end; index++) {
+        for (var index = span.begin(); index <= span.end(); index++) {
             if (candidates.get(index).getType().isPitchedNote()) {
                 count++;
             }
         }
 
-        if (candidates.get(end).getType().isRest()) {
+        if (candidates.get(span.end()).getType().isRest()) {
             count++;
         }
 
@@ -359,21 +374,23 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
 
     /**
      * Returns the post-deletion position of this hairpin's anchor, given that its
-     * elements survive from {@code first} through {@code last}, or -1 when none of them
-     * can begin a hairpin.
+     * elements survive over {@code survivors}, or -1 when none of them can begin a hairpin.
      * <p>
      * A surviving anchor stays where it is — a hairpin an older build left anchored on a
      * rest is not this deletion's to correct. A deleted one moves in to the first element
      * that can begin one: a pitched note, or a grace note whose host is one, matching what
      * the app allows when the hairpin is drawn.
      */
-    private int resolveBeginIndex(int first, int last, List<? extends StaffElement> candidates) {
+    private int resolveBeginIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
+        var first = survivors.begin();
+        var last = survivors.end();
+
         if (candidates.get(first) == getAnchorElement()) {
             return first;
         }
 
         for (var i = first; i <= last; i++) {
-            if (canAnchorAt(candidates, i, last)) {
+            if (canAnchorAt(candidates, new ElementRange(i, last))) {
                 return i;
             }
         }
@@ -383,11 +400,13 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
 
     /**
      * Returns the post-deletion position of this hairpin's end, given that its elements
-     * survive from {@code first} through {@code last}, or -1 when none of them can end a
-     * hairpin. A surviving end stays where it is; a deleted one moves in to the last
-     * surviving note or rest.
+     * survive over {@code survivors}, or -1 when none of them can end a hairpin. A surviving
+     * end stays where it is; a deleted one moves in to the last surviving note or rest.
      */
-    private int resolveEndIndex(int first, int last, List<? extends StaffElement> candidates) {
+    private int resolveEndIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
+        var first = survivors.begin();
+        var last = survivors.end();
+
         if (candidates.get(last) == getEndElement()) {
             return last;
         }

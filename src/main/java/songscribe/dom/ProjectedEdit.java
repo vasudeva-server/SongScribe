@@ -22,7 +22,7 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.List;
 
-import songscribe.dom.StaffElementRun.EffectiveRange;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * An edit to one line's elements that has not happened yet: the elements it removes from the
@@ -84,10 +84,10 @@ public final class ProjectedEdit {
      * @return the projected edit
      */
     public static ProjectedEdit replacing(
-        Line line, EffectiveRange replaced, List<? extends StaffElement> inserted) {
+        Line line, ElementRange replaced, List<? extends StaffElement> inserted) {
 
         return new ProjectedEdit(
-            line, replaced.begin(), line.getElements(replaced.begin(), replaced.end()), inserted);
+            line, replaced.begin(), line.getElements(replaced), inserted);
     }
 
     /**

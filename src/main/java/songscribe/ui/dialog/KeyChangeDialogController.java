@@ -300,12 +300,12 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
         var keyChange = site.boundKeyChange();
         var keyBefore = line.keyAt(elementIndex - 1);
         var strandsItself = key == keyBefore;
-        var ownRange = line.effectiveRange(elementIndex, elementIndex);
+        var ownRange = line.effectiveRange(StaffElementRun.ElementRange.single(elementIndex));
 
         // Every key change further along this line that the new key leaves restating it. Scanning
         // from past this one is the point: what stands before it is untouched by this edit.
         var strandedAfter = line.redundantKeyChangeRanges(elementIndex + 1, key);
-        var onLine = new ArrayList<StaffElementRun.EffectiveRange>();
+        var onLine = new ArrayList<StaffElementRun.ElementRange>();
 
         if (strandsItself) {
             // A removal, described as one: the key change and its barline go, and nothing takes

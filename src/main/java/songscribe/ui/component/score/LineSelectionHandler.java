@@ -736,6 +736,6 @@ class LineSelectionHandler {
             return;
         }
 
-        coordinator.selectRange(touched.begin(), touched.end());
+        coordinator.selectRange(touched);
     }
 }

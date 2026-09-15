@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * What a rubber-band drag on one line may select, and how far across the staff it may reach.
@@ -65,14 +66,6 @@ public final class SweepRange {
     private final List<ElementColumn> columns;
     private final double leftLimitSs;
     private final double rightLimitSs;
-
-    /**
-     * An inclusive run of element indices on the line a {@link SweepRange} was built from.
-     *
-     * @param begin the first index in the run
-     * @param end   the last index in the run, never less than {@code begin}
-     */
-    public record ColumnRange(int begin, int end) {}
 
     private SweepRange(List<ElementColumn> columns, double leftLimitSs, double rightLimitSs) {
         this.columns = columns;
@@ -157,7 +150,7 @@ public final class SweepRange {
      * @return the inclusive index range of touched columns, or {@code null} when the interval
      *         touches none — it lies wholly in a gap, or wholly off the music
      */
-    public @Nullable ColumnRange overlapping(double leftSs, double rightSs) {
+    public @Nullable ElementRange overlapping(double leftSs, double rightSs) {
         var begin = -1;
         var end = -1;
 
@@ -173,7 +166,7 @@ public final class SweepRange {
             }
         }
 
-        return begin == -1 ? null : new ColumnRange(begin, end);
+        return begin == -1 ? null : new ElementRange(begin, end);
     }
 
     /**

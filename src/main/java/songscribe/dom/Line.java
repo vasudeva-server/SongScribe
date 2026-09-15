@@ -21,26 +21,14 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.message.mutation.BeamingAddition;
-import songscribe.message.mutation.BeamingRemoval;
-import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
-import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
@@ -51,16 +39,25 @@ import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LineLayoutChange;
 import songscribe.message.mutation.LineLayoutField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.SpanAddition;
-import songscribe.message.mutation.SpanRemoval;
-import songscribe.message.mutation.TieAddition;
-import songscribe.message.mutation.TieRemoval;
-import songscribe.message.mutation.TupletAddition;
-import songscribe.message.mutation.TupletRemoval;
 
 /**
- * One system of the score: an ordered list of staff elements, the spans drawn over them, and the
- * key that is in effect across them.
+ * One system of the score: an {@link EditableRun element run} that belongs to a {@link Song} and
+ * posts every change to its elements as a mutation through that song's modification bracket.
+ * It holds four things — the key it establishes, its ordered staff elements, the vertical offset
+ * of its lyric rows, and the registry of the spans drawn over it.
+ *
+ * <p><b>Elements.</b> The four primitives below — insertion, replacement, single removal and
+ * range removal — each post one mutation and repair nothing around it; an edit goes through the
+ * run operations {@link EditableRun} states, which run the repairs. Each primitive first asks the
+ * song whether it may touch the terminal position, because the last element of the last line is
+ * the song's to maintain, not the line's: the policy is stated once, on the song's
+ * {@link TerminalMaintainer}.
+ *
+ * <p><b>Spans.</b> The spans are not held here but in the line's {@link LineSpans}, reached
+ * through {@link #spanRegistry()}: every query over them, the sweep that re-judges them when an
+ * element changes, and the merge rules belong to that registry, and a span enters or leaves it
+ * through its own {@link Span#addTo}/{@link Span#removeFrom}. The element primitives only hand
+ * each pending change to the registry before they apply it.
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
@@ -77,24 +74,12 @@ import songscribe.message.mutation.TupletRemoval;
  *
  * <p><b>Pairing.</b> Which elements cannot outlive their partner, and how a range widens to cover
  * both, is {@link StaffElementRun}'s — a line is one such run, and a clipboard fragment is
- * another, so the rule is stated once for both. The widening is a query, never a mutation: it is
- * what a deletion or a copy really carries away, and therefore also what the selection highlight
- * has to show.
+ * another, so the rule is stated once for both.
  */
-public class Line implements LyricRun, SpanLookup {
+public final class Line implements EditableRun {
 
-    private static final String TERMINAL_NOT_REMOVABLE =
-        "The auto-maintained terminal may not be removed";
-
-    /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
-    private final List<Span> spans = new ArrayList<>();
-
-    /**
-     * Live unmodifiable view of {@link #spans}, held once rather than wrapped per call:
-     * every {@link SpanLookup} query iterates {@link #getSpans()}, and the wrapper tracks
-     * later mutations of {@code spans} anyway.
-     */
-    private final List<Span> spansView = Collections.unmodifiableList(spans);
+    /** The spans drawn over this line's elements. See the class Javadoc. */
+    private final LineSpans spans = new LineSpans(this);
 
     private final Song song;
 
@@ -132,48 +117,22 @@ public class Line implements LyricRun, SpanLookup {
      * {@code detach}, which null this field out. {@link #getElementIndex} rebuilds the map when it
      * finds it null, and otherwise serves a cached lookup.
      *
-     * <p>Writes to {@link #spans} are absent from that picture because they cannot reach it:
-     * a span holds no position in {@code elements}, and {@link #appendChild} /
-     * {@link #removeChild} touch the span list alone.
+     * <p>Writes to the span registry are absent from that picture because they cannot reach
+     * it: a span holds no position in {@code elements}, and {@link LineSpans} writes its own
+     * list alone.
      */
     private volatile @Nullable Map<StaffElement, Integer> elementIndexMap = null;
 
     /**
-     * Default beat change Y position (-3 staff spaces above middle)
-     */
-    public static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;  // -24px
-
-    /**
      * Default lyrics Y position (below staff)
      */
-    public static final double LYRICS_DEFAULT_Y_SS = 6.25;  // 50px
+    public static final double LYRICS_DEFAULT_Y_SS = 6.25;
+
     /**
-     * Y offset for lyrics display (default: 50, below staff).
-     * <p>
-     * Note: This field is still in active use for line-level lyrics positioning.
-     * Per-instance lyrics offsets are not yet implemented.
+     * The vertical position of this line's lyric rows below the staff, in staff spaces, shared
+     * by every verse on the line.
      */
     private double lyricsYPosSs = LYRICS_DEFAULT_Y_SS;
-
-    /**
-     * Default first/second ending Y position (above staff)
-     */
-    public static final double ENDING_DEFAULT_Y_SS = -3.125;  // -25px
-
-    /**
-     * Default trill Y position (above staff)
-     */
-    public static final double TRILL_DEFAULT_Y_SS = -3.375;  // -27px
-
-    /**
-     * How far past a span's endpoint a same-type span may sit and still count as
-     * touching it, in elements. Two spans this close describe one uninterrupted
-     * gesture, so adding or reshaping either one merges them.
-     * <p>
-     * Every place that decides "are these two spans adjacent?" must read this, or
-     * the menu would offer to extend a hairpin the model then declines to merge.
-     */
-    public static final int SPAN_ADJACENCY_REACH = 1;
 
     public Line(Song song) {
         this.song = song;
@@ -181,6 +140,11 @@ public class Line implements LyricRun, SpanLookup {
 
     public Song getSong() {
         return song;
+    }
+
+    /** The registry of the spans drawn over this line's elements. */
+    public LineSpans spanRegistry() {
+        return spans;
     }
 
     /**
@@ -210,86 +174,12 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Applies a single mutation, delegating to the parent song's bracket.
-     *
-     * <p>A modification bracket must be open — the mutation is recorded and the
-     * mutator runs inside it. If the song has suspended tracking via
-     * {@link Song#withoutMutationTracking(Runnable)}, the mutator runs without
-     * being recorded.
-     *
-     * <p>Either way the song's key invariant is restored afterwards. The suspended
-     * path is not a shortcut past it: a key edit made under suspended tracking moves
-     * the same keys as one made inside a bracket, so it owes the same maintenance. The
-     * suspended path maintains the key invariant but runs no chain walk.
-     *
-     * @throws IllegalStateException if the song has neither an open modification
-     *     bracket nor suspended tracking
+     * Posts a single mutation through the song's modification bracket. What the bracket
+     * promises — recording, the suspended-tracking path, the key invariant, the chain walk,
+     * and what is thrown outside a bracket — is {@link Song#applyChange}'s contract.
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
-        if (song.isMutationTrackingSuspended()) {
-            mutator.run();
-
-            // Suspending tracking stops the mutation being recorded; it does not stop the edit
-            // moving a key. Without this the invariant was skipped on the whole suspended path,
-            // leaving every later line's inherited key stale with no error and nothing visible
-            // to notice. No line-0 repair can be owed here — that needs a LineInsertion or
-            // LineDeletion, and those reach Song.applyChange directly rather than through a line.
-            song.maintainKeyInvariant(mutation, null);
-            return;
-        }
-
-        if (!song.isModifying()) {
-            throw new IllegalStateException(
-                "Line.applyChange called outside a modification bracket for " + mutation
-            );
-        }
-
         song.applyChange(mutation, mutator);
-    }
-
-    /**
-     * Executes {@code body} inside a modification bracket on the parent song.
-     */
-    public void withModification(Runnable body) {
-        song.withModification(body);
-    }
-
-    /**
-     * The value-returning form of {@link #withModification(Runnable)}, for a body
-     * whose outcome the caller must inspect after the bracket closes.
-     *
-     * @param body The modification to run
-     * @return Whatever {@code body} returns
-     */
-    public <T> T withModificationResult(Supplier<T> body) {
-        return song.withModificationResult(body);
-    }
-
-    /**
-     * Executes {@code body} inside a modification bracket on the parent song that
-     * declares {@code label} as its op-name (Tier B).
-     */
-    public void withModification(String label, Runnable body) {
-        song.withModification(label, body);
-    }
-
-    /**
-     * Executes {@code body} inside a modification bracket on the parent song, naming the undo
-     * step {@code label} when there is one and letting the Tier-A pending op-name stand when
-     * there is not.
-     * <p>
-     * For a caller that computes a label conditionally and would otherwise have to branch on it
-     * to pick between the two overloads above. The two overloads cannot be collapsed into one
-     * {@code @Nullable} parameter: that would be the same signature as the labeled overload, and
-     * routing every unlabeled bracket through it would change which method every existing caller
-     * — and every test that stubs one of them — actually invokes.
-     */
-    public void withOptionallyNamedModification(@Nullable String label, Runnable body) {
-        if (label != null) {
-            withModification(label, body);
-        } else {
-            withModification(body);
-        }
     }
 
     /**
@@ -318,8 +208,8 @@ public class Line implements LyricRun, SpanLookup {
      * follow is {@link Song}'s to bring up to date, driven by that record.
      *
      * @param key the key to establish here, or null to inherit
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *                               suspended tracking
+     * @effects posts the {@link LineKeyChange} through {@link #applyChange}, under
+     *     {@link Song#applyChange}'s bracket rule
      */
     public void setKey(@Nullable Key key) {
         var normalized = key != null && key.equals(song.inheritedKeyOf(this)) ? null : key;
@@ -408,32 +298,27 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Returns the key this line will leave off in once {@code [begin, end]} is removed from it:
-     * the last key change surviving after the range, and otherwise the key in effect
-     * immediately before it.
+     * Returns the key this line will leave off in once {@code range} is removed from it: the last
+     * key change surviving after the range, and otherwise the key in effect immediately before
+     * it.
      *
      * <p>This is what a deletion needs and {@link #keyAtEndUnder(int, Key)} cannot give.
      * Removing a mid-line key change moves the key every following line inherits, so the
      * deletion owes the same cross-line stranding sweep an inserted key change owes
-     * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point.
-     * See {@code docs/key-changes.md}.
+     * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point. Why a
+     * deletion computes that reach unconditionally is in {@code docs/key-changes.md}.
      *
-     * <p>A deletion that removes no key change answers with the key the line already leaves
-     * off in, so its caller derives an empty reach and sweeps nothing downstream. That is why
-     * the reach is computed unconditionally rather than behind a "does the range hold a key
-     * change" test.
-     *
-     * @param begin the first element index the deletion removes, already widened to
-     *     {@link #effectiveRange}
-     * @param end the last element index the deletion removes, inclusive
+     * @param range the elements the deletion removes, already widened by {@link #effectiveRange}
      * @return the key in effect after this line's last element once the range is gone; never null
      */
-    public Key keyAtEndOfLineAfterRemoving(int begin, int end) {
-        var survivingKey = lastKeyChangeKeyFrom(end + 1);
+    public Key keyAtEndOfLineAfterRemoving(ElementRange range) {
+        var survivingKey = lastKeyChangeKeyFrom(range.end() + 1);
 
         if (survivingKey != null) {
             return survivingKey;
         }
+
+        var begin = range.begin();
 
         return begin > 0 ? keyAt(begin - 1) : getRunningKey();
     }
@@ -470,23 +355,17 @@ public class Line implements LyricRun, SpanLookup {
     // both, detaching the outgoing element and attaching the incoming one.
     //
     // A span is never attached to a line at all. Its inherited parentLine stays null for
-    // its whole life, and Span.isIn(Line) derives parentage from where its endpoints sit,
-    // so a span whose endpoints straddle a line boundary is in both of those lines.
-    // appendChild/removeChild — still the only writers of `spans` — therefore write the
-    // lists alone, and keep both lines of such a pair holding the span so every sweep
-    // over a line's spans sees the half that belongs to it.
+    // its whole life, and Span.isIn(Line) derives parentage from where its endpoints sit;
+    // how the span registry keeps both lines of a straddling pair holding the span is
+    // LineSpans' to state.
     //
     // Attachments (articulations, fermatas) live in neither list, so none of this
     // covers them: LineElement.addChild/removeChild own their parentLine, and
     // propagateParentLine is what carries a host element's line down to them.
     //
-    // Invariants:
+    // Invariant:
     //   staff element — element.getParentLine() == L ⟺ L.elements contains the element,
     //   and null ⟺ the element is in no line at all.
-    //
-    //   span — span.isIn(L) ⟹ L.spans contains the span. One-directional on purpose:
-    //   a span with both endpoints detached is in no line by the derived answer, yet is
-    //   still in the list it was added to, which is exactly where it sat before.
     // ========================================================================
 
     /** Points {@code element} and everything below it at this line. */
@@ -498,83 +377,10 @@ public class Line implements LyricRun, SpanLookup {
 
     /** Clears {@code element}'s line pointer, and those of everything below it. */
     private void detach(StaffElement element) {
-        // Invalidate above the early return below, so a re-parent cannot skip it.
         elementIndexMap = null;
-
-        // A re-parent that ran attach() first already owns this element — don't
-        // clear a pointer that now names a different line.
-        //
-        // No caller reaches this return today: every re-parent detaches before it attaches,
-        // setElement deliberately so. It is kept because the cost of being wrong here
-        // is a live element with no line, and untestable — a test cannot reach it either.
-        if (element.getParentLine() != this) {
-            return;
-        }
 
         element.setParentLine(null);
         element.propagateParentLine(null);
-    }
-
-    /**
-     * Returns the line holding an endpoint of {@code span} that is not this line, or
-     * {@code null} when neither endpoint is in another line.
-     * <p>
-     * A span reaches {@link #appendChild} either with both endpoints in this line, with
-     * both detached, or — for a cross-line tie — with one endpoint here and one in the
-     * adjacent line. This answers the third case, so that tie lands in both lines' lists.
-     */
-    private @Nullable Line otherLineOf(Span span) {
-        var anchorLine = span.getAnchorLine();
-
-        if (anchorLine != null && anchorLine != this) {
-            return anchorLine;
-        }
-
-        var endLine = span.getEndLine();
-
-        if (endLine != null && endLine != this) {
-            return endLine;
-        }
-
-        return null;
-    }
-
-    /**
-     * Appends {@code element} to {@code spans} — this line's, and the other line of the
-     * pair when the span's endpoints straddle a boundary. Call from inside an applyChange
-     * mutator lambda, so the list write moves with the recorded change. The {@code elements}
-     * list has no counterpart because every one of its mutations inserts at an index or
-     * replaces in place.
-     * <p>
-     * The other line only gains the span if it is not already holding it. A span whose two
-     * endpoints share a line, added to a <em>different</em> line, names its own line as the
-     * other one and would otherwise land there twice — one copy from wherever it was first
-     * added, one from here — leaving {@link #removeChild}, which takes out a single copy per
-     * list, unable to get rid of it.
-     */
-    private void appendChild(Span element) {
-        spans.add(element);
-
-        var otherLine = otherLineOf(element);
-
-        if (otherLine != null && !otherLine.spans.contains(element)) {
-            otherLine.spans.add(element);
-        }
-    }
-
-    /**
-     * Removes {@code element} from {@code spans} — this line's, and the other line of the
-     * pair, so a cross-line span leaves both halves together. Takes the index its caller
-     * already located in this line, rather than scanning the list a second time.
-     */
-    private void removeChild(Span element, int index) {
-        spans.remove(index);
-
-        var otherLine = otherLineOf(element);
-
-        if (otherLine != null) {
-            otherLine.spans.remove(element);
-        }
     }
 
     /**
@@ -599,49 +405,27 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Returns {@code true} when the terminal mutation guards in this class should
-     * be bypassed: mutation tracking is suspended (test setup or file load), the
-     * song is currently auto-maintaining the invariant, or undo/redo is replaying
-     * a recorded batch (whose intermediate states legitimately violate the
-     * invariant, e.g. undoing terminal maintenance before the line op).
+     * Inserts {@code element} at {@code index} and posts a single {@link ElementInsertion}
+     * mutation, after the companion span changes the insertion forces.
+     * <p>
+     * The primitive: it places the element and repairs nothing around it. An edit inserts
+     * through {@link #insertRun} instead, which runs the repairs on either side.
+     * <p>
+     * The insertion and its companion span changes post through {@link #applyChange}, under
+     * {@link Song#applyChange}'s bracket rule.
+     *
+     * @param index   the position {@code element} will occupy, {@code 0..}{@link #elementCount()}
+     * @param element the element to insert
+     * @throws IllegalStateException if the insertion breaks the song's terminal policy — see
+     *     {@link Song#checkTerminalPolicyForInsertion}
      */
-    private boolean isTerminalGuardBypassed() {
-        return song.isMutationTrackingSuspended()
-            || song.isInAutoMaintenance()
-            || song.isReplaying();
-    }
-
-    /**
-     * True when the terminal guard is live and the element at {@code index} is the song's
-     * auto-maintained terminal. Uses the two-argument instance predicate, not the static
-     * single-argument form — a guard must not treat an unparented element as safe.
-     */
-    private boolean guardsTerminalAt(int index) {
-        return !isTerminalGuardBypassed() && song.isAutoMaintainedTerminal(elements.get(index), this);
-    }
-
+    @Override
     public void addElement(int index, StaffElement element) {
-        if (!isTerminalGuardBypassed()
-                && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (!isLast()
-                    || index != elementCount())) {
-            throw new IllegalStateException(
-                "FINAL_DOUBLE_BARLINE may only be appended to the last line");
-        }
+        song.checkTerminalPolicyForInsertion(this, index, element.getType());
 
-        // During replay the recorded batch already carries the companion
-        // mutations below — re-deriving them would double-apply.
-        if (!song.isReplaying()) {
-            var tuplet = findTupletAt(index);
-
-            if (tuplet != null && index > tuplet.getAnchorElementIndex()) {
-                removeTuplet(tuplet);
-            }
-
-            // Companion span changes precede the primary insertion so reverse-order undo
-            // restores the primary element before re-adding dependent spans.
-            applySpanOutcomes(ElementChange.forInsertion(this, index, element));
-        }
+        // Companion span changes precede the primary insertion so reverse-order undo
+        // restores the primary element before re-adding dependent spans.
+        spans.sweep(ElementChange.forInsertion(this, index, element));
 
         applyChange(
             new ElementInsertion(this, index, element),
@@ -653,90 +437,41 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Inserts {@code run} at {@code index} as one run: adds the elements in order and repairs
-     * the seams the run breaks on either side.
+     * Replaces the element at {@code index} and posts a single {@link ElementReplacement}
+     * mutation, after the companion span changes the replacement forces. Every span whose
+     * anchor or end was the replaced element is re-pointed at {@code element}; the spans
+     * themselves decide what else the replacement costs them.
+     * <p>
+     * The replacement and its companion span changes post through {@link #applyChange}, under
+     * {@link Song#applyChange}'s bracket rule.
      *
-     * <p><b>This is the whole of a multi-element insertion, and it exists so that no caller
-     * assembles one out of parts.</b> The steps are not independent — {@link
-     * LyricRun#repairNeighborsBeforeInsertion} reads pre-insertion indices, so it must run before
-     * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} keys its
-     * two halves off opposite ends of the run, so it must run after the last. A caller that
-     * open-codes the sequence can leave out a step, and leaving one out shows up as a glissando
-     * pointing at a barline or a melisma pointing at an element that is no longer the host,
-     * neither of which fails anywhere near the insertion.
-     *
-     * <p>Must be called inside a modification bracket, so the whole run and its repairs are one
-     * undo step.
-     *
-     * @param index the index the first element lands at
-     * @param run the elements to insert, in the order they land; must not be empty
-     * @effects mutates this line and records the insertion and the repairs into the open
-     *          modification bracket
-     */
-    public void insertRun(int index, List<? extends StaffElement> run) {
-        repairNeighborsBeforeInsertion(index, run);
-
-        for (var i = 0; i < run.size(); i++) {
-            addElement(index + i, run.get(i));
-        }
-
-        repairNeighborsAfterInsertion(index, run);
-    }
-
-    /**
-     * Replaces the element at {@code index}, guarded on two fronts: the incoming element may
-     * not be a {@code FINAL_DOUBLE_BARLINE} unless it lands in the terminal position, and the
-     * element being displaced may not be the auto-maintained terminal unless the replacement is
-     * itself a valid terminal type (the exemption {@link TerminalMaintainer#replaceTerminal}
-     * relies on to swap terminal types without raising the auto-maintenance flag).
+     * @param index   the position of the element to replace
+     * @param element the element taking its place
+     * @throws IllegalStateException if the replacement breaks the song's terminal policy — see
+     *     {@link Song#checkTerminalPolicyForReplacement}
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     public void setElement(int index, StaffElement element) {
-        if (!isTerminalGuardBypassed()
-                && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
-                && (!isLast()
-                    || index != elementCount() - 1)) {
-            throw new IllegalStateException(
-                "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
-        }
-
-        if (guardsTerminalAt(index) && !element.getType().isValidSongTerminal()) {
-            throw new IllegalStateException(
-                "The auto-maintained terminal may only be replaced by a valid terminal");
-        }
+        song.checkTerminalPolicyForReplacement(this, index, element.getType());
 
         var oldElement = elements.get(index);
 
-        // Skipped during replay: the recorded batch already carries the removals.
-        // The anchor re-pointing in the mutator below still runs — it is
-        // self-inverting and required for span references to stay valid.
-        if (!song.isReplaying()) {
-            // Decided before the mutator so findRepeatSplitElement sees the pre-replacement line.
-            // Companion span changes precede the primary replacement so reverse-order undo
-            // restores the primary element before re-adding dependent spans.
-            applySpanOutcomes(ElementChange.forReplacement(this, index, element));
-        }
+        // Decided before the mutator so findRepeatSplitElement sees the pre-replacement line.
+        // Companion span changes precede the primary replacement so reverse-order undo
+        // restores the primary element before re-adding dependent spans. The anchor
+        // re-pointing in the mutator below runs on replay too — it is self-inverting and
+        // required for span references to stay valid.
+        spans.sweep(ElementChange.forReplacement(this, index, element));
 
         applyChange(
             new ElementReplacement(this, index, oldElement, element),
             () -> {
-                // Detach first: a self-replace (element == oldElement) would otherwise
-                // end with a live element holding a null parentLine, because detach's
-                // `!= this` guard would see the pointer attach just wrote.
+                // Detach first: a self-replace (element == oldElement) must end with the
+                // element attached, so detaching after attach would leave it detached.
                 detach(oldElement);
                 elements.set(index, element);
                 attach(element);
-
-                // Update stale anchor/end references in surviving spans so that
-                // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
-                for (var r : spans) {
-                    if (r.getAnchorElement() == oldElement) {
-                        r.setAnchorElement(element);
-                    }
-
-                    if (r.getEndElement() == oldElement) {
-                        r.setEndElement(element);
-                    }
-                }
+                spans.repoint(oldElement, element);
             }
         );
     }
@@ -753,13 +488,21 @@ public class Line implements LyricRun, SpanLookup {
         modifyElement(index, EnumSet.of(field), mutator);
     }
 
+    /**
+     * As {@link #modifyElement(int, ElementField, Runnable)}, for a change that rewrites
+     * several fields at once and records them as one {@link ElementModification}.
+     * <p>
+     * The modification and its companion span changes post through {@link #applyChange},
+     * under {@link Song#applyChange}'s bracket rule.
+     *
+     * @param index   the position of the element to modify
+     * @param fields  the fields {@code mutator} rewrites
+     * @param mutator the change to apply to the element
+     */
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
-        // The replayer never calls modifyElement, but the gate keeps the
-        // suppression contract symmetric with the other helpers.
-        if (!song.isReplaying()
-                && !Collections.disjoint(fields, ElementField.DURATION_AFFECTING)) {
-            removeOverlappingTuplets(index, index);
-        }
+        // Asked before the mutator runs, like every other sweep, so a span judges the
+        // element as it stands; only which fields change is what a span reads.
+        spans.sweep(ElementChange.forModification(this, index, fields));
 
         // Run the mutator up front so the record can carry both the before and
         // after clones; applyChange then only appends the record. Equivalent
@@ -783,42 +526,50 @@ public class Line implements LyricRun, SpanLookup {
         return elementsView;
     }
 
-    // Returns a sublist of elements from start to end inclusive
-    public List<StaffElement> getElements(int start, int end) {
+    /**
+     * Returns the elements {@code range} covers, in order.
+     * <p>
+     * A live view over this line's own list, not a copy: it reflects the line as it is at the
+     * moment it is read, and is meaningful only until the line's elements next change. A
+     * caller that holds it across an edit reads positions that have moved, and one that holds
+     * it across a structural change gets {@link java.util.ConcurrentModificationException}.
+     *
+     * @param range the elements to view, both ends included
+     * @return an unmodifiable live view of exactly those elements
+     * @throws IndexOutOfBoundsException if {@code range} reaches past {@link #elementCount()}
+     */
+    public List<StaffElement> getElements(ElementRange range) {
         // subList is exclusive of the end index, so we add 1.
         // Wrapped per call because the bounds vary: a caller that could reorder or
         // clear the sublist would move element positions behind the index's back.
-        return Collections.unmodifiableList(elements.subList(start, end + 1));
+        return Collections.unmodifiableList(elements.subList(range.begin(), range.end() + 1));
     }
 
     /**
      * Removes the element at {@code index} and posts a single {@link ElementDeletion} mutation.
      * <p>
-     * The primitive: it drops the element and repairs nothing around it. An edit deletes through
-     * {@link #deleteRange} instead; this is for replaying a recorded mutation, whose batch already
-     * carries the repairs.
+     * The primitive beneath {@link #deleteRange}, and what replay calls: it drops the element
+     * and repairs nothing around it. An edit deletes through {@code deleteRange}, which runs the
+     * repairs.
+     * <p>
+     * The deletion and its companion span changes post through {@link #applyChange}, under
+     * {@link Song#applyChange}'s bracket rule.
      *
      * @param index the index of the element to remove
-     * @throws IllegalStateException if {@code index} is the song-owned terminal element, which no
-     *     removal may take
+     * @throws IllegalStateException if {@code index} holds the song's auto-maintained terminal
+     *     — see {@link Song#checkTerminalPolicyForRemoval}
      * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
+    @Override
     public void removeElement(int index) {
-        if (guardsTerminalAt(index)) {
-            throw new IllegalStateException(TERMINAL_NOT_REMOVABLE);
-        }
+        var own = ElementRange.single(index);
+        song.checkTerminalPolicyForRemoval(this, own);
 
         var deleted = elements.get(index);
 
-        // During replay the recorded batch already carries the companion
-        // removals — re-deriving them would double-apply.
-        if (!song.isReplaying()) {
-            removeOverlappingTuplets(index, index);
-
-            // Companion span changes precede the primary deletion so reverse-order undo
-            // re-inserts the element before re-adding the spans anchored to it.
-            applySpanOutcomes(ElementChange.forDeletion(this, index, index));
-        }
+        // Companion span changes precede the primary deletion so reverse-order undo
+        // re-inserts the element before re-adding the spans anchored to it.
+        spans.sweep(ElementChange.forDeletion(this, own));
 
         applyChange(
             new ElementDeletion(this, index, deleted),
@@ -830,34 +581,32 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Removes all elements in the contiguous range {@code [from, to]} (inclusive)
-     * and posts a single {@link ElementRangeDeletion} mutation.
+     * Removes all elements in the contiguous {@code range} and posts a single
+     * {@link ElementRangeDeletion} mutation.
      * <p>
-     * The primitive: it drops the elements and repairs nothing around them. An edit deletes
-     * through {@link #deleteRange} instead; this is for replaying a recorded mutation, whose batch
-     * already carries the repairs.
+     * The primitive beneath {@link #deleteRange}, and what replay calls: it drops the elements
+     * and repairs nothing around them. An edit deletes through {@code deleteRange}, which runs
+     * the repairs.
+     * <p>
+     * The deletion and its companion span changes post through {@link #applyChange}, under
+     * {@link Song#applyChange}'s bracket rule.
      *
-     * @param from the index of the first element to remove
-     * @param to   the index of the last element to remove (inclusive)
-     * @throws IllegalStateException if the range covers the song-owned terminal element, which no
-     *     removal may take
+     * @param range the elements to remove
+     * @throws IllegalStateException if the range covers the song's auto-maintained terminal —
+     *     see {@link Song#checkTerminalPolicyForRemoval}
+     * @throws IndexOutOfBoundsException if {@code range} reaches past {@link #elementCount()}
      */
-    public void removeRange(int from, int to) {
-        if (IntStream.rangeClosed(from, to).anyMatch(this::guardsTerminalAt)) {
-            throw new IllegalStateException(TERMINAL_NOT_REMOVABLE);
-        }
+    @Override
+    public void removeRange(ElementRange range) {
+        song.checkTerminalPolicyForRemoval(this, range);
 
+        var from = range.begin();
+        var to = range.end();
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
 
-        // During replay the recorded batch already carries the companion
-        // removals — re-deriving them would double-apply.
-        if (!song.isReplaying()) {
-            removeOverlappingTuplets(from, to);
-
-            // Companion span changes precede the primary deletion so reverse-order undo
-            // re-inserts the elements before re-adding the spans anchored to them.
-            applySpanOutcomes(ElementChange.forDeletion(this, from, to));
-        }
+        // Companion span changes precede the primary deletion so reverse-order undo
+        // re-inserts the elements before re-adding the spans anchored to them.
+        spans.sweep(ElementChange.forDeletion(this, range));
 
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
@@ -866,178 +615,6 @@ public class Line implements LyricRun, SpanLookup {
                 elements.subList(from, to + 1).clear();
             }
         );
-    }
-
-    /**
-     * Deletes the elements {@code range} covers and repairs what the removal leaves behind: the
-     * x-offsets of the elements that close the gap, an incoming glissando whose target is going,
-     * and the syllable relations and melisma extends of the neighbors.
-     * <p>
-     * This is the deletion an edit performs. {@link #removeRange} and {@link #removeElement} are
-     * the primitives beneath it, and repair nothing.
-     * <p>
-     * {@code range} comes from {@link #effectiveRange}, which is the only thing that produces one
-     * — so the pairing is resolved once, by the caller, and what arrives here is already what
-     * really goes. A caller that asked the notator about a range asked about this same value.
-     * <p>
-     * A modification bracket must already be open, and this opens none of its own, so a caller
-     * with several ranges to delete puts them all under one undo step. Deleting several ranges on
-     * one line means working from the last to the first: removing an earlier range shifts the
-     * indices of every later one. {@link #deleteRanges} discharges that.
-     * <p>
-     * Sweeps no stranded key change and asks nothing. A deletion that moves a key owes a stranding
-     * sweep over every line that key reaches, and this line's share of it names the indices it was
-     * computed at, so the caller runs it inside the bracket before calling this.
-     *
-     * @param range the range to delete
-     * @effects Posts one {@link ElementRangeDeletion}, or one {@link ElementDeletion} per element
-     *     when a paired grace note at the range's head makes the removal non-contiguous.
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *     suspended mutation tracking, or if {@code range} covers the song-owned terminal element
-     */
-    public void deleteRange(EffectiveRange range) {
-        // A paired grace note at the head of the range hands its syllable back to the note it
-        // decorated, and a pair further along the range does the same — neither of which a single
-        // range removal expresses. Fall back to the per-element loop, which re-derives each
-        // element's own pairing as it reaches it.
-        if (isPairedGraceNote(range.begin())) {
-            deleteRangeElementwise(range.begin(), range.end());
-            return;
-        }
-
-        // The whole range is removed here, both ends included. The grace-note case is the other
-        // branch's business, so what reaches this one is a range widened over a breath mark, or
-        // over the barline a key change sits behind.
-        var rangeBegin = range.begin();
-        var rangeEnd = range.end();
-
-        // Clean up the element before the range: its glissando has nothing left to point at.
-        // Recorded like every other change here — stripping it raw would leave undo restoring the
-        // deleted elements but not the glissando.
-        if (rangeBegin > 0 && getElement(rangeBegin - 1) instanceof NoteElement prevNote
-            && prevNote.hasGlissando()) {
-            modifyElement(rangeBegin - 1, ElementField.SLIDE, prevNote::removeSlide);
-        }
-
-        // Adjust syllable relations and melisma extends on neighbors before removing. Both helpers
-        // require the target elements to still be present in the list.
-        adjustSyllablesForNeighborChange(rangeBegin - 1, getElement(rangeBegin));
-
-        // When the range was widened to include a trailing breath mark or a paired barline, this
-        // loop also runs over it. Neither carries lyrics, so adjustExtendsForDeletion is a
-        // harmless no-op for them.
-        for (var i = rangeBegin; i <= rangeEnd; i++) {
-            adjustExtendsForDeletion(i);
-        }
-
-        removeRange(rangeBegin, rangeEnd);
-    }
-
-    /**
-     * Deletes every range in {@code ranges} through {@link #deleteRange}, working from the last to
-     * the first so that no removal invalidates the indices of one still to come.
-     *
-     * <p>The ordering is the obligation {@link #deleteRange} states and
-     * {@link StaffElementRun#redundantKeyChangeRanges(Key)} repeats, discharged once here rather
-     * than at each caller: a caller that walks the list forward corrupts every range after the
-     * first, and nothing in the types says so.
-     *
-     * @param ranges the ranges to delete, ascending and pairwise disjoint
-     * @throws IllegalStateException if the song has neither an open modification bracket nor
-     *     suspended mutation tracking
-     * @effects Mutates this line, into the open modification bracket, once per range.
-     */
-    public void deleteRanges(List<EffectiveRange> ranges) {
-        for (var i = ranges.size() - 1; i >= 0; i--) {
-            deleteRange(ranges.get(i));
-        }
-    }
-
-    /**
-     * Deletes {@code begin} through {@code end} one element at a time, for the range whose removal
-     * is non-contiguous. The bounds are already widened; each element's own pairing is re-derived
-     * by {@link #deleteElement} as the loop reaches it.
-     */
-    private void deleteRangeElementwise(int begin, int end) {
-        for (var i = end; i >= begin; i--) {
-            var removedCount = deleteElement(i);
-
-            // When deleteElement also removes a preceding paired grace note,
-            // skip the extra index so we don't process an already-removed element.
-            i -= (removedCount - 1);
-        }
-    }
-
-    /**
-     * Deletes the element at {@code index} and, if the preceding element is a paired grace note,
-     * removes that as well. After the primary removal, if the surviving element at the deletion's
-     * left edge is a breath mark, it is cascade-deleted through a recursive call so all gap-fill,
-     * glissando, and syllable/extend logic is reused.
-     *
-     * @return the number of elements removed (1 or 2), not counting any cascade-deleted trailing
-     *     breath mark
-     */
-    private int deleteElement(int index) {
-        // If the preceding note is a paired grace note, it becomes orphaned when
-        // this note is deleted and must be removed along with it.
-        var hasPrecedingPairedGraceNote = isHostOfPairedGraceNote(index);
-
-        // Determine the left edge of the deletion — if a paired grace note precedes
-        // the deleted note, it is also being removed, so the gap starts there.
-        var firstDeletedIndex = hasPrecedingPairedGraceNote ? index - 1 : index;
-
-        // If the previous note is a paired grace note, it disappears entirely —
-        // no need to strip its glissando separately. Otherwise remove any standalone
-        // incoming glissando from the previous note.
-        if (!hasPrecedingPairedGraceNote && index > 0
-            && getElement(index - 1) instanceof NoteElement prevNote && prevNote.hasGlissando()) {
-            modifyElement(index - 1, ElementField.SLIDE, prevNote::removeSlide);
-        }
-
-        // Adjust syllable relations and melisma extends before removing —
-        // both methods require the element at index to still be in the list.
-        // This must run before the hand-back below: it decides whether to break the
-        // predecessor's word by reading the deleted element's own lyric, which the
-        // transfer would have already moved away.
-        adjustSyllablesForNeighborChange(firstDeletedIndex - 1, getElement(index));
-
-        // Deleting a paired grace note on its own hands its syllable back to the host,
-        // which becomes an ordinary note again and is eligible to carry a lyric. Runs
-        // before adjustExtendsForDeletion so it sees the final lyric state: the transfer
-        // takes the melisma START off the grace and drops the host's STOP carrier, so
-        // there is no longer a chain to unwind.
-        if (isPairedGraceNote(index)) {
-            transferLyrics(index, index + 1);
-        }
-
-        adjustExtendsForDeletion(index);
-
-        // Remove the host note first (higher index), then the orphaned grace note.
-        // Removing the higher index first keeps index - 1 valid.
-        removeElement(index);
-
-        int removed;
-
-        if (hasPrecedingPairedGraceNote) {
-            removeElement(index - 1);
-            removed = 2;
-        } else {
-            removed = 1;
-        }
-
-        // Cascade-delete a breath mark that immediately follows the deleted element.
-        // After removal the successor lands at firstDeletedIndex. Recurse through
-        // deleteElement (not a bare removeElement) so gap-fill, glissando strip, and
-        // syllable/extend adjustments are reused. The cascade is excluded from
-        // `removed` because deleteRangeElementwise's loop counts down, so the breath
-        // mark (a higher index, visited on an earlier iteration) is already accounted
-        // for and must not shift the loop's index a second time.
-        if (firstDeletedIndex < effectiveElementCount() &&
-                getElement(firstDeletedIndex).getType().isBreathMark()) {
-            deleteElement(firstDeletedIndex);
-        }
-
-        return removed;
     }
 
     @Override
@@ -1062,32 +639,7 @@ public class Line implements LyricRun, SpanLookup {
         return count;
     }
 
-    public boolean isEmpty() {
-        return elements.isEmpty();
-    }
 
-    /**
-     * The index of the last note on this line.
-     *
-     * <p>Answers how far along a line an edit can still govern a pitch. A key change past this
-     * index reaches no note, so it says nothing the next line's own key does not say, and the
-     * cautionary already draws that key at this line's end. See {@code docs/key-changes.md}.
-     *
-     * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
-     * terminal is a barline or a repeat, so a scan for a note stops before it either way.
-     *
-     * @return the last note's element index, or -1 when this line holds no note
-     * @invariant the result is always below {@link #effectiveElementCount()}
-     */
-    public int lastNoteIndex() {
-        for (var scanIndex = elements.size() - 1; scanIndex >= 0; scanIndex--) {
-            if (elements.get(scanIndex).getType().isNote()) {
-                return scanIndex;
-            }
-        }
-
-        return -1;
-    }
 
     /**
      * Returns {@code element}'s position in this line, or -1 when it is not in this line.
@@ -1118,164 +670,9 @@ public class Line implements LyricRun, SpanLookup {
         return index == null ? -1 : index;
     }
 
-    /**
-     * Returns whether inserting at the given index would conflict with a paired grace note.
-     * A grace note is paired when it has a connecting {@link Slide#GLISSANDO}
-     * linking it to the following note.
-     * <p>
-     * This returns {@code true} in two cases:
-     * <ul>
-     *   <li>The element at {@code index} is itself a paired grace note (clicking on it)</li>
-     *   <li>The element at {@code index - 1} is a paired grace note (clicking between it and its host)</li>
-     * </ul>
-     */
-    public boolean isInsideGraceHostPair(int index) {
-        return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
-    }
 
-    /**
-     * If the element immediately before {@code index} is a grace note, returns its index.
-     * Returns -1 otherwise.
-     */
-    public int precedingGraceNoteIndex(int index) {
-        var candidateIndex = index - 1;
 
-        if (candidateIndex < 0) {
-            return -1;
-        }
 
-        return getElement(candidateIndex).getType().isGraceNote() ? candidateIndex : -1;
-    }
-
-    /**
-     * Returns whether the element at {@code index} and the one following it are both notes at the
-     * same pitch — the span a connecting glissando may never cover, since there is no distance for
-     * it to traverse.
-     * <p>
-     * This is the one definition of that condition. The slide tool asks it before attaching a
-     * glissando, a pitch shift asks it to strip one whose two notes have come together, and the
-     * layout and render passes ask it so that neither draws nor registers geometry for one that
-     * reached the model through an import. Each caller keeps its own further rules — which
-     * elements may anchor a glissando at all is a separate question from whether these two
-     * share a pitch.
-     * <p>
-     * Grace notes count on either side, since they carry a pitch like any other note.
-     *
-     * @param index index of the leading element; out of range, or last in the line, yields false
-     */
-    public boolean isSamePitchAsFollower(int index) {
-        if (index < 0 || index + 1 >= elements.size()) {
-            return false;
-        }
-
-        return elements.get(index) instanceof NoteElement note
-            && elements.get(index + 1) instanceof NoteElement follower
-            && note.getPitch() == follower.getPitch();
-    }
-
-    /**
-     * Whether the element at {@code index} is a mid-line key change.
-     *
-     * <p>The barline in front of it is not tested. This reports what stands at {@code index}, so a
-     * key change that reached the line by any route answers {@code true} — testing for the
-     * barline would make a refusal depend on the pair rule in {@code docs/key-changes.md}
-     * rather than help keep it.
-     *
-     * @param index element index; out of range yields false
-     * @return {@code true} when a {@link KeyChangeElement} stands at {@code index}
-     */
-    public boolean isKeyChangeAt(int index) {
-        return hasIndex(index) && getElement(index).getType().isKeyChange();
-    }
-
-    /**
-     * Whether the element at {@code index} is the barline or repeat a key change sits behind —
-     * the same pair {@link #isKeyChangeAt} names from the key change's side, seen from the
-     * barline's.
-     *
-     * @param index element index; out of range yields false
-     * @return {@code true} when a key change stands at {@code index + 1} and {@code index}
-     *     holds the barline or repeat it sits behind
-     */
-    private boolean isKeyChangeBarlineAt(int index) {
-        return isKeyChangeBehindBarline(index + 1);
-    }
-
-    /**
-     * Whether the element at {@code index} may be replaced in place — clicked through with
-     * another element in note entry, which swaps the new element in and keeps the index.
-     *
-     * <p>Two things are refused, both because they are half of a pair that only means anything
-     * whole: a <b>grace note</b>, which belongs to the host that follows it, and either half of a
-     * <b>key change and the barline it sits behind</b> — the pair rule in
-     * {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the same
-     * reason.
-     *
-     * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
-     * the element's place, while an insertion lands in front of it.
-     * {@link #canInsertElementAt} is the insertion-side question.
-     *
-     * @param index element index; out of range yields true, since nothing stands there to
-     *     protect and the caller's own bounds decide what happens next
-     * @return {@code true} when note entry may write over the element at {@code index}
-     */
-    public boolean canReplaceElementAt(int index) {
-        if (!hasIndex(index)) {
-            return true;
-        }
-
-        return !getElement(index).getType().isGraceNote()
-            && !isKeyChangeAt(index)
-            && !isKeyChangeBarlineAt(index);
-    }
-
-    /**
-     * Whether an element may be inserted in front of the element at {@code index} — the sibling
-     * of {@link #canReplaceElementAt}, which answers whether the element at {@code index} may be
-     * written over instead.
-     *
-     * <p>Every way content lands on a line by pointing at it asks this, whatever is being placed:
-     * note entry, a pasted fragment and a mid-line key change alike. Two slots are refused,
-     * both because they sit <em>inside</em> a pair that only means anything adjacent:
-     *
-     * <ul>
-     *   <li>in front of a <b>mid-line key change</b>, which is the gap between it and the
-     *       barline it stands behind. Anything landing there leaves the key change preceded by
-     *       something other than a barline, breaking {@link KeyChangeElement}'s position
-     *       invariant — see {@code docs/key-changes.md}.</li>
-     *   <li>in front of the <b>host of a paired grace note</b>, which is the gap between the
-     *       grace note and the note it decorates. The two mean nothing apart, so nothing goes
-     *       between them.</li>
-     * </ul>
-     *
-     * <p>Says nothing about which of the remaining slots a particular operation wants. That is
-     * each operation's own rule, and it is asked separately — a key change is never the first
-     * element on a line, for instance, which this does not know or care about.
-     *
-     * @param index the slot an element would be inserted at, so that it lands in front of the
-     *     element currently at {@code index}; out of range — including
-     *     {@link #effectiveElementCount()}, the slot past the last element — yields true, since
-     *     nothing stands there to be split
-     * @return {@code true} when an element may be inserted at {@code index}
-     */
-    public boolean canInsertElementAt(int index) {
-        return !isKeyChangeAt(index) && !isHostOfPairedGraceNote(index);
-    }
-
-    /**
-     * Whether a syllable may be written on the element at {@code index} — this line's way of
-     * asking {@link StaffElement#canBearSyllable}, which states the rule and which
-     * {@code LyricLayoutBuilder} asks of the columns it is laying out instead.
-     *
-     * <p>Does not vary by verse: an element that can hold a syllable can hold one in every verse.
-     *
-     * @param index element index
-     * @return {@code true} when a syllable may be written on the element at {@code index}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
-     */
-    public boolean canBearSyllableAt(int index) {
-        return getElement(index).canBearSyllable(index >= 1 ? getElement(index - 1) : null);
-    }
 
 
     public double getLyricsYPosSs() {
@@ -1289,767 +686,4 @@ public class Line implements LyricRun, SpanLookup {
             () -> this.lyricsYPosSs = lyricsYPosSs
         );
     }
-
-    /**
-     * Adds a tie span. Tie ranges never coalesce — a chain of tied notes is
-     * represented as one {@link Tie} per adjacent pair, each rendered as its own arc,
-     * even when two ties share an endpoint note.
-     */
-    public void addTie(Tie tie) {
-        applyChange(new TieAddition(this, tie), () -> appendChild(tie));
-    }
-
-    /**
-     * Removes a tie span that was previously added via {@link #addTie(Tie)}.
-     */
-    public void removeTie(Tie tie) {
-        var index = spans.indexOf(tie);
-
-        if (index < 0) {
-            return;
-        }
-
-        applyChange(
-            new TieRemoval(this, tie),
-            () -> removeChild(tie, index)
-        );
-    }
-
-    /**
-     * Returns the index of the nearest element to {@code fromIndex} that is not a grace
-     * note, stepping by {@code step} ({@code -1} to search backward, {@code 1} forward),
-     * or -1 if the line runs out first. {@code fromIndex} itself is not examined.
-     *
-     * <p>Grace notes are transparent to callers reasoning about a note's real neighbors:
-     * one can sit between two beamed notes without joining their beam, so the neighbor
-     * that matters is the one on its far side.
-     *
-     * @param fromIndex The index to search out from
-     * @param step The direction to search in
-     * @return The nearest non-grace index, or -1 if there is none
-     */
-    public int nearestNonGraceIndex(int fromIndex, int step) {
-        for (var i = fromIndex + step; hasIndex(i); i += step) {
-            if (!getElement(i).getType().isGraceNote()) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
-     * Adds a beam span, merging with any existing beams that share endpoints.
-     * <p>
-     * If an existing beam ends at the new beam's start, or starts at the new beam's end,
-     * the spans are merged into a single wider beam. Any beam whose range is fully
-     * covered by the merged result is removed.
-     */
-    public void addBeaming(Beam beam) {
-        // During replay the recorded BeamingAddition already carries the merged
-        // span and the batch carries the subsumed-beam removals — just add.
-        if (!song.isReplaying()) {
-            // Beams do not absorb an adjacent beam: two beam groups written back to
-            // back are two deliberate groupings, not one interrupted by an accident.
-            mergeOverlappingSpans(beam, Beam.class, this::removeBeaming, false);
-        }
-
-        applyChange(new BeamingAddition(this, beam), () -> appendChild(beam));
-    }
-
-    /**
-     * Absorbs same-type spans overlapping {@code span}'s endpoints: widens the span to
-     * cover them, then removes every {@code type} span fully subsumed by the widened
-     * range via {@code remover}. The tracked removals are emitted before the widened
-     * span's addition so undo restores the original spans after removing the merged
-     * one.
-     *
-     * @param absorbAdjacent Whether a same-type span merely <em>touching</em> an endpoint
-     *                       — ending one element before it, or starting one element after
-     *                       — is absorbed too, as opposed to only one that overlaps it
-     */
-    private <R extends Span> void mergeOverlappingSpans(
-        R span,
-        Class<? extends R> type,
-        Consumer<? super R> remover,
-        boolean absorbAdjacent
-    ) {
-        var anchorIdx = getElementIndex(span.getAnchorElement());
-        var endIdx = getElementIndex(span.getEndElement());
-
-        // How far past an endpoint an existing span may sit and still be absorbed.
-        var reach = absorbAdjacent ? SPAN_ADJACENCY_REACH : 0;
-
-        // Expand bounds to absorb adjacent/overlapping spans. Both must be resolved before
-        // the setters below, which mutate the very indices these predicates read. Positions
-        // come from this line throughout — the same route the predicates above resolve by.
-        //
-        // bothResolved has already excluded every non-At bound, so indexOr's fallback is
-        // unreachable here. It is the un-merged position anyway, so an unreachable case would
-        // leave the merge a no-op rather than move an endpoint somewhere arbitrary.
-        var mergedAnchorIdx = findSpans(
-            type,
-            bothResolved((anchor, end) -> anchor <= anchorIdx && anchorIdx <= end + reach))
-            .stream()
-            .mapToInt(candidate -> anchorIndexOf(candidate).indexOr(anchorIdx))
-            .min()
-            .orElse(anchorIdx);
-        var mergedEndIdx = findSpans(
-            type,
-            bothResolved((anchor, end) -> anchor - reach <= endIdx && endIdx <= end))
-            .stream()
-            .mapToInt(candidate -> endIndexOf(candidate).indexOr(endIdx))
-            .max()
-            .orElse(endIdx);
-
-        if (mergedAnchorIdx != anchorIdx) {
-            span.setAnchorElement(elements.get(mergedAnchorIdx));
-        }
-
-        if (mergedEndIdx != endIdx) {
-            span.setEndElement(elements.get(mergedEndIdx));
-        }
-
-        var subsumedSpans = findSpans(
-            type,
-            bothResolved((anchor, end) -> anchor >= mergedAnchorIdx && end <= mergedEndIdx)
-        );
-        subsumedSpans.forEach(remover);
-    }
-
-    /** A comparison over two endpoint positions both known to be in this line. */
-    @FunctionalInterface
-    private interface ResolvedIndexPredicate {
-        boolean test(int anchorIndex, int endIndex);
-    }
-
-    /**
-     * Restricts {@code matches} to spans whose endpoints both resolve to a position in this
-     * line, so a span carrying an off-line or absent bound is never a merge candidate.
-     * <p>
-     * {@link #mergeOverlappingSpans} widens by arithmetic on these positions and then indexes
-     * {@link #elements} with the result. Neither is meaningful for an endpoint that is not in
-     * this line, and letting one through would drag the widened span out to an unrelated
-     * neighbor's position — or past the end of the list.
-     */
-    private static Span.IndexPredicate bothResolved(ResolvedIndexPredicate matches) {
-        return (anchorBound, endBound) ->
-            anchorBound instanceof SpanBound.At(var anchorIndex) &&
-            endBound instanceof SpanBound.At(var endIndex) &&
-            matches.test(anchorIndex, endIndex);
-    }
-
-    /**
-     * Removes a beam span that was previously added via {@link #addBeaming(Beam)}.
-     */
-    public void removeBeaming(Beam beam) {
-        var index = spans.indexOf(beam);
-
-        if (index < 0) {
-            return;
-        }
-
-        applyChange(
-            new BeamingRemoval(this, beam),
-            () -> removeChild(beam, index)
-        );
-    }
-
-    /**
-     * Adds a tuplet span, replacing any existing tuplet that overlaps the new one.
-     * <p>
-     * Any existing tuplet whose range overlaps [anchor, end] is removed before the new tuplet
-     * is added.
-     */
-    public void addTuplet(Tuplet tuplet) {
-        // During replay the recorded batch already carries the overlapping-tuplet
-        // removals — just add.
-        if (!song.isReplaying()) {
-            var anchorIndex = getElementIndex(tuplet.getAnchorElement());
-            var endIndex = getElementIndex(tuplet.getEndElement());
-
-            // Remove any existing tuplets that overlap the new range — tracked
-            // removals emitted before the addition so undo restores the originals.
-            removeOverlappingTuplets(anchorIndex, endIndex);
-        }
-
-        applyChange(new TupletAddition(this, tuplet), () -> appendChild(tuplet));
-    }
-
-    /**
-     * Removes a tuplet span that was previously added via {@link #addTuplet(Tuplet)}.
-     */
-    public void removeTuplet(Tuplet tuplet) {
-        var index = spans.indexOf(tuplet);
-
-        if (index < 0) {
-            return;
-        }
-
-        applyChange(
-            new TupletRemoval(this, tuplet),
-            () -> removeChild(tuplet, index)
-        );
-    }
-
-    /**
-     * Adds a crescendo hairpin span.
-     * <p>
-     * Any existing crescendo whose range overlaps or is adjacent to the new one is
-     * absorbed into a single wider hairpin.
-     */
-    public void addCrescendo(Crescendo hairpin) {
-        addHairpin(hairpin, CrescendoAddition::new, Crescendo.class);
-    }
-
-    /**
-     * Removes a crescendo hairpin that was previously added via {@link #addCrescendo(Crescendo)}.
-     */
-    public void removeCrescendo(Crescendo hairpin) {
-        removeHairpin(hairpin, CrescendoRemoval::new);
-    }
-
-    /**
-     * Adds a diminuendo hairpin span.
-     * <p>
-     * Overlap-merge semantics mirror {@link #addCrescendo(Crescendo)}.
-     */
-    public void addDiminuendo(Diminuendo hairpin) {
-        addHairpin(hairpin, DiminuendoAddition::new, Diminuendo.class);
-    }
-
-    /**
-     * Removes a diminuendo hairpin that was previously added via {@link #addDiminuendo(Diminuendo)}.
-     */
-    public void removeDiminuendo(Diminuendo hairpin) {
-        removeHairpin(hairpin, DiminuendoRemoval::new);
-    }
-
-    /**
-     * Shared add logic for crescendo and diminuendo hairpins.
-     * Merges overlapping/adjacent hairpins of the same type into one.
-     */
-    private <H extends Hairpin> void addHairpin(
-        H hairpin,
-        BiFunction<? super Line, ? super H, ? extends Mutation> mutationFactory,
-        Class<? extends H> type
-    ) {
-        // During replay the recorded addition already carries the merged span
-        // and the batch carries the absorbed-hairpin removals — just add.
-        if (!song.isReplaying()) {
-            // A hairpin drawn flush against a same-type one continues it rather than
-            // starting a second: one uninterrupted dynamic gesture, one hairpin.
-            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedSpan, true);
-        }
-
-        applyChange(mutationFactory.apply(this, hairpin), () -> appendChild(hairpin));
-    }
-
-    /**
-     * Shared remove logic for crescendo and diminuendo hairpins.
-     */
-    private <H extends Hairpin> void removeHairpin(
-        H hairpin,
-        BiFunction<? super Line, H, ? extends Mutation> mutationFactory
-    ) {
-        var index = spans.indexOf(hairpin);
-
-        if (index < 0) {
-            return;
-        }
-
-        applyChange(
-            mutationFactory.apply(this, hairpin),
-            () -> removeChild(hairpin, index)
-        );
-    }
-
-    /**
-     * A hairpin paired with the span it will occupy once a pending deletion is applied,
-     * as inclusive indices into the elements that survive that deletion.
-     */
-    private record HairpinSpan(Hairpin hairpin, int begin, int end) {
-    }
-
-    /**
-     * Asks every span on this line what should happen to it when {@code change} lands, and
-     * carries out those answers — the single sweep behind every element insertion,
-     * replacement and deletion.
-     * <p>
-     * Called <b>before</b> the change is applied, so each span judges itself against the
-     * projection rather than the mutated line, and so the companion span mutations are
-     * recorded before the primary element mutation: undo replays a step in reverse, and
-     * has to restore the element before the spans that point at it.
-     * <p>
-     * Every span is asked first and acted on afterwards. Acting inside the loop would both
-     * mutate the {@code spans} list being walked and let one span's removal change what a
-     * later span is judged against.
-     * <p>
-     * A {@link SpanOutcome.Reshape} is the one answer this line cannot act on span by span:
-     * same-type hairpins the change leaves with nothing between them become one, which no
-     * span can decide on its own because none of them knows its siblings. The reshaped
-     * spans are therefore grouped by hairpin kind and handed to {@link #mergeAdjacentSpans},
-     * which expresses each reshape as a tracked removal plus a tracked addition of a copy,
-     * since a span has no modification mutation of its own.
-     *
-     * @param change the pending change, not yet applied to this line
-     */
-    private void applySpanOutcomes(ElementChange change) {
-        if (spans.isEmpty()) {
-            return;
-        }
-
-        var doomed = new ArrayList<Span>();
-        var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
-
-        for (var span : spans) {
-            switch (span.outcomeFor(change, this)) {
-                case SpanOutcome.Simple.KEEP -> { }
-                case SpanOutcome.Simple.REMOVE -> doomed.add(span);
-                case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, span, reshape);
-            }
-        }
-
-        doomed.forEach(this::removeInvalidatedSpan);
-
-        // The projection is asked for per kind rather than hoisted: there are at most two
-        // kinds, and a change nothing reshaped must not build one at all.
-        for (var hairpinSpans : reshapedByKind.values()) {
-            mergeAdjacentSpans(hairpinSpans, change.projectedElements());
-        }
-    }
-
-    /**
-     * Files {@code reshape} under {@code span}'s kind, ready for the merge pass.
-     * <p>
-     * Only a hairpin can reshape: the merge that consumes these answers replaces a run with
-     * a copy of a hairpin, and there is nothing it could do with any other kind of span.
-     */
-    private static void collectReshape(
-        Map<Hairpin.Kind, List<HairpinSpan>> reshapedByKind,
-        Span span,
-        SpanOutcome.Reshape reshape
-    ) {
-        if (!(span instanceof Hairpin hairpin)) {
-            throw new IllegalStateException(
-                "Only a hairpin may answer Reshape, but " + span.getClass().getSimpleName() + " did");
-        }
-
-        reshapedByKind
-            .computeIfAbsent(hairpin.getKind(), kind -> new ArrayList<>())
-            .add(new HairpinSpan(hairpin, reshape.begin(), reshape.end()));
-    }
-
-    /**
-     * Returns whether the element at {@code index} can begin a hairpin: a pitched note,
-     * or a grace note whose host is one.
-     * <p>
-     * The rule lives on {@link Hairpin#canAnchorAt}; this exists only so a caller
-     * holding a {@code Line} and an index need not reach for the element list.
-     *
-     * @param lastIndex the last index a hairpin may reach, bounding the host lookahead
-     */
-    public boolean canAnchorHairpin(int index, int lastIndex) {
-        return Hairpin.canAnchorAt(elements, index, lastIndex);
-    }
-
-    /**
-     * Returns whether the element at {@code index} can end a hairpin: a pitched note, or
-     * the first rest after one.
-     * <p>
-     * The rule lives on {@link Hairpin#canEndAt}; this exists only so a caller holding a
-     * {@code Line} and an index need not reach for the element list.
-     */
-    public boolean canEndHairpin(int index) {
-        return Hairpin.canEndAt(elements, index);
-    }
-
-    /**
-     * Replaces each run of same-type hairpin {@code spans} that the deletion leaves touching
-     * with a single hairpin covering the run. Runs of one whose endpoints both survive are
-     * left untouched, so a deletion that misses a hairpin emits no hairpin mutations.
-     *
-     * @param spans all post-deletion spans of one hairpin type, in any order
-     */
-    private void mergeAdjacentSpans(List<HairpinSpan> spans, List<? extends StaffElement> survivors) {
-        spans.sort(Comparator.comparingInt(HairpinSpan::begin));
-
-        var run = new ArrayList<HairpinSpan>();
-        var runEnd = -1;
-
-        for (var span : spans) {
-            // One surviving element between two hairpins is still a break in the gesture.
-            if (!run.isEmpty() && span.begin() > runEnd + SPAN_ADJACENCY_REACH) {
-                applySpanRun(run, runEnd, survivors);
-                run.clear();
-                runEnd = -1;
-            }
-
-            run.add(span);
-            runEnd = Math.max(runEnd, span.end());
-        }
-
-        applySpanRun(run, runEnd, survivors);
-    }
-
-    /**
-     * Reshapes the hairpins in {@code run} into one hairpin spanning the run's surviving
-     * endpoints, carrying over the first one's user offsets.
-     *
-     * @param run    the hairpins to replace, ordered by their post-deletion start
-     * @param runEnd the run's last post-deletion index
-     */
-    private void applySpanRun(List<HairpinSpan> run, int runEnd, List<? extends StaffElement> survivors) {
-        if (run.isEmpty()) {
-            return;
-        }
-
-        var first = run.getFirst().hairpin();
-        var anchorElement = survivors.get(run.getFirst().begin());
-        var endElement = survivors.get(runEnd);
-
-        if (run.size() == 1
-                && first.getAnchorElement() == anchorElement
-                && first.getEndElement() == endElement) {
-            return;
-        }
-
-        // Removals precede the addition so reverse-order undo drops the reshaped hairpin
-        // before restoring the originals, and run in reverse list order so undo restores
-        // them in the order they were in, leaving the document identical to before.
-        var doomed = new ArrayList<>(run.stream().map(HairpinSpan::hairpin).toList());
-        doomed.sort(Comparator.<Hairpin>comparingInt(spans::indexOf).reversed());
-        doomed.forEach(this::removeInvalidatedSpan);
-
-        var reshaped = (Hairpin) first.copy(anchorElement, endElement);
-
-        switch (reshaped) {
-            case Crescendo crescendo -> addCrescendo(crescendo);
-            case Diminuendo diminuendo -> addDiminuendo(diminuendo);
-        }
-    }
-
-    /**
-     * Returns true if any element in the inclusive range {@code [begin, end]} is a
-     * repeat or a barline other than {@link ElementType#SINGLE_BARLINE}.
-     * <p>
-     * No bounds check is performed; callers own their indices.
-     */
-    public boolean spansStructuralBoundary(int begin, int end) {
-        for (var i = begin; i <= end; i++) {
-            var type = getElement(i).getType();
-
-            if (type.isBar() && type != ElementType.SINGLE_BARLINE) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Removes every tuplet whose span overlaps [begin, end] inclusive, emitting a
-     * {@code TupletRemoval} mutation for each. Must be called inside an open
-     * modification bracket.
-     * <p>
-     * Public for use by UI-layer coordinators ({@code SelectionCoordinator},
-     * {@code PreviewElementManager}) that perform bulk or replace operations not
-     * routed through {@code modifyElement}.
-     */
-    public void removeOverlappingTuplets(int begin, int end) {
-        for (var tuplet : findTupletsOverlapping(begin, end)) {
-            removeTuplet(tuplet);
-        }
-    }
-
-    public boolean isAnnotation() {
-        return IntStream.range(0, elementCount()).anyMatch(
-            n -> getElement(n).findAttachment(AnnotationAttachment.class) != null
-        );
-    }
-
-    public int getFirstTrill() {
-        return findSpans(Trill.class).stream()
-            .mapToInt(Trill::getAnchorElementIndex)
-            .filter(i -> i >= 0)
-            .min()
-            .orElse(-1);
-    }
-
-    public int getFirstBeatChange() {
-        return IntStream.range(0, elementCount())
-            .filter(n -> getElement(n).findAttachment(BeatChangeAttachment.class) != null)
-            .findFirst()
-            .orElse(-1);
-    }
-
-    // =========================================================================
-    // Range Element Management (Phase 4+)
-    // =========================================================================
-
-    /**
-     * Adds a span to this line.
-     *
-     * @param element The span to add
-     */
-    public void addSpan(Span element) {
-        applyChange(
-            new SpanAddition(this, element),
-            () -> appendChild(element)
-        );
-    }
-
-    /**
-     * Adds a trill span, first removing any existing trill that overlaps the new one.
-     * Each removal is recorded as its own mutation so replacing a displaced trill is undoable.
-     */
-    public void addTrill(Trill trill) {
-        for (var overlapping : findTrillsOverlapping(trill.getAnchorElementIndex(), trill.getEndElementIndex())) {
-            removeSpan(overlapping);
-        }
-
-        addSpan(trill);
-    }
-
-    /**
-     * Removes every trill span overlapping {@code [beginIndex, endIndex]}.
-     */
-    public void removeTrillsOverlapping(int beginIndex, int endIndex) {
-        for (var trill : findTrillsOverlapping(beginIndex, endIndex)) {
-            removeSpan(trill);
-        }
-    }
-
-    /**
-     * Removes a span from this line.
-     *
-     * @param element The span to remove
-     * @return true if the element was removed
-     */
-    @SuppressWarnings("UnusedReturnValue")
-    public boolean removeSpan(Span element) {
-        var index = spans.indexOf(element);
-
-        if (index < 0) {
-            return false;
-        }
-
-        applyChange(
-            new SpanRemoval(this, element),
-            () -> removeChild(element, index)
-        );
-
-        return true;
-    }
-
-    /**
-     * Removes a span displaced by another change (invalidated by an
-     * element edit, or subsumed by a span merge) via its typed tracked removal,
-     * so the removal emits its proper mutation. A raw
-     * {@code spans.removeIf} would drop the span with no record, making
-     * undo of the enclosing operation lossy.
-     * <p>
-     * Every branch is a no-op when the span is no longer in any line it was in — each
-     * one looks the span up in this line's {@code spans} and returns when it is absent,
-     * and a removal takes a cross-line span out of both lines' lists together, so a
-     * second call on either line finds nothing left to remove. Callers that cannot
-     * cheaply tell whether an earlier step already removed it (the paste reconciliation
-     * in {@code ScoreViewController.tryInsertFragment}) may therefore call it
-     * unconditionally.
-     */
-    public void removeInvalidatedSpan(Span span) {
-        switch (span) {
-            case Beam beam -> removeBeaming(beam);
-            case Tie tie -> removeTie(tie);
-            case Tuplet tuplet -> removeTuplet(tuplet);
-            case Crescendo crescendo -> removeCrescendo(crescendo);
-            case Diminuendo diminuendo -> removeDiminuendo(diminuendo);
-            default -> removeSpan(span);
-        }
-    }
-
-    /**
-     * Adds a span that a paste is inserting, routing hairpins through the merge-aware
-     * {@link #addCrescendo}/{@link #addDiminuendo} so a pasted hairpin landing flush
-     * against a same-type one already on this line becomes a single hairpin, exactly
-     * as if the user had drawn it there.
-     * <p>
-     * Every other kind is added verbatim: {@code PasteSpanReconciliation} has already
-     * guaranteed no same-kind overlap survives the paste, so the other adders'
-     * displacement logic has nothing left to resolve.
-     */
-    public void addPastedSpan(Span span) {
-        switch (span) {
-            case Crescendo crescendo -> addCrescendo(crescendo);
-            case Diminuendo diminuendo -> addDiminuendo(diminuendo);
-            default -> addSpan(span);
-        }
-    }
-
-    /**
-     * Returns an unmodifiable view of the spans in this line.
-     */
-    @Override
-    public List<Span> getSpans() {
-        return spansView;
-    }
-
-    @Override
-    public SpanBound anchorIndexOf(Span span) {
-        return boundOf(span.getAnchorElement());
-    }
-
-    @Override
-    public SpanBound endIndexOf(Span span) {
-        return boundOf(span.getEndElement());
-    }
-
-    /**
-     * Resolves one endpoint of a span against this line, for both accessors above.
-     * <p>
-     * Direction for an endpoint in another line comes from where the two lines actually sit in
-     * the song, not from which endpoint is being asked about: an anchor is not necessarily
-     * behind us just because it is the earlier of the pair.
-     * <p>
-     * Only the two neighbours get a direction. A span reaching further than that describes a
-     * jump nothing can draw — the two halves would run off opposite edges of lines with a
-     * whole line of unrelated music between them, each pointing at nothing — so it resolves
-     * to {@link SpanBound#ABSENT}, which stops this half drawing at all.
-     * {@link Song#removeSpansBetweenNonAdjacentLines} drops such a span when an insertion or
-     * deletion is what broke adjacency, but nothing checks adjacency when a span is created:
-     * the MusicXML reader carries one pending tie start across a whole part, so a file whose
-     * {@code <tied>} start and stop are separated by a complete line produces one. This is the
-     * single place every query, layout, export and render path resolves an endpoint through,
-     * so it is the one place that has to say no.
-     * <p>
-     * {@link Song#removeLine} leaves a deleted line's elements pointing at it, so an endpoint
-     * can also name a line the song no longer holds; that has no position at all and is
-     * likewise {@link SpanBound#ABSENT}.
-     * <p>
-     * Only a cross-line endpoint pays for the two {@link Line#index} scans, and only
-     * ties are ever cross-line.
-     */
-    private SpanBound boundOf(@Nullable StaffElement endpoint) {
-        if (endpoint == null) {
-            return SpanBound.ABSENT;
-        }
-
-        var endpointLine = endpoint.getParentLine();
-
-        if (endpointLine == null) {
-            return SpanBound.ABSENT;
-        }
-
-        if (endpointLine == this) {
-            // The stored-parentage invariant guarantees this line's elements contain it.
-            return new SpanBound.At(getElementIndex(endpoint));
-        }
-
-        // Guarded before the distance is taken: a line the song no longer holds must not
-        // read as one away from line 0 and be treated as an adjacent neighbour.
-        if (!song.contains(this) || !song.contains(endpointLine)) {
-            return SpanBound.ABSENT;
-        }
-
-        var thisLineIndex = index();
-        var endpointLineIndex = endpointLine.index();
-
-        return switch (endpointLineIndex - thisLineIndex) {
-            case -1 -> SpanBound.BEFORE_LINE;
-            case 1 -> SpanBound.AFTER_LINE;
-            default -> SpanBound.ABSENT;
-        };
-    }
-
-    /**
-     * Returns true if deleting the elements at {@code [from, to]} — inclusive, and the same
-     * position twice for a single element — would remove any Ending in this line. See
-     * {@link #removesConfirmableSpan} for which spans are consulted and why the answer cannot
-     * disagree with the deletion it precedes.
-     * <p>
-     * The positions are read against the pre-deletion line, so call this before deleting.
-     */
-    public boolean hasEndingInvalidatedByDeletion(int from, int to) {
-        return removesConfirmableSpan(() -> ElementChange.forDeletion(this, from, to));
-    }
-
-    /**
-     * Whether the change {@code changeSupplier} describes would remove any span whose loss
-     * warrants a confirmation prompt.
-     * <p>
-     * Asks those spans the same question {@link #applySpanOutcomes} does, so a prompt and
-     * the edit it precedes can never disagree about what the edit costs. Only spans that
-     * ask to be confirmed are consulted: a tie an insertion displaces goes silently, so it
-     * must not raise the ending confirm.
-     * <p>
-     * The supplier is not invoked when this line carries no such span, which is the common
-     * case — only an {@link Ending} asks to be confirmed. That guard is what keeps a paste
-     * from building one change per pasted element type for a line that has no ending to
-     * lose.
-     */
-    private boolean removesConfirmableSpan(Supplier<ElementChange> changeSupplier) {
-        if (spans.stream().noneMatch(Span::requiresInvalidationConfirm)) {
-            return false;
-        }
-
-        var change = changeSupplier.get();
-
-        return spans.stream()
-            .filter(Span::requiresInvalidationConfirm)
-            .anyMatch(span -> span.outcomeFor(change, this) == SpanOutcome.Simple.REMOVE);
-    }
-
-    /**
-     * Returns the effect of replacing the element at {@code index} with {@code newElement}
-     * on any ending in this line. Returns {@link Ending.EndingEffect.None} if no ending
-     * is affected.
-     * <p>
-     * Call before {@link #setElement} to determine whether a confirmation dialog is needed.
-     */
-    public Ending.EndingEffect findEndingReplacementEffect(int index, StaffElement newElement) {
-        var oldElement = getElement(index);
-
-        return findEndings().stream()
-            .map(ending -> ending.checkReplacement(oldElement, newElement, this))
-            .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
-            .findFirst()
-            .orElse(Ending.EndingEffect.None.INSTANCE);
-    }
-
-    /**
-     * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * would remove any Ending in this line. See {@link #removesConfirmableSpan} for which
-     * spans are consulted and why.
-     * <p>
-     * Call before {@link #addElement(int, StaffElement)}.
-     */
-    public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
-        // The caller has a type rather than the element it will eventually insert. The
-        // endings this consults read no more of an inserted element than its type, so a
-        // fresh one stands in.
-        return removesConfirmableSpan(
-            () -> ElementChange.forInsertion(this, insertedIndex, insertedType.newInstance()));
-    }
-
-    /**
-     * Returns true if inserting a contiguous run of elements of {@code insertedTypes} at
-     * {@code insertedIndex} would remove any Ending in this line — the paste equivalent of
-     * {@link #hasEndingInvalidatedByInsertion(int, ElementType)}.
-     * <p>
-     * Every type is tested at {@code insertedIndex} rather than at its own eventual
-     * position: the run lands contiguously, so each element sits inside the ending
-     * (or at its split boundary) exactly when the first one does, and only the
-     * pre-insertion index resolves correctly against the pre-insertion line.
-     * <p>
-     * Call before the first {@link #addElement(int, StaffElement)}.
-     */
-    public boolean hasEndingInvalidatedByInsertion(int insertedIndex, List<ElementType> insertedTypes) {
-        return insertedTypes.stream()
-            .anyMatch(type -> hasEndingInvalidatedByInsertion(insertedIndex, type));
-    }
-
-    // =========================================================================
-    // Beam Group Management (Phase 4+)
-    // =========================================================================
-
 }

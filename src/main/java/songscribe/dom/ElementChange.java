@@ -20,14 +20,26 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.Set;
+
+import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.message.mutation.ElementField;
 
 /**
  * A pending change to a {@link Line}'s elements: the line has not been mutated yet, and
- * {@link #projectedElements} describes what it will look like once the change lands.
- * This projection is the single thing a {@link Span} is asked to judge itself against
- * via {@link Span#outcomeFor(ElementChange, Line)} — decisions must always be made
- * against the projection, never against the mutated line, so that companion span
- * mutations can be recorded before the primary element mutation for correct undo replay.
+ * {@link #projectedElements} describes what it will look like once the change lands. The four
+ * shapes are the four element primitives — an insertion, a replacement, a deletion, and a
+ * modification of one element's fields in place.
+ * <p>
+ * A change has two readers. The span sweep ({@link LineSpans#sweep}) hands it to every
+ * {@link Span} via {@link Span#outcomeFor(ElementChange, Line)}, and the projection is the
+ * single thing a span judges itself against — decisions must always be made against the
+ * projection, never against the mutated line, so that companion span mutations can be
+ * recorded before the primary element mutation for correct undo replay. The confirmation
+ * prompts ask the change itself, through {@link #removesConfirmableSpan} and
+ * {@link Replacement#endingEffect}, what the edit will cost before it is made; those
+ * predictions put the same question to the same spans, so a prompt and the edit it
+ * precedes cannot disagree.
  * <p>
  * <b>The projection is a view, not a copy.</b> Each shape maps projected positions onto
  * the line it holds, so building a change allocates nothing proportional to the line and
@@ -37,6 +49,9 @@ import java.util.List;
  * {@link ProjectedElements}.
  */
 public sealed interface ElementChange {
+
+    /** The line being changed, still in its pre-change state. */
+    Line line();
 
     /**
      * The line's elements as they will be once this change is applied.
@@ -48,6 +63,26 @@ public sealed interface ElementChange {
 
     /** The position of {@code element} in {@link #projectedElements}, or -1 if it is not there. */
     int projectedIndexOf(StaffElement element);
+
+    /**
+     * Whether this change would remove any span whose loss warrants a confirmation prompt.
+     * <p>
+     * Asks those spans the same question {@link LineSpans#sweep} does, so the answer is the
+     * one the sweep will act on and a prompt and the edit it precedes cannot disagree about
+     * what the edit costs. Only spans that ask to be confirmed
+     * ({@link Span#requiresInvalidationConfirm}) are consulted: a tie an insertion
+     * displaces goes silently, so it must not raise the ending confirm.
+     *
+     * @return false when the line carries no such span; otherwise true exactly when one of
+     *     them answers {@link SpanOutcome.Simple#REMOVE} for this change
+     */
+    default boolean removesConfirmableSpan() {
+        var line = line();
+
+        return line.spanRegistry().getSpans().stream()
+            .filter(Span::requiresInvalidationConfirm)
+            .anyMatch(span -> span.outcomeFor(this, line) == SpanOutcome.Simple.REMOVE);
+    }
 
     /**
      * A single element inserted at {@code index}.
@@ -122,48 +157,57 @@ public sealed interface ElementChange {
             // Nothing moves; only the replaced element leaves.
             return current == index ? -1 : current;
         }
+
+        /**
+         * The effect this replacement has on an ending in the line, as the ending itself
+         * judges it via {@link Ending#checkReplacement}. The first ending reporting an
+         * effect decides.
+         * <p>
+         * Ask before {@link Line#setElement} to learn whether a confirmation dialog is needed.
+         *
+         * @return the first ending's non-{@link Ending.EndingEffect.None None} effect, or
+         *     {@link Ending.EndingEffect.None} when no ending is affected
+         */
+        public Ending.EndingEffect endingEffect() {
+            return line.spanRegistry().findEndings().stream()
+                .map(ending -> ending.checkReplacement(oldElement, newElement, line))
+                .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
+                .findFirst()
+                .orElse(Ending.EndingEffect.None.INSTANCE);
+        }
     }
 
     /**
-     * The contiguous run of elements {@code [from, to]}, inclusive, removed.
+     * The contiguous run of elements in {@code range} removed.
      * <p>
      * A range rather than a set of elements because a range is all a deletion can be: the
      * editor has no non-contiguous selection to delete from, and both primitives that delete
      * — {@link Line#removeElement} and {@link Line#removeRange} — are handed a position or a
      * range. Saying so here is what makes the projection three comparisons in each direction
      * instead of a search, and it puts the invariant in the type rather than in a comment.
-     * <p>
-     * Not a record: {@link #deletedElements} is derived from the line rather than stored,
-     * and a record would have to carry it as a component.
+     *
+     * @param line  the line being changed, still in its pre-deletion state
+     * @param range the elements being removed, both ends included
      */
-    final class Deletion implements ElementChange {
-
-        private final Line line;
-        private final int from;
-        private final int to;
-
-        Deletion(Line line, int from, int to) {
-            this.line = line;
-            this.from = from;
-            this.to = to;
-        }
+    record Deletion(Line line, ElementRange range) implements ElementChange {
 
         /**
          * The elements being removed — a view of the line's own list, so valid only until
          * the deletion lands, like everything else this change reads.
          */
         public List<StaffElement> deletedElements() {
-            return line.getElements(from, to);
+            return line.getElements(range);
         }
 
         /** How many elements leave the line. */
         private int deletedCount() {
-            return to - from + 1;
+            return range.size();
         }
 
         @Override
         public List<StaffElement> projectedElements() {
             var deletedCount = deletedCount();
+            var from = range.begin();
 
             return new ProjectedElements(
                 line.elementCount() - deletedCount,
@@ -175,35 +219,103 @@ public sealed interface ElementChange {
         public int projectedIndexOf(StaffElement element) {
             var current = line.getElementIndex(element);
 
-            if (current < 0 || (current >= from && current <= to)) {
+            if (current < 0 || range.contains(current)) {
                 return -1;
             }
 
-            return current < from ? current : current - deletedCount();
+            return current < range.begin() ? current : current - deletedCount();
+        }
+    }
+
+    /**
+     * The element at {@code index} changed in place: {@code fields} are rewritten on it and
+     * nothing moves. The projection is the line as it stands, since a field change alters no
+     * element's position, and a span judges it on which fields change — a duration-affecting
+     * change unbalances a tuplet the element sits in, an accidental restamp touches nothing.
+     *
+     * @param line   the line being changed, still in its pre-modification state
+     * @param index  the position of the element being modified
+     * @param fields the fields the modification rewrites
+     */
+    record Modification(Line line, int index, Set<ElementField> fields) implements ElementChange {
+
+        @Override
+        public List<StaffElement> projectedElements() {
+            return new ProjectedElements(line.elementCount(), line::getElement);
+        }
+
+        @Override
+        public int projectedIndexOf(StaffElement element) {
+            return line.getElementIndex(element);
         }
     }
 
     /**
      * Builds an {@link Insertion} projecting {@code inserted} into {@code line} at
      * {@code index}.
+     *
+     * @param line     the line being changed, still in its pre-insertion state
+     * @param index    the position {@code inserted} will occupy, {@code 0..}{@link
+     *                 Line#elementCount()}
+     * @param inserted the element being inserted
+     * @return the pending insertion
      */
     static Insertion forInsertion(Line line, int index, StaffElement inserted) {
         return new Insertion(line, index, inserted);
     }
 
     /**
+     * Builds an {@link Insertion} projecting a fresh element of {@code insertedType} into
+     * {@code line} at {@code index}, for a caller that has a type rather than the element
+     * it will eventually insert. The endings a prediction consults read no more of an
+     * inserted element than its type, so a fresh one stands in.
+     *
+     * @param line         the line being changed, still in its pre-insertion state
+     * @param index        the position the element will occupy, {@code 0..}{@link
+     *                     Line#elementCount()}
+     * @param insertedType the type of the element to be inserted
+     * @return the pending insertion, over a fresh element of {@code insertedType}
+     */
+    static Insertion forInsertion(Line line, int index, ElementType insertedType) {
+        return forInsertion(line, index, insertedType.newInstance());
+    }
+
+    /**
      * Builds a {@link Replacement} projecting {@code replacement} over the element
      * currently at {@code index} of {@code line}.
+     *
+     * @param line        the line being changed, still in its pre-replacement state
+     * @param index       the position of the element being replaced
+     * @param replacement the element taking its place
+     * @return the pending replacement
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     static Replacement forReplacement(Line line, int index, StaffElement replacement) {
         return new Replacement(line, index, line.getElement(index), replacement);
     }
 
     /**
-     * Builds a {@link Deletion} projecting the elements at {@code [from, to]} — inclusive,
-     * and the same position twice for a single element — removed from {@code line}.
+     * Builds a {@link Deletion} projecting the elements in {@code range} removed from
+     * {@code line}.
+     *
+     * @param line  the line being changed, still in its pre-deletion state
+     * @param range the elements being removed, both ends included
+     * @return the pending deletion
      */
-    static Deletion forDeletion(Line line, int from, int to) {
-        return new Deletion(line, from, to);
+    static Deletion forDeletion(Line line, ElementRange range) {
+        return new Deletion(line, range);
+    }
+
+    /**
+     * Builds a {@link Modification} projecting {@code fields} of the element at {@code index}
+     * of {@code line} rewritten in place.
+     *
+     * @param line   the line being changed, still in its pre-modification state
+     * @param index  the position of the element being modified
+     * @param fields the fields the modification rewrites
+     * @return the pending modification
+     */
+    static Modification forModification(Line line, int index, Set<ElementField> fields) {
+        return new Modification(line, index, fields);
     }
 }

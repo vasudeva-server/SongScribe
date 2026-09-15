@@ -25,6 +25,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
  * Every span query expressed over three accessors, so the "iterate spans, filter by type,
  * resolve both endpoint indices, compare" loop exists in exactly one place.
@@ -163,14 +165,14 @@ public interface SpanLookup {
     }
 
     /**
-     * Returns the {@link Tie} span whose anchor is exactly {@code anchorIndex}
-     * and end is exactly {@code endIndex}, or {@code null} if no tie spans that exact
+     * Returns the {@link Tie} span whose anchor is exactly {@code range}'s first element
+     * and whose end is exactly its last, or {@code null} if no tie spans that exact
      * range. Unlike {@link #findTieAt(int)}, this disambiguates chained ties that share
      * an endpoint note — {@code findTieAt} would return whichever overlapping tie comes
      * first, not necessarily the one matching a specific selection.
      */
-    default @Nullable Tie findExactTie(int anchorIndex, int endIndex) {
-        return findFirstSpan(Tie.class, Span.exactly(anchorIndex, endIndex));
+    default @Nullable Tie findExactTie(ElementRange range) {
+        return findFirstSpan(Tie.class, Span.exactly(range));
     }
 
     /**
@@ -236,13 +238,6 @@ public interface SpanLookup {
     }
 
     /**
-     * Returns all {@link Tuplet} spans overlapping [begin, end] inclusive.
-     */
-    default List<Tuplet> findTupletsOverlapping(int begin, int end) {
-        return findSpans(Tuplet.class, Span.overlapping(begin, end));
-    }
-
-    /**
      * Returns true if the given note index falls strictly inside any hairpin (crescendo or
      * diminuendo), its bound elements excluded.
      * <p>
@@ -255,19 +250,10 @@ public interface SpanLookup {
     }
 
     /**
-     * Finds every trill span overlapping {@code [beginIndex, endIndex]}.
+     * Returns whether any trill span overlaps {@code range}.
      */
-    default List<Trill> findTrillsOverlapping(int beginIndex, int endIndex) {
-        return findSpans(Trill.class, Span.overlapping(beginIndex, endIndex));
-    }
-
-    /**
-     * Returns whether any trill span overlaps {@code [beginIndex, endIndex]}.
-     * Cheaper than {@link #findTrillsOverlapping} when only presence matters: it
-     * short-circuits and allocates no intermediate lists.
-     */
-    default boolean hasTrillOverlapping(int beginIndex, int endIndex) {
-        return hasSpan(Trill.class, Span.overlapping(beginIndex, endIndex));
+    default boolean hasTrillOverlapping(ElementRange range) {
+        return hasSpan(Trill.class, Span.overlapping(range));
     }
 
     /**

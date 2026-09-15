@@ -744,7 +744,7 @@ public final class GraceModeManager {
         // A single modification bracket coalesces the whole pairing into one undoable
         // SongDidChangeNotification: the retroactive grace-note insertion, the optional
         // host-note insertion, and the connecting glissando.
-        line.withModification(() -> {
+        line.getSong().withModification(() -> {
             // The grace note was inserted without tracking; record its insertion now so
             // undo removes it too. The element is already on the line, so the mutator is
             // empty (the PitchShifter pattern) — the record exists only to drive undo/redo.

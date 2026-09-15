@@ -22,6 +22,10 @@ package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
+
 /**
  * Represents a tie connecting two notes of the same pitch.
  * <p>
@@ -38,6 +42,20 @@ public final class Tie extends NoteSpan {
      */
     public Tie(NoteElement anchorElement, NoteElement endElement) {
         super(anchorElement, endElement);
+    }
+
+    // Ties have no displacement policy: tie ranges never coalesce. A chain of tied notes is
+    // one Tie per adjacent pair, each rendered as its own arc, even when two ties share an
+    // endpoint note.
+
+    @Override
+    protected Mutation additionRecordFor(Line line) {
+        return new TieAddition(line, this);
+    }
+
+    @Override
+    protected Mutation removalRecordFor(Line line) {
+        return new TieRemoval(line, this);
     }
 
     @Override
@@ -128,8 +146,9 @@ public final class Tie extends NoteSpan {
      * every "between them" test would be {@code index > 7 && index <= 0} and never true.
      */
     private @Nullable Endpoints resolveIn(Line line) {
-        var anchorBound = line.anchorIndexOf(this);
-        var endBound = line.endIndexOf(this);
+        var spans = line.spanRegistry();
+        var anchorBound = spans.anchorIndexOf(this);
+        var endBound = spans.endIndexOf(this);
 
         if (anchorBound.isAbsent() || endBound.isAbsent()) {
             return null;

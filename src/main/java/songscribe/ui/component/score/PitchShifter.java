@@ -20,7 +20,6 @@
 
 package songscribe.ui.component.score;
 
-import java.awt.Component;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -28,13 +27,12 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.Strings;
 import songscribe.dom.AccidentalState;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.engraving.StaffPosition;
 import songscribe.message.mutation.ElementField;
@@ -77,8 +75,8 @@ public final class PitchShifter {
     record PitchShiftEntry(Line line, int index, StaffPosition originalStaffPosition, NoteElement beforeClone) {}
 
     /**
-     * Shifts the pitch of every pitched note in the inclusive {@code [begin, end]}
-     * range (tie chains expanded) by {@code deltaSp} staff positions and commits
+     * Shifts the pitch of every pitched note in {@code range} (tie chains expanded) by
+     * {@code deltaSp} staff positions and commits
      * the change through the modification mechanism, producing the same recorded
      * mutation a mouse drag does. This is the entry point for arrow-key pitch
      * changes on a selection.
@@ -100,8 +98,8 @@ public final class PitchShifter {
      * by the same mechanism every other structural mutation uses, so this method itself
      * has nothing to report back to its caller.
      */
-    public static void shiftPitch(Line line, int begin, int end, int deltaSp) {
-        var group = buildPitchShiftGroup(line, begin, end);
+    public static void shiftPitch(Line line, ElementRange range, int deltaSp) {
+        var group = buildPitchShiftGroup(line, range);
 
         if (group.isEmpty()) {
             return;
@@ -165,14 +163,14 @@ public final class PitchShifter {
     }
 
     /**
-     * Builds the pitch-shift group for the inclusive {@code [begin, end]} range on {@code line}:
+     * Builds the pitch-shift group for {@code range} on {@code line}:
      * every note in the range — grace notes included, since they shift exactly like pitched
      * notes — with each note's tie chain fully expanded so tied notes move together, including
      * a chain that crosses into an adjacent line through a cross-line tie. Each entry captures
      * the note's own line, current staff position, and a pre-mutation clone. Returns an empty
      * list if the range holds no notes.
      */
-    static List<PitchShiftEntry> buildPitchShiftGroup(Line line, int begin, int end) {
+    static List<PitchShiftEntry> buildPitchShiftGroup(Line line, ElementRange range) {
         // Collect all unique elements, expanding each selected note's tie chain to its full
         // transitive closure — chained ties (note1-2 tied, note2-3 tied separately, possibly
         // across a line break) must move as one unit even though each link is its own two-note
@@ -182,9 +180,7 @@ public final class PitchShifter {
         var groupElements = new LinkedHashSet<StaffElement>();
         var pending = new ArrayDeque<StaffElement>();
 
-        for (var i = begin; i <= end; i++) {
-            var element = line.getElement(i);
-
+        for (var element : line.getElements(range)) {
             if (element.getType().isNote()) {
                 pending.add(element);
             }
@@ -234,7 +230,7 @@ public final class PitchShifter {
             return;
         }
 
-        for (var tie : elementLine.findTiesTouching(element)) {
+        for (var tie : elementLine.spanRegistry().findTiesTouching(element)) {
             queueTieSpan(tie, pending);
         }
     }
@@ -308,7 +304,7 @@ public final class PitchShifter {
      * coalesce into the same batch.
      */
     static void commitPitchShift(Line line, List<PitchShiftEntry> group) {
-        line.withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
+        line.getSong().withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
             // Every note goes back before any move is recorded: a record's before-element is
             // the note as it stands when the record is made, and the walk run by an earlier
             // record reads the later notes where they really were.

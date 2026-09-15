@@ -9,8 +9,8 @@ grows in both directions.
 
 Every edit to a line's elements goes through a small closed set of primitives:
 insert one, replace one, delete one or a range. Each of them, **before touching
-the elements**, asks every span on the line what should happen to it, collects the
-answers, and only then acts.
+the elements**, hands the pending change to the line's span registry, which asks
+every span what should happen to it, collects the answers, and only then acts.
 
 Adding another primitive later means adding at most one more kind of change — the
 two deletion primitives already share one — and never another predicate on every
@@ -103,19 +103,28 @@ therefore expressed as a tracked removal of the old span and a tracked addition 
 a copy at the new extent. This keeps the vocabulary small: everything that is not
 a keep is either a removal or a removal-plus-addition, never a third kind.
 
-## What stays with the line
+## What stays with the registry
 
-Not everything moved onto the spans, and two things deliberately did not.
+The spans of a line are held by a registry of their own, separate from the
+element list, and a span enters or leaves it only through the span itself. Each
+kind of span carries its own **displacement policy** — what happens to the
+same-kind spans already there that the new one may not coexist with — and its own
+mutation record, so adding a span is one operation on the span whatever its kind,
+and the registry never has to know which kinds merge and which replace.
 
-**Merging adjacent same-type hairpins** is a property of the collection, not of
-either hairpin: no span knows its siblings, so deciding whether two should become
-one cannot be asked of either. The line groups the reshape answers by kind and
-runs the merge over them.
+Two things nonetheless stay with the registry rather than the spans, because
+they are properties of the collection.
 
-**The generic overlap merge** is not hairpin-specific — beams use it too, with
-adjacency absorption turned off, since two beam groups written back to back are
-two deliberate groupings while two same-type hairpins are one hairpin. Serving two
-kinds already, it has no reason to move onto either.
+**Merging adjacent same-type hairpins** is not a property of either hairpin: no
+span knows its siblings, so deciding whether two should become one cannot be
+asked of either. The registry groups the reshape answers by kind and runs the
+merge over them.
+
+**The generic overlap merge** is not hairpin-specific — a beam's policy uses it
+too, with adjacency absorption turned off, since two beam groups written back to
+back are two deliberate groupings while two same-type hairpins are one hairpin.
+Serving two kinds already, it has no reason to move onto either; each kind's
+policy only says how far past its endpoints the merge may reach.
 
 See [hairpin-editing.md](hairpin-editing.md) for the hairpin-specific rules this
 framework hosts but does not define.

@@ -507,7 +507,7 @@ public final class PlaybackController {
     ) {
         var loopPlayback =
             ((noteSelection == null) ||
-                (noteSelection.begin() != noteSelection.end())) &&
+                (noteSelection.range().size() > 1)) &&
                 Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK);
 
         // If a single note is selected, do not loop playback
@@ -526,7 +526,7 @@ public final class PlaybackController {
         var lineIndex = song.getLines().indexOf(selection.line());
 
         return new MidiSequenceBuilder(song, getPlaybackSettings())
-            .buildFromNoteToEnd(lineIndex, selection.begin());
+            .buildFromNoteToEnd(lineIndex, selection.range().begin());
     }
 
     private static void setSequenceToPlayFromSelection(

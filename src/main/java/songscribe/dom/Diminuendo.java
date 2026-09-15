@@ -20,6 +20,10 @@
 
 package songscribe.dom;
 
+import songscribe.message.mutation.DiminuendoAddition;
+import songscribe.message.mutation.DiminuendoRemoval;
+import songscribe.message.mutation.Mutation;
+
 /**
  * A diminuendo (gradually getting softer) hairpin marking.
  * Opens to the left ({@literal >} shape).
@@ -38,5 +42,15 @@ public final class Diminuendo extends Hairpin {
     @Override
     public Kind getKind() {
         return Kind.DIMINUENDO;
+    }
+
+    @Override
+    protected Mutation additionRecordFor(Line line) {
+        return new DiminuendoAddition(line, this);
+    }
+
+    @Override
+    protected Mutation removalRecordFor(Line line) {
+        return new DiminuendoRemoval(line, this);
     }
 }

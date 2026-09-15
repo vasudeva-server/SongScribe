@@ -604,7 +604,7 @@ public final class LyricEditor extends MyJTextField {
                 return;
             }
 
-            line.withModification(commitOpName(), () -> {
+            line.getSong().withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
@@ -823,7 +823,7 @@ public final class LyricEditor extends MyJTextField {
                 return;
             }
 
-            line.withModification(commitOpName(), () -> {
+            line.getSong().withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
             });
@@ -832,7 +832,7 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ESCAPE, ACTION_KEY_ESCAPE, () -> {
             logState("key ESCAPE");
-            line.withModification(this::applyDismissAdjustment);
+            line.getSong().withModification(this::applyDismissAdjustment);
             dismiss(true);
         });
     }
@@ -950,7 +950,7 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        line.withModification(commitOpName(), () -> commitInner(kind, extend));
+        line.getSong().withModification(commitOpName(), () -> commitInner(kind, extend));
     }
 
     /**
@@ -1239,7 +1239,7 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        line.withModification(commitOpName(), () -> {
+        line.getSong().withModification(commitOpName(), () -> {
             commitInner(kind, extend);
             applyDismissAdjustment();
         });
@@ -1254,7 +1254,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var currentIndex = line.getElementIndex(element);
-        line.withModification(commitOpName(), () -> {
+        line.getSong().withModification(commitOpName(), () -> {
             chainEditor.breakChainAtCurrentElement(currentIndex);
             suppressDismissAdjustment = true;
             commitInner(kind, Lyric.Extend.NONE);
@@ -1542,7 +1542,7 @@ public final class LyricEditor extends MyJTextField {
 
         var currentIndex = line.getElementIndex(element);
 
-        line.withModification(commitOpName(), () -> {
+        line.getSong().withModification(commitOpName(), () -> {
             if (openedAsExtender) {
                 // Text typed over a carrier: end the chain that ran through this element
                 // before starting a new one from it.
@@ -1627,7 +1627,7 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        line.withModification(commitOpName(), () -> {
+        line.getSong().withModification(commitOpName(), () -> {
             commitInner(commitSpec.kind(), commitSpec.extend());
             applyDismissAdjustment();
         });

@@ -19,7 +19,6 @@
  */
 package songscribe.io;
 
-import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 
 /**
@@ -30,13 +29,22 @@ import songscribe.dom.DocumentScale;
  */
 record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstSecondEndingYPosPx, int trillYPosPx) {
 
+    /** Default beat change Y position (-3 staff spaces above middle). */
+    private static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;
+
+    /** Default first/second ending Y position (above staff). */
+    private static final double ENDING_DEFAULT_Y_SS = -3.125;
+
+    /** Default trill Y position (above staff). */
+    private static final double TRILL_DEFAULT_Y_SS = -3.375;
+
     // Matches the field initializers that were on Line before this carrier was introduced.
     // Note: tempo's default of 0 also serves as the "unset" sentinel — legacy files that omit the
     // tempo tag are treated as having no tempo offset to migrate (see FormatMigrator).
     static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
         0,
-        DocumentScale.ssToPx(Line.BEAT_CHANGE_DEFAULT_Y_SS).positionPx(),
-        DocumentScale.ssToPx(Line.ENDING_DEFAULT_Y_SS).positionPx(),
-        DocumentScale.ssToPx(Line.TRILL_DEFAULT_Y_SS).positionPx()
+        DocumentScale.ssToPx(BEAT_CHANGE_DEFAULT_Y_SS).positionPx(),
+        DocumentScale.ssToPx(ENDING_DEFAULT_Y_SS).positionPx(),
+        DocumentScale.ssToPx(TRILL_DEFAULT_Y_SS).positionPx()
     );
 }

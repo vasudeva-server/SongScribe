@@ -30,7 +30,8 @@ import songscribe.message.mutation.ElementField;
  * rules live on an interface rather than on {@code Line}.
  *
  * <p>The list is used live, not copied: every repair is applied to the caller's elements,
- * which is the point of handing them over.
+ * which is the point of handing them over. Nothing here inserts or removes an element, so the
+ * list may be immutable.
  *
  * @param elements The run's elements, in order
  */

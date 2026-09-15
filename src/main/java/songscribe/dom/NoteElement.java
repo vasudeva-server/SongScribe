@@ -193,7 +193,7 @@ public final class NoteElement extends StaffElement implements Dottable {
             return naturalDirection();
         }
 
-        var beam = line.findBeamAt(line.getElementIndex(this));
+        var beam = line.spanRegistry().findBeamAt(line.getElementIndex(this));
 
         return beam == null ? naturalDirection() : beam.direction();
     }

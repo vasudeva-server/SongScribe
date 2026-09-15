@@ -34,6 +34,7 @@ import songscribe.dom.LineElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.hit.HitTarget;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
@@ -282,52 +283,33 @@ public final class SelectionCoordinator implements Disposable {
      * click on it is the one gesture that selects it (issue #713), so a Shift+click or
      * Shift+arrow that would sweep it in stops at the last editable element instead.
      * <p>
-     * {@code begin} needs no clamp: the terminal is the last element, so {@code begin} reaching
-     * it implies {@code end} did too, which is the single-element range a click produces.
+     * The range's first element needs no clamp: the terminal is the last element, so a range
+     * beginning on it ends on it too, which is the single-element range a click produces.
      */
-    private void setRange(Line line, int begin, int end, int anchor) {
-        if (end > begin) {
-            end = Math.min(end, line.effectiveElementCount() - 1);
-            anchor = Math.min(anchor, end);
+    private void setRange(Line line, ElementRange range, int anchor) {
+        var clamped = range;
+
+        if (range.size() > 1) {
+            clamped = new ElementRange(range.begin(), Math.min(range.end(), line.effectiveElementCount() - 1));
+            anchor = Math.min(anchor, clamped.end());
         }
 
-        selected = new Selection.Range(line, begin, end, anchor);
+        selected = new Selection.Range(line, clamped, anchor);
     }
 
     /**
-     * Selects {@code begin..end} on the active line, anchored at {@code anchor}, or clears the
-     * selection if {@code begin} is -1. The line stays active either way.
-     * <p>
-     * The one entry point for setting a range: a click, a drag, an arrow-key extension and a
-     * post-mutation re-derivation all land here, so a range replaces a target by the same
-     * assignment that sets it.
-     * <p>
-     * No production caller supplies an anchor of its own — every one of them goes through
-     * {@link #selectRange(int, int)} and anchors at {@code begin} (issue #748), and the
-     * anchor only comes to rest on {@code end} later, when {@link #extendSelectionTo} carries
-     * the range past it. The explicit-anchor form is what those two are built from, and what
-     * tests use to construct a crossed range directly.
+     * Selects {@code range} on the active line, anchored at its first element. The anchor comes
+     * to rest anywhere else only when {@link #extendSelectionTo} carries the range past it
+     * (issue #748). Does nothing when no line is active.
      */
-    public void selectRange(int begin, int end, int anchor) {
+    public void selectRange(ElementRange range) {
         var line = getActiveLine();
 
         if (line == null) {
             return;
         }
 
-        if (begin == -1) {
-            selected = null;
-            return;
-        }
-
-        setRange(line, begin, end, anchor);
-    }
-
-    /**
-     * Selects {@code begin..end} on the active line, anchored at {@code begin}.
-     */
-    public void selectRange(int begin, int end) {
-        selectRange(begin, end, begin);
+        setRange(line, range, range.begin());
     }
 
     /**
@@ -344,8 +326,7 @@ public final class SelectionCoordinator implements Disposable {
         var anchor = range.anchor();
         setRange(
             range.line(),
-            Math.min(anchor, elementIndex),
-            Math.max(anchor, elementIndex),
+            new ElementRange(Math.min(anchor, elementIndex), Math.max(anchor, elementIndex)),
             anchor);
     }
 
@@ -369,7 +350,7 @@ public final class SelectionCoordinator implements Disposable {
             return;
         }
 
-        setRange(line, 0, lastSelectableIndex, 0);
+        setRange(line, new ElementRange(0, lastSelectableIndex), 0);
     }
 
     /**
@@ -625,7 +606,7 @@ public final class SelectionCoordinator implements Disposable {
             }
         }
 
-        if (range.end() >= range.line().elementCount()) {
+        if (range.range().end() >= range.line().elementCount()) {
             clearActiveSelection();
             return;
         }
@@ -659,7 +640,7 @@ public final class SelectionCoordinator implements Disposable {
         }
 
         if (root instanceof Span span) {
-            return line.getSpans().contains(span);
+            return line.spanRegistry().getSpans().contains(span);
         }
 
         return root.getParentLine() == line;
@@ -715,7 +696,7 @@ public final class SelectionCoordinator implements Disposable {
      */
     public int getSelectionSize() {
         var range = getRange();
-        return (range != null) ? range.size() : 0;
+        return (range != null) ? range.range().size() : 0;
     }
 
     /**
@@ -740,7 +721,7 @@ public final class SelectionCoordinator implements Disposable {
                 return null;
             }
 
-            return new ElementSelection(line, 0, elementCount - 1);
+            return new ElementSelection(line, new ElementRange(0, elementCount - 1));
         }
 
         var range = getRange();
@@ -782,14 +763,7 @@ public final class SelectionCoordinator implements Disposable {
             return List.of();
         }
 
-        var line = selection.line();
-        var elements = new ArrayList<StaffElement>(selection.end() - selection.begin() + 1);
-
-        for (var i = selection.begin(); i <= selection.end(); i++) {
-            elements.add(line.getElement(i));
-        }
-
-        return elements;
+        return new ArrayList<>(selection.line().getElements(selection.range()));
     }
 
     // -------------------------------------------------------------------------
@@ -854,15 +828,8 @@ public final class SelectionCoordinator implements Disposable {
             return false;
         }
 
-        var line = selection.line();
-
-        for (var i = selection.begin(); i <= selection.end(); i++) {
-            if (line.getElement(i).getType().canCarryAnnotation()) {
-                return true;
-            }
-        }
-
-        return false;
+        return selection.line().getElements(selection.range()).stream()
+            .anyMatch(element -> element.getType().canCarryAnnotation());
     }
 
     /**
@@ -887,9 +854,10 @@ public final class SelectionCoordinator implements Disposable {
 
         return applicabilityCache.computeIfAbsent(action, ignored -> {
             var line = selection.line();
+            var bounds = selection.range();
             var applicable = false;
 
-            for (var i = selection.begin(); i <= selection.end(); i++) {
+            for (var i = bounds.begin(); i <= bounds.end(); i++) {
                 if (action.admit(line.getElement(i)) == null) {
                     continue;
                 }
@@ -923,8 +891,8 @@ public final class SelectionCoordinator implements Disposable {
 
         var line = selection.line();
 
-        for (var i = selection.begin(); i <= selection.end(); i++) {
-            var elementType = line.getElement(i).getType();
+        for (var element : line.getElements(selection.range())) {
+            var elementType = element.getType();
 
             if (elementType.isDuration() || elementType.isGraceNote()) {
                 hasDurations = true;

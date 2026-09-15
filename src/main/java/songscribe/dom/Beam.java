@@ -24,6 +24,9 @@ import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.engraving.StemMetrics;
+import songscribe.message.mutation.BeamingAddition;
+import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.Mutation;
 
 /**
  * A beam group connecting a contiguous run of notes.
@@ -437,5 +440,26 @@ public final class Beam extends NoteSpan {
         var neighborIndex = line().nearestNonGraceIndex(index, step);
 
         return neighborIndex < 0 ? 0 : line().getElement(neighborIndex).getType().beamCount();
+    }
+
+    /**
+     * Merges this beam with any existing beam that overlaps it: widens this beam to cover
+     * them and removes every beam the widened range subsumes. Beams do not absorb an
+     * <em>adjacent</em> beam — two beam groups written back to back are two deliberate
+     * groupings, not one interrupted by an accident — so the reach is zero.
+     */
+    @Override
+    protected void applyDisplacementPolicy(Line line) {
+        line.spanRegistry().mergeOverlapping(this, Beam.class, 0);
+    }
+
+    @Override
+    protected Mutation additionRecordFor(Line line) {
+        return new BeamingAddition(line, this);
+    }
+
+    @Override
+    protected Mutation removalRecordFor(Line line) {
+        return new BeamingRemoval(line, this);
     }
 }

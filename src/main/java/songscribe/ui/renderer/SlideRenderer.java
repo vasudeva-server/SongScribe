@@ -29,7 +29,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
-import songscribe.dom.StaffElement;
 import songscribe.engraving.EngravingConstants;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -358,7 +357,7 @@ public final class SlideRenderer {
         return SlideGeometry.noteContextAt(
             element,
             layoutResult.getElementXSs(element) + shiftSs,
-            line.findBeamAt(elementIndex) != null,
+            line.spanRegistry().findBeamAt(elementIndex) != null,
             LAYOUT_MIDLINE_Y_SS
         );
     }

@@ -132,7 +132,7 @@ public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
         var elementIndex = target.elementIndex();
         var field = elementField();
 
-        line.withModification(opLabel(op), () -> line.modifyElement(elementIndex, field, mutator));
+        line.getSong().withModification(opLabel(op), () -> line.modifyElement(elementIndex, field, mutator));
     }
 
     /**

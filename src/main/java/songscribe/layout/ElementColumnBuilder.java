@@ -27,7 +27,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
-import songscribe.dom.Direction;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -135,7 +134,7 @@ public class ElementColumnBuilder {
         // Determine beam membership first — needed for right extent calculation. A grace
         // note sitting inside a beam span is not a member: the beam passes over it and it
         // keeps its own short stem and flag (refs #592).
-        var beam = element.getType().isGraceNote() ? null : line.findBeamAt(elementIndex);
+        var beam = element.getType().isGraceNote() ? null : line.spanRegistry().findBeamAt(elementIndex);
         return buildColumnForBeam(element, beam, line.getSong().getActiveVerse());
     }
 

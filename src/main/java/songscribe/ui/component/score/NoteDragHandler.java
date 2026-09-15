@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
 import songscribe.hit.HitTarget;
@@ -155,22 +156,19 @@ class NoteDragHandler {
         var coordinator = lc.getScoreView().getSelectionCoordinator();
         var range = coordinator.getRange();
 
-        int dragBegin;
-        int dragEnd;
+        ElementRange dragRange;
 
         if (range != null && coordinator.isElementSelected(hitIndex, lc.getLineIndex())) {
             // Note is already part of the selection — preserve it for a potential drag.
             // Capture the existing selection range so the drag group spans all
             // originally-selected notes even after a collapse on release.
-            dragBegin = range.begin();
-            dragEnd = range.end();
+            dragRange = range.range();
             lc.getSelectionHandler().playNoteIfPitched(hitIndex);
             pressPreservedMultiSelection = true;
         } else {
             // Note is not in the current selection — replace selection with just this note.
             // Drag group is only the clicked note.
-            dragBegin = hitIndex;
-            dragEnd = hitIndex;
+            dragRange = ElementRange.single(hitIndex);
             lc.getSelectionHandler().selectAndPlayElement(hitIndex);
             pressPreservedMultiSelection = false;
         }
@@ -179,7 +177,7 @@ class NoteDragHandler {
         // The press gate above admits any note (isNote), and buildPitchShiftGroup includes
         // every note in the range, so the group is never empty for an admitted hit.
         dragGroup.clear();
-        dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
+        dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragRange));
         resolveForeignLineComponents();
 
         // Save state for the drag and for a press+release without drag

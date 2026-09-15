@@ -19,6 +19,8 @@
  */
 package songscribe.dom;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
  * What should happen to a {@link Span} when it is asked to judge itself against a
  * pending {@link ElementChange} via {@link Span#outcomeFor(ElementChange, Line)}.
@@ -44,8 +46,8 @@ public sealed interface SpanOutcome {
     }
 
     /**
-     * The span survives over {@code [begin, end]}, as indices into the change's
-     * {@link ElementChange#projectedElements}, not into the pre-change line.
+     * The span survives over {@code range}, a range over the change's
+     * {@link ElementChange#projectedElements}, not over the pre-change line.
      */
-    record Reshape(int begin, int end) implements SpanOutcome { }
+    record Reshape(ElementRange range) implements SpanOutcome { }
 }

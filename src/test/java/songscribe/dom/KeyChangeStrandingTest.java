@@ -29,7 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.dom.StaffElementRun.EffectiveRange;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
@@ -68,8 +68,8 @@ class KeyChangeStrandingTest extends UnitTest {
     private static final int KEY_CHANGE_INDEX = 2;
 
     /** The range a stranded key change goes with: itself and the barline in front of it. */
-    private static final List<EffectiveRange> KEY_CHANGE_PAIR =
-        List.of(new EffectiveRange(BARLINE_INDEX, KEY_CHANGE_INDEX));
+    private static final List<ElementRange> KEY_CHANGE_PAIR =
+        List.of(new ElementRange(BARLINE_INDEX, KEY_CHANGE_INDEX));
 
     /**
      * One expected line of a stranding.
@@ -77,7 +77,7 @@ class KeyChangeStrandingTest extends UnitTest {
      * @param lineIndex the line's index
      * @param ranges    the ranges the stranding must report on it
      */
-    private record StrandedAt(int lineIndex, List<EffectiveRange> ranges) {}
+    private record StrandedAt(int lineIndex, List<ElementRange> ranges) {}
 
     /**
      * One stranding query, and what it must report.

@@ -280,7 +280,7 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             }
 
             labelFirstNote(line, label);
-            line.addSpan(new Ending(anchor, end));
+            new Ending(anchor, end).addTo(line);
         });
     }
 

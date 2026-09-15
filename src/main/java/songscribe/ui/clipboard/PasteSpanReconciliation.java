@@ -30,15 +30,14 @@ import songscribe.dom.Beam;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
-import songscribe.layout.InsertionSpacingCalculator;
 
 /**
  * Decides which spans survive a paste: the ones the paste lands <em>inside</em> of on
@@ -187,7 +186,7 @@ public record PasteSpanReconciliation(
     public static PasteSpanReconciliation reconcile(
         Line line,
         int insertIndex,
-        InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
+        @Nullable ElementRange deleteRange,
         List<StaffElement> fragmentElements,
         List<Span> fragmentSpans
     ) {
@@ -217,7 +216,9 @@ public record PasteSpanReconciliation(
         // fragment therefore must not also contribute.
         var keptStraddledHairpinTypes = new HashSet<Class<?>>();
 
-        for (var span : line.getSpans()) {
+        var spans = line.spanRegistry();
+
+        for (var span : spans.getSpans()) {
             // Both endpoints have to be positions in this line before they can be compared
             // against a position in it. A tie straddling a line boundary resolves one endpoint
             // to an edge it runs off, so the comparison below would be arithmetic across two
@@ -225,8 +226,8 @@ public record PasteSpanReconciliation(
             // two lines' relative lengths rather than on anything musical. Its half of the
             // paste is owned by the per-clone sweep in Line.addElement, which resolves against
             // the receiving line — and applies the tie's separator rule while it is there.
-            if (!(line.anchorIndexOf(span) instanceof SpanBound.At(var anchorIndex))
-                    || !(line.endIndexOf(span) instanceof SpanBound.At(var endIndex))) {
+            if (!(spans.anchorIndexOf(span) instanceof SpanBound.At(var anchorIndex))
+                    || !(spans.endIndexOf(span) instanceof SpanBound.At(var endIndex))) {
                 continue;
             }
 
@@ -321,12 +322,11 @@ public record PasteSpanReconciliation(
             return this;
         }
 
-        var lineIndex = line.index();
         var keptSpans = new ArrayList<Span>(fragmentSpans.size());
         var rejectedTuplets = new ArrayList<Tuplet>();
 
         for (var span : fragmentSpans) {
-            if (span instanceof Tuplet tuplet && isRejectedByTarget(song, line, lineIndex, tuplet)) {
+            if (span instanceof Tuplet tuplet && isRejectedByTarget(line, tuplet)) {
                 rejectedTuplets.add(tuplet);
             } else {
                 keptSpans.add(span);
@@ -355,7 +355,7 @@ public record PasteSpanReconciliation(
      * drops every one before a song is ever shown — but if one arrives, its ratio is derived
      * from the destination as creation would.
      */
-    private static boolean isRejectedByTarget(Song song, Line line, int lineIndex, Tuplet tuplet) {
+    private static boolean isRejectedByTarget(Line line, Tuplet tuplet) {
         var beginIndex = tuplet.getAnchorElementIndex();
         var endIndex = tuplet.getEndElementIndex();
 
@@ -366,20 +366,19 @@ public record PasteSpanReconciliation(
             return false;
         }
 
-        var context = TupletValidator.describeSpan(song, line, lineIndex, beginIndex, endIndex);
-        var noteValue = tuplet.getNoteValue();
+        var context = TupletValidator.describeSpan(line, new ElementRange(beginIndex, endIndex));
+        var ratio = tuplet.getRatio();
         TupletValidator.Result result;
 
-        if (noteValue == null) {
+        if (ratio == null) {
             result = TupletValidator.validate(
                 context, tuplet.getGrade(), TupletValidator.Strictness.STRICT);
         } else {
             result = TupletValidator.validateStated(
-                context, tuplet.getGrade(), tuplet.getNormalNotes(),
-                noteValue, tuplet.getNoteValueDots(), TupletValidator.Strictness.STRICT);
+                context, tuplet.getGrade(), ratio, TupletValidator.Strictness.STRICT);
         }
 
-        return !result.valid();
+        return result instanceof TupletValidator.Result.Invalid;
     }
 
     /**

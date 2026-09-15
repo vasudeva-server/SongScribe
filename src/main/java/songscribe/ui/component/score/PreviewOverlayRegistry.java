@@ -118,7 +118,7 @@ final class PreviewOverlayRegistry {
      * <p>
      * When called from inside an open modification bracket — the post-insertion case, where
      * {@link EditModeManager#previewElementDidChange} sets up the next preview element while
-     * {@code line.withModification(...)} is still open — the current {@link LayoutResult} is
+     * {@code line.getSong().withModification(...)} is still open — the current {@link LayoutResult} is
      * one insertion out of date (invalidated only when the bracket closes), so re-anchoring
      * here would land on the just-inserted element and fall back to an empty-line offset. The
      * re-anchor is deferred to {@link #applyPendingRestore}, run from

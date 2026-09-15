@@ -75,15 +75,14 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
     }
 
     /**
-     * Captures the elements in {@code line} from {@code begin} to {@code end}
-     * (inclusive), along with every {@link Span} fully contained within
+     * Captures the elements {@code range} names in {@code line}, along with every {@link Span} fully contained within
      * that range.
      *
      * <p>The captured range is first widened at both ends — past a trailing breath mark or a key
      * change standing behind a barline ({@link Line#effectiveEnd}), and back over the barline
      * in front of a key change ({@link Line#beginIncludingKeyChangeBarline}) — and then
      * trimmed of an orphan paired grace note at the tail. When the entire range is that one
-     * orphan grace note ({@code begin == end}), the trim drops it entirely and
+     * orphan grace note (a one-element {@code range}), the trim drops it entirely and
      * capture returns an empty {@code Fragment}.
      *
      * <p><b>Widening the head is what keeps a pasted key change legal.</b> A key change is
@@ -108,17 +107,16 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
      * and the clipboard is never left holding a span it cannot paste whole.
      *
      * @param line  The line to capture from
-     * @param begin The index of the first element to capture
-     * @param end   The index of the last element to capture
+     * @param range The elements to capture, as selected — capture widens it itself
      * @return A new {@code Fragment} of clones, independent of {@code line}
      */
-    public static Fragment capture(Line line, int begin, int end) {
+    public static Fragment capture(Line line, StaffElementRun.ElementRange range) {
         // Not effectiveRange: that also reaches back over a paired grace note, which a copy must
         // not do. A grace note cannot outlive its host, so a capture starting at a host leaves it
         // behind; a key change cannot exist without its barline, so a capture starting at one
         // takes the barline too.
-        var effectiveBegin = line.beginIncludingKeyChangeBarline(begin);
-        var effectiveEnd = line.effectiveEnd(end);
+        var effectiveBegin = line.beginIncludingKeyChangeBarline(range.begin());
+        var effectiveEnd = line.effectiveEnd(range.end());
 
         // The host of a paired grace note sits at the very next index, which lies
         // outside the captured range when the grace note is the last included
@@ -145,7 +143,7 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
         // chain inside it — the same repair an edit runs, applied to the same lyrics.
         new DetachedLyricRun(elements).endDanglingChains();
 
-        return new Fragment(elements, cloneSpans(line.getSpans(), originalToClone));
+        return new Fragment(elements, cloneSpans(line.spanRegistry().getSpans(), originalToClone));
     }
 
     /**
@@ -222,8 +220,7 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
      * where its key changes stand and what each of them is paired with.
      *
      * <p>{@link DetachedLyricRun} is that run: it is the one implementation over a bare element
-     * list, and {@link #capture} already repairs the captured lyrics through it. Nothing here
-     * mutates, so handing it the live list costs nothing.
+     * list, and {@link #capture} already repairs the captured lyrics through it.
      */
     private StaffElementRun run() {
         return new DetachedLyricRun(elements);

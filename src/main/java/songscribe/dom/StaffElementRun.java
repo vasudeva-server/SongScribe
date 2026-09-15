@@ -244,16 +244,247 @@ public interface StaffElementRun {
     }
 
     /**
-     * The range a deletion or copy of {@code begin} through {@code end} actually covers, widened
-     * at both ends by {@link #effectiveBegin} and {@link #effectiveEnd}. Every query that asks
-     * about a deletion must ask about this range, not the caller's raw selection.
+     * The range a deletion or copy of {@code range} actually covers, widened at both ends by
+     * {@link #effectiveBegin} and {@link #effectiveEnd}. Every query that asks about a deletion
+     * must ask about this range, not the caller's raw selection.
      *
-     * @param begin the first element the caller named
-     * @param end   the last element the caller named
-     * @return the widened range, which always contains {@code [begin, end]}
+     * @param range the elements the caller named
+     * @return the widened range, which always contains {@code range}
      */
-    default EffectiveRange effectiveRange(int begin, int end) {
-        return new EffectiveRange(effectiveBegin(begin), effectiveEnd(end));
+    default ElementRange effectiveRange(ElementRange range) {
+        return new ElementRange(effectiveBegin(range.begin()), effectiveEnd(range.end()));
+    }
+
+    /**
+     * Returns whether inserting at the given index would conflict with a paired grace note.
+     * A grace note is paired when it has a connecting {@link Slide#GLISSANDO}
+     * linking it to the following note.
+     * <p>
+     * This returns {@code true} in two cases:
+     * <ul>
+     *   <li>The element at {@code index} is itself a paired grace note (clicking on it)</li>
+     *   <li>The element at {@code index - 1} is a paired grace note (clicking between it and its host)</li>
+     * </ul>
+     */
+    default boolean isInsideGraceHostPair(int index) {
+        return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
+    }
+
+    /**
+     * If the element immediately before {@code index} is a grace note, returns its index.
+     * Returns -1 otherwise.
+     */
+    default int precedingGraceNoteIndex(int index) {
+        var candidateIndex = index - 1;
+
+        if (candidateIndex < 0) {
+            return -1;
+        }
+
+        return getElement(candidateIndex).getType().isGraceNote() ? candidateIndex : -1;
+    }
+
+    /**
+     * Whether the element at {@code index} is a mid-line key change.
+     *
+     * <p>The barline in front of it is not tested. This reports what stands at {@code index}, so a
+     * key change that reached the line by any route answers {@code true} — testing for the
+     * barline would make a refusal depend on the pair rule in {@code docs/key-changes.md}
+     * rather than help keep it.
+     *
+     * @param index element index; out of range yields false
+     * @return {@code true} when a {@link KeyChangeElement} stands at {@code index}
+     */
+    default boolean isKeyChangeAt(int index) {
+        return hasIndex(index) && getElement(index).getType().isKeyChange();
+    }
+
+    /**
+     * Whether the element at {@code index} is the barline or repeat a key change sits behind —
+     * the same pair {@link #isKeyChangeAt} names from the key change's side, seen from the
+     * barline's.
+     *
+     * @param index element index; out of range yields false
+     * @return {@code true} when a key change stands at {@code index + 1} and {@code index}
+     *     holds the barline or repeat it sits behind
+     */
+    private boolean isKeyChangeBarlineAt(int index) {
+        return isKeyChangeBehindBarline(index + 1);
+    }
+
+    /**
+     * Whether the element at {@code index} may be replaced in place — clicked through with
+     * another element in note entry, which swaps the new element in and keeps the index.
+     *
+     * <p>Two things are refused, both because they are half of a pair that only means anything
+     * whole: a <b>grace note</b>, which belongs to the host that follows it, and either half of a
+     * <b>key change and the barline it sits behind</b> — the pair rule in
+     * {@code docs/key-changes.md}, which {@link #effectiveBegin} deletes whole for the same
+     * reason.
+     *
+     * <p>Says nothing about what may be <em>inserted</em> at {@code index}: a replacement takes
+     * the element's place, while an insertion lands in front of it.
+     * {@link #canInsertElementAt} is the insertion-side question.
+     *
+     * @param index element index; out of range yields true, since nothing stands there to
+     *     protect and the caller's own bounds decide what happens next
+     * @return {@code true} when note entry may write over the element at {@code index}
+     */
+    default boolean canReplaceElementAt(int index) {
+        if (!hasIndex(index)) {
+            return true;
+        }
+
+        return !getElement(index).getType().isGraceNote()
+            && !isKeyChangeAt(index)
+            && !isKeyChangeBarlineAt(index);
+    }
+
+    /**
+     * Whether an element may be inserted in front of the element at {@code index} — the sibling
+     * of {@link #canReplaceElementAt}, which answers whether the element at {@code index} may be
+     * written over instead.
+     *
+     * <p>Every way content lands on a line by pointing at it asks this, whatever is being placed:
+     * note entry, a pasted fragment and a mid-line key change alike. Two slots are refused,
+     * both because they sit <em>inside</em> a pair that only means anything adjacent:
+     *
+     * <ul>
+     *   <li>in front of a <b>mid-line key change</b>, which is the gap between it and the
+     *       barline it stands behind. Anything landing there leaves the key change preceded by
+     *       something other than a barline, breaking {@link KeyChangeElement}'s position
+     *       invariant — see {@code docs/key-changes.md}.</li>
+     *   <li>in front of the <b>host of a paired grace note</b>, which is the gap between the
+     *       grace note and the note it decorates. The two mean nothing apart, so nothing goes
+     *       between them.</li>
+     * </ul>
+     *
+     * <p>Says nothing about which of the remaining slots a particular operation wants. That is
+     * each operation's own rule, and it is asked separately — a key change is never the first
+     * element on a line, for instance, which this does not know or care about.
+     *
+     * @param index the slot an element would be inserted at, so that it lands in front of the
+     *     element currently at {@code index}; out of range — including
+     *     {@link #effectiveElementCount()}, the slot past the last element — yields true, since
+     *     nothing stands there to be split
+     * @return {@code true} when an element may be inserted at {@code index}
+     */
+    default boolean canInsertElementAt(int index) {
+        return !isKeyChangeAt(index) && !isHostOfPairedGraceNote(index);
+    }
+
+    // -------------------------------------------------------------------------
+    // Element queries
+    // -------------------------------------------------------------------------
+
+    /** Whether this run holds no elements. */
+    default boolean isEmpty() {
+        return elementCount() == 0;
+    }
+
+    /**
+     * The index of the last note on this line.
+     *
+     * <p>Answers how far along a line an edit can still govern a pitch. A key change past this
+     * index reaches no note, so it says nothing the next line's own key does not say, and the
+     * cautionary already draws that key at this line's end. See {@code docs/key-changes.md}.
+     *
+     * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
+     * terminal is a barline or a repeat, so a scan for a note stops before it either way.
+     *
+     * @return the last note's element index, or -1 when this line holds no note
+     * @invariant the result is always below {@link #effectiveElementCount()}
+     */
+    default int lastNoteIndex() {
+        for (var scanIndex = elementCount() - 1; scanIndex >= 0; scanIndex--) {
+            if (getElement(scanIndex).getType().isNote()) {
+                return scanIndex;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns whether the element at {@code index} and the one following it are both notes at the
+     * same pitch — the span a connecting glissando may never cover, since there is no distance for
+     * it to traverse.
+     * <p>
+     * This is the one definition of that condition. The slide tool asks it before attaching a
+     * glissando, a pitch shift asks it to strip one whose two notes have come together, and the
+     * layout and render passes ask it so that neither draws nor registers geometry for one that
+     * reached the model through an import. Each caller keeps its own further rules — which
+     * elements may anchor a glissando at all is a separate question from whether these two
+     * share a pitch.
+     * <p>
+     * Grace notes count on either side, since they carry a pitch like any other note.
+     *
+     * @param index index of the leading element; out of range, or last in the line, yields false
+     */
+    default boolean isSamePitchAsFollower(int index) {
+        if (index < 0 || index + 1 >= elementCount()) {
+            return false;
+        }
+
+        return getElement(index) instanceof NoteElement note
+            && getElement(index + 1) instanceof NoteElement follower
+            && note.getPitch() == follower.getPitch();
+    }
+
+    /**
+     * Whether a syllable may be written on the element at {@code index} — this line's way of
+     * asking {@link StaffElement#canBearSyllable}, which states the rule and which
+     * {@code LyricLayoutBuilder} asks of the columns it is laying out instead.
+     *
+     * <p>Does not vary by verse: an element that can hold a syllable can hold one in every verse.
+     *
+     * @param index element index
+     * @return {@code true} when a syllable may be written on the element at {@code index}
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
+     */
+    default boolean canBearSyllableAt(int index) {
+        return getElement(index).canBearSyllable(index >= 1 ? getElement(index - 1) : null);
+    }
+
+    /**
+     * Returns the index of the nearest element to {@code fromIndex} that is not a grace
+     * note, stepping by {@code step} ({@code -1} to search backward, {@code 1} forward),
+     * or -1 if the line runs out first. {@code fromIndex} itself is not examined.
+     *
+     * <p>Grace notes are transparent to callers reasoning about a note's real neighbors:
+     * one can sit between two beamed notes without joining their beam, so the neighbor
+     * that matters is the one on its far side.
+     *
+     * @param fromIndex The index to search out from
+     * @param step The direction to search in
+     * @return The nearest non-grace index, or -1 if there is none
+     */
+    default int nearestNonGraceIndex(int fromIndex, int step) {
+        for (var i = fromIndex + step; hasIndex(i); i += step) {
+            if (!getElement(i).getType().isGraceNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns true if any element in {@code range} is a repeat or a barline other than
+     * {@link ElementType#SINGLE_BARLINE}.
+     * <p>
+     * No bounds check is performed; callers own their indices.
+     */
+    default boolean spansStructuralBoundary(ElementRange range) {
+        for (var i = range.begin(); i <= range.end(); i++) {
+            var type = getElement(i).getType();
+
+            if (type.isBar() && type != ElementType.SINGLE_BARLINE) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // -------------------------------------------------------------------------
@@ -294,7 +525,7 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns the {@link EffectiveRange} of every key change at or after {@code fromIndex} that
+     * Returns the {@link ElementRange} of every key change at or after {@code fromIndex} that
      * restates the key already in effect immediately before it, each widened to the pair it
      * belongs to, so the barline it sits behind goes with it.
      *
@@ -314,12 +545,12 @@ public interface StaffElementRun {
      *     one index below {@code fromIndex}, when a key change stands at {@code fromIndex} itself
      *     and the barline it sits behind is taken with it
      * @invariant A caller deleting these itself must work from the last range to the first, since
-     *     removing an earlier range shifts the indices of every later one. {@link Line#deleteRanges}
-     *     discharges that obligation.
+     *     removing an earlier range shifts the indices of every later one.
+     *     {@link EditableRun#deleteRanges} discharges that obligation.
      */
-    default List<EffectiveRange> redundantKeyChangeRanges(int fromIndex, Key keyInEffect) {
+    default List<ElementRange> redundantKeyChangeRanges(int fromIndex, Key keyInEffect) {
         return strandedKeyChangeIndices(fromIndex, keyInEffect).stream()
-            .map(index -> effectiveRange(index, index))
+            .map(index -> effectiveRange(ElementRange.single(index)))
             .toList();
     }
 
@@ -335,7 +566,7 @@ public interface StaffElementRun {
      * @param keyInEffect the key this run will start in once the caller's edit commits
      * @return the ranges to remove, in ascending order and pairwise disjoint
      */
-    default List<EffectiveRange> redundantKeyChangeRanges(Key keyInEffect) {
+    default List<ElementRange> redundantKeyChangeRanges(Key keyInEffect) {
         return redundantKeyChangeRanges(FIRST_LEGAL_KEY_CHANGE_INDEX, keyInEffect);
     }
 
@@ -415,8 +646,70 @@ public interface StaffElementRun {
         return lastKeyChangeKey != null ? lastKeyChangeKey : runningKey;
     }
 
-    /** The inclusive element range a deletion or a copy actually covers. */
-    record EffectiveRange(int begin, int end) {
+    /**
+     * The inclusive element range {@code [begin, end]} on a run: the one type for a contiguous
+     * stretch of elements named by index, so no caller passes the pair as two ints it can
+     * transpose.
+     *
+     * <p>It says nothing about pairing. A range read off a selection may cut a grace note from
+     * its host or a key change from its barline; {@link #effectiveRange} is what turns it into
+     * the range a deletion or a copy really covers, and a method that needs the widened range
+     * says so in its own contract.
+     *
+     * @param begin the index of the first element in the range
+     * @param end   the index of the last element in the range, inclusive
+     * @invariant {@code begin <= end}, so every range holds at least one element
+     */
+    record ElementRange(int begin, int end) {
+
+        /**
+         * @throws IllegalArgumentException if {@code begin > end}
+         */
+        public ElementRange {
+            if (begin > end) {
+                throw new IllegalArgumentException(
+                    "ElementRange begin " + begin + " is after end " + end);
+            }
+        }
+
+        /**
+         * Returns the range holding only the element at {@code index}.
+         *
+         * @param index the index of the one element
+         * @return the range {@code [index, index]}
+         */
+        public static ElementRange single(int index) {
+            return new ElementRange(index, index);
+        }
+
+        /**
+         * Returns how many elements the range holds.
+         *
+         * @return {@code end - begin + 1}, never less than 1
+         */
+        public int size() {
+            return end - begin + 1;
+        }
+
+        /**
+         * Returns whether {@code index} falls inside the range.
+         *
+         * @param index the element index to test
+         * @return {@code true} when {@code begin <= index <= end}
+         */
+        public boolean contains(int index) {
+            return index >= begin && index <= end;
+        }
+
+        /**
+         * Returns whether this range and {@code other} share at least one element.
+         *
+         * @param other the range to test against
+         * @return {@code true} when {@code begin <= other.end() && other.begin() <= end}
+         */
+        public boolean overlaps(ElementRange other) {
+            return begin <= other.end() && other.begin() <= end;
+        }
 
         /**
          * Returns this range moved {@code offset} places along the run — what a range read off
@@ -426,8 +719,8 @@ public interface StaffElementRun {
          * @param offset how far the elements in this range moved; negative when they moved back
          * @return the range at their new indices
          */
-        public EffectiveRange shiftedBy(int offset) {
-            return new EffectiveRange(begin + offset, end + offset);
+        public ElementRange shiftedBy(int offset) {
+            return new ElementRange(begin + offset, end + offset);
         }
     }
 }

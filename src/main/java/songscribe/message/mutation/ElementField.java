@@ -88,9 +88,10 @@ public enum ElementField {
     KEY;
 
     /**
-     * Fields that change an element's effective duration. {@code Line.modifyElement} removes any
-     * containing tuplet when the modified field set intersects this set. Add new
-     * duration-affecting fields here to extend the tuplet-immutability policy.
+     * Fields that change an element's effective duration. A tuplet removes itself when a
+     * modification inside its bracket rewrites a field in this set — see
+     * {@code Tuplet.outcomeFor}. Add new duration-affecting fields here to extend the
+     * tuplet-immutability policy.
      */
     public static final EnumSet<ElementField> DURATION_AFFECTING = EnumSet.of(DOT_COUNT);
 }

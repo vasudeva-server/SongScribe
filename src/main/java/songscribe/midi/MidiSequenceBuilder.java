@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
+import songscribe.dom.LineSpans;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.Tempo;
@@ -140,7 +141,7 @@ public class MidiSequenceBuilder {
                 var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.effectiveElementCount() - 1;
 
                 var builder = new LineTrackBuilder(line);
-                var endings = line.findEndings();
+                var endings = line.spanRegistry().findEndings();
                 TrackPosition result;
 
                 if (endings.isEmpty()) {
@@ -182,7 +183,7 @@ public class MidiSequenceBuilder {
 
     /**
      * Returns the first ending in {@code endings} covering {@code elementIndex}, or null when
-     * none does — {@link Line#findEndingAt} against a list already narrowed to one line's
+     * none does — {@link LineSpans#findEndingAt} against a list already narrowed to one line's
      * endings, so a per-note call does not re-walk that line's every span.
      * <p>
      * {@code endings} must be {@code line}'s own, since the positions are resolved against
@@ -190,9 +191,10 @@ public class MidiSequenceBuilder {
      */
     private static @Nullable Ending endingCovering(Line line, List<Ending> endings, int elementIndex) {
         var covers = Span.containing(elementIndex);
+        var spans = line.spanRegistry();
 
         for (var ending : endings) {
-            if (covers.test(line.anchorIndexOf(ending), line.endIndexOf(ending))) {
+            if (covers.test(spans.anchorIndexOf(ending), spans.endIndexOf(ending))) {
                 return ending;
             }
         }
@@ -235,7 +237,7 @@ public class MidiSequenceBuilder {
             // Hoisted out of the note loop: asking the line per note would re-filter its
             // whole span list — every beam, tie, tuplet, trill and hairpin included — once
             // for every note in the song.
-            var endings = line.findEndings();
+            var endings = line.spanRegistry().findEndings();
 
             for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);

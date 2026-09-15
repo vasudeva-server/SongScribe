@@ -51,7 +51,6 @@ import songscribe.dom.Dottable;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
-import songscribe.dom.DocumentScale;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
 import songscribe.dom.StaffElement;
@@ -143,7 +142,7 @@ final class NoteBuilder {
         //
         // A grace note may sit inside the span without joining the group: it keeps its written
         // value and takes no <time-modification> (refs #592).
-        var tuplet = isGrace ? null : line.findTupletAt(elementIndex);
+        var tuplet = isGrace ? null : line.spanRegistry().findTupletAt(elementIndex);
 
         // relative-x is the user's own horizontal offset, emitted only when non-zero, and
         // declared by SupportedFeature.NOTE_RELATIVE_X. No default-x: an element
@@ -453,14 +452,14 @@ final class NoteBuilder {
     private static TimeModification buildTimeModification(BuildContext ctx, Tuplet tuplet) {
         var factory = ctx.factory();
         var grade = tuplet.getGrade();
-        var noteValue = tuplet.getNoteValue();
-        var value = noteValue == null ? null : noteValue.noteValue();
+        var ratio = tuplet.getRatio();
+        var value = ratio == null ? null : ratio.noteValue().type().noteValue();
         var normalTypeToken = value == null ? null : NoteTypeMapping.typeToken(value);
         var timeModification = factory.createTimeModification();
 
         timeModification.setActualNotes(BigInteger.valueOf(grade));
 
-        if (normalTypeToken == null) {
+        if (ratio == null || normalTypeToken == null) {
             // Reaching here means a tuplet escaped the load pass without a ratio, which the
             // model says cannot happen. Say so rather than letting a placeholder ratio go to
             // disk unremarked: 2:1 is not the compound duplet a 2 over a dotted beat means.
@@ -468,12 +467,12 @@ final class NoteBuilder {
                 + " falling back to a placeholder <normal-notes>", grade);
             timeModification.setNormalNotes(BigInteger.valueOf(largestPowerOfTwoBelowGrade(grade)));
         } else {
-            timeModification.setNormalNotes(BigInteger.valueOf(tuplet.getNormalNotes()));
+            timeModification.setNormalNotes(BigInteger.valueOf(ratio.normalNotes()));
             timeModification.setNormalType(normalTypeToken);
 
             var normalDots = timeModification.getNormalDot();
 
-            for (var i = 0; i < tuplet.getNoteValueDots().count(); i++) {
+            for (var i = 0; i < ratio.noteValue().dots().count(); i++) {
                 normalDots.add(factory.createEmpty());
             }
         }
@@ -519,19 +518,22 @@ final class NoteBuilder {
     private static int performedTicks(NoteValue value, Dots dots, @Nullable Tuplet tuplet) {
         var writtenTicks = dots.augment(NoteTypeMapping.baseTicks(value));
 
+        var ratio = (tuplet == null) ? null : tuplet.getRatio();
+
         // An unresolved tuplet states no ratio to scale by — the post-load pass derives one, so
         // until then the written duration is all there is.
-        if (tuplet == null || !tuplet.isResolved()) {
+        if (tuplet == null || ratio == null) {
             return writtenTicks;
         }
 
         var grade = tuplet.getGrade();
-        var product = writtenTicks * tuplet.getNormalNotes();
+        var normalNotes = ratio.normalNotes();
+        var product = writtenTicks * normalNotes;
 
         if (product % grade != 0) {
             throw new ArithmeticException(
                 "Performed duration is not an integer for " + value + " dots=" + dots
-                + " in a " + grade + ':' + tuplet.getNormalNotes() + " tuplet"
+                + " in a " + grade + ':' + normalNotes + " tuplet"
                 + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
             );
         }

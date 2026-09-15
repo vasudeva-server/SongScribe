@@ -234,7 +234,7 @@ final class LyricChainEditor {
 
         var currentElement = line.getElement(currentIndex);
 
-        line.withModification(() -> {
+        line.getSong().withModification(() -> {
             var backExtend = backLyric.extend();
 
             if (backExtend == Lyric.Extend.STOP) {

@@ -371,7 +371,8 @@ public final class ScoreInputHandler extends KeyAdapter
             }
 
             var anchor = range.anchor();
-            var movingEnd = (anchor == range.begin()) ? range.end() : range.begin();
+            var bounds = range.range();
+            var movingEnd = (anchor == bounds.begin()) ? bounds.end() : bounds.begin();
             int target;
 
             if (code == KeyEvent.VK_LEFT) {
@@ -399,12 +400,11 @@ public final class ScoreInputHandler extends KeyAdapter
          */
         private void handleSelectionArrow(SelectionCoordinator coordinator, ElementSelection selection) {
             var line = selection.line();
-            var begin = selection.begin();
-            var end = selection.end();
+            var bounds = selection.range();
 
             switch (code) {
-                case KeyEvent.VK_UP -> PitchShifter.shiftPitch(line, begin, end, RAISE_PITCH_DELTA_SP);
-                case KeyEvent.VK_DOWN -> PitchShifter.shiftPitch(line, begin, end, LOWER_PITCH_DELTA_SP);
+                case KeyEvent.VK_UP -> PitchShifter.shiftPitch(line, bounds, RAISE_PITCH_DELTA_SP);
+                case KeyEvent.VK_DOWN -> PitchShifter.shiftPitch(line, bounds, LOWER_PITCH_DELTA_SP);
                 case KeyEvent.VK_LEFT -> moveSelection(coordinator, selection, MOVE_LEFT);
                 case KeyEvent.VK_RIGHT -> moveSelection(coordinator, selection, MOVE_RIGHT);
                 default -> { }
@@ -427,8 +427,9 @@ public final class ScoreInputHandler extends KeyAdapter
          */
         private void moveSelection(SelectionCoordinator coordinator, ElementSelection selection, int direction) {
             var line = selection.line();
-            var begin = selection.begin();
-            var end = selection.end();
+            var bounds = selection.range();
+            var begin = bounds.begin();
+            var end = bounds.end();
             var lineIndex = coordinator.getActiveLineIndex();
 
             if (end > begin) {

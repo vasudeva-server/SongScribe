@@ -408,7 +408,7 @@ class LineRenderer {
         var beamRenderer = BeamGroupRenderer.getInstance();
         var line = invariants.requireCurrentLine();
 
-        for (var beam : line.findSpans(Beam.class)) {
+        for (var beam : line.spanRegistry().findSpans(Beam.class)) {
             var anchorIdx = beam.getAnchorElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
                 () -> beamRenderer.renderBeams(g2, invariants, frame, beam));
@@ -425,7 +425,7 @@ class LineRenderer {
     private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
         var line = invariants.requireCurrentLine();
-        var ties = line.findTies();
+        var ties = line.spanRegistry().findTies();
 
         for (var span : ties) {
             renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(span, line),
@@ -444,7 +444,7 @@ class LineRenderer {
      * the half enters at element 0 and shifts exactly when the whole line does.
      */
     static int previewShiftStartOf(Tie tie, Line line) {
-        return line.anchorIndexOf(tie).indexOr(0);
+        return line.spanRegistry().anchorIndexOf(tie).indexOr(0);
     }
 
     /**

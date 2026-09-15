@@ -272,8 +272,8 @@ public final class LineIO {
             Line line, int[] pair, String label, BiFunction<NoteElement, NoteElement, Span> spanFactory)
             throws SAXException {
             DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), label);
-            line.addSpan(spanFactory.apply(
-                noteEndpoint(line, pair[0], label), noteEndpoint(line, pair[1], label)));
+            spanFactory.apply(
+                noteEndpoint(line, pair[0], label), noteEndpoint(line, pair[1], label)).addTo(line);
         }
 
         /**
@@ -300,10 +300,9 @@ public final class LineIO {
          * Creates {@link Crescendo} spans from the parsed crescendo data.
          * Called at end-of-line after all elements have been loaded.
          * <p>
-         * Added through {@link Line#addCrescendo} rather than the raw
-         * {@code addSpan} the other span kinds use, so a legacy file's two
-         * same-type hairpins that overlap or merely touch migrate to the one hairpin
-         * they musically are.
+         * Added through {@link Crescendo#addTo}, whose displacement policy merges a
+         * legacy file's two same-type hairpins that overlap or merely touch into the one
+         * hairpin they musically are.
          */
         private void createCrescendosFromPending(Line line) throws SAXException {
             for (var data : pendingCrescendoPairs) {
@@ -317,7 +316,7 @@ public final class LineIO {
                 crescendo.setX1ShiftSs(data[2]);
                 crescendo.setX2ShiftSs(data[3]);
                 crescendo.setYShiftSs(data[4]);
-                line.addCrescendo(crescendo);
+                crescendo.addTo(line);
             }
 
             pendingCrescendoPairs.clear();
@@ -340,7 +339,7 @@ public final class LineIO {
                 diminuendo.setX1ShiftSs(data[2]);
                 diminuendo.setX2ShiftSs(data[3]);
                 diminuendo.setYShiftSs(data[4]);
-                line.addDiminuendo(diminuendo);
+                diminuendo.addTo(line);
             }
 
             pendingDiminuendoPairs.clear();
@@ -413,7 +412,7 @@ public final class LineIO {
                 }
 
                 tuplet.setVerticalPositionSs(verticalPositionSs);
-                line.addSpan(tuplet);
+                tuplet.addTo(line);
             }
 
             pendingTupletData.clear();
@@ -577,7 +576,7 @@ public final class LineIO {
                     continue;
                 }
 
-                line.addSpan(new Ending(line.getElement(pair[0]), line.getElement(pair[1])));
+                new Ending(line.getElement(pair[0]), line.getElement(pair[1])).addTo(line);
             }
 
             pendingEndingPairs.clear();
@@ -597,7 +596,7 @@ public final class LineIO {
                 var endElement = line.getElement(pair[1]);
                 var trill = new Trill(anchorElement, endElement);
                 trill.setYPositionSs(pair[2]);
-                line.addSpan(trill);
+                trill.addTo(line);
             }
 
             pendingTrillPairs.clear();

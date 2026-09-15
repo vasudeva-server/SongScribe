@@ -74,7 +74,7 @@ public final class EndingRenderer {
     public void renderEndings(Graphics2D g2, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();
 
-        for (var ending : line.findEndings()) {
+        for (var ending : line.spanRegistry().findEndings()) {
             var decorationLayout = invariants.getLayoutResult().decorationLayouts().getDecorationLayout(ending);
 
             // StructuralStacker.stackEndings writes no layout for an ending whose

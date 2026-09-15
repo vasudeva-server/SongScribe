@@ -180,33 +180,36 @@ public final class TupletLoadPass {
             var tuplet = verdict.tuplet();
             var lineIndex = verdict.lineIndex();
             var line = song.getLine(lineIndex);
-            var statedNoteValue = tuplet.getNoteValue();
+            var statedRatio = tuplet.getRatio();
             var result = verdict.result();
 
             // A file that stated its own ratio is judged on that ratio instead of on the
             // one the walk derived, and leniently: the beat barrier and the structural
             // boundary constrain creation, not a document that already exists.
-            if (statedNoteValue != null) {
+            if (statedRatio != null) {
                 result = TupletValidator.validateStated(
-                    verdict.context(), tuplet.getGrade(), tuplet.getNormalNotes(),
-                    statedNoteValue, tuplet.getNoteValueDots(),
-                    TupletValidator.Strictness.LENIENT);
+                    verdict.context(), tuplet.getGrade(), statedRatio, TupletValidator.Strictness.LENIENT);
             }
 
-            var derivedNoteValue = result.noteValue();
-
-            // Read the span now: removeTuplet detaches the tuplet from the elements its
+            // Read the span now: removeFrom detaches the tuplet from the elements its
             // indices are derived from, so afterwards there is nothing left to report.
             var beginIndex = tuplet.getAnchorElementIndex();
             var endIndex = tuplet.getEndElementIndex();
             var grade = tuplet.getGrade();
 
-            if (!result.valid() || derivedNoteValue == null) {
-                line.removeTuplet(tuplet);
-                changes.add(new Change.Removed(lineIndex, beginIndex, endIndex, grade, result.reason()));
-            } else if (statedNoteValue == null) {
-                tuplet.resolveRatio(result.normalNotes(), derivedNoteValue, result.noteValueDots());
-                changes.add(new Change.Updated(lineIndex, beginIndex, endIndex, grade, result.normalNotes()));
+            switch (result) {
+                case TupletValidator.Result.Invalid(var reason) -> {
+                    tuplet.removeFrom(line);
+                    changes.add(new Change.Removed(lineIndex, beginIndex, endIndex, grade, reason));
+                }
+
+                case TupletValidator.Result.Valid(var derivedRatio) -> {
+                    if (statedRatio == null) {
+                        tuplet.resolveRatio(derivedRatio);
+                        changes.add(
+                            new Change.Updated(lineIndex, beginIndex, endIndex, grade, derivedRatio.normalNotes()));
+                    }
+                }
             }
         }
 

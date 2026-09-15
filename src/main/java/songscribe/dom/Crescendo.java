@@ -20,6 +20,10 @@
 
 package songscribe.dom;
 
+import songscribe.message.mutation.CrescendoAddition;
+import songscribe.message.mutation.CrescendoRemoval;
+import songscribe.message.mutation.Mutation;
+
 /**
  * A crescendo (gradually getting louder) hairpin marking.
  * Opens to the right ({@literal <} shape).
@@ -38,5 +42,15 @@ public final class Crescendo extends Hairpin {
     @Override
     public Kind getKind() {
         return Kind.CRESCENDO;
+    }
+
+    @Override
+    protected Mutation additionRecordFor(Line line) {
+        return new CrescendoAddition(line, this);
+    }
+
+    @Override
+    protected Mutation removalRecordFor(Line line) {
+        return new CrescendoRemoval(line, this);
     }
 }

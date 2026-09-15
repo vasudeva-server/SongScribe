@@ -28,18 +28,31 @@ import songscribe.error.RuntimeError;
  * terminal ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}), and that element is the
  * one the user may not touch.
  *
- * <p>Three groups of responsibility:
+ * <p>Four groups of responsibility:
  * <ul>
  *   <li><b>Maintenance</b> — {@link #maintainOnLastLineChange} restores the invariant after
  *       the last line of the song changes, and {@link #installAfterParsing} restores it in
  *       one pass at the end of a suspended file load.</li>
  *   <li><b>Recognition</b> — {@link #isAutoMaintainedTerminal} tells the UI which element is
  *       the maintained terminal. That terminal is selectable, so an annotation can be attached
- *       to it, but it may never be removed or replaced by anything other than another valid
- *       terminal type.</li>
+ *       to it.</li>
+ *   <li><b>Policy</b> — {@link #checkTerminalPolicyForInsertion},
+ *       {@link #checkTerminalPolicyForReplacement} and {@link #checkTerminalPolicyForRemoval}
+ *       are what a {@link Line}'s element primitives ask before they write, and each throws
+ *       when the write would break the policy below.</li>
  *   <li><b>User replacement</b> — {@link #canReplaceTerminal} and {@link #replaceTerminal}
  *       let the user swap one valid terminal type for the other.</li>
  * </ul>
+ *
+ * <p><b>The terminal policy.</b> A {@code FINAL_DOUBLE_BARLINE} exists only in the terminal
+ * position: it may be appended at the end of the last line, or replace that line's last element,
+ * and nowhere else. The auto-maintained terminal itself may not be removed, and may be replaced
+ * only by another valid terminal type — the exemption {@link #replaceTerminal} relies on to swap
+ * terminal types without raising the auto-maintenance flag. The policy is not enforced while
+ * mutation tracking is suspended, while this class is itself maintaining the invariant, or
+ * while undo or redo replays a recorded batch: a file load and a replay each pass through
+ * states that violate the invariant on the way to one that holds, and maintenance is what
+ * restores it.
  *
  * <p>One is owned by each {@link Song}, which delegates its terminal API here.
  */
@@ -85,7 +98,7 @@ public final class TerminalMaintainer {
      * changed: the last element of the last line must be a valid terminal
      * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Must be called inside
      * an open modification bracket with {@link ModificationSession#withAutoMaintenance}
-     * raised so the {@link Line} guards do not reject the internally-driven mutations.
+     * raised so the terminal policy does not reject the internally-driven mutations.
      *
      * <p>Determines the terminal type to install via {@link #terminalTypeToInstall}
      * (carry over the outgoing terminal; else promote an existing {@code REPEAT_RIGHT}
@@ -141,8 +154,8 @@ public final class TerminalMaintainer {
      * this restores the invariant in one pass at the end of a load.
      *
      * <p>Must be called while mutation tracking is still suspended so the fix-up is
-     * silent (no notification, no {@code modified} flag) and the {@link Line} terminal
-     * guards stay bypassed. A no-op when the last line already ends with a valid
+     * silent (no notification, no {@code modified} flag) and the terminal policy stays
+     * bypassed. A no-op when the last line already ends with a valid
      * terminal, so a range span (e.g. an {@code Ending} ending on that barline) keeps
      * its exact element reference.
      */
@@ -179,6 +192,83 @@ public final class TerminalMaintainer {
             && !lines.isEmpty()
             && lines.getLast() == line
             && line.getElement(lastIdx) == element;
+    }
+
+    /**
+     * Checks that inserting an element of type {@code incoming} at {@code index} of {@code line}
+     * honors the terminal policy in the class Javadoc. Returns without checking while the policy
+     * is bypassed.
+     *
+     * @throws IllegalStateException if {@code incoming} is a {@code FINAL_DOUBLE_BARLINE} and
+     *     {@code index} is not {@link Line#elementCount()} of the last line
+     */
+    public void checkTerminalPolicyForInsertion(Line line, int index, ElementType incoming) {
+        if (isPolicyBypassed() || incoming != ElementType.FINAL_DOUBLE_BARLINE) {
+            return;
+        }
+
+        if (!line.isLast() || index != line.elementCount()) {
+            throw new IllegalStateException(
+                "FINAL_DOUBLE_BARLINE may only be appended to the last line");
+        }
+    }
+
+    /**
+     * Checks that replacing the element at {@code index} of {@code line} with one of type
+     * {@code incoming} honors the terminal policy in the class Javadoc. Returns without checking
+     * while the policy is bypassed.
+     *
+     * @throws IllegalStateException if {@code incoming} is a {@code FINAL_DOUBLE_BARLINE} and
+     *     {@code index} is not the last position of the last line, or if the displaced element
+     *     is the auto-maintained terminal and {@link ElementType#isValidSongTerminal()} does
+     *     not hold for {@code incoming}
+     */
+    public void checkTerminalPolicyForReplacement(Line line, int index, ElementType incoming) {
+        if (isPolicyBypassed()) {
+            return;
+        }
+
+        if (incoming == ElementType.FINAL_DOUBLE_BARLINE
+            && (!line.isLast() || index != line.elementCount() - 1)) {
+            throw new IllegalStateException(
+                "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
+        }
+
+        if (isAutoMaintainedTerminal(line.getElement(index), line) && !incoming.isValidSongTerminal()) {
+            throw new IllegalStateException(
+                "The auto-maintained terminal may only be replaced by a valid terminal");
+        }
+    }
+
+    /**
+     * Checks that removing {@code range} from {@code line} honors the terminal policy in the
+     * class Javadoc. Returns without checking while the policy is bypassed.
+     *
+     * @throws IllegalStateException if a position in {@code range} holds the auto-maintained
+     *     terminal
+     */
+    public void checkTerminalPolicyForRemoval(Line line, StaffElementRun.ElementRange range) {
+        if (isPolicyBypassed()) {
+            return;
+        }
+
+        for (var index = range.begin(); index <= range.end(); index++) {
+            if (isAutoMaintainedTerminal(line.getElement(index), line)) {
+                throw new IllegalStateException("The auto-maintained terminal may not be removed");
+            }
+        }
+    }
+
+    /**
+     * Returns {@code true} when the terminal policy is not enforced: mutation tracking is
+     * suspended (test setup or file load), the song is currently auto-maintaining the
+     * invariant, or undo/redo is replaying a recorded batch (whose intermediate states
+     * legitimately violate the invariant, e.g. undoing terminal maintenance before the line op).
+     */
+    private boolean isPolicyBypassed() {
+        return song.isMutationTrackingSuspended()
+            || song.isInAutoMaintenance()
+            || song.isReplaying();
     }
 
     /** Returns the type of the current auto-maintained terminal element. */

@@ -128,7 +128,7 @@ public final class PasteModeManager implements InsertionPointMode.Client {
         // that PasteAction relies on must be set here around the bracket instead.
         var outcome = UndoController.withPendingOpNameResult(
             Strings.get(Strings.ACTION_EDIT_OP_PASTE),
-            () -> line.withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
+            () -> line.getSong().withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
 
         return switch (outcome) {
             case LINE_FULL, EMPTY -> InsertionPointMode.Placement.DECLINED;

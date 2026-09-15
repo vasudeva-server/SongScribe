@@ -147,9 +147,11 @@ public final class DynamicGrouper {
     private static List<Cluster> clusterHairpins(Line line) {
         var hairpins = new ArrayList<Member.OfHairpin>();
 
-        for (var hairpin : line.findSpans(Hairpin.class)) {
-            if (line.anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex)
-                && line.endIndexOf(hairpin) instanceof SpanBound.At(var endIndex)) {
+        var spans = line.spanRegistry();
+
+        for (var hairpin : spans.findSpans(Hairpin.class)) {
+            if (spans.anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex)
+                && spans.endIndexOf(hairpin) instanceof SpanBound.At(var endIndex)) {
                 hairpins.add(new Member.OfHairpin(hairpin, anchorIndex, endIndex));
             }
         }

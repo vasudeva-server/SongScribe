@@ -27,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Line;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -115,7 +116,7 @@ public final class TrillAction extends SelectableUIAction {
             return;
         }
 
-        setSelected(range.line().hasTrillOverlapping(range.begin(), range.end()));
+        setSelected(range.line().spanRegistry().hasTrillOverlapping(range.range()));
     }
 
     @Override
@@ -129,14 +130,13 @@ public final class TrillAction extends SelectableUIAction {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var end = range.end();
+        var selected = range.range();
 
-        line.withModification(() -> {
+        line.getSong().withModification(() -> {
             if (isSelected()) {
-                addTrillSpanningSelection(line, begin, end);
+                addTrillSpanningSelection(line, selected);
             } else {
-                line.removeTrillsOverlapping(begin, end);
+                line.spanRegistry().removeTrillsOverlapping(selected);
             }
         });
     }
@@ -147,10 +147,10 @@ public final class TrillAction extends SelectableUIAction {
         return (range != null) ? range.toElementSelection() : null;
     }
 
-    private void addTrillSpanningSelection(Line line, int begin, int end) {
+    private void addTrillSpanningSelection(Line line, ElementRange selected) {
         // Enablement (canToggleTrill) already guarantees a pitched note in the
         // range; the empty check is a defensive fallback for that invariant.
-        var pitchedNotes = line.getElements(begin, end).stream()
+        var pitchedNotes = line.getElements(selected).stream()
             .filter(element -> element.getType().isPitchedNote())
             .toList();
 
@@ -158,6 +158,6 @@ public final class TrillAction extends SelectableUIAction {
             return;
         }
 
-        line.addTrill(new Trill(pitchedNotes.getFirst(), pitchedNotes.getLast()));
+        new Trill(pitchedNotes.getFirst(), pitchedNotes.getLast()).addTo(line);
     }
 }

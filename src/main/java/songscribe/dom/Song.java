@@ -35,7 +35,6 @@ import songscribe.Strings;
 import songscribe.io.SongIO;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
-import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
 import songscribe.message.SongData;
 import songscribe.message.mutation.ElementDeletion;
@@ -1043,13 +1042,13 @@ public final class Song implements Disposable {
      * Spans with both endpoints in one line, and spans with an endpoint in no line, are
      * untouched: neither says anything about a relationship between two lines.
      * <p>
-     * The removal goes through {@link Line#removeInvalidatedSpan}, so it emits its own
+     * The removal goes through {@link Span#removeFrom}, so it emits its own
      * typed mutation and undo puts the span back into both lines' span lists. Call it from
      * inside an open modification bracket.
      */
     private void removeSpansBetweenNonAdjacentLines(Line line) {
         // Copied because each removal writes the list being read.
-        for (var span : List.copyOf(line.getSpans())) {
+        for (var span : List.copyOf(line.spanRegistry().getSpans())) {
             var anchorLine = span.getAnchorLine();
             var endLine = span.getEndLine();
 
@@ -1060,7 +1059,7 @@ public final class Song implements Disposable {
             if (!contains(anchorLine)
                     || !contains(endLine)
                     || endLine.index() - anchorLine.index() != 1) {
-                line.removeInvalidatedSpan(span);
+                span.removeFrom(line);
             }
         }
     }
@@ -1073,8 +1072,8 @@ public final class Song implements Disposable {
      * this restores the invariant in one pass at the end of a load.
      *
      * <p>Must be called while mutation tracking is still suspended so the fix-up is
-     * silent (no notification, no {@code modified} flag) and the {@link Line} terminal
-     * guards stay bypassed. A no-op when the last line already ends with a valid
+     * silent (no notification, no {@code modified} flag) and the terminal policy stays
+     * bypassed. A no-op when the last line already ends with a valid
      * terminal, so a range span (e.g. an {@code Ending} ending on that barline) keeps
      * its exact element reference.
      */
@@ -1111,15 +1110,48 @@ public final class Song implements Disposable {
      * <p>
      * <strong>Contract:</strong> returns {@code false} for an element that belongs to no line.
      * That default is correct for an applicability predicate, where an unparented element simply
-     * does not apply, but it is <em>wrong</em> for an invariant guard, which must not treat
-     * "cannot tell" as "safe". A guard inside the DOM has a {@link Line} in hand and must use
-     * {@link #isAutoMaintainedTerminal(StaffElement, Line)} instead — see
-     * {@code Line.guardsTerminalAt}. The deliberately different name keeps the weaker predicate
-     * from being reached for by muscle memory when writing such a guard.
+     * does not apply, but it is <em>wrong</em> for an invariant check, which must not treat
+     * "cannot tell" as "safe". A check inside the DOM has a {@link Line} in hand and must use
+     * {@link #isAutoMaintainedTerminal(StaffElement, Line)} instead, as the terminal policy
+     * checks on {@link TerminalMaintainer} do. The deliberately different name keeps the weaker
+     * predicate from being reached for by muscle memory when writing such a check.
      */
     public static boolean isAutoMaintainedTerminalOfItsSong(StaffElement element) {
         var line = element.getParentLine();
         return line != null && line.getSong().isAutoMaintainedTerminal(element, line);
+    }
+
+    /**
+     * Checks that inserting an element of type {@code incoming} at {@code index} of {@code line}
+     * honors the terminal policy stated on {@link TerminalMaintainer}.
+     *
+     * @throws IllegalStateException under the condition
+     *     {@link TerminalMaintainer#checkTerminalPolicyForInsertion} states
+     */
+    public void checkTerminalPolicyForInsertion(Line line, int index, ElementType incoming) {
+        terminal.checkTerminalPolicyForInsertion(line, index, incoming);
+    }
+
+    /**
+     * Checks that replacing the element at {@code index} of {@code line} with one of type
+     * {@code incoming} honors the terminal policy stated on {@link TerminalMaintainer}.
+     *
+     * @throws IllegalStateException under the conditions
+     *     {@link TerminalMaintainer#checkTerminalPolicyForReplacement} states
+     */
+    public void checkTerminalPolicyForReplacement(Line line, int index, ElementType incoming) {
+        terminal.checkTerminalPolicyForReplacement(line, index, incoming);
+    }
+
+    /**
+     * Checks that removing {@code range} from {@code line} honors the terminal policy stated on
+     * {@link TerminalMaintainer}.
+     *
+     * @throws IllegalStateException under the condition
+     *     {@link TerminalMaintainer#checkTerminalPolicyForRemoval} states
+     */
+    public void checkTerminalPolicyForRemoval(Line line, StaffElementRun.ElementRange range) {
+        terminal.checkTerminalPolicyForRemoval(line, range);
     }
 
     /** Returns the type of the current auto-maintained terminal element. */
@@ -1163,8 +1195,8 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Returns {@code true} while the {@link Line} mutation guards are bypassed for
-     * internally-driven maintenance. Package-private: only {@code Line} asks.
+     * Returns {@code true} while the terminal policy is bypassed for internally-driven
+     * maintenance. Package-private: only {@link TerminalMaintainer} asks.
      */
     boolean isInAutoMaintenance() {
         return modifications.isInAutoMaintenance();
@@ -1211,7 +1243,7 @@ public final class Song implements Disposable {
 
     /**
      * Runs {@code body} in replay mode: mutations are still recorded, but the helpers'
-     * companion side-work is suppressed and the {@link Line} terminal guards are bypassed,
+     * companion side-work is suppressed and the terminal policy is bypassed,
      * because the batch being replayed already carries every change. Nestable.
      *
      * @see ModificationSession#withReplay
@@ -1353,11 +1385,11 @@ public final class Song implements Disposable {
      * {@link ElementField#ACCIDENTAL} modification of its note, inside the same bracket. The
      * walk runs after the key invariant because it reads the keys the invariant maintains. It
      * does not run on a replay of undo or redo, which applies the restamps the batch already
-     * recorded, nor under suspended tracking, where nothing is recorded: the suspended path in
-     * {@link Line#applyChange} runs no walk either, which leaves a file reader's notes for the
-     * load pass and makes grace mode's untracked insertion walk itself.
+     * recorded, nor under suspended tracking, where nothing is recorded, which leaves a file
+     * reader's notes for the load pass and makes grace mode's untracked insertion walk itself.
      *
-     * @throws IllegalStateException if called outside a modification bracket
+     * @throws IllegalStateException if mutation tracking is on and no modification bracket is
+     *     open; under suspended tracking no bracket is required
      * @see ModificationSession#applyChange
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
@@ -1431,13 +1463,8 @@ public final class Song implements Disposable {
      * <p>{@link #keyMoveOf} decides whether the mutation moves a key at all, so that an ordinary
      * note or lyric edit does not walk the line list. Only the line-list mutations are switched on
      * here, for the repair they owe on top of the propagation every key move owes.
-     *
-     * <p>Package-private rather than private because {@link Line#applyChange} owes the same
-     * maintenance on its suspended-tracking branch, where the mutator runs without reaching
-     * {@link #applyChange}. That caller passes a null {@code startingKeyBefore}: only a line
-     * insertion or deletion can need it, and neither reaches this class through a line.
      */
-    void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
+    private void maintainKeyInvariant(Mutation mutation, @Nullable Key startingKeyBefore) {
         switch (mutation) {
             case LineInsertion _ -> repairLineZeroKey(startingKeyBefore);
             case LineDeletion deletion -> {

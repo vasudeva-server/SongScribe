@@ -774,16 +774,18 @@ public final class ScoreView
             return;
         }
 
+        var bounds = selection.range();
+
         // EditLyricAction is disabled unless exactly one element is selected, and a
         // selected staff line reports itself as a selection spanning the whole line.
         // Requiring a single element keeps Return in step with the menu command rather
         // than silently picking one note out of a range the user never singled out.
-        if (selection.begin() != selection.end()) {
+        if (bounds.size() != 1) {
             return;
         }
 
         var line = selection.line();
-        var targetIndex = LyricTargetResolver.resolveLyricTarget(line, selection.begin());
+        var targetIndex = LyricTargetResolver.resolveLyricTarget(line, bounds.begin());
 
         if (targetIndex < 0) {
             return;

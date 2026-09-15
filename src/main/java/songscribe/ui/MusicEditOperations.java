@@ -38,10 +38,12 @@ import songscribe.dom.Ending;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.LineSpans;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Stem;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -117,18 +119,20 @@ public final class MusicEditOperations {
             return;
         }
 
-        line.withModification(() -> {
-            // Looked up rather than asked via Line.sameBeamAt: the remove branch needs the
-            // Beam object itself, and going through the boolean would only mean finding it
-            // again afterwards.
-            var beginBeam = line.findBeamAt(beginIndex);
+        var spans = line.spanRegistry();
+
+        line.getSong().withModification(() -> {
+            // Looked up rather than asked via LineSpans.sameBeamAt: the remove branch needs
+            // the Beam object itself, and going through the boolean would only mean finding
+            // it again afterwards.
+            var beginBeam = spans.findBeamAt(beginIndex);
 
             //noinspection ObjectEquality
-            if (beginBeam == null || beginBeam != line.findBeamAt(endIndex)) {
+            if (beginBeam == null || beginBeam != spans.findBeamAt(endIndex)) {
                 // canToggleBeaming has admitted the range, so both endpoints are beamable notes.
-                line.addBeaming(new Beam(line.noteAt(beginIndex), line.noteAt(endIndex)));
+                new Beam(line.noteAt(beginIndex), line.noteAt(endIndex)).addTo(line);
             } else {
-                line.removeBeaming(beginBeam);
+                beginBeam.removeFrom(line);
             }
         });
     }
@@ -152,14 +156,14 @@ public final class MusicEditOperations {
      * two members. So the left remainder is dropped when {@code a == p}, the right one when
      * {@code t == e}, and when both hold the beam disappears entirely.
      *
-     * The break is a {@link Line#removeBeaming} followed by up to two {@link Line#addBeaming}
-     * calls so every step is a tracked mutation and undo restores the original span; mutating
-     * the beam's endpoints in place would not be recorded. The two new spans do not re-merge,
-     * since {@code addBeaming} merges overlapping spans without absorbing merely adjacent ones.
+     * The break is a {@link Beam#removeFrom} followed by up to two {@link Beam#addTo} calls
+     * so every step is a tracked mutation and undo restores the original span; mutating the
+     * beam's endpoints in place would not be recorded. The two new spans do not re-merge,
+     * since {@code addTo} merges overlapping spans without absorbing merely adjacent ones.
      * Grace notes between the two elements fall in the gap and belong to neither span.
      *
      * <p>The add branch, by contrast, can fuse two adjacent beam groups into one: {@code
-     * addBeaming} widens at both ends, so with beams [0,1] and [2,3], beaming element 2 to its
+     * addTo} widens at both ends, so with beams [0,1] and [2,3], beaming element 2 to its
      * predecessor yields a single [0,3]. That matches what the select-mode toggle does from the
      * same call, and the two must not disagree.
      */
@@ -180,25 +184,26 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var predecessorBeam = line.findBeamAt(predecessorIndex);
+        var spans = line.spanRegistry();
+        var predecessorBeam = spans.findBeamAt(predecessorIndex);
 
         // The break branch needs the Beam object itself, not just the identity test, so it
-        // looks both beams up rather than going through Line.sameBeamAt.
+        // looks both beams up rather than going through LineSpans.sameBeamAt.
         //noinspection ObjectEquality
-        if (predecessorBeam != null && predecessorBeam == line.findBeamAt(elementIndex)) {
+        if (predecessorBeam != null && predecessorBeam == spans.findBeamAt(elementIndex)) {
             var anchorIndex = predecessorBeam.getAnchorElementIndex();
             var endIndex = predecessorBeam.getEndElementIndex();
 
-            line.withModification(() -> {
-                line.removeBeaming(predecessorBeam);
+            line.getSong().withModification(() -> {
+                predecessorBeam.removeFrom(line);
 
                 // Both selected elements are non-grace members of the beam, so they are notes.
                 if (anchorIndex < predecessorIndex) {
-                    line.addBeaming(new Beam(predecessorBeam.getAnchorElement(), line.noteAt(predecessorIndex)));
+                    new Beam(predecessorBeam.getAnchorElement(), line.noteAt(predecessorIndex)).addTo(line);
                 }
 
                 if (elementIndex < endIndex) {
-                    line.addBeaming(new Beam(line.noteAt(elementIndex), predecessorBeam.getEndElement()));
+                    new Beam(line.noteAt(elementIndex), predecessorBeam.getEndElement()).addTo(line);
                 }
             });
 
@@ -211,7 +216,7 @@ public final class MusicEditOperations {
 
         // Conflict: beaming may not connect what a tie already connects, the same rule
         // RangeQueries.canToggleBeaming applies. A break is never blocked by a tie.
-        if (line.sameTieAt(predecessorIndex, elementIndex)) {
+        if (spans.sameTieAt(predecessorIndex, elementIndex)) {
             return false;
         }
 
@@ -219,7 +224,7 @@ public final class MusicEditOperations {
         var anchorNote = line.noteAt(predecessorIndex);
         var endNote = line.noteAt(elementIndex);
 
-        line.withModification(() -> line.addBeaming(new Beam(anchorNote, endNote)));
+        line.getSong().withModification(() -> new Beam(anchorNote, endNote).addTo(line));
 
         return true;
     }
@@ -255,21 +260,23 @@ public final class MusicEditOperations {
 
         // A tie spans the selection itself: its endpoints are the two notes, and any
         // separator between them stays outside the tie (refs #527).
-        var beginIndex = range.begin();
-        var endIndex = range.end();
+        var bounds = range.range();
+        var beginIndex = bounds.begin();
+        var endIndex = bounds.end();
 
-        return line.withModificationResult(() -> {
-            if (range.size() == 1) {
+        return line.getSong().withModificationResult(() -> {
+            if (bounds.size() == 1) {
                 return toggleBoundaryTie(line, beginIndex);
             }
 
-            var exactTie = line.findExactTie(beginIndex, endIndex);
+            var spans = line.spanRegistry();
+            var exactTie = spans.findExactTie(bounds);
 
             if (exactTie == null) {
                 // canToggleTie has admitted the range, so both endpoints are pitched notes.
-                line.addTie(new Tie(line.noteAt(beginIndex), line.noteAt(endIndex)));
+                new Tie(line.noteAt(beginIndex), line.noteAt(endIndex)).addTo(line);
             } else {
-                line.removeTie(exactTie);
+                exactTie.removeFrom(line);
             }
 
             return true;
@@ -299,7 +306,7 @@ public final class MusicEditOperations {
      * {@code Span.exactly}/{@code findExactTie} can never match a cross-line half — only an
      * {@code At} bound can equal a queried index, and a cross-line half's far bound is always
      * {@link SpanBound#BEFORE_LINE} or {@link SpanBound#AFTER_LINE} — so add-versus-remove is
-     * decided by {@link Line#findTieBetween}, which matches the two real endpoints by identity
+     * decided by {@link LineSpans#findTieBetween}, which matches the two real endpoints by identity
      * instead. That also keeps this from ever mistaking a same-line tie that merely ends on
      * the boundary note (a chained tie) for the boundary tie itself: such a tie's elements
      * never equal {@code boundaryTie}'s.
@@ -313,12 +320,13 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var existingTie = line.findTieBetween(boundaryTie.anchor(), boundaryTie.end());
+        var spans = line.spanRegistry();
+        var existingTie = spans.findTieBetween(boundaryTie.anchor(), boundaryTie.end());
 
         if (existingTie == null) {
-            line.addTie(new Tie(boundaryTie.anchor(), boundaryTie.end()));
+            new Tie(boundaryTie.anchor(), boundaryTie.end()).addTo(line);
         } else {
-            line.removeTie(existingTie);
+            existingTie.removeFrom(line);
         }
 
         return true;
@@ -424,9 +432,11 @@ public final class MusicEditOperations {
                 "toggleTuplet requires at least two non-grace elements in the selection");
         }
 
+        var span = new ElementRange(beginIndex, endIndex);
+
         if (existing == null) {
-            var newTuplet = createValidatedTuplet(line, beginIndex, endIndex, tupletSize);
-            line.withModification(() -> line.addTuplet(newTuplet));
+            var newTuplet = createValidatedTuplet(line, span, tupletSize);
+            line.getSong().withModification(() -> newTuplet.addTo(line));
             return;
         }
 
@@ -437,11 +447,11 @@ public final class MusicEditOperations {
             return;
         }
 
-        var replacement = createValidatedTuplet(line, beginIndex, endIndex, tupletSize);
+        var replacement = createValidatedTuplet(line, span, tupletSize);
 
-        line.withModification(() -> {
-            line.removeTuplet(existing);
-            line.addTuplet(replacement);
+        line.getSong().withModification(() -> {
+            existing.removeFrom(line);
+            replacement.addTo(line);
         });
     }
 
@@ -452,27 +462,17 @@ public final class MusicEditOperations {
      * means the caller skipped that gate — the same contract as the other
      * {@link IllegalStateException}s in {@link #toggleTuplet}.
      */
-    private Tuplet createValidatedTuplet(Line line, int beginIndex, int endIndex, int tupletSize) {
-        var lineIndex = line.index();
+    private Tuplet createValidatedTuplet(Line line, ElementRange span, int tupletSize) {
         var result = TupletValidator.validateDerived(
-            song, line, lineIndex, beginIndex, endIndex, tupletSize,
-            TupletValidator.Strictness.STRICT);
+            line, span, tupletSize, TupletValidator.Strictness.STRICT);
 
-        var noteValue = result.noteValue();
+        return switch (result) {
+            case TupletValidator.Result.Valid(var ratio) ->
+                new Tuplet(line.getElement(span.begin()), line.getElement(span.end()), tupletSize, ratio);
 
-        if (!result.valid() || noteValue == null) {
-            throw new IllegalStateException(
-                "toggleTuplet called for a span that cannot carry a tuplet of " + tupletSize
-                    + ": " + result.reason());
-        }
-
-        return new Tuplet(
-            line.getElement(beginIndex),
-            line.getElement(endIndex),
-            tupletSize,
-            result.normalNotes(),
-            noteValue,
-            result.noteValueDots());
+            case TupletValidator.Result.Invalid(var reason) -> throw new IllegalStateException(
+                "toggleTuplet called for a span that cannot carry a tuplet of " + tupletSize + ": " + reason);
+        };
     }
 
     // ========== Dynamics Operations ==========
@@ -495,11 +495,14 @@ public final class MusicEditOperations {
         }
 
         var resolution = resolveHairpinAction(kind);
-        var resolvedState = resolution.state();
+        var span = resolution.span();
 
-        if (resolvedState != HairpinActionState.CAN_ADD && resolvedState != HairpinActionState.EXTEND) {
+        // A resolution carries a span exactly when it can add or extend.
+        if (span == null) {
             return;
         }
+
+        var resolvedState = resolution.state();
 
         // One action performs both Add and Extend, so the op name is chosen per
         // invocation rather than at construction time.
@@ -526,21 +529,21 @@ public final class MusicEditOperations {
         // The span is always the resolved one, never a degenerate single element left
         // for the merge to absorb: a one-element hairpin is a shape the model never
         // otherwise produces, and it would survive as a stray if the merge missed it.
-        var anchorElement = line.getElement(resolution.spanBegin());
-        var endElement = line.getElement(resolution.spanEnd());
+        var anchorElement = line.getElement(span.begin());
+        var endElement = line.getElement(span.end());
 
-        line.withModification(Strings.get(opNameKey), () -> {
-            // addCrescendo/addDiminuendo rather than the raw Line.addSpan adder: they
-            // merge overlapping same-type spans, which the extend path depends on.
+        line.getSong().withModification(Strings.get(opNameKey), () -> {
+            // Span.addTo applies each kind's own displacement policy, which merges
+            // overlapping same-type spans — the extend path depends on that.
             var added = switch (kind) {
                 case CRESCENDO -> {
                     var hairpin = new Crescendo(anchorElement, endElement);
-                    line.addCrescendo(hairpin);
+                    hairpin.addTo(line);
                     yield (Hairpin) hairpin;
                 }
                 case DIMINUENDO -> {
                     var hairpin = new Diminuendo(anchorElement, endElement);
-                    line.addDiminuendo(hairpin);
+                    hairpin.addTo(line);
                     yield (Hairpin) hairpin;
                 }
             };
@@ -550,14 +553,14 @@ public final class MusicEditOperations {
             // resolution computed. A point dynamic on the merged hairpin's anchor or end
             // element survives — the wedge pads away from it — but one stranded strictly
             // inside breaks the invariant DynamicMarkingAction.updateEnabledState() relies on.
-            stripInteriorPointDynamics(line, added.getAnchorElementIndex(), added.getEndElementIndex());
+            stripInteriorPointDynamics(
+                line, new ElementRange(added.getAnchorElementIndex(), added.getEndElementIndex()));
         });
     }
 
     /**
-     * Removes the point dynamic (p, mf, ff …) from every element strictly inside the
-     * hairpin range {@code [anchorIndex, endIndex]}, leaving the two bound elements
-     * alone.
+     * Removes the point dynamic (p, mf, ff …) from every element strictly inside
+     * {@code hairpin}'s range, leaving the two bound elements alone.
      * <p>
      * A text dynamic may sit on a hairpin's anchor or end element, where the wedge pads
      * away from it; only the wedge's interior is off limits. A two-element hairpin has an
@@ -569,10 +572,10 @@ public final class MusicEditOperations {
      * {@code modifyElement} nests inside an already-open modification bracket, so one
      * undo reverses both the hairpin and the strip.
      */
-    private void stripInteriorPointDynamics(Line line, int anchorIndex, int endIndex) {
+    private void stripInteriorPointDynamics(Line line, ElementRange hairpin) {
         // Not line.isInsideHairpin(index): that asks about *any* hairpin, so with two
         // back-to-back hairpins it would strip dynamics outside the one being added.
-        for (var index = anchorIndex + 1; index < endIndex; index++) {
+        for (var index = hairpin.begin() + 1; index < hairpin.end(); index++) {
             var element = line.getElement(index);
             var existing = element.findAttachment(DynamicAttachment.class);
 
@@ -612,14 +615,21 @@ public final class MusicEditOperations {
      *
      * <p>Returned by a single call so the label and the mutation cannot disagree —
      * {@code addHairpinToSelection} consumes this rather than recomputing.
-     * {@code spanBegin}/{@code spanEnd} are meaningful only for
-     * {@code CAN_ADD} and {@code EXTEND}; both are -1 otherwise.
+     * {@code span} is present exactly for {@code CAN_ADD} and {@code EXTEND}, and null
+     * for every other state.
+     *
+     * @throws IllegalArgumentException if {@code span}'s presence disagrees with {@code state}
      */
-    public record HairpinResolution(
-        HairpinActionState state,
-        int spanBegin,
-        int spanEnd
-    ) {}
+    public record HairpinResolution(HairpinActionState state, @Nullable ElementRange span) {
+
+        public HairpinResolution {
+            var resolved = state == HairpinActionState.CAN_ADD || state == HairpinActionState.EXTEND;
+
+            if (resolved != (span != null)) {
+                throw new IllegalArgumentException("Hairpin resolution " + state + " with span " + span);
+            }
+        }
+    }
 
     /**
      * Resolves what the {@code kind} hairpin menu item should do for the current
@@ -636,8 +646,8 @@ public final class MusicEditOperations {
      * passes.
      * <p>
      * <b>Step 1 — converge the span.</b> Every {@code kind} hairpin within
-     * {@link Line#SPAN_ADJACENCY_REACH} of the span widens it, repeatedly until it
-     * stops growing, because {@code Line.addHairpin} absorbs exactly that
+     * {@link LineSpans#SPAN_ADJACENCY_REACH} of the span widens it, repeatedly until it
+     * stops growing, because a hairpin's own displacement policy absorbs exactly that
      * neighborhood and absorbing one hairpin can bring a further one into reach. The
      * presence of any such hairpin is what makes this an extension. One that already
      * covers the whole selection has nothing to extend → {@code BLOCKED}.
@@ -687,27 +697,29 @@ public final class MusicEditOperations {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var end = range.end();
+        var spans = line.spanRegistry();
+        var bounds = range.range();
+        var begin = bounds.begin();
+        var end = bounds.end();
 
         var spanBegin = begin;
         var spanEnd = end;
         var isExtend = false;
         var grew = false;
 
-        // Line.addHairpin absorbs same-type spans within SPAN_ADJACENCY_REACH of the
-        // span it is handed, so absorbing one can bring a further one into reach.
-        // Widen until the union stops growing, or the menu label would promise a
-        // narrower hairpin than the model is about to build, and the boundary and
-        // opposite-type checks below would run against a span that never exists.
-        // Each pass either strictly widens the union or ends the loop, so this
-        // terminates in at most one pass per same-type hairpin on the line.
+        // A hairpin's own displacement policy absorbs same-type spans within
+        // SPAN_ADJACENCY_REACH of the span it is handed, so absorbing one can bring a
+        // further one into reach. Widen until the union stops growing, or the menu
+        // label would promise a narrower hairpin than the model is about to build, and
+        // the boundary and opposite-type checks below would run against a span that
+        // never exists. Each pass either strictly widens the union or ends the loop, so
+        // this terminates in at most one pass per same-type hairpin on the line.
         do {
-            var sameType = line.findSpans(
+            var sameType = spans.findSpans(
                 kind.spanType(),
-                Span.overlapping(
-                    spanBegin - Line.SPAN_ADJACENCY_REACH,
-                    spanEnd + Line.SPAN_ADJACENCY_REACH));
+                Span.overlapping(new ElementRange(
+                    spanBegin - LineSpans.SPAN_ADJACENCY_REACH,
+                    spanEnd + LineSpans.SPAN_ADJACENCY_REACH)));
             isExtend = !sameType.isEmpty();
 
             var widenedBegin = spanBegin;
@@ -734,52 +746,55 @@ public final class MusicEditOperations {
             spanEnd = widenedEnd;
         } while (grew);
 
+        var hairpinRange = new ElementRange(spanBegin, spanEnd);
+
         // Only an endpoint the selection supplies has to be one the user could place.
         // An endpoint inherited from the hairpin being extended stays put — including a
         // rest anchor an older build left behind, which is not this action's to correct.
         var anchorComesFromSelection = spanBegin == begin;
         var endComesFromSelection = spanEnd == end;
 
-        // spanEnd rather than end: canAnchorHairpin's lastIndex bounds the grace-note
+        // spanEnd rather than end: the span handed to canAnchorAt bounds the grace-note
         // host lookahead, and the hairpin really will reach spanEnd, so the host may
         // legitimately sit anywhere up to it.
-        if (anchorComesFromSelection && !line.canAnchorHairpin(begin, spanEnd)) {
+        if (anchorComesFromSelection
+                && !Hairpin.canAnchorAt(line.getElements(), new ElementRange(begin, spanEnd))) {
             return ineligibleHairpinResolution();
         }
 
-        if (endComesFromSelection && !line.canEndHairpin(end)) {
+        if (endComesFromSelection && !Hairpin.canEndAt(line.getElements(), end)) {
             return ineligibleHairpinResolution();
         }
 
         // The union reaches past the selection only because a hairpin widened it, so
         // when extending, that hairpin is the obstacle. With none in play the selection
         // itself crosses the boundary.
-        if (line.spansStructuralBoundary(spanBegin, spanEnd)) {
+        if (line.spansStructuralBoundary(hairpinRange)) {
             return isExtend ? blockedHairpinResolution() : ineligibleHairpinResolution();
         }
 
         // Two hairpins may meet on one shared element; more than that is a collision.
-        if (line.hasSpan(
+        if (spans.hasSpan(
                 kind.opposite().spanType(),
-                Span.overlappingBeyondEndpoint(spanBegin, spanEnd))) {
+                Span.overlappingBeyondEndpoint(hairpinRange))) {
             return blockedHairpinResolution();
         }
 
         // Extending an existing hairpin has no such requirement — it only widens.
-        if (!isExtend && !Hairpin.hasEnoughColumns(line.getElements(), spanBegin, spanEnd)) {
+        if (!isExtend && !Hairpin.hasEnoughColumns(line.getElements(), hairpinRange)) {
             return ineligibleHairpinResolution();
         }
 
         return new HairpinResolution(
-            isExtend ? HairpinActionState.EXTEND : HairpinActionState.CAN_ADD, spanBegin, spanEnd);
+            isExtend ? HairpinActionState.EXTEND : HairpinActionState.CAN_ADD, hairpinRange);
     }
 
     private static HairpinResolution ineligibleHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.INELIGIBLE, -1, -1);
+        return new HairpinResolution(HairpinActionState.INELIGIBLE, null);
     }
 
     private static HairpinResolution blockedHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.BLOCKED, -1, -1);
+        return new HairpinResolution(HairpinActionState.BLOCKED, null);
     }
 
     // ========== First-Second Ending Operations ==========
@@ -792,8 +807,9 @@ public final class MusicEditOperations {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var end = range.end();
+        var bounds = range.range();
+        var begin = bounds.begin();
+        var end = bounds.end();
 
         // A multi-element selection never reaches the terminal (the selection coordinator
         // clamps it out), so if the selection ends just before it, extend end to include it
@@ -923,9 +939,11 @@ public final class MusicEditOperations {
     // would re-filter its whole span list — beams, ties, tuplets and hairpins included —
     // and re-resolve every ending, on every iteration.
     private boolean hasOverlap(Line line, int begin, int end) {
-        for (var ending : line.findEndings()) {
-            var anchorBound = line.anchorIndexOf(ending);
-            var endBound = line.endIndexOf(ending);
+        var spans = line.spanRegistry();
+
+        for (var ending : spans.findEndings()) {
+            var anchorBound = spans.anchorIndexOf(ending);
+            var endBound = spans.endIndexOf(ending);
 
             for (var i = begin; i <= end; i++) {
                 if (Span.containing(i).test(anchorBound, endBound)) {
@@ -1029,7 +1047,7 @@ public final class MusicEditOperations {
 
         var line = range.line();
 
-        line.withModification(() -> {
+        line.getSong().withModification(() -> {
             var start = result.getSpanStart();
             var end = result.getSpanEnd();
 
@@ -1037,7 +1055,7 @@ public final class MusicEditOperations {
             // with no element insertion.
             var startElement = line.getElement(start);
             var endElement = line.getElement(end);
-            line.addSpan(new Ending(startElement, endElement));
+            new Ending(startElement, endElement).addTo(line);
         });
     }
 
@@ -1100,13 +1118,15 @@ public final class MusicEditOperations {
         }
 
         var line = range.line();
+        var spans = line.spanRegistry();
+        var bounds = range.range();
         var stemFields = EnumSet.of(ElementField.STEM);
 
-        line.withModification(() -> {
+        line.getSong().withModification(() -> {
             // Track which beam groups have already been processed to avoid modifying one twice.
             var processedBeams = new HashSet<Beam>();
 
-            for (var i = range.begin(); i <= range.end(); i++) {
+            for (var i = bounds.begin(); i <= bounds.end(); i++) {
                 // applyStemChange already ignores stemless elements. Stopping here as well
                 // keeps one from dragging its entire beam group into the edit below.
                 if (!(line.getElement(i) instanceof NoteElement note) || !note.getType().isNoteWithStem()) {
@@ -1115,7 +1135,7 @@ public final class MusicEditOperations {
 
                 // A grace note sitting inside a beam span is not a member — the beam passes
                 // over it and it keeps its own stem, so it flips on its own (refs #592).
-                var beam = note.getType().isGraceNote() ? null : line.findBeamAt(i);
+                var beam = note.getType().isGraceNote() ? null : spans.findBeamAt(i);
 
                 if (beam != null) {
                     // Modify the whole beam group together, once per group. The group's new
@@ -1142,7 +1162,7 @@ public final class MusicEditOperations {
             // immediate partner of a selected note.
             var visited = new TreeSet<Integer>();
 
-            for (var i = range.begin(); i <= range.end(); i++) {
+            for (var i = bounds.begin(); i <= bounds.end(); i++) {
                 visited.add(i);
             }
 
@@ -1151,7 +1171,7 @@ public final class MusicEditOperations {
 
             while (!pending.isEmpty()) {
                 var i = pending.remove();
-                var tieSpan = line.findTieAt(i);
+                var tieSpan = spans.findTieAt(i);
 
                 if (tieSpan == null) {
                     continue;
@@ -1167,14 +1187,14 @@ public final class MusicEditOperations {
                 // reachable from here. findTieAt has already rejected a tie with an ABSENT
                 // bound, so a non-At bound can only be BEFORE_LINE on the anchor or
                 // AFTER_LINE on the end.
-                var tieStart = line.anchorIndexOf(tieSpan).indexOr(0);
-                var tieEnd = line.endIndexOf(tieSpan).indexOr(line.elementCount() - 1);
+                var tieStart = spans.anchorIndexOf(tieSpan).indexOr(0);
+                var tieEnd = spans.endIndexOf(tieSpan).indexOr(line.elementCount() - 1);
 
                 for (var j = tieStart; j <= tieEnd; j++) {
                     if (visited.add(j)) {
                         pending.add(j);
 
-                        if ((j < range.begin()) || (j > range.end())) {
+                        if (!bounds.contains(j)) {
                             tiePartnersToModify.add(j);
                         }
                     }

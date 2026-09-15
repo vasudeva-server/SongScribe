@@ -196,7 +196,8 @@ class InheritedKeyPropagationTest extends UnitTest {
                 song -> {
                     var line = song.getLine(SECOND_LINE);
                     song.withModification(
-                        () -> line.deleteRange(line.effectiveRange(KEY_CHANGE_INDEX, KEY_CHANGE_INDEX)));
+                        () -> line.deleteRange(line.effectiveRange(
+                            StaffElementRun.ElementRange.single(KEY_CHANGE_INDEX))));
                 },
                 List.of(DOCUMENT_KEY, OWN_KEY, OWN_KEY, FOLLOWER_KEY, FOLLOWER_KEY)),
             new PropagationCase(

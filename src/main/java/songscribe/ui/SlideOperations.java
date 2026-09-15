@@ -59,7 +59,7 @@ import songscribe.undo.OpNames;
  *       {@code addSlideLabel}. A mixed selection therefore always adds; it never clears.
  *   <li>If {@code hasRoomForSlides} refuses the added indices, nothing is modified: the line-full
  *       error dialog is shown and the result is {@code REPORTED}.
- *   <li>Otherwise one {@code line.withModification(label, …)} bracket applies the change, giving
+ *   <li>Otherwise one {@code line.getSong().withModification(label, …)} bracket applies the change, giving
  *       exactly one undo step and a {@code MODIFIED} result.
  * </ol>
  */
@@ -179,7 +179,7 @@ public final class SlideOperations {
             label = OpNames.addSlideLabel(slide);
         }
 
-        line.withModification(label, () -> {
+        line.getSong().withModification(label, () -> {
             for (var index : indices) {
                 var element = line.noteAt(index);
 

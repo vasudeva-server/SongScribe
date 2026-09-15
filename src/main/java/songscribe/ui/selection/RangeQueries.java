@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -30,6 +31,7 @@ import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
@@ -176,8 +178,9 @@ public final class RangeQueries {
      */
     public static int nonGraceBegin(ElementSelection range) {
         var line = range.line();
+        var bounds = range.range();
 
-        for (var i = range.begin(); i <= range.end(); i++) {
+        for (var i = bounds.begin(); i <= bounds.end(); i++) {
             if (!line.getElement(i).getType().isGraceNote()) {
                 return i;
             }
@@ -194,8 +197,9 @@ public final class RangeQueries {
      */
     public static int nonGraceEnd(ElementSelection range) {
         var line = range.line();
+        var bounds = range.range();
 
-        for (var i = range.end(); i >= range.begin(); i--) {
+        for (var i = bounds.end(); i >= bounds.begin(); i--) {
             if (!line.getElement(i).getType().isGraceNote()) {
                 return i;
             }
@@ -225,9 +229,11 @@ public final class RangeQueries {
             return false;
         }
 
+        var grouped = new ElementRange(beginIndex, endIndex);
+
         // Conflict: beaming would connect what a tie already connects.
-        return !(shouldConnectBeamSelection(line, beginIndex, endIndex)
-            && !shouldConnectTieSelection(line, beginIndex, endIndex));
+        return !(shouldConnectBeamSelection(line, grouped)
+            && !shouldConnectTieSelection(line, grouped));
     }
 
     /**
@@ -243,12 +249,13 @@ public final class RangeQueries {
      * {@link #boundaryTieAt} rather than by looking inside {@code range}.
      */
     public static boolean canToggleTie(ElementSelection range) {
-        var selectionSize = range.size();
+        var bounds = range.range();
+        var selectionSize = bounds.size();
 
         // A single boundary element ties to the adjacent line's matching edge note, not to
         // anything else in range.line() — none of the same-line checks below apply (#493).
         if (selectionSize == TIE_SELECTION_SIZE_BOUNDARY) {
-            return boundaryTieAt(range.line(), range.begin()) != null;
+            return boundaryTieAt(range.line(), bounds.begin()) != null;
         }
 
         if (selectionSize != TIE_SELECTION_SIZE_WITHOUT_SEPARATOR
@@ -257,8 +264,8 @@ public final class RangeQueries {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var end = range.end();
+        var begin = bounds.begin();
+        var end = bounds.end();
 
         if (!(line.getElement(begin) instanceof NoteElement anchorNote)
             || !(line.getElement(end) instanceof NoteElement endNote)
@@ -271,13 +278,13 @@ public final class RangeQueries {
             return false;
         }
 
-        var shouldConnect = line.findExactTie(begin, end) == null;
+        var shouldConnect = line.spanRegistry().findExactTie(bounds) == null;
 
         // Conflict: tying would connect what a beam already connects. The raw range bounds
         // are correct here, unlike beaming/tupleting: the only interior a tie allows holds a
         // single separator, which can never be a grace note, and the isPitchedNote() check
         // above already rejects a grace note at either endpoint (refs #592).
-        return !shouldConnect || shouldConnectBeamSelection(line, begin, end);
+        return !shouldConnect || shouldConnectBeamSelection(line, bounds);
     }
 
     /**
@@ -297,7 +304,7 @@ public final class RangeQueries {
      * separator — a refusal, which is what the user should get.
      *
      * <p>There is no widen-or-break branch, unlike the beam side: ties never coalesce, since
-     * {@link Line#addTie} does no span merging and holds one tie per pair, so the toggle is a
+     * {@link Tie#addTo} does no span merging and holds one tie per pair, so the toggle is a
      * plain add or remove of the exact tie over the pair.
      *
      * <p>Grace notes are not transparent here, though they are for beams. A tie is invalidated
@@ -350,7 +357,7 @@ public final class RangeQueries {
             return null;
         }
 
-        var candidate = new ElementSelection(line, begin, index);
+        var candidate = new ElementSelection(line, new ElementRange(begin, index));
 
         return canToggleTie(candidate) ? candidate : null;
     }
@@ -387,12 +394,13 @@ public final class RangeQueries {
      */
     public static int glissandoSourceIndex(ElementSelection range) {
         var line = range.line();
+        var bounds = range.range();
         int sourceIndex;
 
-        if (range.size() == GLISSANDO_SELECTION_SIZE_SOURCE_ONLY) {
-            sourceIndex = range.begin() - 1;
-        } else if (range.size() == GLISSANDO_SELECTION_SIZE_WITH_TARGET) {
-            sourceIndex = range.begin();
+        if (bounds.size() == GLISSANDO_SELECTION_SIZE_SOURCE_ONLY) {
+            sourceIndex = bounds.begin() - 1;
+        } else if (bounds.size() == GLISSANDO_SELECTION_SIZE_WITH_TARGET) {
+            sourceIndex = bounds.begin();
         } else {
             return -1;
         }
@@ -443,8 +451,9 @@ public final class RangeQueries {
      */
     public static int[] fallIndices(ElementSelection range) {
         var line = range.line();
+        var bounds = range.range();
 
-        return IntStream.rangeClosed(range.begin(), range.end())
+        return IntStream.rangeClosed(bounds.begin(), bounds.end())
             .filter(i -> line.getElement(i) instanceof NoteElement note
                 && (note.hasFall() || note.getType().isPitchedNote()))
             .toArray();
@@ -489,7 +498,7 @@ public final class RangeQueries {
                 continue;
             }
 
-            var currentTuplet = line.findTupletAt(i);
+            var currentTuplet = line.spanRegistry().findTupletAt(i);
 
             if (i == beginIndex) {
                 firstTuplet = currentTuplet;
@@ -498,9 +507,10 @@ public final class RangeQueries {
             }
         }
 
+        var grouped = new ElementRange(beginIndex, endIndex);
         var coversExisting = (firstTuplet != null)
-            && Span.exactly(beginIndex, endIndex).test(
-                line.anchorIndexOf(firstTuplet), line.endIndexOf(firstTuplet));
+            && Span.exactly(grouped).test(
+                line.spanRegistry().anchorIndexOf(firstTuplet), line.spanRegistry().endIndexOf(firstTuplet));
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still
@@ -510,7 +520,7 @@ public final class RangeQueries {
         }
 
         return new TupletToggleInfo(
-            true, validGradesFor(line, beginIndex, endIndex), firstTuplet, coversExisting);
+            true, validGradesFor(line, grouped), firstTuplet, coversExisting);
     }
 
     /**
@@ -520,17 +530,16 @@ public final class RangeQueries {
      * measurement: resolving the beat walks back through the song, and this runs on every
      * document edit, not only when the selection changes.
      */
-    private static Set<Integer> validGradesFor(Line line, int beginIndex, int endIndex) {
-        var song = line.getSong();
-        var context = TupletValidator.describeSpan(
-            song, line, line.index(), beginIndex, endIndex);
+    private static Set<Integer> validGradesFor(Line line, ElementRange span) {
+        var context = TupletValidator.describeSpan(line, span);
         var grades = new HashSet<Integer>();
 
         // The range comes from the model, not from the menu's list of actions: what a
         // tuplet number may be is a fact about tuplets, and a selection query must not
         // change because someone reorders a menu.
         for (var grade = TupletValidator.MIN_GRADE; grade <= TupletValidator.MAX_GRADE; grade++) {
-            if (TupletValidator.validate(context, grade, TupletValidator.Strictness.STRICT).valid()) {
+            if (TupletValidator.validate(context, grade, TupletValidator.Strictness.STRICT)
+                    instanceof TupletValidator.Result.Valid) {
                 grades.add(grade);
             }
         }
@@ -542,10 +551,12 @@ public final class RangeQueries {
      * Returns whether the range can toggle trill.
      */
     public static boolean canToggleTrill(ElementSelection range) {
-        return range.line()
-            .getElements(range.begin(), range.end())
-            .stream()
+        return selectedElements(range).stream()
             .anyMatch(element -> element.getType().isPitchedNote());
+    }
+
+    private static List<StaffElement> selectedElements(ElementSelection range) {
+        return range.line().getElements(range.range());
     }
 
     /**
@@ -554,9 +565,7 @@ public final class RangeQueries {
      * qualify — rests and whole notes have none.
      */
     public static boolean canModifyStemDirection(ElementSelection range) {
-        return range.line()
-            .getElements(range.begin(), range.end())
-            .stream()
+        return selectedElements(range).stream()
             .anyMatch(element -> element.getType().isNoteWithStem());
     }
 
@@ -564,15 +573,15 @@ public final class RangeQueries {
      * Returns whether a new beam should connect the span endpoints (add mode), as opposed
      * to the span already being covered by an existing beam (remove mode).
      */
-    private static boolean shouldConnectBeamSelection(Line line, int beginIndex, int endIndex) {
-        return !line.sameBeamAt(beginIndex, endIndex);
+    private static boolean shouldConnectBeamSelection(Line line, ElementRange range) {
+        return !line.spanRegistry().sameBeamAt(range.begin(), range.end());
     }
 
     /**
      * Returns whether a new tie should connect the span endpoints (add mode), as opposed
      * to the span already being covered by an existing tie (remove mode).
      */
-    private static boolean shouldConnectTieSelection(Line line, int beginIndex, int endIndex) {
-        return !line.sameTieAt(beginIndex, endIndex);
+    private static boolean shouldConnectTieSelection(Line line, ElementRange range) {
+        return !line.spanRegistry().sameTieAt(range.begin(), range.end());
     }
 }

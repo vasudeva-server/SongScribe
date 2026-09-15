@@ -21,11 +21,16 @@
 package songscribe.dom;
 
 import java.awt.Font;
+import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.font.LocalFonts;
 import songscribe.font.TextMeasurement;
+import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
 
 /**
  * Represents a tuplet grouping (triplet, quintuplet, etc.).
@@ -92,53 +97,36 @@ public class Tuplet extends Span {
         return TextMeasurement.requireVisualBounds(String.valueOf(grade), TUPLET_FONT).getWidth();
     }
 
-    /**
-     * The {@code normalNotes} of a tuplet whose ratio has not been resolved yet.
-     * A resolved tuplet always has a positive {@code normalNotes}.
-     */
-    public static final int UNRESOLVED_NORMAL_NOTES = 0;
-
-    // N, M and V are set once, together, and never change afterwards. Changing N alone
-    // would leave the tuplet printing one ratio and playing another, so there is no
-    // setter: a grade change is a remove plus an add, which re-derives all three.
+    // The grade and the ratio are set once and never change afterwards. Changing the grade
+    // alone would leave the tuplet printing one ratio and playing another, so there is no
+    // setter: a grade change is a remove plus an add, which re-derives both.
     private final int grade;
-    private int normalNotes;
-    private @Nullable ElementType noteValue;
-    private Dots noteValueDots;
+    private @Nullable TupletRatio ratio;
     private int verticalPositionSs = 0;
 
     /**
-     * Creates a fully specified tuplet grouping: {@code grade} notes played in the
-     * time normally occupied by {@code normalNotes} notes of the written value
-     * {@code noteValue} carrying {@code noteValueDots}.
+     * Creates a fully specified tuplet grouping: {@code grade} notes played in the time
+     * {@code ratio} states.
      * <p>
-     * The written value is stored as a base type plus its dots rather than as a
-     * tick duration, so that it is notatable by construction and needs no
-     * decomposition on the way out to MusicXML.
+     * The ratio's written value is a base type plus its dots rather than a tick duration, so
+     * it needs no decomposition on the way out to MusicXML.
      *
      * @param anchorElement The first note in the tuplet
      * @param endElement    The last note in the tuplet
      * @param grade         The tuplet number (3 for triplet, 5 for quintuplet, etc.)
-     * @param normalNotes   The count of {@code noteValue} notes whose time the group occupies
-     * @param noteValue     The tuplet's written note value, as a base element type
-     * @param noteValueDots The dots of the written note value
+     * @param ratio         The time the group occupies
      */
-    public Tuplet(StaffElement anchorElement, StaffElement endElement,
-        int grade, int normalNotes, ElementType noteValue, Dots noteValueDots) {
+    public Tuplet(StaffElement anchorElement, StaffElement endElement, int grade, TupletRatio ratio) {
         super(anchorElement, endElement);
         this.grade = grade;
-        this.normalNotes = normalNotes;
-        this.noteValue = noteValue;
-        this.noteValueDots = noteValueDots;
+        this.ratio = ratio;
     }
 
     /** Shared by the canonical constructor's peers; leaves the ratio unresolved. */
     private Tuplet(StaffElement anchorElement, StaffElement endElement, int grade) {
         super(anchorElement, endElement);
         this.grade = grade;
-        normalNotes = UNRESOLVED_NORMAL_NOTES;
-        noteValue = null;
-        noteValueDots = Dots.NONE;
+        ratio = null;
     }
 
     /**
@@ -158,10 +146,10 @@ public class Tuplet extends Span {
         // including the unresolved state, which must copy as unresolved.
         Tuplet copy;
 
-        if (noteValue == null) {
+        if (ratio == null) {
             copy = withUnresolvedRatio(newAnchor, newEnd, grade);
         } else {
-            copy = new Tuplet(newAnchor, newEnd, grade, normalNotes, noteValue, noteValueDots);
+            copy = new Tuplet(newAnchor, newEnd, grade, ratio);
         }
 
         copy.verticalPositionSs = verticalPositionSs;
@@ -251,8 +239,10 @@ public class Tuplet extends Span {
      * at both its anchor and end index and its anchor note has upward stems.
      */
     public boolean isNumberOnly(Line line) {
-        return line.findBeamAt(getAnchorElementIndex()) != null
-            && line.findBeamAt(getEndElementIndex()) != null
+        var spans = line.spanRegistry();
+
+        return spans.findBeamAt(getAnchorElementIndex()) != null
+            && spans.findBeamAt(getEndElementIndex()) != null
             && anchorStemUp();
     }
 
@@ -286,44 +276,67 @@ public class Tuplet extends Span {
     }
 
     /**
-     * Returns true if replacing {@code oldElement} with {@code newElement} rewrites a written
-     * duration this tuplet was built on, leaving the group rhythmically invalid. A replacement
-     * outside the bracket leaves it alone (refs #726).
-     *
-     * <p>Only a replacement touching a duration-carrying element counts. A tuplet may contain a
-     * barline or a breath mark, which contribute no time to the group, so swapping one of those
-     * for another non-duration element cannot unbalance it — the same distinction
-     * {@link Line#modifyElement} already draws with {@link ElementField#DURATION_AFFECTING}.
-     *
-     * <p>Past that gate, any change of element type or dot count drops the group. That is
-     * deliberately broader than "the written duration changed": a note swapped for a rest of the
-     * same value keeps the group's total time but can starve it of the non-rest notes
-     * {@link #hasValidSpan} demands, so it goes too. The user re-brackets what they meant.
+     * Decides what happens to this tuplet when {@code change} lands: the group is removed by
+     * any structural change strictly inside its bracket, and kept by everything else.
      * <p>
-     * Must be called on the <em>pre-replacement</em> line state, while {@code oldElement} is
-     * still in the line.
+     * A tuplet is a rhythmic claim about exactly the elements between its endpoints, so its
+     * survival depends on its interior, not only on its endpoints the way a tie's or a beam's
+     * does. An insertion after the anchor and no later than the end element adds time the
+     * group did not account for; a deletion overlapping the bracket takes time away; and a
+     * replacement or an in-place modification that rewrites a written duration inside it
+     * — the distinction {@link ElementField#DURATION_AFFECTING} draws — leaves the group
+     * rhythmically invalid (refs #726). An insertion at the anchor's own index, or just past
+     * the end element, stays outside and leaves the group alone.
+     * <p>
+     * Only a replacement touching a duration-carrying element counts. A tuplet may contain a
+     * barline or a breath mark, which contribute no time to the group, so swapping one of
+     * those for another non-duration element cannot unbalance it. Past that gate, any change
+     * of element type or dot count drops the group. That is deliberately broader than "the
+     * written duration changed": a note swapped for a rest of the same value keeps the group's
+     * total time but can starve it of the non-rest notes {@link #hasValidSpan} demands, so it
+     * goes too. The user re-brackets what they meant.
+     * <p>
+     * A tuplet whose endpoints are not both in {@code line} has nothing there to judge and is
+     * kept.
      *
-     * @param oldElement the element being replaced (still in the line at call time)
-     * @param newElement the element that will replace it
-     * @param line       the owning line (pre-replacement state)
+     * @param change the pending change, not yet applied to {@code line}
+     * @param line   the line being changed, still in its pre-change state
      */
     @Override
-    protected boolean isInvalidatedByReplacement(
-        StaffElement oldElement, StaffElement newElement, Line line
-    ) {
+    public SpanOutcome outcomeFor(ElementChange change, Line line) {
+        var range = line.spanRegistry().rangeOf(this);
+
+        if (range == null) {
+            return SpanOutcome.Simple.KEEP;
+        }
+
+        var invalidated = switch (change) {
+            case ElementChange.Insertion insertion ->
+                range.begin() < insertion.index() && insertion.index() <= range.end();
+
+            case ElementChange.Deletion deletion -> range.overlaps(deletion.range());
+
+            case ElementChange.Replacement replacement ->
+                range.contains(replacement.index())
+                    && replacementUnbalances(replacement.oldElement(), replacement.newElement());
+
+            case ElementChange.Modification modification ->
+                range.contains(modification.index())
+                    && !Collections.disjoint(modification.fields(), ElementField.DURATION_AFFECTING);
+        };
+
+        return invalidated ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
+    }
+
+    /**
+     * Whether swapping {@code oldElement} for {@code newElement} inside this tuplet rewrites a
+     * written duration the group was built on — see {@link #outcomeFor}.
+     */
+    private static boolean replacementUnbalances(StaffElement oldElement, StaffElement newElement) {
         var oldType = oldElement.getType();
         var newType = newElement.getType();
 
         if (!oldType.isDuration() && !newType.isDuration()) {
-            return false;
-        }
-
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
-        var replacedIndex = line.getElementIndex(oldElement);
-
-        if (anchorIndex < 0 || endIndex < 0
-                || replacedIndex < anchorIndex || replacedIndex > endIndex) {
             return false;
         }
 
@@ -352,34 +365,19 @@ public class Tuplet extends Span {
     }
 
     /**
-     * Returns M — the count of {@link #getNoteValue()} notes whose time this group
-     * occupies, or {@link #UNRESOLVED_NORMAL_NOTES} while the ratio is unresolved.
+     * Returns the time this group occupies, or null while the ratio is unresolved.
      */
-    public int getNormalNotes() {
-        return normalNotes;
+    public @Nullable TupletRatio getRatio() {
+        return ratio;
     }
 
     /**
-     * Returns V's base element type, or null while the ratio is unresolved.
-     */
-    public @Nullable ElementType getNoteValue() {
-        return noteValue;
-    }
-
-    /**
-     * Returns the dots of V, this tuplet's written note value.
-     */
-    public Dots getNoteValueDots() {
-        return noteValueDots;
-    }
-
-    /**
-     * Returns whether M and V are known. Only a tuplet built by
+     * Returns whether the ratio is known. Only a tuplet built by
      * {@link #withUnresolvedRatio} can be unresolved, and only until the
      * dom-package load pass resolves or drops it.
      */
     public boolean isResolved() {
-        return noteValue != null && normalNotes > 0;
+        return ratio != null;
     }
 
     /**
@@ -388,10 +386,8 @@ public class Tuplet extends Span {
      * Package-private on purpose: the dom-package load pass is the only caller, so
      * that no outside code can retroactively re-time a tuplet the user already sees.
      */
-    void resolveRatio(int normalNotes, ElementType noteValue, Dots noteValueDots) {
-        this.normalNotes = normalNotes;
-        this.noteValue = noteValue;
-        this.noteValueDots = noteValueDots;
+    void resolveRatio(TupletRatio ratio) {
+        this.ratio = ratio;
     }
 
     /**
@@ -408,4 +404,24 @@ public class Tuplet extends Span {
         verticalPositionSs = verticalPosition;
     }
 
+    /**
+     * Replaces any existing tuplet that overlaps this one: every tuplet whose range overlaps
+     * [anchor, end] is removed before this tuplet is added, each removal its own tracked
+     * mutation so undo restores the originals.
+     */
+    @Override
+    protected void applyDisplacementPolicy(Line line) {
+        var spans = line.spanRegistry();
+        spans.removeOverlappingTuplets(spans.requireRangeOf(this));
+    }
+
+    @Override
+    protected Mutation additionRecordFor(Line line) {
+        return new TupletAddition(line, this);
+    }
+
+    @Override
+    protected Mutation removalRecordFor(Line line) {
+        return new TupletRemoval(line, this);
+    }
 }

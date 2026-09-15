@@ -63,6 +63,16 @@ public class Trill extends Span implements IntrinsicHeight {
         this(anchorElement, anchorElement);
     }
 
+    /**
+     * Removes every existing trill that overlaps this one before it is added. Each removal
+     * is its own recorded mutation, so replacing a displaced trill is undoable.
+     */
+    @Override
+    protected void applyDisplacementPolicy(Line line) {
+        var spans = line.spanRegistry();
+        spans.removeTrillsOverlapping(spans.requireRangeOf(this));
+    }
+
     @Override
     protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Trill(newAnchor, newEnd);

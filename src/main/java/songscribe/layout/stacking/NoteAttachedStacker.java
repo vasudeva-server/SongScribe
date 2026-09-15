@@ -415,7 +415,7 @@ public class NoteAttachedStacker {
     private void seedTieBounds() {
         var line = context.getLine();
         var builder = context.getBuilder();
-        var ties = line.findTies();
+        var ties = line.spanRegistry().findTies();
 
         if (ties.isEmpty()) {
             return;
@@ -764,13 +764,13 @@ public class NoteAttachedStacker {
     /**
      * Stacks all trills for the line.
      * <p>
-     * Processes {@link Trill} spans from {@code line.findSpans(Trill.class)}.
+     * Processes {@link Trill} spans from {@code line.spanRegistry().findSpans(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
     private void stackTrills(StaffExtents outerExtents, DecorationLayouts.Builder decorationLayouts) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
-        var trills = line.findSpans(Trill.class);
+        var trills = line.spanRegistry().findSpans(Trill.class);
 
         for (var trill : trills) {
             stackSingleTrill(trill, outerExtents, columnsByElement, decorationLayouts);

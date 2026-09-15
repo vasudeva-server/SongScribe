@@ -53,6 +53,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
+import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
@@ -63,6 +64,7 @@ import songscribe.dom.TempoMarking;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletRatio;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
 
@@ -710,7 +712,7 @@ final class MeasureMapper {
             return;
         }
 
-        line.addSpan(new Ending(anchor, end));
+        new Ending(anchor, end).addTo(line);
     }
 
     // -------------------------------------------------------------------------
@@ -1160,20 +1162,19 @@ final class MeasureMapper {
 
     /**
      * Builds a {@link Crescendo} or {@link Diminuendo} over [{@code anchor},
-     * {@code end}]. Added with {@link Line#addCrescendo}/{@link Line#addDiminuendo}
-     * rather than the raw {@code addSpan} the other span kinds use, so a file
-     * carrying two same-type wedges that overlap or merely touch loads as the one
-     * hairpin it musically is.
+     * {@code end}]. Added through {@link Hairpin#addTo}, whose displacement policy
+     * merges a file carrying two same-type wedges that overlap or merely touch into
+     * the one hairpin it musically is.
      */
     private static void buildHairpin(Line line, OpenHairpin open, StaffElement end, int x2ShiftSs) {
         if (open.start().kind() == Hairpin.Kind.CRESCENDO) {
             var crescendo = new Crescendo(open.anchor(), end);
             applyHairpinShifts(crescendo, open, x2ShiftSs);
-            line.addCrescendo(crescendo);
+            crescendo.addTo(line);
         } else {
             var diminuendo = new Diminuendo(open.anchor(), end);
             applyHairpinShifts(diminuendo, open, x2ShiftSs);
-            line.addDiminuendo(diminuendo);
+            diminuendo.addTo(line);
         }
     }
 
@@ -1252,7 +1253,7 @@ final class MeasureMapper {
                 } else if (begin == null) {
                     warnOrphanStop(BEAM_END_MARKER);
                 } else {
-                    note.line().addBeaming(new Beam(begin, end));
+                    new Beam(begin, end).addTo(note.line());
                     begin = null;
                 }
             }
@@ -1282,7 +1283,7 @@ final class MeasureMapper {
                 } else if (start == null) {
                     warnOrphanStop(TIED_STOP_MARKER);
                 } else {
-                    note.line().addTie(new Tie(start, end));
+                    new Tie(start, end).addTo(note.line());
                     start = null;
                 }
             }
@@ -1353,8 +1354,18 @@ final class MeasureMapper {
         if (noteValue == null) {
             tuplet = Tuplet.withUnresolvedRatio(open.anchor(), end.element(), marker.actualNotes());
         } else {
-            tuplet = new Tuplet(open.anchor(), end.element(), marker.actualNotes(),
-                marker.normalNotes(), noteValue, marker.normalDots());
+            var normalNotes = marker.normalNotes();
+
+            // SongScribe writes <normal-notes> beside every <normal-type> that states a ratio, so
+            // a stated ratio without a positive count is a damaged document.
+            if (normalNotes <= 0) {
+                throw DocumentValidation.corrupt(LOG,
+                    "Corrupt document: <time-modification> states a <normal-type> without a positive"
+                        + " <normal-notes>");
+            }
+
+            var ratio = new TupletRatio(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
+            tuplet = new Tuplet(open.anchor(), end.element(), marker.actualNotes(), ratio);
         }
 
         if (!tuplet.hasValidSpan(line)) {
@@ -1366,7 +1377,7 @@ final class MeasureMapper {
             tuplet.setVerticalPositionSs(marker.verticalPositionSs());
         }
 
-        line.addTuplet(tuplet);
+        tuplet.addTo(line);
     }
 
     /**
@@ -1421,7 +1432,7 @@ final class MeasureMapper {
                 trill.setYPositionSs(open.yPositionSs());
             }
 
-            note.line().addSpan(trill);
+            trill.addTo(note.line());
             open = null;
         }
 

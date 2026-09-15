@@ -33,9 +33,7 @@ import songscribe.dom.Direction;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.NoteElement;
-import songscribe.dom.StaffElement;
 import songscribe.engraving.BeamMetrics;
-import songscribe.engraving.StaffPosition;
 import songscribe.engraving.StemMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -136,7 +134,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var selectionProvider = invariants.getSelectionProvider();
         var line = invariants.requireCurrentLine();
         var lineIndex = invariants.getLineIndex();
-        var beam = line.findBeamAt(beginIndex);
+        var beam = line.spanRegistry().findBeamAt(beginIndex);
 
         if (beam != null) {
             var beamColor = invariants.colorFor(

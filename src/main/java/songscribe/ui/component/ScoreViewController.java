@@ -34,16 +34,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
-import songscribe.dom.AccidentalChain;
-import songscribe.dom.AccidentalScanView;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Attachment;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.ChainEdit;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
+import songscribe.dom.ElementChange;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
@@ -851,18 +847,17 @@ public final class ScoreViewController {
         }
 
         var line = range.line();
-        var begin = range.begin();
-        var end = range.end();
+        var selected = range.range();
 
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, begin, end)) {
+        if (!confirmEndingInvalidatedByDeletion(line, selected)) {
             return;
         }
 
         // Widened once here and passed to both the stranding and the deletion, so the range the
         // key changes are computed against is the range that goes.
-        var bounds = line.effectiveRange(begin, end);
+        var bounds = line.effectiveRange(selected);
         var stranding = deletionStranding(line, bounds);
 
         handleCopy();
@@ -875,8 +870,8 @@ public final class ScoreViewController {
 
         // One bracket for the deletion — the confirm above already ran, so
         // deleteElementRange performs no further confirmation. The Cut action's op-name
-        // (Tier A) names this outermost step, so the inner range delete passes no label.
-        score.getSong().withModification(() -> deleteElementRange(line, bounds, null, stranding));
+        // (Tier A) names this outermost step.
+        score.getSong().withModification(() -> deleteElementRange(line, bounds, stranding));
 
         // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
@@ -890,7 +885,7 @@ public final class ScoreViewController {
 
         if (range != null) {
             clipboardManager.setFragment(
-                Fragment.capture(range.line(), range.begin(), range.end())
+                Fragment.capture(range.line(), range.range())
             );
             score.deselect();
         }
@@ -965,10 +960,9 @@ public final class ScoreViewController {
 
         if (range != null) {
             var line = range.line();
-            var begin = range.begin();
-            var end = range.end();
+            var selected = range.range();
 
-            if (line.hasEndingInvalidatedByDeletion(begin, end)) {
+            if (ElementChange.forDeletion(line, selected).removesConfirmableSpan()) {
                 if (!EndingConfirms.confirmInvalidation(score)) {
                     return;
                 }
@@ -976,12 +970,12 @@ public final class ScoreViewController {
 
             // Widened once here and passed to both the stranding and the deletion, so the range
             // the key changes are computed against is the range that goes.
-            var bounds = line.effectiveRange(begin, end);
+            var bounds = line.effectiveRange(selected);
             var stranding = deletionStranding(line, bounds);
 
             // Name the undo step from the categories of the user-selected elements
             // (computed before removal, while they are still present on the line).
-            var selectedTypes = line.getElements(begin, end).stream()
+            var selectedTypes = line.getElements(selected).stream()
                 .map(StaffElement::getType)
                 .toList();
             var deleteLabel = OpNames.deleteLabel(selectedTypes);
@@ -992,10 +986,10 @@ public final class ScoreViewController {
             // longer exist on the shrunk line.
             selectionCoordinator.clearSelection();
 
-            // deleteElementRange's own bracket nests inside the one opened here and passes a
-            // null label, since the op name is captured only at the outermost bracket.
+            // deleteElementRange's own bracket nests inside the one opened here, which names
+            // the step: the op name is captured only at the outermost bracket.
             song.withModification(deleteLabel,
-                () -> deleteElementRange(line, bounds, null, stranding));
+                () -> deleteElementRange(line, bounds, stranding));
         } else if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
@@ -1044,7 +1038,7 @@ public final class ScoreViewController {
                     // note, so by the time the sync runs there is no pairing left to read.
                     var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
 
-                    line.withModification(OpNames.deleteSlideLabel(slide), () -> {
+                    line.getSong().withModification(OpNames.deleteSlideLabel(slide), () -> {
                         line.modifyElement(elementIndex, ElementField.SLIDE, slideElement::removeSlide);
 
                         // Un-pairing dissolves the automatic melisma. Both elements survive, so
@@ -1057,39 +1051,34 @@ public final class ScoreViewController {
             }
 
             case HitTarget.Ending(var ending) ->
-                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeSpan(ending));
+                line.getSong().withModification(OpNames.deleteEndingLabel(), () -> ending.removeFrom(line));
 
             case HitTarget.Hairpin(var hairpin) ->
-                line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
-                    switch (hairpin) {
-                        case Crescendo crescendo -> line.removeCrescendo(crescendo);
-                        case Diminuendo diminuendo -> line.removeDiminuendo(diminuendo);
-                    }
-                });
+                line.getSong().withModification(OpNames.deleteHairpinLabel(hairpin), () -> hairpin.removeFrom(line));
 
-            // Line.removeChild also removes the tie from the other line of a cross-line tie,
-            // so both halves vanish under a single TieRemoval and one undo restores both.
+            // LineSpans.removeChild also removes the tie from the other line of a cross-line
+            // tie, so both halves vanish under a single TieRemoval and one undo restores both.
             case HitTarget.Tie(var tie) ->
-                line.withModification(OpNames.removeTieLabel(), () -> line.removeTie(tie));
+                line.getSong().withModification(OpNames.removeTieLabel(), () -> tie.removeFrom(line));
 
             case HitTarget.Beam(var beam) ->
-                line.withModification(OpNames.removeBeamLabel(), () -> line.removeBeaming(beam));
+                line.getSong().withModification(OpNames.removeBeamLabel(), () -> beam.removeFrom(line));
 
             case HitTarget.Tuplet(var tuplet) ->
-                line.withModification(OpNames.removeTupletLabel(), () -> line.removeTuplet(tuplet));
+                line.getSong().withModification(OpNames.removeTupletLabel(), () -> tuplet.removeFrom(line));
 
             // The explicit label is not optional: the generic SpanRemoval's unlabeled fallback
             // op-name is the literal text "Ending", so an unlabeled trill removal would make
             // the undo menu read "Undo Ending".
             case HitTarget.Trill(var trill) ->
-                line.withModification(OpNames.removeTrillLabel(), () -> line.removeSpan(trill));
+                line.getSong().withModification(OpNames.removeTrillLabel(), () -> trill.removeFrom(line));
 
             case HitTarget.Articulation(var articulation) -> {
                 var owner = articulation.owner();
                 var elementIndex = resolveOwnerIndex(line, owner);
 
                 if (owner != null && elementIndex != null) {
-                    line.withModification(OpNames.removeArticulationLabel(articulation.getType()), () ->
+                    line.getSong().withModification(OpNames.removeArticulationLabel(articulation.getType()), () ->
                         line.modifyElement(elementIndex, ElementField.ARTICULATION,
                             () -> owner.removeArticulation(articulation)));
                 }
@@ -1171,17 +1160,17 @@ public final class ScoreViewController {
                 new AttachmentRemovalPlan(ElementField.TEMPO_CHANGE, () -> AttachmentRemoval.removeTempoChange(element));
         };
 
-        line.withModification(OpNames.removeAttachmentLabel(attachment), () ->
+        line.getSong().withModification(OpNames.removeAttachmentLabel(attachment), () ->
             line.modifyElement(elementIndex, plan.field(), plan.mutator()));
     }
 
     /**
-     * Returns true when the caller may proceed with a deletion of {@code [begin, end]}:
+     * Returns true when the caller may proceed with a deletion of {@code range}:
      * either it discards no ending, or the user confirmed discarding one. Callers
      * must run this before mutating anything — declining leaves the score untouched.
      */
-    private boolean confirmEndingInvalidatedByDeletion(Line line, int begin, int end) {
-        return !line.hasEndingInvalidatedByDeletion(begin, end)
+    private boolean confirmEndingInvalidatedByDeletion(Line line, StaffElementRun.ElementRange range) {
+        return !ElementChange.forDeletion(line, range).removesConfirmableSpan()
             || EndingConfirms.confirmInvalidation(score);
     }
 
@@ -1206,7 +1195,7 @@ public final class ScoreViewController {
      * @param bounds the range that really goes, already widened by {@link Line#effectiveRange}
      * @return the stranding the deletion owes; empty on every line when it moves no key
      */
-    private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.EffectiveRange bounds) {
+    private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.ElementRange bounds) {
         // A deletion that takes a key change with it leaves the key that was running before the
         // range running past it, which can leave a later key change on this same line restating
         // it. keyAt's bound is inclusive, so it is asked one index below the range; index 0 can
@@ -1215,19 +1204,17 @@ public final class ScoreViewController {
         var strandedAfter = line.redundantKeyChangeRanges(bounds.end() + 1, keyAfterRemoval);
 
         return KeyChangeStranding.ofMidLineEdit(
-            line, strandedAfter, line.keyAtEndOfLineAfterRemoving(bounds.begin(), bounds.end()));
+            line, strandedAfter, line.keyAtEndOfLineAfterRemoving(bounds));
     }
 
     /**
      * Sweeps the key changes a deletion of {@code range} on {@code line} strands, then deletes
-     * that range through {@link Line#deleteRange}, naming the resulting undo step {@code label}.
-     * Confirmation-free: callers are responsible for any ending-invalidation confirm and for
-     * clearing the selection before calling this.
+     * that range through {@link Line#deleteRange}. Confirmation-free: callers are responsible
+     * for any ending-invalidation confirm and for clearing the selection before calling this.
      * <p>
-     * When invoked as the outermost modification (delete), {@code label} names the
-     * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
-     * the op-name is captured only at the outermost bracket — so callers that already
-     * name their step pass {@code null}.
+     * Names no undo step of its own: every caller opens the outermost bracket and names the
+     * step there, and the op-name is captured only at the outermost bracket, so the bracket
+     * opened here only nests.
      * <p>
      * Deletion is not fit-gated: the song's chain walk after the bracket closes may write an
      * accidental on the first note after the range at a position the range held one at, but the
@@ -1241,11 +1228,10 @@ public final class ScoreViewController {
      */
     private void deleteElementRange(
         Line line,
-        StaffElementRun.EffectiveRange range,
-        @Nullable String label,
+        StaffElementRun.ElementRange range,
         KeyChangeStranding stranding) {
 
-        line.withOptionallyNamedModification(label, () -> {
+        line.getSong().withModification(() -> {
             stranding.sweep();
             line.deleteRange(range);
         });
@@ -1257,7 +1243,7 @@ public final class ScoreViewController {
      * {@link Line#deleteRange} takes a paired grace note before its range with it.
      */
     private static int pasteDisplacementIndex(
-        Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
+        Line line, int insertIndex, StaffElementRun.@Nullable ElementRange deleteRange) {
 
         return deleteRange == null ? insertIndex : line.effectiveBegin(deleteRange.begin());
     }
@@ -1307,7 +1293,7 @@ public final class ScoreViewController {
      *     though no element was placed. Only {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(
-        Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
+        Line line, int insertIndex, StaffElementRun.@Nullable ElementRange deleteRange) {
 
         var fragment = clipboardManager.getFragment();
 
@@ -1320,11 +1306,10 @@ public final class ScoreViewController {
         // that element as deleted too. Otherwise the clones are positioned against a
         // predecessor that does not survive, leaving a gap where the grace note was.
         var displacementIndex = pasteDisplacementIndex(line, insertIndex, deleteRange);
-        InsertionSpacingCalculator.@Nullable DeletedRange widenedDeleteRange = null;
+        StaffElementRun.@Nullable ElementRange widenedDeleteRange = null;
 
         if (deleteRange != null && displacementIndex != deleteRange.begin()) {
-            widenedDeleteRange =
-                new InsertionSpacingCalculator.DeletedRange(displacementIndex, deleteRange.end());
+            widenedDeleteRange = new StaffElementRun.ElementRange(displacementIndex, deleteRange.end());
         }
 
         var spacingDeleteRange = (widenedDeleteRange != null) ? widenedDeleteRange : deleteRange;
@@ -1369,11 +1354,7 @@ public final class ScoreViewController {
         // to do at all. Either way the gesture is spent, not declined.
         if (clones.isEmpty()) {
             if (spacingDeleteRange != null) {
-                deleteElementRange(
-                    line,
-                    line.effectiveRange(spacingDeleteRange.begin(), spacingDeleteRange.end()),
-                    null,
-                    stranding);
+                deleteElementRange(line, line.effectiveRange(spacingDeleteRange), stranding);
             }
 
             return FragmentInsertOutcome.INSERTED;
@@ -1386,10 +1367,7 @@ public final class ScoreViewController {
         // changes what the clones and the notes after them are decided against.
         var restamps = (spacingDeleteRange == null)
             ? ProjectedEdit.inserting(line, spacingInsertIndex, clones).walk()
-            : ProjectedEdit.replacing(
-                line,
-                new StaffElementRun.EffectiveRange(spacingDeleteRange.begin(), spacingDeleteRange.end()),
-                clones).walk();
+            : ProjectedEdit.replacing(line, spacingDeleteRange, clones).walk();
 
         // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
         // both live inside the fit gate: it stamps the walk's accidentals, runs this check with
@@ -1426,13 +1404,21 @@ public final class ScoreViewController {
                 // mutated. Skipped when the paste-replace's own deletion already invalidates an
                 // ending: handlePaste has confirmed that, and the ending is going either way.
                 var deletionAlreadyConfirmed = deleteRange != null
-                    && line.hasEndingInvalidatedByDeletion(deleteRange.begin(), deleteRange.end());
+                    && ElementChange.forDeletion(line, deleteRange).removesConfirmableSpan();
 
                 if (!deletionAlreadyConfirmed) {
                     var insertedTypes = clones.stream().map(StaffElement::getType).toList();
 
-                    if (line.hasEndingInvalidatedByInsertion(insertIndex, insertedTypes)
-                            && !EndingConfirms.confirmInvalidation(score)) {
+                    // Every type is tested at insertIndex rather than at its own eventual
+                    // position: the run lands contiguously, so each element sits inside the
+                    // ending (or at its split boundary) exactly when the first one does, and
+                    // only the pre-insertion index resolves correctly against the
+                    // pre-insertion line.
+                    var insertionInvalidatesEnding = insertedTypes.stream()
+                        .anyMatch(type -> ElementChange.forInsertion(line, insertIndex, type)
+                            .removesConfirmableSpan());
+
+                    if (insertionInvalidatesEnding && !EndingConfirms.confirmInvalidation(score)) {
                         refusal[0] = FragmentInsertOutcome.CANCELLED;
                         return false;
                     }
@@ -1458,7 +1444,7 @@ public final class ScoreViewController {
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
         for (var span : reconciliation.targetSpansToRemove()) {
-            line.removeInvalidatedSpan(span);
+            span.removeFrom(line);
         }
 
         // Capture the successor before any mutation: deleteElementRange can remove elements
@@ -1473,8 +1459,7 @@ public final class ScoreViewController {
             // The stranding this paste owes is swept around the paste as a whole — the deletion
             // and the insertion are one mutation — so the range delete sweeps nothing of its own.
             deleteElementRange(
-                line, line.effectiveRange(deleteRange.begin(), deleteRange.end()), null,
-                new KeyChangeStranding(List.of()));
+                line, line.effectiveRange(deleteRange), new KeyChangeStranding(List.of()));
 
             // The deletion may have removed elements before the range too (a paired
             // grace note cascade), so re-derive the insertion index from what survived.
@@ -1482,24 +1467,23 @@ public final class ScoreViewController {
         }
 
         // Hard ordering constraint: every clone must be inserted before the first
-        // addPastedSpan. Adding a span re-parents only the span, not its
+        // span is added. Adding a span re-parents only the span, not its
         // anchor/end, and getAnchorElementIndex() resolves through the anchor's
         // own getLine() — a span added while its anchors still carry the source
-        // line's back-reference makes addElement's isInvalidatedByInsertion sweep
-        // evaluate it against the wrong line, yielding a wrong index or -1. The
-        // hairpin merge in addPastedSpan reads those same indices, so it
-        // would mis-measure what to absorb for exactly the same reason.
+        // line's back-reference makes the insertion sweep evaluate it against the
+        // wrong line, yielding a wrong index or -1. The hairpin merge a span's addTo
+        // runs reads those same indices, so it would mis-measure what to absorb for
+        // exactly the same reason.
         //
         // The addElement inside insertRun additionally drops the spans the inserted
         // element types invalidate, each by its own rule: the ending's
         // barline/repeat-aware one, which is more precise than the straddle test
         // PasteSpanReconciliation applies to the other span kinds, so endings are left
-        // to it; and the tie's separator rule. Its tuplet removal is now redundant but
-        // harmless — the reconciliation above already removed a straddled tuplet, so
-        // findTupletAt finds nothing. Its tie removal is not redundant: the
-        // reconciliation judges only ties with both endpoints in this line, leaving a
-        // tie that straddles a line boundary to this sweep, which resolves it against
-        // the receiving line.
+        // to it; the tie's separator rule; and the tuplet's interior rule, which finds
+        // nothing here because the reconciliation above already removed a straddled
+        // tuplet. The tie's rule is not redundant: the reconciliation judges only ties
+        // with both endpoints in this line, leaving a tie that straddles a line
+        // boundary to this sweep, which resolves it against the receiving line.
         line.insertRun(insertAt, clones);
 
         // A pasted tuplet the destination's beat context rejects is dropped here
@@ -1516,10 +1500,10 @@ public final class ScoreViewController {
         }
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
-        // merged into it by addPastedSpan, the same rule that applies when
-        // the user draws one there; every other kind is added verbatim.
+        // merged into it by addTo's own displacement policy, the same rule that applies
+        // when the user draws one there; every other kind is added verbatim.
         for (var span : reconciliation.fragmentSpans()) {
-            line.addPastedSpan(span);
+            span.addTo(line);
         }
 
         // The key changes the fragment's key strands on the rest of this line go last, so
@@ -1558,14 +1542,12 @@ public final class ScoreViewController {
         // deletion is. Using the raw begin here understated it: the deletion this authorizes also
         // takes the barline in front of a key change at begin, so the spacing was measured for
         // a smaller range than the one that goes.
-        var effective = line.effectiveRange(range.begin(), range.end());
-        var begin = effective.begin();
-        var deleteRange = new InsertionSpacingCalculator.DeletedRange(begin, effective.end());
+        var effective = line.effectiveRange(range.range());
 
         // A paste-replace deletes before it inserts, so it can discard an ending the
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
         // the score, the selection, and the clipboard untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, deleteRange.begin(), deleteRange.end())) {
+        if (!confirmEndingInvalidatedByDeletion(line, effective)) {
             return;
         }
 
@@ -1573,7 +1555,7 @@ public final class ScoreViewController {
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
         // closes empty, posts no notification, and the selection stays intact.
         var outcome = score.getSong().withModificationResult(() -> {
-            var result = tryInsertFragment(line, begin, deleteRange);
+            var result = tryInsertFragment(line, effective.begin(), effective);
 
             if (result == FragmentInsertOutcome.INSERTED) {
                 // Clear the selection before the bracket closes so action handlers

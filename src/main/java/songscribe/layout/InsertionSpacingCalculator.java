@@ -33,6 +33,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Spacing calculations for element insertion operations.
@@ -123,18 +124,6 @@ public final class InsertionSpacingCalculator {
      * @param insertIndex Index of the inserted column within {@code columns}
      */
     private record ProjectedLine(List<ElementColumn> columns, List<Spring> springs, int insertIndex) {}
-
-    /**
-     * An element range {@code begin} through {@code end} (both inclusive) that a
-     * paste-replace will delete before inserting a fragment at {@code begin}.
-     * Callers pass the <em>effective</em> range (already extended past a trailing
-     * breath mark) so the fit check sees exactly what the deletion will remove.
-     *
-     * @param begin The index of the first element to be deleted
-     * @param end   The index of the last element to be deleted
-     */
-    public record DeletedRange(int begin, int end) {
-    }
 
     /**
      * Result of a fragment insertion spacing calculation: the projected spring chain its fit gate
@@ -380,7 +369,9 @@ public final class InsertionSpacingCalculator {
      * @param fragment           The elements to be inserted, in order (must be non-empty)
      * @param insertIndex        The index where the fragment's first element will land
      *                           (must equal {@code deleteRange.begin()} when a range is given)
-     * @param deleteRange        The effective range a paste-replace deletes first, or null for pure insertion
+     * @param deleteRange        The range a paste-replace deletes first, or null for pure insertion.
+     *                           It must be the effective range — widened exactly as the deletion
+     *                           will widen it — so the fit check sees what the deletion removes
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate solves
@@ -389,7 +380,7 @@ public final class InsertionSpacingCalculator {
         Line line,
         List<? extends StaffElement> fragment,
         int insertIndex,
-        @Nullable DeletedRange deleteRange,
+        @Nullable ElementRange deleteRange,
         @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (fragment.isEmpty()) {
@@ -404,9 +395,7 @@ public final class InsertionSpacingCalculator {
         }
 
         if (deleteRange != null) {
-            if (deleteRange.begin() < 0
-                    || deleteRange.begin() > deleteRange.end()
-                    || deleteRange.end() >= effectiveCount) {
+            if (deleteRange.begin() < 0 || deleteRange.end() >= effectiveCount) {
                 throw new IllegalArgumentException("invalid deleteRange " + deleteRange);
             }
 

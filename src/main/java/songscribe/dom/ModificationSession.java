@@ -45,8 +45,8 @@ import songscribe.undo.UndoController;
  *   <li><b>Suspension</b> ({@link #withoutMutationTracking}) — records nothing at all.</li>
  *   <li><b>Replay</b> ({@link #withReplay}) — mutations are still recorded, but companion
  *       side-work is suppressed because the batch already carries it.</li>
- *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the {@link Line} guards
- *       are bypassed for internally-driven mutations.</li>
+ *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
+ *       bypassed for internally-driven mutations.</li>
  *   <li><b>Beat-defining edit</b> ({@link #withBeatDefiningEdit}) — the chokepoint that
  *       drops tuplets a new beat context invalidates, and reports the loss once.</li>
  * </ul>
@@ -374,10 +374,9 @@ public final class ModificationSession {
      * @throws IllegalStateException if called outside a modification bracket
      */
     public void applyChange(Mutation mutation, Runnable mutator) {
-        // Suspended tracking (e.g. SAX file load): apply the state change but
-        // record nothing, so no SongDidChangeNotification fires mid-load. Mirrors
-        // the guard in Line.applyChange for song-scoped setters that call here
-        // directly (e.g. setMetadata).
+        // Suspended tracking (e.g. a file load): the state change applies but nothing is
+        // recorded, so no SongDidChangeNotification fires mid-load. Suspension also lifts the
+        // bracket requirement below — a load runs no bracket at all.
         if (isMutationTrackingSuspended()) {
             mutator.run();
             return;
@@ -543,7 +542,7 @@ public final class ModificationSession {
         }
 
         var startIndex = elementIndex;
-        var enclosingTuplet = editLine.findTupletAt(elementIndex);
+        var enclosingTuplet = editLine.spanRegistry().findTupletAt(elementIndex);
 
         // A tuplet the edit landed inside is anchored before the edit, and the forward walk
         // only opens a span at its anchor — so back the start up to the anchor, or the one
@@ -557,8 +556,8 @@ public final class ModificationSession {
         for (var verdict : TupletValidator.validateFrom(
             song, lineIndex, startIndex, TupletValidator.Strictness.STRICT)
         ) {
-            if (!verdict.result().valid()) {
-                song.getLine(verdict.lineIndex()).removeTuplet(verdict.tuplet());
+            if (verdict.result() instanceof TupletValidator.Result.Invalid) {
+                verdict.tuplet().removeFrom(song.getLine(verdict.lineIndex()));
                 removedAny = true;
             }
         }

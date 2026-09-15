@@ -626,7 +626,7 @@ final class MeasureBuilder {
      * to precompute.
      */
     private static void attachEndings(BuildContext context, Line line, List<ElementOutput> outputs) {
-        for (var ending : line.findEndings()) {
+        for (var ending : line.spanRegistry().findEndings()) {
             var anchorIndex = ending.getAnchorElementIndex();
             var endIndex = ending.getEndElementIndex();
 

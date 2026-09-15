@@ -35,7 +35,6 @@ import songscribe.dom.Span;
 import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
-import songscribe.engraving.StaffPosition;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -740,13 +739,13 @@ public final class ElementColumn {
 
         var anchorColumn = columnsByElement.get(anchor);
 
-        if (anchorColumn != null && line.endIndexOf(tie) == SpanBound.AFTER_LINE) {
+        if (anchorColumn != null && line.spanRegistry().endIndexOf(tie) == SpanBound.AFTER_LINE) {
             return new TieColumns.Half(anchor, anchorColumn, OpenSide.END);
         }
 
         var endColumn = columnsByElement.get(end);
 
-        if (endColumn != null && line.anchorIndexOf(tie) == SpanBound.BEFORE_LINE) {
+        if (endColumn != null && line.spanRegistry().anchorIndexOf(tie) == SpanBound.BEFORE_LINE) {
             return new TieColumns.Half(end, endColumn, OpenSide.START);
         }
 

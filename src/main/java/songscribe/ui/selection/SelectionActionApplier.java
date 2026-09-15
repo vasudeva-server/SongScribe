@@ -26,10 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.AccidentalChain;
-import songscribe.dom.AccidentalScanView;
-import songscribe.dom.Beam;
-import songscribe.dom.ChainEdit;
+import songscribe.dom.ElementChange;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.ProjectedEdit;
@@ -75,10 +72,10 @@ public final class SelectionActionApplier {
     private record PendingChange(int index, StaffElement standIn, Ending.EndingEffect compensation) {}
 
     /**
-     * Applies the given action to the coordinator's current selection, leaving the undo step's
-     * op-name to the generic fallback. A no-op when nothing is selected. See
+     * Applies the given action to the coordinator's current selection. A no-op when nothing is
+     * selected. See
      * {@link #apply(SelectionCoordinator, ElementSelection, UIAction.Reflectable, boolean,
-     * ScoreView, String)}, which does the work and explains how.
+     * ScoreView)}, which does the work and explains how.
      *
      * @param coordinator the coordinator holding the selection to apply to
      * @param action      the reflectable action to apply
@@ -99,13 +96,14 @@ public final class SelectionActionApplier {
             return;
         }
 
-        apply(coordinator, selection, action, selected, score, null);
+        apply(coordinator, selection, action, selected, score);
     }
 
     /**
      * Applies the given action to all applicable elements of a caller-supplied selection. Wraps
      * the entire apply pass in a single modification bracket so all emitted mutations coalesce
-     * into one {@code SongDidChangeNotification}.
+     * into one {@code SongDidChangeNotification}, leaving the undo step's op-name to the
+     * pending one the action set.
      * <p>
      * Runs in three passes, because the ending confirms decide which elements actually change and
      * the fit gate cannot be built until that is known — gating the loop as it runs would
@@ -129,15 +127,13 @@ public final class SelectionActionApplier {
      * @param score       the view to parent any ending-confirm dialogs on, and the source of the
      *                    song-wide lyric metrics the fit gate measures syllable widths with; null in
      *                    tests, which space the projection as if the line had no lyrics
-     * @param opLabel     the undo step's op-name, or null to fall back to the generic op-name
      */
     public static <E extends StaffElement> void apply(
         SelectionCoordinator coordinator,
         ElementSelection selection,
         UIAction.Reflectable<E> action,
         boolean selected,
-        @Nullable ScoreView score,
-        @Nullable String opLabel) {
+        @Nullable ScoreView score) {
 
         var line = selection.line();
         var changes = decideChanges(action, selected, score, selection);
@@ -168,11 +164,7 @@ public final class SelectionActionApplier {
             return;
         }
 
-        // Only a replacement can invalidate a beam or a tuplet; an in-place modification leaves
-        // element types alone.
-        var needsSpanCleanup = action instanceof UIAction.ElementReplaceable<?>;
-
-        line.withOptionallyNamedModification(opLabel, () -> {
+        line.getSong().withModification(() -> {
             for (var change : changes) {
                 var index = change.index();
                 var compensation = change.compensation();
@@ -209,10 +201,6 @@ public final class SelectionActionApplier {
                 }
             }
 
-            if (needsSpanCleanup) {
-                validateSpans(line, selection.begin(), selection.end());
-            }
-
             coordinator.invalidateSelectionCaches();
         });
     }
@@ -226,9 +214,10 @@ public final class SelectionActionApplier {
         UIAction.Reflectable<E> action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
 
         var line = selection.line();
+        var bounds = selection.range();
         var changes = new ArrayList<PendingChange>();
 
-        for (var i = selection.begin(); i <= selection.end(); i++) {
+        for (var i = bounds.begin(); i <= bounds.end(); i++) {
             var admitted = action.admit(line.getElement(i));
 
             if (admitted == null) {
@@ -246,7 +235,7 @@ public final class SelectionActionApplier {
                 var replaceable = (UIAction.ElementReplaceable<E>) action;
 
                 var replacement = replaceable.createReplacement(admitted, true);
-                var effect = line.findEndingReplacementEffect(i, replacement);
+                var effect = ElementChange.forReplacement(line, i, replacement).endingEffect();
                 Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
 
                 switch (effect) {
@@ -307,15 +296,15 @@ public final class SelectionActionApplier {
         ElementSelection selection, List<PendingChange> changes, @Nullable ScoreView score) {
 
         var line = selection.line();
-        var begin = selection.begin();
-        var end = selection.end();
-        var inserted = new ArrayList<StaffElement>(line.getElements(begin, end));
+        var selected = selection.range();
+        var begin = selected.begin();
+        var inserted = new ArrayList<StaffElement>(line.getElements(selected));
 
         for (var change : changes) {
             inserted.set(change.index() - begin, change.standIn());
         }
 
-        var restamps = ProjectedEdit.replacing(line, new StaffElementRun.EffectiveRange(begin, end), inserted).walk();
+        var restamps = ProjectedEdit.replacing(line, selected, inserted).walk();
 
         var standIns = changes.stream().map(PendingChange::standIn).toList();
         var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
@@ -356,17 +345,6 @@ public final class SelectionActionApplier {
         }
 
         return InsertionSpacingCalculator.fitsInPlace(line, projected, lyricRenderMetrics);
-    }
-
-    // Removes the tuplets a batch element replacement leaves illegal.
-    //
-    // Beams and ties need nothing here: Line.setElement already asks each span
-    // whether the replacement breaks it, on every path, and both
-    // Beam.isInvalidatedByReplacement and Tie.isInvalidatedByReplacement remove
-    // exactly the ones it does. A tuplet is the one span whose legality depends on
-    // the whole replaced range rather than on any single replacement in it.
-    private static void validateSpans(Line line, int begin, int end) {
-        line.removeOverlappingTuplets(begin, end);
     }
 
 }

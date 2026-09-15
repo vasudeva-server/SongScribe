@@ -144,13 +144,14 @@ public final class TieRenderer {
         // highlight or selection would bleed onto the tie. Asking the painted line yields an
         // At bound only for the endpoint it actually owns.
         var line = invariants.requireCurrentLine();
-        var anchorColor = endpointColor(line.anchorIndexOf(tie), invariants);
+        var spans = line.spanRegistry();
+        var anchorColor = endpointColor(spans.anchorIndexOf(tie), invariants);
 
         if (anchorColor != null) {
             return anchorColor;
         }
 
-        var endColor = endpointColor(line.endIndexOf(tie), invariants);
+        var endColor = endpointColor(spans.endIndexOf(tie), invariants);
 
         if (endColor != null) {
             return endColor;

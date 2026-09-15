@@ -391,7 +391,7 @@ public final class HitRegionBuilder {
      * never widen the box.
      */
     private static void addTies(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var tie : line.findTies()) {
+        for (var tie : line.spanRegistry().findTies()) {
             var tieLayout = layoutResult.getTieLayout(tie);
 
             if (tieLayout == null) {
@@ -407,7 +407,7 @@ public final class HitRegionBuilder {
      * a separate shape per beam.
      */
     private static void addBeams(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var beam : line.findSpans(Beam.class)) {
+        for (var beam : line.spanRegistry().findSpans(Beam.class)) {
             var beamLayout = layoutResult.getBeamLayout(beam);
 
             if (beamLayout == null) {

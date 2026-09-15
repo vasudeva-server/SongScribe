@@ -140,15 +140,15 @@ public final class LineInvariants {
         playingGraceNoteIndex = b.playingGraceNoteIndex;
         viewScale = b.viewScale;
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
-            ? b.currentLine.findTieAt(b.playingNoteIndex)
+            ? b.currentLine.spanRegistry().findTieAt(b.playingNoteIndex)
             : null;
 
         if (playingTieSpan == null || b.currentLine == null) {
             playingTieAnchorBound = null;
             playingTieEndBound = null;
         } else {
-            playingTieAnchorBound = b.currentLine.anchorIndexOf(playingTieSpan);
-            playingTieEndBound = b.currentLine.endIndexOf(playingTieSpan);
+            playingTieAnchorBound = b.currentLine.spanRegistry().anchorIndexOf(playingTieSpan);
+            playingTieEndBound = b.currentLine.spanRegistry().endIndexOf(playingTieSpan);
         }
     }
 

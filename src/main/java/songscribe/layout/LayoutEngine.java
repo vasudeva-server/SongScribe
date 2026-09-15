@@ -30,7 +30,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Beam;
-import songscribe.dom.Direction;
 import songscribe.dom.Dots;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -462,7 +461,7 @@ public class LayoutEngine {
         Line line,
         List<ElementColumn> columns,
         LayoutResultBuilder builder) {
-        var beams = line.findSpans(Beam.class);
+        var beams = line.spanRegistry().findSpans(Beam.class);
         var elementToColumn = elementToColumnMap(columns);
 
         for (var beam : beams) {
@@ -720,7 +719,7 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResultBuilder builder) {
 
-        var ties = line.findTies();
+        var ties = line.spanRegistry().findTies();
 
         if (ties.isEmpty()) {
             return;
@@ -1059,7 +1058,7 @@ public class LayoutEngine {
         var elementXSs = column != null ? column.getXSs() : 0;
 
         return SlideGeometry.noteContextAt(
-            note, elementXSs, line.findBeamAt(noteIndex) != null, 0);
+            note, elementXSs, line.spanRegistry().findBeamAt(noteIndex) != null, 0);
     }
 
     /**

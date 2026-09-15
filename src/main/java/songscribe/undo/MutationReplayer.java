@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Ss;
 import songscribe.dom.Tempo;
 import songscribe.message.mutation.BeamingAddition;
@@ -143,18 +144,18 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var oldKey, var _) -> line.setKey(oldKey);
             case LineLayoutChange(var line, var field, var oldValue, var _) ->
                 applyLineLayoutField(line, field, oldValue);
-            case SpanAddition(var line, var element) -> line.removeSpan(element);
-            case SpanRemoval(var line, var element) -> line.addSpan(element);
-            case BeamingAddition(var line, var beam) -> line.removeBeaming(beam);
-            case BeamingRemoval(var line, var beam) -> line.addBeaming(beam);
-            case TieAddition(var line, var tie) -> line.removeTie(tie);
-            case TieRemoval(var line, var tie) -> line.addTie(tie);
-            case TupletAddition(var line, var tuplet) -> line.removeTuplet(tuplet);
-            case TupletRemoval(var line, var tuplet) -> line.addTuplet(tuplet);
-            case CrescendoAddition(var line, var crescendo) -> line.removeCrescendo(crescendo);
-            case CrescendoRemoval(var line, var crescendo) -> line.addCrescendo(crescendo);
-            case DiminuendoAddition(var line, var diminuendo) -> line.removeDiminuendo(diminuendo);
-            case DiminuendoRemoval(var line, var diminuendo) -> line.addDiminuendo(diminuendo);
+            case SpanAddition(var line, var element) -> element.removeFrom(line);
+            case SpanRemoval(var line, var element) -> element.addTo(line);
+            case BeamingAddition(var line, var beam) -> beam.removeFrom(line);
+            case BeamingRemoval(var line, var beam) -> beam.addTo(line);
+            case TieAddition(var line, var tie) -> tie.removeFrom(line);
+            case TieRemoval(var line, var tie) -> tie.addTo(line);
+            case TupletAddition(var line, var tuplet) -> tuplet.removeFrom(line);
+            case TupletRemoval(var line, var tuplet) -> tuplet.addTo(line);
+            case CrescendoAddition(var line, var crescendo) -> crescendo.removeFrom(line);
+            case CrescendoRemoval(var line, var crescendo) -> crescendo.addTo(line);
+            case DiminuendoAddition(var line, var diminuendo) -> diminuendo.removeFrom(line);
+            case DiminuendoRemoval(var line, var diminuendo) -> diminuendo.addTo(line);
             case MetadataChange(var field, var oldValue, var _) -> applyMetadataField(song, field, oldValue);
             case LayoutChange(var field, var oldValue, var _) -> applyLayoutField(song, field, oldValue);
             case LyricsChange(var field, var oldText, var _) -> applyLyricsField(song, field, oldText);
@@ -182,7 +183,8 @@ public final class MutationReplayer {
         switch (mutation) {
             case ElementInsertion(var line, var index, var element) -> line.addElement(index, element);
             case ElementDeletion(var line, var index, var _) -> line.removeElement(index);
-            case ElementRangeDeletion(var line, var from, var to, var _) -> line.removeRange(from, to);
+            case ElementRangeDeletion(var line, var from, var to, var _) ->
+                line.removeRange(new ElementRange(from, to));
             case ElementReplacement(var line, var index, var _, var newElement) -> line.setElement(index, newElement);
             case ElementModification modification -> {
                 var line = modification.line();
@@ -195,18 +197,18 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var _, var newKey) -> line.setKey(newKey);
             case LineLayoutChange(var line, var field, var _, var newValue) ->
                 applyLineLayoutField(line, field, newValue);
-            case SpanAddition(var line, var element) -> line.addSpan(element);
-            case SpanRemoval(var line, var element) -> line.removeSpan(element);
-            case BeamingAddition(var line, var beam) -> line.addBeaming(beam);
-            case BeamingRemoval(var line, var beam) -> line.removeBeaming(beam);
-            case TieAddition(var line, var tie) -> line.addTie(tie);
-            case TieRemoval(var line, var tie) -> line.removeTie(tie);
-            case TupletAddition(var line, var tuplet) -> line.addTuplet(tuplet);
-            case TupletRemoval(var line, var tuplet) -> line.removeTuplet(tuplet);
-            case CrescendoAddition(var line, var crescendo) -> line.addCrescendo(crescendo);
-            case CrescendoRemoval(var line, var crescendo) -> line.removeCrescendo(crescendo);
-            case DiminuendoAddition(var line, var diminuendo) -> line.addDiminuendo(diminuendo);
-            case DiminuendoRemoval(var line, var diminuendo) -> line.removeDiminuendo(diminuendo);
+            case SpanAddition(var line, var element) -> element.addTo(line);
+            case SpanRemoval(var line, var element) -> element.removeFrom(line);
+            case BeamingAddition(var line, var beam) -> beam.addTo(line);
+            case BeamingRemoval(var line, var beam) -> beam.removeFrom(line);
+            case TieAddition(var line, var tie) -> tie.addTo(line);
+            case TieRemoval(var line, var tie) -> tie.removeFrom(line);
+            case TupletAddition(var line, var tuplet) -> tuplet.addTo(line);
+            case TupletRemoval(var line, var tuplet) -> tuplet.removeFrom(line);
+            case CrescendoAddition(var line, var crescendo) -> crescendo.addTo(line);
+            case CrescendoRemoval(var line, var crescendo) -> crescendo.removeFrom(line);
+            case DiminuendoAddition(var line, var diminuendo) -> diminuendo.addTo(line);
+            case DiminuendoRemoval(var line, var diminuendo) -> diminuendo.removeFrom(line);
             case MetadataChange(var field, var _, var newValue) -> applyMetadataField(song, field, newValue);
             case LayoutChange(var field, var _, var newValue) -> applyLayoutField(song, field, newValue);
             case LyricsChange(var field, var _, var newText) -> applyLyricsField(song, field, newText);

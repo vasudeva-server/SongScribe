@@ -419,13 +419,14 @@ public final class ActionReflector implements Disposable {
 
         // Reflect selection attributes onto toolbar actions
         var line = selection.line();
+        var bounds = selection.range();
         var hasGraceNote = false;
 
         for (var reflectable : actions) {
             var applicable = false;
             var matched = true;
 
-            for (var i = selection.begin(); i <= selection.end(); i++) {
+            for (var i = bounds.begin(); i <= bounds.end(); i++) {
                 var element = line.getElement(i);
 
                 if (element.getType().isGraceNote()) {

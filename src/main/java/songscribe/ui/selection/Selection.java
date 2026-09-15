@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.hit.HitTarget;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
@@ -33,7 +34,7 @@ import songscribe.message.mutation.Mutation;
 /**
  * The one thing selected in the score, in whichever of its two shapes.
  *
- * <p>A {@code Selection.Range(line, begin, end, …)} is a contiguous run of elements: it spans many
+ * <p>A {@code Selection.Range(line, range, anchor)} is a contiguous run of elements: it spans many
  * of them and names none individually, and it is what the tie, beam and tuplet toggles are built
  * from. A {@code Selection.Target(HitTarget)} is the opposite — it names exactly one thing and
  * spans nothing, including the staff line itself, as {@code StaffLine}. A target is what a click
@@ -89,13 +90,14 @@ public sealed interface Selection {
      * interior shrink. Any attempt to collapse the two into a single signed-delta helper produces
      * an off-by-one on every insertion at {@code begin}. Keep them as two functions.
      */
-    record Range(Line line, int begin, int end, int anchor) implements Selection {
+    record Range(Line line, ElementRange range, int anchor) implements Selection {
 
         /**
-         * @throws IllegalArgumentException if the range is empty or reversed, or if the anchor
-         *     lies outside it. A range that selects nothing is not stored at all — the
-         *     coordinator holds null for that — so constructing one is a caller bug rather than
-         *     a state to represent. The anchor holds inside the range for two separate
+         * @throws IllegalArgumentException if the range begins before the line's first element,
+         *     or if the anchor lies outside it. {@link ElementRange} already rejects a reversed
+         *     range, and a range that selects nothing is not stored at all — the coordinator
+         *     holds null for that — so constructing one is a caller bug rather than a state to
+         *     represent. The anchor holds inside the range for two separate
          *     reasons, neither of which is this check: an extension derives both ends from the
          *     anchor itself, so it cannot place the anchor outside them; a splice can, every
          *     time a mutation deletes the anchored element, and {@link #spliced} clamps it
@@ -103,25 +105,20 @@ public sealed interface Selection {
          *     an anchor of its own, not that a routine path overshot.
          */
         public Range {
-            if (begin < 0 || end < begin) {
+            if (range.begin() < 0) {
                 throw new IllegalArgumentException(
-                    "Selection.Range must select at least one element, got [" + begin + ", " + end + "]");
+                    "Selection.Range must begin at an element of the line, got " + range);
             }
 
-            if (anchor < begin || anchor > end) {
+            if (!range.contains(anchor)) {
                 throw new IllegalArgumentException(
-                    "Selection.Range anchor " + anchor + " must lie within [" + begin + ", " + end + "]");
+                    "Selection.Range anchor " + anchor + " must lie within " + range);
             }
         }
 
         /** A range over the single element at {@code elementIndex}, anchored on it. */
         public static Range single(Line line, int elementIndex) {
-            return new Range(line, elementIndex, elementIndex, elementIndex);
-        }
-
-        /** The number of elements the range covers, never zero. */
-        public int size() {
-            return toElementSelection().size();
+            return new Range(line, ElementRange.single(elementIndex), elementIndex);
         }
 
         /**
@@ -148,19 +145,17 @@ public sealed interface Selection {
          *     that is
          */
         public boolean contains(int elementIndex) {
-            var effective = line.effectiveRange(begin, end);
-
-            return elementIndex >= effective.begin() && elementIndex <= effective.end();
+            return line.effectiveRange(range).contains(elementIndex);
         }
 
         /** The single selected element, or null if the range covers more than one. */
         public @Nullable StaffElement singleElement() {
-            return (begin == end) ? line.getElement(begin) : null;
+            return (range.size() == 1) ? line.getElement(range.begin()) : null;
         }
 
         /** This range as the immutable snapshot the selection caches are keyed by. */
         public ElementSelection toElementSelection() {
-            return new ElementSelection(line, begin, end);
+            return new ElementSelection(line, range);
         }
 
         /**
@@ -190,8 +185,8 @@ public sealed interface Selection {
             return switch (mutation) {
                 //noinspection ObjectEquality
                 case ElementInsertion insertion when insertion.line() == line -> spliced(
-                    afterInsertion(begin, insertion.index()),
-                    afterInsertion(end, insertion.index()),
+                    afterInsertion(range.begin(), insertion.index()),
+                    afterInsertion(range.end(), insertion.index()),
                     afterInsertion(anchor, insertion.index()));
 
                 //noinspection ObjectEquality
@@ -232,8 +227,8 @@ public sealed interface Selection {
         /** This range spliced for the removal of elements {@code [from..to]} of its own line. */
         private @Nullable Range splicedForDeletion(int from, int to) {
             return spliced(
-                afterDeletion(begin, from, to, true),
-                afterDeletion(end, from, to, false),
+                afterDeletion(range.begin(), from, to, true),
+                afterDeletion(range.end(), from, to, false),
                 afterDeletion(anchor, from, to, true));
         }
 
@@ -246,7 +241,10 @@ public sealed interface Selection {
                 return null;
             }
 
-            return new Range(line, splicedBegin, splicedEnd, Math.clamp(splicedAnchor, splicedBegin, splicedEnd));
+            return new Range(
+                line,
+                new ElementRange(splicedBegin, splicedEnd),
+                Math.clamp(splicedAnchor, splicedBegin, splicedEnd));
         }
     }
 

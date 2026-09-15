@@ -67,7 +67,7 @@ public final class EditLyricAction extends UIAction {
             return false;
         }
 
-        return LyricTargetResolver.resolveLyricTarget(range.line(), range.begin()) >= 0;
+        return LyricTargetResolver.resolveLyricTarget(range.line(), range.range().begin()) >= 0;
     }
 
     @Override

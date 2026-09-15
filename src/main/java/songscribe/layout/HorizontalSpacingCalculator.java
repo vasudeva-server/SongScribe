@@ -37,6 +37,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.engraving.EngravingConstants;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
@@ -1241,7 +1242,10 @@ public final class HorizontalSpacingCalculator {
         var anchorIndex = line.getElementIndex(anchorElement);
         var endIndex = line.getElementIndex(endElement);
 
-        if (!line.hasSpan(Hairpin.class, Span.exactly(anchorIndex, endIndex))) {
+        // A column not on the line reads index -1, so the pair can come out reversed; a reversed
+        // pair is no hairpin's endpoints, and it is not a range to ask about.
+        if (endIndex < anchorIndex
+                || !line.spanRegistry().hasSpan(Hairpin.class, Span.exactly(new ElementRange(anchorIndex, endIndex)))) {
             return 0;
         }
 

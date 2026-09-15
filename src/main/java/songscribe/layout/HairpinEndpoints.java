@@ -106,8 +106,8 @@ public final class HairpinEndpoints {
         // Resolve through the line, never through Hairpin.getAnchorElementIndex(): that answers
         // from whichever line the endpoint belongs to and returns -1 when unpositioned, which
         // would turn into silently wrong arithmetic below rather than a rejection here.
-        if (!(line.anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex))
-            || !(line.endIndexOf(hairpin) instanceof SpanBound.At(var endIndex))) {
+        if (!(line.spanRegistry().anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex))
+            || !(line.spanRegistry().endIndexOf(hairpin) instanceof SpanBound.At(var endIndex))) {
             return null;
         }
 
@@ -301,7 +301,7 @@ public final class HairpinEndpoints {
      */
     private static boolean hasOtherHairpin(
         Hairpin hairpin, Line line, Span.IndexPredicate matches) {
-        var neighbor = line.findFirstSpan(Hairpin.class, matches);
+        var neighbor = line.spanRegistry().findFirstSpan(Hairpin.class, matches);
 
         return neighbor != null && neighbor != hairpin;
     }

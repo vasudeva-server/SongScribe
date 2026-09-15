@@ -165,7 +165,7 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResultBuilder builder) {
 
-        for (var tuplet : line.findSpans(Tuplet.class)) {
+        for (var tuplet : line.spanRegistry().findSpans(Tuplet.class)) {
             var spanColumns = ElementColumn.resolveSpan(tuplet, columnsByElement);
 
             if (spanColumns == null) {
@@ -776,7 +776,7 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResultBuilder builder) {
 
-        for (var ending : line.findSpans(Ending.class)) {
+        for (var ending : line.spanRegistry().findSpans(Ending.class)) {
             var anchor = ending.getAnchorElement();
 
             // Compute bracket ranges (stored on the Ending for renderer use)

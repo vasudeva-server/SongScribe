@@ -399,8 +399,9 @@ final class ScorePartwiseBuilder {
     private static void applyTies(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
             var line = entry.line();
+            var spans = line.spanRegistry();
             var count = line.elementCount();
-            var ties = line.findTies();
+            var ties = spans.findTies();
 
             if (ties.isEmpty()) {
                 continue;
@@ -411,11 +412,11 @@ final class ScorePartwiseBuilder {
 
             for (var tie : ties) {
                 // No range check: an At bound is a position in this line by construction.
-                if (line.anchorIndexOf(tie) instanceof SpanBound.At(var anchorIndex)) {
+                if (spans.anchorIndexOf(tie) instanceof SpanBound.At(var anchorIndex)) {
                     starts[anchorIndex] = tie;
                 }
 
-                if (line.endIndexOf(tie) instanceof SpanBound.At(var endIndex)) {
+                if (spans.endIndexOf(tie) instanceof SpanBound.At(var endIndex)) {
                     stops[endIndex] = tie;
                 }
             }
@@ -765,7 +766,7 @@ final class ScorePartwiseBuilder {
             Line line, Class<T> spanType, SpanAction<T> action) {
         var count = line.elementCount();
 
-        for (var span : line.findSpans(spanType)) {
+        for (var span : line.spanRegistry().findSpans(spanType)) {
             var anchorIndex = span.getAnchorElementIndex();
             var endIndex = span.getEndElementIndex();
 

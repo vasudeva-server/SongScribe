@@ -59,6 +59,7 @@ import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
 import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.message.MessageCenterTestHelper;
+import songscribe.message.mutation.Mutation;
 import songscribe.ui.OptionDialogs;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -240,8 +241,8 @@ public abstract class UnitTest {
 
     /**
      * Creates a minimal Song mock with mutation tracking suspended and both
-     * {@code withModification} overloads (plain and labeled) plus
-     * {@code withBeatDefiningEdit} delegating directly to the runnable. Shared by
+     * {@code withModification} overloads (plain and labeled), {@code withBeatDefiningEdit}
+     * and {@code applyChange} delegating directly to the runnable. Shared by
      * {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
      *
@@ -269,6 +270,10 @@ public abstract class UnitTest {
         // cares about the removal path builds a real Song.
         doAnswer(inv -> { ((Runnable) inv.getArgument(2)).run(); return false; })
             .when(songMock).withBeatDefiningEdit(anyInt(), anyInt(), any(Runnable.class));
+        // Every element primitive posts its mutation through Song.applyChange, which is the
+        // only place that runs a mutator, since Line.applyChange forwards to it unconditionally.
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> mutator.run()))
+            .when(songMock).applyChange(any(Mutation.class), any(Runnable.class));
         return songMock;
     }
 

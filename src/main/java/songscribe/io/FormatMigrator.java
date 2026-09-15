@@ -105,11 +105,13 @@ public final class FormatMigrator {
         var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
 
         for (var line : lines) {
+            var spans = line.spanRegistry();
+
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
             // Tuplet.verticalPosition (pixel → staff-space conversion)
-            for (var tuplet : line.findSpans(Tuplet.class)) {
+            for (var tuplet : spans.findSpans(Tuplet.class)) {
                 if (tuplet.getVerticalPositionSs() != 0) {
                     tuplet.setVerticalPositionSs(
                         (int) Math.round(tuplet.getVerticalPositionSs() / pps)
@@ -118,7 +120,7 @@ public final class FormatMigrator {
             }
 
             // Hairpin shifts (crescendo + diminuendo)
-            for (var hairpin : line.findSpans(Hairpin.class)) {
+            for (var hairpin : spans.findSpans(Hairpin.class)) {
                 if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0 || hairpin.getYShiftSs() != 0) {
                     hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
                     hairpin.setX2ShiftSs(hairpin.getX2ShiftSs() / pps);
@@ -139,13 +141,13 @@ public final class FormatMigrator {
             }
 
             // Convert per-instance Span offsets (Ending, Trill)
-            for (var ending : line.findSpans(Ending.class)) {
+            for (var ending : spans.findSpans(Ending.class)) {
                 if (ending.getYPositionSs() != 0) {
                     ending.setYPositionSs((int) Math.round(ending.getYPositionSs() / pps));
                 }
             }
 
-            for (var trill : line.findSpans(Trill.class)) {
+            for (var trill : spans.findSpans(Trill.class)) {
                 if (trill.getYPositionSs() != 0) {
                     trill.setYPositionSs((int) Math.round(trill.getYPositionSs() / pps));
                 }
@@ -175,6 +177,8 @@ public final class FormatMigrator {
      * @param offsets The legacy Y position values read from the pre-Phase 11 XML for this line
      */
     private static void migrateLineLevelOffsets(Line line, LegacyLineOffsets offsets) {
+        var spans = line.spanRegistry();
+
         // Migrate tempo change offset to per-instance. Tempo's default is 0, which also doubles as
         // the "unset" sentinel, so the raw offset already equals the delta from default — unlike the
         // three blocks below, no subtraction is needed.
@@ -216,7 +220,7 @@ public final class FormatMigrator {
         if (endingOffset != endingDefault) {
             var delta = endingOffset - endingDefault;
 
-            for (var ending : line.findSpans(Ending.class)) {
+            for (var ending : spans.findSpans(Ending.class)) {
                 ending.setYPositionSs(ending.getYPositionSs() + delta);
             }
         }
@@ -228,7 +232,7 @@ public final class FormatMigrator {
         if (trillOffset != trillDefault) {
             var delta = trillOffset - trillDefault;
 
-            for (var trill : line.findSpans(Trill.class)) {
+            for (var trill : spans.findSpans(Trill.class)) {
                 trill.setYPositionSs(trill.getYPositionSs() + delta);
             }
         }

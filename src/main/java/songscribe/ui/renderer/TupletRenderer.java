@@ -91,7 +91,7 @@ public final class TupletRenderer {
         var line = invariants.requireCurrentLine();
         var layoutResult = invariants.getLayoutResult();
 
-        for (var tuplet : line.findSpans(Tuplet.class)) {
+        for (var tuplet : line.spanRegistry().findSpans(Tuplet.class)) {
             var decorLayout = layoutResult.decorationLayouts().getDecorationLayout(tuplet);
 
             // StructuralStacker.stackTuplets writes no layout for a tuplet whose
