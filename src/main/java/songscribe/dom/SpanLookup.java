@@ -52,7 +52,7 @@ public interface SpanLookup {
      * it fell off, or {@link SpanBound#ABSENT} when it has no position at all.
      * <p>
      * Every query below resolves endpoints through this method and {@link #endIndexOf}, never
-     * through {@link Span#getAnchorElementIndex()}, which answers from whichever line the
+     * through {@link Span#requireAnchorElementIndex()}, which answers from whichever line the
      * endpoint itself belongs to. The receiver has to decide because a position in some other
      * line is indistinguishable from a real one: a tie whose anchor sits at index 7 of the
      * previous line would otherwise report "7" to this line and be read as covering this

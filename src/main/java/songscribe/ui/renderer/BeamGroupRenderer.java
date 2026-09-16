@@ -106,13 +106,17 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         ElementFrame frame,
         Beam beam
     ) {
+        if (beam.beamStackCount() == 0) {
+            return;
+        }
+
         var line = invariants.requireCurrentLine();
-        var beginIndex = beam.getAnchorElementIndex();
-        var endIndex = beam.getEndElementIndex();
+        var beginIndex = beam.requireAnchorElementIndex();
+        var endIndex = beam.requireEndElementIndex();
         var highlightColor = getBeamHighlightColor(invariants, beginIndex, endIndex);
         var beamLayout = invariants.getLayoutResult().getBeamLayout(beam);
         var outerNotes = new Point(beginIndex, endIndex);
-        doDrawBeams(g2, beam.beamLevel(), line, invariants, frame, beam, outerNotes,
+        doDrawBeams(g2, line, invariants, frame, beam, outerNotes,
             beginIndex, endIndex, beginIndex, endIndex, false, 0, highlightColor != null, beamLayout,
             highlightColor != null ? highlightColor : invariants.getSelectionColor());
     }
@@ -137,8 +141,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var beam = line.spanRegistry().findBeamAt(beginIndex);
 
         if (beam != null) {
-            var beamColor = invariants.colorFor(
-                new HitTarget.Beam(beam), LineInvariants.NO_ELEMENT_INDEX);
+            var beamColor = invariants.colorFor(new HitTarget.Beam(beam));
 
             if (!LineInvariants.isDefaultColor(beamColor)) {
                 return beamColor;
@@ -180,7 +183,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     private void doDrawBeams(
         Graphics2D g2,
-        int level,
         Line line,
         LineInvariants invariants,
         ElementFrame frame,
@@ -196,10 +198,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        if (level == -1) {
-            return;
-        }
-
         var beginNote = line.getElement(beginIndex);
         var direction = beam.direction();
         var leftOriented = false;
@@ -240,19 +238,19 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
         // Sub-beams for inner levels.
         var beamLevel = recursionLevel + 1;
-        var startSubBeam = -1;
+        Integer startSubBeam = null;
 
         for (var i = beginIndex; i <= endIndex + 1; i++) {
             if (i <= endIndex && beam.noteTypeInLevel(i, beamLevel)) {
-                if (startSubBeam == -1) {
+                if (startSubBeam == null) {
                     startSubBeam = i;
                 }
             } else {
-                if (startSubBeam != -1) {
-                    doDrawBeams(g2, beamLevel, line, invariants, frame, beam, outerNotes,
+                if (startSubBeam != null) {
+                    doDrawBeams(g2, line, invariants, frame, beam, outerNotes,
                         startSubBeam, i - 1, beginIndex, endIndex,
                         leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
-                    startSubBeam = -1;
+                    startSubBeam = null;
                 }
             }
         }

@@ -417,8 +417,8 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement) {
 
         var columns = new ArrayList<ElementColumn>();
-        var startIndex = element.getAnchorElementIndex();
-        var endIndex = element.getEndElementIndex();
+        var startIndex = element.requireAnchorElementIndex();
+        var endIndex = element.requireEndElementIndex();
 
         for (var i = startIndex; i <= endIndex; i++) {
             var column = columnsByElement.get(line.getElement(i));

@@ -28,6 +28,12 @@ storage; a property reads it on every `get` and writes straight through on
 chosen `Font` shown only as a description label. A value nothing observes is a
 plain field, not a property.
 
+**Absence is carried by the type argument, not by a sentinel.** Every value type
+in the package, `computed` included, accepts a `@Nullable` type argument, and
+that is how a value the graph may lack is declared. Do not stand in for null
+with an empty string, a placeholder object, or a separate "is set" flag beside
+a non-null value.
+
 **Values are replaced, never mutated.** An `ObservableValue<T>` observes
 replacement of `T` and has no way to see a mutation made inside it. A mutable
 value edited in place notifies nobody, and every binding and `computed` that

@@ -25,6 +25,8 @@ import javax.sound.midi.MidiEvent;
 import javax.sound.midi.ShortMessage;
 import javax.sound.midi.Track;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Calculation and MIDI message generation methods for slide playback.
  * <p>
@@ -72,11 +74,11 @@ public final class SlideMidiHelper {
     /** Number of semitones to bend down for falls. */
     public static final int FALL_SEMITONES = 4;
 
-    /** Current pitch bend sensitivity in semitones, -1 means unset. */
-    private int currentSensitivity = -1;
+    /** Current pitch bend sensitivity in semitones, null means unset. */
+    private @Nullable Integer currentSensitivity = null;
 
-    /** Pending grace note pitch for a slide-in, -1 means none. */
-    private int pendingGracePitch = -1;
+    /** Pending grace note pitch for a slide-in, null means none. */
+    private @Nullable Integer pendingGracePitch = null;
 
     /** Whether pitch bend and/or expression need resetting before the next note. */
     private boolean needsPitchBendReset;
@@ -150,7 +152,7 @@ public final class SlideMidiHelper {
      * {@link #createRpnMessagesIfNeeded} will always emit RPN messages.
      */
     public void resetSensitivity() {
-        currentSensitivity = -1;
+        currentSensitivity = null;
     }
 
     /**
@@ -201,17 +203,17 @@ public final class SlideMidiHelper {
      * Returns whether a grace note pitch is pending for a slide-in.
      */
     public boolean hasPendingGracePitch() {
-        return pendingGracePitch >= 0;
+        return pendingGracePitch != null;
     }
 
     /**
      * Returns and clears the pending grace note pitch.
      *
-     * @return the pending grace pitch, or -1 if none
+     * @return the pending grace pitch, or null if none
      */
-    public int consumePendingGracePitch() {
+    public @Nullable Integer consumePendingGracePitch() {
         var pitch = pendingGracePitch;
-        pendingGracePitch = -1;
+        pendingGracePitch = null;
         return pitch;
     }
 
@@ -273,7 +275,7 @@ public final class SlideMidiHelper {
      */
     public void createRpnMessagesIfNeeded(Track track, int tick, int channel, int semitones)
             throws InvalidMidiDataException {
-        if (semitones == currentSensitivity) {
+        if (currentSensitivity != null && semitones == currentSensitivity) {
             return;
         }
 

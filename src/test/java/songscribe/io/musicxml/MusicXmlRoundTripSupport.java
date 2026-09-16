@@ -23,8 +23,6 @@ package songscribe.io.musicxml;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.time.Clock;
-import java.time.Instant;
 import java.time.ZoneOffset;
 
 import org.audiveris.proxymusic.ScorePartwise;
@@ -220,60 +218,5 @@ final class MusicXmlRoundTripSupport {
         }
 
         return count;
-    }
-
-    // -------------------------------------------------------------------------
-    // Range-Spans: assertSpanEquals helpers
-    //
-    // These helpers compare a reloaded span to expected values field-by-field
-    // without adding equals()/hashCode() to span classes or StaffElement, which
-    // would break identity-based hash collections and layout caches.
-    //
-    // The base overload checks anchor and end element indices.  Per-type
-    // overloads add the type-specific fields (Tuplet.grade/verticalPositionSs,
-    // Trill.yPositionSs).  The context string names the case in failure output.
-    // -------------------------------------------------------------------------
-
-    static void assertSpanEquals(
-            Span actual, int expectedAnchor, int expectedEnd, String context) {
-        assertThat(actual.getAnchorElementIndex())
-            .as("%s: anchor index", context)
-            .isEqualTo(expectedAnchor);
-        assertThat(actual.getEndElementIndex())
-            .as("%s: end index", context)
-            .isEqualTo(expectedEnd);
-    }
-
-    static void assertSpanEquals(
-            Span actual, int expectedAnchor, int expectedEnd) {
-        assertSpanEquals(actual, expectedAnchor, expectedEnd, "span");
-    }
-
-    /**
-     * Asserts anchor/end indices plus the {@link Tuplet}-specific fields
-     * {@code grade} and {@code verticalPositionSs}. Used by Range-Spans 6b.
-     */
-    static void assertSpanEquals(
-            Tuplet actual, int expectedAnchor, int expectedEnd,
-            int expectedGrade, int expectedVerticalPositionSs) {
-        assertSpanEquals(actual, expectedAnchor, expectedEnd, "tuplet");
-        assertThat(actual.getGrade())
-            .as("tuplet: grade")
-            .isEqualTo(expectedGrade);
-        assertThat(actual.getVerticalPositionSs())
-            .as("tuplet: verticalPositionSs")
-            .isEqualTo(expectedVerticalPositionSs);
-    }
-
-    /**
-     * Asserts anchor/end indices plus the {@link Trill}-specific field
-     * {@code yPositionSs}. Used by Range-Spans 6b.
-     */
-    static void assertSpanEquals(
-            Trill actual, int expectedAnchor, int expectedEnd, int expectedYPositionSs) {
-        assertSpanEquals(actual, expectedAnchor, expectedEnd, "trill");
-        assertThat(actual.getYPositionSs())
-            .as("trill: yPositionSs")
-            .isEqualTo(expectedYPositionSs);
     }
 }

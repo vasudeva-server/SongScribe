@@ -258,11 +258,15 @@ public final class ActionReflector implements Disposable {
     }
 
     /**
-     * Restores only the actions that have the given flag to their previously
-     * saved state, then clears all saved states. Actions without the flag
-     * are left at their current state.
+     * Restores only the actions that lack the given flag to their previously saved state,
+     * then clears all saved states. Actions carrying the flag are left at their current state.
+     * <p>
+     * This is the restore for a mode that disables every action not declaring itself safe,
+     * such as grace mode with {@link UIAction.Flag#ENABLED_IN_GRACE_MODE}: the actions the mode
+     * disabled are exactly the ones lacking the flag, and those are put back, while the actions
+     * the user could still operate during the mode keep the state they now hold.
      */
-    public void restoreActionStatesWithFlag(UIAction.Flag flag) {
+    public void restoreActionStatesLackingFlag(UIAction.Flag flag) {
         if (savedActionStates.isEmpty()) {
             return;
         }
@@ -270,7 +274,7 @@ public final class ActionReflector implements Disposable {
         for (var entry : savedActionStates.entrySet()) {
             var action = entry.getKey();
 
-            if (!action.hasFlag(flag)) {
+            if (action.hasFlag(flag)) {
                 continue;
             }
 

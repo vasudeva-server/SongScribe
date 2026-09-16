@@ -75,9 +75,16 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      * note — or a single selected element, never for several. Whether an accidental may be
      * toggled is decided per note by {@link #canToggle}, so the accidental controls act on one
      * note at a time and that decision never spans a selection.
+     * <p>
+     * Live in grace mode, where no staff selection is possible, so the toggle only decorates
+     * the preview: the host note the user is placing arrives with the chosen accidental and the
+     * pairing's tracked insertion walks the chain for it.
      */
-    static final Flag[] ACCIDENTAL_FLAGS =
-        withFlags(NoteOnlyAction.FLAGS, Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION);
+    static final Flag[] ACCIDENTAL_FLAGS = withFlags(
+        NoteOnlyAction.FLAGS,
+        Flag.REQUIRES_OPTIONAL_SINGLE_SELECTION,
+        Flag.ENABLED_IN_GRACE_MODE
+    );
 
     /** The icon font's point size for an accidental sign, on the toolbar and wherever else one is shown. */
     public static final int ICON_SIZE_PT = 18;

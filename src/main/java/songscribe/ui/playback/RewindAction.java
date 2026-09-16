@@ -46,7 +46,9 @@ public final class RewindAction extends SequencerAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_WHEN_SONG_EMPTY,
-            Flag.DISABLE_WHEN_MIDI_UNAVAILABLE
+            Flag.DISABLE_WHEN_MIDI_UNAVAILABLE,
+            // Rewinding only moves the sequencer and clears a highlight; it touches no grace state.
+            Flag.ENABLED_IN_GRACE_MODE
         );
     }
 

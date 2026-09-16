@@ -488,13 +488,14 @@ public final class ModificationSession {
 
         var song = line.getSong();
         var elementIndex = line.getElementIndex(owner);
+        var lineIndex = song.indexOfLine(line);
 
-        if (!song.contains(line) || elementIndex < 0) {
+        if (lineIndex == null) {
             edit.run();
             return false;
         }
 
-        return song.withBeatDefiningEdit(line.index(), elementIndex, edit);
+        return song.withBeatDefiningEdit(lineIndex, elementIndex, edit);
     }
 
     /**
@@ -547,8 +548,10 @@ public final class ModificationSession {
         // A tuplet the edit landed inside is anchored before the edit, and the forward walk
         // only opens a span at its anchor — so back the start up to the anchor, or the one
         // tuplet the edit is most likely to have broken would never be judged.
-        if (enclosingTuplet != null && enclosingTuplet.getAnchorElementIndex() >= 0) {
-            startIndex = Math.min(startIndex, enclosingTuplet.getAnchorElementIndex());
+        var enclosingAnchorIndex = enclosingTuplet == null ? null : enclosingTuplet.getAnchorElementIndex();
+
+        if (enclosingAnchorIndex != null) {
+            startIndex = Math.min(startIndex, enclosingAnchorIndex);
         }
 
         var removedAny = false;

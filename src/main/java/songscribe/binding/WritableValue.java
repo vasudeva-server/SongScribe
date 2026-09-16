@@ -19,6 +19,8 @@
  */
 package songscribe.binding;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A sink: something the framework can write, and nothing else.
  *
@@ -41,10 +43,11 @@ package songscribe.binding;
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  *
- * @param <T> the written value's type
+ * @param <T> the written value's type, declared {@code @Nullable} when absence is a value
+ *     the graph carries
  */
 @FunctionalInterface
-public interface WritableValue<T> {
+public interface WritableValue<T extends @Nullable Object> {
 
     /**
      * Writes {@code value} into the underlying storage.

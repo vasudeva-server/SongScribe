@@ -413,8 +413,10 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
 
         try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            var accidentalColor = invariants.colorFor(
-                new HitTarget.Element(note), frame.currentElementIndex());
+            var elementIndex = frame.currentElementIndex();
+            var accidentalColor = elementIndex != null
+                ? invariants.colorFor(new HitTarget.Element(note), elementIndex)
+                : invariants.colorFor(new HitTarget.Element(note));
 
             if (!LineInvariants.isDefaultColor(accidentalColor)) {
                 g2.setColor(accidentalColor);
@@ -434,8 +436,17 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
     // Utility Methods
     // ==========================================================================
 
+    /**
+     * Returns whether {@code note} sits under a beam on the current line. The insertion preview
+     * is on no line and is never beamed.
+     */
     private boolean isNoteBeamed(StaffElement note, LineInvariants invariants) {
         var line = invariants.requireCurrentLine();
+
+        if (!line.contains(note)) {
+            return false;
+        }
+
         var noteIndex = line.getElementIndex(note);
         return line.spanRegistry().findBeamAt(noteIndex) != null &&
             note.getType() != ElementType.GRACE_QUAVER;

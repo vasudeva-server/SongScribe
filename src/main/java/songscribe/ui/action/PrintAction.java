@@ -41,7 +41,6 @@ public final class PrintAction extends UIAction {
             KeyEvent.VK_P,
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
             Flag.OPENS_DIALOG
         );
     }

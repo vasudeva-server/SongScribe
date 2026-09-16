@@ -31,6 +31,8 @@ public final class CloseWindowAction extends UIAction {
         return new CloseWindowAction(mainFrame);
     }
 
+    // Not ENABLED_IN_GRACE_MODE: shutdown offers to save a modified document, which would
+    // serialize the line while the unpaired grace note sits on it outside mutation tracking.
     private CloseWindowAction(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.ACTION_FILE_CLOSE), null);
     }

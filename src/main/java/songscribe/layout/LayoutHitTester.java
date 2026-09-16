@@ -159,7 +159,7 @@ public final class LayoutHitTester {
     public @Nullable KeyChangeElement hitTestMidLineKeyEdit(double mouseXSs, Line line) {
         var index = findElementAtXSs(mouseXSs, line);
 
-        if (index < 0) {
+        if (index == null) {
             return null;
         }
 
@@ -172,7 +172,7 @@ public final class LayoutHitTester {
     // ==========================================================================
 
     /**
-     * Returns the index of the element whose column contains {@code mouseXSs}, or {@code -1} if
+     * Returns the index of the element whose column contains {@code mouseXSs}, or {@code null} if
      * none.
      * <p>
      * Only the horizontal (X) dimension is checked; Y position is ignored. The hit zone is the
@@ -189,9 +189,9 @@ public final class LayoutHitTester {
      *
      * @param mouseXSs Mouse X coordinate in staff-space units
      * @param line     The line containing the elements
-     * @return Element index, or {@code -1} if mouseXSs is not within any element column's bounds
+     * @return Element index, or {@code null} if mouseXSs is not within any element column's bounds
      */
-    public int findElementAtXSs(double mouseXSs, Line line) {
+    public @Nullable Integer findElementAtXSs(double mouseXSs, Line line) {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = layoutResult.getElementColumn(element);
@@ -209,7 +209,7 @@ public final class LayoutHitTester {
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -241,7 +241,7 @@ public final class LayoutHitTester {
         // Check each element to see if mouse is within its head bounds
         var elementAtX = findElementAtXSs(mouseXSs, line);
 
-        if (elementAtX >= 0 && elementAtX < elementCount) {
+        if (elementAtX != null && elementAtX < elementCount) {
             return elementAtX;
         }
 

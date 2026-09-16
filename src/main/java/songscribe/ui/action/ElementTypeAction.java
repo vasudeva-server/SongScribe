@@ -39,16 +39,22 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public enum Role {DURATION, NON_DURATION}
 
+    // Shared by every duration entry, the grace quaver included.
     private static final Flag[] DURATION_FLAGS = new Flag[]{
         Flag.DISABLE_WHEN_PLAYING,
         Flag.DISABLE_WHEN_EDITING_TEXT,
     };
 
+    // The six plain durations stay live in grace mode: with no staff selection possible there
+    // they reach neither replaceTerminalIfSelected nor applyToSelectionIfActive and only re-arm
+    // the preview duration, which is how the host note's duration is chosen — enterGraceNote
+    // itself selects one through DURATION_ACTION_GROUP, which runs perform.
+    private static final Flag[] PLAIN_DURATION_FLAGS = withFlags(DURATION_FLAGS, Flag.ENABLED_IN_GRACE_MODE);
+
     static final Flag[] NON_DURATION_FLAGS = new Flag[]{
         Flag.DISABLE_IN_REST_MODE,
         Flag.DISABLE_WHEN_PLAYING,
         Flag.DISABLE_WHEN_EDITING_TEXT,
-        Flag.DISABLE_IN_GRACE_MODE,
     };
 
     private final ElementType type;
@@ -62,7 +68,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-grace-eighth", Strings.get(Strings.ACTION_DURATION_GRACE_TOOLTIP),
             KeyEvent.VK_G, 0,
             null,
-            withFlags(DURATION_FLAGS, Flag.DISABLE_IN_REST_MODE, Flag.DISABLE_IN_SELECT_MODE, Flag.DISABLE_IN_GRACE_MODE)
+            withFlags(DURATION_FLAGS, Flag.DISABLE_IN_REST_MODE, Flag.DISABLE_IN_SELECT_MODE)
         );
     }
 
@@ -74,7 +80,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-thirty-second", Strings.get(Strings.ACTION_DURATION_THIRTY_SECOND_TOOLTIP),
             KeyEvent.VK_1, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 
@@ -86,7 +92,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-sixteenth", Strings.get(Strings.ACTION_DURATION_SIXTEENTH_TOOLTIP),
             KeyEvent.VK_2, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 
@@ -98,7 +104,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-eighth", Strings.get(Strings.ACTION_DURATION_EIGHTH_TOOLTIP),
             KeyEvent.VK_3, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 
@@ -110,7 +116,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-quarter", Strings.get(Strings.ACTION_DURATION_QUARTER_TOOLTIP),
             KeyEvent.VK_4, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 
@@ -122,7 +128,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-half", Strings.get(Strings.ACTION_DURATION_HALF_TOOLTIP),
             KeyEvent.VK_5, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 
@@ -134,7 +140,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             "duration-whole", Strings.get(Strings.ACTION_DURATION_WHOLE_TOOLTIP),
             KeyEvent.VK_6, 0,
             Strings.ACTION_EDIT_OP_CHANGE_DURATION,
-            DURATION_FLAGS
+            PLAIN_DURATION_FLAGS
         );
     }
 

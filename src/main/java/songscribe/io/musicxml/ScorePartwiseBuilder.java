@@ -722,7 +722,7 @@ final class ScorePartwiseBuilder {
         var items = measure.getNoteOrBackupOrForward();
         var position = MeasureBuilder.positionOf(items, anchor);
 
-        if (position < 0) {
+        if (position == null) {
             return;
         }
 
@@ -757,10 +757,10 @@ final class ScorePartwiseBuilder {
      *
      * <p>A span that fails the check is skipped silently, and that is the decision this method
      * exists to hold in one place: {@link Span#getAnchorElementIndex()} answers from whichever
-     * line the endpoint element belongs to, so a span left dangling by an edit reports an index
-     * that means nothing here. Writing its marker anyway would attach a beam or a bracket to an
-     * unrelated note, which is worse than omitting a span the model should not have been
-     * holding.
+     * line the endpoint element belongs to, or {@code null} from none, so a span left dangling
+     * by an edit reports an index that means nothing here. Writing its marker anyway would
+     * attach a beam or a bracket to an unrelated note, which is worse than omitting a span the
+     * model should not have been holding.
      */
     private static <T extends Span> void forEachSpanInRange(
             Line line, Class<T> spanType, SpanAction<T> action) {
@@ -770,7 +770,7 @@ final class ScorePartwiseBuilder {
             var anchorIndex = span.getAnchorElementIndex();
             var endIndex = span.getEndElementIndex();
 
-            if (!MeasureBuilder.indicesInRange(anchorIndex, endIndex, count)) {
+            if (anchorIndex == null || endIndex == null || !MeasureBuilder.indicesInRange(anchorIndex, endIndex, count)) {
                 continue;
             }
 

@@ -339,14 +339,17 @@ public abstract class Span extends LineElement {
      * that overrides only those keeps behaving as it always has. A subclass overriding
      * {@code outcomeFor} need not implement any of them.
      * <p>
-     * A boolean predicate can only ever say "remove me". {@link SpanOutcome.Reshape} is here
-     * for a subclass whose span survives an edit in a different shape, and whose
-     * {@code [begin, end]} are indices into {@link ElementChange#projectedElements}.
+     * A span either survives a change or it does not, which is all {@link SpanOutcome.Simple}
+     * can say. A hairpin is the one kind that can survive in a different shape, and the
+     * sweep asks it that wider question through
+     * {@link Hairpin#hairpinOutcomeFor(ElementChange, Line)} instead.
      *
      * @param change the pending change, not yet applied to {@code line}
      * @param line   the line being changed, still in its pre-change state
+     * @return {@link SpanOutcome.Simple#REMOVE} when this span cannot survive {@code change},
+     *     otherwise {@link SpanOutcome.Simple#KEEP}
      */
-    public SpanOutcome outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
         return isInvalidatedByChange(change, line) ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
     }
 
@@ -385,32 +388,96 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * The position of {@code element} within the line it is in, or -1 when it sits in no
-     * line because a removal detached it ({@link Line#removeElement}).
+     * The position of {@code element} within the line it is in, or {@code null} when it
+     * sits in no line because a removal detached it ({@link Line#removeElement}).
      */
-    private static int indexInLine(StaffElement element) {
+    private static @Nullable Integer indexInLine(StaffElement element) {
         var line = element.getParentLine();
 
         if (line == null) {
-            return -1;
+            return null;
         }
 
         return line.getElementIndex(element);
     }
 
     /**
-     * Returns the index of the anchor element within its line.
-     * Returns -1 if the anchor element is not in a line.
+     * The index of {@code element} within its line, for a caller that assumes it is in one.
+     *
+     * @throws IllegalStateException when {@code element} sits in no line
      */
-    public int getAnchorElementIndex() {
+    private int requireIndexInLine(StaffElement element) {
+        var index = indexInLine(element);
+
+        if (index == null) {
+            throw new IllegalStateException(
+                getClass().getSimpleName() + " endpoint " + element + " is in no line");
+        }
+
+        return index;
+    }
+
+    /**
+     * The anchor element's index within its own line, for a caller that assumes the anchor
+     * is in one: the edit, layout and render paths, which act only on spans whose endpoints
+     * are attached and feed the index into a range, a loop bound or arithmetic.
+     * <p>
+     * This is the endpoint's <em>own</em> line, which is not the same question as where the
+     * anchor sits relative to some other line; for that, ask that line's registry via
+     * {@link LineSpans#anchorIndexOf}.
+     *
+     * @return the anchor's index within {@link #getAnchorLine}
+     * @throws IllegalStateException when the anchor sits in no line because a removal
+     *     ({@link Line#removeElement}) detached it — a fault in the span's own state rather
+     *     than in any argument, which is why it is not {@code IllegalArgumentException}. A
+     *     caller for which absence is a legitimate answer asks
+     *     {@link #getAnchorElementIndex} instead
+     */
+    public int requireAnchorElementIndex() {
+        return requireIndexInLine(anchorElement);
+    }
+
+    /**
+     * The end element's index within its own line, for a caller that assumes the end is in
+     * one. See {@link #requireAnchorElementIndex} for which callers those are and for the
+     * relationship to {@link LineSpans}.
+     *
+     * @return the end's index within {@link #getEndLine}
+     * @throws IllegalStateException when the end sits in no line because a removal
+     *     ({@link Line#removeElement}) detached it — the span's own state, not an argument.
+     *     A caller for which absence is a legitimate answer asks
+     *     {@link #getEndElementIndex} instead
+     */
+    public int requireEndElementIndex() {
+        return requireIndexInLine(endElement);
+    }
+
+    /**
+     * The anchor element's index within its own line, or {@code null} when the anchor sits
+     * in no line. For the load and validation paths, where a span may legitimately arrive
+     * with an endpoint that a removal ({@link Line#removeElement}) has detached and the
+     * caller decides what to do about it — {@link Tuplet#hasValidSpan} and
+     * {@link Hairpin#outcomeFor} are the model.
+     * <p>
+     * A caller that assumes the anchor is attached asks {@link #requireAnchorElementIndex},
+     * which states that assumption in its name and fails loudly when it is wrong.
+     *
+     * @return the anchor's index within {@link #getAnchorLine}, or {@code null} when
+     *     {@link #getAnchorLine} is null
+     */
+    public @Nullable Integer getAnchorElementIndex() {
         return indexInLine(anchorElement);
     }
 
     /**
-     * Returns the index of the end element within its line.
-     * Returns -1 if the end element is not in a line.
+     * The end element's index within its own line, or {@code null} when the end sits in no
+     * line. See {@link #getAnchorElementIndex} for which callers this pair is for; a caller
+     * that assumes the end is attached asks {@link #requireEndElementIndex}.
+     *
+     * @return the end's index within {@link #getEndLine}, or {@code null} when
+     *     {@link #getEndLine} is null
      */
-    public int getEndElementIndex() {
+    public @Nullable Integer getEndElementIndex() {
         return indexInLine(endElement);
     }
 

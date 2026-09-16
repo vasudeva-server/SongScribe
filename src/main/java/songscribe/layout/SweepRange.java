@@ -151,14 +151,14 @@ public final class SweepRange {
      *         touches none — it lies wholly in a gap, or wholly off the music
      */
     public @Nullable ElementRange overlapping(double leftSs, double rightSs) {
-        var begin = -1;
-        var end = -1;
+        @Nullable Integer begin = null;
+        @Nullable Integer end = null;
 
         for (var elementIndex = 0; elementIndex < columns.size(); elementIndex++) {
             var column = columns.get(elementIndex);
 
             if (column.getLeftEdgeXSs() <= rightSs && column.getRightEdgeXSs() >= leftSs) {
-                if (begin == -1) {
+                if (begin == null) {
                     begin = elementIndex;
                 }
 
@@ -166,7 +166,7 @@ public final class SweepRange {
             }
         }
 
-        return begin == -1 ? null : new ElementRange(begin, end);
+        return begin == null || end == null ? null : new ElementRange(begin, end);
     }
 
     /**

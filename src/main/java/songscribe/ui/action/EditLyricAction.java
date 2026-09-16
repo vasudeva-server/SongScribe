@@ -39,7 +39,6 @@ public final class EditLyricAction extends UIAction {
         Flag.DISABLE_WHEN_EDITING_TEXT,
         Flag.DISABLE_WHEN_BAR_SELECTED,
         Flag.DISABLE_WHEN_SONG_EMPTY,
-        Flag.DISABLE_IN_GRACE_MODE,
     };
 
     public static EditLyricAction createAction(MainFrame mainFrame) {
@@ -67,7 +66,7 @@ public final class EditLyricAction extends UIAction {
             return false;
         }
 
-        return LyricTargetResolver.resolveLyricTarget(range.line(), range.range().begin()) >= 0;
+        return LyricTargetResolver.resolveLyricTarget(range.line(), range.range().begin()) != null;
     }
 
     @Override
@@ -89,7 +88,7 @@ public final class EditLyricAction extends UIAction {
 
         var targetIndex = LyricTargetResolver.resolveLyricTarget(line, line.getElementIndex(element));
 
-        if (targetIndex < 0) {
+        if (targetIndex == null) {
             throw new IllegalStateException(
                 "EditLyricAction fired on an element with no lyric target — enableFromSelection should have prevented this");
         }

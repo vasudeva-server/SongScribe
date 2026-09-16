@@ -112,17 +112,6 @@ public class ElementColumnBuilder {
     }
 
     /**
-     * Builds a single ElementColumn for an element.
-     *
-     * @param element The element to process
-     * @param line    The line containing the element (for beaming lookup)
-     * @return The constructed ElementColumn
-     */
-    public ElementColumn buildColumn(StaffElement element, Line line) {
-        return buildColumn(element, line, line.getElementIndex(element));
-    }
-
-    /**
      * Builds a single ElementColumn for an element whose index on the line is already known.
      *
      * @param element      The element to process
@@ -227,7 +216,7 @@ public class ElementColumnBuilder {
         column.setMinCollisionGapToNextSyllableSs(gapToNextSyllableSs);
         // Tag the column with its beam group (anchor index) so adjacent beam groups stay
         // distinct and the spacing calculator does not merge them.
-        column.setBeamGroupId(beam != null ? beam.getAnchorElementIndex() : ElementColumn.NO_BEAM_GROUP);
+        column.setBeamGroupId(beam != null ? beam.requireAnchorElementIndex() : null);
 
         return column;
     }

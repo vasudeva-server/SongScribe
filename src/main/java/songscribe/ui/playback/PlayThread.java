@@ -86,16 +86,16 @@ public class PlayThread implements Runnable {
 
         var bankMsb = new ShortMessage();
         bankMsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 0, 0);
-        receiver.send(bankMsb, -1);
+        receiver.send(bankMsb, MidiController.NO_TIMESTAMP);
 
         var bankLsb = new ShortMessage();
         bankLsb.setMessage(ShortMessage.CONTROL_CHANGE, 0, 32, 0);
-        receiver.send(bankLsb, -1);
+        receiver.send(bankLsb, MidiController.NO_TIMESTAMP);
 
         var programChange = new ShortMessage();
         var instrument = PlaybackController.getPlaybackSettings().instrument();
         programChange.setMessage(ShortMessage.PROGRAM_CHANGE, 0, instrument, 0);
-        receiver.send(programChange, -1);
+        receiver.send(programChange, MidiController.NO_TIMESTAMP);
     }
 
     /**
@@ -111,7 +111,7 @@ public class PlayThread implements Runnable {
             setupInstrument();
             var on = new ShortMessage();
             on.setMessage(ShortMessage.NOTE_ON, 0, pitch, PlaybackController.SELECTED_NOTE_VELOCITY);
-            MidiController.midiReceiver.send(on, -1);
+            MidiController.midiReceiver.send(on, MidiController.NO_TIMESTAMP);
         } catch (InvalidMidiDataException e) {
             // Ignore
         }
@@ -129,7 +129,7 @@ public class PlayThread implements Runnable {
         try {
             var off = new ShortMessage();
             off.setMessage(ShortMessage.NOTE_OFF, 0, pitch, 0);
-            MidiController.midiReceiver.send(off, -1);
+            MidiController.midiReceiver.send(off, MidiController.NO_TIMESTAMP);
         } catch (InvalidMidiDataException e) {
             // Ignore
         }

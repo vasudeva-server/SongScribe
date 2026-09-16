@@ -57,9 +57,6 @@ import songscribe.dom.Tie;
  */
 public final class ElementColumn {
 
-    /** Beam-group id for a column that is not part of any beam group. */
-    public static final int NO_BEAM_GROUP = -1;
-
     private final StaffElement element;
     private final List<StaffElement> graceNotes;
     private final double leftExtentSs;
@@ -88,9 +85,9 @@ public final class ElementColumn {
     // is the wider comfortable/preferred gap the rest aims for.
     private double minCollisionGapToNextSyllableSs;
     // Identifies which beam group this column belongs to (the beam's anchor element index),
-    // or NO_BEAM_GROUP when not beamed. Set by ElementColumnBuilder so the spacing calculator
+    // or null when not beamed. Set by ElementColumnBuilder so the spacing calculator
     // can keep adjacent beam groups separate rather than merging them.
-    private int beamGroupId = NO_BEAM_GROUP;
+    private @Nullable Integer beamGroupId;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
     // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
@@ -586,25 +583,25 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the identifier of the beam group this column belongs to, or
-     * {@link #NO_BEAM_GROUP} if it is not beamed. Adjacent beam groups have distinct ids so
-     * the spacing calculator keeps them separate.
+     * Returns the identifier of the beam group this column belongs to, or {@code null} if it is
+     * not beamed. Adjacent beam groups have distinct ids so the spacing calculator keeps them
+     * separate.
      */
-    public int getBeamGroupId() {
+    public @Nullable Integer getBeamGroupId() {
         return beamGroupId;
     }
 
     /**
      * Returns whether this column and {@code other} sit in the same beam group. False when either is
-     * unbeamed — {@link #NO_BEAM_GROUP} never matches itself, so two unbeamed columns do not count as
-     * sharing a group. Single source of truth for the "one beam spans this gap" question, which the
-     * beam-internal rest reduction and {@link OpticalSpacing}'s knee exclusion both ask.
+     * unbeamed, so two unbeamed columns do not count as sharing a group. Single source of truth for
+     * the "one beam spans this gap" question, which the beam-internal rest reduction and
+     * {@link OpticalSpacing}'s knee exclusion both ask.
      */
     public boolean sharesBeamGroupWith(ElementColumn other) {
-        return beamGroupId != NO_BEAM_GROUP && beamGroupId == other.beamGroupId;
+        return beamGroupId != null && beamGroupId.equals(other.beamGroupId);
     }
 
-    void setBeamGroupId(int beamGroupId) {
+    void setBeamGroupId(@Nullable Integer beamGroupId) {
         this.beamGroupId = beamGroupId;
     }
 

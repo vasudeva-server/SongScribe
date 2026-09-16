@@ -24,6 +24,8 @@ import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.DocumentScale;
@@ -136,7 +138,7 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
             var font = isAttribution ? attributionFont : subAttributionFont;
             var lineBox = isAttribution ? attributionBox : subAttributionBox;
 
-            if (i == firstSubAttributionIndex) {
+            if (firstSubAttributionIndex != null && i == firstSubAttributionIndex) {
                 offsetSs += SUB_ATTRIBUTION_GAP_SS;
             }
 
@@ -213,16 +215,16 @@ public record AttributionContent(List<TextItem> lines, double widthSs, double he
     }
 
     /**
-     * Returns the index of the first sub-attribution line, or {@code -1} when there are none —
-     * an index no line has, which is what places the transition gap exactly once or not at all.
+     * Returns the index of the first sub-attribution line, or {@code null} when there are none,
+     * which is what places the transition gap exactly once or not at all.
      */
-    private static int firstSubAttributionIndex(List<AttributionLine> lines) {
+    private static @Nullable Integer firstSubAttributionIndex(List<AttributionLine> lines) {
         for (var i = 0; i < lines.size(); i++) {
             if (lines.get(i).font() != FontKey.ATTRIBUTION) {
                 return i;
             }
         }
 
-        return -1;
+        return null;
     }
 }

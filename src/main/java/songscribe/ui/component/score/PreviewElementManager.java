@@ -367,15 +367,15 @@ public final class PreviewElementManager {
 
     /**
      * Returns the index of the grace note that the host-note insertion preview on {@code lc}
-     * would be connected to, or -1 when no connecting glissando should be drawn there.
+     * would be connected to, or null when no connecting glissando should be drawn there.
      * <p>
      * The single home for "is the grace-host preview glissando visible". It rides on
      * {@link #shouldShowPreviewOn}: the connecting line only means anything while the host ghost
      * it runs to is itself on screen.
      */
-    static int graceHostPreviewSourceIndexOn(LineComponent lc) {
+    static @Nullable Integer graceHostPreviewSourceIndexOn(LineComponent lc) {
         if (!shouldShowPreviewOn(lc)) {
-            return -1;
+            return null;
         }
 
         return EditModeManager.getGraceModeManager().hostPreviewGraceIndexOn(lc);
@@ -606,13 +606,13 @@ public final class PreviewElementManager {
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXSs, line);
+        var elementAtX = inGraceMode ? null : layoutResult.findElementAtXSs(mouseXSs, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
         var song = line.getSong();
 
-        if (isPositionBlockedByTerminal(song, line, xIndex, elementAtX >= 0)) {
+        if (isPositionBlockedByTerminal(song, line, xIndex, elementAtX != null)) {
             clearPreviewElement();
             return;
         }
@@ -624,7 +624,7 @@ public final class PreviewElementManager {
         // Line.canInsertElementAt. Gated on elementAtX < 0 so a click directly on a head still
         // takes the replacement path, which canReplaceElementAt rules on below; only a plain
         // gap-insert is blocked here.
-        if (previewElement != null && (elementAtX < 0) && !line.canInsertElementAt(xIndex)) {
+        if (previewElement != null && elementAtX == null && !line.canInsertElementAt(xIndex)) {
             if (hasPreviewElement(lc)) {
                 clearPreviewElement();
             }
@@ -635,8 +635,8 @@ public final class PreviewElementManager {
         // Compute new position match flags before the early-return check, so that a
         // change in hover state (e.g., mouse slides from gap into element-head bounds at
         // the same xIndex) is not silently dropped.
-        var newXMatch = elementAtX >= 0;
-        var newYMatch = newXMatch
+        var newXMatch = elementAtX != null;
+        var newYMatch = elementAtX != null
             && Math.abs(staffPosition.value() - ElementSeat.seatSp(line.getElement(elementAtX)).value()) <= 1;
 
         // A breath mark must be inserted between or after a note or rest; it may not sit at
@@ -649,7 +649,7 @@ public final class PreviewElementManager {
         // Some elements may never be replaced by clicking through them with another element —
         // a grace note, a key change, the barline a key change sits behind. Hide the ghost
         // preview over them; handleClick separately ignores the click.
-        var replacementBlocked = !line.canReplaceElementAt(elementAtX);
+        var replacementBlocked = elementAtX != null && !line.canReplaceElementAt(elementAtX);
 
         var candidate = new PreviewHover(lc, xIndex, staffPosition, newXMatch, newYMatch);
         var previous = hover;

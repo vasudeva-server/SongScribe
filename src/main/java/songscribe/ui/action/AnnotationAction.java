@@ -43,7 +43,6 @@ public final class AnnotationAction extends UIAction {
             Flag.REQUIRES_ANNOTATABLE_ELEMENT,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE,
             Flag.OPENS_DIALOG
         );
     }

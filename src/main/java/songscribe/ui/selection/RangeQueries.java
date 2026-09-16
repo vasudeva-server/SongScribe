@@ -91,18 +91,21 @@ public final class RangeQueries {
 
         BoundaryTie candidate = null;
 
-        if (index == tieEntryIndex(line) && !line.isFirst()) {
+        var entryIndex = tieEntryIndex(line);
+        var exitIndex = tieExitIndex(line);
+
+        if (entryIndex != null && index == entryIndex && !line.isFirst()) {
             var previousLine = song.getLine(line.index() - 1);
             var anchorIndex = tieExitIndex(previousLine);
 
-            if (anchorIndex >= 0 && previousLine.getElement(anchorIndex) instanceof NoteElement anchor) {
+            if (anchorIndex != null && previousLine.getElement(anchorIndex) instanceof NoteElement anchor) {
                 candidate = new BoundaryTie(anchor, note);
             }
-        } else if (index == tieExitIndex(line) && !line.isLast()) {
+        } else if (exitIndex != null && index == exitIndex && !line.isLast()) {
             var nextLine = song.getLine(line.index() + 1);
             var endIndex = tieEntryIndex(nextLine);
 
-            if (endIndex >= 0 && nextLine.getElement(endIndex) instanceof NoteElement end) {
+            if (endIndex != null && nextLine.getElement(endIndex) instanceof NoteElement end) {
                 candidate = new BoundaryTie(note, end);
             }
         }
@@ -128,55 +131,65 @@ public final class RangeQueries {
             && anchor.getPitch() == end.getPitch();
     }
 
-    /** The element a tie entering {@code line} from the previous line ends on. */
-    private static int tieEntryIndex(Line line) {
-        return tieAttachmentIndex(line, 0, 1);
-    }
-
-    /** The element a tie leaving {@code line} for the next line anchors to. */
-    private static int tieExitIndex(Line line) {
-        return tieAttachmentIndex(line, line.elementCount() - 1, -1);
-    }
-
     /**
-     * The index of the element at one edge of {@code line} that a cross-line tie attaches to,
-     * found by walking inward from {@code edgeIndex} in direction {@code step} past every
-     * element a tie may straddle. Returns -1 when the walk runs off the line without reaching
-     * one.
+     * The index of the element a tie entering {@code line} from the previous line ends on,
+     * found by walking forward from the line's first element past every element a tie may
+     * straddle.
      *
-     * <p>Not simply the first or last element. {@link Tie#isLegalSeparator} lets a barline,
-     * repeat or breath mark sit between a tie's two notes, and a line that ends with a barline
-     * is the ordinary case rather than a corner one — pinning the candidate to the last element
-     * would refuse the tie for most of the lines a user actually writes. The same walk answers
-     * both halves of the question, because they are one question put to two lines: which
-     * element the user must have selected for a tie to leave this line, and which element of
-     * the adjacent line it lands on.
+     * <p>Not simply the first element. {@link Tie#isLegalSeparator} lets a barline, repeat or
+     * breath mark sit between a tie's two notes, so the walk passes them. It and
+     * {@link #tieExitIndex} are one question put to two lines: which element of this line a tie
+     * from the previous line lands on, and which element the user must have selected for a tie
+     * to leave the previous line.
      *
-     * <p>A grace note is not a legal separator, so one sitting before the end note or after the
-     * anchor stops the walk instead of being passed over — matching what
-     * {@link Tie#isInvalidatedByInsertion} does to a tie the moment a grace note appears there.
-     * A final double barline stops it for the same reason: nothing may sound across the end of
-     * the piece.
+     * <p>A grace note is not a legal separator, so one sitting before the end note stops the
+     * walk instead of being passed over — matching what {@link Tie#isInvalidatedByInsertion}
+     * does to a tie the moment a grace note appears there.
+     *
+     * @return the index, or {@code null} when every element of the line is a legal separator
      */
-    private static int tieAttachmentIndex(Line line, int edgeIndex, int step) {
-        for (var i = edgeIndex; line.hasIndex(i); i += step) {
+    private static @Nullable Integer tieEntryIndex(Line line) {
+        for (var i = 0; line.hasIndex(i); i++) {
             if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
                 return i;
             }
         }
 
-        return -1;
+        return null;
+    }
+
+    /**
+     * The index of the element a tie leaving {@code line} for the next line anchors to, found
+     * by walking backward from the line's last element past every element a tie may straddle —
+     * {@link #tieEntryIndex} from the other edge.
+     *
+     * <p>A line that ends with a barline is the ordinary case rather than a corner one, so
+     * pinning the candidate to the last element would refuse the tie for most of the lines a
+     * user actually writes. A grace note after the anchor stops the walk, as it does in
+     * {@link #tieEntryIndex}, and so does a final double barline: nothing may sound across the
+     * end of the piece.
+     *
+     * @return the index, or {@code null} when every element of the line is a legal separator
+     */
+    private static @Nullable Integer tieExitIndex(Line line) {
+        for (var i = line.elementCount() - 1; line.hasIndex(i); i--) {
+            if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
+                return i;
+            }
+        }
+
+        return null;
     }
 
     /**
      * Returns the index of the first element in the range that is not a grace note,
-     * or -1 if the range holds nothing but grace notes.
+     * or null if the range holds nothing but grace notes.
      *
      * <p>Grace notes are transparent to beams and tuplets: the group spans the range's
      * non-grace endpoints and any grace note in between stays outside the group, so a
      * grace/host pair may sit inside a beamed or tupleted range (refs #592).
      */
-    public static int nonGraceBegin(ElementSelection range) {
+    public static @Nullable Integer nonGraceBegin(ElementSelection range) {
         var line = range.line();
         var bounds = range.range();
 
@@ -186,16 +199,16 @@ public final class RangeQueries {
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
      * Returns the index of the last element in the range that is not a grace note,
-     * or -1 if the range holds nothing but grace notes.
+     * or null if the range holds nothing but grace notes.
      *
      * @see #nonGraceBegin
      */
-    public static int nonGraceEnd(ElementSelection range) {
+    public static @Nullable Integer nonGraceEnd(ElementSelection range) {
         var line = range.line();
         var bounds = range.range();
 
@@ -205,7 +218,7 @@ public final class RangeQueries {
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -217,7 +230,7 @@ public final class RangeQueries {
         var endIndex = nonGraceEnd(range);
 
         // Fewer than two non-grace elements — there is nothing to join.
-        if (beginIndex < 0 || beginIndex == endIndex) {
+        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
             return false;
         }
 
@@ -385,14 +398,14 @@ public final class RangeQueries {
      * <p>A glissando lives on its <em>source</em> and connects forward, so the source is resolved
      * from the selection's size first: a single-element selection takes {@code begin() - 1} (the
      * element before it, which the glissando would run from), a two-element selection takes
-     * {@code begin()} itself, and any other size yields -1.
+     * {@code begin()} itself, and any other size yields null.
      *
      * <p>With the source resolved, a source that already {@code hasGlissando()} is returned
      * immediately — removal needs no further gate. Otherwise the addition gate applies: the source
      * must be in range with a successor, both it and its successor must be pitched notes, and
-     * {@code isSamePitchAsFollower(source)} must be false. Failing any of those yields -1.
+     * {@code isSamePitchAsFollower(source)} must be false. Failing any of those yields null.
      */
-    public static int glissandoSourceIndex(ElementSelection range) {
+    public static @Nullable Integer glissandoSourceIndex(ElementSelection range) {
         var line = range.line();
         var bounds = range.range();
         int sourceIndex;
@@ -402,11 +415,11 @@ public final class RangeQueries {
         } else if (bounds.size() == GLISSANDO_SELECTION_SIZE_WITH_TARGET) {
             sourceIndex = bounds.begin();
         } else {
-            return -1;
+            return null;
         }
 
         if (sourceIndex < 0) {
-            return -1;
+            return null;
         }
 
         var sourceElement = line.getElement(sourceIndex);
@@ -417,15 +430,15 @@ public final class RangeQueries {
         }
 
         if (sourceIndex + 1 >= line.elementCount()) {
-            return -1;
+            return null;
         }
 
         if (!sourceElement.getType().isPitchedNote()
             || !line.getElement(sourceIndex + 1).getType().isPitchedNote()) {
-            return -1;
+            return null;
         }
 
-        return line.isSamePitchAsFollower(sourceIndex) ? -1 : sourceIndex;
+        return line.isSamePitchAsFollower(sourceIndex) ? null : sourceIndex;
     }
 
     /**
@@ -434,7 +447,7 @@ public final class RangeQueries {
      * @see #glissandoSourceIndex
      */
     public static boolean canToggleGlissando(ElementSelection range) {
-        return glissandoSourceIndex(range) >= 0;
+        return glissandoSourceIndex(range) != null;
     }
 
     /**
@@ -486,13 +499,13 @@ public final class RangeQueries {
         var endIndex = nonGraceEnd(range);
 
         // Fewer than two non-grace elements — there is nothing to group.
-        if (beginIndex < 0 || beginIndex == endIndex) {
+        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
             return new TupletToggleInfo(false, null, false);
         }
 
         Tuplet firstTuplet = null;
 
-        for (var i = beginIndex; i <= endIndex; i++) {
+        for (int i = beginIndex; i <= endIndex; i++) {
             // A grace note rides along inside the span without joining the tuplet.
             if (line.getElement(i).getType().isGraceNote()) {
                 continue;

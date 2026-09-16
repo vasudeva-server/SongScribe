@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.engraving.EngravingConstants;
 
 /**
@@ -171,7 +169,7 @@ public class Ending extends Span {
      *     {@link ElementType#closesRepeat()}, which the class invariant guarantees exists
      */
     public BarElement getSplitElement(Line line) {
-        return closingRepeatsBetween(line, getAnchorElementIndex(), getEndElementIndex())
+        return closingRepeatsBetween(line, requireAnchorElementIndex(), requireEndElementIndex())
             .findFirst()
             .orElseThrow();
     }
@@ -221,7 +219,7 @@ public class Ending extends Span {
      *     it is a barline or repeat
      */
     public int getOpeningElementIndex(Line line) {
-        return openingElementIndex(line, getAnchorElementIndex());
+        return openingElementIndex(line, requireAnchorElementIndex());
     }
 
     /**
@@ -342,11 +340,11 @@ public class Ending extends Span {
 
         // Condition 4: all content elements in either sub-span are deleted
         var splitIndex = line.getElementIndex(splitElement);
-        var firstContent = IntStream.range(getAnchorElementIndex() + 1, splitIndex)
+        var firstContent = IntStream.range(requireAnchorElementIndex() + 1, splitIndex)
             .mapToObj(line::getElement)
             .filter(el -> el.getType().isDuration())
             .toList();
-        var secondContent = IntStream.range(splitIndex + 1, getEndElementIndex())
+        var secondContent = IntStream.range(splitIndex + 1, requireEndElementIndex())
             .mapToObj(line::getElement)
             .filter(el -> el.getType().isDuration())
             .toList();
@@ -459,8 +457,8 @@ public class Ending extends Span {
             return false;
         }
 
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
+        var anchorIndex = requireAnchorElementIndex();
+        var endIndex = requireEndElementIndex();
 
         // Any interior barline or repeat invalidates the ending, the split boundary
         // included: inserting one immediately before the split element does not take

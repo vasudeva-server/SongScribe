@@ -31,7 +31,9 @@ public class PreferencesOpenAction
     private static final String NATIVE_MENU_TITLE = "Settings";
 
     public PreferencesOpenAction(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog::new);
+        // Modeless, and a preference change re-lays the score out without moving an element
+        // to another index, so the mouse interaction grace mode is in keeps going underneath it.
+        super(mainFrame, Strings.get(Strings.ACTION_SETTINGS), PreferencesDialog::new, Flag.ENABLED_IN_GRACE_MODE);
     }
 
     @Override

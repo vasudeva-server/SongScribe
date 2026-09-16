@@ -19,6 +19,8 @@
  */
 package songscribe.binding;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A value that can be read, observed and written — the two-way case.
  *
@@ -45,6 +47,7 @@ package songscribe.binding;
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  *
- * @param <T> the value's type
+ * @param <T> the value's type, declared {@code @Nullable} when absence is a value the graph
+ *     carries
  */
-public interface Property<T> extends ObservableValue<T>, WritableValue<T> {}
+public interface Property<T extends @Nullable Object> extends ObservableValue<T>, WritableValue<T> {}

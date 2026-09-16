@@ -188,15 +188,16 @@ public final class LyricLayoutBuilder {
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
             // Close any pending hyphen at the start of this syllable.
-            if (state.pendingHyphenStartXSs >= 0) {
+            var pendingHyphen = state.pendingHyphen;
+
+            if (pendingHyphen != null) {
                 connectors.add(new LyricConnectorLayout(
-                    state.pendingHyphenStartXSs,
+                    pendingHyphen.startXSs(),
                     boxXSs,
                     activeVerse,
                     LyricConnectorLayout.Kind.HYPHEN,
-                    state.pendingHyphenColumnIndex));
-                state.pendingHyphenStartXSs = -1;
-                state.pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
+                    pendingHyphen.columnIndex()));
+                state.pendingHyphen = null;
             }
 
             // Close any active extender at the start of this syllable.
@@ -206,16 +207,15 @@ public final class LyricLayoutBuilder {
             var opensHyphen = Lyric.syllabicContinues(lyric.syllabic());
 
             if (opensHyphen) {
-                state.pendingHyphenStartXSs = syllableEndXSs;
-                state.pendingHyphenColumnIndex = columnIndex;
+                state.pendingHyphen = new PendingHyphen(syllableEndXSs, columnIndex);
             }
 
             if (extend == Lyric.Extend.START && !opensHyphen) {
-                state.extenderActive = true;
-                state.extenderStartXSs = syllableEndXSs;
-                state.extenderColumnIndex = columnIndex;
-                state.syllableSpansGraceHostUnion = column.isGraceNote()
-                    && HorizontalSpacingCalculator.graceSyllableSpansUnion(widthSs, graceUnionWidthSs);
+                state.activeExtender = new ActiveExtender(
+                    syllableEndXSs,
+                    columnIndex,
+                    column.isGraceNote()
+                        && HorizontalSpacingCalculator.graceSyllableSpansUnion(widthSs, graceUnionWidthSs));
             }
         }
 
@@ -223,13 +223,13 @@ public final class LyricLayoutBuilder {
 
         // Any START that reaches the end of the line without being closed by a STOP or a
         // text-bearing note continues the melisma onto the next line.
-        if (state.extenderActive) {
-            emitDanglingExtender(connectors, columns, state, activeVerse);
+        if (state.activeExtender != null) {
+            emitDanglingExtender(connectors, columns, state.activeExtender, activeVerse);
             hasTrailingContinuation = true;
         }
 
-        if (state.pendingHyphenStartXSs >= 0) {
-            emitDanglingHyphen(connectors, columns, state, activeVerse);
+        if (state.pendingHyphen != null) {
+            emitDanglingHyphen(connectors, columns, state.pendingHyphen, activeVerse);
         }
 
         // Always the lyric space width: a melisma is sung on a single (non-hyphenated) syllable,
@@ -423,15 +423,16 @@ public final class LyricLayoutBuilder {
     private static void emitDanglingExtender(
         List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
-        ExtenderState state,
+        ActiveExtender extender,
         int verse
     ) {
-        var startColumnIndex = state.extenderColumnIndex;
-        var endXSs = startColumnIndex >= 0
+        var startColumnIndex = extender.sourceColumnIndex();
+        var endXSs = startColumnIndex != null
             ? columns.get(startColumnIndex).getRightEdgeXSs()
-            : state.extenderStartXSs;
+            : extender.startXSs();
+        var firstWalkedColumnIndex = startColumnIndex != null ? startColumnIndex + 1 : 0;
 
-        for (var i = startColumnIndex + 1; i < columns.size(); i++) {
+        for (var i = firstWalkedColumnIndex; i < columns.size(); i++) {
             // Pass through the host of a paired grace; the host never carries a lyric, but
             // the extender's silent run must not be broken by it.
             if (isHostOfPairedGraceColumn(columns, i)) {
@@ -454,11 +455,11 @@ public final class LyricLayoutBuilder {
         }
 
         connectors.add(new LyricConnectorLayout(
-            state.extenderStartXSs,
+            extender.startXSs(),
             endXSs,
             verse,
             LyricConnectorLayout.Kind.DANGLING_EXTENDER,
-            state.extenderColumnIndex));
+            startColumnIndex));
     }
 
     /**
@@ -474,66 +475,94 @@ public final class LyricLayoutBuilder {
     private static void emitDanglingHyphen(
         List<? super LyricConnectorLayout> connectors,
         List<ElementColumn> columns,
-        ExtenderState state,
+        PendingHyphen hyphen,
         int verse
     ) {
-        for (var i = state.pendingHyphenColumnIndex + 1; i < columns.size(); i++) {
+        for (var i = hyphen.columnIndex() + 1; i < columns.size(); i++) {
             var column = columns.get(i);
 
             if (columnCanBearSyllable(columns, i)) {
                 connectors.add(new LyricConnectorLayout(
-                    state.pendingHyphenStartXSs,
+                    hyphen.startXSs(),
                     column.getLeftEdgeXSs(),
                     verse,
                     LyricConnectorLayout.Kind.DANGLING_HYPHEN,
-                    state.pendingHyphenColumnIndex));
+                    hyphen.columnIndex()));
                 return;
             }
         }
 
         LOG.error("Dangling hyphen at column {} in verse {} has no following eligible element on line",
-            state.pendingHyphenColumnIndex, verse);
+            hyphen.columnIndex(), verse);
     }
+
+    /**
+     * An extender that has started and not yet closed.
+     *
+     * @param startXSs                    where the extender begins; the end of the syllable that
+     *                                    opened it, or {@code 0.0} for a leading continuation
+     * @param sourceColumnIndex           the column whose syllable opened the extender, or
+     *                                    {@code null} for a leading continuation carried in from
+     *                                    the previous line
+     * @param syllableSpansGraceHostUnion whether the extender starts at a grace whose syllable
+     *                                    already spans the grace–host union; such an extender is
+     *                                    dropped rather than drawn (see
+     *                                    {@link ExtenderState#closeGraceHostExtender})
+     */
+    private record ActiveExtender(
+        double startXSs,
+        @Nullable Integer sourceColumnIndex,
+        boolean syllableSpansGraceHostUnion
+    ) {
+        static ActiveExtender leadingContinuation() {
+            return new ActiveExtender(0.0, null, false);
+        }
+    }
+
+    /**
+     * A hyphen opened by a syllable and not yet closed by the next one.
+     *
+     * @param startXSs    the end of the syllable that opened the hyphen
+     * @param columnIndex the column whose syllable opened the hyphen
+     */
+    private record PendingHyphen(double startXSs, int columnIndex) {}
 
     /** Mutable scratch state for tracking the active extender and pending hyphen during one verse pass. */
     private static final class ExtenderState {
-        boolean extenderActive;
-        double extenderStartXSs;
-        int extenderColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
-        // Set when the active extender starts at a grace whose syllable already spans the grace-host
-        // union; such an extender is dropped rather than drawn (see closeGraceHostExtender).
-        boolean syllableSpansGraceHostUnion;
-        double pendingHyphenStartXSs = -1.0;
-        int pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
+        @Nullable ActiveExtender activeExtender;
+        @Nullable PendingHyphen pendingHyphen = null;
 
         ExtenderState(boolean hasLeadingContinuation) {
-            extenderActive = hasLeadingContinuation;
-            extenderStartXSs = 0.0;
+            activeExtender = hasLeadingContinuation ? ActiveExtender.leadingContinuation() : null;
         }
 
-        /** If an extender is active, emit it ending at endXSs and clear the active flag. */
+        /** If an extender is active, emit it ending at endXSs and clear it. */
         void closeExtender(List<? super LyricConnectorLayout> connectors, int verse, double endXSs) {
-            if (extenderActive) {
+            if (activeExtender != null) {
                 connectors.add(new LyricConnectorLayout(
-                    extenderStartXSs,
+                    activeExtender.startXSs(),
                     endXSs,
                     verse,
                     LyricConnectorLayout.Kind.EXTENDER,
-                    extenderColumnIndex));
-                extenderActive = false;
+                    activeExtender.sourceColumnIndex()));
+                activeExtender = null;
             }
         }
 
         /**
          * If an extender is active, emit it ending at
-         * {@code max(extenderStartXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs)} — LilyPond's
-         * LyricExtender minimum-length rule — and clear the active flag. For a leading continuation
-         * (extender carried in from the previous line), {@code extenderStartXSs} is still the {@code 0.0}
-         * placeholder from the constructor, so the first term collapses to {@code MIN_MELISMA_LENGTH_SS};
-         * {@code headRightEdgeXSs}, an absolute X position on this line, always dominates that {@code max()}.
+         * {@code max(startXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs)} — LilyPond's
+         * LyricExtender minimum-length rule — and clear it. For a leading continuation
+         * (extender carried in from the previous line), {@code startXSs} is {@code 0.0}, so the
+         * first term collapses to {@code MIN_MELISMA_LENGTH_SS}; {@code headRightEdgeXSs}, an
+         * absolute X position on this line, always dominates that {@code max()}.
          */
         void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, int verse, double headRightEdgeXSs) {
-            closeExtender(connectors, verse, Math.max(extenderStartXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
+            if (activeExtender == null) {
+                return;
+            }
+
+            closeExtender(connectors, verse, Math.max(activeExtender.startXSs() + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
         }
 
         /**
@@ -548,10 +577,10 @@ public final class LyricLayoutBuilder {
          * The melisma reaching this host need not be this pair's own: {@code LyricRun.syncGraceHostMelisma}
          * leaves a host alone when it already carries an extender onward, so a melisma can start at
          * one grace, run through its host and several notes, and stop at a second grace's host.
-         * {@link #syllableSpansGraceHostUnion} describes the grace the melisma <em>started</em> at, so
-         * it only licenses dropping the line when that grace is this host's own — the column
-         * immediately before it. Applied to any other melisma it would erase a line spanning many
-         * notes.
+         * {@link ActiveExtender#syllableSpansGraceHostUnion} describes the grace the melisma
+         * <em>started</em> at, so it only licenses dropping the line when that grace is this host's
+         * own — the column immediately before it. Applied to any other melisma it would erase a line
+         * spanning many notes.
          */
         void closeGraceHostExtender(
             List<? super LyricConnectorLayout> connectors,
@@ -559,12 +588,13 @@ public final class LyricLayoutBuilder {
             double headRightEdgeXSs,
             int hostColumnIndex) {
 
-            if (extenderActive
-                && syllableSpansGraceHostUnion
-                && extenderColumnIndex == hostColumnIndex - 1) {
+            if (activeExtender != null && activeExtender.syllableSpansGraceHostUnion()) {
+                var sourceColumnIndex = activeExtender.sourceColumnIndex();
 
-                extenderActive = false;
-                return;
+                if (sourceColumnIndex != null && sourceColumnIndex == hostColumnIndex - 1) {
+                    activeExtender = null;
+                    return;
+                }
             }
 
             closeExtenderPastHead(connectors, verse, headRightEdgeXSs);

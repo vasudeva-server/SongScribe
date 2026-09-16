@@ -25,7 +25,6 @@ import java.awt.event.KeyEvent;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.util.Calendar;
-import java.util.stream.IntStream;
 import javax.swing.KeyStroke;
 
 import com.formdev.flatlaf.util.SystemInfo;
@@ -43,13 +42,6 @@ public final class Utils {
     };
 
     private Utils() {}
-
-    public static int arrayIndexOf(Object[] array, Object element) {
-        return IntStream.range(0, array.length)
-            .filter(i -> element.equals(array[i]))
-            .findFirst()
-            .orElse(-1);
-    }
 
     public static int lineCount(String str) {
         if (str.isEmpty()) {

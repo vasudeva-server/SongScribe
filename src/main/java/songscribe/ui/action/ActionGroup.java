@@ -64,11 +64,6 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         action.addPropertyChangeListener(this);
     }
 
-    public void remove(T action) {
-        actions.remove(action);
-        action.removePropertyChangeListener(this);
-    }
-
     public void setDefaultAction(@Nullable T defaultAction) {
         this.defaultAction = defaultAction;
     }
@@ -134,22 +129,6 @@ public class ActionGroup<T extends UIAction> implements PropertyChangeListener {
         if (changed) {
             action.perform(source);
         }
-    }
-
-    public void selectNext() {
-        if (selected == null) {
-            setSelected(actions.getFirst(), true);
-            return;
-        }
-
-        var index = actions.indexOf(selected);
-
-        if (index == -1) {
-            return;
-        }
-
-        index = (index + 1) % actions.size();
-        setSelected(actions.get(index), true);
     }
 
     public boolean isSelected(T action) {

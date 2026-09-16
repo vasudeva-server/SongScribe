@@ -252,6 +252,18 @@ the reason for it is still in hand.
   `Lyric.carrier(verse, extend)` and `Lyric.withExtend(extend)` are the two
   factories the chain repairs share. Row 9 judges whether the record's
   remaining surface still fits this content model.
+- **→ Pass 9.** Hyphen chains and melismas must be able to cross a line break,
+  and the lyric editor must be able to enter both. Today neither can be entered:
+  `LyricTargetResolver.findNextEligibleIndex`/`findPreviousEligibleIndex` stop at
+  the line's ends, so `-` and `_` on a line's last note find no target, and `_`
+  on a line's first note finds no preceding syllable. Hyphens are not modeled
+  across a break at all: `LyricLayoutBuilder.emitDanglingHyphen` looks for the
+  next syllable only on its own line and logs an error when there is none, no
+  pending hyphen is carried into the next line, and `LyricRun.endDanglingWord`
+  ends a word whose next syllable is not in the run. Melismas are laid out
+  across a break (`Result.hasTrailingContinuation` feeds the next line's
+  leading stub), but whether the chain repairs keep one intact when either side
+  of the break is edited has not been checked.
 - **→ Pass 12.** Two diagrams sit outside pass 4's target and were not judged at
   its step 9: `Song.java` L909 and L977 (pseudocode for the line-insertion and
   line-deletion mutation sequences), and `SongMetadata.java` L38 (the per-field

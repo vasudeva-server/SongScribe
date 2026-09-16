@@ -20,9 +20,10 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.Staff;
-import songscribe.engraving.StaffPosition;
 import songscribe.engraving.StemMetrics;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
@@ -132,11 +133,9 @@ public final class Beam extends NoteSpan {
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
         var replacedIndex = line.getElementIndex(oldElement);
-        var beamStart = getAnchorElementIndex();
-        var beamEnd = getEndElementIndex();
+        var beamStart = requireAnchorElementIndex();
+        var beamEnd = requireEndElementIndex();
 
-        // A beam never crosses a line, so an element of another line has index -1 here and an
-        // index inside the span is inside the beam.
         if (replacedIndex < beamStart || replacedIndex > beamEnd) {
             return false;
         }
@@ -179,8 +178,8 @@ public final class Beam extends NoteSpan {
      * @throws IllegalStateException if this beam's anchor is in no line
      */
     public Direction direction() {
-        var beamStart = getAnchorElementIndex();
-        var beamEnd = getEndElementIndex();
+        var beamStart = requireAnchorElementIndex();
+        var beamEnd = requireEndElementIndex();
         var minStaffPos = Integer.MAX_VALUE;
         var maxStaffPos = Integer.MIN_VALUE;
 
@@ -218,10 +217,10 @@ public final class Beam extends NoteSpan {
      * hangs back down from there.
      */
     private boolean graceStemTouchesBeamAbove(int topStaffPosition) {
-        var beamEnd = getEndElementIndex();
+        var beamEnd = requireEndElementIndex();
         var beamBottomYSs = estimatedBeamBottomAboveYSs(topStaffPosition);
 
-        for (var i = getAnchorElementIndex(); i <= beamEnd; i++) {
+        for (var i = requireAnchorElementIndex(); i <= beamEnd; i++) {
             var graceNote = noteAt(i);
 
             if (!graceNote.getType().isGraceNote()) {
@@ -247,36 +246,34 @@ public final class Beam extends NoteSpan {
      * <p>An estimate is all that is available: the direction has to be settled before columns
      * exist, and the beam scorer cannot place the beam without their X positions. So the beam
      * is assumed to sit a natural stem above the highest head — its outer edge — with the stack
-     * of {@link #beamLevel} beams hanging below it at the renderer's spacing.
+     * of {@link #beamStackCount} beams hanging below it at the renderer's spacing.
      */
     private double estimatedBeamBottomAboveYSs(int topStaffPosition) {
-        var beamStackCount = beamLevel() + 1;
-
         return topStaffPosition * Staff.HALF_SPACE_SS
             - StemMetrics.STEM_LENGTH_SS
-            + BeamMetrics.beamStackHeightSs(beamStackCount);
+            + BeamMetrics.beamStackHeightSs(beamStackCount());
     }
 
     // -------------------------------------------------------------------------
-    // Beam level (highest level spanned by the shortest note in the group)
+    // Beam stack count (beams carried by the shortest note in the group)
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the beam level of this group, where level 0 = 8th, level 1 = 16th, level 2 =
-     * 32nd. The level is the shortest note's within the span.
+     * Returns the number of beams stacked over this group: 1 for an 8th, 2 for a 16th, 3 for
+     * a 32nd. The count is the shortest note's within the span.
      *
-     * @return the highest {@link ElementType#beamCount()} among this beam's members, minus one
+     * @return the highest {@link ElementType#beamCount()} among this beam's members
      */
-    public int beamLevel() {
+    public int beamStackCount() {
         var line = line();
-        var beamEnd = getEndElementIndex();
+        var beamEnd = requireEndElementIndex();
         var maxBeamCount = 0;
 
-        for (var i = getAnchorElementIndex(); i <= beamEnd; i++) {
+        for (var i = requireAnchorElementIndex(); i <= beamEnd; i++) {
             maxBeamCount = Math.max(maxBeamCount, line.getElement(i).getType().beamCount());
         }
 
-        return maxBeamCount - 1;
+        return maxBeamCount;
     }
 
     // -------------------------------------------------------------------------
@@ -343,11 +340,11 @@ public final class Beam extends NoteSpan {
      */
     public boolean stubRight(int i) {
         var line = line();
-        var beamStart = getAnchorElementIndex();
-        var beamEnd = getEndElementIndex();
+        var beamStart = requireAnchorElementIndex();
+        var beamEnd = requireEndElementIndex();
         var myBeams = line.getElement(i).getType().beamCount();
-        var leftBeams = i > beamStart ? neighborBeamCount(i, -1) : 0;
-        var rightBeams = i < beamEnd ? neighborBeamCount(i, 1) : 0;
+        var leftBeams = i > beamStart ? neighborBeamCount(line.previousNonGraceIndex(i)) : 0;
+        var rightBeams = i < beamEnd ? neighborBeamCount(line.nextNonGraceIndex(i)) : 0;
 
         var hasStub = false;
 
@@ -408,49 +405,50 @@ public final class Beam extends NoteSpan {
      *     stem must still reach; 0 for the first and last stem of the group
      */
     public int frenchBeamShortening(int i) {
-        if (i <= getAnchorElementIndex() || i >= getEndElementIndex()) {
+        if (i <= requireAnchorElementIndex() || i >= requireEndElementIndex()) {
             return 0;
         }
 
         // A note's beams always run 0..beamCount-1, so LilyPond's intersection of the
         // stem's left and right beaming slices is simply the smallest of the three
         // counts — the beams that reach this stem from both sides pass through it.
-        var leftBeams = neighborBeamCount(i, -1);
-        var ownBeams = line().getElement(i).getType().beamCount();
-        var rightBeams = neighborBeamCount(i, 1);
+        var line = line();
+        var leftBeams = neighborBeamCount(line.previousNonGraceIndex(i));
+        var ownBeams = line.getElement(i).getType().beamCount();
+        var rightBeams = neighborBeamCount(line.nextNonGraceIndex(i));
         var beamsThrough = Math.min(ownBeams, Math.min(leftBeams, rightBeams));
 
         return Math.max(0, beamsThrough - 1);
     }
 
     /**
-     * Returns {@link ElementType#beamCount()} of the nearest element to one side of
-     * {@code index} that takes part in beaming, stepping by {@code step} (-1 for the left
-     * neighbour, 1 for the right); 0 if the line runs out first.
+     * Returns {@link ElementType#beamCount()} of the neighbor at {@code neighborIndex}, or 0
+     * when there is no neighbor.
      *
-     * <p>Grace notes are stepped over. One can be inserted between two beamed notes without
-     * joining their beams, so the beam that decides this stem's length is the one continuing
-     * to the note on the far side of it, not the grace note's own flag.
+     * <p>The caller finds the neighbor through {@link Line#previousNonGraceIndex} or
+     * {@link Line#nextNonGraceIndex}, so grace notes are stepped over. One can be inserted
+     * between two beamed notes without joining their beams, so the beam that decides this
+     * stem's length is the one continuing to the note on the far side of it, not the grace
+     * note's own flag.
      *
-     * @param index the line index to search from
-     * @param step  -1 to search left, 1 to search right
-     * @return the neighbour's beam count, or 0 if the line runs out first
+     * @param neighborIndex the neighbor's line index, or {@code null} when the line ran out
+     *     before one was found
+     * @return the neighbor's beam count, or 0 when {@code neighborIndex} is null
      */
-    private int neighborBeamCount(int index, int step) {
-        var neighborIndex = line().nearestNonGraceIndex(index, step);
-
-        return neighborIndex < 0 ? 0 : line().getElement(neighborIndex).getType().beamCount();
+    private int neighborBeamCount(@Nullable Integer neighborIndex) {
+        return neighborIndex == null ? 0 : line().getElement(neighborIndex).getType().beamCount();
     }
 
     /**
      * Merges this beam with any existing beam that overlaps it: widens this beam to cover
      * them and removes every beam the widened range subsumes. Beams do not absorb an
      * <em>adjacent</em> beam — two beam groups written back to back are two deliberate
-     * groupings, not one interrupted by an accident — so the reach is zero.
+     * groupings, not one interrupted by an accident — so the merge absorbs only what it
+     * {@link LineSpans.Absorb#OVERLAPPING overlaps}.
      */
     @Override
     protected void applyDisplacementPolicy(Line line) {
-        line.spanRegistry().mergeOverlapping(this, Beam.class, 0);
+        line.spanRegistry().mergeOverlapping(this, Beam.class, LineSpans.Absorb.OVERLAPPING);
     }
 
     @Override

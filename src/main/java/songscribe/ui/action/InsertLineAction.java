@@ -63,8 +63,7 @@ public final class InsertLineAction extends UIAction {
             KeyEvent.VK_ENTER,
             getAcceleratorModifiers(type),
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
         this.type = type;
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_INSERT_LINE);

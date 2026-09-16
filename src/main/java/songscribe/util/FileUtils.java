@@ -44,7 +44,7 @@ public final class FileUtils {
         var fileName = path.getFileName().toString();
         var lastDot = fileName.lastIndexOf('.');
 
-        if (lastDot == -1) {
+        if (lastDot == StringUtils.INDEX_NOT_FOUND) {
             return "";
         }
 
@@ -58,7 +58,7 @@ public final class FileUtils {
     public static String getPathWithoutExtension(String path) {
         var lastDot = path.lastIndexOf('.');
 
-        if (lastDot == -1) {
+        if (lastDot == StringUtils.INDEX_NOT_FOUND) {
             return path;
         }
 

@@ -102,8 +102,8 @@ public final class SelectionCoordinator implements Disposable {
     /** The line at each line index, registered by that index's {@link LineComponent}. */
     private final Map<Integer, Line> lines = new HashMap<>();
 
-    /** Which line currently has the selection, or -1 if none. */
-    private int activeLineIndex = -1;
+    /** Which line currently has the selection, or null if none. */
+    private @Nullable Integer activeLineIndex = null;
 
     /**
      * The one thing selected in the score, on the line at {@code activeLineIndex}, or null if
@@ -170,7 +170,7 @@ public final class SelectionCoordinator implements Disposable {
      */
     public void clearLines() {
         lines.clear();
-        activeLineIndex = -1;
+        activeLineIndex = null;
     }
 
     /**
@@ -190,7 +190,7 @@ public final class SelectionCoordinator implements Disposable {
      * or -1 if no line does.
      */
     public int getActiveLineIndex() {
-        return activeLineIndex;
+        return activeLineIndex == null ? -1 : activeLineIndex;
     }
 
     /**
@@ -252,7 +252,7 @@ public final class SelectionCoordinator implements Disposable {
      */
     public void clearSelection() {
         selected = null;
-        activeLineIndex = -1;
+        activeLineIndex = null;
     }
 
     /**
@@ -400,7 +400,7 @@ public final class SelectionCoordinator implements Disposable {
      * @return {@code true} when that element reads as selected
      */
     public boolean isElementSelected(int elementIndex, int lineIndex) {
-        if (activeLineIndex != lineIndex || elementIndex < 0) {
+        if (activeLineIndex == null || activeLineIndex != lineIndex || elementIndex < 0) {
             return false;
         }
 
@@ -420,7 +420,7 @@ public final class SelectionCoordinator implements Disposable {
      * Returns whether the staff line at the given index is selected (for deletion).
      */
     public boolean isLineSelected(int lineIndex) {
-        return activeLineIndex == lineIndex && isLineSelected();
+        return activeLineIndex != null && activeLineIndex == lineIndex && isLineSelected();
     }
 
     /**
@@ -464,7 +464,7 @@ public final class SelectionCoordinator implements Disposable {
             return isSelectedTarget(target) && line != null && tie.isIn(line);
         }
 
-        if (activeLineIndex != lineIndex) {
+        if (activeLineIndex == null || activeLineIndex != lineIndex) {
             return false;
         }
 
@@ -474,8 +474,10 @@ public final class SelectionCoordinator implements Disposable {
 
                 // The index has to be derived here because the caller supplied only the element.
                 // Callers that already hold the index use isElementRangeSelected directly, which
-                // skips this scan.
-                yield range != null && range.contains(range.line().getElementIndex(element));
+                // skips this scan. A clicked element can be on a different line than the range's.
+                yield range != null
+                    && range.line().contains(element)
+                    && range.contains(range.line().getElementIndex(element));
             }
             case HitTarget.Tie _ -> throw new AssertionError("HitTarget.Tie is handled above the gate");
 
@@ -503,7 +505,7 @@ public final class SelectionCoordinator implements Disposable {
      * @return {@code true} when that element reads as covered by the selected range
      */
     public boolean isElementRangeSelected(int elementIndex, int lineIndex) {
-        if (activeLineIndex != lineIndex || elementIndex < 0) {
+        if (activeLineIndex == null || activeLineIndex != lineIndex || elementIndex < 0) {
             return false;
         }
 
@@ -647,14 +649,14 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     @SuppressWarnings("ObjectEquality")
-    private int findLineIndex(Line line) {
+    private @Nullable Integer findLineIndex(Line line) {
         for (var entry : lines.entrySet()) {
             if (entry.getValue() == line) {
                 return entry.getKey();
             }
         }
 
-        return -1;
+        return null;
     }
 
     // -------------------------------------------------------------------------
@@ -667,7 +669,7 @@ public final class SelectionCoordinator implements Disposable {
      * with a fresh empty line so the song always has at least one line.
      */
     public boolean canDeleteLine() {
-        return getSelectedLine() != -1;
+        return getSelectedLine() != null;
     }
 
     /**
@@ -740,17 +742,17 @@ public final class SelectionCoordinator implements Disposable {
 
     /**
      * Returns the index of the line that has a line selection (for deletion),
-     * or -1 if no line is selected.
+     * or null if no line is selected.
      */
-    public int getSelectedLine() {
-        return isLineSelected() ? activeLineIndex : -1;
+    public @Nullable Integer getSelectedLine() {
+        return isLineSelected() ? activeLineIndex : null;
     }
 
     /**
      * Returns whether any line has a line selection.
      */
     public boolean hasLineSelection() {
-        return getSelectedLine() != -1;
+        return getSelectedLine() != null;
     }
 
     /**

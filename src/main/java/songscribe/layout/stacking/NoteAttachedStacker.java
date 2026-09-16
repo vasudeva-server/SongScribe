@@ -822,11 +822,12 @@ public class NoteAttachedStacker {
         }
 
         var line = context.getLine();
-        var anchorIndex = trill.getAnchorElementIndex();
-        var endIndex = trill.getEndElementIndex();
+        var anchorIndex = trill.requireAnchorElementIndex();
+        var endIndex = trill.requireEndElementIndex();
 
-        // A single-note trill has no end element (endIndex -1); it degenerates to the anchor alone,
-        // seated with the first-note script padding.
+        // requireEndElementIndex answers from the end element's own line, so a trill whose end
+        // sits in a later line can report an index below its anchor's; it degenerates to the
+        // anchor alone, seated with the first-note script padding.
         if (endIndex < anchorIndex) {
             endIndex = anchorIndex;
         }

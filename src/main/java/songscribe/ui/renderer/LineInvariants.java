@@ -69,15 +69,17 @@ public final class LineInvariants {
     /** Color for an existing element that will be replaced by the current preview element. */
     static final Color REPLACED_ELEMENT_COLOR = new Color(249, 161, 161);
 
-    /** Verse reported by {@link #getActivelyEditedVerse()} when no lyric editor is open. */
-    public static final int NO_VERSE = -1;
-
     /**
-     * Element index to pass to {@link #colorFor(HitTarget, int)} for the target variants that
-     * ignore it. Only {@link HitTarget.Element} consults the index; naming the absence keeps a
-     * bare {@code -1} out of the call sites.
+     * The note currently sounding during playback, and the grace note paired with it.
+     * <p>
+     * A grace index exists only while a note is playing, which is why the pair is one record
+     * rather than two independently nullable fields.
+     *
+     * @param noteIndex      index of the currently playing note
+     * @param graceNoteIndex index of the grace note preceding it, or {@code null} when none
      */
-    public static final int NO_ELEMENT_INDEX = -1;
+    public record Playing(int noteIndex, @Nullable Integer graceNoteIndex) {
+    }
 
     // ==========================================================================
     // Instance Fields
@@ -93,11 +95,10 @@ public final class LineInvariants {
     private final LyricRenderMetrics lyricRenderMetrics;
     @Nullable
     private final StaffElement activelyEditedElement;
-    private final int activelyEditedVerse;
+    private final @Nullable Integer activelyEditedVerse;
     private final LineComponent.@Nullable SelectionProvider selectionProvider;
     private final Color selectionColor;
-    private final int playingNoteIndex;
-    private final int playingGraceNoteIndex;
+    private final @Nullable Playing playing;
     private final ViewScale viewScale;
 
     /** Tie span containing the playing note, resolved once; null when nothing is playing. */
@@ -136,11 +137,10 @@ public final class LineInvariants {
         activelyEditedVerse = b.activelyEditedVerse;
         selectionProvider = b.selectionProvider;
         selectionColor = b.selectionColor;
-        playingNoteIndex = b.playingNoteIndex;
-        playingGraceNoteIndex = b.playingGraceNoteIndex;
+        playing = b.playing;
         viewScale = b.viewScale;
-        playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
-            ? b.currentLine.spanRegistry().findTieAt(b.playingNoteIndex)
+        playingTieSpan = (b.playing != null && b.currentLine != null)
+            ? b.currentLine.spanRegistry().findTieAt(b.playing.noteIndex())
             : null;
 
         if (playingTieSpan == null || b.currentLine == null) {
@@ -261,10 +261,10 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns the verse being edited in the lyric overlay, or {@link #NO_VERSE}
+     * Returns the verse being edited in the lyric overlay, or {@code null}
      * when no editor is open.
      */
-    public int getActivelyEditedVerse() {
+    public @Nullable Integer getActivelyEditedVerse() {
         return activelyEditedVerse;
     }
 
@@ -334,8 +334,7 @@ public final class LineInvariants {
         return colorFor(
             elementIndex,
             () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
-            () -> selectionProvider != null
-                    && selectionProvider.isSelected(new HitTarget.Lyric(element, verseIndex), lineIndex)
+            () -> isSelected(new HitTarget.Lyric(element, verseIndex))
         );
     }
 
@@ -344,62 +343,77 @@ public final class LineInvariants {
      * anchored at {@code sourceElementIndex} for {@code verseIndex}. Tracks the same
      * span-aware playing highlight as the anchor syllable so that the connector stays
      * highlighted while the in-between or extender carrier notes are playing.
+     *
+     * @param sourceElementIndex the anchor's position on this line, or null for a leading
+     *                           continuation, whose source element sits on the previous line and
+     *                           so has no playing state here
      */
-    public Color getLyricConnectorColor(int sourceElementIndex, int verseIndex) {
-        if (sourceElementIndex < 0) {
+    public Color getLyricConnectorColor(@Nullable Integer sourceElementIndex, int verseIndex) {
+        if (sourceElementIndex == null) {
             return Color.BLACK;
         }
 
+        int anchorIndex = sourceElementIndex;
+
         if (currentLine == null) {
-            return getElementColor(sourceElementIndex);
+            return getElementColor(anchorIndex);
         }
 
-        var anchor = currentLine.getElement(sourceElementIndex);
+        var anchor = currentLine.getElement(anchorIndex);
         return colorFor(
-            sourceElementIndex,
-            () -> isLyricSpanPlaying(sourceElementIndex, anchor, verseIndex),
+            anchorIndex,
+            () -> isLyricSpanPlaying(anchorIndex, anchor, verseIndex),
             () -> false
         );
     }
 
     /**
-     * Returns the rendering color for {@code target}, the target-keyed counterpart of
-     * {@link #getElementColor(int)}.
+     * Returns the rendering color for {@code target}, a thing that is selectable in its own
+     * right (an articulation, a tie, a beam): the selection color when the selection provider
+     * holds this exact target, and the default otherwise.
      * <p>
-     * Follows the same cascade — playback, then selection, then the hovered
-     * replaced-element highlight — but asks the selection provider about this exact target
-     * rather than about an element index, so a kind that is selectable in its own right
-     * (an articulation, a tie, a beam) highlights on its own.
-     * <p>
-     * {@code elementIndex} is <b>not</b> derived here: it is only ever fed to the three
-     * index-keyed predicates ({@link #isElementPlaying}, {@link #isElementInPlayingTie},
-     * {@link #isElementHovered}), and only {@link HitTarget.Element} consults them. Every
-     * other variant ignores the argument — pass {@link #NO_ELEMENT_INDEX}. The call site that
-     * draws the one variant that does use it already has the index from its own loop, so
-     * deriving it here would repeat a lookup the caller has already done, for nothing.
+     * Playback and the hover highlight are properties of a note, not of the things hanging
+     * off it, so no variant but {@link HitTarget.Element} carries them; that variant is drawn
+     * through {@link #colorFor(HitTarget.Element, int)}.
      *
-     * @param target       the thing being drawn, as a click would address it
-     * @param elementIndex the owning element's index, or {@link #NO_ELEMENT_INDEX}
+     * @param target the thing being drawn, as a click would address it
      */
-    public Color colorFor(HitTarget target, int elementIndex) {
-        // Playback and the hover highlight are properties of a note, not of the things
-        // hanging off it, so they apply to exactly this variant.
-        var indexedChecksApply = target instanceof HitTarget.Element;
+    public Color colorFor(HitTarget target) {
+        return isSelected(target) ? selectionColor : Color.BLACK;
+    }
 
-        if (indexedChecksApply
-                && (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex))) {
+    /**
+     * Returns the rendering color for the element {@code target} addresses, the target-keyed
+     * counterpart of {@link #getElementColor(int)}: playback, then selection of this exact
+     * target, then the hovered replaced-element highlight.
+     * <p>
+     * {@code elementIndex} is not derived here: the call site already has it from its own
+     * loop, so deriving it would repeat a lookup the caller has already done.
+     *
+     * @param target       the element being drawn, as a click would address it
+     * @param elementIndex that element's index within the line
+     */
+    public Color colorFor(HitTarget.Element target, int elementIndex) {
+        if (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex)) {
             return ScoreView.getPlayingNoteColor();
         }
 
-        if (selectionProvider != null && selectionProvider.isSelected(target, lineIndex)) {
-            return selectionColor;
+        var targetColor = colorFor((HitTarget) target);
+
+        if (!isDefaultColor(targetColor)) {
+            return targetColor;
         }
 
-        if (indexedChecksApply && isElementHovered(elementIndex)) {
+        if (isElementHovered(elementIndex)) {
             return REPLACED_ELEMENT_COLOR;
         }
 
         return Color.BLACK;
+    }
+
+    /** Returns whether the selection provider holds exactly {@code target} on this line. */
+    private boolean isSelected(HitTarget target) {
+        return selectionProvider != null && selectionProvider.isSelected(target, lineIndex);
     }
 
     private Color colorFor(
@@ -455,14 +469,9 @@ public final class LineInvariants {
         return new ElementLocation(lineIndex, elementIndex).equals(matched);
     }
 
-    /** Returns the index of the currently playing note, or -1 if none. */
-    public int getPlayingNoteIndex() {
-        return playingNoteIndex;
-    }
-
-    /** Returns the index of the currently playing grace note, or -1 if none. */
-    public int getPlayingGraceNoteIndex() {
-        return playingGraceNoteIndex;
+    /** Returns the currently playing note and its paired grace note, or {@code null} if none. */
+    public @Nullable Playing playing() {
+        return playing;
     }
 
     /**
@@ -473,8 +482,13 @@ public final class LineInvariants {
      * @return true if the element is currently playing
      */
     public boolean isElementPlaying(int elementIndex) {
-        return elementIndex >= 0
-                && (elementIndex == playingNoteIndex || elementIndex == playingGraceNoteIndex);
+        if (playing == null) {
+            return false;
+        }
+
+        var graceNoteIndex = playing.graceNoteIndex();
+        return elementIndex == playing.noteIndex()
+                || (graceNoteIndex != null && elementIndex == graceNoteIndex);
     }
 
     /**
@@ -514,10 +528,11 @@ public final class LineInvariants {
             return true;
         }
 
-        if (playingNoteIndex < 0 || currentLine == null || playingNoteIndex <= anchorIndex) {
+        if (playing == null || currentLine == null || playing.noteIndex() <= anchorIndex) {
             return false;
         }
 
+        var playingNoteIndex = playing.noteIndex();
         var lyric = element.getLyricForVerse(verseIndex);
 
         if (lyric == null) {
@@ -583,11 +598,10 @@ public final class LineInvariants {
         private LyricRenderMetrics lyricRenderMetrics;
         @Nullable
         private StaffElement activelyEditedElement;
-        private int activelyEditedVerse = NO_VERSE;
+        private @Nullable Integer activelyEditedVerse;
         private LineComponent.@Nullable SelectionProvider selectionProvider;
         private Color selectionColor = ScoreView.getSelectionColor();
-        private int playingNoteIndex = -1;
-        private int playingGraceNoteIndex = -1;
+        private @Nullable Playing playing;
         private final ViewScale viewScale;
 
         private Builder(Song song, DocumentFontsHolder fonts, ViewScale viewScale) {
@@ -626,8 +640,8 @@ public final class LineInvariants {
             return this;
         }
 
-        /** Sets the verse being edited, or {@link #NO_VERSE} when no editor is open. */
-        public Builder setActivelyEditedVerse(int activelyEditedVerse) {
+        /** Sets the verse being edited, or {@code null} when no editor is open. */
+        public Builder setActivelyEditedVerse(@Nullable Integer activelyEditedVerse) {
             this.activelyEditedVerse = activelyEditedVerse;
             return this;
         }
@@ -642,13 +656,9 @@ public final class LineInvariants {
             return this;
         }
 
-        public Builder setPlayingNoteIndex(int playingNoteIndex) {
-            this.playingNoteIndex = playingNoteIndex;
-            return this;
-        }
-
-        public Builder setPlayingGraceNoteIndex(int playingGraceNoteIndex) {
-            this.playingGraceNoteIndex = playingGraceNoteIndex;
+        /** Sets the currently playing note and its paired grace note, or {@code null} when none. */
+        public Builder setPlaying(@Nullable Playing playing) {
+            this.playing = playing;
             return this;
         }
 

@@ -76,7 +76,7 @@ final class LyricChainEditor {
 
         var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
 
-        if (backIndex < 0) {
+        if (backIndex == null) {
             return false;
         }
 
@@ -98,7 +98,7 @@ final class LyricChainEditor {
     void breakHyphenChain(int currentIndex) {
         var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
 
-        if (backIndex < 0) {
+        if (backIndex == null) {
             trace("breakHyphenChain: no predecessor to end the word at");
             return;
         }
@@ -154,7 +154,7 @@ final class LyricChainEditor {
     private void terminatePrecedingContinueChain(int currentIndex) {
         var backIndex = line.previousLyricBearingIndex(currentIndex, verse);
 
-        if (backIndex < 0) {
+        if (backIndex == null) {
             return;
         }
 

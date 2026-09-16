@@ -22,6 +22,8 @@ package songscribe.dom;
 import java.util.List;
 import java.util.Set;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementField;
 
@@ -61,8 +63,13 @@ public sealed interface ElementChange {
      */
     List<StaffElement> projectedElements();
 
-    /** The position of {@code element} in {@link #projectedElements}, or -1 if it is not there. */
-    int projectedIndexOf(StaffElement element);
+    /**
+     * The position of {@code element} in {@link #projectedElements}.
+     *
+     * @return the projected position, or {@code null} when {@code element} is not in the
+     *     projection — it is one this change removes, or it sits on another line
+     */
+    @Nullable Integer projectedIndexOf(StaffElement element);
 
     /**
      * Whether this change would remove any span whose loss warrants a confirmation prompt.
@@ -106,35 +113,41 @@ public sealed interface ElementChange {
         }
 
         @Override
-        public int projectedIndexOf(StaffElement element) {
+        public @Nullable Integer projectedIndexOf(StaffElement element) {
             if (element == inserted) {
                 return index;
             }
 
-            var current = line.getElementIndex(element);
-
-            if (current < 0) {
-                return -1;
+            // A span endpoint can sit on the neighboring line.
+            if (!line.contains(element)) {
+                return null;
             }
 
+            var current = line.getElementIndex(element);
             return current < index ? current : current + 1;
         }
     }
 
     /**
      * One element replaced by another at the same position. A replacement <b>re-points</b>
-     * a span's endpoint rather than deleting it: {@code oldElement} is absent from
+     * a span's endpoint rather than deleting it: {@link #oldElement()} is absent from
      * {@code projectedElements} and {@code newElement} sits at {@code index}. A span whose
-     * anchor or end was {@code oldElement} is to be read as having that endpoint become
+     * anchor or end was the old element is to be read as having that endpoint become
      * {@code newElement} — not as having lost an endpoint.
+     * <p>
+     * The old element is read off the line rather than held, so a replacement is valid only
+     * until its line changes — the window every reader uses it in, like every other shape.
      *
      * @param line       the line being changed, still in its pre-replacement state
-     * @param index      the position of both {@code oldElement} and {@code newElement}
-     * @param oldElement the element being replaced
+     * @param index      the position of both the element being replaced and {@code newElement}
      * @param newElement the element taking its place
      */
-    record Replacement(Line line, int index, StaffElement oldElement, StaffElement newElement)
-        implements ElementChange {
+    record Replacement(Line line, int index, StaffElement newElement) implements ElementChange {
+
+        /** The element being replaced — the one standing at {@link #index} in the line. */
+        public StaffElement oldElement() {
+            return line.getElement(index);
+        }
 
         @Override
         public List<StaffElement> projectedElements() {
@@ -145,7 +158,7 @@ public sealed interface ElementChange {
         }
 
         @Override
-        public int projectedIndexOf(StaffElement element) {
+        public @Nullable Integer projectedIndexOf(StaffElement element) {
             // Asked first, so a self-replace resolves to the position it keeps rather
             // than reading as a replaced element that is now absent.
             if (element == newElement) {
@@ -155,7 +168,7 @@ public sealed interface ElementChange {
             var current = line.getElementIndex(element);
 
             // Nothing moves; only the replaced element leaves.
-            return current == index ? -1 : current;
+            return current == index ? null : current;
         }
 
         /**
@@ -169,6 +182,8 @@ public sealed interface ElementChange {
          *     {@link Ending.EndingEffect.None} when no ending is affected
          */
         public Ending.EndingEffect endingEffect() {
+            var oldElement = oldElement();
+
             return line.spanRegistry().findEndings().stream()
                 .map(ending -> ending.checkReplacement(oldElement, newElement, line))
                 .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
@@ -216,11 +231,16 @@ public sealed interface ElementChange {
         }
 
         @Override
-        public int projectedIndexOf(StaffElement element) {
+        public @Nullable Integer projectedIndexOf(StaffElement element) {
+            // A span endpoint can sit on the neighboring line.
+            if (!line.contains(element)) {
+                return null;
+            }
+
             var current = line.getElementIndex(element);
 
-            if (current < 0 || range.contains(current)) {
-                return -1;
+            if (range.contains(current)) {
+                return null;
             }
 
             return current < range.begin() ? current : current - deletedCount();
@@ -245,7 +265,7 @@ public sealed interface ElementChange {
         }
 
         @Override
-        public int projectedIndexOf(StaffElement element) {
+        public @Nullable Integer projectedIndexOf(StaffElement element) {
             return line.getElementIndex(element);
         }
     }
@@ -291,7 +311,7 @@ public sealed interface ElementChange {
      * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     static Replacement forReplacement(Line line, int index, StaffElement replacement) {
-        return new Replacement(line, index, line.getElement(index), replacement);
+        return new Replacement(line, index, replacement);
     }
 
     /**

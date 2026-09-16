@@ -58,7 +58,8 @@ class NoteDragHandler {
     private boolean dragActive = false;
     private boolean dragMoved = false;
     private boolean pressPreservedMultiSelection = false;
-    private int dragElementIndex = -1;
+    @Nullable
+    private Integer dragElementIndex = null;
 
     /** Original staff position of the directly dragged note — used to compute deltaSp. */
     private int originalDragStaffPositionSp;
@@ -102,7 +103,7 @@ class NoteDragHandler {
     }
 
     int getDragElementIndex() {
-        return dragElementIndex;
+        return dragElementIndex == null ? -1 : dragElementIndex;
     }
 
     // ======================================================================
@@ -145,7 +146,7 @@ class NoteDragHandler {
 
         var hitIndex = LineComponent.elementIndexOf(hitTarget, line);
 
-        if (hitIndex < 0) {
+        if (hitIndex == null) {
             return false;
         }
 
@@ -218,9 +219,11 @@ class NoteDragHandler {
             return;
         }
 
-        if (dragLine == null) {
+        if (dragLine == null || dragElementIndex == null) {
             return;
         }
+
+        var elementIndex = dragElementIndex;
 
         // Clamp delta so no note in the group exits the valid staff range
         var clampedDelta = PitchShifter.clampDelta(dragGroup, deltaSp);
@@ -232,7 +235,7 @@ class NoteDragHandler {
         }
 
         // Shared with arrow-key shifting: move the whole group to its new staff positions.
-        PitchShifter.moveGroup(dragLine, dragGroup, dragElementIndex, clampedDelta);
+        PitchShifter.moveGroup(dragLine, dragGroup, elementIndex, clampedDelta);
 
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + clampedDelta;
 
@@ -288,16 +291,18 @@ class NoteDragHandler {
      * Handles mouse release, committing the pitch change the drag already applied live.
      */
     void handleRelease() {
-        if (dragLine == null) {
+        if (dragLine == null || dragElementIndex == null) {
             return;
         }
+
+        var elementIndex = dragElementIndex;
 
         if (!dragMoved && pressPreservedMultiSelection) {
             // Click without drag on a preserved selection — collapse to the clicked note.
             // Use selectElementAtIndex (not selectAndPlayElement) so we don't re-play the note
             // that was already played on press. Explicit repaint ensures the visual updates
             // immediately — selectionChanged() posts a message but does not trigger a LineComponent repaint.
-            lc.getSelectionHandler().selectElementAtIndex(dragElementIndex);
+            lc.getSelectionHandler().selectElementAtIndex(elementIndex);
             lc.repaint();
         }
 
@@ -310,13 +315,13 @@ class NoteDragHandler {
             // Nothing sounds during the live drag itself; the anchor is played only now, once
             // the song's chain walk run by commitPitchShift has decided what it sounds.
             if (Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)) {
-                PlayThread.sendNoteOn(dragLine.noteAt(dragElementIndex).getPitch());
-                PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
+                PlayThread.sendNoteOn(dragLine.noteAt(elementIndex).getPitch());
+                PitchShifter.scheduleAnchorNoteOff(dragLine, elementIndex);
             }
         }
 
         dragActive = false;
-        dragElementIndex = -1;
+        dragElementIndex = null;
         dragLine = null;
         dragGroup.clear();
         foreignLineComponents.clear();

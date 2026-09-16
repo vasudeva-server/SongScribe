@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
 import songscribe.ui.component.MainFrame;
+import songscribe.util.UIUtils;
 
 /**
  * A non-editable combo box offering a fixed list of values plus a final {@code Other…} row, which
@@ -172,7 +173,7 @@ final class OtherValueComboBox extends JComboBox<String> {
      * caller may write a value the user may not pick.
      *
      * @param anObject the value to select, or {@code null} to clear the selection, which is what
-     *                 {@code setSelectedIndex(-1)} asks for
+     *                 {@link #setSelectedIndex} asks for when told to clear
      * @effects adds a row for {@code anObject}, immediately above {@code Other…}, when the list
      *          holds no row equal to it
      * @effects opens a modal prompt, later on the event dispatch thread, for the {@code Other…} row
@@ -204,7 +205,8 @@ final class OtherValueComboBox extends JComboBox<String> {
      * the drop-down is closed works out a row number from the current selection and passes it
      * here, whatever the drop-down list would have allowed.
      *
-     * @param index the row to select, or -1 to clear the selection
+     * @param index the row to select, or the no-selection index {@code JComboBox} defines to
+     *              clear the selection
      * @invariant the selection afterwards is never the {@code (none)} row while that row is
      *            barred by {@link #setEmptyChoiceSelectable}
      */
@@ -367,7 +369,7 @@ final class OtherValueComboBox extends JComboBox<String> {
      *
      * <p>The disabled paint is applied by row position rather than by value, so it reaches the
      * row in the open popup and never the closed combo's own text. The closed combo renders
-     * with {@code index == -1}, which no row position equals.
+     * with {@link UIUtils#COMBO_DISPLAY_INDEX}, which no row position equals.
      */
     private final class EmptyValueRenderer extends DefaultListCellRenderer {
 

@@ -1216,8 +1216,7 @@ public final class HorizontalSpacingCalculator {
      * in the column list. That distinction is the whole point: an insertion preview splices a
      * not-yet-added column between a hairpin's anchor and its end, and a column caching "a hairpin
      * ends at whatever follows me" would then reserve the wedge's length against the newly typed
-     * note instead. An element the line does not contain resolves to index -1, which no resolved
-     * span bound ever equals, so such a pair correctly reserves nothing.
+     * note instead. A pair with an element the line does not contain reserves nothing.
      * <p>
      * This only constrains a hairpin whose anchor and end are adjacent columns. LilyPond's spacing
      * rod spans the whole interval; SongScribe's {@link Spring} model has only per-pair struts. This
@@ -1239,13 +1238,15 @@ public final class HorizontalSpacingCalculator {
 
         var anchorElement = prev.getElement();
         var endElement = curr.getElement();
+
+        if (!line.contains(anchorElement) || !line.contains(endElement)) {
+            return 0;
+        }
+
         var anchorIndex = line.getElementIndex(anchorElement);
         var endIndex = line.getElementIndex(endElement);
 
-        // A column not on the line reads index -1, so the pair can come out reversed; a reversed
-        // pair is no hairpin's endpoints, and it is not a range to ask about.
-        if (endIndex < anchorIndex
-                || !line.spanRegistry().hasSpan(Hairpin.class, Span.exactly(new ElementRange(anchorIndex, endIndex)))) {
+        if (!line.spanRegistry().hasSpan(Hairpin.class, Span.exactly(new ElementRange(anchorIndex, endIndex)))) {
             return 0;
         }
 

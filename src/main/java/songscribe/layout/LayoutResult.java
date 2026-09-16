@@ -659,9 +659,9 @@ public final class LayoutResult {
     /**
      * Delegates to {@link LayoutHitTester#findElementAtXSs}.
      *
-     * @return the element index, or {@code -1} when no element's glyph body contains the X
+     * @return the element index, or {@code null} when no element's glyph body contains the X
      */
-    public int findElementAtXSs(double mouseXSs, Line line) {
+    public @Nullable Integer findElementAtXSs(double mouseXSs, Line line) {
         return hitTester.findElementAtXSs(mouseXSs, line);
     }
 

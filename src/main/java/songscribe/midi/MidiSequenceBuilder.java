@@ -80,7 +80,7 @@ public class MidiSequenceBuilder {
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
     public Sequence buildFullSequence() throws InvalidMidiDataException {
-        return buildSequence(0, 0, -1, -1, song.getTempo());
+        return buildSequence(0, 0, song.getTempo());
     }
 
     /**
@@ -94,7 +94,7 @@ public class MidiSequenceBuilder {
      */
     public Sequence buildFromNoteToEnd(int lineIndex, int startNote) throws InvalidMidiDataException {
         var startTempo = song.getTempoAt(lineIndex, startNote);
-        return buildSequence(lineIndex, startNote, -1, -1, startTempo);
+        return buildSequence(lineIndex, startNote, startTempo);
     }
 
     /**
@@ -102,8 +102,6 @@ public class MidiSequenceBuilder {
      *
      * @param startLine The starting line index
      * @param startNote The starting note index within the start line
-     * @param endLine The ending line index (-1 for all remaining lines)
-     * @param endNote The ending note index within the end line (-1 for all notes)
      * @param initialTempo The tempo at the start of the sequence
      * @return The MIDI sequence
      * @throws InvalidMidiDataException if MIDI data is invalid
@@ -111,8 +109,6 @@ public class MidiSequenceBuilder {
     private Sequence buildSequence(
         int startLine,
         int startNote,
-        int endLine,
-        int endNote,
         Tempo initialTempo
     ) throws InvalidMidiDataException {
         var sequence = new Sequence(Sequence.PPQ, PPQ, 0);
@@ -132,20 +128,20 @@ public class MidiSequenceBuilder {
         var currentTempo = initialTempo;
         var lines = song.getLines();
 
-        // If repeats are disabled or we have a hard end boundary, use simple linear processing
-        if (!settings.playWithRepeats() || endNote >= 0) {
+        // If repeats are disabled, use simple linear processing
+        if (!settings.playWithRepeats()) {
             for (var i = startLine; i < lines.size(); i++) {
                 var line = lines.get(i);
 
                 var lineStart = (i == startLine && startNote > 0) ? startNote : 0;
-                var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.effectiveElementCount() - 1;
+                var lineEnd = line.effectiveElementCount() - 1;
 
                 var builder = new LineTrackBuilder(line);
                 var endings = line.spanRegistry().findEndings();
                 TrackPosition result;
 
                 if (endings.isEmpty()) {
-                    result = (lineStart > 0 || lineEnd < line.effectiveElementCount() - 1)
+                    result = (lineStart > 0)
                         ? builder.addToTrack(track, i, ticks, currentTempo, settings,
                             lineStart, lineEnd, velocityMap)
                         : builder.addToTrack(track, i, ticks, currentTempo, settings,
@@ -160,15 +156,11 @@ public class MidiSequenceBuilder {
 
                 ticks = result.ticks();
                 currentTempo = result.tempo();
-
-                if (i == endLine) {
-                    break;
-                }
             }
         } else {
             // Handle repeats
             var result = buildSequenceWithRepeats(
-                track, startLine, startNote, endLine, initialTempo, velocityMap);
+                track, startLine, startNote, initialTempo, velocityMap);
             ticks = result.ticks();
         }
 
@@ -209,7 +201,6 @@ public class MidiSequenceBuilder {
      * @param track The MIDI track to add to
      * @param startLine The starting line index
      * @param startNote The index of the first note to include on the start line
-     * @param endLine The ending line index (-1 for all remaining lines)
      * @param initialTempo The tempo at the start of the sequence
      * @return Pair of (ending tick position, ending tempo)
      * @throws InvalidMidiDataException if MIDI data is invalid
@@ -218,7 +209,6 @@ public class MidiSequenceBuilder {
         Track track,
         int startLine,
         int startNote,
-        int endLine,
         Tempo initialTempo,
         VelocityMap velocityMap
     ) throws InvalidMidiDataException {
@@ -250,7 +240,7 @@ public class MidiSequenceBuilder {
                 // must not start a spurious third pass, so exclude it from the repeat-marker
                 // handler below.
                 var isEndingClosingMarker = ending != null
-                    && noteIndex == ending.getEndElementIndex()
+                    && noteIndex == ending.requireEndElementIndex()
                     && (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT);
 
                 // Handle repeat markers
@@ -319,10 +309,6 @@ public class MidiSequenceBuilder {
                 currentTempo = result.tempo();
             }
 
-            if (lineIndex == endLine) {
-                break;
-            }
-
             lineIndex++;
         }
 
@@ -373,7 +359,7 @@ public class MidiSequenceBuilder {
 
         for (var ending : endings) {
             var splitIndex = ending.getSplitIndex(line);
-            var spanStart = Math.max(ending.getAnchorElementIndex(), lineStart);
+            var spanStart = Math.max(ending.requireAnchorElementIndex(), lineStart);
             var spanEnd = Math.min(splitIndex, lineEnd);
 
             if (spanStart <= spanEnd) {

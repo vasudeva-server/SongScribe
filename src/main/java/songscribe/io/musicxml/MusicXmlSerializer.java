@@ -846,31 +846,31 @@ public final class MusicXmlSerializer {
             var lastNoteIndex = lastIndexOfChild(children, MusicXmlTags.METRONOME_NOTE);
             var reordered = new ArrayList<>(children);
 
-            if (relationIndex >= 0 && lastNoteIndex >= 0 && relationIndex > lastNoteIndex) {
-                reordered.add(lastNoteIndex, reordered.remove(relationIndex));
+            if (relationIndex != null && lastNoteIndex != null && relationIndex > lastNoteIndex) {
+                reordered.add(lastNoteIndex, reordered.remove((int) relationIndex));
             }
 
             return reordered.stream().flatMap(child -> child.calls().stream()).toList();
         }
 
-        private static int indexOfChild(List<Child> children, String name) {
+        private static @Nullable Integer indexOfChild(List<Child> children, String name) {
             for (var i = 0; i < children.size(); i++) {
                 if (children.get(i).name().equals(name)) {
                     return i;
                 }
             }
 
-            return -1;
+            return null;
         }
 
-        private static int lastIndexOfChild(List<Child> children, String name) {
+        private static @Nullable Integer lastIndexOfChild(List<Child> children, String name) {
             for (var i = children.size() - 1; i >= 0; i--) {
                 if (children.get(i).name().equals(name)) {
                     return i;
                 }
             }
 
-            return -1;
+            return null;
         }
     }
 

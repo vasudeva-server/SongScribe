@@ -81,7 +81,9 @@ public final class ZoomLevelAction extends UIAction {
             "zoom-level-" + shortcut.zoomPercent(),
             shortcut.virtualKey(),
             UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_EDITING_TEXT
+            Flag.DISABLE_WHEN_EDITING_TEXT,
+            // Changes the view only; the preview it retargets keeps grace mode's locked x.
+            Flag.ENABLED_IN_GRACE_MODE
         );
 
         zoomPercent = shortcut.zoomPercent();

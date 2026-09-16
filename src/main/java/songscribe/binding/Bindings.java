@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 import songscribe.lifecycle.Disposable;
 import songscribe.binding.Binding.InitialWrite;
@@ -86,7 +87,8 @@ public final class Bindings implements Disposable {
      * everything {@code body} captured — reachable for as long as those dependencies
      * live, which for a value outliving the dialog is the rest of the session.
      *
-     * @param <T> the derived value's type
+     * @param <T> the derived value's type, declared {@code @Nullable} when absence is
+     *     a value the graph carries
      * @param body the derivation; it must read only values and must not write any,
      *     must be free of side effects, and must not read the value it defines
      * @return the derived value
@@ -98,7 +100,7 @@ public final class Bindings implements Disposable {
      *     run of {@code body} or the result of a run made during that read;
      *     {@code body} never runs more than once per dependency change.
      */
-    public <T> ObservableValue<T> computed(Supplier<T> body) {
+    public <T extends @Nullable Object> ObservableValue<T> computed(Supplier<T> body) {
         var derived = new Computed<T>(body);
         register(derived);
 
@@ -126,7 +128,7 @@ public final class Bindings implements Disposable {
      *     that has not yet written always writes, which is what makes the
      *     registration-time write happen.
      */
-    public <T> void bind(WritableValue<T> target, ObservableValue<? extends T> source) {
+    public <T extends @Nullable Object> void bind(WritableValue<T> target, ObservableValue<? extends T> source) {
         register(new Binding<>(target, source, source::get, InitialWrite.WRITE, new WriteGuard()));
     }
 
@@ -157,7 +159,11 @@ public final class Bindings implements Disposable {
      *     that notifies without changing what the transform produces causes no
      *     write at all.
      */
-    public <S, T> void bind(WritableValue<T> target, ObservableValue<S> source, Function<S, T> transform) {
+    public <S extends @Nullable Object, T extends @Nullable Object> void bind(
+        WritableValue<T> target,
+        ObservableValue<S> source,
+        Function<S, T> transform
+    ) {
         register(new Binding<>(target, source, () -> transform.apply(source.get()), InitialWrite.WRITE, new WriteGuard()));
     }
 
@@ -193,7 +199,11 @@ public final class Bindings implements Disposable {
      * @invariant the binding writes nothing when the merged value equals the value
      *     this same binding last wrote, by {@code Objects.equals}.
      */
-    public <S, T> void bind(Property<T> target, ObservableValue<S> source, BiFunction<S, T, T> merge) {
+    public <S extends @Nullable Object, T extends @Nullable Object> void bind(
+        Property<T> target,
+        ObservableValue<S> source,
+        BiFunction<S, T, T> merge
+    ) {
         register(new Binding<>(target, source, () -> merge.apply(source.get(), target.get()), InitialWrite.WRITE, new WriteGuard()));
     }
 
@@ -218,7 +228,7 @@ public final class Bindings implements Disposable {
      *     expensive without the value it just reported being handed straight back to
      *     it.
      */
-    public <T> void bindBidirectional(Property<T> a, Property<T> b) {
+    public <T extends @Nullable Object> void bindBidirectional(Property<T> a, Property<T> b) {
         bindBidirectional(a, b, new Transform<>(Function.identity(), Function.identity()));
     }
 
@@ -248,7 +258,11 @@ public final class Bindings implements Disposable {
      *     not written back to where it came from, by the same shared re-entrancy scope
      *     and unchanged-value stop as {@link #bindBidirectional(Property, Property)}.
      */
-    public <A, B> void bindBidirectional(Property<A> a, Property<B> b, Transform<A, B> transform) {
+    public <A extends @Nullable Object, B extends @Nullable Object> void bindBidirectional(
+        Property<A> a,
+        Property<B> b,
+        Transform<A, B> transform
+    ) {
         var guard = new WriteGuard();
         register(new Binding<>(b, a, () -> transform.forward().apply(a.get()), InitialWrite.WRITE, guard));
         register(new Binding<>(a, b, () -> transform.backward().apply(b.get()), InitialWrite.SKIP, guard));

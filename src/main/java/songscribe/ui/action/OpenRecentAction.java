@@ -36,7 +36,7 @@ public class OpenRecentAction extends UIAction {
 
     @SuppressWarnings("ParameterNameDiffersFromOverriddenParameter")
     public OpenRecentAction(MainFrame mainFrame, String label, Path path) {
-        super(mainFrame, label, label, Flag.DISABLE_WHEN_PLAYING, Flag.DISABLE_IN_GRACE_MODE);
+        super(mainFrame, label, label, Flag.DISABLE_WHEN_PLAYING);
         this.path = path;
     }
 

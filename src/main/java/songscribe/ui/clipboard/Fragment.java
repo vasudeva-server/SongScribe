@@ -270,7 +270,9 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
 
         var removedIndices = new HashSet<Integer>();
 
-        for (var range : stranded) {
+        for (var effectiveRange : stranded) {
+            var range = effectiveRange.range();
+
             for (var index = range.begin(); index <= range.end(); index++) {
                 removedIndices.add(index);
             }

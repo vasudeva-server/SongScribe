@@ -60,9 +60,6 @@ public final class TupletLoadPass {
 
     private static final Logger LOG = LoggerFactory.getLogger(TupletLoadPass.class);
 
-    /** Returned by {@link #firstPopulatedLineIndex} for a song holding no elements at all. */
-    private static final int NO_POPULATED_LINE = -1;
-
     private TupletLoadPass() {
     }
 
@@ -170,7 +167,7 @@ public final class TupletLoadPass {
         var changes = new ArrayList<Change>();
         var startLineIndex = firstPopulatedLineIndex(song);
 
-        if (startLineIndex == NO_POPULATED_LINE) {
+        if (startLineIndex == null) {
             return Report.empty();
         }
 
@@ -193,9 +190,16 @@ public final class TupletLoadPass {
 
             // Read the span now: removeFrom detaches the tuplet from the elements its
             // indices are derived from, so afterwards there is nothing left to report.
-            var beginIndex = tuplet.getAnchorElementIndex();
+            var beginIndex = tuplet.requireAnchorElementIndex();
             var endIndex = tuplet.getEndElementIndex();
             var grade = tuplet.getGrade();
+
+            // The walk opens a span only at an anchor it found in the line, so the anchor is
+            // present; it judges a tuplet whose end sits in no line on the anchor alone, and
+            // the report describes that same span.
+            if (endIndex == null) {
+                endIndex = beginIndex;
+            }
 
             switch (result) {
                 case TupletValidator.Result.Invalid(var reason) -> {
@@ -217,18 +221,18 @@ public final class TupletLoadPass {
     }
 
     /**
-     * The first line holding any element, or {@link #NO_POPULATED_LINE} when the song holds
-     * none. The walk has to start somewhere that exists — resolving the beat reads the
-     * starting element — and starting at the first populated line loses nothing: an empty
-     * line can hold neither a tuplet nor a beat-defining event.
+     * The first line holding any element, or {@code null} when the song holds none. The walk
+     * has to start somewhere that exists — resolving the beat reads the starting element — and
+     * starting at the first populated line loses nothing: an empty line can hold neither a
+     * tuplet nor a beat-defining event.
      */
-    private static int firstPopulatedLineIndex(Song song) {
+    private static @Nullable Integer firstPopulatedLineIndex(Song song) {
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
             if (song.getLine(lineIndex).elementCount() > 0) {
                 return lineIndex;
             }
         }
 
-        return NO_POPULATED_LINE;
+        return null;
     }
 }

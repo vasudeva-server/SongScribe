@@ -43,6 +43,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.selection.ElementSelection;
 
 /**
@@ -103,7 +104,7 @@ public final class PlaybackController {
     private static ScoreView registeredScore = null;
 
     private static PlaybackState state = PlaybackState.STOPPED;
-    private static int previousPlayingLine = -1;
+    private static @Nullable Integer previousPlayingLine;
 
     private static int instrument = 0;
     private static int tempoChangePercent = 100;
@@ -160,11 +161,11 @@ public final class PlaybackController {
         registeredScore = score;
     }
 
-    public static int getPreviousPlayingLine() {
+    public static @Nullable Integer getPreviousPlayingLine() {
         return previousPlayingLine;
     }
 
-    public static void setPreviousPlayingLine(int line) {
+    public static void setPreviousPlayingLine(@Nullable Integer line) {
         previousPlayingLine = line;
     }
 
@@ -215,10 +216,10 @@ public final class PlaybackController {
         }
 
         // Clear previous line if different
-        if (previousPlayingLine != -1 && previousPlayingLine != lineIndex) {
+        if (previousPlayingLine != null && previousPlayingLine != lineIndex) {
             var prevLineComponent = score.getLineComponent(previousPlayingLine);
             if (prevLineComponent != null) {
-                prevLineComponent.setPlayingIndices(-1, -1);
+                prevLineComponent.setPlaying(null);
             }
         }
 
@@ -226,7 +227,7 @@ public final class PlaybackController {
         var lineComponent = score.getLineComponent(lineIndex);
         if (lineComponent != null) {
             var line = score.getSong().getLine(lineIndex);
-            lineComponent.setPlayingIndices(noteIndex, line.precedingGraceNoteIndex(noteIndex));
+            lineComponent.setPlaying(new LineInvariants.Playing(noteIndex, line.precedingGraceNoteIndex(noteIndex)));
         }
 
         previousPlayingLine = lineIndex;
@@ -270,13 +271,13 @@ public final class PlaybackController {
     }
 
     private static void clearPlayingHighlight() {
-        if (previousPlayingLine != -1) {
+        if (previousPlayingLine != null) {
             var lineComponent = getLineComponent(previousPlayingLine);
             if (lineComponent != null) {
-                lineComponent.setPlayingIndices(-1, -1);
+                lineComponent.setPlaying(null);
             }
         }
-        previousPlayingLine = -1;
+        previousPlayingLine = null;
     }
 
     /**

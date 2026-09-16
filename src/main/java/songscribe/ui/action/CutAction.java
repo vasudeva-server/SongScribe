@@ -40,7 +40,10 @@ public final class CutAction extends PasteboardAction {
             "edit-cut",
             KeyEvent.VK_X,
             UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING
+            Flag.DISABLE_WHEN_PLAYING,
+            // Acts only on a range selection, and none can exist in grace mode: it runs
+            // inside EDIT mode, where a lyric is the only selectable thing.
+            Flag.ENABLED_IN_GRACE_MODE
         );
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_CUT);
     }

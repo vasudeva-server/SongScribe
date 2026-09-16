@@ -145,7 +145,7 @@ public sealed interface Selection {
          *     that is
          */
         public boolean contains(int elementIndex) {
-            return line.effectiveRange(range).contains(elementIndex);
+            return line.effectiveRange(range).range().contains(elementIndex);
         }
 
         /** The single selected element, or null if the range covers more than one. */

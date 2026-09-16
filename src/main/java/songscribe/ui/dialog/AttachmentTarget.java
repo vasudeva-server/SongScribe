@@ -29,9 +29,9 @@ import songscribe.dom.StaffElement;
  *
  * <p>The two travel as one because every commit needs both: the element carries the attachment,
  * while the line owns the modification bracket and resolves the element's index for the mutation
- * record. Binding them separately is what allowed a stale element to reach
- * {@code Line.modifyElement(-1, …)} — a hard failure at OK, at the far end of a modal dialog,
- * rather than a refusal at the gesture that opened it.
+ * record. Bound together, a target whose element is not on its line cannot be built, so the
+ * refusal lands at the gesture that opens the dialog rather than at OK, at the far end of a modal
+ * dialog.
  *
  * <p><strong>Invariant: {@link #element()} is an element of {@link #line()}.</strong> Established
  * at construction and relied on by {@link #elementIndex()}, so a target that could only fail later
@@ -46,7 +46,7 @@ public record AttachmentTarget(Line line, StaffElement element) {
      * @throws IllegalArgumentException if {@code element} is not an element of {@code line}
      */
     public AttachmentTarget {
-        if (line.getElementIndex(element) < 0) {
+        if (!line.contains(element)) {
             throw new IllegalArgumentException("element is not in the given line");
         }
     }
@@ -64,7 +64,7 @@ public record AttachmentTarget(Line line, StaffElement element) {
      * @return the target, or {@code null} when {@code element} is null or not in {@code line}
      */
     public static @Nullable AttachmentTarget forElement(Line line, @Nullable StaffElement element) {
-        if (element == null || line.getElementIndex(element) < 0) {
+        if (element == null || !line.contains(element)) {
             return null;
         }
 

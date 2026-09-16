@@ -175,7 +175,7 @@ class LineRenderer {
         // The edited element and verse are only meaningful as a pair, so derive both from one
         // check rather than letting two conditions drift apart.
         StaffElement editedElement = null;
-        var editedVerse = LineInvariants.NO_VERSE;
+        Integer editedVerse = null;
 
         if (activeEditor != null) {
             editedElement = activeEditor.getActiveElement();
@@ -191,8 +191,7 @@ class LineRenderer {
             .setActivelyEditedElement(editedElement)
             .setActivelyEditedVerse(editedVerse)
             .setSelectionProvider(lc.getSelectionProvider())
-            .setPlayingNoteIndex(lc.getPlayingNoteIndex())
-            .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
+            .setPlaying(lc.getPlaying())
             .build();
     }
 
@@ -321,10 +320,11 @@ class LineRenderer {
         StaffElement element,
         LayoutResult layoutResult
     ) {
-        return lineFrame.hasPreviewShift()
-            && elementIndex >= lineFrame.previewShiftFromIndex()
+        var previewShift = lineFrame.previewShift();
+        return previewShift != null
+            && previewShift.displaces(elementIndex)
             && element.getType() != ElementType.FINAL_DOUBLE_BARLINE
-            ? layoutResult.getElementXSs(element) + lineFrame.previewShiftSs()
+            ? layoutResult.getElementXSs(element) + previewShift.shiftSs()
             : Double.NaN;
     }
 
@@ -409,7 +409,7 @@ class LineRenderer {
         var line = invariants.requireCurrentLine();
 
         for (var beam : line.spanRegistry().findSpans(Beam.class)) {
-            var anchorIdx = beam.getAnchorElementIndex();
+            var anchorIdx = beam.requireAnchorElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,
                 () -> beamRenderer.renderBeams(g2, invariants, frame, beam));
         }
@@ -436,7 +436,7 @@ class LineRenderer {
     /**
      * Returns the index the preview shift must weigh {@code tie} against in {@code line}.
      * <p>
-     * Receiver-relative resolution: {@code previewShiftFromIndex} is a position in the line
+     * Receiver-relative resolution: the preview shift's {@code fromIndex} is a position in the line
      * being painted, so the tie's start has to be one too. Reading it off the tie would hand
      * an index resolved in the anchor's own line to a comparison against this line's shift
      * boundary, and a tie tied in from the previous line would be shifted or left unshifted
@@ -458,9 +458,11 @@ class LineRenderer {
         int spanStart,
         Runnable render
     ) {
-        if (frame.hasPreviewShift() && spanStart >= frame.previewShiftFromIndex()) {
+        var previewShift = frame.previewShift();
+
+        if (previewShift != null && previewShift.displaces(spanStart)) {
             try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-                g2.translate(frame.previewShiftSs(), 0);
+                g2.translate(previewShift.shiftSs(), 0);
                 render.run();
             }
         } else {
@@ -553,11 +555,12 @@ class LineRenderer {
         var decorationLayouts = layoutResult.decorationLayouts();
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            var previewShift = lineFrame.previewShift();
             var attachmentShiftActive = false;
 
             for (var i = 0; i < line.elementCount(); i++) {
-                if (!attachmentShiftActive && lineFrame.hasPreviewShift() && i >= lineFrame.previewShiftFromIndex()) {
-                    g2.translate(lineFrame.previewShiftSs(), 0);
+                if (!attachmentShiftActive && previewShift != null && previewShift.displaces(i)) {
+                    g2.translate(previewShift.shiftSs(), 0);
                     attachmentShiftActive = true;
                 }
 

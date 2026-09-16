@@ -114,9 +114,9 @@ public final class RenderingUtils {
      * Uses {@link ElementFrame#currentElementIndex()} when set, since the drawing loop
      * already has it; otherwise falls back to {@code line.getElementIndex(element)}.
      * <p>
-     * Returns the preview element color when the element is not found in the current
-     * line (index &lt; 0): the element is the insertion preview, so its decorations
-     * must match the preview note's color.
+     * Returns the preview element color when the current line does not contain the element:
+     * the element is the insertion preview, so its decorations must match the preview note's
+     * color.
      * Throws on corruption if there is no current line.
      */
     static Color getDecorationColor(
@@ -126,18 +126,17 @@ public final class RenderingUtils {
     ) {
         var index = frame.currentElementIndex();
 
-        if (index >= 0) {
+        if (index != null) {
             return invariants.getElementColor(index);
         }
 
         var line = invariants.requireCurrentLine();
-        index = line.getElementIndex(element);
 
-        if (index < 0) {
+        if (!line.contains(element)) {
             return ScoreView.getPreviewElementColor();
         }
 
-        return invariants.getElementColor(index);
+        return invariants.getElementColor(line.getElementIndex(element));
     }
 
     /**
@@ -165,7 +164,16 @@ public final class RenderingUtils {
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var targetColor = invariants.colorFor(target, frame.currentElementIndex());
+        Color targetColor;
+
+        if (target instanceof HitTarget.Element element) {
+            var elementIndex = frame.currentElementIndex();
+            targetColor = elementIndex != null
+                ? invariants.colorFor(element, elementIndex)
+                : invariants.colorFor(element);
+        } else {
+            targetColor = invariants.colorFor(target);
+        }
 
         if (!LineInvariants.isDefaultColor(targetColor)) {
             return targetColor;

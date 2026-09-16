@@ -157,7 +157,7 @@ public final class TieRenderer {
             return endColor;
         }
 
-        var tieColor = invariants.colorFor(new HitTarget.Tie(tie), LineInvariants.NO_ELEMENT_INDEX);
+        var tieColor = invariants.colorFor(new HitTarget.Tie(tie));
 
         if (!LineInvariants.isDefaultColor(tieColor)) {
             return tieColor;

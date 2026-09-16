@@ -22,6 +22,7 @@ package songscribe.binding;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -147,6 +148,29 @@ class BindingsTest extends UnitTest {
         assertThat(evaluations.get() - afterRegistration).isEqualTo(1);
         assertThat(firstConsumer.get()).isEqualTo("changed");
         assertThat(secondConsumer.get()).isEqualTo("changed");
+    }
+
+    @Test
+    void testComputedCachesNullAnswer() {
+        var evaluations = new AtomicInteger();
+        var source = new ValueProperty<@Nullable String>(null);
+        var bindings = new Bindings();
+        var derived = bindings.computed(() -> {
+            evaluations.incrementAndGet();
+
+            return source.get();
+        });
+
+        // Null is the body's answer, not a sign the body has yet to run: a second read
+        // with nothing changed is served from the cache.
+        assertThat(derived.get()).isNull();
+        assertThat(derived.get()).isNull();
+        assertThat(evaluations).hasValue(1);
+
+        source.set("present");
+
+        assertThat(derived.get()).isEqualTo("present");
+        assertThat(evaluations).hasValue(2);
     }
 
     @Test

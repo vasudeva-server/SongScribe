@@ -29,6 +29,12 @@ import java.util.regex.Pattern;
 
 public final class StringUtils {
 
+    /**
+     * What {@link String#indexOf} and {@link String#lastIndexOf} answer when the needle is
+     * absent. Compare a search result against this rather than against the raw literal.
+     */
+    public static final int INDEX_NOT_FOUND = -1;
+
     // Finds all diacritics
     public static final Pattern DIACRITICS_PATTERN = Pattern.compile(
         "\\p{InCombiningDiacriticalMarks}+"

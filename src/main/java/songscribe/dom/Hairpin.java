@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
@@ -109,13 +111,30 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
     /**
      * Absorbs every same-kind hairpin overlapping or adjacent to this one into it: a hairpin
      * drawn flush against a same-type one continues it rather than starting a second — one
-     * uninterrupted dynamic gesture, one hairpin — so the reach is
-     * {@link LineSpans#SPAN_ADJACENCY_REACH}. The kind's concrete class is the merge type, so
-     * a crescendo never absorbs a diminuendo.
+     * uninterrupted dynamic gesture, one hairpin — so the merge absorbs
+     * {@link LineSpans.Absorb#ADJACENT adjacent} spans. The kind's concrete class is the
+     * merge type, so a crescendo never absorbs a diminuendo.
      */
     @Override
     protected void applyDisplacementPolicy(Line line) {
-        line.spanRegistry().mergeOverlapping(this, getKind().spanType(), LineSpans.SPAN_ADJACENCY_REACH);
+        line.spanRegistry().mergeOverlapping(this, getKind().spanType(), LineSpans.Absorb.ADJACENT);
+    }
+
+    /**
+     * The {@link SpanOutcome.Simple} projection of {@link #hairpinOutcomeFor}: a reshaped
+     * hairpin is one that survives, so a {@link SpanOutcome.Reshape} reads as
+     * {@link SpanOutcome.Simple#KEEP}. The sweep is the one reader that acts on the reshaped
+     * range and asks {@link #hairpinOutcomeFor} directly; every other reader asks only whether
+     * the hairpin survives, which this answers.
+     *
+     * @return {@link SpanOutcome.Simple#REMOVE} when this hairpin cannot survive
+     *     {@code change}, otherwise {@link SpanOutcome.Simple#KEEP}
+     */
+    @Override
+    public final SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
+        return hairpinOutcomeFor(change, line) instanceof SpanOutcome.Simple simple
+            ? simple
+            : SpanOutcome.Simple.KEEP;
     }
 
     /**
@@ -138,14 +157,17 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      *
      * @param change the pending change, not yet applied to {@code line}
      * @param line   the line being changed, still in its pre-change state
+     * @return {@link SpanOutcome.Simple#KEEP} or {@link SpanOutcome.Simple#REMOVE} for a
+     *     change that removes no element; for a deletion this hairpin survives, the
+     *     {@link SpanOutcome.Reshape} over its projected span, and otherwise
+     *     {@link SpanOutcome.Simple#REMOVE}
      */
-    @Override
-    public SpanOutcome outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change, Line line) {
         var anchorIndex = getAnchorElementIndex();
         var endIndex = getEndElementIndex();
 
         // A hairpin whose endpoints are not both in this line has nothing here to judge.
-        if (anchorIndex < 0 || endIndex < 0) {
+        if (anchorIndex == null || endIndex == null) {
             return SpanOutcome.Simple.KEEP;
         }
 
@@ -157,9 +179,6 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         // all are answered alike — one call rather than an arm apiece saying the same thing.
         // The exhaustive switch in Span.outcomeFor is what forces a new shape to be
         // considered here too.
-        //
-        // The endpoints are read out of the line rather than off the span: both indices
-        // are known good here, which the nullable accessors cannot express.
         return outcomeForRepointing(change, line.getElement(anchorIndex), line.getElement(endIndex));
     }
 
@@ -172,12 +191,12 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      * @param anchor this hairpin's anchor element, as found in the pre-change line
      * @param end    this hairpin's end element, as found in the pre-change line
      */
-    private SpanOutcome outcomeForRepointing(ElementChange change, StaffElement anchor, StaffElement end) {
+    private SpanOutcome.Simple outcomeForRepointing(ElementChange change, StaffElement anchor, StaffElement end) {
         var projected = change.projectedElements();
         var anchorIndex = projectedEndpointIndexOf(change, anchor);
         var endIndex = projectedEndpointIndexOf(change, end);
 
-        if (anchorIndex < 0 || endIndex <= anchorIndex) {
+        if (anchorIndex == null || endIndex == null || endIndex <= anchorIndex) {
             return SpanOutcome.Simple.REMOVE;
         }
 
@@ -198,8 +217,11 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
     /**
      * Returns the projected position of {@code endpoint}, following the replacement
      * re-pointing rule: a replaced endpoint becomes the replacement rather than vanishing.
+     *
+     * @return the endpoint's position in {@link ElementChange#projectedElements}, or
+     *     {@code null} when it is not in the projection
      */
-    private static int projectedEndpointIndexOf(ElementChange change, StaffElement endpoint) {
+    private static @Nullable Integer projectedEndpointIndexOf(ElementChange change, StaffElement endpoint) {
         if (change instanceof ElementChange.Replacement replacement && endpoint == replacement.oldElement()) {
             return change.projectedIndexOf(replacement.newElement());
         }
@@ -213,30 +235,34 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      *
      * @param span this hairpin's span in the pre-deletion line
      */
-    private SpanOutcome outcomeForDeletion(ElementChange.Deletion deletion, Line line, ElementRange span) {
+    private SpanOutcome.HairpinOutcome outcomeForDeletion(
+        ElementChange.Deletion deletion,
+        Line line,
+        ElementRange span
+    ) {
         var projected = deletion.projectedElements();
 
         // Nothing outside the range can fall between two elements inside it, so what
         // survives of the range is still described by its first and last position.
-        var first = -1;
-        var last = -1;
+        @Nullable Integer first = null;
+        @Nullable Integer last = null;
 
         for (var element : line.getElements(span)) {
             // Absent means the element is one of the doomed ones.
             var projectedIndex = deletion.projectedIndexOf(element);
 
-            if (projectedIndex < 0) {
+            if (projectedIndex == null) {
                 continue;
             }
 
-            if (first < 0) {
+            if (first == null) {
                 first = projectedIndex;
             }
 
             last = projectedIndex;
         }
 
-        if (first < 0) {
+        if (first == null || last == null) {
             return SpanOutcome.Simple.REMOVE;
         }
 
@@ -244,7 +270,7 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         var begin = resolveBeginIndex(survivors, projected);
         var end = resolveEndIndex(survivors, projected);
 
-        if (begin < 0 || end <= begin) {
+        if (begin == null || end == null || end <= begin) {
             return SpanOutcome.Simple.REMOVE;
         }
 
@@ -374,14 +400,17 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
 
     /**
      * Returns the post-deletion position of this hairpin's anchor, given that its
-     * elements survive over {@code survivors}, or -1 when none of them can begin a hairpin.
+     * elements survive over {@code survivors}.
      * <p>
      * A surviving anchor stays where it is — a hairpin an older build left anchored on a
      * rest is not this deletion's to correct. A deleted one moves in to the first element
      * that can begin one: a pitched note, or a grace note whose host is one, matching what
      * the app allows when the hairpin is drawn.
+     *
+     * @return the anchor's position in {@code candidates}, or {@code null} when no survivor
+     *     can begin a hairpin
      */
-    private int resolveBeginIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
+    private @Nullable Integer resolveBeginIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
         var first = survivors.begin();
         var last = survivors.end();
 
@@ -395,15 +424,18 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
      * Returns the post-deletion position of this hairpin's end, given that its elements
-     * survive over {@code survivors}, or -1 when none of them can end a hairpin. A surviving
-     * end stays where it is; a deleted one moves in to the last surviving note or rest.
+     * survive over {@code survivors}. A surviving end stays where it is; a deleted one moves
+     * in to the last surviving note or rest.
+     *
+     * @return the end's position in {@code candidates}, or {@code null} when no survivor can
+     *     end a hairpin
      */
-    private int resolveEndIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
+    private @Nullable Integer resolveEndIndex(ElementRange survivors, List<? extends StaffElement> candidates) {
         var first = survivors.begin();
         var last = survivors.end();
 
@@ -417,7 +449,7 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
             }
         }
 
-        return -1;
+        return null;
     }
 
     @Override

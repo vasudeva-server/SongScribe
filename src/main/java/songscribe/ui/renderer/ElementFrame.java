@@ -42,25 +42,39 @@ import songscribe.layout.stacking.NoteAttachedStacker;
  */
 public final class ElementFrame {
 
-    /** Canonical frame for line-level passes: no element index, no override, no preview shift. */
-    public static final ElementFrame LINE_LEVEL = new ElementFrame(-1, Double.NaN, -1, 0.0);
+    /**
+     * The grace-note insertion preview's displacement of the elements from {@code fromIndex}
+     * onward, by {@code shiftSs} staff spaces. Created once per paint at line level and shared
+     * by reference into every per-element frame of that paint.
+     *
+     * @param fromIndex first element index (inclusive) to displace
+     * @param shiftSs   displacement in staff spaces
+     */
+    public record PreviewShift(int fromIndex, double shiftSs) {
 
-    private final int currentElementIndex;
+        /** Returns whether this shift displaces the element at {@code index}. */
+        public boolean displaces(int index) {
+            return index >= fromIndex;
+        }
+    }
+
+    /** Canonical frame for line-level passes: no element index, no override, no preview shift. */
+    public static final ElementFrame LINE_LEVEL = new ElementFrame(null, Double.NaN, null);
+
+    private final @Nullable Integer currentElementIndex;
     private final double overrideElementXSs;
-    private final int previewShiftFromIndex;
-    private final double previewShiftSs;
+    private final @Nullable PreviewShift previewShift;
 
     private @Nullable StaffElement decorationLayoutsElement;
     private @Nullable LineInvariants decorationLayoutsInvariants;
     private @Nullable DecorationLayouts decorationLayoutsCache;
 
     private ElementFrame(
-        int currentElementIndex, double overrideElementXSs, int previewShiftFromIndex, double previewShiftSs
+        @Nullable Integer currentElementIndex, double overrideElementXSs, @Nullable PreviewShift previewShift
     ) {
         this.currentElementIndex = currentElementIndex;
         this.overrideElementXSs = overrideElementXSs;
-        this.previewShiftFromIndex = previewShiftFromIndex;
-        this.previewShiftSs = previewShiftSs;
+        this.previewShift = previewShift;
     }
 
     /**
@@ -75,28 +89,28 @@ public final class ElementFrame {
         return new ElementFrame(
             LINE_LEVEL.currentElementIndex(),
             LINE_LEVEL.overrideElementXSs(),
-            fromIndex,
-            shiftSs
+            new PreviewShift(fromIndex, shiftSs)
         );
     }
 
     /**
      * Returns a per-element frame for {@code elementIndex} with the given X override,
-     * inheriting this frame's preview-shift pair. Pass {@link Double#NaN} for
+     * sharing this frame's preview shift. Pass {@link Double#NaN} for
      * {@code overrideXSs} when the element uses its laid-out position.
      *
-     * @param elementIndex index of the element within the line, or {@code -1} for a line-level pass
+     * @param elementIndex index of the element within the line, or {@code null} for a
+     *                     line-level pass
      * @param overrideXSs  exact X in staff spaces, or {@link Double#NaN} for no override
      */
-    public ElementFrame withElement(int elementIndex, double overrideXSs) {
-        return new ElementFrame(elementIndex, overrideXSs, previewShiftFromIndex, previewShiftSs);
+    public ElementFrame withElement(@Nullable Integer elementIndex, double overrideXSs) {
+        return new ElementFrame(elementIndex, overrideXSs, previewShift);
     }
 
     /**
-     * Index of the element being rendered within the line, or {@code -1} during
+     * Index of the element being rendered within the line, or {@code null} during
      * line-level passes.
      */
-    public int currentElementIndex() {
+    public @Nullable Integer currentElementIndex() {
         return currentElementIndex;
     }
 
@@ -108,27 +122,14 @@ public final class ElementFrame {
         return overrideElementXSs;
     }
 
-    /**
-     * First element index (inclusive) to displace for the grace-note insert preview, or
-     * {@code -1} when no shift applies.
-     */
-    public int previewShiftFromIndex() {
-        return previewShiftFromIndex;
-    }
-
-    /** Preview shift amount in staff spaces. */
-    public double previewShiftSs() {
-        return previewShiftSs;
+    /** Returns the grace-note insert preview's displacement, or null when no shift applies. */
+    public @Nullable PreviewShift previewShift() {
+        return previewShift;
     }
 
     /** Returns whether an override element X is active (i.e. {@link #overrideElementXSs} is not NaN). */
     public boolean hasOverrideElementX() {
         return !Double.isNaN(overrideElementXSs);
-    }
-
-    /** Returns whether a preview shift is active (i.e. {@link #previewShiftFromIndex} is non-negative). */
-    public boolean hasPreviewShift() {
-        return previewShiftFromIndex >= 0;
     }
 
     /**

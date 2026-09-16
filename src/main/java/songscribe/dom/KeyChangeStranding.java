@@ -22,7 +22,7 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.List;
 
-import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.StaffElementRun.EffectiveRange;
 
 /**
  * The mid-line key changes an edit that moves a key strands, and the sweep that removes them.
@@ -63,7 +63,7 @@ public record KeyChangeStranding(List<Stranded> lines) {
      *               as {@link StaffElementRun#redundantKeyChangeRanges(Key)} reports them. Empty
      *               when the move strands nothing on the line
      */
-    public record Stranded(Line line, List<ElementRange> ranges) {
+    public record Stranded(Line line, List<EffectiveRange> ranges) {
 
         public Stranded {
             ranges = List.copyOf(ranges);
@@ -151,7 +151,7 @@ public record KeyChangeStranding(List<Stranded> lines) {
      * @return the stranding, whose {@link #lines()} always begin with {@code line}
      */
     public static KeyChangeStranding ofMidLineEdit(
-        Line line, List<ElementRange> onLine, Key keyAtEndOfLine) {
+        Line line, List<EffectiveRange> onLine, Key keyAtEndOfLine) {
 
         var stranded = new ArrayList<Stranded>();
         stranded.add(new Stranded(line, onLine));

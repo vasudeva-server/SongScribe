@@ -38,6 +38,8 @@ public class QuitAction extends UIAction {
         return new QuitAction(mainFrame);
     }
 
+    // Not ENABLED_IN_GRACE_MODE: shutdown offers to save a modified document, which would
+    // serialize the line while the unpaired grace note sits on it outside mutation tracking.
     protected QuitAction(MainFrame mainFrame) {
         // On macOS, the system sets the accelerator for the Quit menu item
         super(

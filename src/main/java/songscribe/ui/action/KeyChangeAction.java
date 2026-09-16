@@ -69,7 +69,6 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
             Strings.get(Strings.ACTION_KEY_CHANGE_TOOLTIP),
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE,
             Flag.OPENS_DIALOG
         );
     }
@@ -128,8 +127,14 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      */
     @Override
     public boolean acceptsInsertionIndex(Line line, int index) {
+        var lastNoteIndex = line.lastNoteIndex();
+
+        if (lastNoteIndex == null) {
+            return false;
+        }
+
         return index > 0
-            && index <= line.lastNoteIndex()
+            && index <= lastNoteIndex
             && !line.isKeyChangeAt(index - 1)
             && !line.isKeyChangeAt(index + 1);
     }

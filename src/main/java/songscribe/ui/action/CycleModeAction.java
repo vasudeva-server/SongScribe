@@ -43,7 +43,7 @@ public final class CycleModeAction extends UIAction {
     }
 
     private CycleModeAction(MainFrame mainFrame) {
-        super(mainFrame, null, "cycle-mode", KeyEvent.VK_M, 0, Flag.DISABLE_WHEN_EDITING_TEXT, Flag.DISABLE_IN_GRACE_MODE);
+        super(mainFrame, null, "cycle-mode", KeyEvent.VK_M, 0, Flag.DISABLE_WHEN_EDITING_TEXT);
         currentAction = Actions.EDIT_MODE_ACTION;
     }
 

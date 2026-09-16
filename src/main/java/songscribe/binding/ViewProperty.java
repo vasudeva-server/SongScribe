@@ -22,6 +22,7 @@ package songscribe.binding;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link Property} that views storage owned by something else: a read function, a
@@ -43,9 +44,10 @@ import java.util.function.Supplier;
  * subscription to anything process-global does not, and a view over such storage must
  * outlive the dialogs that bind it rather than being created per dialog.
  *
- * @param <T> the viewed value's type
+ * @param <T> the viewed value's type, declared {@code @Nullable} when absence is a value
+ *     the graph carries
  */
-public final class ViewProperty<T> implements Property<T> {
+public final class ViewProperty<T extends @Nullable Object> implements Property<T> {
 
     /**
      * Whether a write made through this view notifies on its own.

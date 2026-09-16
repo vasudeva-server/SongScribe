@@ -29,6 +29,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.error.RuntimeError;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
@@ -156,7 +157,7 @@ public final class Line implements EditableRun {
     public int index() {
         var result = song.indexOfLine(this);
 
-        if (result < 0) {
+        if (result == null) {
             throw new IllegalStateException("Line is not one of its song's lines");
         }
 
@@ -308,10 +309,11 @@ public final class Line implements EditableRun {
      * — {@code KeyChangeStranding.ofMidLineEdit} takes this key as its starting point. Why a
      * deletion computes that reach unconditionally is in {@code docs/key-changes.md}.
      *
-     * @param range the elements the deletion removes, already widened by {@link #effectiveRange}
+     * @param effectiveRange the elements the deletion removes
      * @return the key in effect after this line's last element once the range is gone; never null
      */
-    public Key keyAtEndOfLineAfterRemoving(ElementRange range) {
+    public Key keyAtEndOfLineAfterRemoving(EffectiveRange effectiveRange) {
+        var range = effectiveRange.range();
         var survivingKey = lastKeyChangeKeyFrom(range.end() + 1);
 
         if (survivingKey != null) {
@@ -337,11 +339,13 @@ public final class Line implements EditableRun {
      *         measured before it is added
      */
     public @Nullable Key nextLineRunningKey() {
-        if (!song.contains(this) || isLast()) {
+        var lineIndex = song.indexOfLine(this);
+
+        if (lineIndex == null || isLast()) {
             return null;
         }
 
-        return song.getLine(index() + 1).getRunningKey();
+        return song.getLine(lineIndex + 1).getRunningKey();
     }
 
     // ========================================================================
@@ -642,13 +646,36 @@ public final class Line implements EditableRun {
 
 
     /**
-     * Returns {@code element}'s position in this line, or -1 when it is not in this line.
-     * A null element is not in any line, so it too resolves to -1 — matching
-     * {@code ArrayList.indexOf}, which this replaced.
+     * Returns whether {@code element} is one of this line's elements.
      * <p>
-     * Answered from {@link #elementIndexMap}, rebuilt on demand after any element mutation.
+     * This is the query a caller asks when it does not know whether the element is on this line;
+     * {@link #getElementIndex} assumes it is. The answer is read from the element's parent
+     * pointer, which is an exact membership test: a staff element's parent line is written only
+     * by {@link #attach} and {@link #detach}, {@code LineElement.propagateParentLine} reaches only
+     * an element's children, and no {@link Attachment} or {@link Articulation} is a
+     * {@link StaffElement}.
+     *
+     * @return {@code true} when {@code element.getParentLine() == this}
      */
-    public int getElementIndex(@Nullable StaffElement element) {
+    public boolean contains(StaffElement element) {
+        return element.getParentLine() == this;
+    }
+
+    /**
+     * Returns {@code element}'s position in this line.
+     * <p>
+     * A caller that does not know whether the element is on this line asks {@link #contains}
+     * first; this method is total over the line's own elements and rejects every other.
+     *
+     * @return the element's position, as {@link #getElement} indexes it
+     * @throws IllegalArgumentException when {@code element.getParentLine() != this}
+     * @invariant the result is a valid index into this line: {@code 0 <= result < elementCount()}
+     */
+    public int getElementIndex(StaffElement element) {
+        if (!contains(element)) {
+            throw new IllegalArgumentException("element is not in this line");
+        }
+
         var map = elementIndexMap;
 
         if (map == null) {
@@ -667,7 +694,11 @@ public final class Line implements EditableRun {
 
         var index = map.get(element);
 
-        return index == null ? -1 : index;
+        if (index == null) {
+            throw RuntimeError.exit("element's parent line is this line but it is not in the element list");
+        }
+
+        return index;
     }
 
 

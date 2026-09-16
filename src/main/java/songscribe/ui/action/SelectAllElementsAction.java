@@ -45,7 +45,6 @@ public final class SelectAllElementsAction extends UIAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
             // Cmd/Ctrl-A is the platform shortcut for select-all inside a text field.
             // A disabled menu item doesn't swallow the key, so the lyric editor keeps it.
             Flag.DISABLE_WHEN_EDITING_TEXT,

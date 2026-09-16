@@ -787,7 +787,7 @@ public final class ScoreView
         var line = selection.line();
         var targetIndex = LyricTargetResolver.resolveLyricTarget(line, bounds.begin());
 
-        if (targetIndex < 0) {
+        if (targetIndex == null) {
             return;
         }
 
@@ -1404,25 +1404,6 @@ public final class ScoreView
         var clampedY = (int) Math.round(Math.clamp(targetY, 0, maxY));
 
         return new Point(clampedX, clampedY);
-    }
-
-    @Override
-    public int getSelectedLine() {
-        return selectionCoordinator.getSelectedLine();
-    }
-
-    @Override
-    public int getPlayingLine() {
-        // Playback state is now managed by PlaybackController
-        // For now, return -1 (not playing) since LineComponents handle their own state
-        return -1;
-    }
-
-    @Override
-    public int getPlayingNote() {
-        // Playback state is now managed by PlaybackController
-        // For now, return -1 (not playing) since LineComponents handle their own state
-        return -1;
     }
 
     @Nullable

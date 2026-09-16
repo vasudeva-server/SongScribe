@@ -191,7 +191,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
         }
 
         var lineFrame = line.gracePreviewLineFrame();
-        var frame = lineFrame.withElement(lineFrame.currentElementIndex(), 0);
+        var frame = lineFrame.withElement(null, 0);
 
         recorder.reset();
         GraphicUtils.setRenderingHints(recorder);

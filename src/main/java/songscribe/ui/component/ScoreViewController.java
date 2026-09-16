@@ -51,6 +51,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -218,19 +219,31 @@ public final class ScoreViewController {
         }
     }
 
+    /**
+     * The index of the line that has a line selection, for a caller already inside a
+     * precondition that guarantees one is selected.
+     */
+    private int requireSelectedLine() {
+        var selectedLine = selectionCoordinator.getSelectedLine();
+
+        if (selectedLine == null) {
+            throw RuntimeError.exit("no line selected");
+        }
+
+        return selectedLine;
+    }
+
     @Handler
     public void handleInsertLine(InsertLineCommand message) {
         var song = score.getSong();
         var line = new Line(song);
 
         // The two relative variants are disabled without a line selection,
-        // so selectedLine is only read where it is known to be valid.
-        var selectedLine = selectionCoordinator.getSelectedLine();
-
+        // so requireSelectedLine() is only called where it is known to be valid.
         switch (message.getType()) {
             case ADD_AT_END -> song.addLine(line);
-            case INSERT_BEFORE -> song.addLine(selectedLine, line);
-            case INSERT_AFTER -> song.addLine(selectedLine + 1, line);
+            case INSERT_BEFORE -> song.addLine(requireSelectedLine(), line);
+            case INSERT_AFTER -> song.addLine(requireSelectedLine() + 1, line);
         }
 
         score.deselect();
@@ -847,17 +860,18 @@ public final class ScoreViewController {
         }
 
         var line = range.line();
-        var selected = range.range();
+
+        // Widened once here and passed to the confirm, the stranding and the deletion, so the
+        // range the notator is asked about and the key changes are computed against is the range
+        // that goes.
+        var bounds = line.effectiveRange(range.range());
 
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, selected)) {
+        if (!confirmEndingInvalidatedByDeletion(line, bounds)) {
             return;
         }
 
-        // Widened once here and passed to both the stranding and the deletion, so the range the
-        // key changes are computed against is the range that goes.
-        var bounds = line.effectiveRange(selected);
         var stranding = deletionStranding(line, bounds);
 
         handleCopy();
@@ -927,18 +941,15 @@ public final class ScoreViewController {
         if (selectionCoordinator.getSelectedTarget() instanceof HitTarget.Lyric(var element, var verse)) {
             var line = element.getParentLine();
 
-            // An element in no line has no index, so there is nothing to delete —
-            // the same outcome as the index guard below.
+            // An element in no line has no index, so there is nothing to delete.
             if (line != null) {
                 var index = line.getElementIndex(element);
 
-                if (index >= 0) {
-                    song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
-                        line.modifyElement(index, ElementField.LYRIC, () ->
-                            line.getElement(index).removeLyricForVerse(verse));
-                        line.adjustNeighborsForLyricDeletion(index, verse);
-                    });
-                }
+                song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
+                    line.modifyElement(index, ElementField.LYRIC, () ->
+                        line.getElement(index).removeLyricForVerse(verse));
+                    line.adjustNeighborsForLyricDeletion(index, verse);
+                });
             }
 
             selectionCoordinator.getActionReflector().restoreSelectedActionStates();
@@ -962,15 +973,15 @@ public final class ScoreViewController {
             var line = range.line();
             var selected = range.range();
 
-            if (ElementChange.forDeletion(line, selected).removesConfirmableSpan()) {
-                if (!EndingConfirms.confirmInvalidation(score)) {
-                    return;
-                }
+            // Widened once here and passed to the confirm, the stranding and the deletion, so
+            // the range the notator is asked about and the key changes are computed against is
+            // the range that goes.
+            var bounds = line.effectiveRange(selected);
+
+            if (!confirmEndingInvalidatedByDeletion(line, bounds)) {
+                return;
             }
 
-            // Widened once here and passed to both the stranding and the deletion, so the range
-            // the key changes are computed against is the range that goes.
-            var bounds = line.effectiveRange(selected);
             var stranding = deletionStranding(line, bounds);
 
             // Name the undo step from the categories of the user-selected elements
@@ -993,7 +1004,7 @@ public final class ScoreViewController {
         } else if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
-            var lineIndex = selectionCoordinator.getSelectedLine();
+            var lineIndex = requireSelectedLine();
             var deletedLine = song.getLine(lineIndex);
 
             // Computed against the lines as they stand, before the bracket opens. The stranding
@@ -1030,10 +1041,9 @@ public final class ScoreViewController {
                 var elementIndex = line.getElementIndex(slideElement);
                 var slide = slideElement.getSlide();
 
-                // A slide selection is only ever made on an element that carries a slide and
-                // is still on this line; guard anyway so neither the @Nullable getSlide()
-                // result nor a -1 index is passed on unchecked.
-                if (slide != null && elementIndex >= 0) {
+                // A slide selection is only ever made on an element that carries a slide;
+                // guard anyway so the @Nullable getSlide() result isn't passed on unchecked.
+                if (slide != null) {
                     // Capture before the removal: stripping the glissando un-pairs the grace
                     // note, so by the time the sync runs there is no pairing left to read.
                     var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
@@ -1115,15 +1125,13 @@ public final class ScoreViewController {
             return null;
         }
 
-        var elementIndex = line.getElementIndex(owner);
-
-        if (elementIndex < 0) {
+        if (!line.contains(owner)) {
             LOG.debug("Cannot delete the selected target: its owner element ({}) is not on the active line",
                 owner.getType());
             return null;
         }
 
-        return elementIndex;
+        return line.getElementIndex(owner);
     }
 
     /**
@@ -1169,8 +1177,8 @@ public final class ScoreViewController {
      * either it discards no ending, or the user confirmed discarding one. Callers
      * must run this before mutating anything — declining leaves the score untouched.
      */
-    private boolean confirmEndingInvalidatedByDeletion(Line line, StaffElementRun.ElementRange range) {
-        return !ElementChange.forDeletion(line, range).removesConfirmableSpan()
+    private boolean confirmEndingInvalidatedByDeletion(Line line, StaffElementRun.EffectiveRange range) {
+        return !ElementChange.forDeletion(line, range.range()).removesConfirmableSpan()
             || EndingConfirms.confirmInvalidation(score);
     }
 
@@ -1192,16 +1200,18 @@ public final class ScoreViewController {
      * behind a test for what the range holds. See {@code docs/key-changes.md}.
      *
      * @param line   the line the deletion happens on
-     * @param bounds the range that really goes, already widened by {@link Line#effectiveRange}
+     * @param bounds the range that really goes
      * @return the stranding the deletion owes; empty on every line when it moves no key
      */
-    private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.ElementRange bounds) {
+    private static KeyChangeStranding deletionStranding(Line line, StaffElementRun.EffectiveRange bounds) {
+        var range = bounds.range();
+
         // A deletion that takes a key change with it leaves the key that was running before the
         // range running past it, which can leave a later key change on this same line restating
         // it. keyAt's bound is inclusive, so it is asked one index below the range; index 0 can
         // hold no key change, so asking about it is the same question.
-        var keyAfterRemoval = line.keyAt(Math.max(bounds.begin() - 1, 0));
-        var strandedAfter = line.redundantKeyChangeRanges(bounds.end() + 1, keyAfterRemoval);
+        var keyAfterRemoval = line.keyAt(Math.max(range.begin() - 1, 0));
+        var strandedAfter = line.redundantKeyChangeRanges(range.end() + 1, keyAfterRemoval);
 
         return KeyChangeStranding.ofMidLineEdit(
             line, strandedAfter, line.keyAtEndOfLineAfterRemoving(bounds));
@@ -1228,24 +1238,13 @@ public final class ScoreViewController {
      */
     private void deleteElementRange(
         Line line,
-        StaffElementRun.ElementRange range,
+        StaffElementRun.EffectiveRange range,
         KeyChangeStranding stranding) {
 
         line.getSong().withModification(() -> {
             stranding.sweep();
             line.deleteRange(range);
         });
-    }
-
-    /**
-     * The element index a paste effectively starts at: {@code insertIndex} for a pure
-     * insertion, or the widened begin of {@code deleteRange} for a paste-replace, since
-     * {@link Line#deleteRange} takes a paired grace note before its range with it.
-     */
-    private static int pasteDisplacementIndex(
-        Line line, int insertIndex, StaffElementRun.@Nullable ElementRange deleteRange) {
-
-        return deleteRange == null ? insertIndex : line.effectiveBegin(deleteRange.begin());
     }
 
     /** Outcome of {@link #tryInsertFragment}. */
@@ -1283,8 +1282,9 @@ public final class ScoreViewController {
      * edits {@code KeyEditFitCalculator} covers.
      *
      * @param line        The destination line
-     * @param insertIndex The index where the fragment's first element will land
-     * @param deleteRange The effective range to delete first, or null for pure insertion
+     * @param insertIndex The index where the fragment's first element will land; the begin of
+     *                    {@code deleteRange} when there is one
+     * @param deleteRange The range to delete first, or null for pure insertion
      * @return {@code EMPTY} when the clipboard holds nothing; {@code LINE_FULL} when the fit gate
      *     refused the paste; {@code CANCELLED} when the notator declined the confirm; and
      *     {@code INSERTED} when the paste happened. {@code INSERTED} also covers the case where
@@ -1293,7 +1293,7 @@ public final class ScoreViewController {
      *     though no element was placed. Only {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(
-        Line line, int insertIndex, StaffElementRun.@Nullable ElementRange deleteRange) {
+        Line line, int insertIndex, StaffElementRun.@Nullable EffectiveRange deleteRange) {
 
         var fragment = clipboardManager.getFragment();
 
@@ -1301,29 +1301,20 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.EMPTY;
         }
 
-        // deleteElementRange also removes a paired grace note immediately before the
-        // range (its host cannot outlive it), so the spacing calculation must count
-        // that element as deleted too. Otherwise the clones are positioned against a
-        // predecessor that does not survive, leaving a gap where the grace note was.
-        var displacementIndex = pasteDisplacementIndex(line, insertIndex, deleteRange);
-        StaffElementRun.@Nullable ElementRange widenedDeleteRange = null;
-
-        if (deleteRange != null && displacementIndex != deleteRange.begin()) {
-            widenedDeleteRange = new StaffElementRun.ElementRange(displacementIndex, deleteRange.end());
-        }
-
-        var spacingDeleteRange = (widenedDeleteRange != null) ? widenedDeleteRange : deleteRange;
-        var spacingInsertIndex = (widenedDeleteRange != null) ? widenedDeleteRange.begin() : insertIndex;
+        // The elements the paste-replace removes, for the projections and the spacing
+        // calculation, which read the raw range. The paired grace note before the caller's
+        // selection is already inside it, so the clones are positioned against a predecessor
+        // that survives.
+        var rawDeleteRange = deleteRange == null ? null : deleteRange.range();
 
         // The first index this paste leaves standing after itself, and so the first one every
         // projection below re-reads.
-        var successorIndex =
-            (spacingDeleteRange == null) ? spacingInsertIndex : (spacingDeleteRange.end() + 1);
+        var successorIndex = rawDeleteRange == null ? insertIndex : rawDeleteRange.end() + 1;
 
         // The key the fragment's first element lands in. keyAt's bound is inclusive, so it is
         // asked one index lower — index 0 can hold no key change, so asking about it is the
         // same question.
-        var keyAtInsertion = line.keyAt(Math.max(spacingInsertIndex - 1, 0));
+        var keyAtInsertion = line.keyAt(Math.max(insertIndex - 1, 0));
 
         // Fresh clones every paste — the stored fragment is never itself inserted.
         // Instantiated before any mutation because the span reconciliation below decides
@@ -1353,21 +1344,17 @@ public final class ScoreViewController {
         // paste-replace owes, with the stranding just computed; a pure insertion has nothing left
         // to do at all. Either way the gesture is spent, not declined.
         if (clones.isEmpty()) {
-            if (spacingDeleteRange != null) {
-                deleteElementRange(line, line.effectiveRange(spacingDeleteRange), stranding);
+            if (deleteRange != null) {
+                deleteElementRange(line, deleteRange, stranding);
             }
 
             return FragmentInsertOutcome.INSERTED;
         }
 
-        // The line as the paste will leave it: the spacing range swapped for the clones. The
-        // spacing pair is projected rather than the caller's raw insertIndex/deleteRange for the
-        // same single reason spacing uses it: the paired grace note immediately before the range
-        // does not survive deleteElementRange, so what its note sounded is removed content and
-        // changes what the clones and the notes after them are decided against.
-        var restamps = (spacingDeleteRange == null)
-            ? ProjectedEdit.inserting(line, spacingInsertIndex, clones).walk()
-            : ProjectedEdit.replacing(line, spacingDeleteRange, clones).walk();
+        // The line as the paste will leave it: the deleted range swapped for the clones.
+        var restamps = (rawDeleteRange == null)
+            ? ProjectedEdit.inserting(line, insertIndex, clones).walk()
+            : ProjectedEdit.replacing(line, rawDeleteRange, clones).walk();
 
         // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
         // both live inside the fit gate: it stamps the walk's accidentals, runs this check with
@@ -1387,7 +1374,7 @@ public final class ScoreViewController {
         var committed = AccidentalFitGate.fits(
             line, restamps, clones, lyricRenderMetrics, () -> {
                 var fit = InsertionSpacingCalculator.calculateFragmentInsertion(
-                    line, clones, spacingInsertIndex, spacingDeleteRange, lyricRenderMetrics);
+                    line, clones, insertIndex, rawDeleteRange, lyricRenderMetrics);
 
                 if (!fit.fitsWithinLine(line.getSong().getLineWidthSs().value())) {
                     OptionDialogs.showErrorMessage(
@@ -1403,8 +1390,8 @@ public final class ScoreViewController {
                 // inserting one by hand does — confirm on the same terms, before anything is
                 // mutated. Skipped when the paste-replace's own deletion already invalidates an
                 // ending: handlePaste has confirmed that, and the ending is going either way.
-                var deletionAlreadyConfirmed = deleteRange != null
-                    && ElementChange.forDeletion(line, deleteRange).removesConfirmableSpan();
+                var deletionAlreadyConfirmed = rawDeleteRange != null
+                    && ElementChange.forDeletion(line, rawDeleteRange).removesConfirmableSpan();
 
                 if (!deletionAlreadyConfirmed) {
                     var insertedTypes = clones.stream().map(StaffElement::getType).toList();
@@ -1439,7 +1426,7 @@ public final class ScoreViewController {
         stranding.sweepExcept(line);
 
         var reconciliation = PasteSpanReconciliation.reconcile(
-            line, insertIndex, deleteRange, clones, instantiated.spans());
+            line, insertIndex, rawDeleteRange, clones, instantiated.spans());
 
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
@@ -1447,23 +1434,16 @@ public final class ScoreViewController {
             span.removeFrom(line);
         }
 
-        // Capture the successor before any mutation: deleteElementRange can remove elements
-        // before the range too, so the insertion index is re-derived from where the successor
-        // ends up rather than from the caller's pre-delete index.
-        var successor = successorIndex < line.effectiveElementCount()
-            ? line.getElement(successorIndex)
-            : null;
         var insertAt = insertIndex;
 
         if (deleteRange != null) {
             // The stranding this paste owes is swept around the paste as a whole — the deletion
             // and the insertion are one mutation — so the range delete sweeps nothing of its own.
-            deleteElementRange(
-                line, line.effectiveRange(deleteRange), new KeyChangeStranding(List.of()));
+            deleteElementRange(line, deleteRange, new KeyChangeStranding(List.of()));
 
-            // The deletion may have removed elements before the range too (a paired
-            // grace note cascade), so re-derive the insertion index from what survived.
-            insertAt = successor != null ? line.getElementIndex(successor) : line.effectiveElementCount();
+            // The deletion removes exactly the range, so the successor closes up onto its begin
+            // and the clones land there.
+            insertAt = deleteRange.range().begin();
         }
 
         // Hard ordering constraint: every clone must be inserted before the first
@@ -1555,7 +1535,7 @@ public final class ScoreViewController {
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
         // closes empty, posts no notification, and the selection stays intact.
         var outcome = score.getSong().withModificationResult(() -> {
-            var result = tryInsertFragment(line, effective.begin(), effective);
+            var result = tryInsertFragment(line, effective.range().begin(), effective);
 
             if (result == FragmentInsertOutcome.INSERTED) {
                 // Clear the selection before the bracket closes so action handlers

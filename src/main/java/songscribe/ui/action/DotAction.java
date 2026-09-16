@@ -92,7 +92,10 @@ public final class DotAction<E extends StaffElement & Dottable> extends PreviewE
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.ENABLE_WHEN_DURATION_SELECTED,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED
+            Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED,
+            // With no staff selection possible in grace mode this only decorates the preview,
+            // which becomes the host note the user is placing.
+            Flag.ENABLED_IN_GRACE_MODE
         );
         this.dots = dots;
         setUndoOpNameKey(undoOpNameKey);

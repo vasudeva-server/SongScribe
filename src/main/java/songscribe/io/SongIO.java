@@ -783,7 +783,7 @@ public final class SongIO {
             }
 
             var blobLines = attribution.split("\n", -1);
-            var byLineIndex = -1;
+            @Nullable Integer byLineIndex = null;
 
             for (var i = 0; i < blobLines.length; i++) {
                 var trimmed = blobLines[i].trim();
@@ -803,7 +803,7 @@ public final class SongIO {
 
             // Only extract date/place from the blob for v1.0 files,
             // where those fields were not serialized as separate XML tags.
-            if (!isV10File() || byLineIndex < 0) {
+            if (!isV10File() || byLineIndex == null) {
                 return;
             }
 

@@ -30,7 +30,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.BarElement;
 import songscribe.dom.CollisionRegion;
-import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
@@ -87,8 +86,8 @@ public final class EndingBracketGeometry {
         Line line,
         Function<? super StaffElement, ElementColumn> columnFn
     ) {
-        var start = ending.getAnchorElementIndex();
-        var end = ending.getEndElementIndex();
+        var start = ending.requireAnchorElementIndex();
+        var end = ending.requireEndElementIndex();
 
         if (!line.hasIndex(start) || !line.hasIndex(end)) {
             List<Ending.BracketRange> noRanges = List.of();

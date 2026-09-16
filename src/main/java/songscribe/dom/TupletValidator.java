@@ -82,7 +82,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
  *
  * <h2>The cost of beat resolution</h2>
  *
- * <p>{@link Song#resolveBeatAt} walks backward over every element before the anchor and is
+ * <p>{@link Song#beatUnitAt} walks backward over every element before the anchor and is
  * deliberately uncached — see its documentation for why a maintained beat index was
  * rejected. Calling {@link #describeSpan} once per tuplet therefore makes a whole-song
  * check quadratic. {@link #validateFrom} is the way to avoid paying that cost per tuplet:
@@ -173,7 +173,7 @@ public final class TupletValidator {
     /**
      * Measures a span once, so every candidate grade can be tested against it without
      * repeating the beat walk. Resolving the beat is O(elements before the anchor) — see
-     * {@link Song#resolveBeatAt} — which is the whole reason this is separate from
+     * {@link Song#beatUnitAt} — which is the whole reason this is separate from
      * {@link #validate}.
      *
      * @param line the line holding the span, which must be one of its song's lines
@@ -181,7 +181,7 @@ public final class TupletValidator {
      * @return the grade-independent facts about the span
      */
     public static SpanContext describeSpan(Line line, ElementRange span) {
-        var beat = line.getSong().resolveBeatAt(line.index(), span.begin()).beat();
+        var beat = line.getSong().beatUnitAt(line.index(), span.begin());
 
         return new SpanContext(
             writtenTicks(line, span),
@@ -369,7 +369,7 @@ public final class TupletValidator {
         Song song, int fromLineIndex, int fromElementIndex, Strictness strictness
     ) {
         var verdicts = new ArrayList<Verdict>();
-        var runningBeat = song.resolveBeatAt(fromLineIndex, fromElementIndex).beat();
+        var runningBeat = song.beatUnitAt(fromLineIndex, fromElementIndex);
         var firstIndex = fromElementIndex;
 
         for (var lineIndex = fromLineIndex; lineIndex < song.lineCount(); lineIndex++) {
@@ -393,8 +393,12 @@ public final class TupletValidator {
 
                     // A barrier on the anchor defines the tuplet's beat instead of
                     // splitting it, so the span opens against the updated running beat.
-                    if (tuplet != null && tuplet.getAnchorElementIndex() == index) {
-                        open = new OpenSpan(tuplet, runningBeat);
+                    if (tuplet != null) {
+                        var anchorIndex = tuplet.getAnchorElementIndex();
+
+                        if (anchorIndex != null && anchorIndex == index) {
+                            open = new OpenSpan(tuplet, runningBeat);
+                        }
                     }
                 } else if (barrierHere) {
                     open.noteBeatBarrier();
@@ -403,7 +407,7 @@ public final class TupletValidator {
                 if (open != null) {
                     open.accumulate(element, index);
 
-                    if (index >= open.endIndex()) {
+                    if (open.closesAt(index)) {
                         verdicts.add(open.close(lineIndex, strictness));
                         open = null;
                     }
@@ -433,7 +437,7 @@ public final class TupletValidator {
     private static final class OpenSpan {
 
         private final Tuplet tuplet;
-        private final int endIndex;
+        private final @Nullable Integer endIndex;
         private final int beatTicks;
         private final boolean beatDotted;
         private int writtenTicks;
@@ -448,8 +452,14 @@ public final class TupletValidator {
             beatDotted = beatAtAnchor.dotted();
         }
 
-        private int endIndex() {
-            return endIndex;
+        /**
+         * Whether the walk, having accumulated the element at {@code index}, has reached
+         * this span's end. A tuplet whose end element sits in no line closes on its anchor
+         * alone: there is no position to walk towards, and the verdict then judges what the
+         * line actually holds of it.
+         */
+        private boolean closesAt(int index) {
+            return endIndex == null || index >= endIndex;
         }
 
         private void noteBeatBarrier() {
@@ -565,9 +575,12 @@ public final class TupletValidator {
      * (commit 6bcc1c6b), and a span running to the end of a line ends on the barline the
      * model maintains there. Treating either as a boundary would disable the tuplet
      * control on ordinary selections.
+     *
+     * @param endIndex the index the span ends on, or null when its end element sits in no
+     *     line, so that no element is the span's end
      */
-    private static boolean isStructuralBoundary(ElementType type, int index, int endIndex) {
-        return index != endIndex && (type.isBar() || type.isBreathMark());
+    private static boolean isStructuralBoundary(ElementType type, int index, @Nullable Integer endIndex) {
+        return (endIndex == null || index != endIndex) && (type.isBar() || type.isBreathMark());
     }
 
     /**

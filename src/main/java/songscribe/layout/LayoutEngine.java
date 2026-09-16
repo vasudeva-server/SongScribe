@@ -465,8 +465,8 @@ public class LayoutEngine {
         var elementToColumn = elementToColumnMap(columns);
 
         for (var beam : beams) {
-            var beamStart = beam.getAnchorElementIndex();
-            var beamEnd = beam.getEndElementIndex();
+            var beamStart = beam.requireAnchorElementIndex();
+            var beamEnd = beam.requireEndElementIndex();
             var stemDirection = beam.direction();
 
             // Collect the group's stems in BeamScoring's scoring space (Y-up positive,

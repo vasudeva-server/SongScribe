@@ -114,7 +114,26 @@ import songscribe.ui.component.TickSlider;
  */
 public final class Controls {
 
+    /**
+     * What {@code JComboBox} and {@code JList} answer from {@code getSelectedIndex} when
+     * nothing is selected, and what {@code JComboBox.setSelectedIndex} takes to clear the
+     * selection. It is converted to and from {@code null} here and nowhere else, so
+     * nothing below a view holds it.
+     */
+    private static final int NO_SELECTED_INDEX = -1;
+
     private Controls() {}
+
+    /**
+     * Converts a control's selected-index answer to the value an index view hands out.
+     *
+     * @param swingIndex what {@code getSelectedIndex} answered
+     * @return {@code swingIndex}, or {@code null} when it is {@link #NO_SELECTED_INDEX}
+     */
+    @Nullable
+    private static Integer selectionOf(int swingIndex) {
+        return (swingIndex == NO_SELECTED_INDEX) ? null : swingIndex;
+    }
 
     /**
      * Returns a property view of {@code field}'s text, notifying at {@code timing}.
@@ -235,23 +254,28 @@ public final class Controls {
      * it speaks values. Viewing an index directly is what lets a derivation read the
      * position without a list lookup standing between the property and the reader.
      *
+     * <p>"Nothing selected" is {@code null}. Swing answers and takes a sentinel index
+     * for it, and this view is where the two are converted, so nothing below a view
+     * holds a Swing sentinel: a binding over this property tests for null, never for a
+     * number.
+     *
      * @param combo the combo box to view. It must be uneditable, for the reason
      *     {@link #item} gives.
      * @return the two-way view over {@code getSelectedIndex} / {@code setSelectedIndex}.
-     *     Its {@code get} answers {@code -1} when nothing is selected, which is Swing's
-     *     own answer rather than a value this view invents, so an empty leading entry
-     *     meaning "not chosen" is the caller's convention and not this one's. Its
-     *     {@code set} throws {@link IllegalArgumentException} when given an index that
-     *     is neither {@code -1} nor a position the combo holds.
+     *     Its {@code get} answers {@code null} when nothing is selected, so an empty
+     *     leading entry meaning "not chosen" is the caller's convention and not this
+     *     one's. Its {@code set} clears the selection when given {@code null}, and
+     *     throws {@link IllegalArgumentException} when given an index that is not a
+     *     position the combo holds.
      * @invariant a written index is the index read back, for any position the combo
-     *     holds; {@code -1} clears the selection
+     *     holds, and a written {@code null} reads back as {@code null}
      * @effects registers an {@code ActionListener} on {@code combo}, never
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
-    public static Property<Integer> itemIndex(JComboBox<?> combo) {
-        var property = new ViewProperty<Integer>(
-            combo::getSelectedIndex,
-            combo::setSelectedIndex,
+    public static Property<@Nullable Integer> itemIndex(JComboBox<?> combo) {
+        var property = new ViewProperty<@Nullable Integer>(
+            () -> selectionOf(combo.getSelectedIndex()),
+            index -> combo.setSelectedIndex(index == null ? NO_SELECTED_INDEX : index),
             WriteNotification.FROM_SOURCE
         );
         combo.addActionListener(event -> property.notifyObservers());
@@ -353,17 +377,31 @@ public final class Controls {
      * responsible for the data being in place first; a selection written into an empty
      * list is silently nothing.
      *
+     * <p>"Nothing selected" is {@code null}, converted to and from Swing's sentinel index
+     * here as {@link #itemIndex} describes. A {@code null} write goes through
+     * {@code clearSelection}, because {@code JList.setSelectedIndex} ignores the sentinel
+     * rather than clearing on it.
+     *
      * @param list the list to view
-     * @return the two-way view over the selected index, {@code -1} when nothing is
-     *     selected, which is a value a transform binding it to a domain value has to
-     *     account for
+     * @return the two-way view over the selected index. Its {@code get} answers
+     *     {@code null} when nothing is selected, and its {@code set} clears the selection
+     *     when given {@code null}; a transform binding it to a domain value accounts for
+     *     both.
+     * @invariant a written index the list holds is the index read back, and a written
+     *     {@code null} reads back as {@code null}
      * @effects registers a {@code ListSelectionListener} on {@code list}, never
      *     unregistered. See the class documentation's <i>Lifecycle</i> section.
      */
-    public static Property<Integer> selectedIndex(JList<?> list) {
-        var property = new ViewProperty<Integer>(
-            list::getSelectedIndex,
-            list::setSelectedIndex,
+    public static Property<@Nullable Integer> selectedIndex(JList<?> list) {
+        var property = new ViewProperty<@Nullable Integer>(
+            () -> selectionOf(list.getSelectedIndex()),
+            index -> {
+                if (index == null) {
+                    list.clearSelection();
+                } else {
+                    list.setSelectedIndex(index);
+                }
+            },
             WriteNotification.FROM_SOURCE
         );
         list.addListSelectionListener(event -> {

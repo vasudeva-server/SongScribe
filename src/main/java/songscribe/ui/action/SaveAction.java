@@ -36,6 +36,8 @@ public final class SaveAction extends UIAction {
         return new SaveAction(mainFrame);
     }
 
+    // Not ENABLED_IN_GRACE_MODE: saving serializes the line while the unpaired grace note
+    // sits on it outside mutation tracking.
     private SaveAction(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.ACTION_FILE_SAVE), "save", KeyEvent.VK_S, UIUtils.MENU_SHORTCUT_MASK);
     }

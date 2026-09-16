@@ -104,7 +104,8 @@ import songscribe.io.ReadAnnotation;
  * resolves before its start on the same note; a hairpin's stop before its start, except
  * when one note both opens and closes one; the first tempo mark of the first measure is
  * the song's own; and a tie may cross a line boundary, while a hairpin and a volta may
- * not.
+ * not. A beam, a tuplet bracket or a trill whose two ends land on different lines is a
+ * span no line can hold, so the pass that pairs it rejects the document as corrupt.
  *
  * <p>A {@link Line} is committed to the song only once its elements are complete. While a
  * line is detached it is never the song's last line, which is what makes
@@ -127,6 +128,7 @@ final class MeasureMapper {
     private static final String BEAM_END_MARKER = "<beam>end</beam>";
     private static final String TIED_START_MARKER = "<tied type=\"start\">";
     private static final String TIED_STOP_MARKER = "<tied type=\"stop\">";
+    private static final String TUPLET_START_MARKER = "<tuplet type=\"start\">";
     private static final String WAVY_LINE_START_MARKER = "<wavy-line type=\"start\">";
     private static final String WAVY_LINE_STOP_MARKER = "<wavy-line type=\"stop\">";
 
@@ -193,11 +195,20 @@ final class MeasureMapper {
     /** A hairpin whose start wedge has bound to {@code anchor} and awaits its stop. */
     private record OpenHairpin(StaffElement anchor, WedgeStart start) {}
 
-    /** A tuplet bracket whose start has bound to {@code anchor} and awaits its stop. */
-    private record OpenTuplet(StaffElement anchor, NoteMapper.TupletMarker marker) {}
+    /** A beam whose begin marker has bound to {@code begin}, on {@code line}, and awaits its end. */
+    private record OpenBeam(NoteElement begin, Line line) {}
 
-    /** A trill whose start wavy line has bound to {@code anchor} and awaits its stop. */
-    private record OpenTrill(StaffElement anchor, int yPositionSs) {}
+    /**
+     * A tuplet bracket whose start has bound to {@code anchor}, on {@code line}, and awaits its
+     * stop.
+     */
+    private record OpenTuplet(StaffElement anchor, Line line, NoteMapper.TupletMarker marker) {}
+
+    /**
+     * A trill whose start wavy line has bound to {@code anchor}, on {@code line}, and awaits its
+     * stop.
+     */
+    private record OpenTrill(StaffElement anchor, Line line, int yPositionSs) {}
 
     // -------------------------------------------------------------------------
     // Walk state — the whole of it
@@ -208,11 +219,12 @@ final class MeasureMapper {
     @Nullable
     private Line currentLine = null;
 
-    // The measure index at which the current line started, or -1 before any line has. A <key>
+    // The measure index at which the current line started, or null before any line has. A <key>
     // in that measure establishes the line's own key; a <key> in any other measure is a mid-line
     // change. No running key is carried: a line the file gave no <key> establishes none, so it
     // inherits, which is what Song.rebuildInheritedKeysAfterParsing settles once the walk is over.
-    private int lineStartMeasureIndex = -1;
+    @Nullable
+    private Integer lineStartMeasureIndex = null;
 
     // True once any note's <accidental> token was a retired legacy token converted
     // to its replacement; carried into SongLoadResult.Success by the caller.
@@ -404,7 +416,9 @@ final class MeasureMapper {
                 fifths, Key.MAX_ACCIDENTAL_COUNT);
         }
 
-        if (measureIndex == lineStartMeasureIndex) {
+        var startMeasureIndex = lineStartMeasureIndex;
+
+        if (startMeasureIndex != null && startMeasureIndex == measureIndex) {
             line.setKey(key);
             return;
         }
@@ -1235,32 +1249,36 @@ final class MeasureMapper {
      * {@link Beam}: {@code begin} opens the run, {@code continue} keeps it open, and
      * {@code end} builds the span.
      */
-    private static void resolveBeams(List<NoteSite> notes) {
-        NoteElement begin = null;
+    private static void resolveBeams(List<NoteSite> notes) throws SAXException {
+        OpenBeam open = null;
 
         for (var note : notes) {
             var beamType = NoteMapper.primaryBeamType(note.pmNote());
 
             if (MusicXmlTags.BEAM_BEGIN.equals(beamType)) {
-                warnDanglingStart(begin, BEAM_BEGIN_MARKER);
-                begin = markedNote(note, BEAM_BEGIN_MARKER);
+                warnDanglingStart(open, BEAM_BEGIN_MARKER);
+                var begin = markedNote(note, BEAM_BEGIN_MARKER);
+                open = begin == null ? null : new OpenBeam(begin, note.line());
             } else if (MusicXmlTags.BEAM_END.equals(beamType)) {
                 var end = markedNote(note, BEAM_END_MARKER);
 
                 if (end == null) {
                     // The marker closed the run; there is just no span to build from it.
-                    begin = null;
-                } else if (begin == null) {
+                    open = null;
+                } else if (open == null) {
                     warnOrphanStop(BEAM_END_MARKER);
                 } else {
-                    new Beam(begin, end).addTo(note.line());
-                    begin = null;
+                    if (endsOnStartLine(open.line(), note, BEAM_BEGIN_MARKER)) {
+                        new Beam(open.begin(), end).addTo(note.line());
+                    }
+
+                    open = null;
                 }
             }
             // BEAM_CONTINUE keeps the run open — no action.
         }
 
-        warnDanglingStart(begin, BEAM_BEGIN_MARKER);
+        warnDanglingStart(open, BEAM_BEGIN_MARKER);
     }
 
     /**
@@ -1302,7 +1320,8 @@ final class MeasureMapper {
      * Unlike the other per-note spans, a tuplet is not a legitimate document state
      * without both brackets spanning at least two non-rest notes (see #518), so a
      * dangling start or an orphan stop is rejected as a corrupt document rather than
-     * silently dropped.
+     * silently dropped. A tuplet whose brackets are on different lines is dropped with a
+     * warning, as a beam or a trill is.
      *
      * <p>{@code <normal-type>} is the trust discriminator. A file that carries it states
      * a complete {@code <time-modification>}, so its {@code <normal-notes>} is taken at
@@ -1319,7 +1338,7 @@ final class MeasureMapper {
 
             if (marker.start()) {
                 requireNoOpenTuplet(open);
-                open = new OpenTuplet(note.element(), marker);
+                open = new OpenTuplet(note.element(), note.line(), marker);
             }
 
             if (!marker.stop()) {
@@ -1346,6 +1365,12 @@ final class MeasureMapper {
     }
 
     private static void buildTuplet(OpenTuplet open, NoteSite end) throws SAXException {
+        // Checked before hasValidSpan, which reads each endpoint's index on its own line and so
+        // cannot see that the endpoints sit on different lines.
+        if (!endsOnStartLine(open.line(), end, TUPLET_START_MARKER)) {
+            return;
+        }
+
         var marker = open.marker();
         var noteValue = statedNoteValue(marker);
         var line = end.line();
@@ -1404,7 +1429,7 @@ final class MeasureMapper {
      * Collapses each note's {@code <wavy-line>} markers into {@link Trill}s. Start is
      * processed before stop so a note carrying both builds the single-note trill.
      */
-    private static void resolveTrills(List<NoteSite> notes) {
+    private static void resolveTrills(List<NoteSite> notes) throws SAXException {
         OpenTrill open = null;
 
         for (var note : notes) {
@@ -1412,7 +1437,7 @@ final class MeasureMapper {
 
             if (marker.start()) {
                 warnDanglingStart(open, WAVY_LINE_START_MARKER);
-                open = new OpenTrill(note.element(), marker.yPositionSs());
+                open = new OpenTrill(note.element(), note.line(), marker.yPositionSs());
             }
 
             if (!marker.stop()) {
@@ -1421,6 +1446,11 @@ final class MeasureMapper {
 
             if (open == null) {
                 warnOrphanStop(WAVY_LINE_STOP_MARKER);
+                continue;
+            }
+
+            if (!endsOnStartLine(open.line(), note, WAVY_LINE_START_MARKER)) {
+                open = null;
                 continue;
             }
 
@@ -1442,6 +1472,25 @@ final class MeasureMapper {
     // -------------------------------------------------------------------------
     // Pairing diagnostics
     // -------------------------------------------------------------------------
+
+    /**
+     * Answers whether a span's two ends landed on one line. A line holds its own spans, so a
+     * span whose ends are on different lines has no line to live on and is dropped.
+     *
+     * @param startLine   the line the span's opening marker landed on
+     * @param end         the site the closing marker was read from
+     * @param startMarker what opened the span, for the diagnostic
+     * @return {@code true} if {@code end} is on {@code startLine}
+     * @log WARN when the ends are on different lines
+     */
+    private static boolean endsOnStartLine(Line startLine, NoteSite end, String startMarker) {
+        if (end.line() == startLine) {
+            return true;
+        }
+
+        LOG.warn("Ignoring {} that starts on one line and stops on another", startMarker);
+        return false;
+    }
 
     /**
      * Warns that a run never received its closing marker, so it builds nothing.

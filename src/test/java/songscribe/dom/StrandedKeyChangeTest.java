@@ -320,10 +320,10 @@ class StrandedKeyChangeTest extends UnitTest {
 
         assertThat(line.redundantKeyChangeRanges(RUNNING_KEY))
             .containsExactly(
-                new StaffElementRun.ElementRange(
+                line.effectiveRange(new StaffElementRun.ElementRange(
                     FIRST_KEY_CHANGE_INDEX - 1,
                     FIRST_KEY_CHANGE_INDEX
-                ));
+                )));
     }
 
     @Test
@@ -337,10 +337,10 @@ class StrandedKeyChangeTest extends UnitTest {
         assertThat(line.redundantKeyChangeRanges(OTHER_KEY))
             .as("under the key the caller's edit will leave the line in, the key change restates it")
             .containsExactly(
-                new StaffElementRun.ElementRange(
+                line.effectiveRange(new StaffElementRun.ElementRange(
                     FIRST_KEY_CHANGE_INDEX - 1,
                     FIRST_KEY_CHANGE_INDEX
-                ));
+                )));
     }
 
     @Test
@@ -351,9 +351,9 @@ class StrandedKeyChangeTest extends UnitTest {
             .as("the earlier key change is behind the edit and is not counted, while the later one "
                 + "restates the key the edit leaves in effect and takes its barline with it")
             .containsExactly(
-                new StaffElementRun.ElementRange(
+                line.effectiveRange(new StaffElementRun.ElementRange(
                     SECOND_KEY_CHANGE_INDEX - 1,
                     SECOND_KEY_CHANGE_INDEX
-                ));
+                )));
     }
 }

@@ -107,6 +107,13 @@ public final class UIUtils {
             new Point(),
             "hidden-cursor");
 
+    /**
+     * The index a {@link ListCellRenderer} receives for a closed combo box's display cell:
+     * the value drawn in the combo itself rather than in a row of the open popup. No row
+     * position equals it.
+     */
+    public static final int COMBO_DISPLAY_INDEX = -1;
+
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
     static final int SCREEN_MARGIN_PX = 20;

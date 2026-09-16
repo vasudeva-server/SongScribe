@@ -119,14 +119,7 @@ public final class DurationListCellRenderer implements ListCellRenderer<Object> 
         private void configure(BeatUnit duration, JList<?> list, int index, boolean isSelected) {
             this.duration = duration;
             setText(noteGlyphFor(duration).asString());
-
-            if (index == -1) {
-                setBackground(list.getBackground());
-            } else {
-                setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());
-            }
-
-            setForeground(isSelected ? list.getSelectionForeground() : list.getForeground());
+            applySelectionColors(list, index, isSelected);
         }
 
         @Override

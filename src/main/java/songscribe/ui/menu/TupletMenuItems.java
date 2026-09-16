@@ -20,10 +20,13 @@
 package songscribe.ui.menu;
 
 import java.awt.Container;
+import java.util.Objects;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JRadioButtonMenuItem;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.ui.action.Actions;
@@ -40,9 +43,6 @@ import songscribe.ui.component.MainFrame;
  * a selection that visibly is a tuplet would show nothing checked.
  */
 public final class TupletMenuItems {
-
-    /** Sentinel for "the selection carries no tuplet", matching no real grade. */
-    private static final int NO_GRADE = -1;
 
     private TupletMenuItems() {
     }
@@ -61,7 +61,7 @@ public final class TupletMenuItems {
         // Radio items with no ButtonGroup: the grade of the selected tuplet is checked via
         // Action.SELECTED_KEY, and a selection with no tuplet leaves all of them unchecked.
         for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
-            if (action.isEnabled() || (action.getTuplet().getSize() == existingGrade)) {
+            if (action.isEnabled() || Objects.equals(action.getTuplet().getSize(), existingGrade)) {
                 container.add(new JRadioButtonMenuItem(action));
                 addedGrade = true;
             }
@@ -74,15 +74,22 @@ public final class TupletMenuItems {
         }
     }
 
-    private static int existingGrade() {
+    /**
+     * The grade of the tuplet the selection already carries.
+     *
+     * @return the grade, or {@code null} when the selection carries no tuplet or there is
+     *     no score to ask
+     */
+    @Nullable
+    private static Integer existingGrade() {
         var scoreView = MainFrame.getInstance().getScoreView();
         var ctrl = (scoreView != null) ? scoreView.getController() : null;
 
         if (ctrl == null) {
-            return NO_GRADE;
+            return null;
         }
 
         var existing = ctrl.canToggleTuplet().existing();
-        return (existing != null) ? existing.getGrade() : NO_GRADE;
+        return (existing != null) ? existing.getGrade() : null;
     }
 }

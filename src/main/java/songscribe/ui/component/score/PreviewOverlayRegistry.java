@@ -150,9 +150,9 @@ final class PreviewOverlayRegistry {
 
         // This is the path on which the grace-host glissando first appears. Entering the insert
         // phase hides the preview element (enterGraceNote) and then restores it
-        // (enterGraceNoteInsert), which resets the insertion index to -1 and re-enters trackMouse
-        // — so the next move reports a changed x index while the configuration is unchanged, and
-        // lands here. The visibility flag that restore flipped is not one of the fields
+        // (enterGraceNoteInsert), which drops the hover and re-enters trackMouse — so the next
+        // move reports a changed x index while the configuration is unchanged, and lands here.
+        // The visibility flag that restore flipped is not one of the fields
         // configurationChanged tracks, so nothing else would rebuild this overlay's ink.
         //
         // Its own X never moves while grace mode holds it (trackMouse pins the mouse X to the

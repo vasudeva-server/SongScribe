@@ -28,7 +28,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>Pure query logic over a {@link Song}'s lines: it reads the score and never writes
  * to it. One is owned by each {@code Song}, which delegates {@link Song#getTempoAt} and
- * {@link Song#resolveBeatAt} here.
+ * {@link Song#beatUnitAt} here.
  */
 public final class TempoResolver {
 
@@ -83,17 +83,16 @@ public final class TempoResolver {
      *
      * @param lineIndex    the index of the line
      * @param elementIndex the index of the anchor element within that line
-     * @return the beat in effect at this position and the position that defined it
+     * @return the beat in effect at this position
      */
-    public BeatAt resolveBeatAt(int lineIndex, int elementIndex) {
+    public BeatUnit beatUnitAt(int lineIndex, int elementIndex) {
         var found = walkBackFrom(lineIndex, elementIndex, TempoResolver::beatDefinedAt);
 
         if (found != null) {
-            return new BeatAt(found.value(), found.lineIndex(), found.elementIndex());
+            return found.value();
         }
 
-        return new BeatAt(
-            song.getTempo().tempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
+        return song.getTempo().tempoType();
     }
 
     /**

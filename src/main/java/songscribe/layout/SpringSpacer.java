@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Solves a chain of {@link Spring}s against an available span by weighted water-filling: it drains
  * every free gap to a common unit level {@code U}, giving gap {@code i} the length
@@ -153,40 +155,11 @@ public final class SpringSpacer {
             // The still-free gaps' offsets are consumed off the top of the budget; only the
             // remaining whitespace is levelled by weight.
             var unitLevelSs = (budgetSs - freeOffsetSs) / freeWeight;
-
-            var worstGap = -1;
-            var worstViolationSs = 0.0;
-            var worstAtStrut = false;
-
-            for (var i = 0; i < gapCount; i++) {
-                if (clamped[i]) {
-                    continue;
-                }
-
-                // The gap's offset plus its weighted share of the level. Below its strut floor -> it
-                // holds more than its share (clamp up to the strut). Above its natural length ->
-                // compress-only forbids stretching (clamp down to natural).
-                var spring = springs.get(i);
-                var targetSs = spring.levelOffsetSs() + spring.weight() * unitLevelSs;
-                var belowStrutSs = spring.strutSs() - targetSs;
-                var aboveNaturalSs = targetSs - naturalSs[i];
-
-                if (belowStrutSs > worstViolationSs) {
-                    worstViolationSs = belowStrutSs;
-                    worstGap = i;
-                    worstAtStrut = true;
-                }
-
-                if (aboveNaturalSs > worstViolationSs) {
-                    worstViolationSs = aboveNaturalSs;
-                    worstGap = i;
-                    worstAtStrut = false;
-                }
-            }
+            var worst = worstViolator(springs, naturalSs, clamped, unitLevelSs);
 
             // No free gap violates a bound: each rests at its offset plus its weighted share of the
             // common level.
-            if (worstGap < 0) {
+            if (worst == null) {
                 for (var i = 0; i < gapCount; i++) {
                     if (!clamped[i]) {
                         var spring = springs.get(i);
@@ -198,8 +171,9 @@ public final class SpringSpacer {
             }
 
             // A strut clamp pins the gap on its floor; a natural clamp leaves it at its natural length.
+            var worstGap = worst.gap();
             var worstSpring = springs.get(worstGap);
-            lengthsSs[worstGap] = worstAtStrut ? worstSpring.strutSs() : naturalSs[worstGap];
+            lengthsSs[worstGap] = worst.atStrut() ? worstSpring.strutSs() : naturalSs[worstGap];
 
             budgetSs -= lengthsSs[worstGap];
             freeWeight -= worstSpring.weight();
@@ -212,5 +186,52 @@ public final class SpringSpacer {
         // throw keeps a solver bug from silently mis-spacing the line.
         throw new IllegalStateException(
             "SpringSpacer.solve did not settle within " + gapCount + " passes");
+    }
+
+    /**
+     * The clamp a water-fill pass applies: the free gap that most violates one of its bounds at the
+     * current level, and which bound — {@code atStrut} pins it on its collision floor, otherwise it
+     * stays at its natural length.
+     */
+    private record Clamp(int gap, boolean atStrut) {}
+
+    /**
+     * Finds the still-free gap whose offset plus weighted share of {@code unitLevelSs} most
+     * violates a bound. Below its strut floor it holds more than its share (clamp up to the strut);
+     * above its natural length, compress-only forbids stretching (clamp down to natural).
+     *
+     * @return the clamp to apply, or {@code null} when no free gap violates a bound
+     */
+    private static @Nullable Clamp worstViolator(
+        List<Spring> springs,
+        double[] naturalSs,
+        boolean[] clamped,
+        double unitLevelSs) {
+
+        Clamp worst = null;
+        var worstViolationSs = 0.0;
+
+        for (var i = 0; i < springs.size(); i++) {
+            if (clamped[i]) {
+                continue;
+            }
+
+            var spring = springs.get(i);
+            var targetSs = spring.levelOffsetSs() + spring.weight() * unitLevelSs;
+            var belowStrutSs = spring.strutSs() - targetSs;
+            var aboveNaturalSs = targetSs - naturalSs[i];
+
+            if (belowStrutSs > worstViolationSs) {
+                worstViolationSs = belowStrutSs;
+                worst = new Clamp(i, true);
+            }
+
+            if (aboveNaturalSs > worstViolationSs) {
+                worstViolationSs = aboveNaturalSs;
+                worst = new Clamp(i, false);
+            }
+        }
+
+        return worst;
     }
 }

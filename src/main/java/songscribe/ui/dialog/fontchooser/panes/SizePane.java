@@ -85,12 +85,9 @@ public class SizePane extends JPanel {
         setupSpinnerEditor(sizeSpinner);
         sizeSpinner.addChangeListener(event -> {
             var value = (Integer) sizeSpinner.getValue();
-            var index =
-                ((DefaultListModel<Integer>) sizeList.getModel()).indexOf(
-                        value
-                    );
+            var model = (DefaultListModel<Integer>) sizeList.getModel();
 
-            if (index > -1) {
+            if (model.contains(value)) {
                 sizeList.setSelectedValue(value, true);
             } else {
                 sizeList.clearSelection();

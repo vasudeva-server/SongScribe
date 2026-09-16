@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.StaffElementRun.EffectiveRange;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,17 +68,13 @@ class KeyChangeStrandingTest extends UnitTest {
     /** Where {@link SongFactory#notesAroundKeyChange} puts its key change. */
     private static final int KEY_CHANGE_INDEX = 2;
 
-    /** The range a stranded key change goes with: itself and the barline in front of it. */
-    private static final List<ElementRange> KEY_CHANGE_PAIR =
-        List.of(new ElementRange(BARLINE_INDEX, KEY_CHANGE_INDEX));
-
     /**
      * One expected line of a stranding.
      *
      * @param lineIndex the line's index
      * @param ranges    the ranges the stranding must report on it
      */
-    private record StrandedAt(int lineIndex, List<ElementRange> ranges) {}
+    private record StrandedAt(int lineIndex, List<EffectiveRange> ranges) {}
 
     /**
      * One stranding query, and what it must report.
@@ -113,10 +110,16 @@ class KeyChangeStrandingTest extends UnitTest {
             line -> line.addElement(crotchet()));
     }
 
-    static Stream<StrandingCase> strandingCases() {
+    /** The range a stranded key change goes with: itself and the barline in front of it. */
+    private List<EffectiveRange> keyChangePairOn(int lineIndex) {
+        return List.of(song.getLine(lineIndex)
+            .effectiveRange(new ElementRange(BARLINE_INDEX, KEY_CHANGE_INDEX)));
+    }
+
+    Stream<StrandingCase> strandingCases() {
         var strandedOnlyOnTheSecondLine = List.of(
             new StrandedAt(FIRST_LINE, List.of()),
-            new StrandedAt(SECOND_LINE, KEY_CHANGE_PAIR),
+            new StrandedAt(SECOND_LINE, keyChangePairOn(SECOND_LINE)),
             new StrandedAt(THIRD_LINE, List.of()));
 
         return Stream.of(
@@ -133,7 +136,7 @@ class KeyChangeStrandingTest extends UnitTest {
             new StrandingCase(
                 "deleting a line strands what restates the key the line before it leaves off in",
                 song -> KeyChangeStranding.ofLineDeletion(song.getLine(SECOND_LINE)),
-                List.of(new StrandedAt(THIRD_LINE, KEY_CHANGE_PAIR))),
+                List.of(new StrandedAt(THIRD_LINE, keyChangePairOn(THIRD_LINE)))),
             new StrandingCase(
                 "deleting the first line moves no key and strands nothing",
                 song -> KeyChangeStranding.ofLineDeletion(song.getLine(FIRST_LINE)),

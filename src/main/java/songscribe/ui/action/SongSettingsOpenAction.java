@@ -43,6 +43,8 @@ public final class SongSettingsOpenAction extends DialogOpenAction<SongSettingsD
         return new SongSettingsOpenAction(mainFrame);
     }
 
+    // Not ENABLED_IN_GRACE_MODE: the dialog commits into the song, and a key change there
+    // restamps the notes grace mode is holding for its pairing.
     private SongSettingsOpenAction(MainFrame mainFrame) {
         super(
             mainFrame,

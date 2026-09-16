@@ -20,6 +20,7 @@
 package songscribe.binding;
 
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link Property} that holds its value itself, for state with no control behind
@@ -38,9 +39,10 @@ import java.util.Objects;
  *
  * <p><b>Threading:</b> EDT-only, like everything in this package.
  *
- * @param <T> the held value's type
+ * @param <T> the held value's type, declared {@code @Nullable} when absence is a value the
+ *     graph carries
  */
-public final class ValueProperty<T> implements Property<T> {
+public final class ValueProperty<T extends @Nullable Object> implements Property<T> {
 
     private final Observers observers = new Observers();
     private T value;

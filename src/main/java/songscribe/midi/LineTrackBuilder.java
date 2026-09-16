@@ -34,6 +34,7 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.Slide;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.error.RuntimeError;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
@@ -82,7 +83,7 @@ public class LineTrackBuilder {
         var grade = tuplet.getGrade();
         var writtenTicksBefore = 0L;
 
-        for (var i = tuplet.getAnchorElementIndex(); i < elementIndex; i++) {
+        for (var i = tuplet.requireAnchorElementIndex(); i < elementIndex; i++) {
             writtenTicksBefore += line.getElement(i).playedDuration();
         }
 
@@ -473,6 +474,11 @@ public class LineTrackBuilder {
         SlideMidiHelper slideHelper
     ) throws InvalidMidiDataException {
         var gracePitch = slideHelper.consumePendingGracePitch();
+
+        if (gracePitch == null) {
+            throw RuntimeError.exit("addGraceGlissandoSlideIn called with no pending grace pitch");
+        }
+
         var notePitch = element.getPitch();
         var slideTicks = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, duration);
         var sensitivity = SlideMidiHelper.calculateSensitivity(gracePitch, notePitch);

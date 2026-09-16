@@ -58,7 +58,11 @@ public final class PlayStopAction extends SequencerAction {
             0,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_WHEN_SONG_EMPTY,
-            Flag.DISABLE_WHEN_MIDI_UNAVAILABLE
+            Flag.DISABLE_WHEN_MIDI_UNAVAILABLE,
+            // Playback only reads the song. The playing indices it pushes into a line
+            // component color a note and nothing more, so one that grace mode shifts
+            // highlights the wrong note until the next update and touches no grace state.
+            Flag.ENABLED_IN_GRACE_MODE
         );
     }
 

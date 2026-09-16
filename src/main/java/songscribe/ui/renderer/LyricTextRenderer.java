@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import java.awt.Graphics2D;
 
 import songscribe.dom.StaffElement;
+import songscribe.error.RuntimeError;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.util.GraphicsState;
@@ -69,6 +70,12 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
+        var elementIndex = frame.currentElementIndex();
+
+        if (elementIndex == null) {
+            throw RuntimeError.exit("lyric text render frame has no element index");
+        }
+
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         // The zoomed scale: the outer transform (which we strip below) is pxPerSs × factor,
         // so we re-derive integer pixel coordinates from the same zoomed value.
@@ -89,7 +96,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             g2.setFont(invariants.getViewScale().zoomedFont(lyricRenderMetrics.lyricsFont()));
 
             for (var box : boxes) {
-                g2.setColor(invariants.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
+                g2.setColor(invariants.getLyricColor(elementIndex, element, box.verseIndex()));
 
                 var xPx = (int) Math.round(box.xSs() * viewPxPerSs);
                 g2.drawString(box.text(), xPx, yPx);

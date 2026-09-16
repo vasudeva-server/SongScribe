@@ -630,8 +630,8 @@ final class MeasureBuilder {
             var anchorIndex = ending.getAnchorElementIndex();
             var endIndex = ending.getEndElementIndex();
 
-            // A malformed song can leave an endpoint dangling outside the line.
-            if (!indicesInRange(anchorIndex, endIndex, outputs.size())) {
+            // A malformed song can leave an endpoint detached, or dangling outside the line.
+            if (anchorIndex == null || endIndex == null || !indicesInRange(anchorIndex, endIndex, outputs.size())) {
                 continue;
             }
 
@@ -726,7 +726,7 @@ final class MeasureBuilder {
         var items = measure.getNoteOrBackupOrForward();
         var position = positionOf(items, head);
 
-        if (position < 0) {
+        if (position == null) {
             return null;
         }
 
@@ -762,7 +762,7 @@ final class MeasureBuilder {
         var items = measure.getNoteOrBackupOrForward();
         var position = positionOf(items, tail);
 
-        if (position < 0) {
+        if (position == null) {
             return null;
         }
 
@@ -806,26 +806,30 @@ final class MeasureBuilder {
         host.setEnding(ending);
     }
 
-    /** Whether both span endpoints fall within the line's element range. */
+    /**
+     * Whether both span endpoints fall within the line's element range. Each index is the
+     * endpoint's position in its own line, so one measured in a longer line can exceed
+     * {@code count}; neither is ever negative.
+     */
     static boolean indicesInRange(int anchorIndex, int endIndex, int count) {
-        return anchorIndex >= 0 && endIndex >= 0 && anchorIndex < count && endIndex < count;
+        return anchorIndex < count && endIndex < count;
     }
 
     /**
-     * Where {@code node} sits in a measure's child list, or {@code -1} when it is not there.
+     * Where {@code node} sits in a measure's child list, or {@code null} when it is not there.
      *
      * <p>Compared by identity, not by {@code equals}. The comparison that matters is "is this
      * the very node I built", and {@code List.indexOf} would answer that correctly today only
      * because the generated MusicXML classes happen to define no equality — the same
      * assumption {@link BuildIndex} guards against one level up.
      */
-    static int positionOf(List<Object> items, Object node) {
+    static @Nullable Integer positionOf(List<Object> items, Object node) {
         for (var i = 0; i < items.size(); i++) {
             if (items.get(i) == node) {
                 return i;
             }
         }
 
-        return -1;
+        return null;
     }
 }

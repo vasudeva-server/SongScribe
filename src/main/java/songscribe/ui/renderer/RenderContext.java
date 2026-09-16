@@ -67,23 +67,4 @@ public interface RenderContext {
      * @return true if the element is selected
      */
     boolean isElementSelected(int elementIndex, int lineIndex);
-
-    /**
-     * Returns the index of the currently selected staff line, or -1 if none.
-     */
-    int getSelectedLine();
-
-    // -------------------------------------------------------------------------
-    // Playback state (for highlighting)
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns the index of the line currently being played, or -1 if not playing.
-     */
-    int getPlayingLine();
-
-    /**
-     * Returns the index of the note currently being played, or -1 if not playing.
-     */
-    int getPlayingNote();
 }

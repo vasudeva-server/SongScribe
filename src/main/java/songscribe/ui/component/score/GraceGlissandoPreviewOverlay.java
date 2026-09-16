@@ -64,7 +64,7 @@ public final class GraceGlissandoPreviewOverlay extends RecordedInkOverlay {
 
         var graceIndex = PreviewElementManager.graceHostPreviewSourceIndexOn(line);
 
-        if (graceIndex < 0) {
+        if (graceIndex == null) {
             return null;
         }
 

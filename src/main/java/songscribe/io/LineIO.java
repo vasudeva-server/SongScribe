@@ -40,6 +40,7 @@ import songscribe.dom.Span;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.util.StringUtils;
 
 public final class LineIO {
 
@@ -75,7 +76,7 @@ public final class LineIO {
         var begin = 0;
         var end = str.indexOf(';', begin);
 
-        while (end != -1) {
+        while (end != StringUtils.INDEX_NOT_FOUND) {
             consumer.accept(begin, end);
             begin = end + 1;
             end = str.indexOf(';', begin);
@@ -196,21 +197,23 @@ public final class LineIO {
             return sawLegacyAccidental;
         }
 
-        private record SegmentParts(int a, int b, int secondComma) {}
+        /**
+         * The two leading integers of a segment and, when the segment has a second comma,
+         * the text after it.
+         *
+         * @param data the text after the second comma, or null when the segment has none
+         */
+        private record SegmentParts(int a, int b, @Nullable String data) {}
 
         private static SegmentParts parseSegmentAB(String str, int begin, int end) {
             var firstComma = str.indexOf(',', begin);
             var secondComma = str.indexOf(',', firstComma + 1);
-
-            if (secondComma > end) {
-                secondComma = -1;
-            }
-
+            var hasData = secondComma != StringUtils.INDEX_NOT_FOUND && secondComma < end;
+            var bEnd = hasData ? secondComma : end;
             var a = Integer.parseInt(str.substring(begin, firstComma));
-            var b = Integer.parseInt(
-                str.substring(firstComma + 1, (secondComma == -1) ? end : secondComma)
-            );
-            return new SegmentParts(a, b, secondComma);
+            var b = Integer.parseInt(str.substring(firstComma + 1, bEnd));
+            var data = hasData ? str.substring(secondComma + 1, end) : null;
+            return new SegmentParts(a, b, data);
         }
 
         /**
@@ -363,9 +366,11 @@ public final class LineIO {
                 var grade = 3; // default to triplet
                 var verticalPositionSs = 0.0;
 
-                if (segment.secondComma() != -1) {
+                var data = segment.data();
+
+                if (data != null) {
                     // Has data portion: grade[,vertPos]
-                    var parts = str.substring(segment.secondComma() + 1, end).split(",");
+                    var parts = data.split(",");
 
                     try {
                         grade = Integer.parseInt(parts[0]);
@@ -429,10 +434,11 @@ public final class LineIO {
                 var x2 = 0.0;
                 var y = 0.0;
 
-                if (segment.secondComma() != -1) {
+                var data = segment.data();
+
+                if (data != null) {
                     // Has data portion: x1,x2,y
-                    var substring = str.substring(segment.secondComma() + 1, end);
-                    var parts = substring.split(",");
+                    var parts = data.split(",");
 
                     if (parts.length >= 3) {
                         try {
@@ -441,7 +447,7 @@ public final class LineIO {
                             y = Double.parseDouble(parts[2]);
                         } catch (NumberFormatException ignored) {
                             LOG.warn("Corrupt document: malformed hairpin shift values '{}', using zero",
-                                substring
+                                data
                             );
                             // Leave shifts at 0
                         }
@@ -629,20 +635,10 @@ public final class LineIO {
          */
         private void parseTrillPairs(String str) {
             forEachSegment(str, (begin, end) -> {
-                var firstComma = str.indexOf(',', begin);
-                var secondComma = str.indexOf(',', firstComma + 1);
-
-                if (secondComma > end) {
-                    secondComma = -1;
-                }
-
-                var anchor = Integer.parseInt(str.substring(begin, firstComma));
-                var endIdx = Integer.parseInt(
-                    str.substring(firstComma + 1, secondComma == -1 ? end : secondComma)
-                );
-                var yPositionSs = (secondComma == -1) ? 0
-                    : Integer.parseInt(str.substring(secondComma + 1, end));
-                pendingTrillPairs.add(new int[]{anchor, endIdx, yPositionSs});
+                var segment = parseSegmentAB(str, begin, end);
+                var data = segment.data();
+                var yPositionSs = (data == null) ? 0 : Integer.parseInt(data);
+                pendingTrillPairs.add(new int[]{segment.a(), segment.b(), yPositionSs});
             });
         }
 

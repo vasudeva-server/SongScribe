@@ -64,8 +64,7 @@ public abstract class LineElement {
     /**
      * {@code Line.attach} and {@code Line.detach} are the only writers for a staff element;
      * {@link #addChild}, {@link #removeChild} and {@link #propagateParentLine} the only ones
-     * for a child. {@code Line.detach}'s {@code != this} guard is what makes the two-way tie in
-     * the class Javadoc ordering-independent inside a bracket.
+     * for a child.
      */
     private @Nullable Line parentLine;
 

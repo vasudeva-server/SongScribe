@@ -241,8 +241,8 @@ public class Tuplet extends Span {
     public boolean isNumberOnly(Line line) {
         var spans = line.spanRegistry();
 
-        return spans.findBeamAt(getAnchorElementIndex()) != null
-            && spans.findBeamAt(getEndElementIndex()) != null
+        return spans.findBeamAt(requireAnchorElementIndex()) != null
+            && spans.findBeamAt(requireEndElementIndex()) != null
             && anchorStemUp();
     }
 
@@ -256,13 +256,13 @@ public class Tuplet extends Span {
         var anchorIndex = getAnchorElementIndex();
         var endIndex = getEndElementIndex();
 
-        if (anchorIndex < 0 || endIndex < 0) {
+        if (anchorIndex == null || endIndex == null) {
             return false;
         }
 
         var nonRestCount = 0;
 
-        for (var index = anchorIndex; index <= endIndex; index++) {
+        for (int index = anchorIndex; index <= endIndex; index++) {
             if (!line.getElement(index).getType().isRest()) {
                 nonRestCount++;
 
@@ -303,7 +303,7 @@ public class Tuplet extends Span {
      * @param line   the line being changed, still in its pre-change state
      */
     @Override
-    public SpanOutcome outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
         var range = line.spanRegistry().rangeOf(this);
 
         if (range == null) {

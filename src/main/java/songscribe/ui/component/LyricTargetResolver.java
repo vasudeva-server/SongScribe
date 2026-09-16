@@ -20,6 +20,8 @@
 
 package songscribe.ui.component;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Line;
 import songscribe.ui.action.EditLyricAction;
 
@@ -39,21 +41,21 @@ public final class LyricTargetResolver {
 
     /**
      * Returns the index the editor should open on for a gesture aimed at {@code index},
-     * or -1 when there is no such target. A grace-host pair's lyric lives on the grace
+     * or null when there is no such target. A grace-host pair's lyric lives on the grace
      * note, so a gesture on the host resolves to the grace note.
      */
-    public static int resolveLyricTarget(Line line, int index) {
+    public static @Nullable Integer resolveLyricTarget(Line line, int index) {
         var targetIndex = line.isHostOfPairedGraceNote(index) ? index - 1 : index;
-        return line.canBearSyllableAt(targetIndex) ? targetIndex : -1;
+        return line.canBearSyllableAt(targetIndex) ? targetIndex : null;
     }
 
     /**
      * Returns the index Tab (and every other forward move) should carry the lyric editor to
-     * from {@code currentIndex}, or -1 when the line has no eligible element left. Eligibility
+     * from {@code currentIndex}, or null when the line has no eligible element left. Eligibility
      * is {@link Line#canBearSyllableAt}. The line's auto-maintained terminal barline is
      * excluded via {@link Line#effectiveElementCount()}.
      */
-    public static int findNextEligibleIndex(Line line, int currentIndex) {
+    public static @Nullable Integer findNextEligibleIndex(Line line, int currentIndex) {
         var count = line.effectiveElementCount();
 
         for (var i = currentIndex + 1; i < count; i++) {
@@ -62,21 +64,21 @@ public final class LyricTargetResolver {
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
      * Returns the index Shift-Tab should carry the lyric editor back to from
-     * {@code currentIndex}, or -1 when there is no eligible element before it. Eligibility is
+     * {@code currentIndex}, or null when there is no eligible element before it. Eligibility is
      * the same test {@link #findNextEligibleIndex} applies.
      */
-    public static int findPreviousEligibleIndex(Line line, int currentIndex) {
+    public static @Nullable Integer findPreviousEligibleIndex(Line line, int currentIndex) {
         for (var i = currentIndex - 1; i >= 0; i--) {
             if (line.canBearSyllableAt(i)) {
                 return i;
             }
         }
 
-        return -1;
+        return null;
     }
 }

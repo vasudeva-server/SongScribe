@@ -82,8 +82,7 @@ public final class ModeAction extends SelectableUIAction {
             tooltip,
             virtualKey,
             modifiers,
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_WHEN_PLAYING
         );
         this.mode = mode;
     }

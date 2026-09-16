@@ -167,9 +167,9 @@ public class TextPanel extends JPanel {
                 translationComponent.setContentX(contentX);
             } else {
                 // Reset to independent centering
-                underLyricsComponent.setContentX(-1);
-                banglaLyricsComponent.setContentX(-1);
-                translationComponent.setContentX(-1);
+                underLyricsComponent.setContentX(null);
+                banglaLyricsComponent.setContentX(null);
+                translationComponent.setContentX(null);
             }
         }
 

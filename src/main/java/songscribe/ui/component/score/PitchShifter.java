@@ -379,11 +379,10 @@ public final class PitchShifter {
                     } else if (!element.getType().isGraceNote()) {
                         // Host note shifted to the same pitch as its preceding grace note — remove the grace note
                         // The preceding grace note sits immediately before idx, so asking whether it
-                        // matches its follower asks about this element. A negative index reads as
-                        // no match, which covers "no preceding grace note".
+                        // matches its follower asks about this element.
                         var graceIdx = entryLine.precedingGraceNoteIndex(idx);
 
-                        if (entryLine.isSamePitchAsFollower(graceIdx)) {
+                        if (graceIdx != null && entryLine.isSamePitchAsFollower(graceIdx)) {
                             OptionDialogs.showWarningMessage(
                                     null,
                                     Strings.ALERT_TITLE_GRACE_NOTE_WARNING,

@@ -35,9 +35,9 @@ import org.jspecify.annotations.Nullable;
  * so neither pushes back what the other has just brought in. See {@code WriteGuard}
  * for why the scope is never wider than that.
  *
- * @param <T> the target's value type
+ * @param <T> the target's value type, nullable when the target's is
  */
-final class Binding<T> implements Subscription {
+final class Binding<T extends @Nullable Object> implements Subscription {
 
     /** Whether a newly created binding writes its target immediately. */
     enum InitialWrite {

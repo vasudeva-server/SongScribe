@@ -63,8 +63,7 @@ public final class HairpinAction extends UIAction {
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
         this.kind = kind;
     }

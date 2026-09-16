@@ -194,6 +194,25 @@ public class PreferencesDialog extends BaseDialog {
         throw new IllegalStateException("No loaded instrument uses MIDI program " + program);
     }
 
+    /**
+     * The MIDI program of the instrument at row {@code index} of the instrument list.
+     *
+     * <p>The inverse of {@link #programToIndex}. The list always has a selection — the
+     * instruments tab restores one whenever Swing clears it — so an absent row is a
+     * broken list rather than a state to convert.
+     *
+     * @param index the selected row, {@code null} when the list has no selection
+     * @return the program of the instrument at that row
+     * @throws IllegalStateException if {@code index} is {@code null}
+     */
+    private static int indexToProgram(@Nullable Integer index) {
+        if (index == null) {
+            throw new IllegalStateException("The instrument list has no selection");
+        }
+
+        return instrumentPrograms[index];
+    }
+
     public static String[] getInstrumentStrings() {
         ensureInstrumentsLoaded();
         return instrumentStrings;
@@ -553,7 +572,7 @@ public class PreferencesDialog extends BaseDialog {
                 bindings().bindBidirectional(
                     instrument,
                     Controls.selectedIndex(instrumentList),
-                    new Transform<>(PreferencesDialog::programToIndex, index -> instrumentPrograms[index])
+                    new Transform<>(PreferencesDialog::programToIndex, PreferencesDialog::indexToProgram)
                 );
 
                 // Previewing the instrument is a consequence of the change. Bound to the

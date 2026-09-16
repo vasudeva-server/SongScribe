@@ -116,12 +116,6 @@ public interface EditableRun extends LyricRun {
      * This is the deletion an edit performs. {@link #removeRange} and {@link #removeElement} are
      * the primitives beneath it, and repair nothing.
      * <p>
-     * {@code range} must be the widened range {@link #effectiveRange} returns, never a raw
-     * selection: the type carries no such promise, and a raw range that cuts a grace note from
-     * its host or a key change from its barline deletes half a pair. Widening it once, in the
-     * caller, is what makes what arrives here already what really goes, so a caller that asked
-     * the notator about a range asked about this same value.
-     * <p>
      * Deleting several ranges on one run means working from the last to the first: removing an
      * earlier range shifts the indices of every later one. {@link #deleteRanges} discharges that.
      * <p>
@@ -129,13 +123,15 @@ public interface EditableRun extends LyricRun {
      * sweep over every line that key reaches, and this line's share of it names the indices it was
      * computed at, so the caller runs it before calling this.
      *
-     * @param range the range to delete, already widened by {@link #effectiveRange}
+     * @param effectiveRange the range to delete
      * @effects removes the elements through one {@link #removeRange}, or one
      *     {@link #removeElement} per element when a paired grace note at the range's head makes
      *     the removal non-contiguous, and applies the neighbor repairs through
      *     {@link #modifyElement}; an implementor that records gets one record per step
      */
-    default void deleteRange(ElementRange range) {
+    default void deleteRange(EffectiveRange effectiveRange) {
+        var range = effectiveRange.range();
+
         // A paired grace note at the head of the range hands its syllable back to the note it
         // decorated, and a pair further along the range does the same — neither of which a single
         // range removal expresses. Fall back to the per-element loop, which re-derives each
@@ -185,7 +181,7 @@ public interface EditableRun extends LyricRun {
      * @param ranges the ranges to delete, ascending and pairwise disjoint
      * @effects one {@link #deleteRange} per range, last to first
      */
-    default void deleteRanges(List<ElementRange> ranges) {
+    default void deleteRanges(List<EffectiveRange> ranges) {
         for (var i = ranges.size() - 1; i >= 0; i--) {
             deleteRange(ranges.get(i));
         }

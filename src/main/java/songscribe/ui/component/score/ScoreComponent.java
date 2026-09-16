@@ -139,8 +139,11 @@ public abstract class ScoreComponent extends JComponent {
     protected int marginBottom = 0;
     protected int marginLeft = 0;
 
-    /** X position for content (used for union width centering). */
-    private float contentXPx = -1;
+    /**
+     * Shared X position for content (union width centering across the text components), or
+     * null when this component centers on its own width.
+     */
+    private @Nullable Float contentXPx = null;
 
     /**
      * Creates a new ScoreComponent.
@@ -268,23 +271,24 @@ public abstract class ScoreComponent extends JComponent {
      * Used by TextPanel to achieve union width centering across
      * all text components.
      *
-     * @param contentX X position, or -1 to center based on own width
+     * @param contentX X position, or null to center based on own width
      */
-    public void setContentX(float contentX) {
+    public void setContentX(@Nullable Float contentX) {
         contentXPx = contentX;
     }
 
     /**
-     * Returns the X position for content rendering.
+     * Returns the X position for content rendering, or null when this component centers
+     * on its own width.
      */
-    public float getContentX() {
+    public @Nullable Float getContentX() {
         return contentXPx;
     }
 
     /**
      * Resolves the X position for content rendering.
      * <p>
-     * Returns the value set by {@link #setContentX} if non-negative,
+     * Returns the value set by {@link #setContentX} if one is set,
      * otherwise computes a centered X based on the given text width.
      *
      * @param text text to measure for centering
@@ -293,7 +297,7 @@ public abstract class ScoreComponent extends JComponent {
      *         {@link Graphics2D#drawString(String, float, float)}
      */
     protected float resolveContentX(String text, Graphics2D g2) {
-        if (contentXPx >= 0) {
+        if (contentXPx != null) {
             return contentXPx;
         }
 

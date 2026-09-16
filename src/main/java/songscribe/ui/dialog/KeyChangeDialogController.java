@@ -106,11 +106,6 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      *
      * <p>OK changes that key change's key in place — see {@link #changeMidLineKey}.
      *
-     * <p>Opens nothing when {@code keyChange} is not an element of {@code line}, beeping instead:
-     * the notator double-clicked a key change and the program failed to find it, which is worth
-     * a log entry, but there is nothing wrong with the document and no reason to take the
-     * application down over one gesture that did not land.
-     *
      * @param mainFrame the window the dialog parents itself to
      * @param line the line {@code keyChange} stands on
      * @param keyChange the key change the notator double-clicked, which must be an element of
@@ -118,12 +113,6 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      */
     public static void editKeyChange(MainFrame mainFrame, Line line, KeyChangeElement keyChange) {
         var keyChangeIndex = line.getElementIndex(keyChange);
-
-        if (keyChangeIndex < 0) {
-            LOG.error("key change to edit is not an element of the line it was hit-tested on");
-            UIUtils.beep();
-            return;
-        }
 
         open(mainFrame, new KeyChangeDialogController(
             mainFrame, KeyChangeSite.existingKeyChange(line, keyChangeIndex)));
@@ -305,7 +294,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
         // Every key change further along this line that the new key leaves restating it. Scanning
         // from past this one is the point: what stands before it is untouched by this edit.
         var strandedAfter = line.redundantKeyChangeRanges(elementIndex + 1, key);
-        var onLine = new ArrayList<StaffElementRun.ElementRange>();
+        var onLine = new ArrayList<StaffElementRun.EffectiveRange>();
 
         if (strandsItself) {
             // A removal, described as one: the key change and its barline go, and nothing takes

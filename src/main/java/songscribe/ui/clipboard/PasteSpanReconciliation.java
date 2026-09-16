@@ -356,8 +356,8 @@ public record PasteSpanReconciliation(
      * from the destination as creation would.
      */
     private static boolean isRejectedByTarget(Line line, Tuplet tuplet) {
-        var beginIndex = tuplet.getAnchorElementIndex();
-        var endIndex = tuplet.getEndElementIndex();
+        var beginIndex = tuplet.requireAnchorElementIndex();
+        var endIndex = tuplet.requireEndElementIndex();
 
         // Endpoints that do not resolve mean a malformed span, which is out of scope
         // here: there is nothing for the validator to measure and nothing this rule

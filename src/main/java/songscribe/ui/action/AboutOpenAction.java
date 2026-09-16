@@ -45,7 +45,9 @@ public final class AboutOpenAction extends UIAction implements UIAction.AppMenuA
     // The action command is derived from the name, so the name is computed by the
     // factory rather than inline in the super() call.
     private AboutOpenAction(MainFrame mainFrame, String name) {
-        super(mainFrame, name, toKebabCase(name), Flag.OPENS_DIALOG);
+        // Modeless and touching no document: the mouse interaction grace mode is in keeps
+        // going underneath it.
+        super(mainFrame, name, toKebabCase(name), Flag.OPENS_DIALOG, Flag.ENABLED_IN_GRACE_MODE);
     }
 
     @Override

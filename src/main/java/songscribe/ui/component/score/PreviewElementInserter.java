@@ -393,7 +393,7 @@ final class PreviewElementInserter {
         // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
         var tuplet = line.spanRegistry().findTupletAt(xIndex - 1);
 
-        if ((tuplet != null) && ((xIndex - 1) < tuplet.getEndElementIndex())) {
+        if ((tuplet != null) && ((xIndex - 1) < tuplet.requireEndElementIndex())) {
             tuplet.removeFrom(line);
         }
 

@@ -101,7 +101,16 @@ public class UIAction extends AbstractAction implements Disposable {
         DISABLE_WHEN_BAR_SELECTED(1 << 9),
         ENABLE_WHEN_DURATION_SELECTED(1 << 10),
         DISABLE_WHEN_SONG_EMPTY(1 << 11),
-        DISABLE_IN_GRACE_MODE(1 << 12),
+        /**
+         * Keeps the action enabled while {@link GraceModeManager#isActive()}. An action lacking
+         * it is disabled for as long as grace mode is in progress: between entering the mode and
+         * pairing, the grace note sits on its line outside mutation tracking while the manager
+         * holds its index, the host slot and the notes its chain walk restamped, so any action
+         * that inserts, removes or replaces an element, replays undo, or replaces or serializes
+         * the document invalidates what the manager holds. An action declares itself safe by
+         * carrying this flag, and states beside it why it is.
+         */
+        ENABLED_IN_GRACE_MODE(1 << 12),
         DISABLE_IN_SELECT_MODE(1 << 13),
         OPENS_DIALOG(1 << 14),
         DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 15),
@@ -642,8 +651,7 @@ public class UIAction extends AbstractAction implements Disposable {
     }
 
     protected boolean enableFromGraceModeState() {
-        var result = !hasFlag(Flag.DISABLE_IN_GRACE_MODE) || !GraceModeManager.isActive();
-        return result;
+        return hasFlag(Flag.ENABLED_IN_GRACE_MODE) || !GraceModeManager.isActive();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

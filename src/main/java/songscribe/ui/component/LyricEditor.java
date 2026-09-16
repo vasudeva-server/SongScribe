@@ -964,6 +964,9 @@ public final class LyricEditor extends MyJTextField {
      * <p>An already-overflowing line is never blocked, so the user can still shorten a too-long
      * syllable to recover; only an edit that turns a fitting line into one that does not fit is
      * refused.
+     *
+     * <p>A commit of empty text that is not a melisma carrier writes no syllable — it is a no-op,
+     * removes the element's syllable, or ends a placeholder's chain — and is never refused.
      */
     private boolean ensureLyricFits(CommitKind kind, Lyric.Extend extend) {
         if (showingLyricFitAlert) {
@@ -972,6 +975,13 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var intent = CommitIntent.of(kind, extend);
+        var text = commitText();
+
+        if (text.isEmpty() && !intent.wantsCarrier()) {
+            // No syllable to probe: a text-bearing lyric cannot have empty text.
+            trace("fit check: the commit writes no syllable, allowing it");
+            return true;
+        }
 
         // The candidate syllabic only needs the correct continues-status: that is the sole part of
         // the committed syllabic that affects horizontal spacing (see LyricEditFitCalculator).
@@ -981,7 +991,7 @@ public final class LyricEditor extends MyJTextField {
         var marginSs = line.getSong().getLineWidthSs().value();
 
         var index = line.getElementIndex(element);
-        var candidate = new Lyric(activeVerse, commitText(), extend, probeSyllabic, intent.wantsCompound());
+        var candidate = new Lyric(activeVerse, text, extend, probeSyllabic, intent.wantsCompound());
 
         // Probe the candidate first: it accepts almost every real edit, and returning here spares the
         // already-overflowing check below its own full rebuild-and-solve of the line.
@@ -1356,11 +1366,13 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private int findNextEligibleIndex() {
-        return LyricTargetResolver.findNextEligibleIndex(line, line.getElementIndex(element));
+        var index = LyricTargetResolver.findNextEligibleIndex(line, line.getElementIndex(element));
+        return index == null ? -1 : index;
     }
 
     private int findPreviousEligibleIndex() {
-        return LyricTargetResolver.findPreviousEligibleIndex(line, line.getElementIndex(element));
+        var index = LyricTargetResolver.findPreviousEligibleIndex(line, line.getElementIndex(element));
+        return index == null ? -1 : index;
     }
 
     private void handleHyphen() {
@@ -1404,7 +1416,7 @@ public final class LyricEditor extends MyJTextField {
 
         var currentIndex = line.getElementIndex(element);
         var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
-        var backLyric = backIndex >= 0
+        var backLyric = backIndex != null
             ? line.getElement(backIndex).getLyricForVerse(activeVerse)
             : null;
 
@@ -1522,7 +1534,7 @@ public final class LyricEditor extends MyJTextField {
         var currentIndex = line.getElementIndex(element);
         var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
-        if (backIndex < 0) {
+        if (backIndex == null) {
             reject("no preceding lyric for this element to carry a melisma from");
             return;
         }
@@ -1563,7 +1575,8 @@ public final class LyricEditor extends MyJTextField {
             logState("startMelismaOnNextElement done, carrier at " + nextIndex);
         }
 
-        openIndexOrDismiss(LyricTargetResolver.findNextEligibleIndex(line, nextIndex));
+        var followingIndex = LyricTargetResolver.findNextEligibleIndex(line, nextIndex);
+        openIndexOrDismiss(followingIndex == null ? -1 : followingIndex);
     }
 
     /**
@@ -1577,7 +1590,7 @@ public final class LyricEditor extends MyJTextField {
         var currentIndex = line.getElementIndex(element);
         var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
-        if (backIndex < 0) {
+        if (backIndex == null) {
             reject("no preceding lyric to extend a chain from");
             return;
         }

@@ -41,7 +41,6 @@ public final class PasteAction extends PasteboardAction {
             KeyEvent.VK_V,
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
             Flag.DISABLE_WHEN_EDITING_TEXT
         );
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_PASTE);

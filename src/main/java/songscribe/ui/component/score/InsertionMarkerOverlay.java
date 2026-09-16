@@ -53,10 +53,10 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
     static final double INSERTION_POINT_THICKNESS_SS = 0.25;
 
     /**
-     * The tracked insertion index (0 to elementCount inclusive), or -1 when nothing is tracked.
+     * The tracked insertion index (0 to elementCount inclusive), or null when nothing is tracked.
      * Meaningless while {@link #getTargetLine()} is null.
      */
-    private int targetIndex = -1;
+    private @Nullable Integer targetIndex = null;
 
     public InsertionMarkerOverlay(OverlayHost host) {
         super(host);
@@ -92,7 +92,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
     protected @Nullable Rectangle2D getInkBoundsSs() {
         var line = getTargetLine();
 
-        if (line == null || targetIndex < 0) {
+        if (line == null || targetIndex == null) {
             return null;
         }
 

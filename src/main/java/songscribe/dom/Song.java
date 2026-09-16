@@ -143,9 +143,6 @@ public final class Song implements Disposable {
      */
     public static final double MIN_DEFAULT_REST_LENGTH_SS = 1.0;
 
-    // Sentinel passed to addLine(int, Line) meaning "append after the last line"
-    private static final int APPEND = -1;
-
     /**
      * Line width used until the UI layer installs the preference-aware provider.
      * <p>
@@ -435,11 +432,11 @@ public final class Song implements Disposable {
      *
      * @param lineIndex    the index of the line
      * @param elementIndex the index of the anchor element within that line
-     * @return the beat in effect at this position and the position that defined it
-     * @see TempoResolver#resolveBeatAt
+     * @return the beat in effect at this position
+     * @see TempoResolver#beatUnitAt
      */
-    public BeatAt resolveBeatAt(int lineIndex, int elementIndex) {
-        return tempoResolver.resolveBeatAt(lineIndex, elementIndex);
+    public BeatUnit beatUnitAt(int lineIndex, int elementIndex) {
+        return tempoResolver.beatUnitAt(lineIndex, elementIndex);
     }
 
     /** Returns the canonical attribution metadata record. */
@@ -653,13 +650,22 @@ public final class Song implements Disposable {
         return lines.size();
     }
 
-    int indexOfLine(Line line) {
-        return lines.indexOf(line);
+    /**
+     * The position of {@code line} among this song's lines.
+     *
+     * @return the index {@link #getLine} would return {@code line} for, or {@code null} when
+     *     {@code line} is not one of this song's lines — a detached line, or one this song
+     *     has removed
+     */
+    @Nullable Integer indexOfLine(Line line) {
+        var index = lines.indexOf(line);
+
+        return index < 0 ? null : index;
     }
 
     /** True when {@code line} is currently one of this song's lines. */
     public boolean contains(Line line) {
-        return indexOfLine(line) >= 0;
+        return indexOfLine(line) != null;
     }
 
     public boolean isEmpty() {
@@ -727,18 +733,21 @@ public final class Song implements Disposable {
     }
 
     /**
-     * The index of the first line that has any element, or -1 when the song has no lines
-     * or every line is empty. A leading empty line is skipped, so deleting every element of
-     * line 0 moves the answer down to the next line that still has elements.
+     * The index of the first line that has any element. A leading empty line is skipped, so
+     * deleting every element of line 0 moves the answer down to the next line that still has
+     * elements.
+     *
+     * @return the first non-empty line's index, or {@code null} when the song has no lines
+     *     or every line is empty
      */
-    public int firstNonEmptyLineIndex() {
+    public @Nullable Integer firstNonEmptyLineIndex() {
         for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             if (!lines.get(lineIndex).isEmpty()) {
                 return lineIndex;
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -750,7 +759,7 @@ public final class Song implements Disposable {
     public @Nullable StaffElement firstElement() {
         var lineIndex = firstNonEmptyLineIndex();
 
-        return lineIndex < 0 ? null : lines.get(lineIndex).getElement(0);
+        return lineIndex == null ? null : lines.get(lineIndex).getElement(0);
     }
 
     /**
@@ -886,7 +895,7 @@ public final class Song implements Disposable {
     // -- Structure setters --
 
     public void addLine(Line line) {
-        addLine(APPEND, line);
+        addLine(lines.size(), line);
     }
 
     /**
@@ -935,17 +944,16 @@ public final class Song implements Disposable {
             throw new IllegalArgumentException("Line must be constructed with this Song");
         }
 
-        var lineIndex = (index == APPEND) ? lines.size() : index;
-        var willBecomeNewLast = lineIndex == lines.size();
+        var willBecomeNewLast = index == lines.size();
         var previousLastLine = lines.isEmpty() ? null : lines.getLast();
 
         withModification(() -> modifications.withAutoMaintenance(() -> {
-            applyChange(new LineInsertion(lineIndex, line), () -> lines.add(lineIndex, line));
+            applyChange(new LineInsertion(index, line), () -> lines.add(index, line));
 
             // Only the pair the new line landed between can have been pulled apart; every
             // other pair shifts by the same amount and stays adjacent.
-            if (lineIndex > 0 && lineIndex < lines.size() - 1 && !isReplaying()) {
-                removeSpansBetweenNonAdjacentLines(lines.get(lineIndex - 1));
+            if (index > 0 && index < lines.size() - 1 && !isReplaying()) {
+                removeSpansBetweenNonAdjacentLines(lines.get(index - 1));
             }
 
             if (willBecomeNewLast && !isMutationTrackingSuspended() && !isReplaying()) {

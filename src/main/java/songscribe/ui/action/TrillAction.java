@@ -61,8 +61,7 @@ public final class TrillAction extends SelectableUIAction {
             Strings.get(Strings.ACTION_TRILL_TOOLTIP),
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_TOGGLE_TRILL);
     }

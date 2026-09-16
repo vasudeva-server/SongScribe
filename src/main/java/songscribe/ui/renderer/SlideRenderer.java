@@ -200,7 +200,7 @@ public final class SlideRenderer {
             return color;
         }
 
-        var slideColor = invariants.colorFor(new HitTarget.Slide(note), noteIndex);
+        var slideColor = invariants.colorFor(new HitTarget.Slide(note));
 
         if (!LineInvariants.isDefaultColor(slideColor)) {
             return slideColor;
@@ -329,7 +329,7 @@ public final class SlideRenderer {
     private static SlideGeometry.@Nullable Endpoints glissandoEndpointsSs(
         NoteElement note, int noteIndex, Line line, LayoutResult layoutResult, ElementFrame frame
     ) {
-        if (!frame.hasPreviewShift()) {
+        if (frame.previewShift() == null) {
             var slideLayout = layoutResult.getSlideLayout(note);
             return slideLayout != null ? slideLayout.glissando() : null;
         }
@@ -342,8 +342,9 @@ public final class SlideRenderer {
 
     /** Returns the grace-note insert preview's displacement for the element at {@code index}. */
     private static double previewShiftSs(int index, ElementFrame frame) {
-        return frame.hasPreviewShift() && index >= frame.previewShiftFromIndex()
-            ? frame.previewShiftSs()
+        var previewShift = frame.previewShift();
+        return previewShift != null && previewShift.displaces(index)
+            ? previewShift.shiftSs()
             : NO_SHIFT_SS;
     }
 

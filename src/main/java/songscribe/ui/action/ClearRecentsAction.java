@@ -36,8 +36,7 @@ public final class ClearRecentsAction extends UIAction {
             mainFrame,
             Strings.get(Strings.ACTION_EDIT_CLEAR_RECENTS),
             "clear-recents",
-            Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_WHEN_PLAYING
         );
     }
 

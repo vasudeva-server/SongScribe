@@ -35,7 +35,19 @@ public final class DeleteAction extends PasteboardAction {
     }
 
     private DeleteAction(MainFrame mainFrame) {
-        super(mainFrame, Operation.DELETE, Strings.get(Strings.ACTION_EDIT_DELETE), "edit-delete", 0, 0, Flag.DISABLE_WHEN_PLAYING);
+        super(
+            mainFrame,
+            Operation.DELETE,
+            Strings.get(Strings.ACTION_EDIT_DELETE),
+            "edit-delete",
+            0,
+            0,
+            Flag.DISABLE_WHEN_PLAYING,
+            // In grace mode a lyric is the only selectable thing, so this deletes a syllable
+            // and leaves every element index in place; canDeleteLine is false without a
+            // staff-line selection.
+            Flag.ENABLED_IN_GRACE_MODE
+        );
         var keystrokes = new KeyStroke[] {
             KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
             KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),

@@ -193,9 +193,6 @@ public final class InsertionPointMode {
         record Cancelled() implements Outcome {}
     }
 
-    /** The index that means "nothing is tracked", so Return has nowhere to place. */
-    private static final int NO_INDEX = -1;
-
     @Nullable
     private static InsertionPointMode instance = null;
 
@@ -209,12 +206,13 @@ public final class InsertionPointMode {
     private Client client = null;
 
     // The insertion point the next placement will use — the line and the index before which
-    // the client's content lands. Tracked from mouse movement; NO_INDEX means the mouse has
+    // the client's content lands. Tracked from mouse movement; null means the mouse has
     // not reached a position this client accepts, so Return is a no-op.
     @Nullable
     private LineComponent targetLineComponent = null;
 
-    private int targetIndex = NO_INDEX;
+    @Nullable
+    private Integer targetIndex = null;
 
     // The banner naming the pending operation, and the layered-pane bounds listener that keeps
     // it full-bleed. Both are created in enter() and torn down in exit().
@@ -269,16 +267,6 @@ public final class InsertionPointMode {
     @Nullable
     public LineComponent getTargetLineComponent() {
         return targetLineComponent;
-    }
-
-    /**
-     * The index the marker is currently drawn before, which is what {@link #place()} would
-     * use. Non-negative exactly when {@link #getTargetLineComponent()} is non-null.
-     *
-     * @return the tracked insertion index, or -1 when nothing is tracked
-     */
-    public int getTargetIndex() {
-        return targetIndex;
     }
 
     /** Returns the insertion-point marker overlay. Package-private: test support only. */
@@ -509,8 +497,8 @@ public final class InsertionPointMode {
      */
     private void clearTarget() {
         targetLineComponent = null;
-        targetIndex = NO_INDEX;
-        insertionMarkerOverlay.setTarget(null, NO_INDEX);
+        targetIndex = null;
+        insertionMarkerOverlay.setTarget(null, -1);
     }
 
     /**
@@ -558,7 +546,7 @@ public final class InsertionPointMode {
             return;
         }
 
-        if (lineComponent != targetLineComponent || index != targetIndex) {
+        if (lineComponent != targetLineComponent || targetIndex == null || index != targetIndex) {
             targetLineComponent = lineComponent;
             targetIndex = index;
             insertionMarkerOverlay.setTarget(lineComponent, index);
@@ -574,7 +562,7 @@ public final class InsertionPointMode {
         var lineComponent = targetLineComponent;
         var currentClient = client;
 
-        if (lineComponent == null || targetIndex < 0 || currentClient == null) {
+        if (lineComponent == null || targetIndex == null || currentClient == null) {
             return;
         }
 

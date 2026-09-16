@@ -140,8 +140,8 @@ public final class Tie extends NoteSpan {
      * way out, and the edit is not what removes it.
      * <p>
      * Resolving through the asking line is what makes a cross-line tie work. Its two
-     * endpoints live in different lines, so {@link #getAnchorElementIndex()} and
-     * {@link #getEndElementIndex()} would answer with two positions measured in two different
+     * endpoints live in different lines, so {@link #requireAnchorElementIndex()} and
+     * {@link #requireEndElementIndex()} would answer with two positions measured in two different
      * lines — for a tie anchored at index 7 of one line and ending at index 0 of the next,
      * every "between them" test would be {@code index > 7 && index <= 0} and never true.
      */
@@ -226,10 +226,7 @@ public final class Tie extends NoteSpan {
 
         var replacedIndex = line.getElementIndex(oldElement);
 
-        // Only an element of this line has a position the bounds can be compared against. The
-        // guard is not redundant with the coverage test: a bound off an edge covers every
-        // index in its direction, so it would swallow the -1 of an element that is elsewhere.
-        if (replacedIndex < 0 || !endpoints.covers(replacedIndex)) {
+        if (!endpoints.covers(replacedIndex)) {
             return false;
         }
 

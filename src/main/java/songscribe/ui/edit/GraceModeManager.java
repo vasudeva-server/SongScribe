@@ -92,16 +92,17 @@ public final class GraceModeManager {
     // State
     private State state = State.INACTIVE;
 
-    @Nullable
-    private NoteElement graceNote;
+    /**
+     * The grace note the interaction is building and where it sits: {@code note} is on
+     * {@code line} at {@code index}, and {@code component} displays that line. Present whenever
+     * {@link #state} is not {@link State#INACTIVE}, so a present record proves all four —
+     * {@link #enterGraceNote} builds it just before the state leaves {@code INACTIVE}, and
+     * {@link #resetState} drops it just after the state returns there.
+     */
+    private record ActiveGrace(NoteElement note, int index, Line line, LineComponent component) {}
 
-    private int graceNoteIndex = -1;
-
     @Nullable
-    private Line graceLine;
-
-    @Nullable
-    private LineComponent graceLineComponent;
+    private ActiveGrace activeGrace = null;
 
     // Cached host-note insertion preview. Computed once on entry to GRACE_NOTE_INSERT
     // (the locked x, grace index, preview element and layout are all fixed until the
@@ -165,7 +166,7 @@ public final class GraceModeManager {
      * Used by {@code LineRenderer.getElementColor()} to draw the note in red.
      */
     public static boolean isPendingCancel(StaffElement element) {
-        return instance != null && instance.pendingCancel && element == instance.graceNote;
+        return instance != null && instance.pendingCancel && instance.isGraceNote(element);
     }
 
     /**
@@ -174,7 +175,11 @@ public final class GraceModeManager {
      * state, so the drag never mutates the element's slide (see {@code mouseDragged}).
      */
     public static boolean isPendingConnect(StaffElement element) {
-        return instance != null && instance.pendingConnect && element == instance.graceNote;
+        return instance != null && instance.pendingConnect && instance.isGraceNote(element);
+    }
+
+    private boolean isGraceNote(StaffElement element) {
+        return activeGrace != null && element == activeGrace.note();
     }
 
     /**
@@ -210,40 +215,25 @@ public final class GraceModeManager {
     }
 
     /**
-     * Returns the rightmost X (in pixels) at which a drag is considered a cancel gesture,
-     * i.e. the grace note's left edge minus {@link #GRACE_SLOP_PX}. Returns -1 if
-     * no grace note is active or layout is unavailable.
-     */
-    public static int getCancelThresholdPx() {
-        return instance != null ? instance.internalGetCancelThresholdPx() : -1;
-    }
-
-    /**
-     * Returns the leftmost X (in pixels) at which a drag is considered a connect gesture,
-     * i.e. the grace note's right edge plus {@link #GRACE_SLOP_PX}. Returns -1 if
-     * no grace note is active or layout is unavailable.
-     */
-    public static int getConnectThresholdPx() {
-        return instance != null ? instance.internalGetConnectThresholdPx() : -1;
-    }
-
-    /**
      * Returns the locked insertion x-position in staff spaces for the host note.
      * Computed dynamically from the grace note's current layout position plus
-     * one column width to the right. Returns 0 if the grace note or layout is null.
+     * one column width to the right. Returns 0 if grace mode is not in progress or the
+     * layout is unavailable.
      */
     public double getLockedInsertionXSs() {
-        if (graceNote == null || graceLine == null || graceLineComponent == null) {
+        var grace = activeGrace;
+
+        if (grace == null) {
             return 0;
         }
 
-        var layout = graceLineComponent.getLayoutResult();
+        var layout = grace.component().getLayoutResult();
 
         if (layout == null) {
             return 0;
         }
 
-        var graceColumn = layout.getElementColumn(graceNote);
+        var graceColumn = layout.getElementColumn(grace.note());
 
         if (graceColumn == null) {
             return 0;
@@ -264,7 +254,23 @@ public final class GraceModeManager {
      * Returns the {@link LineComponent} that contains the grace note, or null if not in progress.
      */
     public @Nullable LineComponent getGraceLineComponent() {
-        return graceLineComponent;
+        return activeGrace != null ? activeGrace.component() : null;
+    }
+
+    /**
+     * Returns the active grace record, which every caller past {@link State#INACTIVE} is
+     * entitled to.
+     *
+     * @throws IllegalStateException if grace mode is not in progress
+     */
+    private ActiveGrace requireActiveGrace() {
+        var grace = activeGrace;
+
+        if (grace == null) {
+            throw new IllegalStateException("grace mode is not in progress");
+        }
+
+        return grace;
     }
 
     /**
@@ -277,21 +283,21 @@ public final class GraceModeManager {
      * cleared after it returns there.
      */
     public int getHostInsertionIndex() {
-        return graceNoteIndex + 1;
+        return requireActiveGrace().index() + 1;
     }
 
     /**
      * Returns the index of the grace note whose host-note insertion preview is showing on
-     * {@code lineComponent}, or -1 when no host preview is showing there.
+     * {@code lineComponent}, or null when no host preview is showing there.
      * <p>
      * Gates the preview glissando between the already-inserted grace note and the host ghost
      * (refs #650): while the host is only a preview the grace note carries no slide of its own,
      * so the connecting line is render-only state derived from here rather than from the DOM.
-     * The index rides along with the predicate so {@link #graceNoteIndex} needs no accessor of
-     * its own outside this package.
+     * The index rides along with the predicate so {@link ActiveGrace#index()} needs no accessor
+     * of its own outside this package.
      */
-    public int hostPreviewGraceIndexOn(LineComponent lineComponent) {
-        return isShowingHostPreviewOn(lineComponent) ? graceNoteIndex : -1;
+    public @Nullable Integer hostPreviewGraceIndexOn(LineComponent lineComponent) {
+        return isShowingHostPreviewOn(lineComponent) ? requireActiveGrace().index() : null;
     }
 
     /**
@@ -299,7 +305,7 @@ public final class GraceModeManager {
      * the grace note is waiting for the host the user is positioning.
      */
     boolean isShowingHostPreviewOn(LineComponent lineComponent) {
-        return state == State.GRACE_NOTE_INSERT && lineComponent == graceLineComponent;
+        return state == State.GRACE_NOTE_INSERT && lineComponent == getGraceLineComponent();
     }
 
     /**
@@ -312,27 +318,25 @@ public final class GraceModeManager {
     }
 
     /**
-     * Computes the host-note insertion preview using the current locked state.
-     * Returns null if state is incomplete (preview/line/component missing) or the
-     * host note would not fit on the line.
+     * Computes the host-note insertion preview for {@code grace}. Returns null if no preview
+     * element is showing or the host note would not fit on the line.
      */
-    private InsertionSpacingCalculator.@Nullable InsertionResult computeHostInsertion() {
-        if (graceLine == null || graceLineComponent == null) {
-            return null;
-        }
-
+    private InsertionSpacingCalculator.@Nullable InsertionResult computeHostInsertion(ActiveGrace grace) {
         var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null) {
             return null;
         }
 
+        var line = grace.line();
+        var component = grace.component();
+
         var result = InsertionSpacingCalculator.calculateInsertion(
-            graceLine, previewElement, getHostInsertionIndex(),
-            graceLineComponent.requireLayoutResult(), graceLineComponent.getLyricRenderMetrics()
+            line, previewElement, getHostInsertionIndex(),
+            component.requireLayoutResult(), component.getLyricRenderMetrics()
         );
 
-        if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs().value())) {
+        if (!result.fitsWithinLine(line.getSong().getLineWidthSs().value())) {
             return null;
         }
 
@@ -403,7 +407,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        if (mouseDownPoint == null || graceNote == null || graceLine == null) {
+        if (mouseDownPoint == null) {
             abort();
             return true;
         }
@@ -467,9 +471,8 @@ public final class GraceModeManager {
         // slide state must not be touched here: an untracked mid-drag mutation would leak
         // into the before-state clone of the commit path's tracked SLIDE modification,
         // making undo of the connect step leave the glissando behind.
-        if ((pendingCancel != wasPendingCancel || pendingConnect != wasPendingConnect)
-            && graceLineComponent != null) {
-            graceLineComponent.repaint();
+        if (pendingCancel != wasPendingCancel || pendingConnect != wasPendingConnect) {
+            requireActiveGrace().component().repaint();
         }
 
         return true;
@@ -497,7 +500,7 @@ public final class GraceModeManager {
         }
 
         // Cancel if click is on a different line
-        if (lineComponent != graceLineComponent) {
+        if (lineComponent != getGraceLineComponent()) {
             abort();
             return true;
         }
@@ -569,9 +572,6 @@ public final class GraceModeManager {
         // the line's layout directly to lay out and render the new grace note.
         lineComponent.invalidateLayout();
 
-        graceLineComponent = lineComponent;
-        graceLine = line;
-
         // The grace note is the most recently inserted element at the hover's insertion index
         var hover = PreviewElementManager.hover();
 
@@ -592,7 +592,7 @@ public final class GraceModeManager {
         // count has increased. The inserted element is at the index the hover held before the
         // click. Since handleClick may have appended (insertion index == elementCount before
         // insert), we need to check the last element in that case.
-        graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
+        var graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
 
         // handleClick inserted the grace quaver the preview held, which is a note.
         if (!(line.getElement(graceNoteIndex) instanceof NoteElement insertedGraceNote)) {
@@ -600,7 +600,7 @@ public final class GraceModeManager {
                 "grace insertion landed a non-note at index " + graceNoteIndex);
         }
 
-        graceNote = insertedGraceNote;
+        activeGrace = new ActiveGrace(insertedGraceNote, graceNoteIndex, line, lineComponent);
 
         // The suspended insertion ran no chain walk, so the grace note and every note its
         // landing reaches are still undecided. Walk now and stamp them plainly — this is not
@@ -631,10 +631,10 @@ public final class GraceModeManager {
         Actions.DURATION_ACTION_GROUP.select(Actions.QUARTER_NOTE_ACTION, this);
 
         // Set state before posting the message so that enableFromGraceModeState()
-        // sees the correct state when disabling DISABLE_IN_GRACE_MODE actions.
+        // sees the correct state when disabling the actions lacking ENABLED_IN_GRACE_MODE.
         state = State.GRACE_NOTE;
 
-        // Post message to disable flagged actions
+        // Post message to disable every action not declared safe in grace mode
         post(new GraceModeStateDidChangeNotification(true));
 
         // Hide the preview element that was shown by the DurationSelectedMessage
@@ -660,22 +660,16 @@ public final class GraceModeManager {
             return;
         }
 
-        // graceLineComponent is guaranteed non-null here: getLockedInsertionXSs()
-        // returns 0 when it is null, so reaching this point means it is non-null.
-        if (graceLineComponent == null) {
-            throw new IllegalStateException("graceLineComponent must be non-null here");
-        }
+        var grace = requireActiveGrace();
 
         // Check whether the host note will fit before locking into insert mode, and
         // cache the result so per-frame preview rendering does not repeat the math.
-        var hostInsertion = computeHostInsertion();
+        var hostInsertion = computeHostInsertion(grace);
 
         if (hostInsertion == null) {
-            // Save the component reference before abort() clears graceLineComponent.
-            var component = graceLineComponent;
             abort();
             OptionDialogs.showErrorMessage(
-                SwingUtilities.getWindowAncestor(component),
+                SwingUtilities.getWindowAncestor(grace.component()),
                 Strings.ALERT_TITLE_INSERT_ERROR,
                 Strings.ERROR_GRACE_NOTE_HOST_NO_ROOM
             );
@@ -683,7 +677,7 @@ public final class GraceModeManager {
         }
 
         cachedHostInsertion = hostInsertion;
-        PreviewElementManager.restorePreviewElement(graceLineComponent);
+        PreviewElementManager.restorePreviewElement(grace.component());
     }
 
     /**
@@ -692,15 +686,11 @@ public final class GraceModeManager {
      * host note is inserted at the locked x position (click in GRACE_NOTE_INSERT).
      */
     private void enterGraceNotePaired(boolean connectNext, LineComponent lineComponent) {
-        var note = graceNote;
-        var line = graceLine;
-        var component = graceLineComponent;
-
-        if (note == null || line == null || component == null) {
-            abort();
-            return;
-        }
-
+        var grace = requireActiveGrace();
+        var note = grace.note();
+        var line = grace.line();
+        var component = grace.component();
+        var graceNoteIndex = grace.index();
         var hostNoteIndex = getHostInsertionIndex();
 
         // Determine the host note's pitch up front. For a drag-right connection the host
@@ -779,7 +769,8 @@ public final class GraceModeManager {
             if (!connectNext) {
                 // Insert the host note at the locked x position. The preview element was
                 // built undecorated on entry to grace mode (see enterGraceNote), so the
-                // host arrives as a plain note.
+                // host arrives carrying only the duration, dots, accidental and articulations
+                // the user chose while the mode was in progress.
                 PreviewElementManager.handleClick(lineComponent, true);
             }
 
@@ -812,19 +803,18 @@ public final class GraceModeManager {
      * operation must not appear in the undo history.
      */
     private void abort() {
-        var note = graceNote;
-        var line = graceLine;
-        var component = graceLineComponent;
-        var idx = graceNoteIndex;
+        var grace = activeGrace;
 
-        if (note != null && line != null && idx != -1) {
+        if (grace != null) {
+            var line = grace.line();
+            var idx = grace.index();
             var song = line.getSong();
             song.withoutMutationTracking(() -> line.removeElement(idx));
 
             // The suspended removal ran no chain walk either; the notes the insertion's walk
             // restamped are walked back the same way, plainly, leaving no undo step.
             var restamps = AccidentalChain.walk(
-                new AccidentalScanView.Live(song), ChainEdit.removed(line.index(), idx, List.of(note)));
+                new AccidentalScanView.Live(song), ChainEdit.removed(line.index(), idx, List.of(grace.note())));
 
             for (var restamp : restamps) {
                 restamp.note().setAccidentalState(new AccidentalState.Stamped(restamp.state()));
@@ -832,9 +822,7 @@ public final class GraceModeManager {
 
             // No SongDidChangeNotification fires while tracking is suspended, so
             // invalidate the line's layout directly to reflect the removal.
-            if (component != null) {
-                component.invalidateLayout();
-            }
+            grace.component().invalidateLayout();
         }
 
         resetState();
@@ -854,12 +842,13 @@ public final class GraceModeManager {
      * for {@link #abort()} and {@link #commit()}.
      */
     private void resetState() {
-        // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.
-        // All other actions (duration, embellishments, etc.) keep their current state.
-        selectionCoordinator.getActionReflector().restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
+        // Restore only the actions grace mode disabled — those lacking ENABLED_IN_GRACE_MODE —
+        // to their pre-grace-mode state. The actions that stayed live (duration, embellishments,
+        // etc.) keep the state the user gave them during the mode.
+        selectionCoordinator.getActionReflector().restoreActionStatesLackingFlag(UIAction.Flag.ENABLED_IN_GRACE_MODE);
 
         // Set INACTIVE before posting the message so that enableFromGraceModeState()
-        // sees the correct state when re-enabling DISABLE_IN_GRACE_MODE actions.
+        // sees the correct state when re-enabling the actions lacking ENABLED_IN_GRACE_MODE.
         state = State.INACTIVE;
 
         post(new GraceModeStateDidChangeNotification(false));
@@ -870,10 +859,7 @@ public final class GraceModeManager {
         // repaints via property change listeners) always runs on the EDT.
         SwingUtilities.invokeLater(() -> Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(true));
 
-        graceNote = null;
-        graceNoteIndex = -1;
-        graceLine = null;
-        graceLineComponent = null;
+        activeGrace = null;
         cachedHostInsertion = null;
         mouseDownPoint = null;
         mouseDownTime = 0;
@@ -901,15 +887,9 @@ public final class GraceModeManager {
      * click in the insert phase.
      */
     private boolean isMouseLeftOfGraceNote(MouseEvent e) {
-        if (graceLineComponent == null) {
-            return false;
-        }
-
-        var threshold = internalGetCancelThresholdPx();
-        // The threshold is a fixed-scale document pixel; convert the view-pixel event x
-        // to document pixels before comparing.
-        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
-        return threshold >= 0 && mouseXDocPx <= threshold;
+        var grace = requireActiveGrace();
+        var threshold = cancelThresholdPx(grace);
+        return threshold != null && mouseXDocPx(grace, e) <= threshold;
     }
 
     /**
@@ -917,47 +897,51 @@ public final class GraceModeManager {
      * of the grace note's right edge. Used for connect detection during drag.
      */
     private boolean isMouseRightOfGraceNote(MouseEvent e) {
-        if (graceLineComponent == null) {
-            return false;
-        }
-
-        var threshold = internalGetConnectThresholdPx();
-        // The threshold is a fixed-scale document pixel; convert the view-pixel event x
-        // to document pixels before comparing.
-        var mouseXDocPx = graceLineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
-        return threshold >= 0 && mouseXDocPx >= threshold;
+        var grace = requireActiveGrace();
+        var threshold = connectThresholdPx(grace);
+        return threshold != null && mouseXDocPx(grace, e) >= threshold;
     }
 
-    private int internalGetCancelThresholdPx() {
-        if (graceNote == null || graceLineComponent == null) {
-            return -1;
-        }
+    /**
+     * Returns the event's x in document pixels. The thresholds are fixed-scale document
+     * pixels, so the view-pixel event x is converted before comparing.
+     */
+    private static int mouseXDocPx(ActiveGrace grace, MouseEvent e) {
+        return grace.component().getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).positionPx();
+    }
 
-        var layout = graceLineComponent.getLayoutResult();
+    /**
+     * Returns the rightmost X (in document pixels) at which a drag is considered a cancel
+     * gesture, i.e. the grace note's left edge minus {@link #GRACE_SLOP_PX}, or null when
+     * layout is unavailable.
+     */
+    private static @Nullable Integer cancelThresholdPx(ActiveGrace grace) {
+        var layout = grace.component().getLayoutResult();
 
         if (layout == null) {
-            return -1;
+            return null;
         }
 
-        var graceXSs = layout.getElementXSs(graceNote);
+        var graceXSs = layout.getElementXSs(grace.note());
         return DocumentScale.ssToPx(graceXSs).positionPx() - GRACE_SLOP_PX;
     }
 
-    private int internalGetConnectThresholdPx() {
-        if (graceNote == null || graceLineComponent == null) {
-            return -1;
-        }
-
-        var layout = graceLineComponent.getLayoutResult();
+    /**
+     * Returns the leftmost X (in document pixels) at which a drag is considered a connect
+     * gesture, i.e. the grace note's right edge plus {@link #GRACE_SLOP_PX}, or null when
+     * layout is unavailable.
+     */
+    private static @Nullable Integer connectThresholdPx(ActiveGrace grace) {
+        var layout = grace.component().getLayoutResult();
 
         if (layout == null) {
-            return -1;
+            return null;
         }
 
-        var graceColumn = layout.getElementColumn(graceNote);
+        var graceColumn = layout.getElementColumn(grace.note());
 
         if (graceColumn == null) {
-            return -1;
+            return null;
         }
 
         var rightEdgeSs = graceColumn.getXSs() + graceColumn.getRightExtentSs();
@@ -969,12 +953,9 @@ public final class GraceModeManager {
      * following it (a pitched note at the next index).
      */
     private boolean hasEligibleHostNote() {
-        if (graceNote == null || graceLine == null) {
-            return false;
-        }
-
+        var line = requireActiveGrace().line();
         var nextIndex = getHostInsertionIndex();
-        return nextIndex < graceLine.elementCount()
-            && graceLine.getElement(nextIndex).getType().isPitchedNote();
+        return nextIndex < line.elementCount()
+            && line.getElement(nextIndex).getType().isPitchedNote();
     }
 }

@@ -25,6 +25,8 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.binding.Bindings;
 import songscribe.ui.binding.Controls;
@@ -141,7 +143,7 @@ final class SongSettingsDateInputRow {
 
     private final Property<String> year = Controls.text(yearField, Timing.ON_COMMIT);
     private final Property<MonthChoice> month = Controls.item(monthCombo);
-    private final Property<Integer> day = Controls.itemIndex(dayCombo);
+    private final Property<@Nullable Integer> day = Controls.itemIndex(dayCombo);
 
     /**
      * Builds the row and declares its bindings on {@code bindings}.
@@ -304,8 +306,16 @@ final class SongSettingsDateInputRow {
      * month or day from standing beside a year that names no date.
      *
      * @return the date, {@link PartialDate.EmptyDate} when the year field is empty
+     * @throws IllegalStateException if the day combo has no selection, which
+     *     {@link #uneditableCombo} rules out by building it with one
      */
     PartialDate getDate() {
-        return PartialDate.of(year.get(), month.get().stored(), day.get());
+        var dayIndex = day.get();
+
+        if (dayIndex == null) {
+            throw new IllegalStateException("The day combo has no selection");
+        }
+
+        return PartialDate.of(year.get(), month.get().stored(), dayIndex);
     }
 }

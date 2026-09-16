@@ -19,6 +19,8 @@
  */
 package songscribe.binding;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * A value that can be read and observed, but not written — the source half of the
  * property graph.
@@ -51,9 +53,10 @@ package songscribe.binding;
  * documentation for that invariant and for the rule that values are replaced rather
  * than mutated.
  *
- * @param <T> the observed value's type
+ * @param <T> the observed value's type, declared {@code @Nullable} when absence is a value
+ *     the graph carries
  */
-public interface ObservableValue<T> {
+public interface ObservableValue<T extends @Nullable Object> {
 
     /**
      * Returns the current value.

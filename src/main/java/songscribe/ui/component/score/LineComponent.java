@@ -24,6 +24,7 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
+import java.util.Objects;
 import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
@@ -137,11 +138,8 @@ public class LineComponent extends ScoreComponent
     @Nullable
     private SelectionProvider selectionProvider;
 
-    /** Index of the currently playing note (-1 if not playing). */
-    private int playingNoteIndex = -1;
-
-    /** Index of the grace note paired with the currently playing note (-1 if none). */
-    private int playingGraceNoteIndex = -1;
+    /** The currently playing note and its paired grace note, or {@code null} if none is playing. */
+    private LineInvariants.@Nullable Playing playing;
 
     /** Cached layout result from the last layout pass. */
     @Nullable
@@ -171,12 +169,12 @@ public class LineComponent extends ScoreComponent
     private boolean hasLeadingLyricContinuation;
 
     /**
-     * Element index hit by the most recent press, or -1 when that press hit no element.
-     * {@link NoteDragHandler} computes this on press and discards it on release, so it is
-     * captured in {@link #released} for {@link #clicked} — which runs next — to
+     * Element index hit by the most recent press, or {@code null} when that press hit no
+     * element. {@link NoteDragHandler} computes this on press and discards it on release, so it
+     * is captured in {@link #released} for {@link #clicked} — which runs next — to
      * reuse instead of scanning the line's elements a second time for the same point.
      */
-    private int pressHitIndex = -1;
+    private @Nullable Integer pressHitIndex;
 
     /** Handles selection, hit-testing, and drag logic. */
     private final LineSelectionHandler selectionHandler = new LineSelectionHandler(this);
@@ -313,31 +311,19 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Sets both playing indices atomically, triggering a single repaint.
-     *
-     * @param noteIndex Note index, or -1 if not playing
-     * @param graceNoteIndex Grace note index, or -1 if none
+     * Sets the currently playing note and its paired grace note, triggering a single repaint,
+     * or {@code null} when nothing is playing.
      */
-    public void setPlayingIndices(int noteIndex, int graceNoteIndex) {
-        if (playingNoteIndex != noteIndex || playingGraceNoteIndex != graceNoteIndex) {
-            playingNoteIndex = noteIndex;
-            playingGraceNoteIndex = graceNoteIndex;
+    public void setPlaying(LineInvariants.@Nullable Playing playing) {
+        if (!Objects.equals(this.playing, playing)) {
+            this.playing = playing;
             repaint();
         }
     }
 
-    /**
-     * Returns the index of the currently playing note (-1 if not playing).
-     */
-    public int getPlayingNoteIndex() {
-        return playingNoteIndex;
-    }
-
-    /**
-     * Returns the index of the grace note paired with the currently playing note (-1 if none).
-     */
-    public int getPlayingGraceNoteIndex() {
-        return playingGraceNoteIndex;
+    /** Returns the currently playing note and its paired grace note, or {@code null} if none. */
+    public LineInvariants.@Nullable Playing getPlaying() {
+        return playing;
     }
 
     /**
@@ -779,8 +765,8 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * The index in {@code line} of the element {@code clickHit} resolved to, or -1 when the
-     * click landed on anything else.
+     * The index in {@code line} of the element {@code clickHit} resolved to, or {@code null}
+     * when the click landed on anything else.
      * <p>
      * Package-private because every handler in this package that turns a resolved hit into an
      * element it can act on asks this same question — the double-click lyric editor here, the
@@ -789,12 +775,12 @@ public class LineComponent extends ScoreComponent
      * what counts as a hit element — a new {@link HitTarget} kind, say — from having to be
      * remembered three times.
      */
-    static int elementIndexOf(@Nullable HitTarget clickHit, Line line) {
+    static @Nullable Integer elementIndexOf(@Nullable HitTarget clickHit, Line line) {
         if (clickHit instanceof HitTarget.Element(var element)) {
             return line.getElementIndex(element);
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -813,15 +799,15 @@ public class LineComponent extends ScoreComponent
 
         // The press already hit-tested this point for every element the drag handler
         // admits; only the cases it declines (a rest, say) still need the resolved hit.
-        var hitIndex = pressHitIndex >= 0 ? pressHitIndex : elementIndexOf(clickHit, line);
+        var hitIndex = pressHitIndex != null ? pressHitIndex : elementIndexOf(clickHit, line);
 
-        if (hitIndex == -1) {
+        if (hitIndex == null) {
             return false;
         }
 
         var targetIndex = LyricTargetResolver.resolveLyricTarget(line, hitIndex);
 
-        if (targetIndex < 0) {
+        if (targetIndex == null) {
             return false;
         }
 
@@ -1014,7 +1000,7 @@ public class LineComponent extends ScoreComponent
     protected void released(MouseEvent e, ScoreView view) {
         // Capture before handleRelease() clears it. Refreshed on every release, so
         // clicked can never read a value left over from an earlier press.
-        pressHitIndex = noteDragHandler.isDragActive() ? noteDragHandler.getDragElementIndex() : -1;
+        pressHitIndex = noteDragHandler.isDragActive() ? noteDragHandler.getDragElementIndex() : null;
 
         if (getGraceModeManager().mouseReleased(this, e)) {
             return;

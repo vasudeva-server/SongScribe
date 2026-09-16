@@ -44,7 +44,6 @@ public final class DeselectAction extends UIAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
             // A selected line is still a selection this action must be able to dismiss.
             Flag.ENABLE_WHEN_LINE_SELECTED
         );

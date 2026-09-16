@@ -78,7 +78,7 @@ public final class SlideOperations {
 
         var sourceIndex = RangeQueries.glissandoSourceIndex(range);
 
-        if (sourceIndex < 0) {
+        if (sourceIndex == null) {
             return EditResult.REFUSED;
         }
 
@@ -106,7 +106,7 @@ public final class SlideOperations {
 
         var sourceIndex = RangeQueries.glissandoSourceIndex(ElementSelection.single(line, elementIndex));
 
-        if (sourceIndex < 0) {
+        if (sourceIndex == null) {
             return EditResult.REFUSED;
         }
 

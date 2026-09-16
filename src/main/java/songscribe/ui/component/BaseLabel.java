@@ -23,6 +23,8 @@ import java.awt.Graphics;
 import javax.swing.JLabel;
 import javax.swing.JList;
 
+import songscribe.util.UIUtils;
+
 /**
  * Base JLabel for custom combo box / list cell renderers. Handles
  * selection background painting that FlatLaf cannot apply when a
@@ -33,8 +35,23 @@ public class BaseLabel extends JLabel {
     public BaseLabel(String text, JList<?> list, int index, boolean isSelected) {
         super(text);
         setOpaque(true);
+        applySelectionColors(list, index, isSelected);
+    }
 
-        if (index == -1) {
+    /**
+     * Colors the cell as selected or not, in {@code list}'s colors.
+     *
+     * <p>The closed combo's display cell is never highlighted, whatever selection state
+     * Swing reports for it: it shows the chosen value in the combo itself, not a row of
+     * the open popup, so it takes the list background.
+     *
+     * @param list the list the cell is rendered for
+     * @param index the cell's row, or {@link UIUtils#COMBO_DISPLAY_INDEX} for the closed
+     *     combo's display cell
+     * @param isSelected whether Swing reports the cell as selected
+     */
+    protected final void applySelectionColors(JList<?> list, int index, boolean isSelected) {
+        if (index == UIUtils.COMBO_DISPLAY_INDEX) {
             setBackground(list.getBackground());
         } else {
             setBackground(isSelected ? list.getSelectionBackground() : list.getBackground());

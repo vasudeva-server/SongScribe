@@ -720,8 +720,8 @@ public final class HitRegionBuilder {
         var outerStartYSs = beamLayout.startYSs();
         var outerEndYSs = outerStartYSs + beamLayout.slope() * widthSs;
 
-        var levelCount = beam.beamLevel() + 1;
-        var totalDepthSs = BeamMetrics.beamStackHeightSs(levelCount, beamLayout.thickeningSs());
+        var totalDepthSs =
+            BeamMetrics.beamStackHeightSs(beam.beamStackCount(), beamLayout.thickeningSs());
         var innerOffsetSs = beamLayout.stemsUp() ? totalDepthSs : -totalDepthSs;
 
         // The four corners: each end of the outer edge, and each end of the deepest inner edge.

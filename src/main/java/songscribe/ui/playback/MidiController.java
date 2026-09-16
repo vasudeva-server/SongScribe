@@ -57,6 +57,9 @@ public final class MidiController {
     public static volatile @Nullable Synthesizer synthesizer = null;
     private static boolean closed = false;
 
+    /** Java Sound's {@link Receiver#send} defines this as "no timestamp". */
+    static final long NO_TIMESTAMP = -1;
+
     private MidiController() {}
 
     private static final String SOUNDFONT_RESOURCE = "/soundfonts/FluidR3_GM.sf2";
@@ -236,7 +239,7 @@ public final class MidiController {
                     new byte[]{(byte) 0xF0, 0x7E, 0x7F, 0x09, 0x01, (byte) 0xF7},
                     6
             );
-            receiver.send(gmOn, -1);
+            receiver.send(gmOn, NO_TIMESTAMP);
 
             for (var ch = 0; ch < 16; ch++) {
                 initChannel(receiver, ch, 100, 64, 110, 35, 10);
@@ -265,7 +268,7 @@ public final class MidiController {
         var msg = new ShortMessage();
         msg.setMessage(ShortMessage.CONTROL_CHANGE, ch, controller,
                 Math.clamp(value, 0, 127));
-        receiver.send(msg, -1);
+        receiver.send(msg, NO_TIMESTAMP);
     }
 
     /**
@@ -315,7 +318,7 @@ public final class MidiController {
         try {
             var msg = new ShortMessage();
             msg.setMessage(ShortMessage.PROGRAM_CHANGE, 0, Math.clamp(program, 0, 127), 0);
-            midiReceiver.send(msg, -1);
+            midiReceiver.send(msg, NO_TIMESTAMP);
         } catch (InvalidMidiDataException e) {
             LOG.warn("Failed to set playback instrument", e);
         }

@@ -453,7 +453,7 @@ class LineSelectionHandler {
             && scoreView.getSelectionCoordinator().getRange() != null) {
             var elementIndex = LineComponent.elementIndexOf(pressTarget, line);
 
-            if (elementIndex >= 0) {
+            if (elementIndex != null) {
                 scoreView.extendSelectionTo(elementIndex);
                 playNoteIfPitched(elementIndex);
             }
@@ -603,17 +603,11 @@ class LineSelectionHandler {
     private boolean selectAndPlayElement(StaffElement element) {
         var line = lc.getLine();
 
-        if (line == null) {
+        if (line == null || !line.contains(element)) {
             return false;
         }
 
-        var elementIndex = line.getElementIndex(element);
-
-        if (elementIndex < 0) {
-            return false;
-        }
-
-        selectAndPlayElement(elementIndex);
+        selectAndPlayElement(line.getElementIndex(element));
         return true;
     }
 

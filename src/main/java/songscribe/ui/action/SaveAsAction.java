@@ -43,7 +43,6 @@ public final class SaveAsAction extends UIAction {
             KeyEvent.VK_S,
             InputEvent.SHIFT_DOWN_MASK + UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE,
             Flag.OPENS_DIALOG
         );
     }

@@ -340,18 +340,18 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
     }
 
     /**
-     * Returns the position of the given verse's lyric in {@link #lyrics}, or -1 if none is
-     * set. The single place the verse lookup is written: {@link #getLyricForVerse} reads the
-     * lyric off it, and {@link #putLyric} replaces the lyric at it.
+     * Returns the position of the given verse's lyric in {@link #lyrics}, or {@code null} if
+     * none is set. The single place the verse lookup is written: {@link #getLyricForVerse}
+     * reads the lyric off it, and {@link #putLyric} replaces the lyric at it.
      */
-    private int indexOfLyricForVerse(int verse) {
+    private @Nullable Integer indexOfLyricForVerse(int verse) {
         for (var i = 0; i < lyrics.size(); i++) {
             if (lyrics.get(i).verse() == verse) {
                 return i;
             }
         }
 
-        return -1;
+        return null;
     }
 
     /**
@@ -362,7 +362,7 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
      */
     public @Nullable Lyric getLyricForVerse(int verse) {
         var index = indexOfLyricForVerse(verse);
-        return index < 0 ? null : lyrics.get(index);
+        return index == null ? null : lyrics.get(index);
     }
 
     /**
@@ -398,7 +398,7 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
     public void putLyric(Lyric lyric) {
         var index = indexOfLyricForVerse(lyric.verse());
 
-        if (index < 0) {
+        if (index == null) {
             lyrics.add(lyric);
         } else {
             lyrics.set(index, lyric);

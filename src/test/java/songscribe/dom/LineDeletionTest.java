@@ -152,8 +152,10 @@ class LineDeletionTest extends UnitTest {
         var line = lineHolding(elements);
 
         line.deleteRanges(List.of(
-            new StaffElementRun.ElementRange(FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX),
-            new StaffElementRun.ElementRange(SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX)));
+            line.effectiveRange(
+                new StaffElementRun.ElementRange(FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX)),
+            line.effectiveRange(
+                new StaffElementRun.ElementRange(SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX))));
 
         assertThat(elementsOf(line))
             .as("taken in ascending order the first removal would shift the second range onto the "

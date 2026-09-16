@@ -7,8 +7,8 @@ Run by `/design-pass 6` — register row `6`, *Line*.
 | Step | Status | Gate | Plan | Notes |
 |---|---|---|---|---|
 | 1 Inventory | ✅ | with 2 | — | `findings-1-2.md` |
-| 2 Class design | 🔄 | 📖 | [class-design.md](./class-design.md) | |
-| 3 Unrepresentable states | ⏳ | ⏳ | — | |
+| 2 Class design | ✅ | ✅ | [class-design.md](./class-design.md) | Landed in `f7309389` together with the fixes from `plans/check-findings.md` |
+| 3 Unrepresentable states | ✅ | ✅ | [step-3-unrepresentable-states.md](./step-3-unrepresentable-states.md) | `findings-3.md`. Execution reaches past the target: the `-1` sweep (3.13) across `dom`, `ui`, `layout`, `midi` and `io`, and rows 7, 12, 16 and 25's files. During review the user removed the dead `@Nullable` from `Line.getElementIndex` and from `LineSpans.boundOf`, with `boundOf`'s null branch (no caller passes null; the tree compiled both times) |
 | 4 Extraction | ⏳ | ⏳ | — | |
 | 5 Contracts | ⏳ | ⏳ | — | |
 | 6 Test triage | ⏳ | ⏳ | — | |
@@ -32,7 +32,8 @@ the step is small enough to hold in one sitting.
 ## Target
 
 Production: `src/main/java/songscribe/dom/Line.java`, `ElementChange.java`,
-`ProjectedElements.java`, `StaffElementRun.java`.
+`ProjectedElements.java`, `StaffElementRun.java`, and the two types step 2 split
+out of `Line`: `EditableRun.java`, `LineSpans.java`.
 Tests: `src/test/java/songscribe/dom/LineTest.java`, `LineDeletionTest.java`,
 `StrandedKeyChangeTest.java` (exercises `StaffElementRun`'s key queries).
 
@@ -54,7 +55,9 @@ to be. Deleted from the register when claimed.
   range, no `@return`, no `@throws`. `Line`'s implementation is a bare
   `elements.get(index)`, so out of bounds throws by inheritance from the field's
   type rather than by promise, and any caller guarding on `elementCount()` is
-  guessing.
+  guessing. Step 5's. The register holds this line again: the check review
+  (`check-findings.md` #18) restored it there, so both lists own it until the
+  user says which keeps it.
 
 ## Findings raised
 
@@ -62,3 +65,18 @@ Anything surfaced that was not this target's to fix, and anything a step turned
 up that belongs to a later step's axis — the latter is picked up by that step's
 findings document rather than argued where it was found. Harvested to the
 register at step 13, before this file is deleted.
+
+- **→ Step 5.** `plans/check-findings.md` contract items 8–19. Several landed in
+  the check-fix snapshot; step 5 re-reads each against the tree rather than trusting
+  either list.
+- **→ Step 6.** `plans/check-findings.md` #23: the promises the pass wrote that no
+  test asserts — `Span.addTo`'s displacement policy and replay skip,
+  `Span.removeFrom`'s no-op, `removesConfirmableSpan`, the three
+  `TerminalMaintainer` checks.
+- **→ Row 12.** `plans/check-findings.md` #7: `Line` reaches a concrete `Song`,
+  and `UnitTest.minimalSongMock()` grows a stub per forwarding method.
+- **→ Row 7.** `Ending.hasRepeatSplit(line, int, int)` takes a transposable index
+  pair (`MeasureMapper:710`).
+- **→ Step 13.** `plans/check-findings.md` is this pass's working memory and goes
+  with `plans/design-pass-6/`. Its #19 notes that phases 4 and 7 reread
+  `docs/hairpin-editing.md` and `docs/mutations.md` and found nothing to change.

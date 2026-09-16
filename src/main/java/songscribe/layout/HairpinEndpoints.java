@@ -103,9 +103,9 @@ public final class HairpinEndpoints {
             return null;
         }
 
-        // Resolve through the line, never through Hairpin.getAnchorElementIndex(): that answers
-        // from whichever line the endpoint belongs to and returns -1 when unpositioned, which
-        // would turn into silently wrong arithmetic below rather than a rejection here.
+        // Resolve through the line, never through Hairpin.requireAnchorElementIndex(): that answers
+        // from whichever line the endpoint belongs to, which would turn into silently wrong
+        // arithmetic below rather than a rejection here.
         if (!(line.spanRegistry().anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex))
             || !(line.spanRegistry().endIndexOf(hairpin) instanceof SpanBound.At(var endIndex))) {
             return null;

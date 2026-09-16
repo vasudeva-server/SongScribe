@@ -20,6 +20,7 @@
 package songscribe.binding;
 
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The pair of conversions a two-way binding needs between values of different
@@ -36,9 +37,12 @@ import java.util.function.Function;
  * leaves a two-way binding writing a value back that differs from the one the user
  * entered, which reads as the control editing itself.
  *
- * @param <A> the first side's type
- * @param <B> the second side's type
+ * @param <A> the first side's type, nullable when that side's property is
+ * @param <B> the second side's type, nullable when that side's property is
  * @param forward converts a value of the first side to the second
  * @param backward converts a value of the second side to the first
  */
-public record Transform<A, B>(Function<A, B> forward, Function<B, A> backward) {}
+public record Transform<A extends @Nullable Object, B extends @Nullable Object>(
+    Function<A, B> forward,
+    Function<B, A> backward
+) {}

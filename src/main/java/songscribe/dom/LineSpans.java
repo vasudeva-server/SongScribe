@@ -62,6 +62,31 @@ public final class LineSpans implements SpanLookup {
      */
     public static final int SPAN_ADJACENCY_REACH = 1;
 
+    /**
+     * Which existing same-type spans a span being added absorbs in {@link #mergeOverlapping}:
+     * only those it overlaps, or also those flush against it.
+     */
+    enum Absorb {
+        /**
+         * Only a span sharing an element with the new one. Two spans written back to back
+         * are two deliberate groupings, not one gesture interrupted by an accident.
+         */
+        OVERLAPPING(0),
+
+        /**
+         * Also a span within {@link #SPAN_ADJACENCY_REACH} of an endpoint: two spans that
+         * close describe one uninterrupted gesture, so adding either merges them.
+         */
+        ADJACENT(SPAN_ADJACENCY_REACH);
+
+        /** How far past an endpoint, in elements, an existing span may sit and still be absorbed. */
+        private final int reach;
+
+        Absorb(int reach) {
+            this.reach = reach;
+        }
+    }
+
     private final Line line;
 
     /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
@@ -158,14 +183,10 @@ public final class LineSpans implements SpanLookup {
      * can also name a line the song no longer holds; that has no position at all and is
      * likewise {@link SpanBound#ABSENT}.
      * <p>
-     * Only a cross-line endpoint pays for the two {@link Line#index} scans, and only
+     * Only a cross-line endpoint pays for the two {@link Song#indexOfLine} scans, and only
      * ties are ever cross-line.
      */
-    private SpanBound boundOf(@Nullable StaffElement endpoint) {
-        if (endpoint == null) {
-            return SpanBound.ABSENT;
-        }
-
+    private SpanBound boundOf(StaffElement endpoint) {
         var endpointLine = endpoint.getParentLine();
 
         if (endpointLine == null) {
@@ -177,16 +198,15 @@ public final class LineSpans implements SpanLookup {
             return new SpanBound.At(line.getElementIndex(endpoint));
         }
 
-        // Guarded before the distance is taken: a line the song no longer holds must not
-        // read as one away from line 0 and be treated as an adjacent neighbour.
+        // A line the song no longer holds has no position, so no distance can be taken
+        // from it and it must not read as an adjacent neighbour.
         var song = line.getSong();
+        var thisLineIndex = song.indexOfLine(line);
+        var endpointLineIndex = song.indexOfLine(endpointLine);
 
-        if (!song.contains(line) || !song.contains(endpointLine)) {
+        if (thisLineIndex == null || endpointLineIndex == null) {
             return SpanBound.ABSENT;
         }
-
-        var thisLineIndex = line.index();
-        var endpointLineIndex = endpointLine.index();
 
         return switch (endpointLineIndex - thisLineIndex) {
             case -1 -> SpanBound.BEFORE_LINE;
@@ -261,7 +281,7 @@ public final class LineSpans implements SpanLookup {
 
     /**
      * Points every span endpoint that is {@code oldElement} at {@code newElement}, so
-     * {@link Span#getAnchorElementIndex()}/{@link Span#getEndElementIndex()} remain valid
+     * {@link Span#requireAnchorElementIndex()}/{@link Span#requireEndElementIndex()} remain valid
      * after {@link Line#setElement} swaps the element out. Runs inside that mutator, on
      * replay too: it is self-inverting, and the recorded batch carries no record of it.
      */
@@ -348,10 +368,17 @@ public final class LineSpans implements SpanLookup {
         var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
 
         for (var span : spans) {
-            switch (span.outcomeFor(change, line)) {
-                case SpanOutcome.Simple.KEEP -> { }
-                case SpanOutcome.Simple.REMOVE -> doomed.add(span);
-                case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, span, reshape);
+            // Only a hairpin can reshape, so only a hairpin is asked the wider question: the
+            // merge that consumes a Reshape replaces a run with a copy of a hairpin, and
+            // there is nothing it could do with any other kind of span.
+            if (span instanceof Hairpin hairpin) {
+                switch (hairpin.hairpinOutcomeFor(change, line)) {
+                    case SpanOutcome.Simple.KEEP -> { }
+                    case SpanOutcome.Simple.REMOVE -> doomed.add(hairpin);
+                    case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, hairpin, reshape);
+                }
+            } else if (span.outcomeFor(change, line) == SpanOutcome.Simple.REMOVE) {
+                doomed.add(span);
             }
         }
 
@@ -364,22 +391,12 @@ public final class LineSpans implements SpanLookup {
         }
     }
 
-    /**
-     * Files {@code reshape} under {@code span}'s kind, ready for the merge pass.
-     * <p>
-     * Only a hairpin can reshape: the merge that consumes these answers replaces a run with
-     * a copy of a hairpin, and there is nothing it could do with any other kind of span.
-     */
+    /** Files {@code reshape} under {@code hairpin}'s kind, ready for the merge pass. */
     private static void collectReshape(
         Map<Hairpin.Kind, List<HairpinSpan>> reshapedByKind,
-        Span span,
+        Hairpin hairpin,
         SpanOutcome.Reshape reshape
     ) {
-        if (!(span instanceof Hairpin hairpin)) {
-            throw new IllegalStateException(
-                "Only a hairpin may answer Reshape, but " + span.getClass().getSimpleName() + " did");
-        }
-
         reshapedByKind
             .computeIfAbsent(hairpin.getKind(), kind -> new ArrayList<>())
             .add(new HairpinSpan(hairpin, reshape.range()));
@@ -397,23 +414,27 @@ public final class LineSpans implements SpanLookup {
         hairpinSpans.sort(Comparator.comparingInt((HairpinSpan span) -> span.range().begin()));
 
         var run = new ArrayList<HairpinSpan>();
-        var runEnd = -1;
+
+        // The run's last post-deletion index; null exactly when the run is empty.
+        @Nullable Integer runEnd = null;
 
         for (var span : hairpinSpans) {
             var range = span.range();
 
             // One surviving element between two hairpins is still a break in the gesture.
-            if (!run.isEmpty() && range.begin() > runEnd + SPAN_ADJACENCY_REACH) {
+            if (runEnd != null && range.begin() > runEnd + SPAN_ADJACENCY_REACH) {
                 applySpanRun(run, runEnd, survivors);
                 run.clear();
-                runEnd = -1;
+                runEnd = null;
             }
 
             run.add(span);
-            runEnd = Math.max(runEnd, range.end());
+            runEnd = runEnd == null ? range.end() : Math.max(runEnd, range.end());
         }
 
-        applySpanRun(run, runEnd, survivors);
+        if (runEnd != null) {
+            applySpanRun(run, runEnd, survivors);
+        }
     }
 
     /**
@@ -456,16 +477,16 @@ public final class LineSpans implements SpanLookup {
      * before the widened span's addition so undo restores the original spans after
      * removing the merged one.
      *
-     * @param span  the span about to be added, whose endpoints both sit in this line
-     * @param type  the kind of span that may be absorbed — the concrete class, so a
-     *              crescendo never absorbs a diminuendo
-     * @param reach how far past an endpoint, in elements, an existing span may sit and
-     *              still be absorbed: {@link #SPAN_ADJACENCY_REACH} for a kind whose two
-     *              touching spans are one gesture, {@code 0} for a kind that absorbs only
-     *              what it overlaps
+     * @param span   the span about to be added, whose endpoints both sit in this line
+     * @param type   the kind of span that may be absorbed — the concrete class, so a
+     *               crescendo never absorbs a diminuendo
+     * @param absorb {@link Absorb#ADJACENT} for a kind whose two touching spans are one
+     *               gesture, {@link Absorb#OVERLAPPING} for a kind that absorbs only what
+     *               it overlaps
      */
-    <R extends Span> void mergeOverlapping(R span, Class<? extends R> type, int reach) {
+    <R extends Span> void mergeOverlapping(R span, Class<? extends R> type, Absorb absorb) {
         var own = requireRangeOf(span);
+        var reach = absorb.reach;
 
         // Only a span with both endpoints in this line is a merge candidate: the widening
         // below is arithmetic on these positions, then an index into this line's elements,

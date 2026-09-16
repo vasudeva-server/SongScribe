@@ -84,7 +84,17 @@ public final class ArticulationAction extends NoteOnlyAction {
         char key,
         String undoOpNameKey
     ) {
-        super(mainFrame, name, icon, size, actionCommand, tooltip, NoteOnlyAction.FLAGS);
+        super(
+            mainFrame,
+            name,
+            icon,
+            size,
+            actionCommand,
+            tooltip,
+            // With no staff selection possible in grace mode this only decorates the preview,
+            // which becomes the host note the user is placing.
+            withFlags(NoteOnlyAction.FLAGS, Flag.ENABLED_IN_GRACE_MODE)
+        );
         this.articulationType = articulationType;
 
         var keyStroke = KeyStroke.getKeyStroke(key);

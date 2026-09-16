@@ -115,22 +115,24 @@ public final class MusicEditOperations {
         var beginIndex = RangeQueries.nonGraceBegin(range);
         var endIndex = RangeQueries.nonGraceEnd(range);
 
-        if (beginIndex < 0 || beginIndex == endIndex) {
+        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
             return;
         }
 
+        int begin = beginIndex;
+        int end = endIndex;
         var spans = line.spanRegistry();
 
         line.getSong().withModification(() -> {
             // Looked up rather than asked via LineSpans.sameBeamAt: the remove branch needs
             // the Beam object itself, and going through the boolean would only mean finding
             // it again afterwards.
-            var beginBeam = spans.findBeamAt(beginIndex);
+            var beginBeam = spans.findBeamAt(begin);
 
             //noinspection ObjectEquality
-            if (beginBeam == null || beginBeam != spans.findBeamAt(endIndex)) {
+            if (beginBeam == null || beginBeam != spans.findBeamAt(end)) {
                 // canToggleBeaming has admitted the range, so both endpoints are beamable notes.
-                new Beam(line.noteAt(beginIndex), line.noteAt(endIndex)).addTo(line);
+                new Beam(line.noteAt(begin), line.noteAt(end)).addTo(line);
             } else {
                 beginBeam.removeFrom(line);
             }
@@ -178,9 +180,9 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var predecessorIndex = line.nearestNonGraceIndex(elementIndex, -1);
+        var predecessorIndex = line.previousNonGraceIndex(elementIndex);
 
-        if (predecessorIndex < 0) {
+        if (predecessorIndex == null) {
             return false;
         }
 
@@ -191,8 +193,8 @@ public final class MusicEditOperations {
         // looks both beams up rather than going through LineSpans.sameBeamAt.
         //noinspection ObjectEquality
         if (predecessorBeam != null && predecessorBeam == spans.findBeamAt(elementIndex)) {
-            var anchorIndex = predecessorBeam.getAnchorElementIndex();
-            var endIndex = predecessorBeam.getEndElementIndex();
+            var anchorIndex = predecessorBeam.requireAnchorElementIndex();
+            var endIndex = predecessorBeam.requireEndElementIndex();
 
             line.getSong().withModification(() -> {
                 predecessorBeam.removeFrom(line);
@@ -427,7 +429,7 @@ public final class MusicEditOperations {
 
         // canToggleTuplet() rejects a selection without two non-grace elements, so reaching
         // this with no usable span means the caller passed stale info.
-        if (beginIndex < 0 || beginIndex == endIndex) {
+        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
             throw new IllegalStateException(
                 "toggleTuplet requires at least two non-grace elements in the selection");
         }
@@ -554,7 +556,7 @@ public final class MusicEditOperations {
             // element survives — the wedge pads away from it — but one stranded strictly
             // inside breaks the invariant DynamicMarkingAction.updateEnabledState() relies on.
             stripInteriorPointDynamics(
-                line, new ElementRange(added.getAnchorElementIndex(), added.getEndElementIndex()));
+                line, new ElementRange(added.requireAnchorElementIndex(), added.requireEndElementIndex()));
         });
     }
 
@@ -726,8 +728,8 @@ public final class MusicEditOperations {
             var widenedEnd = spanEnd;
 
             for (var hairpin : sameType) {
-                var anchorIndex = hairpin.getAnchorElementIndex();
-                var endIndex = hairpin.getEndElementIndex();
+                var anchorIndex = hairpin.requireAnchorElementIndex();
+                var endIndex = hairpin.requireEndElementIndex();
 
                 // A hairpin already covering the whole selection has nothing to extend.
                 // Tested against the original selection, never the widened union: a
@@ -829,7 +831,7 @@ public final class MusicEditOperations {
         // Stage 1: Structural validation
         var rightRepeatIndex = validateEndingStructure(line, begin, end);
 
-        if (rightRepeatIndex < 0) {
+        if (rightRepeatIndex == null) {
             return EndingValidationResult.invalid();
         }
 
@@ -852,10 +854,10 @@ public final class MusicEditOperations {
         return checkPrecedingElement(line, begin, end);
     }
 
-    // Returns the index of the right repeat within the selection, or -1 if invalid.
-    private int validateEndingStructure(Line line, int begin, int end) {
+    // Returns the index of the right repeat within the selection, or null if invalid.
+    private @Nullable Integer validateEndingStructure(Line line, int begin, int end) {
         var contentCount = 0;
-        var rightRepeatIndex = -1;
+        Integer rightRepeatIndex = null;
 
         for (var i = begin; i <= end; i++) {
             var type = line.getElement(i).getType();
@@ -867,16 +869,16 @@ public final class MusicEditOperations {
             contentCount++;
 
             if (i < end && type.closesRepeat()) {
-                if (rightRepeatIndex >= 0) {
-                    return -1;
+                if (rightRepeatIndex != null) {
+                    return null;
                 }
 
                 rightRepeatIndex = i;
             }
         }
 
-        if (contentCount < MIN_CONTENT_ELEMENTS || rightRepeatIndex < 0) {
-            return -1;
+        if (contentCount < MIN_CONTENT_ELEMENTS || rightRepeatIndex == null) {
+            return null;
         }
 
         // The split and the end state one repeat structure from its two sides. Replacing
@@ -885,7 +887,7 @@ public final class MusicEditOperations {
         if (!Ending.isValidEnd(
                 line.getElement(rightRepeatIndex).getType(),
                 line.getElement(end).getType())) {
-            return -1;
+            return null;
         }
 
         // Validate first ending region (between optional leading element and right repeat):
@@ -898,13 +900,13 @@ public final class MusicEditOperations {
         }
 
         if (!validateEndingRegionContent(line, firstEndingStart, rightRepeatIndex - 1)) {
-            return -1;
+            return null;
         }
 
         // Validate second ending region (between right repeat and terminal):
         // one or more content elements, no barlines or repeats
         if (!validateEndingRegionContent(line, rightRepeatIndex + 1, end - 1)) {
-            return -1;
+            return null;
         }
 
         return rightRepeatIndex;
@@ -1143,7 +1145,7 @@ public final class MusicEditOperations {
                     if (processedBeams.add(beam)) {
                         var newDirection = flippedDirection(beam.getAnchorElement(), change);
 
-                        for (var j = beam.getAnchorElementIndex(); j <= beam.getEndElementIndex(); j++) {
+                        for (var j = beam.requireAnchorElementIndex(); j <= beam.requireEndElementIndex(); j++) {
                             if (line.getElement(j).getType().isGraceNote()) {
                                 continue;
                             }

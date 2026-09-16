@@ -46,7 +46,7 @@ public final class FermataAction extends NoteOnlyAction {
             0,
             "fermata",
             Strings.get(Strings.ACTION_FERMATA_TOOLTIP),
-            withFlags(NoteOnlyAction.FLAGS, Flag.DISABLE_IN_GRACE_MODE, Flag.REQUIRES_SINGLE_SELECTION)
+            withFlags(NoteOnlyAction.FLAGS, Flag.REQUIRES_SINGLE_SELECTION)
         );
         setUndoOpNameKey(Strings.ACTION_EDIT_OP_TOGGLE_FERMATA);
     }

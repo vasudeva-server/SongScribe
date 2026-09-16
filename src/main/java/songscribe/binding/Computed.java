@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
+import com.uber.nullaway.annotations.Initializer;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -36,9 +37,10 @@ import org.jspecify.annotations.Nullable;
  * factory registers it with the {@link Bindings} that created it, which is what
  * cancels the observations it takes on its own dependencies — see {@link #cancel}.
  *
- * @param <T> the derived value's type
+ * @param <T> the derived value's type, declared {@code @Nullable} when absence is a
+ *     value the graph carries
  */
-final class Computed<T> implements ObservableValue<T>, Subscription {
+final class Computed<T extends @Nullable Object> implements ObservableValue<T>, Subscription {
 
     private final Supplier<T> body;
     private final Observers observers = new Observers();
@@ -49,7 +51,12 @@ final class Computed<T> implements ObservableValue<T>, Subscription {
      */
     private final Map<ObservableValue<?>, Subscription> dependencies = new LinkedHashMap<>();
 
-    private @Nullable T value = null;
+    /**
+     * The result of the most recent run. Assigned by {@link #evaluate}, which every
+     * read made while {@link #stale} goes through, so no read sees it unassigned. A
+     * null here is the body's answer, legitimate when {@code T} is nullable.
+     */
+    private T value;
     private boolean stale = true;
     private boolean evaluating = false;
 
@@ -60,13 +67,12 @@ final class Computed<T> implements ObservableValue<T>, Subscription {
     @Override
     public T get() {
         DependencyTracker.track(this);
-        var current = value;
 
-        if (stale || current == null) {
+        if (stale) {
             return evaluate();
         }
 
-        return current;
+        return value;
     }
 
     @Override
@@ -112,6 +118,7 @@ final class Computed<T> implements ObservableValue<T>, Subscription {
      *     through another computed — a cycle has no fixed point and would otherwise
      *     recurse until the stack ends
      */
+    @Initializer
     private T evaluate() {
         if (evaluating) {
             throw new IllegalStateException(
