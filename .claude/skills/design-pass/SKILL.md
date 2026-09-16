@@ -136,526 +136,68 @@ step 13 deletes them with it.
   through: how to open a document, that the command blocks until the user closes
   it, and the CriticMarkup both sides write in.
 
+### Reading the steps
+
+**Read step documents one at a time.** Read the step 0 document at invocation.
+Read any other step's document only when the record names that step as the next
+step to run. Never read ahead: each step reads the tree that the step before it
+left.
+
 ## Step 0: Resolve, check, resume
 
-`$ARGUMENTS` is a **row number in the register**, `plans/design-pass-register.md`
-— `0`, `7`, `18`, or a suffixed row a split produced, `14a`. Nothing else is a
-target: the register decides what a pass covers and in what order, so work that
-is not on it gets a row before it gets a pass.
-
-**A number whose row has been split is not a target.** If `14` now reads `14a`,
-`14b`, `14c`, say so and ask which; taking one on the user's behalf picks a
-system for them.
-
-**With no argument, take the work already open**, in this order:
-
-1. **A row marked 🔄 resumes.** Its record holds the state; open it and continue
-   at the first step not marked ✅. Where more than one row is 🔄, ask which —
-   two passes open at once is a split the register does not intend.
-2. **Otherwise the first ⏳ row in table order starts.** The ordering is a
-   dependency fact, not a preference, so nothing further down is ready before it.
-   Suffixed rows sort inside their number — `14a`, `14b`, then `15`.
-3. **No ⏳ row left means the regime is done.** Say so; do not invent a target.
-
-Say which row you took, and whether you resumed it or started it, before touching
-anything.
-
-Read that row. Its *System* column names the pass; its *Where* column names the
-target, which is **a set of types, not a directory**. The register's *The unit is
-a system, not a package* says why: `dom` is one directory and about ten systems,
-so a row reading `dom`: `Ss`, `DocPx`, `ViewPx`, `DocumentScale` is four files in
-a package whose other files belong to other passes.
-
-Resolve *Where* into two lists of paths and confirm every one exists before going
-further. A bare class name is located with `jet_brains_find_symbol`. Where a row
-names a whole package, each list is that one directory.
-
-| Row says | Production | Tests |
-|---|---|---|
-| `ui/selection` | `src/main/java/songscribe/ui/selection/` | `src/test/java/songscribe/ui/selection/` |
-| `dom`: `Key`, `KeySignature` | `…/songscribe/dom/Key.java`, `…/dom/KeySignature.java` | `…/test/…/dom/KeyTest.java`, `…/dom/KeySignatureTest.java` |
-
-A row marked *(undecomposed)* is a directory nobody has read yet. **Split it on
-the read**, never before: step 1 names the systems the directory actually holds,
-you take one of them, and step 13 rewrites the register's single row into those
-systems. Splitting from a directory listing predicts boundaries instead of
-finding them, which is the error the register exists to avoid.
-
-Everything below calls the resolved target `<target>`, and everything the pass
-writes lives in `plans/design-pass-<pass>/` — the record and the findings
-documents together, named by the row rather than by the system, so nothing has
-to be translated into a filename to be found again.
-
-1. **Open the record.** `plans/design-pass-<pass>/record.md`. If it exists, read
-   it and resume at the first step not marked ✅ — it is the only memory across a
-   context clear. If not, create the directory and the record from the template
-   at the end of this file.
-
-   **The *Gate* column decides where a resume lands.** A step marked 📖 stopped
-   at its review: open `plans/design-pass-<pass>/findings-<step>.md`, read what
-   came back, and resolve it — the step has changed nothing in the tree, so
-   there is nothing there to infer its state from.
-
-   **Otherwise resume inside the step, not at the top of it.** A step's row
-   carries a *Plan* link once the step has one (see *Steps decompose; the record links
-   where*). Open that plan and take the first phase its dashboard does not mark
-   ✅. Restarting a step whose first three phases are already done redoes work
-   the tree already holds, and the redo is invisible until it conflicts.
-2. **Claim what the register holds for this pass.** Open
-   `plans/design-pass-register.md` and read *Carry-forward findings*. Every item
-   tagged for this pass **is this pass's work**, established by an earlier pass
-   that could not act on it: copy each into the record's *Findings claimed*, and
-   **delete the line from the register**. One list owns a finding at a time, so
-   neither copy can drift from the other.
-
-   Skip this on a resume; a record that already exists has already claimed.
-
-   An item you conclude this pass should not act on goes **back** to the register
-   with what you learned, retagged to whatever will actually reach the code. It is
-   never dropped, and whether to act is the user's call, not yours.
-3. **Confirm the tree is clean.** `git status`. The pass leaves its own work
-   uncommitted, so anything already in the tree becomes indistinguishable from
-   it; stop and say so.
-4. **Verify the branch, and stop if it is a base branch.** A pass runs on its
-   own branch, off `develop`. If `git rev-parse --abbrev-ref HEAD` says
-   `develop` or `main`, **say so and stop** — do not offer to branch, and do not
-   proceed while waiting for an answer. A pass leaves a large uncommitted tree,
-   and on a base branch that tree is in everyone's way and cannot be set aside
-   without taking the branch with it.
-5. **Capture the baseline into the record's *Before* column**, before touching
-   anything. `MAIN` and `TEST` are the two paths from the table, so the same
-   commands serve a whole package and a handful of named types alike:
-
-   ```bash
-   MAIN=(<resolved production paths>)   # files, a directory, or a mix
-   TEST=(<resolved test paths>)
-   git rev-parse --short HEAD           # the commit the pass starts from
-   find "${MAIN[@]}" -name '*.java' | xargs cat | wc -l
-   find "${TEST[@]}" -name '*.java' | xargs cat | wc -l
-   ```
-
-   Then `./scripts/test.sh <the target's test classes>` and record the **passing
-   count**, not the number of `@Test` methods.
+See [reference/step-0-resolve-check-resume.md](reference/step-0-resolve-check-resume.md).
 
 ## Step 1: Inventory
 
-**Delegatable when the row is a whole package** — one agent, or one per
-subpackage if it is large. **A row naming a handful of types is never delegated**;
-it is small enough to read directly, and a subagent's summary of it costs more
-than the files. An *(undecomposed)* row is where delegation earns the most: the
-read has to name the systems the directory holds before one of them can be taken.
-
-Produce:
-
-- **every type in the target and what invariant it currently fails to carry** —
-  a validated record whose domain is a known finite set, a primitive that could
-  be transposed with a sibling, a mode-selecting boolean, a constructor that can
-  build an unusable instance;
-- **every `@Nullable`**, with which of the three answers in `design.md` applies;
-- **every guard**, with the callers that can actually produce the value it
-  rejects;
-- **fan-in per public method** — how many callers rely on it, which is what
-  decides whether it earns a contract at all;
-- which existing `docs/*.md` describe the subsystem this target sits in, since a
-  method cites that overview rather than restating it;
-- every test class, with its case count and what it appears to cover.
-
-Subagent prompts must bound the search surface: absolute working directory,
-repo-relative paths for every directory to examine, Serena's `jet_brains_*` tools
-named explicitly, and an instruction to report and stop rather than widen the
-search. Include *"Read `.claude/rules/serena.md` and follow it for all Java
-exploration and refactoring."*
-
-Write the inventory into `plans/design-pass-<pass>/findings-1-2.md` as *What it
-found*. It is facts only — a type that fails to carry an invariant is named
-here and argued in step 2. **Snapshot**, and go straight on to step 2; the gate
-for both steps is at the end of step 2, since the inventory alone is not a
-decision anyone can review.
+See [reference/step-1-inventory.md](reference/step-1-inventory.md).
 
 ## Step 2: Class design
 
-**Inline. Never delegated.** Step 1 may be handed to a subagent because it
-reports facts; this step decides what exists, and a hierarchy a subagent decided
-is one nobody can audit afterward.
-
-Against step 1's inventory, three questions:
-
-1. **Does each concept in the target have exactly one type?** A type that is two
-   concepts splits; two types that are one concept dissolve into one; a concept
-   with no type at all is named here. Dissolving `KeyChange` into `Key` is the
-   pattern, and it deleted the whole of a later step's work rather than adding
-   to it.
-2. **What varies?** That is what a hierarchy or interface is shaped around. What
-   was deliberately *not* abstracted is stated too — an absence cannot be
-   approved unless it is named.
-3. **Which type owns each invariant step 1 found uncarried?** That answer is
-   step 3's input. Making an invariant unrepresentable on the wrong type moves
-   the runtime check rather than retiring it.
-
-**Where the answer is "the types are wrong", this is the architecture gate** in
-`design.md`: a summary, a diagram sized to the work, and the two or three forks
-with what each buys and costs. A single coherent proposal leaves the user
-nothing to do but agree. The decision is theirs, and every step below is derived
-from the answer — so a change here is made before step 3 begins, not alongside
-it.
-
-The three answers and the architecture gate go into
-`plans/design-pass-<pass>/findings-1-2.md` beneath step 1's inventory, as *What
-needs deciding*. **Then the review gate: open, review, resolve.**
-No type is created, split, dissolved or renamed until it is through.
+See [reference/step-2-class-design.md](reference/step-2-class-design.md).
 
 ## Step 3: Make illegal states unrepresentable
 
-**Inline. Before any contract is written**, because every invariant a type
-carries is a contract clause that never has to be written and a test that never
-has to exist.
-
-From step 1's inventory, over the type set step 2 settled, in this order:
-
-1. **Closed enums** where the domain is a known finite set currently guarded by a
-   validating constructor.
-2. **Wrapper types** for interchangeable primitives a call site could transpose.
-3. **Enums** replacing mode-selecting booleans and bare ints.
-4. **Boundary conversions** — a file, network or UI edge that validates and then
-   passes a raw value inward converts instead, so no layer below can hold an
-   unproven one.
-5. **Constructor validation** only where a closed type is not possible.
-
-Each of these is a design change, so every one of them goes into
-`plans/design-pass-<pass>/findings-3.md` — file and line, the correct structure
-concretely, the recommendation — **as a separately decidable item**. Whether to
-do each is the user's call, and a proposal bundled so that one no takes the rest
-with it has removed that call.
-
-**The document leads with two counts.** How many guards the proposal retires —
-`@Nullable` among them — and how many types it introduces to carry an invariant
-the code currently checks at runtime. That pair is the yield the user is deciding
-on: every guard retired is a runtime check the compiler now makes instead, and a
-proposal that introduces types without retiring guards has added structure
-without moving anything. Both come from step 1's inventory of `@Nullable`s and
-guards, and both stand before the per-change detail.
-
-**Then the review gate: open, review, resolve.** Only what survives it is built —
-and then the guards it retired are deleted, with the tests that were pinned to
-them.
-
-**Snapshot per change or per coherent group.**
+See [reference/step-3-unrepresentable-states.md](reference/step-3-unrepresentable-states.md).
 
 ## Step 4: Extraction and placement
 
-Domain-defined operations move onto the type that owns them — statable without
-naming any caller, named as a verb on its arguments. A `*Utils` or `*Helper`
-static bag in the target is a finding: its contents are redistributed to the
-types owning the invariants, and anything left that names no owner **goes back
-to step 2** — a concept with no type is a class-design decision, not something
-this step can place, so it is an item in this step's *What needs deciding*,
-asking which type the concept wants, rather than a move you invent an owner for.
-
-Every move goes into `plans/design-pass-<pass>/findings-4.md`: what moves, to which
-type, and the invariant that type owns which makes it the owner. **Then the
-review gate: open, review, resolve.** Nothing moves before it.
-
-**Snapshot.**
+See [reference/step-4-extraction-and-placement.md](reference/step-4-extraction-and-placement.md).
 
 ## Step 5: Write the contracts
 
-**Inline. Never delegated.** A subagent guessing at a music-notation promise
-produces confident, plausible, wrong Javadoc — worse than none, because
-everything downstream then tests against it.
-
-**Depth follows fan-in.** A method nothing outside its class calls gets an
-accurate name and no contract. Do not write a contract to be thorough; write it
-where callers rely on the promise.
-
-`plans/design-pass-<pass>/findings-5.md` is **a summary of the work, not a draft
-of it.** No Javadoc text goes in it; the contracts are written after the gate,
-against what the gate settled.
-
-**Three counts open it**, in methods:
-
-- **write** — no Javadoc exists and fan-in earns one;
-- **update** — one exists, but not in the form `.claude/guides/contracts.md`
-  states;
-- **remove** — one exists that fan-in does not earn, or that describes the code
-  instead of promising anything.
-
-Then **one row per class**: its three counts, and a line on what the class
-promises that makes them come out that way. A class whose count is `0 / 0 / 0` is
-still a row — that it earns nothing is the finding.
-
-Then *What needs deciding*, holding two kinds of item:
-
-- **Signature changes the rules below force** — a `record` replacing transposable
-  parameters, an enum replacing a mode-selecting `boolean`, a rename. These are
-  code changes, so they are proposed here and not performed.
-- **Every domain promise you cannot settle from the code**, in the checkpoint
-  form `reference/classification.md` specifies. Nothing mechanical is stated as a
-  question; a promise about notation you guessed at reads exactly like one you
-  knew, which is the whole reason these are asked.
-
-**Then the review gate: open, review, resolve.** No Javadoc is written and no
-signature changed before it. Then write, in this order: the method contracts as
-the reviewer settled them, the class Javadoc — invariants spanning several of its
-methods — then `package-info.java` for invariants spanning the classes. **Anything
-spanning subsystems goes to `docs/`;** if a `docs/` document already states it,
-cite rather than restate.
-
-Three things that are not optional:
-
-- **`@return` on every method whose return type is not `void`.** It is what the
-  IDE shows at the call site.
-- **The signature rules apply as you go** — more than four parameters or two
-  transposable same-typed parameters take a `record`; a mode-selecting `boolean`
-  takes an enum; a misdescribing name gets renamed via `jet_brains_rename`.
-- **The tell of a real contract is that the implementation could in principle
-  violate it.** If you cannot imagine the code breaking the promise, you have
-  described the code.
-
-**Do not document a guard no caller can reach.** A `@throws` for an impossible
-condition propagates outward into callers that handle it.
-
-**Snapshot per class or per coherent group.**
+See [reference/step-5-write-the-contracts.md](reference/step-5-write-the-contracts.md).
 
 ## Step 6: Triage the tests
 
-**Inline.** Each existing test resolves against the floor in `design.md`, not
-against a clause count:
-
-- **keep** — it exercises a real algorithm, an invariant spanning several calls,
-  or behavior with a known-correct corpus, and it can fail.
-- **rewrite** — the case is real but the test is wrong about it: wrong level, a
-  name that does not name the promise, assertions against mocks, an arrangement
-  that does not reach the case, or several tests pinning one case a parameterized
-  test states once.
-- **discard** — a test of a guard no caller can reach, of a state a type now
-  makes unrepresentable, of a private helper's decomposition, of an
-  implementation detail the contract promises nothing about, or a duplicate.
-
-Then **add only the cases the floor calls for and nothing asserts.** A clause
-with no case is not automatically a gap; ask first whether the design already
-enforces it.
-
-**One table, and it is the body of `plans/design-pass-<pass>/findings-6.md`.**
-Triage and proposal are one review: a test kept, a test rewritten, a test
-discarded and a case added are four dispositions of one list, and splitting them
-across two documents hides that a discard and an addition are usually the same
-case moving.
-
-| Test | Kind | Disposition | Why |
-|---|---|---|---|
-| the promise being checked, in one line | which of the three kinds in `design.md` | keep · rewrite · discard · add | one line |
-
-**A discard is a row whose *Kind* cannot be filled.** It fits none of the three
-kinds, which is why it is going — so the column is the table's own check. A row
-you can justify only by naming a branch, a guard or a private helper is a
-discard, whatever you meant to put in it.
-
-**Then the review gate: open, review, resolve.** No `@Test` is written and none is
-deleted until the table has been through it.
-
-Two traps, both here:
-
-- **Before writing any `@Test`, ask whether it will sit beside a same-shape
-  sibling.** If yes, both are rows in one `record` case table from the first case.
-  A varying lambda does not disqualify a case; only a varying *assertion* does.
-- **Do not claim "enumerated in full" unless something fails when the domain
-  grows.** Drive cases from `@EnumSource` / `values()` / a sealed hierarchy, or
-  assert that the table's rows are exactly the domain — a hand-listed table can
-  carry that claim for domains it never actually checks.
-
-**Snapshot per test class or per coherent group.**
+See [reference/step-6-triage-the-tests.md](reference/step-6-triage-the-tests.md).
 
 ## Step 7: Fix test-only surface
 
-Each finding is one of four kinds, and the kind decides the fix:
-
-- **Genuinely test-only** — delete it, or restructure the seam so production uses
-  it too.
-- **A replaceable process-global** — a setter, a probe or a widened field that
-  lets a test swap something process-wide. The first architecture to consider is
-  a stack of instances plus an `AutoCloseable` scope, per *Scope a global before
-  you swap it* in `design.md`, and **naming the production caller that justifies
-  it** is what tells a real scope from a test-only injection point in better
-  clothes. When the whole set of conditions there does not point at a stack, a
-  setter is the answer instead, and it states its restore obligation in its
-  contract — `MessageCenter.setErrorHandler` is the worked example: the policy
-  is process-wide, has no bounded lifetime, and has no owner to move to.
-- **Misnamed internal API** — it takes arguments and returns a value and is
-  already a coherent unit. Rename it to its concept and write its contract.
-- **Lifecycle** — a class with `initialize()` and no way back has an incomplete
-  lifecycle contract, tests or no tests. Follow `docs/lifecycle.md` and the
-  `Disposable` seam.
-
-**Reflection into production internals is the same violation**, not an escape
-from it. When a test cannot arrange the state it needs, the answer is a
-constructor or factory taking that state, used by production too.
-
-`plans/design-pass-<pass>/findings-7.md` lists each finding with the kind it was
-judged to be and the fix that kind decides — the kind is the argument, so a fix
-stated without it is asking to be taken on trust. For a scope, name the
-production caller that justifies it. **Then the review gate: open, review,
-resolve.**
-
-**Snapshot.**
+See [reference/step-7-test-only-surface.md](reference/step-7-test-only-surface.md).
 
 ## Step 8: The suite gate and the visual gate
 
-Every snapshot in steps 2 through 7 builds and runs the classes it touched, or
-that state is unverified. This step is the **full-suite gate**: run
-`./scripts/compile.sh --test`, then `./scripts/test.sh <the target's test
-classes>`. A contract or type change here can break a caller in another package,
-which is what the whole suite is for — and the whole suite is not yours to start.
-
-**Ask the user to run it, and wait.** `.claude/hooks/no-full-test-suite.sh`
-denies a run naming no class or more than four, and that is the rule rather than
-an obstacle to route around: state that the pass is at its gate, name what
-changed and which packages the change can reach, and let the user decide when to
-spend the run. Never attempt the suite yourself, in any form — not by naming
-classes four at a time, not through Gradle, not by any other spelling.
-
-Never rerun a failure with extra flags, and never assume a failure is
-pre-existing. **A failing test means one of three things — code, test, or
-contract** — and weakening a contract to reach green is legitimate only when the
-contract was wrong about the domain, stated explicitly, never decided silently.
-
-**Then the visual gate.** A green suite says nothing about pixels. Where a pass
-moved a measurement, a geometry, or a rendering call site, a regression shows as
-text shifted by a fraction of a pixel, a box clipped at one edge, or a label that
-stopped centring — and nothing in this repo asserts any of that.
-
-**Derive the checklist from the call sites the pass re-pointed, never from a
-stock list.** For each member the pass moved or changed, follow its fan-in from
-step 1 out to the surface that draws it, and write one line naming three things:
-what to open, what to look at, and what a regression looks like there. A pass
-that re-points a glyph-ink query writes "volta bracket labels — the number sits
-inside the bracket, not clipped at its right edge", not "check rendering". A line
-a person cannot act on without reading the diff is not on the list.
-
-**Ask the user to run it, and wait** — the application is never launched without
-their permission. If the pass reached nothing a person can see, say so plainly
-instead of emitting a checklist of things it cannot have broken.
-
-**Snapshot after each gate**, and mark 8a and 8b separately. The visual gate can
-sit open for a long time — it needs a person at the application — so a resume has
-to be able to see that the suite is through and the eyes are not.
+See [reference/step-8-suite-and-visual-gates.md](reference/step-8-suite-and-visual-gates.md).
 
 ## Step 9: Judge the diagrams
 
-Any diagram in the target's `docs/` document or Javadoc. Keep only what shows
-what prose cannot — a topology, a state machine, a sequence with genuine
-concurrency. A diagram walking through a sequence the contracts already state is
-the contract drawn a second time, and the second copy goes stale.
-
-Each diagram, its verdict and the reason go into
-`plans/design-pass-<pass>/findings-9.md`. **Then the review gate: open, review,
-resolve.** A diagram is someone's explanation of the system and deleting one is
-not yours to decide alone.
-
-**Snapshot** if anything changed.
+See [reference/step-9-judge-the-diagrams.md](reference/step-9-judge-the-diagrams.md).
 
 ## Step 10: Coverage — once, scoped
 
-`./scripts/coverage.sh unit <the target's test classes>`. Once, as the closing
-step, never as a target.
-
-Of **each** unexecuted region, ask exactly one question:
-
-> Does this correspond to a contract case that is missing, or to implementation
-> the contract promises nothing about?
-
-The first answer amends the contract and its tests. The second leaves it alone,
-**and you write down why**. If nothing can reach a region at all, that is a
-dead-code finding against production.
-
-**You never write a test to turn a region green.**
-
-Re-run the unit suite. **Snapshot.**
+See [reference/step-10-coverage.md](reference/step-10-coverage.md).
 
 ## Step 11: Mutation — opportunistic
 
-`./scripts/mutation-test.sh [target]`, only if a specific case is worth
-investigating. Under contract testing a **high surviving-mutant count is the
-expected, healthy state**. **Never report the percentage.**
+See [reference/step-11-mutation.md](reference/step-11-mutation.md).
 
 ## Step 12: Adversarial review
 
-**The pass cannot review itself.** Every step above was decided, executed and
-re-read by the same reader, so a fault that survived the writing survives the
-reading. This step hands the whole tree to a reviewer that did not write it, and
-it is the last thing that happens while the record and the findings documents
-still exist to explain what the pass believed.
-
-**The user runs the review. Ask, and wait.** What review, and how, is theirs;
-the pass does not choose it and does not stand in for it — a review you perform
-yourself is the same reader again, which is the thing this step exists to get
-past. State that the pass is at its adversarial review, name what changed and
-which packages the change reaches, and stop there. Waiting is the whole step;
-nothing else in the tree moves while it runs.
-
-**Every finding gets an answer, and the answer lands here.** A finding against
-the pass's own work is fixed in this step, while the reason for the design is
-still in hand — never carried forward to the register, never left for close out,
-never recorded as something a later pass owns. A finding you judge wrong is
-answered with why, and the user settles it; you do not dismiss one on your own
-reading, which is the reading the review exists to check. A finding that lands
-outside the target is still a finding, on the terms in *Things that stay true
-throughout*.
-
-**Snapshot after the fixes, and ask for the review again.** A round that changed
-code has not been reviewed. Rounds are cheap against a pass that has just
-restructured a subsystem.
-
-**The step is complete only when the user says the review passed.** Not when the
-findings are fixed, not when you believe they are — when they say so. Until then
-step 13 does not begin: it deletes the record and every findings document, and a
-review still open is work those documents are the memory of.
+See [reference/step-12-adversarial-review.md](reference/step-12-adversarial-review.md).
 
 ## Step 13: Close out
 
-**Harvest, and delete the record** — `plans/design-pass-register.md` states
-why under *The record is working memory*. Two things leave the record first:
-
-1. **Anything a later pass owns** goes to the register's *Carry-forward
-   findings*, tagged with the row that owns it — `**→ Pass 7.**` — with file and
-   line, and stated so a reader who never saw this pass can act on it. Where the
-   owning row may never be scheduled, tag the track that will actually reach the
-   code instead. Nothing speculative, and nothing this pass could have fixed
-   itself: a finding inside your own reach is fixed here, while the reason for it
-   is still in hand.
-2. **Anything about the system's shape** goes to `docs/`, written in this pass
-   rather than promised to a later one.
-
-Both, plus any row rewrite a split forces, go into
-`plans/design-pass-<pass>/findings-13.md` first. **Then the review gate: open,
-review, resolve.** Deletion is the one step nothing recovers from, and a
-carry-forward item is written for a reader who will never be able to ask what it
-meant.
-
-Then flip the register row to ✅ and **delete `plans/design-pass-<pass>/`
-entire** — the record and every findings document go together, they are working
-memory on the same terms, and everything in them that outlives the pass has just
-been harvested. Any execution plan a step took goes with them, from wherever
-`/make-plan` put it. The row, the findings and the deletion are one
-change, and they land in the tree beside the pass's own work for the user to
-commit.
-
-**A row you split rewrites itself here.** Where step 1 read an *(undecomposed)*
-directory and named the systems it holds, replace that single row with one row
-per system, ordered by what each takes its types from, and mark ✅ only the one
-this pass took. The names come from the read, so this is the one place the
-register learns something it could not have predicted.
-
-**A split suffixes; it never renumbers.** Row `14` becomes `14a`, `14b`, `14c`,
-and every row below keeps the number it had. A row number is permanent identity —
-carry-forward findings are tagged with it, and those tags are written by passes
-that are over and cannot be asked what they meant. Renumbering would silently
-re-point every one of them at the wrong system. A suffixed row that splits again
-suffixes again: `14b1`, `14b2`.
-
-Then report: what the types now carry that runtime checks used to — with step 3's
-two counts as they actually landed — what the contracts turned out to promise,
-what the reviews changed about what you proposed, and anything you surfaced that
-is not yours to decide.
+See [reference/step-13-close-out.md](reference/step-13-close-out.md).
 
 ## Things that stay true throughout
 
@@ -714,49 +256,4 @@ is not yours to decide.
 
 ## The record template
 
-`plans/design-pass-<pass>/record.md`, created at step 0:
-
-```markdown
-# Design Pass — `<target>`
-
-Run by `/design-pass <row number>` — register row `<n>`, *<System>*.
-
-**Status:** ⏳ not started · 🔄 in progress · ✅ complete
-
-| Step | Status | Gate | Plan | Notes |
-|---|---|---|---|---|
-| 1 Inventory | ⏳ | with 2 | — | |
-| 2 Class design | ⏳ | ⏳ | — | |
-| 3 Unrepresentable states | ⏳ | ⏳ | — | |
-| 4 Extraction | ⏳ | ⏳ | — | |
-| 5 Contracts | ⏳ | ⏳ | — | |
-| 6 Test triage | ⏳ | ⏳ | — | |
-| 7 Test-only surface | ⏳ | ⏳ | — | |
-| 8a Suite gate | ⏳ | n/a | — | |
-| 8b Visual gate | ⏳ | n/a | — | |
-| 9 Diagrams | ⏳ | ⏳ | — | |
-| 10 Coverage | ⏳ | n/a | — | |
-| 11 Mutation | ⏳ | n/a | — | opportunistic |
-| 12 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
-| 13 Close out | ⏳ | ⏳ | — | |
-
-*Gate* is the state of the step's findings document: ⏳ not written · 📖 open for
-review · ✅ resolved. A step whose *Gate* is not ✅ has made no code change, so a
-resume that finds one 📖 reads the marked-up document rather than the tree.
-
-*Plan* links the step's execution plan once it has one, and is where a resume
-picks up — take the first phase that plan's dashboard does not mark ✅. `—` means
-the step is small enough to hold in one sitting.
-
-## Findings claimed
-
-Carry-forward items taken from the register at step 0, and what each turned out
-to be. Deleted from the register when claimed.
-
-## Findings raised
-
-Anything surfaced that was not this target's to fix, and anything a step turned
-up that belongs to a later step's axis — the latter is picked up by that step's
-findings document rather than argued where it was found. Harvested to the
-register at step 13, before this file is deleted.
-```
+Read only when step 0 creates a new record: [reference/record-template.md](reference/record-template.md).
