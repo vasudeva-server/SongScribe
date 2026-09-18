@@ -170,11 +170,6 @@ the reason for it is still in hand.
   `StemmedNotehead.BLACK_SMALL` and `SMuFLGlyph.NOTEHEAD_BLACK_SMALL` are
   deleted, so re-adding them is part of that future change rather than a
   prerequisite for it.
-- **→ Pass 6.** `StaffElementRun.getElement` is contracted as *"The element at
-  `index`."* — no range, no `@return`, no `@throws`. `Line`'s implementation is a
-  bare `elements.get(index)`, so out of bounds throws by inheritance from the
-  field's type rather than by promise, and any caller guarding on `elementCount()`
-  is guessing. Step 5 of the pass owns it.
 - **→ Pass 28.** `strings.properties` has `dialog.song.settings.year` above
   `dialog.converter.converting`, breaking the within-group alphabetical order the
   strings guide requires.

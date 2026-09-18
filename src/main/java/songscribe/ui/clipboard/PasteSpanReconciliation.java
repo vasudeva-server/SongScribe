@@ -109,12 +109,12 @@ import songscribe.dom.TupletValidator;
  * <p><b>A paste that merely abuts a hairpin is not this class's problem.</b> Two
  * same-type hairpins left nose to tail are one hairpin, but that is the same rule
  * that applies when the user draws a hairpin flush against an existing one, so it
- * lives where drawing already handles it: {@link Line#addCrescendo} and
- * {@link Line#addDiminuendo} absorb an overlapping <em>or adjacent</em> same-type
- * hairpin, and {@code tryInsertFragment} adds pasted spans through
- * {@link Line#addPastedSpan}, which routes hairpins to them. A different type
- * merges with nothing and the two hairpins stand side by side, again exactly as when
- * drawn. Nothing here needs to know about it.
+ * lives where drawing already handles it: {@code tryInsertFragment} adds each pasted
+ * span through {@link Span#addTo}, which runs the hairpin's own displacement
+ * policy, {@link Hairpin#applyDisplacementPolicy}, and
+ * that policy absorbs an overlapping <em>or adjacent</em> same-type hairpin. A
+ * different type merges with nothing and the two hairpins stand side by side, again
+ * exactly as when drawn. Nothing here needs to know about it.
  *
  * <p><b>Only a straddle counts.</b> #614 words the tuplet/beam rule as "if the paste
  * does not completely replace a group, remove it from both sides", which literally

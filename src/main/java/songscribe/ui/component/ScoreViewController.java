@@ -1179,7 +1179,7 @@ public final class ScoreViewController {
      * must run this before mutating anything — declining leaves the score untouched.
      */
     private boolean confirmEndingInvalidatedByDeletion(Line line, StaffElementRun.EffectiveRange range) {
-        return !ElementChange.forDeletion(line, range.range()).removesConfirmableSpan()
+        return !new ElementChange.Deletion(line, range.range()).removesConfirmableSpan()
             || EndingConfirms.confirmInvalidation(score);
     }
 
@@ -1474,18 +1474,16 @@ public final class ScoreViewController {
                 // mutated. Skipped when the paste-replace's own deletion already invalidates an
                 // ending: handlePaste has confirmed that, and the ending is going either way.
                 var deletionAlreadyConfirmed = rawDeleteRange != null
-                    && ElementChange.forDeletion(line, rawDeleteRange).removesConfirmableSpan();
+                    && new ElementChange.Deletion(line, rawDeleteRange).removesConfirmableSpan();
 
                 if (!deletionAlreadyConfirmed) {
-                    var insertedTypes = clones.stream().map(StaffElement::getType).toList();
-
-                    // Every type is tested at insertIndex rather than at its own eventual
+                    // Every element is tested at insertIndex rather than at its own eventual
                     // position: the run lands contiguously, so each element sits inside the
                     // ending (or at its split boundary) exactly when the first one does, and
                     // only the pre-insertion index resolves correctly against the
                     // pre-insertion line.
-                    var insertionInvalidatesEnding = insertedTypes.stream()
-                        .anyMatch(type -> ElementChange.forInsertion(line, insertIndex, type)
+                    var insertionInvalidatesEnding = clones.stream()
+                        .anyMatch(clone -> new ElementChange.Insertion(line, insertIndex, clone)
                             .removesConfirmableSpan());
 
                     if (insertionInvalidatesEnding && !EndingConfirms.confirmInvalidation(score)) {

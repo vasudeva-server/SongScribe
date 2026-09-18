@@ -43,7 +43,6 @@ import songscribe.message.mutation.ElementField;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.edit.GraceModeManager;
 import songscribe.undo.OpNames;
 
 /**
@@ -61,52 +60,81 @@ final class PreviewElementInserter {
     }
 
     /**
-     * Handles a click on the preview element, performing the appropriate action
-     * (append, insert, or modify). Called from {@code LineComponent.mouseClicked()}.
-     * <p>
-     * When {@code forceInsert} is {@code true} always inserts rather than modifying an existing
-     * element at the same x position. Used by grace mode, which must insert a new host note even
-     * when an existing note occupies the locked insertion slot.
+     * A click the preview element owns, resolved against the line it landed on: where the
+     * hover put it, and what the preview would place there.
      */
-    static void handleClick(LineComponent lc, boolean forceInsert) {
+    private record PreviewClick(Line line, PreviewElementManager.PreviewHover hover, StaffElement previewElement) {
+
+        int insertionIndex() {
+            return hover.insertionIndex();
+        }
+
+        boolean appends() {
+            return insertionIndex() == line.elementCount();
+        }
+    }
+
+    /**
+     * Resolves a click on {@code lc} into the click the preview element owns, or {@code null}
+     * when it owns none there: the preview is not the click's target, nothing is hovered, or the
+     * hovered position lies past the auto-maintained terminal.
+     */
+    private static @Nullable PreviewClick resolveClick(LineComponent lc) {
         if (!PreviewElementManager.isPreviewClickTarget(lc)) {
-            return;
+            return null;
         }
 
         var line = lc.getLine();
-
-        if (line == null) {
-            return;
-        }
-
         var hover = PreviewElementManager.hover();
-
-        if (hover == null) {
-            return;
-        }
-
-        var insertionIndex = hover.insertionIndex();
-        var overElementX = hover.overElementX();
         var previewElement = EditModeManager.getPreviewElement();
+
+        if (line == null || hover == null || previewElement == null) {
+            return null;
+        }
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
         // terminal. trackMouse already clears the preview at these positions.
+        if (PreviewElementManager.isPositionBlockedByTerminal(
+                line.getSong(), line, hover.insertionIndex(), hover.overElementX())) {
+            return null;
+        }
+
+        return new PreviewClick(line, hover, previewElement);
+    }
+
+    /**
+     * Handles a note-entry click on the preview element: an append, an insertion, or a
+     * replacement of the element under the pointer. Called from {@code LineComponent.clicked()}.
+     * <p>
+     * A grace-note preview is refused. A grace note enters a line only through grace mode,
+     * which gates it through {@link #acceptForGraceMode} and pairs it with its host.
+     */
+    static void handleClick(LineComponent lc) {
+        var click = resolveClick(lc);
+
+        if (click == null) {
+            return;
+        }
+
+        var line = click.line();
+        var hover = click.hover();
+        var previewElement = click.previewElement();
+        var insertionIndex = click.insertionIndex();
+        var overElementX = hover.overElementX();
         var song = line.getSong();
 
-        if (PreviewElementManager.isPositionBlockedByTerminal(song, line, insertionIndex, overElementX)) {
+        if (previewElement.getType().isGraceNote()) {
             return;
         }
 
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
-        if (overElementX) {
-            if (previewElement != null && isDirectClickOnTerminal(line, insertionIndex)) {
-                var previewType = previewElement.getType();
+        if (overElementX && isDirectClickOnTerminal(line, insertionIndex)) {
+            var previewType = previewElement.getType();
 
-                if (song.canReplaceTerminal(previewType)) {
-                    song.replaceTerminal(previewType);
-                    return;
-                }
+            if (song.canReplaceTerminal(previewType)) {
+                song.replaceTerminal(previewType);
+                return;
             }
         }
 
@@ -121,12 +149,6 @@ final class PreviewElementInserter {
             return;
         }
 
-        // isPreviewClickTarget (checked at entry) guarantees a preview element; this guard
-        // proves that to the null-checker before deriving the op-name.
-        if (previewElement == null) {
-            return;
-        }
-
         // Every gap slot trackMouse hides the ghost for is refused here on the same rule —
         // ignore the click.
         if (!overElementX && !line.canInsertRunAt(insertionIndex, List.of(previewElement))) {
@@ -135,8 +157,8 @@ final class PreviewElementInserter {
 
         // Decided once and used both to ask and to act, so the question can never be asked about a
         // click that then does something else.
-        var appends = insertionIndex == line.elementCount();
-        var replacesExisting = !appends && !forceInsert && overElementX;
+        var appends = click.appends();
+        var replacesExisting = !appends && overElementX;
         var opLabel = OpNames.addLabel(previewElement.getType());
 
         // Every action runs in a modification bracket so the line.add/setElement calls inside
@@ -157,12 +179,86 @@ final class PreviewElementInserter {
         }
 
         song.withModification(opLabel, () -> {
-            if (appends) {
-                addPreviewElement(lc, line);
-            } else {
-                insertElement(lc, insertionIndex, line);
+            if (mergedRepeatInstead(line, insertionIndex)) {
+                return;
+            }
+
+            var accepted = accept(lc, line, insertionIndex, previewElement);
+
+            if (accepted != null) {
+                accepted.land();
             }
         });
+    }
+
+    /**
+     * Gates grace mode's insertion of the preview element at the hovered slot: the grace note on
+     * the first click, and its host on the click that completes the pair. Nothing is inserted
+     * here; the caller lands the result.
+     * <p>
+     * The element always goes in front of whatever the pointer is over, and never replaces it.
+     * The grace note and its host land as a pair that ends in a note, so the only slots refused
+     * are the two {@link Line#canInsertElementAt} refuses, inside an existing pair.
+     *
+     * @param lc the line the click landed on
+     * @return the accepted insertion, or {@code null} when the insertion may not go ahead: the
+     *     preview owns no click on {@code lc}, the slot is refused, or the gate declined it for
+     *     want of room or at a confirmation, having told the user which
+     */
+    static @Nullable AcceptedInsertion acceptForGraceMode(LineComponent lc) {
+        var click = resolveClick(lc);
+
+        if (click == null || !click.line().canInsertElementAt(click.insertionIndex())) {
+            return null;
+        }
+
+        return accept(lc, click.line(), click.insertionIndex(), click.previewElement());
+    }
+
+    /**
+     * Runs the insertion gate for {@code element} at {@code index}: the chain walk, the fit check
+     * and, unless the element is appended, the ending confirm. Mutates nothing on the line.
+     *
+     * @return the accepted insertion, or {@code null} when the line has no room or the user
+     *     declined the confirm
+     */
+    private static @Nullable AcceptedInsertion accept(
+        LineComponent lc, Line line, int index, StaffElement element) {
+
+        // Appending needs no further confirmation: nothing follows the new element, so it can
+        // invalidate no ending. Elsewhere the ending confirm runs inside the gate: declining it
+        // must leave the line exactly as it was, on the same terms as a refusal for want of room.
+        BooleanSupplier confirmed = index == line.elementCount()
+            ? () -> true
+            : () -> !new ElementChange.Insertion(line, index, element).removesConfirmableSpan()
+                || EndingConfirms.confirmInvalidation(lc);
+
+        if (walkAndCalculateInsertion(lc, line, element, index, confirmed) == null) {
+            return null;
+        }
+
+        return new AcceptedInsertion(line, index, element);
+    }
+
+    /**
+     * Whether the click merged a {@code REPEAT_LEFT} with a {@code REPEAT_RIGHT} at
+     * {@code index} instead of placing the preview element, re-arming the preview when it did.
+     * <p>
+     * The merge is a {@code setElement} that {@code elementWasModified} performs itself, so a
+     * commit always follows. The element armed is not necessarily the merged one:
+     * {@code elementWasModified}'s {@code REPEAT_LEFT} branch merges at {@code index - 1},
+     * leaving the arm on the untouched element after it. Harmless either way: that element's
+     * predecessor is the merged {@code REPEAT_LEFT_RIGHT}, which is not beamable, so a beam
+     * request against it is refused. An append arms the last element, the merged one.
+     */
+    private static boolean mergedRepeatInstead(Line line, int index) {
+        if (!EditModeManager.elementWasModified(line, index)) {
+            return false;
+        }
+
+        var armedIndex = index == line.elementCount() ? index - 1 : index;
+        EditModeManager.previewElementDidChange(line, armedIndex);
+        return true;
     }
 
     /**
@@ -329,114 +425,11 @@ final class PreviewElementInserter {
     }
 
     /**
-     * Adds a preview element to the end of the line.
-     *
-     * @param lc   The LineComponent
-     * @param line The line to add the element to
-     */
-    private static void addPreviewElement(LineComponent lc, Line line) {
-        var previewElement = EditModeManager.getPreviewElement();
-
-        if (previewElement == null) {
-            return;
-        }
-
-        var elementCount = line.elementCount();
-
-        if (EditModeManager.elementWasModified(line, elementCount)) {
-            // This branch is reached only after elementWasModified performed a setElement
-            // merging REPEAT_LEFT with REPEAT_RIGHT, so a commit always follows, and the
-            // element it arms is a REPEAT_LEFT_RIGHT, which is not beamable.
-            EditModeManager.previewElementDidChange(line, elementCount - 1);
-            return;
-        }
-
-        // Appending needs no further confirmation: nothing follows the new element, so it can
-        // invalidate no ending.
-        var insertion = walkAndCalculateInsertion(lc, line, previewElement, elementCount, () -> true);
-
-        if (insertion == null) {
-            return;
-        }
-
-        line.addElement(previewElement);
-
-        var newLastIndex = line.elementCount() - 1;
-        EditModeManager.previewElementDidChange(line, newLastIndex);
-    }
-
-    @Nullable
-    private static StaffElement validateAndGetPreviewElement(Line line, int elementIndex) {
-        var previewElement = EditModeManager.getPreviewElement();
-
-        if (previewElement == null) {
-            return null;
-        }
-
-        if (EditModeManager.elementWasModified(line, elementIndex)) {
-            // Same reasoning as addPreviewElement's identical guard: this branch is reached only
-            // after elementWasModified performed a setElement merging REPEAT_LEFT with
-            // REPEAT_RIGHT, so a commit always follows. Unlike there, the armed index is not
-            // necessarily the merged element — elementWasModified's REPEAT_LEFT branch merges at
-            // elementIndex - 1, leaving the arm on the untouched element after it. Harmless
-            // either way: that element's predecessor is the merged REPEAT_LEFT_RIGHT, which is
-            // not beamable, so a beam request against it is refused.
-            EditModeManager.previewElementDidChange(line, elementIndex);
-            return null;
-        }
-
-        return previewElement;
-    }
-
-    private static void insertElement(LineComponent lc, int xIndex, Line line) {
-        var previewElement = validateAndGetPreviewElement(line, xIndex);
-
-        if (previewElement == null) {
-            return;
-        }
-
-        // If inserting into a tuplet, remove it — the new element changes the rhythmic grouping.
-        var tuplet = line.spanRegistry().findTupletAt(xIndex - 1);
-
-        if ((tuplet != null) && ((xIndex - 1) < tuplet.requireEndElementIndex())) {
-            tuplet.removeFrom(line);
-        }
-
-        // The ending confirm runs inside the insertion gate: declining it must leave the line
-        // exactly as it was, on the same terms as a refusal for want of room.
-        var insertion = walkAndCalculateInsertion(lc, line, previewElement, xIndex,
-            () -> !ElementChange.forInsertion(line, xIndex, previewElement.getType())
-                .removesConfirmableSpan()
-                || EndingConfirms.confirmInvalidation(lc));
-
-        if (insertion == null) {
-            return;
-        }
-
-        // Grace mode inserts its grace note with mutation tracking suspended, so a repair made
-        // here would never reach the undo record. It takes the repairs over, running them
-        // inside the bracket that makes the pairing undoable.
-        var repairsDeferred = GraceModeManager.deferInsertionRepairs();
-
-        if (!repairsDeferred) {
-            line.repairNeighborsBeforeInsertion(xIndex, List.of(previewElement));
-        }
-
-        line.addElement(xIndex, previewElement);
-
-        if (!repairsDeferred) {
-            line.repairNeighborsAfterInsertion(xIndex, previewElement);
-        }
-
-        EditModeManager.previewElementDidChange(line, xIndex);
-    }
-
-    /**
      * Replaces an existing element with {@code replacement}, built by {@link #replacementFor}
      * and already through the fit gate. Called when the user clicks on an existing element head
      * with the preview element active. If the replacement is not a duration element and the
-     * following element is a breath mark, that breath mark is cascade-deleted through
-     * {@code deleteRange} so all gap-fill, glissando, and syllable/extend logic is reused.
+     * following element is a breath mark, that breath mark is deleted through
+     * {@code deleteRange}, so the deletion's glissando and syllable repairs apply to it.
      *
      * @param lc           The LineComponent
      * @param elementIndex The index of the element to replace
@@ -446,7 +439,7 @@ final class PreviewElementInserter {
     private static void modifyExistingElement(
         LineComponent lc, int elementIndex, StaffElement replacement, Line line) {
 
-        if (validateAndGetPreviewElement(line, elementIndex) == null) {
+        if (mergedRepeatInstead(line, elementIndex)) {
             return;
         }
 
@@ -454,7 +447,7 @@ final class PreviewElementInserter {
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
-        var endingEffect = ElementChange.forReplacement(line, elementIndex, replacement).endingEffect();
+        var endingEffect = new ElementChange.Replacement(line, elementIndex, replacement).endingEffect();
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {

@@ -24,6 +24,7 @@ import java.awt.event.ActionEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.ui.component.InsertionPointOverlay;
@@ -95,7 +96,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
     /**
      * Whether a key change may be written at {@code index} on {@code line}.
      *
-     * <p>Three positions are refused; every other index the mode's own geometry offers is taken.
+     * <p>Four positions are refused; every other index the mode's own geometry offers is taken.
      *
      * <ul>
      *   <li><b>Index 0.</b> A {@link KeyChangeElement} is never the first element of a line —
@@ -116,6 +117,9 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      *       that neighborhood, the gap inside the pair, is {@link Line#canInsertElementAt}'s and
      *       is refused before this predicate ever sees it: nothing goes there, whoever is
      *       placing.</li>
+     *   <li><b>The index in front of a breath mark.</b> A breath mark stands only directly after
+     *       a duration element, and the inserted run ends with the key change —
+     *       {@link Line#canTrailRunAt}.</li>
      * </ul>
      *
      * <p>Out-of-range indices answer {@code false} rather than throwing: the predicate is asked on
@@ -136,7 +140,8 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
         return index > 0
             && index <= lastNoteIndex
             && !line.isKeyChangeAt(index - 1)
-            && !line.isKeyChangeAt(index + 1);
+            && !line.isKeyChangeAt(index + 1)
+            && line.canTrailRunAt(index, ElementType.KEY_CHANGE);
     }
 
     /**

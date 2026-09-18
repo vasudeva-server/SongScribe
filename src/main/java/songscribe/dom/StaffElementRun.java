@@ -51,11 +51,10 @@ import org.jspecify.annotations.Nullable;
  *
  * <h2>Why this is an interface rather than part of {@link Line}</h2>
  *
- * <p>These rules were {@code Line}'s, and a line is still the run they mostly operate on. But a
- * clipboard {@link songscribe.ui.clipboard.Fragment} is a run of elements too, holding the same
- * pairs and needing the same answer about them — a fragment that dropped a key change and kept
- * its barline, or dropped a barline that was never one, would be reasoning about pairs by a rule
- * of its own. It simply has no line, and no undo history to record into.
+ * <p>A clipboard {@link songscribe.ui.clipboard.Fragment} is a run of elements too, holding the
+ * same pairs as a {@link Line} and needing the same answer about them — a fragment that dropped a
+ * key change and kept its barline, or dropped a barline that was never one, would be reasoning
+ * about pairs by a rule of its own. It simply has no line, and no undo history to record into.
  *
  * <p>{@link LyricRun} extends this because a run carrying lyric chains is a run of elements
  * first, so {@link Line} and {@link DetachedLyricRun} answer for both without implementing
@@ -80,22 +79,35 @@ public interface StaffElementRun {
     // What a run must answer for itself
     // -------------------------------------------------------------------------
 
-    /** The element at {@code index}. */
+    /**
+     * The element at {@code index}.
+     *
+     * @param index an index for which {@link #hasIndex} is true
+     * @return the element standing at {@code index}
+     * @throws IndexOutOfBoundsException if {@code index} is outside {@code 0..elementCount() - 1}
+     */
     StaffElement getElement(int index);
 
-    /** The number of elements in this run. */
+    /**
+     * The number of elements in this run.
+     *
+     * @return the count of every element, a trailing element the run maintains for itself
+     *     included
+     */
     int elementCount();
 
     /**
-     * The number of elements the run's own content occupies — {@link #elementCount()} less
-     * any trailing element the run maintains for itself rather than holding as content
-     * (a {@link Line}'s auto-maintained terminal barline).
+     * The number of elements the run's own content occupies.
+     *
+     * @return {@link #elementCount()} less any trailing element the run maintains for itself
+     *     rather than holding as content (a {@link Line}'s auto-maintained terminal barline)
      */
     int effectiveElementCount();
 
     /**
-     * Whether {@code index} addresses an element of this run, and so may be passed to
-     * {@link #getElement}.
+     * Whether {@code index} addresses an element of this run.
+     *
+     * @return {@code true} exactly when {@code index} may be passed to {@link #getElement}
      */
     default boolean hasIndex(int index) {
         return index >= 0 && index < elementCount();
@@ -131,12 +143,19 @@ public interface StaffElementRun {
      * <p>Says nothing about whether the following note is present: a pair whose host lies
      * past the end of the run still reads as paired, which is what lets
      * {@link songscribe.ui.clipboard.Fragment#capture} recognize the orphan it has to trim.
+     *
+     * @return {@code true} when a grace note carrying a connecting glissando stands at
+     *     {@code index}
      */
     default boolean isPairedGraceNote(int index) {
         return hasIndex(index) && getElement(index) instanceof NoteElement note && note.isPairedGraceNote();
     }
 
-    /** Whether the element at {@code index} is the host of a paired grace note. */
+    /**
+     * Whether the element at {@code index} is the host of a paired grace note.
+     *
+     * @return {@code true} when {@link #isPairedGraceNote} is true of {@code index - 1}
+     */
     default boolean isHostOfPairedGraceNote(int index) {
         return index >= 1 && isPairedGraceNote(index - 1);
     }
@@ -150,12 +169,8 @@ public interface StaffElementRun {
      * key change a document of this program's own making can contain, and re-testing it
      * here is what keeps the widening from reaching past a key change that arrived any
      * other way.
-     *
-     * @param index element index; out of range, or 0, yields false — index 0 has nothing
-     *     before it to pair with
-     * @return {@code true} when {@code index} and {@code index - 1} are such a pair
      */
-    default boolean isKeyChangeBehindBarline(int index) {
+    private boolean isKeyChangeBehindBarline(int index) {
         return isKeyChangeAt(index) && isBarAt(index - 1);
     }
 
@@ -194,14 +209,13 @@ public interface StaffElementRun {
      * same pairs, so selecting either half draws both as selected and the deletion takes what
      * was already shown going. Neither half of that reasoning is redundant; the backward
      * extension is not derivable from the forward one.
-     * <p>
-     * This is also why no deletion can leave a key change at index 0: reaching index 0 takes
-     * deleting the barline in front of it, which carries the key change along. A separate
-     * index-0 guard would be dead code.
      *
      * @param begin the first element the caller named
      * @return {@code begin} extended back over the element paired with it, or {@code begin}
      *     unchanged when nothing before it is paired with it; never greater than {@code begin}
+     * @invariant no deletion of the range this begins leaves a key change at index 0: reaching
+     *     index 0 takes deleting the barline in front of the key change, which carries the key
+     *     change along
      */
     default int effectiveBegin(int begin) {
         if (isHostOfPairedGraceNote(begin)) {
@@ -249,21 +263,6 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns whether inserting at the given index would conflict with a paired grace note.
-     * A grace note is paired when it has a connecting {@link Slide#GLISSANDO}
-     * linking it to the following note.
-     * <p>
-     * This returns {@code true} in two cases:
-     * <ul>
-     *   <li>The element at {@code index} is itself a paired grace note (clicking on it)</li>
-     *   <li>The element at {@code index - 1} is a paired grace note (clicking between it and its host)</li>
-     * </ul>
-     */
-    default boolean isInsideGraceHostPair(int index) {
-        return isPairedGraceNote(index) || isHostOfPairedGraceNote(index);
-    }
-
-    /**
      * The index of the grace note immediately before {@code index}.
      *
      * @param index the element whose predecessor is asked about
@@ -296,22 +295,25 @@ public interface StaffElementRun {
     }
 
     /**
-     * Whether a breath mark stands at {@code index}; out of range yields {@code false}.
+     * Whether a breath mark stands at {@code index}.
+     *
+     * @return {@code true} when a breath mark stands at {@code index}; {@code false} for an
+     *     index out of range
      */
     default boolean isBreathMarkAt(int index) {
         return hasIndex(index) && getElement(index).getType().isBreathMark();
     }
 
-    /**
-     * Whether a barline or repeat stands at {@code index}; out of range yields {@code false}.
-     */
-    default boolean isBarAt(int index) {
+    /** Whether a barline or repeat stands at {@code index}; out of range yields {@code false}. */
+    private boolean isBarAt(int index) {
         return hasIndex(index) && getElement(index).getType().isBar();
     }
 
     /**
-     * Whether a duration element — a pitched note or a rest — stands at {@code index}; out of
-     * range yields {@code false}.
+     * Whether a duration element — a pitched note or a rest — stands at {@code index}.
+     *
+     * @return {@code true} when an element whose {@link ElementType#isDuration()} is true
+     *     stands at {@code index}; {@code false} for an index out of range
      */
     default boolean isDurationAt(int index) {
         return hasIndex(index) && getElement(index).getType().isDuration();
@@ -390,15 +392,7 @@ public interface StaffElementRun {
         return new ElementRange(first, last);
     }
 
-    /**
-     * Whether the element at {@code index} is the barline or repeat a key change sits behind —
-     * the same pair {@link #isKeyChangeAt} names from the key change's side, seen from the
-     * barline's.
-     *
-     * @param index element index; out of range yields false
-     * @return {@code true} when a key change stands at {@code index + 1} and {@code index}
-     *     holds the barline or repeat it sits behind
-     */
+    /** Whether the element at {@code index} is the barline or repeat a key change sits behind. */
     private boolean isKeyChangeBarlineAt(int index) {
         return isKeyChangeBehindBarline(index + 1);
     }
@@ -482,8 +476,10 @@ public interface StaffElementRun {
      *       {@link #canTrailRunAt}.</li>
      * </ul>
      *
-     * <p>A paste asks the two halves separately rather than this, because each half has a dialog
-     * of its own to raise. Every other way a run lands on a line asks this.
+     * <p>Two routes ask the halves rather than this. A paste asks each half separately, because
+     * each half has a dialog of its own to raise. A key-change insertion asks only
+     * {@link #canTrailRunAt}: its run never begins with a breath mark, and the slot rule it adds
+     * is its own. Every other way a run lands on a line asks this.
      *
      * @param index the slot the run would be inserted at, so that its first element lands in
      *     front of the element currently at {@code index}
@@ -505,6 +501,9 @@ public interface StaffElementRun {
     /**
      * Whether a breath mark may be the first element of a run inserted at {@code index} — the
      * leading half of {@link #canInsertRunAt}.
+     *
+     * @return {@code true} when a duration element stands at {@code index - 1} and no breath
+     *     mark stands at {@code index}
      */
     default boolean canLeadRunAt(int index) {
         return isDurationAt(index - 1) && !isBreathMarkAt(index);
@@ -513,6 +512,9 @@ public interface StaffElementRun {
     /**
      * Whether a run whose last element has type {@code last} may be inserted at {@code index} —
      * the trailing half of {@link #canInsertRunAt}.
+     *
+     * @return {@code true} when no breath mark stands at {@code index}, or when {@code last} is
+     *     a duration type
      */
     default boolean canTrailRunAt(int index, ElementType last) {
         return !isBreathMarkAt(index) || last.isDuration();
@@ -522,7 +524,11 @@ public interface StaffElementRun {
     // Element queries
     // -------------------------------------------------------------------------
 
-    /** Whether this run holds no elements. */
+    /**
+     * Whether this run holds no elements.
+     *
+     * @return {@code true} when {@link #elementCount()} is 0
+     */
     default boolean isEmpty() {
         return elementCount() == 0;
     }
@@ -555,16 +561,15 @@ public interface StaffElementRun {
      * same pitch — the span a connecting glissando may never cover, since there is no distance for
      * it to traverse.
      * <p>
-     * This is the one definition of that condition. The slide tool asks it before attaching a
-     * glissando, a pitch shift asks it to strip one whose two notes have come together, and the
-     * layout and render passes ask it so that neither draws nor registers geometry for one that
-     * reached the model through an import. Each caller keeps its own further rules — which
-     * elements may anchor a glissando at all is a separate question from whether these two
-     * share a pitch.
+     * This is the one definition of that condition, for every caller that attaches, strips,
+     * lays out or draws a glissando. Each caller keeps its own further rules — which elements
+     * may anchor a glissando at all is a separate question from whether these two share a pitch.
      * <p>
      * Grace notes count on either side, since they carry a pitch like any other note.
      *
      * @param index index of the leading element; out of range, or last in the line, yields false
+     * @return {@code true} when notes stand at {@code index} and {@code index + 1} and have the
+     *     same pitch
      */
     default boolean isSamePitchAsFollower(int index) {
         if (index < 0 || index + 1 >= elementCount()) {
@@ -633,10 +638,11 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns true if any element in {@code range} is a repeat or a barline other than
+     * Whether {@code range} crosses a structural boundary: a repeat, or a barline other than
      * {@link ElementType#SINGLE_BARLINE}.
-     * <p>
-     * No bounds check is performed; callers own their indices.
+     *
+     * @param range the elements to examine; every index in it satisfies {@link #hasIndex}
+     * @return {@code true} when any element in {@code range} is such a repeat or barline
      */
     default boolean spansStructuralBoundary(ElementRange range) {
         for (var i = range.begin(); i <= range.end(); i++) {
@@ -917,7 +923,11 @@ public interface StaffElementRun {
             this.range = range;
         }
 
-        /** The widened range. */
+        /**
+         * The widened range.
+         *
+         * @return the range the deletion or copy really covers, both ends included
+         */
         public ElementRange range() {
             return range;
         }

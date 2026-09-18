@@ -235,7 +235,7 @@ public final class SelectionActionApplier {
                 var replaceable = (UIAction.ElementReplaceable<E>) action;
 
                 var replacement = replaceable.createReplacement(admitted, true);
-                var effect = ElementChange.forReplacement(line, i, replacement).endingEffect();
+                var effect = new ElementChange.Replacement(line, i, replacement).endingEffect();
                 Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
 
                 switch (effect) {

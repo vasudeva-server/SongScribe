@@ -52,7 +52,11 @@ import songscribe.message.mutation.ElementField;
  */
 public sealed interface ElementChange {
 
-    /** The line being changed, still in its pre-change state. */
+    /**
+     * The line this change applies to.
+     *
+     * @return the line being changed, still in its pre-change state
+     */
     Line line();
 
     /**
@@ -60,6 +64,9 @@ public sealed interface ElementChange {
      * <p>
      * A fresh view per call, cheap to build and cheap to index — but never to be held
      * across the mutation this change describes.
+     *
+     * @return a live, unmodifiable view of the projected elements, valid until the line's
+     *     elements are next mutated
      */
     List<StaffElement> projectedElements();
 
@@ -97,7 +104,8 @@ public sealed interface ElementChange {
      * A single element inserted at {@code index}.
      *
      * @param line     the line being changed, still in its pre-insertion state
-     * @param index    the position {@code inserted} will occupy
+     * @param index    the position {@code inserted} will occupy, {@code 0..}{@link
+     *                 Line#elementCount()}
      * @param inserted the element being inserted
      */
     record Insertion(Line line, int index, StaffElement inserted) implements ElementChange {
@@ -141,7 +149,12 @@ public sealed interface ElementChange {
      */
     record Replacement(Line line, int index, StaffElement newElement) implements ElementChange {
 
-        /** The element being replaced — the one standing at {@link #index} in the line. */
+        /**
+         * The element being replaced.
+         *
+         * @return the element standing at {@link #index} in {@link #line}
+         * @throws IndexOutOfBoundsException if no element stands at {@link #index}
+         */
         public StaffElement oldElement() {
             return line.getElement(index);
         }
@@ -177,6 +190,7 @@ public sealed interface ElementChange {
          *
          * @return the first ending's non-{@link Ending.EndingEffect.None None} effect, or
          *     {@link Ending.EndingEffect.None} when no ending is affected
+         * @throws IndexOutOfBoundsException if no element stands at {@link #index}
          */
         public Ending.EndingEffect endingEffect() {
             var oldElement = oldElement();
@@ -204,8 +218,10 @@ public sealed interface ElementChange {
     record Deletion(Line line, ElementRange range) implements ElementChange {
 
         /**
-         * The elements being removed — a view of the line's own list, so valid only until
-         * the deletion lands, like everything else this change reads.
+         * The elements being removed.
+         *
+         * @return a view of the line's own list over {@link #range}, valid only until the
+         *     deletion lands, like everything else this change reads
          */
         public List<StaffElement> deletedElements() {
             return line.getElements(range);
@@ -262,72 +278,4 @@ public sealed interface ElementChange {
         }
     }
 
-    /**
-     * Builds an {@link Insertion} projecting {@code inserted} into {@code line} at
-     * {@code index}.
-     *
-     * @param line     the line being changed, still in its pre-insertion state
-     * @param index    the position {@code inserted} will occupy, {@code 0..}{@link
-     *                 Line#elementCount()}
-     * @param inserted the element being inserted
-     * @return the pending insertion
-     */
-    static Insertion forInsertion(Line line, int index, StaffElement inserted) {
-        return new Insertion(line, index, inserted);
-    }
-
-    /**
-     * Builds an {@link Insertion} projecting a fresh element of {@code insertedType} into
-     * {@code line} at {@code index}, for a caller that has a type rather than the element
-     * it will eventually insert. The endings a prediction consults read no more of an
-     * inserted element than its type, so a fresh one stands in.
-     *
-     * @param line         the line being changed, still in its pre-insertion state
-     * @param index        the position the element will occupy, {@code 0..}{@link
-     *                     Line#elementCount()}
-     * @param insertedType the type of the element to be inserted
-     * @return the pending insertion, over a fresh element of {@code insertedType}
-     */
-    static Insertion forInsertion(Line line, int index, ElementType insertedType) {
-        return forInsertion(line, index, insertedType.newInstance());
-    }
-
-    /**
-     * Builds a {@link Replacement} projecting {@code replacement} over the element
-     * currently at {@code index} of {@code line}.
-     *
-     * @param line        the line being changed, still in its pre-replacement state
-     * @param index       the position of the element being replaced
-     * @param replacement the element taking its place
-     * @return the pending replacement
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
-     */
-    static Replacement forReplacement(Line line, int index, StaffElement replacement) {
-        return new Replacement(line, index, replacement);
-    }
-
-    /**
-     * Builds a {@link Deletion} projecting the elements in {@code range} removed from
-     * {@code line}.
-     *
-     * @param line  the line being changed, still in its pre-deletion state
-     * @param range the elements being removed, both ends included
-     * @return the pending deletion
-     */
-    static Deletion forDeletion(Line line, ElementRange range) {
-        return new Deletion(line, range);
-    }
-
-    /**
-     * Builds a {@link Modification} projecting {@code fields} of the element at {@code index}
-     * of {@code line} rewritten in place.
-     *
-     * @param line   the line being changed, still in its pre-modification state
-     * @param index  the position of the element being modified
-     * @param fields the fields the modification rewrites
-     * @return the pending modification
-     */
-    static Modification forModification(Line line, int index, Set<ElementField> fields) {
-        return new Modification(line, index, fields);
-    }
 }

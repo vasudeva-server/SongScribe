@@ -10,7 +10,7 @@ Run by `/design-pass 6` — register row `6`, *Line*.
 | 2 Class design | ✅ | ✅ | [class-design.md](./class-design.md) | Landed in `f7309389` together with the fixes from `plans/check-findings.md` |
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-unrepresentable-states.md](./step-3-unrepresentable-states.md) | `findings-3.md`. Execution reaches past the target: the `-1` sweep (3.13) across `dom`, `ui`, `layout`, `midi` and `io`, and rows 7, 12, 16 and 25's files. During review the user removed the dead `@Nullable` from `Line.getElementIndex` and from `LineSpans.boundOf`, with `boundOf`'s null branch (no caller passes null; the tree compiled both times) |
 | 4 Extraction | ✅ | ✅ | [step-4-extraction.md](./step-4-extraction.md) | `findings-4.md`. During review the user lifted the gate for one change: `Song.isAutoMaintainedTerminal` → `isTerminal` and `isAutoMaintainedTerminalOfItsSong` → `isTerminalOfItsSong` (row 12's file), then `TerminalMaintainer.isAutoMaintainedTerminal` → `isTerminal`; the tree compiled both times |
-| 5 Contracts | ⏳ | ⏳ | — | |
+| 5 Contracts | ✅ | ✅ | — | `findings-5.md`. Settled at the gate: items 1–3 and 6 as proposed. Item 4: key-change insertion put a breath mark behind a key change, so `KeyChangeAction.acceptsInsertionIndex` refuses the slot in front of a breath mark, and the `deleteElement` cascade goes. Item 5: a grace note may be entered in front of a paired grace note; grace mode's press asks `canInsertElementAt` and `isInsideGraceHostPair` goes; a grace-note click never reaches plain note entry, because `PreviewElementInserter` refuses a grace preview outside grace mode; grace mode inserts through its own entry point, which never replaces and returns what it inserted, in place of `forceInsert`. Lone grace notes are not implemented now; they will enter through grace mode (Return commits the grace note alone) |
 | 6 Test triage | ⏳ | ⏳ | — | |
 | 7 Test-only surface | ⏳ | ⏳ | — | |
 | 8a Suite gate | ⏳ | n/a | — | |
@@ -55,9 +55,8 @@ to be. Deleted from the register when claimed.
   range, no `@return`, no `@throws`. `Line`'s implementation is a bare
   `elements.get(index)`, so out of bounds throws by inheritance from the field's
   type rather than by promise, and any caller guarding on `elementCount()` is
-  guessing. Step 5's. The register holds this line again: the check review
-  (`check-findings.md` #18) restored it there, so both lists own it until the
-  user says which keeps it.
+  guessing. Step 5's. Closed at step 5: the contract is written, and the
+  register's copy of this line is deleted.
 
 ## Findings raised
 
@@ -83,6 +82,26 @@ register at step 13, before this file is deleted.
   test asserts — `Span.addTo`'s displacement policy and replay skip,
   `Span.removeFrom`'s no-op, `removesConfirmableSpan`, the three
   `TerminalMaintainer` checks.
+- **→ Step 7.** `StaffElementRun.lastKeyChangeKey` has no production caller; only
+  `MusicXmlStrandedKeyChangeTest` calls it. `strandedKeyChangeIndices` has one production
+  caller, `redundantKeyChangeRanges` in the same interface, and `StrandedKeyChangeTest` calls
+  it directly. Found at step 5.
+- **→ Step 6.** Step 5 changed behavior that no test covers: `KeyChangeAction.acceptsInsertionIndex`
+  refuses the slot in front of a breath mark; `PreviewElementInserter.handleClick` refuses a
+  grace-note preview; `insertForGraceMode` inserts in front of the element under the pointer,
+  refuses the two slots inside a pair, and returns what it inserted; grace mode enters in front
+  of a paired grace note.
+- **Fixed at step 5.** The host note's fit was checked on entry to `GRACE_NOTE_INSERT` without
+  the accidental chain walk, so the insertion's walked gate could refuse a host the entry check
+  accepted, and the pairing then joined the glissando to the wrong element. The preview
+  insertion now splits into a gate (`PreviewElementInserter.accept`, returning an
+  `AcceptedInsertion`) and a landing. Grace mode gates the host before the pairing bracket
+  opens, and a refused host aborts the interaction and removes the grace note (user's choice).
+- **Fixed at step 5.** The static `GraceModeManager.deferInsertionRepairs()` handshake is gone:
+  grace mode lands its grace note through `AcceptedInsertion.landWithoutRepairs`, and owes the
+  repairs when the insertion was not an append.
+- **→ Step 6.** Also untested: a refused host aborts the pairing; `AcceptedInsertion.land` and
+  `landWithoutRepairs`.
 - **→ Row 12.** `plans/check-findings.md` #7: `Line` reaches a concrete `Song`,
   and `UnitTest.minimalSongMock()` grows a stub per forwarding method.
 - **→ Row 7.** `Ending.hasRepeatSplit(line, int, int)` takes a transposable index

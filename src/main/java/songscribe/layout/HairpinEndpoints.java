@@ -28,7 +28,6 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 
 /**
@@ -106,16 +105,17 @@ public final class HairpinEndpoints {
         // Resolve through the line, never through Hairpin.requireAnchorElementIndex(): that answers
         // from whichever line the endpoint belongs to, which would turn into silently wrong
         // arithmetic below rather than a rejection here.
-        if (!(line.spanRegistry().anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex))
-            || !(line.spanRegistry().endIndexOf(hairpin) instanceof SpanBound.At(var endIndex))) {
+        var range = line.spanRegistry().rangeOf(hairpin);
+
+        if (range == null) {
             return null;
         }
 
         var anchorColumn = spanColumns.anchorColumn();
         var endColumn = spanColumns.endColumn();
 
-        var leftTip = leftEndpointSs(hairpin, line, columnsByElement, anchorColumn, anchorIndex);
-        var rightTip = rightEndpointSs(hairpin, line, columnsByElement, endColumn, endIndex);
+        var leftTip = leftEndpointSs(hairpin, line, columnsByElement, anchorColumn, range.begin());
+        var rightTip = rightEndpointSs(hairpin, line, columnsByElement, endColumn, range.end());
 
         var x1Ss = leftTip.xSs();
         var x2Ss = rightTip.xSs();

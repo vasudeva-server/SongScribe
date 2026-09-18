@@ -104,7 +104,13 @@ public final class LineSpans implements SpanLookup {
     }
 
     /**
-     * Returns an unmodifiable view of the spans in this line.
+     * The spans drawn over this line.
+     * <p>
+     * A live view, not a copy: a span added or removed while a caller iterates it gives that
+     * caller {@link java.util.ConcurrentModificationException}, so a caller that removes spans as
+     * it walks them copies the list first.
+     *
+     * @return an unmodifiable live view of this line's spans, in the order they were added
      */
     @Override
     public List<Span> getSpans() {
@@ -536,10 +542,13 @@ public final class LineSpans implements SpanLookup {
     }
 
     /**
-     * Removes every {@code type} span overlapping {@code range}, each through its own
-     * {@link Span#removeFrom} so each removal is its own recorded mutation. A span whose
-     * anchor is detached is still found and removed, so a half-detached span can be cleaned
-     * up.
+     * Removes every {@code type} span overlapping {@code range}. A span whose anchor is detached
+     * is still found and removed, so a half-detached span can be cleaned up.
+     *
+     * @param type  the kind of span to remove; a span of any other kind stays
+     * @param range the elements a removed span overlaps, as {@link Span#overlapping} judges it
+     * @effects one {@link Span#removeFrom} per span found, so each removal is its own mutation,
+     *     recorded under the rule that method states
      */
     public void removeOverlapping(Class<? extends Span> type, ElementRange range) {
         for (var span : findSpans(type, Span.overlapping(range))) {

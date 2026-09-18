@@ -705,23 +705,22 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Handles a click on the preview element, performing the appropriate action
-     * (append, insert, or modify). Called from {@code LineComponent.clicked()}.
+     * Handles a note-entry click on the preview element — see
+     * {@link PreviewElementInserter#handleClick}. Called from {@code LineComponent.clicked()}.
      */
     public static void handleClick(LineComponent lc) {
-        handleClick(lc, false);
+        PreviewElementInserter.handleClick(lc);
     }
 
     /**
-     * Like {@link #handleClick(LineComponent)}, but when {@code forceInsert} is {@code true}
-     * always inserts rather than modifying an existing element at the same x position.
-     * Used by grace mode, which must insert a new host note even when an existing note
-     * occupies the locked insertion slot.
+     * Gates grace mode's insertion of the preview element at the hovered slot — see
+     * {@link PreviewElementInserter#acceptForGraceMode}.
      *
-     * @see PreviewElementInserter#handleClick
+     * @param lc the line the click landed on
+     * @return the accepted insertion, not yet landed, or {@code null} when it may not go ahead
      */
-    public static void handleClick(LineComponent lc, boolean forceInsert) {
-        PreviewElementInserter.handleClick(lc, forceInsert);
+    public static @Nullable AcceptedInsertion acceptForGraceMode(LineComponent lc) {
+        return PreviewElementInserter.acceptForGraceMode(lc);
     }
 
     /**

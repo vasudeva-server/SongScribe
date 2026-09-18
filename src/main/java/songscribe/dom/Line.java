@@ -47,12 +47,14 @@ import songscribe.message.mutation.Mutation;
  * It holds four things — the key it establishes, its ordered staff elements, the vertical offset
  * of its lyric rows, and the registry of the spans drawn over it.
  *
- * <p><b>Elements.</b> The four primitives below — insertion, replacement, single removal and
- * range removal — each post one mutation and repair nothing around it; an edit goes through the
- * run operations {@link EditableRun} states, which run the repairs. Each primitive first asks the
- * song whether it may touch the terminal position, because the last element of the last line is
- * the song's to maintain, not the line's: the policy is stated once, on the song's
- * {@link TerminalMaintainer}.
+ * <p><b>Elements.</b> The five primitives below — insertion, replacement, modification of one
+ * element's fields, single removal and range removal — each hand their pending change to the span
+ * sweep, post one mutation, and repair nothing around the element; an edit goes through the run
+ * operations {@link EditableRun} states, which run the repairs. There is one primitive for each
+ * shape of {@link ElementChange}, so every change to the elements passes through one sweep. The
+ * four that place or take away an element first ask the song whether they may touch the terminal
+ * position, because the last element of the last line is the song's to maintain, not the line's:
+ * the policy is stated once, on the song's {@link TerminalMaintainer}.
  *
  * <p><b>Spans.</b> The spans are not held here but in the line's {@link LineSpans}, reached
  * through {@link #spanRegistry()}: every query over them, the sweep that re-judges them when an
@@ -127,7 +129,7 @@ public final class Line implements EditableRun {
     /**
      * Default lyrics Y position (below staff)
      */
-    public static final double LYRICS_DEFAULT_Y_SS = 6.25;
+    private static final double LYRICS_DEFAULT_Y_SS = 6.25;
 
     /**
      * The vertical position of this line's lyric rows below the staff, in staff spaces, shared
@@ -143,7 +145,11 @@ public final class Line implements EditableRun {
         return song;
     }
 
-    /** The registry of the spans drawn over this line's elements. */
+    /**
+     * The registry of the spans drawn over this line's elements.
+     *
+     * @return this line's span registry, the same instance for the line's whole life
+     */
     public LineSpans spanRegistry() {
         return spans;
     }
@@ -164,12 +170,22 @@ public final class Line implements EditableRun {
         return result;
     }
 
-    /** True when this line is its song's first line. */
+    /**
+     * Whether this line is its song's first line.
+     *
+     * @return {@code true} when this line stands at index 0 of its song
+     * @throws IllegalStateException if this line is not one of its song's lines
+     */
     public boolean isFirst() {
         return index() == 0;
     }
 
-    /** True when this line is its song's last line. */
+    /**
+     * Whether this line is its song's last line.
+     *
+     * @return {@code true} when no line follows this one in its song
+     * @throws IllegalStateException if this line is not one of its song's lines
+     */
     public boolean isLast() {
         return index() == song.lineCount() - 1;
     }
@@ -391,14 +407,15 @@ public final class Line implements EditableRun {
      * Appends {@code element}, or inserts it before the auto-maintained terminal when this
      * line carries one, so the terminal remains last.
      * <p>
-     * Resolves the position and hands off to {@link #addElement(int, StaffElement)} rather
-     * than inserting here: appending is an insertion at the end, and the companion work that
-     * overload does — dropping the spans the new element invalidates above all — applies to it
-     * just the same. It looked as though it did not while every span ended somewhere inside
-     * its own line, because nothing appended past the last element could land between a span's
-     * endpoints. A tie whose end note is in the <em>next</em> line breaks that: everything
-     * after its anchor is between the two notes, and appending is exactly how something gets
-     * there (#493).
+     * An append is an insertion at the end, and it goes through the insertion primitive,
+     * {@link #addElement(int, StaffElement)}, so everything that primitive promises applies to
+     * it: the span sweep, the mutation it posts, and the terminal check. The sweep matters even
+     * at the end of a line, because a tie whose end note is on the next line has everything
+     * after its anchor between its two notes.
+     *
+     * @param element the element to append
+     * @throws IllegalStateException if the insertion breaks the song's terminal policy — see
+     *     {@link Song#checkTerminalPolicyForInsertion}
      */
     public void addElement(StaffElement element) {
         addElement(effectiveElementCount(), element);
@@ -418,6 +435,8 @@ public final class Line implements EditableRun {
      * @param element the element to insert
      * @throws IllegalStateException if the insertion breaks the song's terminal policy — see
      *     {@link Song#checkTerminalPolicyForInsertion}
+     * @throws IndexOutOfBoundsException if {@code index} is outside
+     *     {@code 0..}{@link #elementCount()}
      */
     @Override
     public void addElement(int index, StaffElement element) {
@@ -425,7 +444,7 @@ public final class Line implements EditableRun {
 
         // Companion span changes precede the primary insertion so reverse-order undo
         // restores the primary element before re-adding dependent spans.
-        spans.sweep(ElementChange.forInsertion(this, index, element));
+        spans.sweep(new ElementChange.Insertion(this, index, element));
 
         applyChange(
             new ElementInsertion(this, index, element),
@@ -461,7 +480,7 @@ public final class Line implements EditableRun {
         // restores the primary element before re-adding dependent spans. The anchor
         // re-pointing in the mutator below runs on replay too — it is self-inverting and
         // required for span references to stay valid.
-        spans.sweep(ElementChange.forReplacement(this, index, element));
+        spans.sweep(new ElementChange.Replacement(this, index, element));
 
         applyChange(
             new ElementReplacement(this, index, oldElement, element),
@@ -477,11 +496,17 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Applies a field change to the element at {@code index}. Clones the element
-     * before running {@code mutator} so the resulting {@link ElementModification}
-     * carries a stable pre-mutation snapshot for undo — centralizing the
-     * clone-before-mutate contract that would otherwise have to be repeated at
-     * every emission site.
+     * Runs {@code mutator} to change {@code field} of the element at {@code index}, and posts one
+     * {@link ElementModification} that holds the element's state from before and after
+     * {@code mutator}, so undo and redo restore either one without the caller taking a copy.
+     * <p>
+     * The modification and its companion span changes post through {@link #applyChange}, under
+     * {@link Song#applyChange}'s bracket rule.
+     *
+     * @param index   the position of the element to modify
+     * @param field   the field {@code mutator} rewrites
+     * @param mutator the change to apply to the element; it rewrites nothing but {@code field}
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     @Override
     public void modifyElement(int index, ElementField field, Runnable mutator) {
@@ -491,18 +516,17 @@ public final class Line implements EditableRun {
     /**
      * As {@link #modifyElement(int, ElementField, Runnable)}, for a change that rewrites
      * several fields at once and records them as one {@link ElementModification}.
-     * <p>
-     * The modification and its companion span changes post through {@link #applyChange},
-     * under {@link Song#applyChange}'s bracket rule.
      *
      * @param index   the position of the element to modify
      * @param fields  the fields {@code mutator} rewrites
-     * @param mutator the change to apply to the element
+     * @param mutator the change to apply to the element; it rewrites nothing outside
+     *     {@code fields}
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     public void modifyElement(int index, EnumSet<ElementField> fields, Runnable mutator) {
         // Asked before the mutator runs, like every other sweep, so a span judges the
         // element as it stands; only which fields change is what a span reads.
-        spans.sweep(ElementChange.forModification(this, index, fields));
+        spans.sweep(new ElementChange.Modification(this, index, fields));
 
         // Run the mutator up front so the record can carry both the before and
         // after clones; applyChange then only appends the record. Equivalent
@@ -522,13 +546,26 @@ public final class Line implements EditableRun {
         return elements.get(index);
     }
 
+    /**
+     * This line's elements, in order.
+     * <p>
+     * A live view, not a copy: it always shows the line as it is now. A caller that iterates it
+     * across a structural change to the line gets
+     * {@link java.util.ConcurrentModificationException}, so an edit that walks the elements
+     * and changes them copies the list first.
+     *
+     * @return an unmodifiable live view of every element on this line, the terminal included
+     */
     public List<StaffElement> getElements() {
         return elementsView;
     }
 
     /**
-     * Returns this line's elements with the song-owned terminal excluded: the list form of
-     * {@link #effectiveElementCount()}, and like {@link #getElements()} a live unmodifiable view.
+     * This line's elements with the song-owned terminal excluded: the list form of
+     * {@link #effectiveElementCount()}.
+     *
+     * @return an unmodifiable live view, on the same terms as {@link #getElements()}, of the
+     *     first {@link #effectiveElementCount()} elements
      */
     public List<StaffElement> effectiveElements() {
         return getElements().subList(0, effectiveElementCount());
@@ -577,7 +614,7 @@ public final class Line implements EditableRun {
 
         // Companion span changes precede the primary deletion so reverse-order undo
         // re-inserts the element before re-adding the spans anchored to it.
-        spans.sweep(ElementChange.forDeletion(this, own));
+        spans.sweep(new ElementChange.Deletion(this, own));
 
         applyChange(
             new ElementDeletion(this, index, deleted),
@@ -614,7 +651,7 @@ public final class Line implements EditableRun {
 
         // Companion span changes precede the primary deletion so reverse-order undo
         // re-inserts the elements before re-adding the spans anchored to them.
-        spans.sweep(ElementChange.forDeletion(this, range));
+        spans.sweep(new ElementChange.Deletion(this, range));
 
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
@@ -631,10 +668,13 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns the element count excluding a trailing auto-maintained terminal
-     * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}). Use this wherever a
-     * computation should treat the song-owned terminal as if it were not there
-     * (insertion spacing, preview positioning, etc.).
+     * The element count with a trailing auto-maintained terminal
+     * ({@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT}) left out, for a computation that
+     * treats the song-owned terminal as if it were not there — insertion spacing and preview
+     * positioning among them.
+     *
+     * @return {@link #elementCount()} less one when the last element is the terminal
+     *     {@link #isTerminalAt} recognizes, otherwise {@link #elementCount()}
      */
     @Override
     public int effectiveElementCount() {
@@ -714,6 +754,16 @@ public final class Line implements EditableRun {
         return lyricsYPosSs;
     }
 
+    /**
+     * Moves this line's lyric rows to {@code lyricsYPosSs} below the staff, and posts one
+     * {@link LineLayoutChange} that holds the old and the new position.
+     * <p>
+     * The change posts through {@link #applyChange}, under {@link Song#applyChange}'s bracket
+     * rule.
+     *
+     * @param lyricsYPosSs the new vertical position of every verse's row on this line, in staff
+     *     spaces below the staff
+     */
     public void setLyricsYPosSs(double lyricsYPosSs) {
         var old = this.lyricsYPosSs;
         applyChange(

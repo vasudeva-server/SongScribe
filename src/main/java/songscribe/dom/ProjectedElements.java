@@ -26,17 +26,13 @@ import java.util.function.IntFunction;
 /**
  * A read-only view of a line's elements as a pending {@link ElementChange} will leave
  * them: it maps each projected position onto the pre-change line instead of copying the
- * list. Construction is O(1) and {@link #get} is O(1) for an insertion or a replacement,
- * O(log d) for a deletion of d elements.
+ * list. Construction and {@link #get} are both O(1), whatever the shape of the change.
  * <p>
- * <b>The view reads the live line.</b> It is valid only until the line's elements are
- * mutated, and nothing may retain one past that point. That is all the sweep it serves
- * needs: an {@link ElementChange} is built and judged <em>before</em> the primary element
- * mutation lands, and the span mutations the sweep emits in between touch
- * {@code Line.spans}, never {@code Line.elements}.
+ * The view reads the live line, so it is valid only as long as {@link ElementChange}'s class
+ * Javadoc states.
  * <p>
  * Each shape of change supplies its own {@code elementAt} mapping, since only the shape
- * knows how positions move; this class holds what all three share — the projected size,
+ * knows how positions move; this class holds what every shape shares — the projected size,
  * the bounds check, and the {@link java.util.List} surface {@link AbstractList} derives
  * from those two.
  */

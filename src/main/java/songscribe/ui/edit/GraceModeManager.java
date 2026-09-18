@@ -126,11 +126,8 @@ public final class GraceModeManager {
     // edge and an eligible host note exists. A preview glissando is drawn while true.
     private boolean pendingConnect = false;
 
-    // True only while the untracked grace-note insertion is in flight, telling the
-    // insertion path to leave the repairs around the insertion point to us.
-    private boolean deferringInsertionRepairs = false;
-
-    // True when the insertion path took that offer, so the pairing owes the repairs.
+    // True when the untracked grace-note insertion left its neighbors unrepaired, so the
+    // pairing owes the repairs. An append has no neighbor after it and owes none.
     private boolean insertionRepairsOwed = false;
 
     /**
@@ -189,29 +186,6 @@ public final class GraceModeManager {
      */
     public static boolean hasPendingConnect() {
         return instance != null && instance.pendingConnect;
-    }
-
-    /**
-     * Hands the neighbor repairs around the insertion now in flight over to grace mode, and
-     * returns whether it took them. True only while grace mode inserts its grace note, which
-     * it does with mutation tracking suspended: a repair made there would be applied but never
-     * recorded, so undo could not put back the broken lyric chain or the stripped glissando.
-     * Grace mode re-runs the repairs inside the bracket that makes the pairing undoable — see
-     * {@link LyricRun#repairNeighborsAfterUntrackedInsertion}.
-     *
-     * <p>Asking and taking are one call because they must never come apart: a caller that
-     * skipped the repairs without recording that it had would drop them silently, with undo
-     * left unable to restore the neighbors and nothing to point at the cause. Only an insertion
-     * path calls this, and only where it is about to insert — an append or a replacement
-     * disturbs no neighbor, so it asks nothing and owes nothing.
-     */
-    public static boolean deferInsertionRepairs() {
-        if (instance == null || !instance.deferringInsertionRepairs) {
-            return false;
-        }
-
-        instance.insertionRepairsOwed = true;
-        return true;
     }
 
     /**
@@ -380,7 +354,9 @@ public final class GraceModeManager {
 
         var xIndex = hover.insertionIndex();
 
-        if (line.isInsideGraceHostPair(xIndex)) {
+        // The grace note and its host land as a pair that ends in a note, so only the slots
+        // inside an existing pair are refused — the same rule the insertion itself applies.
+        if (!line.canInsertElementAt(xIndex)) {
             return true;
         }
 
@@ -548,57 +524,32 @@ public final class GraceModeManager {
             return;
         }
 
-        // Insert the grace note via the existing insertion code path, but WITHOUT
-        // recording a mutation: a lone grace note is not undoable. It only becomes part
-        // of an undo step once it is paired with a host note (see enterGraceNotePaired,
-        // which retroactively records the insertion into the pairing's bracket).
-        // The insertion's repairs to the neighboring elements would be lost the same way, so
-        // they are deferred to the pairing bracket (see enterGraceNotePaired), not made here.
-        deferringInsertionRepairs = true;
+        var accepted = PreviewElementManager.acceptForGraceMode(lineComponent);
 
-        try {
-            // forceInsert=true: a grace note must always be inserted before whatever the cursor
-            // is over, never replace it — clicking directly on an existing note's head would
-            // otherwise take handleClick's replace branch and silently destroy that note, which
-            // enterGraceNotePaired below has no way to recover on undo (it only records an
-            // ElementInsertion).
-            line.getSong().withoutMutationTracking(
-                () -> PreviewElementManager.handleClick(lineComponent, true));
-        } finally {
-            deferringInsertionRepairs = false;
+        if (accepted == null) {
+            abort();
+            return;
         }
+
+        // Insert the grace note through the note-entry gate, but WITHOUT recording a
+        // mutation: a lone grace note is not undoable. It only becomes part of an undo step
+        // once it is paired with a host note (see enterGraceNotePaired, which retroactively
+        // records the insertion into the pairing's bracket). The insertion's repairs to the
+        // neighboring elements would be lost the same way, so they are left to the pairing
+        // bracket, not made here.
+        insertionRepairsOwed = !accepted.appends();
+        var inserted = line.getSong().withoutMutationTrackingResult(accepted::landWithoutRepairs);
 
         // No SongDidChangeNotification fires while tracking is suspended, so invalidate
         // the line's layout directly to lay out and render the new grace note.
         lineComponent.invalidateLayout();
 
-        // The grace note is the most recently inserted element at the hover's insertion index
-        var hover = PreviewElementManager.hover();
-
-        if (hover == null) {
-            abort();
-            return;
+        // The insertion placed the grace quaver the preview held, which is a note.
+        if (!(inserted instanceof NoteElement insertedGraceNote)) {
+            throw new IllegalStateException("grace insertion landed a non-note: " + inserted);
         }
 
-        var insertedIndex = hover.insertionIndex();
-
-        if (!line.hasIndex(insertedIndex)) {
-            // Insertion failed (e.g. triplet boundary)
-            abort();
-            return;
-        }
-
-        // handleClick inserts at the hover's insertion index, but after insertion the element
-        // count has increased. The inserted element is at the index the hover held before the
-        // click. Since handleClick may have appended (insertion index == elementCount before
-        // insert), we need to check the last element in that case.
-        var graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
-
-        // handleClick inserted the grace quaver the preview held, which is a note.
-        if (!(line.getElement(graceNoteIndex) instanceof NoteElement insertedGraceNote)) {
-            throw new IllegalStateException(
-                "grace insertion landed a non-note at index " + graceNoteIndex);
-        }
+        var graceNoteIndex = line.getElementIndex(insertedGraceNote);
 
         activeGrace = new ActiveGrace(insertedGraceNote, graceNoteIndex, line, lineComponent);
 
@@ -731,6 +682,16 @@ public final class GraceModeManager {
             return;
         }
 
+        // A host note to insert passes its gate before the bracket opens, with its pitch now
+        // known, so its accidental is measured. A host the line has no room for leaves nothing
+        // recorded: the gate has told the user, and the grace note goes with the interaction.
+        var hostInsertion = connectNext ? null : PreviewElementManager.acceptForGraceMode(lineComponent);
+
+        if (!connectNext && hostInsertion == null) {
+            abort();
+            return;
+        }
+
         // A single modification bracket coalesces the whole pairing into one undoable
         // SongDidChangeNotification: the retroactive grace-note insertion, the optional
         // host-note insertion, and the connecting glissando.
@@ -766,15 +727,11 @@ public final class GraceModeManager {
                 line.repairNeighborsAfterUntrackedInsertion(graceNoteIndex);
             }
 
-            if (!connectNext) {
-                // Insert the host note at the locked x position. The preview element was
-                // built undecorated on entry to grace mode (see enterGraceNote), so the
-                // host arrives carrying only the duration, dots, accidental and articulations
-                // the user chose while the mode was in progress.
-                PreviewElementManager.handleClick(lineComponent, true);
-            }
-
-            var hostNote = line.getElement(hostNoteIndex);
+            // Insert the host note at the locked x position. The preview element was built
+            // undecorated on entry to grace mode (see enterGraceNote), so the host arrives
+            // carrying only the duration, dots, accidental and articulations the user chose
+            // while the mode was in progress. A drag-right connection's host is already there.
+            var hostNote = hostInsertion != null ? hostInsertion.land() : line.getElement(hostNoteIndex);
 
             // Connect the grace note to the host note with a connecting glissando.
             line.modifyElement(graceNoteIndex, ElementField.SLIDE, () -> note.setSlide(Slide.GLISSANDO));
@@ -866,7 +823,6 @@ public final class GraceModeManager {
         justEnteredInsert = false;
         pendingCancel = false;
         pendingConnect = false;
-        deferringInsertionRepairs = false;
         insertionRepairsOwed = false;
         savedAccidentalStates.clear();
 

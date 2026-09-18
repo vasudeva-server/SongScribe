@@ -109,9 +109,14 @@ public interface EditableRun extends LyricRun {
     }
 
     /**
-     * Deletes the elements {@code range} covers and repairs what the removal leaves behind: the
-     * x-offsets of the elements that close the gap, an incoming glissando whose target is going,
-     * and the syllable relations and melisma extends of the neighbors.
+     * Deletes the elements {@code range} covers and repairs what the removal leaves behind: an
+     * incoming glissando whose target is going, and the syllable relations and melisma extends of
+     * the neighbors.
+     * <p>
+     * The range is the one {@link StaffElementRun#effectiveRange} widened, so the breath mark
+     * directly after the caller's elements goes with them. Nothing past the widened range goes:
+     * no path puts a second breath mark behind the first, since a breath mark stands only
+     * directly after a duration element.
      * <p>
      * This is the deletion an edit performs. {@link #removeRange} and {@link #removeElement} are
      * the primitives beneath it, and repair nothing.
@@ -200,12 +205,9 @@ public interface EditableRun extends LyricRun {
 
     /**
      * Deletes the element at {@code index} and, if the preceding element is a paired grace note,
-     * removes that as well. After the primary removal, if the surviving element at the deletion's
-     * left edge is a breath mark, it is cascade-deleted through a recursive call so all gap-fill,
-     * glissando, and syllable/extend logic is reused.
+     * removes that as well.
      *
-     * @return the number of elements removed (1 or 2), not counting any cascade-deleted trailing
-     *     breath mark
+     * @return the number of elements removed (1 or 2)
      */
     private int deleteElement(int index) {
         // If the preceding note is a paired grace note, it becomes orphaned when
@@ -242,26 +244,11 @@ public interface EditableRun extends LyricRun {
         // Removing the higher index first keeps index - 1 valid.
         removeElement(index);
 
-        int removed;
-
         if (hasPrecedingPairedGraceNote) {
             removeElement(index - 1);
-            removed = 2;
-        } else {
-            removed = 1;
+            return 2;
         }
 
-        // Cascade-delete a breath mark that immediately follows the deleted element.
-        // After removal the successor lands at firstDeletedIndex. Recurse through
-        // deleteElement (not a bare removeElement) so gap-fill, glissando strip, and
-        // syllable/extend adjustments are reused. The cascade is excluded from
-        // `removed` because deleteRangeElementwise's loop counts down, so the breath
-        // mark (a higher index, visited on an earlier iteration) is already accounted
-        // for and must not shift the loop's index a second time.
-        if (isBreathMarkAt(firstDeletedIndex)) {
-            deleteElement(firstDeletedIndex);
-        }
-
-        return removed;
+        return 1;
     }
 }
