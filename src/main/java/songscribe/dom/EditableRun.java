@@ -147,13 +147,9 @@ public interface EditableRun extends LyricRun {
         var rangeBegin = range.begin();
         var rangeEnd = range.end();
 
-        // Clean up the element before the range: its glissando has nothing left to point at.
         // Recorded like every other change here — stripping it raw would leave undo restoring the
         // deleted elements but not the glissando.
-        if (rangeBegin > 0 && getElement(rangeBegin - 1) instanceof NoteElement prevNote
-            && prevNote.hasGlissando()) {
-            modifyElement(rangeBegin - 1, ElementField.SLIDE, prevNote::removeSlide);
-        }
+        removeGlissandoInto(rangeBegin);
 
         // Adjust syllable relations and melisma extends on neighbors before removing. Both helpers
         // require the target elements to still be present in the list.
@@ -220,13 +216,9 @@ public interface EditableRun extends LyricRun {
         // the deleted note, it is also being removed, so the gap starts there.
         var firstDeletedIndex = hasPrecedingPairedGraceNote ? index - 1 : index;
 
-        // If the previous note is a paired grace note, it disappears entirely —
-        // no need to strip its glissando separately. Otherwise remove any standalone
-        // incoming glissando from the previous note.
-        if (!hasPrecedingPairedGraceNote && index > 0
-            && getElement(index - 1) instanceof NoteElement prevNote && prevNote.hasGlissando()) {
-            modifyElement(index - 1, ElementField.SLIDE, prevNote::removeSlide);
-        }
+        // firstDeletedIndex is the deletion's left edge, so it is the index a glissando
+        // reaching in from the element before it targets.
+        removeGlissandoInto(firstDeletedIndex);
 
         // Adjust syllable relations and melisma extends before removing —
         // both methods require the element at index to still be in the list.
@@ -266,8 +258,7 @@ public interface EditableRun extends LyricRun {
         // `removed` because deleteRangeElementwise's loop counts down, so the breath
         // mark (a higher index, visited on an earlier iteration) is already accounted
         // for and must not shift the loop's index a second time.
-        if (firstDeletedIndex < effectiveElementCount() &&
-                getElement(firstDeletedIndex).getType().isBreathMark()) {
+        if (isBreathMarkAt(firstDeletedIndex)) {
             deleteElement(firstDeletedIndex);
         }
 

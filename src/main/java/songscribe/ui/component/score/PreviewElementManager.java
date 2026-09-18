@@ -21,6 +21,7 @@
 package songscribe.ui.component.score;
 
 import java.awt.event.MouseEvent;
+import java.util.List;
 import javax.swing.SwingUtilities;
 
 import net.engio.mbassy.listener.Handler;
@@ -33,6 +34,7 @@ import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun;
 import songscribe.dom.ViewPx;
 import songscribe.engraving.StaffPosition;
 import songscribe.layout.ElementSeat;
@@ -619,12 +621,14 @@ public final class PreviewElementManager {
 
         var previewElement = EditModeManager.getPreviewElement();
 
-        // Hide the preview element where no element type may be inserted, because the insert
-        // would land inside a pair and break it — the rule every placement path shares, in
-        // Line.canInsertElementAt. Gated on elementAtX < 0 so a click directly on a head still
-        // takes the replacement path, which canReplaceElementAt rules on below; only a plain
-        // gap-insert is blocked here.
-        if (previewElement != null && elementAtX == null && !line.canInsertElementAt(xIndex)) {
+        // Hide the preview element at a gap slot where a one-element run of the preview element
+        // may not be inserted — the rule every placement path shares, in
+        // StaffElementRun.canInsertRunAt: the slot lands inside a pair, a breath mark would not
+        // follow a duration element or would stand in front of another breath mark, or a
+        // non-duration element would stand in front of a breath mark. Gated on elementAtX == null
+        // so a click directly on a head still takes the replacement path, which
+        // canReplaceElementAt rules on below; only a plain gap-insert is blocked here.
+        if (previewElement != null && elementAtX == null && !line.canInsertRunAt(xIndex, List.of(previewElement))) {
             if (hasPreviewElement(lc)) {
                 clearPreviewElement();
             }
@@ -639,11 +643,11 @@ public final class PreviewElementManager {
         var newYMatch = elementAtX != null
             && Math.abs(staffPosition.value() - ElementSeat.seatSp(line.getElement(elementAtX)).value()) <= 1;
 
-        // A breath mark must be inserted between or after a note or rest; it may not sit at
-        // index 0 or over an existing element (it never replaces one). At any such position
-        // the ghost preview is hidden, and clicking there shows an alert. The red "will be
-        // replaced" highlight is separately suppressed for breath marks in
-        // getHoveredElementLocation, so newXMatch stays raw for the over-element-head check.
+        // A breath mark never replaces an existing element, and it is not placed where a
+        // glissando reaches the slot. At any such position the ghost preview is hidden, and
+        // handleClick ignores the click. The red "will be replaced" highlight is separately
+        // suppressed for breath marks in getHoveredElementLocation, so newXMatch stays raw for
+        // the over-element-head check.
         var breathMarkBlocked = isBreathMarkInsertionBlocked(previewElement, xIndex, line, newXMatch);
 
         // Some elements may never be replaced by clicking through them with another element —
@@ -770,7 +774,7 @@ public final class PreviewElementManager {
         var lastIdx = elementCount - 1;
         var terminalElement = line.getElement(lastIdx);
 
-        if (!song.isAutoMaintainedTerminal(terminalElement, line)) {
+        if (!song.isTerminal(terminalElement, line)) {
             return false;
         }
 
@@ -787,15 +791,16 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Returns {@code true} when inserting a breath mark at {@code xIndex} should be
-     * blocked. A breath mark attaches to the element immediately before it, which must
-     * be a pitched note or a rest, and it never replaces an existing element. So it is
-     * blocked at index 0 (no preceding element), directly after anything other than a
-     * note or rest, while the cursor is over an existing element
-     * ({@code overExistingElement}), when the preceding element is glissando-connected
-     * to the following note (which would unexpectedly break the glissando), or when the
-     * following element is already a breath mark (consecutive breath marks are
-     * forbidden).
+     * Returns {@code true} when inserting a breath mark at {@code xIndex} should be blocked.
+     * Answers {@code false} for any preview element that is not a breath mark.
+     * <p>
+     * The placement rule is the run's, {@link StaffElementRun#canLeadRunAt}: a breath mark
+     * stands only immediately after a duration element and never in front of another breath
+     * mark. Two refusals are the preview's own: a breath mark never replaces an existing
+     * element, so the cursor over one ({@code overExistingElement}) blocks it, and it is not
+     * inserted where a glissando reaches the slot from the note in front
+     * ({@link StaffElementRun#hasGlissandoInto}), since landing there would break that
+     * glissando.
      */
     static boolean isBreathMarkInsertionBlocked(
         @Nullable StaffElement previewElement, int xIndex, Line line, boolean overExistingElement
@@ -804,18 +809,7 @@ public final class PreviewElementManager {
             return false;
         }
 
-        if (overExistingElement || xIndex == 0) {
-            return true;
-        }
-
-        var precedingElement = line.getElement(xIndex - 1);
-        var precedingType = precedingElement.getType();
-
-        // isDuration() rejects an invalid host (e.g. a grace note); hasGlissando() rejects
-        // a valid host that would have its glissando to the following note broken.
-        return !precedingType.isDuration()
-            || (precedingElement instanceof NoteElement precedingNote && precedingNote.hasGlissando())
-            || (xIndex < line.effectiveElementCount() && line.getElement(xIndex).getType().isBreathMark());
+        return overExistingElement || !line.canLeadRunAt(xIndex) || line.hasGlissandoInto(xIndex);
     }
 
     /**

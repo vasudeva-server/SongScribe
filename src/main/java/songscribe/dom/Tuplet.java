@@ -412,7 +412,7 @@ public class Tuplet extends Span {
     @Override
     protected void applyDisplacementPolicy(Line line) {
         var spans = line.spanRegistry();
-        spans.removeOverlappingTuplets(spans.requireRangeOf(this));
+        spans.removeOverlapping(Tuplet.class, spans.requireRangeOf(this));
     }
 
     @Override

@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.dom.BreathMarkLoadPass;
 import songscribe.dom.TupletLoadPass;
 import songscribe.dom.TupletValidator;
 import songscribe.io.LoadMigrations;
@@ -114,8 +115,10 @@ public final class MigrationWindow extends JDialog {
             var report = migrations.tupletReport();
 
             LOG.info(
-                "Migration window suppressed: {} tuplets dropped, {} updated, accidentals converted: {}",
-                report.dropped(), report.migrated(), migrations.accidentalsConverted());
+                "Migration window suppressed: {} tuplets dropped, {} updated, {} breath marks removed, "
+                    + "accidentals converted: {}",
+                report.dropped(), report.migrated(), migrations.breathMarkReport().removed().size(),
+                migrations.accidentalsConverted());
 
             return;
         }
@@ -135,15 +138,24 @@ public final class MigrationWindow extends JDialog {
         var groups = new ArrayList<DefaultMutableTreeNode>();
         var removed = changesOfKind(report, TupletLoadPass.Change.Removed.class);
         var updated = changesOfKind(report, TupletLoadPass.Change.Updated.class);
+        var breathMarksRemoved = migrations.breathMarkReport().removed();
 
         if (!removed.isEmpty()) {
             groups.add(addGroup(root, Strings.get(
-                Strings.DIALOG_MIGRATION_TUPLETS_REMOVED, removed.size()), removed));
+                Strings.DIALOG_MIGRATION_TUPLETS_REMOVED, removed.size()),
+                removed.stream().map(MigrationWindow::describe).toList()));
         }
 
         if (!updated.isEmpty()) {
             groups.add(addGroup(root, Strings.get(
-                Strings.DIALOG_MIGRATION_TUPLETS_UPDATED, updated.size()), updated));
+                Strings.DIALOG_MIGRATION_TUPLETS_UPDATED, updated.size()),
+                updated.stream().map(MigrationWindow::describe).toList()));
+        }
+
+        if (!breathMarksRemoved.isEmpty()) {
+            groups.add(addGroup(root, Strings.get(
+                Strings.DIALOG_MIGRATION_BREATH_MARKS_REMOVED, breathMarksRemoved.size()),
+                breathMarksRemoved.stream().map(MigrationWindow::describe).toList()));
         }
 
         if (accidentalsConverted) {
@@ -164,13 +176,14 @@ public final class MigrationWindow extends JDialog {
         return tree;
     }
 
+    /** Adds a group titled {@code title} under {@code root}, with one leaf per description. */
     private static DefaultMutableTreeNode addGroup(
-        DefaultMutableTreeNode root, String title, List<? extends TupletLoadPass.Change> changes
+        DefaultMutableTreeNode root, String title, List<String> descriptions
     ) {
         var group = new DefaultMutableTreeNode(title);
 
-        for (var change : changes) {
-            group.add(new DefaultMutableTreeNode(describe(change)));
+        for (var description : descriptions) {
+            group.add(new DefaultMutableTreeNode(description));
         }
 
         root.add(group);
@@ -192,6 +205,15 @@ public final class MigrationWindow extends JDialog {
             change.beginIndex() + 1,
             change.endIndex() + 1,
             detail(change));
+    }
+
+    /** The indices are stored 0-based and shown 1-based, as the user counts them. */
+    private static String describe(BreathMarkLoadPass.Removed removed) {
+        return Strings.get(
+            Strings.DIALOG_MIGRATION_BREATH_MARK_CHANGE,
+            removed.lineIndex() + 1,
+            removed.elementIndex() + 1,
+            Strings.get(Strings.DIALOG_MIGRATION_REASON_BREATH_MARK_HOST));
     }
 
     private static String detail(TupletLoadPass.Change change) {

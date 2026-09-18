@@ -62,6 +62,6 @@ public final class FinalDoubleBarlineAction extends ElementTypeAction {
 
     @Override
     public @Nullable StaffElement admit(StaffElement element) {
-        return Song.isAutoMaintainedTerminalOfItsSong(element) ? element : null;
+        return Song.isTerminalOfItsSong(element) ? element : null;
     }
 }

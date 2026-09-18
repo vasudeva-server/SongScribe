@@ -66,8 +66,10 @@ public sealed interface ElementChange {
     /**
      * The position of {@code element} in {@link #projectedElements}.
      *
-     * @return the projected position, or {@code null} when {@code element} is not in the
-     *     projection — it is one this change removes, or it sits on another line
+     * @param element an element of {@link #line()}
+     * @return the projected position, or {@code null} when {@code element} is not present
+     *     after the change — it is one this change removes
+     * @throws IllegalArgumentException if {@code element} is not on {@link #line()}
      */
     @Nullable Integer projectedIndexOf(StaffElement element);
 
@@ -116,11 +118,6 @@ public sealed interface ElementChange {
         public @Nullable Integer projectedIndexOf(StaffElement element) {
             if (element == inserted) {
                 return index;
-            }
-
-            // A span endpoint can sit on the neighboring line.
-            if (!line.contains(element)) {
-                return null;
             }
 
             var current = line.getElementIndex(element);
@@ -232,11 +229,6 @@ public sealed interface ElementChange {
 
         @Override
         public @Nullable Integer projectedIndexOf(StaffElement element) {
-            // A span endpoint can sit on the neighboring line.
-            if (!line.contains(element)) {
-                return null;
-            }
-
             var current = line.getElementIndex(element);
 
             if (range.contains(current)) {

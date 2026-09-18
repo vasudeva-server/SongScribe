@@ -787,7 +787,7 @@ public final class SelectionCoordinator implements Disposable {
      */
     public boolean isTerminalSelected() {
         var element = getSingleSelectedElement();
-        return element != null && Song.isAutoMaintainedTerminalOfItsSong(element);
+        return element != null && Song.isTerminalOfItsSong(element);
     }
 
     /**

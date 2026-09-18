@@ -100,7 +100,7 @@ final class PreviewElementInserter {
         // Route a direct click on the terminal to replaceTerminal when the active preview
         // element can legally replace it. This bypasses the normal insertion path entirely.
         if (overElementX) {
-            if (previewElement != null && isDirectClickOnTerminal(song, line, insertionIndex)) {
+            if (previewElement != null && isDirectClickOnTerminal(line, insertionIndex)) {
                 var previewType = previewElement.getType();
 
                 if (song.canReplaceTerminal(previewType)) {
@@ -124,6 +124,12 @@ final class PreviewElementInserter {
         // isPreviewClickTarget (checked at entry) guarantees a preview element; this guard
         // proves that to the null-checker before deriving the op-name.
         if (previewElement == null) {
+            return;
+        }
+
+        // Every gap slot trackMouse hides the ghost for is refused here on the same rule —
+        // ignore the click.
+        if (!overElementX && !line.canInsertRunAt(insertionIndex, List.of(previewElement))) {
             return;
         }
 
@@ -238,9 +244,8 @@ final class PreviewElementInserter {
      * Returns {@code true} when {@code xIndex} points to the auto-maintained terminal
      * element on {@code line}.
      */
-    private static boolean isDirectClickOnTerminal(Song song, Line line, int xIndex) {
-        return xIndex < line.elementCount()
-            && song.isAutoMaintainedTerminal(line.getElement(xIndex), line);
+    private static boolean isDirectClickOnTerminal(Line line, int xIndex) {
+        return line.isTerminalAt(xIndex);
     }
 
     /**
@@ -429,7 +434,9 @@ final class PreviewElementInserter {
     /**
      * Replaces an existing element with {@code replacement}, built by {@link #replacementFor}
      * and already through the fit gate. Called when the user clicks on an existing element head
-     * with the preview element active.
+     * with the preview element active. If the replacement is not a duration element and the
+     * following element is a breath mark, that breath mark is cascade-deleted through
+     * {@code deleteRange} so all gap-fill, glissando, and syllable/extend logic is reused.
      *
      * @param lc           The LineComponent
      * @param elementIndex The index of the element to replace
@@ -494,6 +501,17 @@ final class PreviewElementInserter {
 
         // Replace the element entirely (line.setElement marks the song modified)
         line.setElement(elementIndex, replacement);
+
+        // A breath mark stands only after a duration element, so a replacement by anything else
+        // takes the breath mark after it along. The effective range of a lone breath mark widens
+        // nothing: it hosts no grace note, sits behind no barline, and neither another breath
+        // mark nor a key change can follow it. Inside the caller's bracket, so undo restores the
+        // breath mark before the old element, in reverse order. The grace-note cleanup below
+        // reads elementIndex and elementIndex - 1 only, which this removal at elementIndex + 1
+        // does not move.
+        if (!previewType.isDuration() && line.isBreathMarkAt(elementIndex + 1)) {
+            line.deleteRange(line.effectiveRange(StaffElementRun.ElementRange.single(elementIndex + 1)));
+        }
 
         // Grace note cleanup: if the preceding element is a paired grace note (grace + connected
         // glissando to the replaced host), and the replacement is not a pitched note, remove the

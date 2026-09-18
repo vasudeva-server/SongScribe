@@ -20,6 +20,7 @@
 package songscribe.io;
 
 import songscribe.dom.AccidentalState;
+import songscribe.dom.BreathMarkLoadPass;
 import songscribe.dom.Song;
 import songscribe.dom.TupletLoadPass;
 
@@ -29,18 +30,25 @@ import songscribe.dom.TupletLoadPass;
  * @param tupletReport         every tuplet the post-parse pass removed or completed, in
  *                             document order; empty when the file's tuplets were taken as
  *                             they stood
+ * @param breathMarkReport     every breath mark the post-parse pass removed for not following
+ *                             a note or a rest, in document order; empty when every breath
+ *                             mark stood where it may
  * @param accidentalsConverted whether retired accidentals were converted
  */
-public record LoadMigrations(TupletLoadPass.Report tupletReport, boolean accidentalsConverted) {
+public record LoadMigrations(
+    TupletLoadPass.Report tupletReport,
+    BreathMarkLoadPass.Report breathMarkReport,
+    boolean accidentalsConverted
+) {
 
     /**
      * Whether this load changed nothing in the document.
      *
-     * @return {@code true} when no tuplet was removed or completed and no retired accidental
-     *         was converted
+     * @return {@code true} when no tuplet was removed or completed, no breath mark was removed
+     *         and no retired accidental was converted
      */
     public boolean isEmpty() {
-        return tupletReport.isEmpty() && !accidentalsConverted;
+        return tupletReport.isEmpty() && breathMarkReport.isEmpty() && !accidentalsConverted;
     }
 
     /**
@@ -51,7 +59,10 @@ public record LoadMigrations(TupletLoadPass.Report tupletReport, boolean acciden
      * tuplet pass has settled which notes the song holds: a note the file writes an accidental on
      * sounds that accidental, a bare note adopts what is in force, and parentheses are ignored.
      * This is the only supported way to run the passes, because the tuplet pass must settle
-     * first — a tuplet it drops or completes changes which notes the walk reads.
+     * first — a tuplet it drops or completes changes which notes the walk reads. The breath-mark
+     * pass reads no tuplet and changes no note, so its place in the order is free; it runs after
+     * the tuplet pass so that a removed breath mark's index in the report is its index in the
+     * settled line.
      *
      * @param song                 the song to settle, immediately after parsing and before it
      *                             is installed
@@ -62,8 +73,9 @@ public record LoadMigrations(TupletLoadPass.Report tupletReport, boolean acciden
      */
     public static LoadMigrations run(Song song, boolean accidentalsConverted) {
         var tupletReport = TupletLoadPass.run(song);
+        var breathMarkReport = BreathMarkLoadPass.run(song);
         song.stampAccidentalsAfterParsing();
 
-        return new LoadMigrations(tupletReport, accidentalsConverted);
+        return new LoadMigrations(tupletReport, breathMarkReport, accidentalsConverted);
     }
 }

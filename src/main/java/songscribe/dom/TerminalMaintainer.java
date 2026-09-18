@@ -33,7 +33,7 @@ import songscribe.error.RuntimeError;
  *   <li><b>Maintenance</b> — {@link #maintainOnLastLineChange} restores the invariant after
  *       the last line of the song changes, and {@link #installAfterParsing} restores it in
  *       one pass at the end of a suspended file load.</li>
- *   <li><b>Recognition</b> — {@link #isAutoMaintainedTerminal} tells the UI which element is
+ *   <li><b>Recognition</b> — {@link #isTerminal} tells the UI which element is
  *       the maintained terminal. That terminal is selectable, so an annotation can be attached
  *       to it.</li>
  *   <li><b>Policy</b> — {@link #checkTerminalPolicyForInsertion},
@@ -184,7 +184,7 @@ public final class TerminalMaintainer {
      * <p>A valid terminal type that sits on any line other than the last, or at any
      * position other than the last, is treated as an ordinary (interactable) element.
      */
-    public boolean isAutoMaintainedTerminal(StaffElement element, Line line) {
+    public boolean isTerminal(StaffElement element, Line line) {
         var lines = song.getLines();
         var lastIdx = line.elementCount() - 1;
         return lastIdx >= 0
@@ -234,7 +234,7 @@ public final class TerminalMaintainer {
                 "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
         }
 
-        if (isAutoMaintainedTerminal(line.getElement(index), line) && !incoming.isValidSongTerminal()) {
+        if (isTerminal(line.getElement(index), line) && !incoming.isValidSongTerminal()) {
             throw new IllegalStateException(
                 "The auto-maintained terminal may only be replaced by a valid terminal");
         }
@@ -253,7 +253,7 @@ public final class TerminalMaintainer {
         }
 
         for (var index = range.begin(); index <= range.end(); index++) {
-            if (isAutoMaintainedTerminal(line.getElement(index), line)) {
+            if (isTerminal(line.getElement(index), line)) {
                 throw new IllegalStateException("The auto-maintained terminal may not be removed");
             }
         }

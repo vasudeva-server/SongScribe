@@ -377,7 +377,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
 
         var inserted = new ArrayList<StaffElement>();
 
-        if (KeyChangeElement.needsBarlineBefore(line, elementIndex)) {
+        if (line.needsBarlineBeforeKeyChangeAt(elementIndex)) {
             inserted.add(ElementType.SINGLE_BARLINE.newInstance());
         }
 

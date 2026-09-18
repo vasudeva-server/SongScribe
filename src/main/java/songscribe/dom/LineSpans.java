@@ -536,33 +536,12 @@ public final class LineSpans implements SpanLookup {
     }
 
     /**
-     * Removes every tuplet overlapping {@code range}, each through its own
-     * {@link Span#removeFrom}, so each removal is that tuplet's own recorded mutation and
-     * posts under the same bracket rule.
-     *
-     * @param range the elements a tuplet must share at least one of to be removed
-     */
-    public void removeOverlappingTuplets(ElementRange range) {
-        removeOverlapping(Tuplet.class, range);
-    }
-
-    /**
-     * Removes every trill overlapping {@code range}, each through its own
-     * {@link Span#removeFrom}, so each removal is that trill's own recorded mutation and
-     * posts under the same bracket rule. A trill whose anchor is detached is still found and
-     * removed, so a half-detached trill can be cleaned up.
-     *
-     * @param range the elements a trill must share at least one of to be removed
-     */
-    public void removeTrillsOverlapping(ElementRange range) {
-        removeOverlapping(Trill.class, range);
-    }
-
-    /**
      * Removes every {@code type} span overlapping {@code range}, each through its own
-     * {@link Span#removeFrom} so each removal is its own recorded mutation.
+     * {@link Span#removeFrom} so each removal is its own recorded mutation. A span whose
+     * anchor is detached is still found and removed, so a half-detached span can be cleaned
+     * up.
      */
-    private void removeOverlapping(Class<? extends Span> type, ElementRange range) {
+    public void removeOverlapping(Class<? extends Span> type, ElementRange range) {
         for (var span : findSpans(type, Span.overlapping(range))) {
             span.removeFrom(line);
         }

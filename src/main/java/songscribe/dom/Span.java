@@ -512,7 +512,7 @@ public abstract class Span extends LineElement {
      * <p>
      * Off-edge bounds read as unbounded in their direction, exactly as in {@link #containing}.
      * An {@link SpanBound#ABSENT} anchor is deliberately <em>not</em> rejected: the trill
-     * sweeps in {@link Trill#applyDisplacementPolicy} and {@link LineSpans#removeTrillsOverlapping} rely on a
+     * sweeps in {@link Trill#applyDisplacementPolicy} and {@link LineSpans#removeOverlapping} rely on a
      * half-detached span still being found so it can be cleaned up.
      */
     public static IndexPredicate overlapping(ElementRange range) {

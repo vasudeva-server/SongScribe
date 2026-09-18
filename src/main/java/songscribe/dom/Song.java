@@ -1106,8 +1106,8 @@ public final class Song implements Disposable {
      * <p>A valid terminal type that sits on any line other than the last, or at any
      * position other than the last, is treated as an ordinary (interactable) element.
      */
-    public boolean isAutoMaintainedTerminal(StaffElement element, Line line) {
-        return terminal.isAutoMaintainedTerminal(element, line);
+    public boolean isTerminal(StaffElement element, Line line) {
+        return terminal.isTerminal(element, line);
     }
 
     /**
@@ -1120,13 +1120,13 @@ public final class Song implements Disposable {
      * That default is correct for an applicability predicate, where an unparented element simply
      * does not apply, but it is <em>wrong</em> for an invariant check, which must not treat
      * "cannot tell" as "safe". A check inside the DOM has a {@link Line} in hand and must use
-     * {@link #isAutoMaintainedTerminal(StaffElement, Line)} instead, as the terminal policy
+     * {@link #isTerminal(StaffElement, Line)} instead, as the terminal policy
      * checks on {@link TerminalMaintainer} do. The deliberately different name keeps the weaker
      * predicate from being reached for by muscle memory when writing such a check.
      */
-    public static boolean isAutoMaintainedTerminalOfItsSong(StaffElement element) {
+    public static boolean isTerminalOfItsSong(StaffElement element) {
         var line = element.getParentLine();
-        return line != null && line.getSong().isAutoMaintainedTerminal(element, line);
+        return line != null && line.getSong().isTerminal(element, line);
     }
 
     /**

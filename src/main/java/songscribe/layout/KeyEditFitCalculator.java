@@ -320,7 +320,7 @@ public final class KeyEditFitCalculator {
         Key key,
         ElementColumnBuilder columnBuilder) {
 
-        if (KeyChangeElement.needsBarlineBefore(line, insertionIndex)) {
+        if (line.needsBarlineBeforeKeyChangeAt(insertionIndex)) {
             columns.add(columnBuilder.buildDetachedColumn(
                 ElementType.SINGLE_BARLINE.newInstance(), line.getSong().getActiveVerse()));
         }

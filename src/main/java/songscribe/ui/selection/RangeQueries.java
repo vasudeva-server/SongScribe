@@ -182,67 +182,24 @@ public final class RangeQueries {
     }
 
     /**
-     * Returns the index of the first element in the range that is not a grace note,
-     * or null if the range holds nothing but grace notes.
-     *
-     * <p>Grace notes are transparent to beams and tuplets: the group spans the range's
-     * non-grace endpoints and any grace note in between stays outside the group, so a
-     * grace/host pair may sit inside a beamed or tupleted range (refs #592).
-     */
-    public static @Nullable Integer nonGraceBegin(ElementSelection range) {
-        var line = range.line();
-        var bounds = range.range();
-
-        for (var i = bounds.begin(); i <= bounds.end(); i++) {
-            if (!line.getElement(i).getType().isGraceNote()) {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns the index of the last element in the range that is not a grace note,
-     * or null if the range holds nothing but grace notes.
-     *
-     * @see #nonGraceBegin
-     */
-    public static @Nullable Integer nonGraceEnd(ElementSelection range) {
-        var line = range.line();
-        var bounds = range.range();
-
-        for (var i = bounds.end(); i >= bounds.begin(); i--) {
-            if (!line.getElement(i).getType().isGraceNote()) {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Returns whether the range can be beamed/unbeamed.
      */
     public static boolean canToggleBeaming(ElementSelection range) {
         var line = range.line();
-        var beginIndex = nonGraceBegin(range);
-        var endIndex = nonGraceEnd(range);
+        var grouped = line.nonGraceRange(range.range());
 
         // Fewer than two non-grace elements — there is nothing to join.
-        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
+        if (grouped == null || grouped.size() < 2) {
             return false;
         }
 
         //noinspection SimplifiableIfStatement
-        if (!IntStream.rangeClosed(beginIndex, endIndex).allMatch(i -> {
+        if (!IntStream.rangeClosed(grouped.begin(), grouped.end()).allMatch(i -> {
             var type = line.getElement(i).getType();
             return type.isGraceNote() || type.isBeamable();
         })) {
             return false;
         }
-
-        var grouped = new ElementRange(beginIndex, endIndex);
 
         // Conflict: beaming would connect what a tie already connects.
         return !(shouldConnectBeamSelection(line, grouped)
@@ -495,17 +452,16 @@ public final class RangeQueries {
     @SuppressWarnings("ObjectEquality")
     public static TupletToggleInfo canToggleTuplet(ElementSelection range) {
         var line = range.line();
-        var beginIndex = nonGraceBegin(range);
-        var endIndex = nonGraceEnd(range);
+        var grouped = line.nonGraceRange(range.range());
 
         // Fewer than two non-grace elements — there is nothing to group.
-        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
+        if (grouped == null || grouped.size() < 2) {
             return new TupletToggleInfo(false, null, false);
         }
 
         Tuplet firstTuplet = null;
 
-        for (int i = beginIndex; i <= endIndex; i++) {
+        for (int i = grouped.begin(); i <= grouped.end(); i++) {
             // A grace note rides along inside the span without joining the tuplet.
             if (line.getElement(i).getType().isGraceNote()) {
                 continue;
@@ -513,14 +469,13 @@ public final class RangeQueries {
 
             var currentTuplet = line.spanRegistry().findTupletAt(i);
 
-            if (i == beginIndex) {
+            if (i == grouped.begin()) {
                 firstTuplet = currentTuplet;
             } else if (currentTuplet != firstTuplet) {
                 return new TupletToggleInfo(false, null, false);
             }
         }
 
-        var grouped = new ElementRange(beginIndex, endIndex);
         var coversExisting = (firstTuplet != null)
             && Span.exactly(grouped).test(
                 line.spanRegistry().anchorIndexOf(firstTuplet), line.spanRegistry().endIndexOf(firstTuplet));

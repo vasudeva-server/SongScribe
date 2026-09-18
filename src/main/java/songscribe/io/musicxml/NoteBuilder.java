@@ -59,6 +59,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Stem.Auto;
 import songscribe.dom.Stem.Forced;
 import songscribe.dom.Tuplet;
+import songscribe.error.RuntimeError;
 
 /**
  * Builds one ProxyMusic {@link Note} from one {@link StaffElement}, and records the pair into
@@ -116,7 +117,7 @@ final class NoteBuilder {
      * key change — is not a note at all; the caller emits those in its own way.
      */
     static @Nullable Note buildNote(BuildContext ctx, Line line, int elementIndex) {
-        var element = line.getElements().get(elementIndex);
+        var element = line.getElement(elementIndex);
         var type = element.getType();
 
         if (type.isBreathMark()) {
@@ -336,29 +337,27 @@ final class NoteBuilder {
 
     /**
      * Folds the breath mark at {@code elementIndex} into the preceding note's
-     * {@code <articulations>}, or does nothing when no note precedes it.
+     * {@code <articulations>}.
      *
-     * <p>MusicXML has no standalone breath mark: it is an articulation of the note it follows.
-     * The streaming writer expressed that as a peek — each note asked whether the next element
-     * was a breath mark, and the loop then skipped the breath mark so it was not emitted twice.
-     * Both halves are gone. No {@code Note} is ever created for a breath mark, so there is
-     * nothing to skip, and the fold is a lookup of the note the preceding element produced.
+     * <p>MusicXML has no standalone breath mark: it is an articulation of the note before it.
+     * The lookup is the immediately preceding element of the same line. A breath mark stands
+     * only immediately after a duration element, and every duration element produces a
+     * {@code Note}, so the lookup is total: {@code elementIndex > 0}, and the element at
+     * {@code elementIndex - 1} has a {@code Note} in {@code ctx.index()}. A breath mark with
+     * no preceding note is an invariant failure.
      *
-     * <p>The lookup is deliberately the <em>immediately</em> preceding element of the same line.
-     * An element that produced no note produced no place to put the mark: a barline separates
-     * the two, and searching further back would move the mark into an earlier measure, while a
-     * second breath mark in a row would duplicate it onto one note. Both cases drop the mark,
-     * which is what the streaming writer's peek did.
+     * @param elementIndex the breath mark's position in {@code line}
+     * @effects on the invariant failure, exits through {@link RuntimeError#exit(String)}
      */
     private static void foldBreathMark(BuildContext ctx, Line line, int elementIndex) {
-        if (elementIndex == 0) {
-            return;
-        }
-
-        var precedingNote = ctx.index().notes().get(line.getElements().get(elementIndex - 1));
+        var precedingNote = elementIndex == 0
+            ? null
+            : ctx.index().notes().get(line.getElement(elementIndex - 1));
 
         if (precedingNote == null) {
-            return;
+            throw RuntimeError.exit(
+                "Breath mark at line " + line.index() + ", element " + elementIndex
+                    + " has no preceding note");
         }
 
         var factory = ctx.factory();

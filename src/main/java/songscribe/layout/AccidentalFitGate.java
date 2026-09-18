@@ -168,7 +168,7 @@ public final class AccidentalFitGate {
                 continue;
             }
 
-            var currentElements = line.getElements().subList(0, line.effectiveElementCount());
+            var currentElements = line.effectiveElements();
 
             if (!InsertionSpacingCalculator.fitsInPlace(line, currentElements, lyricRenderMetrics)) {
                 return false;

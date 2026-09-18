@@ -9,7 +9,7 @@ Run by `/design-pass 6` — register row `6`, *Line*.
 | 1 Inventory | ✅ | with 2 | — | `findings-1-2.md` |
 | 2 Class design | ✅ | ✅ | [class-design.md](./class-design.md) | Landed in `f7309389` together with the fixes from `plans/check-findings.md` |
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-unrepresentable-states.md](./step-3-unrepresentable-states.md) | `findings-3.md`. Execution reaches past the target: the `-1` sweep (3.13) across `dom`, `ui`, `layout`, `midi` and `io`, and rows 7, 12, 16 and 25's files. During review the user removed the dead `@Nullable` from `Line.getElementIndex` and from `LineSpans.boundOf`, with `boundOf`'s null branch (no caller passes null; the tree compiled both times) |
-| 4 Extraction | ⏳ | ⏳ | — | |
+| 4 Extraction | ✅ | ✅ | [step-4-extraction.md](./step-4-extraction.md) | `findings-4.md`. During review the user lifted the gate for one change: `Song.isAutoMaintainedTerminal` → `isTerminal` and `isAutoMaintainedTerminalOfItsSong` → `isTerminalOfItsSong` (row 12's file), then `TerminalMaintainer.isAutoMaintainedTerminal` → `isTerminal`; the tree compiled both times |
 | 5 Contracts | ⏳ | ⏳ | — | |
 | 6 Test triage | ⏳ | ⏳ | — | |
 | 7 Test-only surface | ⏳ | ⏳ | — | |
@@ -69,6 +69,16 @@ register at step 13, before this file is deleted.
 - **→ Step 5.** `plans/check-findings.md` contract items 8–19. Several landed in
   the check-fix snapshot; step 5 re-reads each against the tree rather than trusting
   either list.
+- **→ Step 5.** `EditableRun.deleteRange`'s Javadoc (`:112–114`) claims the deletion
+  repairs "the x-offsets of the elements that close the gap", and `deleteElement`'s
+  comments (`:208`, `:264`) name a "gap-fill". No statement in either method touches an
+  x-offset; step 5 checks the claim against `LyricRun`'s repairs and rewrites it.
+- **→ Step 5.** What a deletion takes with it differs by path: `deleteElement` (`:262–272`)
+  cascade-deletes a breath mark that lands at the deletion's left edge, so a second breath
+  mark after a widened range's end goes with the elementwise path and survives the
+  contiguous `deleteRange` path. The contract for `deleteRange` must state one answer.
+- **→ Step 5.** `LineSpans.removeOverlapping`'s contract carries the detached-anchor
+  sentence now on `removeTrillsOverlapping` (`:552–553`), for every kind (step 4 item 8).
 - **→ Step 6.** `plans/check-findings.md` #23: the promises the pass wrote that no
   test asserts — `Span.addTo`'s displacement policy and replay skip,
   `Span.removeFrom`'s no-op, `removesConfirmableSpan`, the three

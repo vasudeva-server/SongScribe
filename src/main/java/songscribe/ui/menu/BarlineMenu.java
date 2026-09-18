@@ -35,7 +35,7 @@ import static songscribe.ui.action.Actions.FINAL_DOUBLE_BARLINE_ACTION;
  * before-{@code syncPreviewElementWithSelectedDuration()} ordering in
  * {@code ScoreViewController.modeDidChange}, not its enablement. What confines it to the song's
  * auto-maintained terminal is {@code Flag.REQUIRES_SINGLE_SELECTION} plus its {@code appliesTo}
- * override ({@code Song.isAutoMaintainedTerminalOfItsSong}). The right repeat that is its
+ * override ({@code Song.isTerminalOfItsSong}). The right repeat that is its
  * counterpart for the terminal lives in {@link RepeatsMenu}, where it doubles as an ordinary
  * drawable repeat — see {@code FinalDoubleBarlineAction} (issue #713).
  */

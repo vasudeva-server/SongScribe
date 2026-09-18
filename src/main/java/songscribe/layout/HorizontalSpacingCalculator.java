@@ -689,7 +689,7 @@ public final class HorizontalSpacingCalculator {
         // The song's own terminal-identity test, not a bare type check: a barline that merely looks
         // like a terminal — one ending a non-last line, or a projected clone that is not the line's
         // element — is not pinned flush-right, so it still owes the trailing rest.
-        var trailingGapSs = song.isAutoMaintainedTerminal(lastElement, line) ? 0.0 : lineRestSs;
+        var trailingGapSs = song.isTerminal(lastElement, line) ? 0.0 : lineRestSs;
 
         return lastColumn.getRightExtentSs() + trailingGapSs;
     }

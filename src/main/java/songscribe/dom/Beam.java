@@ -301,19 +301,11 @@ public final class Beam extends NoteSpan {
         }
 
         // Grace notes: check surrounding non-grace notes.
-        var begin = noteIndex - 1;
-        var end = noteIndex + 1;
+        var previous = line.previousNonGraceIndex(noteIndex);
+        var next = line.nextNonGraceIndex(noteIndex);
 
-        while (begin > 0 && line.getElement(begin).getType().isGraceNote()) {
-            begin--;
-        }
-
-        while (end < line.elementCount() && line.getElement(end).getType().isGraceNote()) {
-            end++;
-        }
-
-        return begin >= 0 && noteTypeInLevel(begin, level)
-            && end < line.elementCount() && noteTypeInLevel(end, level);
+        return previous != null && noteTypeInLevel(previous, level)
+            && next != null && noteTypeInLevel(next, level);
     }
 
     // -------------------------------------------------------------------------

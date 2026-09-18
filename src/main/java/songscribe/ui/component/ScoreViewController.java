@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import javax.swing.JComponent;
+import javax.swing.JOptionPane;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -1247,12 +1248,50 @@ public final class ScoreViewController {
         });
     }
 
-    /** Outcome of {@link #tryInsertFragment}. */
+    /**
+     * Outcome of {@link #tryInsertFragment}. Only {@link #INSERTED} means the line was mutated;
+     * every other constant leaves it untouched.
+     */
     public enum FragmentInsertOutcome {
+        /** The paste happened, or the gesture was spent on a fragment that reduced to nothing. */
         INSERTED,
+        /** The fit gate refused the paste and the "line full" error was shown. */
         LINE_FULL,
+        /** The clipboard holds nothing. */
         EMPTY,
-        CANCELLED
+        /** The user declined a confirm about the paste itself, so the gesture is over. */
+        CANCELLED,
+        /**
+         * An error alert was shown about the chosen point, nothing was mutated, and the user may
+         * pick another point.
+         */
+        DECLINED_BY_ALERT
+    }
+
+    /** Index of the "Remove & paste" button in {@link #confirmRemoveLeadingBreathMark}'s options. */
+    private static final int REMOVE_AND_PASTE_OPTION = 0;
+
+    /**
+     * Confirms removing the breath mark a fragment leads with, when the line cannot take it at
+     * the chosen point, so the rest of the fragment can be pasted.
+     *
+     * @return {@code true} when the user chose "Remove & paste"; {@code false} on Cancel or a
+     *     closed dialog
+     */
+    private static boolean confirmRemoveLeadingBreathMark() {
+        var cancelLabel = Strings.get(Strings.BUTTON_CANCEL);
+        var removeLabel = Strings.get(Strings.BUTTON_REMOVE_AND_PASTE);
+        var result = OptionDialogs.showOptionDialog(
+            null,
+            Strings.CONFIRM_TITLE_PASTE,
+            Strings.CONFIRM_PASTE_LEADING_BREATH_MARK,
+            JOptionPane.DEFAULT_OPTION,
+            JOptionPane.WARNING_MESSAGE,
+            null,
+            new Object[]{removeLabel, cancelLabel},
+            removeLabel
+        );
+        return result == REMOVE_AND_PASTE_OPTION;
     }
 
     /**
@@ -1264,6 +1303,17 @@ public final class ScoreViewController {
      *
      * <p>{@code CANCELLED} means the user declined the confirm shown when the pasted content
      * would invalidate a first-second ending. Like {@code LINE_FULL} it leaves the line untouched.
+     *
+     * <p><b>A breath mark stands only immediately after a duration element</b>, and the paste
+     * keeps that on both of its ends before the fit gate runs. A fragment leading with a breath
+     * mark the line cannot take at {@code insertIndex} ({@link StaffElementRun#canLeadRunAt}) is
+     * refused with the "A breath mark cannot be placed here" alert and {@code DECLINED_BY_ALERT}
+     * when the breath mark is the whole fragment; otherwise a confirm offers "Remove &amp;
+     * paste", which drops the leading breath mark and pastes the rest, and Cancel, which returns
+     * {@code CANCELLED}. A fragment whose last element may not stand before the breath mark at
+     * {@code insertIndex} ({@link StaffElementRun#canTrailRunAt}) is refused with the "These
+     * elements may not be inserted before a breath mark" alert and {@code DECLINED_BY_ALERT}.
+     * Both refusals leave the line untouched.
      *
      * <p>Must be called inside a modification bracket — both paste-replace and
      * paste-mode placement supply their own, so delete + insert form one undo step.
@@ -1286,11 +1336,12 @@ public final class ScoreViewController {
      *                    {@code deleteRange} when there is one
      * @param deleteRange The range to delete first, or null for pure insertion
      * @return {@code EMPTY} when the clipboard holds nothing; {@code LINE_FULL} when the fit gate
-     *     refused the paste; {@code CANCELLED} when the notator declined the confirm; and
-     *     {@code INSERTED} when the paste happened. {@code INSERTED} also covers the case where
-     *     the fragment reduced to nothing because every key change it carried restates the key
-     *     already running here — the gesture is spent and the caller should complete it, even
-     *     though no element was placed. Only {@code INSERTED} means the line was mutated
+     *     refused the paste; {@code DECLINED_BY_ALERT} when a breath-mark alert refused the chosen
+     *     point and the notator may pick another; {@code CANCELLED} when the notator declined a
+     *     confirm; and {@code INSERTED} when the paste happened. {@code INSERTED} also covers the
+     *     case where the fragment reduced to nothing because every key change it carried restates
+     *     the key already running here — the gesture is spent and the caller should complete it,
+     *     even though no element was placed. Only {@code INSERTED} means the line was mutated
      */
     public FragmentInsertOutcome tryInsertFragment(
         Line line, int insertIndex, StaffElementRun.@Nullable EffectiveRange deleteRange) {
@@ -1328,7 +1379,6 @@ public final class ScoreViewController {
         // than deleted after the insertion, so the chain walk, the fit measurement and the
         // span reconciliation below all see the run that actually lands.
         var instantiated = fragment.instantiate().withoutRedundantKeyChanges(keyAtInsertion);
-        var clones = instantiated.elements();
 
         // A key the fragment brings in reaches the rest of this line and every line inheriting
         // past it, exactly as a key change written by hand does — these are the key changes it
@@ -1343,12 +1393,45 @@ public final class ScoreViewController {
         // barline behind it, leaves nothing to place. What is left of the paste is the deletion a
         // paste-replace owes, with the stranding just computed; a pure insertion has nothing left
         // to do at all. Either way the gesture is spent, not declined.
-        if (clones.isEmpty()) {
+        if (instantiated.elements().isEmpty()) {
             if (deleteRange != null) {
                 deleteElementRange(line, deleteRange, stranding);
             }
 
             return FragmentInsertOutcome.INSERTED;
+        }
+
+        // A breath mark stands only immediately after a duration element, so the fragment is
+        // tested at both ends before anything is measured or mutated. A paste-replace deletes
+        // from insertIndex, so the predecessor the leading test reads is the same before and
+        // after the deletion; its trailing test can never fail, because the effective range
+        // already takes a breath mark after the range into the deletion.
+        var leadsWithBreathMark = instantiated.elements().getFirst().getType().isBreathMark();
+
+        if (leadsWithBreathMark && !line.canLeadRunAt(insertIndex)) {
+            if (instantiated.elements().size() == 1) {
+                OptionDialogs.showErrorMessage(
+                    null, Strings.ALERT_TITLE_PASTE, Strings.ALERT_PASTE_BREATH_MARK_NOT_HERE);
+                return FragmentInsertOutcome.DECLINED_BY_ALERT;
+            }
+
+            if (!confirmRemoveLeadingBreathMark()) {
+                return FragmentInsertOutcome.CANCELLED;
+            }
+
+            // The leading breath mark is dropped here rather than after the insertion, so the
+            // chain walk, the fit measurement and the span reconciliation below all see the run
+            // that actually lands. A breath mark anchors no span, so every fragment span survives.
+            var elements = instantiated.elements();
+            instantiated = new Fragment(elements.subList(1, elements.size()), instantiated.spans());
+        }
+
+        var clones = instantiated.elements();
+
+        if (!line.canTrailRunAt(insertIndex, clones.getLast().getType())) {
+            OptionDialogs.showErrorMessage(
+                null, Strings.ALERT_TITLE_PASTE, Strings.ALERT_PASTE_NOT_BEFORE_BREATH_MARK);
+            return FragmentInsertOutcome.DECLINED_BY_ALERT;
         }
 
         // The line as the paste will leave it: the deleted range swapped for the clones.

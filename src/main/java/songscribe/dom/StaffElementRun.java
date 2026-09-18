@@ -156,17 +156,7 @@ public interface StaffElementRun {
      * @return {@code true} when {@code index} and {@code index - 1} are such a pair
      */
     default boolean isKeyChangeBehindBarline(int index) {
-        if (index < 1 || index >= effectiveElementCount()) {
-            return false;
-        }
-
-        if (!getElement(index).getType().isKeyChange()) {
-            return false;
-        }
-
-        var precedingType = getElement(index - 1).getType();
-
-        return precedingType.isBar();
+        return isKeyChangeAt(index) && isBarAt(index - 1);
     }
 
     /**
@@ -232,7 +222,7 @@ public interface StaffElementRun {
      *     when nothing after it is paired with it; never less than {@code end}
      */
     default int effectiveEnd(int end) {
-        if (end + 1 < effectiveElementCount() && getElement(end + 1).getType().isBreathMark()) {
+        if (isBreathMarkAt(end + 1)) {
             return end + 1;
         }
 
@@ -270,7 +260,7 @@ public interface StaffElementRun {
      * </ul>
      */
     default boolean isInsideGraceHostPair(int index) {
-        return isPairedGraceNote(index) || isPairedGraceNote(index - 1);
+        return isPairedGraceNote(index) || isHostOfPairedGraceNote(index);
     }
 
     /**
@@ -303,6 +293,101 @@ public interface StaffElementRun {
      */
     default boolean isKeyChangeAt(int index) {
         return hasIndex(index) && getElement(index).getType().isKeyChange();
+    }
+
+    /**
+     * Whether a breath mark stands at {@code index}; out of range yields {@code false}.
+     */
+    default boolean isBreathMarkAt(int index) {
+        return hasIndex(index) && getElement(index).getType().isBreathMark();
+    }
+
+    /**
+     * Whether a barline or repeat stands at {@code index}; out of range yields {@code false}.
+     */
+    default boolean isBarAt(int index) {
+        return hasIndex(index) && getElement(index).getType().isBar();
+    }
+
+    /**
+     * Whether a duration element — a pitched note or a rest — stands at {@code index}; out of
+     * range yields {@code false}.
+     */
+    default boolean isDurationAt(int index) {
+        return hasIndex(index) && getElement(index).getType().isDuration();
+    }
+
+    /**
+     * Whether a glissando reaches the element at {@code index} from the note in front of it.
+     *
+     * <p>A connecting glissando lives on the note it starts from and joins that note to the
+     * element immediately after it. An edit that removes or displaces the element at
+     * {@code index} therefore leaves the note at {@code index - 1} pointing at nothing, and asks
+     * this to learn whether there is a glissando to strip — {@link LyricRun#removeGlissandoInto}
+     * is the strip.
+     *
+     * @param index the index of the element a glissando would arrive at; {@code index - 1} out of
+     *     range — including {@code index == 0} and {@code index == elementCount()}, the slot past
+     *     the last element — yields {@code false}
+     * @return {@code true} when a {@link NoteElement} stands at {@code index - 1} and its
+     *     {@link NoteElement#hasGlissando()} is true
+     */
+    default boolean hasGlissandoInto(int index) {
+        return hasIndex(index - 1) && getElement(index - 1) instanceof NoteElement note
+            && note.hasGlissando();
+    }
+
+    /**
+     * Whether writing a key change at {@code insertionIndex} needs a barline placed in front of
+     * it for {@link KeyChangeElement}'s position invariant to hold.
+     *
+     * <p>Two callers have to agree about this and would otherwise each spell out the test: the fit
+     * pre-check, which must measure the barline's column because it is part of the edit, and the
+     * commit, which must actually write it. A disagreement between them accepts an edit that then
+     * does not fit, or reserves room for a barline that never arrives — neither of which anything
+     * would report.
+     *
+     * @param insertionIndex the index the key change would land at, at least
+     *     {@link #FIRST_LEGAL_KEY_CHANGE_INDEX}
+     * @return {@code true} when the element already at {@code insertionIndex - 1} is neither a
+     *     barline nor a repeat, so a {@link ElementType#SINGLE_BARLINE} is owed in front
+     */
+    default boolean needsBarlineBeforeKeyChangeAt(int insertionIndex) {
+        return !isBarAt(insertionIndex - 1);
+    }
+
+    /**
+     * Returns {@code range} narrowed to the elements that are not grace notes: the same range
+     * with its ends drawn inward to the first and last non-grace element.
+     *
+     * <p>Grace notes are transparent to the operations that span a range of notes — a beam or a
+     * tuplet reads over them without joining them — so a range read off a selection is narrowed
+     * through this before its ends are examined, and a selection holding nothing but grace
+     * notes has no range for those operations to act on at all.
+     *
+     * @param range the range to narrow; every index in it satisfies {@link #hasIndex}
+     * @return the sub-range of {@code range} from its first non-grace element to its last, or
+     *     {@code null} when every element in {@code range} is a grace note
+     * @invariant a non-null result lies within {@code range} and holds at least one element
+     */
+    default @Nullable ElementRange nonGraceRange(ElementRange range) {
+        var first = range.begin();
+
+        while (first <= range.end() && getElement(first).getType().isGraceNote()) {
+            first++;
+        }
+
+        if (first > range.end()) {
+            return null;
+        }
+
+        var last = range.end();
+
+        while (getElement(last).getType().isGraceNote()) {
+            last--;
+        }
+
+        return new ElementRange(first, last);
     }
 
     /**
@@ -377,6 +462,60 @@ public interface StaffElementRun {
      */
     default boolean canInsertElementAt(int index) {
         return !isKeyChangeAt(index) && !isHostOfPairedGraceNote(index);
+    }
+
+    /**
+     * Whether a run of elements may be inserted in front of the element at {@code index}: the
+     * rule {@link #canInsertElementAt} states for a single element, plus the breath-mark
+     * placement rule for the run's two ends.
+     *
+     * <p><b>A breath mark stands only immediately after a duration element</b> — a pitched note
+     * or a rest, the types whose {@link ElementType#isDuration()} is true. {@code canInsertElementAt}
+     * refuses the two slots inside a pair; this rule adds the two ways a run can break that
+     * invariant at its ends:
+     *
+     * <ul>
+     *   <li>the run's <b>first</b> element is a breath mark, so it needs a duration element in
+     *       front of it and no breath mark already at {@code index} — {@link #canLeadRunAt};</li>
+     *   <li>a breath mark already stands at {@code index}, so the run's <b>last</b> element,
+     *       which will stand in front of it, must be a duration element —
+     *       {@link #canTrailRunAt}.</li>
+     * </ul>
+     *
+     * <p>A paste asks the two halves separately rather than this, because each half has a dialog
+     * of its own to raise. Every other way a run lands on a line asks this.
+     *
+     * @param index the slot the run would be inserted at, so that its first element lands in
+     *     front of the element currently at {@code index}
+     * @param run the elements that would land there, in order; must not be empty
+     * @return {@code true} when {@code run} may be inserted at {@code index}
+     */
+    default boolean canInsertRunAt(int index, List<? extends StaffElement> run) {
+        if (!canInsertElementAt(index)) {
+            return false;
+        }
+
+        if (run.getFirst().getType().isBreathMark() && !canLeadRunAt(index)) {
+            return false;
+        }
+
+        return canTrailRunAt(index, run.getLast().getType());
+    }
+
+    /**
+     * Whether a breath mark may be the first element of a run inserted at {@code index} — the
+     * leading half of {@link #canInsertRunAt}.
+     */
+    default boolean canLeadRunAt(int index) {
+        return isDurationAt(index - 1) && !isBreathMarkAt(index);
+    }
+
+    /**
+     * Whether a run whose last element has type {@code last} may be inserted at {@code index} —
+     * the trailing half of {@link #canInsertRunAt}.
+     */
+    default boolean canTrailRunAt(int index, ElementType last) {
+        return !isBreathMarkAt(index) || last.isDuration();
     }
 
     // -------------------------------------------------------------------------

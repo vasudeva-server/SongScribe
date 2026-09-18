@@ -298,6 +298,25 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
+     * Strips the glissando that reaches the element at {@code index} from the note in front of
+     * it, when there is one — the repair {@link #hasGlissandoInto} is the question for. Does
+     * nothing when no glissando arrives at {@code index}.
+     *
+     * <p>Must be called from inside a {@link Song#withModification(Runnable)} bracket.
+     *
+     * @param index the index of the element the glissando arrives at; any value
+     *     {@link #hasGlissandoInto} accepts
+     * @effects when {@code hasGlissandoInto(index)}, removes the slide from the note at
+     *     {@code index - 1} through one {@link #modifyElement}; an implementor that records gets
+     *     one record
+     */
+    default void removeGlissandoInto(int index) {
+        if (hasGlissandoInto(index) && getElement(index - 1) instanceof NoteElement note) {
+            modifyElement(index - 1, ElementField.SLIDE, note::removeSlide);
+        }
+    }
+
+    /**
      * Whether inserting {@code run} breaks the lyric chains that ran across the position it
      * lands at. One interrupting element is enough: the chains cannot pass through a run that
      * holds a syllable slot arriving empty, or a repeat.
@@ -344,10 +363,8 @@ public interface LyricRun extends StaffElementRun {
         // Inserting another pitched note simply re-targets it, but inserting anything else
         // (rest, breath mark, grace note, barline, key change) leaves it with no valid
         // target, so remove it from the preceding note.
-        if (!getElement(firstInsertedIndex).getType().isPitchedNote() && firstInsertedIndex > 0
-            && getElement(firstInsertedIndex - 1) instanceof NoteElement precedingNote
-            && precedingNote.hasGlissando()) {
-            modifyElement(firstInsertedIndex - 1, ElementField.SLIDE, precedingNote::removeSlide);
+        if (!getElement(firstInsertedIndex).getType().isPitchedNote()) {
+            removeGlissandoInto(firstInsertedIndex);
         }
 
         // A pitched insertion between a grace note and its host re-targets the glissando, so

@@ -401,11 +401,7 @@ public final class Line implements EditableRun {
      * there (#493).
      */
     public void addElement(StaffElement element) {
-        var lastIdx = elements.size() - 1;
-        var insertBeforeFinal = lastIdx >= 0
-            && song.isAutoMaintainedTerminal(elements.get(lastIdx), this);
-
-        addElement(insertBeforeFinal ? lastIdx : elements.size(), element);
+        addElement(effectiveElementCount(), element);
     }
 
     /**
@@ -531,6 +527,14 @@ public final class Line implements EditableRun {
     }
 
     /**
+     * Returns this line's elements with the song-owned terminal excluded: the list form of
+     * {@link #effectiveElementCount()}, and like {@link #getElements()} a live unmodifiable view.
+     */
+    public List<StaffElement> effectiveElements() {
+        return getElements().subList(0, effectiveElementCount());
+    }
+
+    /**
      * Returns the elements {@code range} covers, in order.
      * <p>
      * A live view over this line's own list, not a copy: it reflects the line as it is at the
@@ -634,16 +638,20 @@ public final class Line implements EditableRun {
      */
     @Override
     public int effectiveElementCount() {
-        var count = elements.size();
-
-        if (count > 0 && song.isAutoMaintainedTerminal(elements.get(count - 1), this)) {
-            return count - 1;
-        }
-
-        return count;
+        return isTerminalAt(elementCount() - 1) ? elementCount() - 1 : elementCount();
     }
 
-
+    /**
+     * Whether the element at {@code index} is the song's terminal — the auto-maintained
+     * {@code FINAL_DOUBLE_BARLINE} or {@code REPEAT_RIGHT} the song owns rather than the user.
+     *
+     * @param index element index; out of range yields {@code false}
+     * @return {@code true} when the element at {@code index} is the terminal
+     *     {@link Song#isTerminal} recognizes on this line
+     */
+    public boolean isTerminalAt(int index) {
+        return hasIndex(index) && song.isTerminal(getElement(index), this);
+    }
 
     /**
      * Returns whether {@code element} is one of this line's elements.
@@ -700,10 +708,6 @@ public final class Line implements EditableRun {
 
         return index;
     }
-
-
-
-
 
 
     public double getLyricsYPosSs() {

@@ -26,7 +26,6 @@ import java.util.Collections;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Direction;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
@@ -350,7 +349,7 @@ public final class LayoutHitTester {
                     // For the terminal, right-align the preview to the terminal's right edge
                     // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
                     // doesn't overflow the staff boundary.
-                    if (line.getSong().isAutoMaintainedTerminal(element, line)) {
+                    if (line.getSong().isTerminal(element, line)) {
                         var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
                                 previewElement, false);
                         return elementX + column.getRightExtentSs() - previewRightExtentSs;

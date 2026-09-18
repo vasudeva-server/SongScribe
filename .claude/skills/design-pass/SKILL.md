@@ -89,9 +89,7 @@ a question you did not ask is a decision you made silently.
 Then:
 
 - **Read `~/.claude/skills/roughdraft/SKILL.md`** before the first gate of a
-  pass. It holds the roughdraft flavored markup (rfm) the review comes back in and the form your own
-  replies must take, and a reply in the wrong form is one the user's tool will
-  not thread.
+  pass. It holds the roughdraft flavored markup (rfm) the review comes back in.
 - **Open it.** `roughdraft open "<absolute path to the document>"`. The command
   **blocks until the user closes the review session**, so the waiting is the tool
   call itself, not a turn you end and hope to be woken from. Nothing changes
@@ -101,17 +99,23 @@ Then:
   written by the reviewer's tool when a comment is placed, and an earlier
   findings document that carries them carries the marks of its review, not a
   format to copy.
-- **Resolve.** When it returns, read the file back from disk. The review is
-  rfm — comments, insertions, deletions, substitutions — and **every mark that
-  asks or suggests something gets an answer written into the document**, as a
-  reply whose `re:` names the id it answers. A suggestion you are applying is
-  answered too; silently taking one leaves the user unable to tell agreement
-  from oversight. **A mark that only approves — "ok", "agree", "yes" — is
-  answered by executing it, not by a reply.**
-- **Open it again only if you wrote a reply**, so they see the answers. **The
-  gate opens on a close that leaves nothing asked unanswered**, and a close that
-  asked nothing opens it at once. A mark you interpreted rather than asked about
-  is unanswered. Rounds are cheap; a misread comment is what this whole gate
+- **Never restate the document in the terminal.** Do not summarize, list or
+  repeat in the terminal what you wrote into a document that is open or going
+  to be reviewed. The user reads it in the review.
+- **Resolve in the terminal.** When it returns, read the file back from disk.
+  The review is rfm — comments, insertions, deletions, substitutions. That one
+  review, with the user's marks in it, is the only round the document gets.
+  **All discussion after it happens in the terminal, never in the document,
+  and the document is not opened again — unless the user says otherwise.** Do
+  not write replies into it.
+- **Every mark that asks or suggests something gets an answer** in the
+  terminal. A suggestion you are applying is answered too; silently taking one
+  leaves the user unable to tell agreement from oversight. **A mark that only
+  approves — "ok", "agree", "yes" — is answered by executing it, not by a
+  reply.**
+- **The gate opens when nothing asked is unanswered**, and a review that asked
+  nothing opens it at once. A mark you interpreted rather than asked about is
+  unanswered. Rounds are cheap; a misread comment is what this whole gate
   exists to prevent.
 - **Then execute the step**, and snapshot.
 

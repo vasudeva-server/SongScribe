@@ -112,15 +112,14 @@ public final class MusicEditOperations {
 
         // The beam spans the selection's non-grace endpoints; a leading or trailing grace
         // note is left outside it (refs #592).
-        var beginIndex = RangeQueries.nonGraceBegin(range);
-        var endIndex = RangeQueries.nonGraceEnd(range);
+        var grouped = line.nonGraceRange(range.range());
 
-        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
+        if (grouped == null || grouped.size() < 2) {
             return;
         }
 
-        int begin = beginIndex;
-        int end = endIndex;
+        var begin = grouped.begin();
+        var end = grouped.end();
         var spans = line.spanRegistry();
 
         line.getSong().withModification(() -> {
@@ -424,17 +423,14 @@ public final class MusicEditOperations {
 
         // The tuplet spans the selection's non-grace endpoints; a leading or trailing grace
         // note is left outside it (refs #592).
-        var beginIndex = RangeQueries.nonGraceBegin(range);
-        var endIndex = RangeQueries.nonGraceEnd(range);
+        var span = line.nonGraceRange(range.range());
 
         // canToggleTuplet() rejects a selection without two non-grace elements, so reaching
         // this with no usable span means the caller passed stale info.
-        if (beginIndex == null || endIndex == null || beginIndex.equals(endIndex)) {
+        if (span == null || span.size() < 2) {
             throw new IllegalStateException(
                 "toggleTuplet requires at least two non-grace elements in the selection");
         }
-
-        var span = new ElementRange(beginIndex, endIndex);
 
         if (existing == null) {
             var newTuplet = createValidatedTuplet(line, span, tupletSize);
@@ -823,8 +819,7 @@ public final class MusicEditOperations {
         var extendedEnd = end + 1;
 
         if (!line.getElement(end).getType().isEndingTerminal()
-                && extendedEnd < line.elementCount()
-                && song.isAutoMaintainedTerminal(line.getElement(extendedEnd), line)) {
+                && line.isTerminalAt(extendedEnd)) {
             end = extendedEnd;
         }
 

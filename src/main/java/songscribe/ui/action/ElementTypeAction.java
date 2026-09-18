@@ -272,7 +272,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
         // The terminal accepts only the two valid terminal types, so only the two entries
         // standing for one of them apply to it.
-        if (Song.isAutoMaintainedTerminalOfItsSong(element)) {
+        if (Song.isTerminalOfItsSong(element)) {
             return type.isValidSongTerminal() ? element : null;
         }
 

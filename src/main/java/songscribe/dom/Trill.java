@@ -70,7 +70,7 @@ public class Trill extends Span implements IntrinsicHeight {
     @Override
     protected void applyDisplacementPolicy(Line line) {
         var spans = line.spanRegistry();
-        spans.removeTrillsOverlapping(spans.requireRangeOf(this));
+        spans.removeOverlapping(Trill.class, spans.requireRangeOf(this));
     }
 
     @Override

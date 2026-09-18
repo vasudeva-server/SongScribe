@@ -87,7 +87,9 @@ public final class PasteModeManager implements InsertionPointMode.Client {
      *
      * <p>Whether the fragment actually fits is not decided here: it depends on the fragment's
      * width, which is measured by {@code tryInsertFragment} once a point has been chosen, and
-     * a "line full" answer is retryable rather than a reason to refuse to track the point.
+     * a "line full" answer is retryable rather than a reason to refuse to track the point. Nor
+     * is the breath-mark placement rule decided here: {@code tryInsertFragment} alerts on the
+     * click, and that answer is retryable in the same way.
      *
      * @param line the line the pointer is over
      * @param index the insertion index under the pointer
@@ -103,12 +105,15 @@ public final class PasteModeManager implements InsertionPointMode.Client {
      *
      * <p>{@code LINE_FULL} declines the point: the error is already shown by
      * {@code tryInsertFragment} and nothing was mutated, so the mode stays live and the user
-     * can pick a roomier spot. {@code EMPTY} declines it for the same reason — nothing was
+     * can pick a roomier spot. {@code DECLINED_BY_ALERT} declines it on the same terms: a
+     * breath-mark alert has told the user this point will not do, and the mode stays live so
+     * they can pick another. {@code EMPTY} declines it for the same reason — nothing was
      * mutated — leaving the placement pending rather than silently consuming the gesture.
      * {@code INSERTED} completes the placement, with the clipboard retained so another Cmd+V
-     * starts a fresh paste. {@code CANCELLED} — the user declined the ending-invalidation
-     * confirm — completes it too: declining is a decision about the paste, not about this
-     * insertion point, unlike the retryable "line full" case.
+     * starts a fresh paste. {@code CANCELLED} — the user chose Cancel on the
+     * ending-invalidation confirm or the leading-breath-mark confirm — completes it too:
+     * declining is a decision about the paste, not about this insertion point, unlike the
+     * retryable alert cases.
      *
      * @param line the line the user picked
      * @param index the insertion index within {@code line}
@@ -131,7 +136,7 @@ public final class PasteModeManager implements InsertionPointMode.Client {
             () -> line.getSong().withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
 
         return switch (outcome) {
-            case LINE_FULL, EMPTY -> InsertionPointMode.Placement.DECLINED;
+            case LINE_FULL, EMPTY, DECLINED_BY_ALERT -> InsertionPointMode.Placement.DECLINED;
             case INSERTED, CANCELLED -> InsertionPointMode.Placement.COMPLETED;
         };
     }

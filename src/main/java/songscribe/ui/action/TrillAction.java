@@ -135,7 +135,7 @@ public final class TrillAction extends SelectableUIAction {
             if (isSelected()) {
                 addTrillSpanningSelection(line, selected);
             } else {
-                line.spanRegistry().removeTrillsOverlapping(selected);
+                line.spanRegistry().removeOverlapping(Trill.class, selected);
             }
         });
     }
