@@ -41,7 +41,6 @@ import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
@@ -1537,13 +1536,10 @@ public final class Song implements Disposable {
                 changesKey(insertion.element()));
             case ElementDeletion deletion -> midLineKeyMove(
                 deletion.line(),
-                changesKey(deletion.deletedElement()));
+                deletion.deletedElements().stream().anyMatch(Song::changesKey));
             case ElementReplacement replacement -> midLineKeyMove(
                 replacement.line(),
                 changesKey(replacement.oldElement()) || changesKey(replacement.newElement()));
-            case ElementRangeDeletion rangeDeletion -> midLineKeyMove(
-                rangeDeletion.line(),
-                rangeDeletion.deletedElements().stream().anyMatch(Song::changesKey));
             case ElementModification modification -> midLineKeyMove(
                 modification.line(),
                 changesKey(modification.beforeElement()) || changesKey(modification.afterElement()));

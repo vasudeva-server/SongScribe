@@ -125,6 +125,7 @@ table, never up the numbers.
 | 4  | Durations and element types | `dom`: `BeatUnit`, `NoteValue`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ✅ | The vocabulary every element is built from. `Duration` is now `BeatUnit`, an enum over `(NoteValue, dotted)`; `ElementType` carries a `Kind` and an `ElementAppearance` — sealed over `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied through the constructor, so the appearance mapping is total and the bounds computation is one exhaustive switch with no lookup that can miss. Every appearance arm has its own element leaf (`NoteElement`, `GlyphElement`, `BarElement`, `KeyChangeElement`), sealed under `StaffElement`/`StructuralElement`; the notehead and volta accessors that used to live on `ElementType` moved to the appearance types that actually carry them. `ElementLocation` stays a plain address record — its guard and its transposable `matches` method are both gone, since nothing produces the out-of-range value they existed to catch. Seven runtime guards, six `@Nullable`s and two sentinel values retired; four types introduced (`Kind`, `NoteValue`, `ElementBounds`, `PreviewHover`), each replacing a set of parallel fields or a partial lookup with a total one. |
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | 🔄 | Everything except key state, which pass 0 settled. |
+| 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainEdit`, `ProjectedEdit` | ⏳ | The chain walk: which accidental each note sounds and draws, decided again after every edit. `docs/accidentals.md`. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
@@ -322,6 +323,23 @@ the reason for it is still in hand.
   outright, so none of them is a member this row inherits.
 - **→ Pass 16.** `MusicXmlCrossLineSpanTest` was added by pass 6 and is
   untriaged: its subject is the MusicXML reader, which is row 16's.
+- **→ Pass 6b.** Pass 6's mutation run over `songscribe.dom`, with the `dom` tests
+  only, left 26 mutants in `ChainEdit` that no test detects. `lineRekeyed` (`:171`)
+  and `lineRemoved` (`:188`) can return null, and `lineRemoved`'s rekey clause
+  (`:189`) can be negated, so no test sends a line key change or a line removal
+  through the walk. Also undetected: `replaced`'s range end and rekey clause
+  (`:135–136`), `modified`'s vacated-position condition, range end and rekey clause
+  (`:155–161`), `of`'s rekey for a line insertion with its own key (`:229`), every
+  clause of `isRestamp` (`:265–269`), and `anyRekeys` and `endsInForce` returning
+  true (`:285`, `:289`). Each is a promise in `ChainEdit`'s own contract.
+- **→ Pass 7.** `LineSpans.getSpans` promises "the order they were added", and every
+  span query iterates in that order. Only the tie queries depend on it:
+  `findTieAt` takes the first match, and a note can hold a tie in and a tie out.
+  Every reader of hairpins either sorts by position or asks only whether one
+  exists, and pass 6 deleted the sort in `applySpanRun` that tried to keep hairpin
+  order across undo, which re-adds a span at the end of the list. Row 7 decides
+  whether the registry promises an order at all, or whether the tie queries state
+  the one they need.
 
 ## Blockers
 

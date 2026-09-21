@@ -37,7 +37,6 @@ import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
@@ -124,10 +123,9 @@ public final class MutationReplayer {
 
         switch (mutation) {
             case ElementInsertion(var line, var index, var _) -> line.removeElement(index);
-            case ElementDeletion(var line, var index, var deletedElement) -> line.addElement(index, deletedElement);
-            case ElementRangeDeletion(var line, var from, var _, var deletedElements) -> {
+            case ElementDeletion(var line, var range, var deletedElements) -> {
                 for (var i = 0; i < deletedElements.size(); i++) {
-                    line.addElement(from + i, deletedElements.get(i));
+                    line.addElement(range.begin() + i, deletedElements.get(i));
                 }
             }
             case ElementReplacement(var line, var index, var oldElement, var _) -> line.setElement(index, oldElement);
@@ -182,9 +180,7 @@ public final class MutationReplayer {
 
         switch (mutation) {
             case ElementInsertion(var line, var index, var element) -> line.addElement(index, element);
-            case ElementDeletion(var line, var index, var _) -> line.removeElement(index);
-            case ElementRangeDeletion(var line, var from, var to, var _) ->
-                line.removeRange(new ElementRange(from, to));
+            case ElementDeletion(var line, var range, var _) -> line.removeRange(range);
             case ElementReplacement(var line, var index, var _, var newElement) -> line.setElement(index, newElement);
             case ElementModification modification -> {
                 var line = modification.line();

@@ -43,8 +43,8 @@ import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * What {@link Span#addTo} and {@link Span#removeFrom} promise across more than one call: a
- * removal may be repeated, and an addition's displacements are applied once however often the
- * addition is replayed.
+ * removal may be repeated, an addition's displacements are applied once however often the
+ * addition is replayed, and a deletion and the span it removes are undone and redone together.
  */
 class SpanTest extends UnitTest {
 
@@ -93,16 +93,8 @@ class SpanTest extends UnitTest {
 
     @Test
     void testAnAdditionsDisplacementsAreAppliedOnceAcrossUndoAndRedo() {
-        var song = SongFactory.buildSong(line -> {
-            line.setKey(Key.NO_ACCIDENTALS);
-
-            for (var i = 0; i < LINE_LENGTH; i++) {
-                line.addElement(quaver());
-            }
-        });
+        var song = songOfQuavers();
         var line = song.getLine(0);
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSong()).thenReturn(song);
         song.withModification(() -> crescendoOver(line, EXISTING).addTo(line));
 
         var recorder = new BatchRecorder();
@@ -114,21 +106,13 @@ class SpanTest extends UnitTest {
 
             assertThat(crescendoRanges(line)).containsExactly(MERGED);
 
-            song.withModification(() -> song.withReplay(() -> {
-                for (var i = batch.size() - 1; i >= 0; i--) {
-                    MutationReplayer.applyUndo(scoreView, batch.get(i));
-                }
-            }));
+            undo(song, batch);
 
             assertThat(crescendoRanges(line))
                 .as("undo takes the merged crescendo out and puts the absorbed one back")
                 .containsExactly(EXISTING);
 
-            song.withModification(() -> song.withReplay(() -> {
-                for (var mutation : batch) {
-                    MutationReplayer.applyRedo(scoreView, mutation);
-                }
-            }));
+            redo(song, batch);
 
             assertThat(crescendoRanges(line))
                 .as("redo reproduces the batch as recorded, so the absorption is not derived again")
@@ -136,6 +120,81 @@ class SpanTest extends UnitTest {
         } finally {
             recorder.subscription.dispose();
         }
+    }
+
+    @Test
+    void testADeletionAndTheSpanItRemovesAreUndoneAndRedoneTogether() {
+        var song = songOfQuavers();
+        var line = song.getLine(0);
+        var elements = List.copyOf(line.effectiveElements());
+        var crescendo = crescendoOver(line, EXISTING);
+        song.withModification(() -> crescendo.addTo(line));
+
+        var recorder = new BatchRecorder();
+
+        try {
+            song.withModification(() -> line.deleteRange(line.effectiveRange(EXISTING)));
+
+            var batch = recorder.batches.getFirst();
+            var survivors = elements.subList(EXISTING.end() + 1, elements.size());
+
+            assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
+            assertThat(line.spanRegistry().getSpans()).isEmpty();
+
+            undo(song, batch);
+
+            assertThat(line.effectiveElements())
+                .as("undo puts every deleted element back where it stood")
+                .containsExactlyElementsOf(elements);
+            assertThat(line.spanRegistry().getSpans()).containsExactly(crescendo);
+
+            redo(song, batch);
+
+            assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
+            assertThat(line.spanRegistry().getSpans()).isEmpty();
+        } finally {
+            recorder.subscription.dispose();
+        }
+    }
+
+    /** A song of one line of {@link #LINE_LENGTH} quavers. */
+    private static Song songOfQuavers() {
+        return SongFactory.buildSong(line -> {
+            line.setKey(Key.NO_ACCIDENTALS);
+
+            for (var i = 0; i < LINE_LENGTH; i++) {
+                line.addElement(quaver());
+            }
+        });
+    }
+
+    /** Replays {@code batch} backwards, as the undo engine does. */
+    private static void undo(Song song, List<Mutation> batch) {
+        var scoreView = scoreViewOf(song);
+
+        song.withModification(() -> song.withReplay(() -> {
+            for (var i = batch.size() - 1; i >= 0; i--) {
+                MutationReplayer.applyUndo(scoreView, batch.get(i));
+            }
+        }));
+    }
+
+    /** Replays {@code batch} forwards, as the undo engine does. */
+    private static void redo(Song song, List<Mutation> batch) {
+        var scoreView = scoreViewOf(song);
+
+        song.withModification(() -> song.withReplay(() -> {
+            for (var mutation : batch) {
+                MutationReplayer.applyRedo(scoreView, mutation);
+            }
+        }));
+    }
+
+    private static ScoreView scoreViewOf(Song song) {
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getSong()).thenReturn(song);
+
+        return scoreView;
     }
 
     private static Crescendo crescendoOver(Line line, ElementRange range) {

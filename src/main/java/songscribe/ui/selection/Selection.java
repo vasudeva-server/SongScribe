@@ -28,7 +28,6 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.hit.HitTarget;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.Mutation;
 
 /**
@@ -191,11 +190,7 @@ public sealed interface Selection {
 
                 //noinspection ObjectEquality
                 case ElementDeletion deletion when deletion.line() == line ->
-                    splicedForDeletion(deletion.index(), deletion.index());
-
-                //noinspection ObjectEquality
-                case ElementRangeDeletion deletion when deletion.line() == line ->
-                    splicedForDeletion(deletion.from(), deletion.to());
+                    splicedForDeletion(deletion.range().begin(), deletion.range().end());
 
                 default -> this;
             };

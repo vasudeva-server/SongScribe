@@ -34,7 +34,6 @@ import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LineLayoutChange;
@@ -591,43 +590,8 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Removes the element at {@code index} and posts a single {@link ElementDeletion} mutation.
-     * <p>
-     * The primitive beneath {@link #deleteRange}, and what replay calls: it drops the element
-     * and repairs nothing around it. An edit deletes through {@code deleteRange}, which runs the
-     * repairs.
-     * <p>
-     * The deletion and its companion span changes post through {@link #applyChange}, under
-     * {@link Song#applyChange}'s bracket rule.
-     *
-     * @param index the index of the element to remove
-     * @throws IllegalStateException if {@code index} holds the song's auto-maintained terminal
-     *     — see {@link Song#checkTerminalPolicyForRemoval}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
-     */
-    @Override
-    public void removeElement(int index) {
-        var own = ElementRange.single(index);
-        song.checkTerminalPolicyForRemoval(this, own);
-
-        var deleted = elements.get(index);
-
-        // Companion span changes precede the primary deletion so reverse-order undo
-        // re-inserts the element before re-adding the spans anchored to it.
-        spans.sweep(new ElementChange.Deletion(this, own));
-
-        applyChange(
-            new ElementDeletion(this, index, deleted),
-            () -> {
-                detach(deleted);
-                elements.remove(index);
-            }
-        );
-    }
-
-    /**
      * Removes all elements in the contiguous {@code range} and posts a single
-     * {@link ElementRangeDeletion} mutation.
+     * {@link ElementDeletion} mutation.
      * <p>
      * The primitive beneath {@link #deleteRange}, and what replay calls: it drops the elements
      * and repairs nothing around them. An edit deletes through {@code deleteRange}, which runs
@@ -654,7 +618,7 @@ public final class Line implements EditableRun {
         spans.sweep(new ElementChange.Deletion(this, range));
 
         applyChange(
-            new ElementRangeDeletion(this, from, to, deletedElements),
+            new ElementDeletion(this, range, deletedElements),
             () -> {
                 deletedElements.forEach(this::detach);
                 elements.subList(from, to + 1).clear();

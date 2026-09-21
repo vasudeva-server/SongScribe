@@ -49,7 +49,8 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * grace notes has no neighbor, or no narrowed range, to offer. {@link StaffElementRun#canInsertRunAt}
  * composes the breath-mark placement rule for a run's two ends with the single-element insertion
  * rule it otherwise defers to, and {@link StaffElementRun#canInsertKeyChangeAt} adds a mid-line
- * key change's own slot rules to both. {@link StaffElementRun#effectiveRange} widens a named range over
+ * key change's own slot rules to both, and {@link StaffElementRun#canReplaceElementAt} refuses
+ * either half of a pair. {@link StaffElementRun#effectiveRange} widens a named range over
  * the element paired with either end, behind every kind of bar a key change can stand behind,
  * and {@link StaffElementRun#beginIncludingKeyChangeBarline} takes the barline half of that
  * widening without the grace-note half.
@@ -92,7 +93,7 @@ class StaffElementRunTest extends UnitTest {
     /**
      * The fixture line for the pairing rule, by position: a note, a barline, the key change behind
      * it, a note, the breath mark after it, a grace note paired with the note after it, that note,
-     * and a note paired with nothing.
+     * a note paired with nothing, and a barline no key change stands behind.
      */
     private static final int PAIRING_BARLINE = 1;
     private static final int PAIRING_KEY_CHANGE = 2;
@@ -101,6 +102,8 @@ class StaffElementRunTest extends UnitTest {
     private static final int PAIRING_GRACE = 5;
     private static final int PAIRING_HOST = 6;
     private static final int PAIRING_LONE_NOTE = 7;
+    private static final int PAIRING_LONE_BARLINE = 8;
+    private static final int PAST_THE_PAIRING_LINE = 9;
 
     private Line line;
     private Line insertRunLine;
@@ -148,6 +151,7 @@ class StaffElementRunTest extends UnitTest {
         pairingLine.addElement(pairedGrace);
         pairingLine.addElement(crotchet());
         pairingLine.addElement(crotchet());
+        pairingLine.addElement(singleBarline());
     }
 
     @ParameterizedTest(name = "{0}")
@@ -418,6 +422,50 @@ class StaffElementRunTest extends UnitTest {
             .isEqualTo(pair);
         assertThat(barLine.effectiveRange(StaffElementRun.ElementRange.single(PAIRING_BARLINE)).range())
             .isEqualTo(pair);
+    }
+
+    /**
+     * One {@link StaffElementRun#canReplaceElementAt} call on {@link #pairingLine}.
+     *
+     * @param description the case, as the test's display name
+     * @param index       the element note entry would write over
+     * @param expected    whether it may
+     */
+    private record ReplaceCase(String description, int index, boolean expected) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("replaceCases")
+    void testAnElementMayBeReplacedUnlessItIsHalfOfAPair(ReplaceCase testCase) {
+        assertThat(pairingLine.canReplaceElementAt(testCase.index())).isEqualTo(testCase.expected());
+    }
+
+    static Stream<ReplaceCase> replaceCases() {
+        return Stream.of(
+            new ReplaceCase("a note paired with nothing may be replaced", PAIRING_LONE_NOTE, true),
+            new ReplaceCase("a grace note may not", PAIRING_GRACE, false),
+            new ReplaceCase("a key change may not", PAIRING_KEY_CHANGE, false),
+            new ReplaceCase("the barline a key change sits behind may not", PAIRING_BARLINE, false),
+            new ReplaceCase("a barline no key change sits behind may", PAIRING_LONE_BARLINE, true),
+            new ReplaceCase("an index past the run protects nothing", PAST_THE_PAIRING_LINE, true)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("barCases")
+    void testAKeyChangeWrittenBehindAnyKindOfBarOwesNoBarline(BarCase testCase) {
+        var barLine = detachedLine();
+        barLine.addElement(crotchet());
+        barLine.addElement(testCase.bar().get());
+
+        assertThat(barLine.needsBarlineBeforeKeyChangeAt(barLine.elementCount())).isFalse();
+    }
+
+    @Test
+    void testAKeyChangeWrittenAfterANoteOwesABarline() {
+        var noteLine = detachedLine();
+        noteLine.addElement(crotchet());
+
+        assertThat(noteLine.needsBarlineBeforeKeyChangeAt(noteLine.elementCount())).isTrue();
     }
 
     @Test

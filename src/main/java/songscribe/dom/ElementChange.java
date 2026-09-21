@@ -183,12 +183,12 @@ public sealed interface ElementChange {
 
         /**
          * The effect this replacement has on an ending in the line, as the ending itself
-         * judges it via {@link Ending#checkReplacement}. The first ending reporting an
-         * effect decides.
+         * judges it via {@link Ending#checkReplacement}. At most one ending reports an effect
+         * for one replacement.
          * <p>
          * Ask before {@link Line#setElement} to learn whether a confirmation dialog is needed.
          *
-         * @return the first ending's non-{@link Ending.EndingEffect.None None} effect, or
+         * @return the one ending's non-{@link Ending.EndingEffect.None None} effect, or
          *     {@link Ending.EndingEffect.None} when no ending is affected
          * @throws IndexOutOfBoundsException if no element stands at {@link #index}
          */

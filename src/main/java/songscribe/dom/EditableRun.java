@@ -22,18 +22,16 @@ package songscribe.dom;
 
 import java.util.List;
 
-import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementRangeDeletion;
 
 /**
  * A {@link LyricRun} whose elements can be inserted and removed, and that repairs what such an
  * edit breaks: the lyric chains running through the edit's neighbors and the glissando left
  * pointing at nothing.
  *
- * <p>Three primitives are what an implementor supplies — {@link #addElement}, {@link #removeElement}
- * and {@link #removeRange} — and they are structural only: they put an element into the run or
- * take one out and repair nothing around it. The edits an editor performs, {@link #insertRun},
+ * <p>Two primitives are what an implementor supplies — {@link #addElement} and
+ * {@link #removeRange} — and they are structural only: they put an element into the run or
+ * take elements out and repair nothing around them. The edits an editor performs, {@link #insertRun},
  * {@link #deleteRange} and {@link #deleteRanges}, are built here on top of them together with
  * {@link LyricRun}'s chain repairs, so the sequence of repairs around an insertion or a deletion
  * is written once and every run edits by it.
@@ -61,19 +59,22 @@ public interface EditableRun extends LyricRun {
     void addElement(int index, StaffElement element);
 
     /**
-     * Removes the element at {@code index}. Structural only: repairs nothing around the removal.
-     *
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
-     */
-    void removeElement(int index);
-
-    /**
      * Removes every element in the contiguous {@code range}, both ends included. Structural only:
      * repairs nothing around the removal.
      *
      * @throws IndexOutOfBoundsException if {@code range} reaches past {@link #elementCount()}
      */
     void removeRange(ElementRange range);
+
+    /**
+     * Removes the element at {@code index}: {@link #removeRange} over the range of one.
+     *
+     * @throws IllegalArgumentException if {@code index} is negative
+     * @throws IndexOutOfBoundsException if {@code index} is {@link #elementCount()} or greater
+     */
+    default void removeElement(int index) {
+        removeRange(ElementRange.single(index));
+    }
 
     // -------------------------------------------------------------------------
     // Edits

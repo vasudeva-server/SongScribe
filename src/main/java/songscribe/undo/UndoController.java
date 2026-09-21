@@ -47,7 +47,6 @@ import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
@@ -540,7 +539,6 @@ public final class UndoController {
         for (var mutation : step) {
             if (mutation instanceof ElementInsertion
                 || mutation instanceof ElementDeletion
-                || mutation instanceof ElementRangeDeletion
                 || mutation instanceof ElementReplacement
                 || mutation instanceof ElementModification) {
                 return mutation;
@@ -574,10 +572,8 @@ public final class UndoController {
     private static String opName(Mutation dominant) {
         return switch (dominant) {
             case ElementInsertion _ -> Strings.get(Strings.ACTION_EDIT_OP_ADD_NOTE);
-            case ElementDeletion _ -> Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE, 1);
-
-            case ElementRangeDeletion rangeDeletion ->
-                Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE, rangeDeletion.deletedElements().size());
+            case ElementDeletion deletion ->
+                Strings.get(Strings.ACTION_EDIT_OP_DELETE_NOTE, deletion.range().size());
 
             case ElementReplacement _ -> Strings.get(Strings.ACTION_EDIT_OP_REPLACE_NOTE);
             case ElementModification _ -> Strings.get(Strings.ACTION_EDIT_OP_EDIT_NOTE);

@@ -15,9 +15,9 @@ Run by `/design-pass 6` — register row `6`, *Line*.
 | 7 Test-only surface | ✅ | ✅ | — | `findings-7.md`, not opened in roughdraft at the user's request. Settled: item 1 as proposed, item 2 with option (b). `lastKeyChangeKey` is deleted, and `MusicXmlStrandedKeyChangeTest` asserts the key changes a line holds. `strandedKeyChangeIndices` is inlined into `redundantKeyChangeRanges(int, Key)`, and `StrandedKeyChangeTest`'s stranded cases assert ranges |
 | 8a Suite gate | ✅ | n/a | — | |
 | 8b Visual gate | ✅ | n/a | — | |
-| 9 Diagrams | ⏳ | ⏳ | — | |
-| 10 Coverage | ⏳ | n/a | — | |
-| 11 Mutation | ⏳ | n/a | — | opportunistic |
+| 9 Diagrams | ✅ | ✅ | — | `findings-9.md`. The target holds no diagram. The one diagram that touches its types, `docs/key-changes.md:70–77`, stays with row 0 (user's choice); nothing changed |
+| 10 Coverage | ✅ | n/a | — | Seven contract cases had no test, and the user approved a test for each: the hairpin join after a deletion, the end-side absorb, endpoint placement (`SpanBound`), a cross-line tie in both registries, the re-point in `setElement`, `canReplaceElementAt`, and undo and redo of a deletion with the span it removes. Settled: only one ending can report an effect, so `Replacement.endingEffect` gets no test and its contract says so. Done in this pass at the user's decision (rows 12 and 15's files, and `ui/selection`): `ElementRangeDeletion` is gone, `ElementDeletion` carries an `ElementRange`, and `removeElement` is a default over `removeRange`. No dead code found |
+| 11 Mutation | ✅ | n/a | — | Run over `songscribe.dom.*` with the `dom` tests (user's choice). Twelve test cases added at the user's approval, as new methods and as rows in existing tables, each for a contract case a survivor showed untested: membership of a line and of what hangs on an element; `setKey`'s normalization; the sweep on insertion and on modification; four hairpin joins; begin-side and flush end-side absorption; a paired grace note first on its line; the terminal policy through `Line`, including `isLast`; `needsBarlineBeforeKeyChangeAt`. Also: `isHostOfPairedGraceNote`'s redundant guard went, `lastNoteIndex` is private, and `applySpanRun`'s sort went, because undo re-adds at the end of the list and no hairpin reader depends on list order. The survivors left in the target are equivalent, plus `EffectiveRange.equals` and `ElementRange.shiftedBy`, which the floor gives no test |
 | 12 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
 | 13 Close out | ⏳ | ⏳ | — | |
 
@@ -116,6 +116,17 @@ register at step 13, before this file is deleted.
   `StaffElementRun.canInsertKeyChangeAt` holds the rule and also asks `canInsertElementAt`; the
   action delegates; `StaffElementRunTest` carries the cases, with the two slots inside a pair added;
   `KeyChangeActionTest` is deleted. Nothing for row 24 to carry.
+- **→ Row 15.** Found at step 10. `LineSpans.sweep` returns at once during replay (`LineSpans.java:369`).
+  A batch replays whole and in order, so at each replayed element change the companion span
+  changes are already applied, and the sweep finds nothing to do. No test can make the replay
+  check fail. Row 15 decides whether the check is dead, or names the batch that needs it.
+- **Carried to the register at step 11, → Row 6b.** The accidental walk (`Accidental`, `AccidentalChain`,
+  `AccidentalScanView`, `AccidentalState`, `ChainEdit`, `ProjectedEdit`) had no register row. Row 6b
+  is new, after row 6 (user's choice), and its carry-forward item lists `ChainEdit`'s 26 survivors.
+- **Carried to the register at step 11, → Row 7.** Whether `LineSpans.getSpans` promises an order: only
+  the tie queries depend on one.
+- **Not carried, step 11.** `LyricRun`'s own survivors are row 9's, and row 9's step 11 finds them
+  again from its own tree (user's choice).
 - **→ Row 12.** `plans/check-findings.md` #7: `Line` reaches a concrete `Song`,
   and `UnitTest.minimalSongMock()` grows a stub per forwarding method.
 - **→ Row 7.** `Ending.hasRepeatSplit(line, int, int)` takes a transposable index

@@ -157,7 +157,7 @@ public interface StaffElementRun {
      * @return {@code true} when {@link #isPairedGraceNote} is true of {@code index - 1}
      */
     default boolean isHostOfPairedGraceNote(int index) {
-        return index >= 1 && isPairedGraceNote(index - 1);
+        return isPairedGraceNote(index - 1);
     }
 
     /**
@@ -530,7 +530,7 @@ public interface StaffElementRun {
      *   <li><b>Index 0.</b> A {@link KeyChangeElement} is never the first element of a line —
      *       its position invariant — and a key change there would only restate what the line's
      *       header already says.</li>
-     *   <li><b>Every index past the last note</b>, {@link #lastNoteIndex()}. A key change there
+     *   <li><b>Every index past the last note.</b> A key change there
      *       governs no note on this line, so it says nothing the next line's own key does not
      *       say, and the cautionary already draws that key at this line's end. The test is the
      *       last note rather than the last element, because what a key change is worth is the
@@ -583,19 +583,12 @@ public interface StaffElementRun {
     }
 
     /**
-     * The index of the last note on this line.
-     *
-     * <p>Answers how far along a line an edit can still govern a pitch. A key change past this
-     * index reaches no note, so it says nothing the next line's own key does not say, and the
-     * cautionary already draws that key at this line's end. See {@code docs/key-changes.md}.
+     * The index of the last note on this run, or {@code null} when it holds no note.
      *
      * <p>The scan needs no bound against {@link #effectiveElementCount()}: an auto-maintained
      * terminal is a barline or a repeat, so a scan for a note stops before it either way.
-     *
-     * @return the last note's element index, or {@code null} when this line holds no note
-     * @invariant a non-null result is always below {@link #effectiveElementCount()}
      */
-    default @Nullable Integer lastNoteIndex() {
+    private @Nullable Integer lastNoteIndex() {
         for (var scanIndex = elementCount() - 1; scanIndex >= 0; scanIndex--) {
             if (getElement(scanIndex).getType().isNote()) {
                 return scanIndex;

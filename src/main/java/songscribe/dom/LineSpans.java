@@ -462,11 +462,8 @@ public final class LineSpans implements SpanLookup {
         }
 
         // Removals precede the addition so reverse-order undo drops the reshaped hairpin
-        // before restoring the originals, and run in reverse list order so undo restores
-        // them in the order they were in, leaving the document identical to before.
-        var doomed = new ArrayList<>(run.stream().map(HairpinSpan::hairpin).toList());
-        doomed.sort(Comparator.<Hairpin>comparingInt(spans::indexOf).reversed());
-        doomed.forEach(hairpin -> hairpin.removeFrom(line));
+        // before restoring the originals.
+        run.forEach(span -> span.hairpin().removeFrom(line));
 
         var reshaped = first.copy(anchorElement, endElement);
         reshaped.addTo(line);

@@ -22,9 +22,11 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,7 +34,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.singleBarline;
@@ -46,7 +51,11 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * {@link Line#canBearSyllableAt} are the two questions every caller asks about a position, and
  * both turn on the closed pairs a line can hold. {@link Line#keyAt} and
  * {@link Line#keyAtEndOfLineAfterRemoving} read the key a position is in, and an append keeps the
- * song's terminal last.
+ * song's terminal last. An edit that breaks the terminal policy throws, and the one final double
+ * barline the policy allows, appended to the last line, does not.
+ *
+ * <p>An element is on a line exactly while the line holds it, and so is everything hanging on it.
+ * {@link Line#setKey} holds no key where the line would inherit the one it is given.
  */
 class LineTest extends UnitTest {
 
@@ -179,19 +188,19 @@ class LineTest extends UnitTest {
     ) {}
 
     /**
-     * A line holding both closed pairs: a key change behind its barline at 1–2, and a grace
-     * note with the note it decorates at 4–5.
+     * A line holding both closed pairs: a grace note with the note it decorates at 0–1, first on
+     * the line, and a key change behind its barline at 2–3, then a note.
      */
     private static Line pairedLine() {
         var line = detachedLine();
-        line.addElement(crotchet());
-        line.addElement(singleBarline());
-        line.addElement(keyChange(Key.TWO_SHARPS));
-        line.addElement(crotchet());
 
         var grace = graceQuaver();
         grace.setSlide(Slide.GLISSANDO);
         line.addElement(grace);
+        line.addElement(crotchet());
+
+        line.addElement(singleBarline());
+        line.addElement(keyChange(Key.TWO_SHARPS));
         line.addElement(crotchet());
 
         return line;
@@ -199,18 +208,16 @@ class LineTest extends UnitTest {
 
     static Stream<PositionCase> positionCases() {
         return Stream.of(
-            new PositionCase("a note takes an insertion in front of it and a syllable on it",
-                0, true, true),
-            new PositionCase("the barline a key change stands behind takes an insertion, not a syllable",
-                1, true, false),
-            new PositionCase("the slot in front of a key change is inside the pair",
-                2, false, false),
-            new PositionCase("the note after the pair is clear of it",
-                3, true, true),
             new PositionCase("the slot in front of a grace note is outside the pair, and the grace carries the syllable",
-                4, true, true),
+                0, true, true),
             new PositionCase("the slot in front of a paired grace note's host is inside the pair, and the host takes no syllable",
-                5, false, false));
+                1, false, false),
+            new PositionCase("the barline a key change stands behind takes an insertion, not a syllable",
+                2, true, false),
+            new PositionCase("the slot in front of a key change is inside the pair",
+                3, false, false),
+            new PositionCase("a note clear of both pairs takes an insertion in front of it and a syllable on it",
+                4, true, true));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -328,8 +335,8 @@ class LineTest extends UnitTest {
     @Test
     void testAppendingToTheLastLineOfASongKeepsTheTerminalLast() {
         var song = new Song();
-        var line = song.getLine(song.lineCount() - 1);
-        var terminal = line.getElement(line.elementCount() - 1);
+        var line = lastLine(song);
+        var terminal = line.getElement(terminalIndex(song));
 
         assertThat(song.isTerminalOfItsSong(terminal))
             .as("the fixture reaches the case only if the line carries its song's terminal")
@@ -344,6 +351,195 @@ class LineTest extends UnitTest {
 
         assertThat(line.getElements(new StaffElementRun.ElementRange(0, line.elementCount() - 1)))
             .containsExactlyElementsOf(expected);
+    }
+
+    @Test
+    void testTheSpansOfAReplacedElementFollowTheReplacement() {
+        var line = detachedLine();
+        var before = crotchet();
+        var replaced = crotchet();
+        var after = crotchet();
+        line.addElement(before);
+        line.addElement(replaced);
+        line.addElement(after);
+
+        // Hairpins, because a hairpin survives the replacement of an endpoint by another note.
+        var endingOnIt = new Crescendo(before, replaced);
+        var anchoredOnIt = new Diminuendo(replaced, after);
+        endingOnIt.addTo(line);
+        anchoredOnIt.addTo(line);
+
+        var replacement = crotchet();
+        line.setElement(line.getElementIndex(replaced), replacement);
+
+        assertThat(line.spanRegistry().getSpans()).containsExactly(endingOnIt, anchoredOnIt);
+        assertThat(endingOnIt.getEndElement()).isSameAs(replacement);
+        assertThat(anchoredOnIt.getAnchorElement()).isSameAs(replacement);
+    }
+
+    /** The index every membership case edits at: between two other notes. */
+    private static final int MEMBER_INDEX = 1;
+
+    private static final int MEMBERSHIP_LINE_LENGTH = 3;
+
+    /**
+     * One edit that moves an element into or out of a line.
+     *
+     * @param description the case, as the test's display name
+     * @param edit        performs it on the line at {@link #MEMBER_INDEX}, given the element that
+     *                    enters, which for an exit is the element that takes the leaving one's place
+     */
+    private record MembershipEdit(String description, BiConsumer<Line, StaffElement> edit) {}
+
+    static Stream<MembershipEdit> exits() {
+        return Stream.of(
+            new MembershipEdit("removed",
+                (line, unused) -> line.removeRange(StaffElementRun.ElementRange.single(MEMBER_INDEX))),
+            new MembershipEdit("replaced",
+                (line, replacement) -> line.setElement(MEMBER_INDEX, replacement)));
+    }
+
+    static Stream<MembershipEdit> entries() {
+        return Stream.of(
+            new MembershipEdit("inserted",
+                (line, entering) -> line.addElement(MEMBER_INDEX, entering)),
+            new MembershipEdit("put in another's place",
+                (line, entering) -> line.setElement(MEMBER_INDEX, entering)));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("exits")
+    void testAnElementLeavingTheLineIsOnNoLineAndNeitherIsWhatHangsOnIt(MembershipEdit exit) {
+        var line = membershipLine();
+        var leaving = line.getElement(MEMBER_INDEX);
+        var attachment = new FermataAttachment();
+        leaving.addAttachment(attachment);
+
+        exit.edit().accept(line, crotchet());
+
+        assertThat(line.contains(leaving)).isFalse();
+        assertThat(leaving.getParentLine()).isNull();
+        assertThat(attachment.getParentLine()).isNull();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("entries")
+    void testAnElementEnteringTheLineIsOnItAndSoIsWhatHangsOnIt(MembershipEdit entry) {
+        var line = membershipLine();
+        var entering = crotchet();
+        var attachment = new FermataAttachment();
+        entering.addAttachment(attachment);
+
+        entry.edit().accept(line, entering);
+
+        assertThat(line.contains(entering)).isTrue();
+        assertThat(entering.getParentLine()).isSameAs(line);
+        assertThat(attachment.getParentLine()).isSameAs(line);
+    }
+
+    private static Line membershipLine() {
+        var line = detachedLine();
+
+        for (var i = 0; i < MEMBERSHIP_LINE_LENGTH; i++) {
+            line.addElement(crotchet());
+        }
+
+        return line;
+    }
+
+    /**
+     * One key given to a line that inherits {@link #RUNNING_KEY}, and what the line then holds as
+     * its own.
+     *
+     * @param description the case, as the test's display name
+     * @param given       the key passed to {@link Line#setKey}
+     * @param held        the line's own key afterwards
+     */
+    private record SetKeyCase(String description, Key given, @Nullable Key held) {}
+
+    static Stream<SetKeyCase> setKeyCases() {
+        return Stream.of(
+            new SetKeyCase("the key the line would inherit is held as none, so the line goes on inheriting",
+                RUNNING_KEY, null),
+            new SetKeyCase("any other key is held as given", FIRST_CHANGE_KEY, FIRST_CHANGE_KEY));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("setKeyCases")
+    void testSetKeyHoldsNoKeyWhereTheLineWouldInheritTheOneGiven(SetKeyCase testCase) {
+        var song = SongFactory.buildSong(
+            line -> {
+                line.setKey(RUNNING_KEY);
+                line.addElement(crotchet());
+            },
+            line -> line.addElement(crotchet()));
+        var inheriting = song.getLine(1);
+
+        song.withModification(() -> inheriting.setKey(testCase.given()));
+
+        assertThat(inheriting.getKey()).isEqualTo(testCase.held());
+    }
+
+    /**
+     * One edit through {@link Line} that breaks the song's terminal policy.
+     *
+     * @param description the case, as the test's display name
+     * @param edit        performs it on a song of two lines, the last carrying the terminal
+     */
+    private record TerminalEdit(String description, Consumer<Song> edit) {}
+
+    static Stream<TerminalEdit> terminalEdits() {
+        return Stream.of(
+            new TerminalEdit("removing the terminal",
+                song -> lastLine(song).removeRange(StaffElementRun.ElementRange.single(terminalIndex(song)))),
+            new TerminalEdit("replacing the terminal with a note",
+                song -> lastLine(song).setElement(terminalIndex(song), crotchet())),
+            new TerminalEdit("inserting a final double barline in front of the terminal",
+                song -> lastLine(song).addElement(terminalIndex(song), finalDoubleBarline())),
+            new TerminalEdit("appending a final double barline to a line before the last",
+                song -> {
+                    var first = song.getLine(0);
+                    first.addElement(first.elementCount(), finalDoubleBarline());
+                }));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("terminalEdits")
+    void testAnEditThatBreaksTheTerminalPolicyThrows(TerminalEdit testCase) {
+        var song = twoLineSong();
+
+        assertThatThrownBy(() -> song.withModification(() -> testCase.edit().accept(song)))
+            .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void testAFinalDoubleBarlineMayBeAppendedToTheLastLine() {
+        var song = twoLineSong();
+        var line = lastLine(song);
+
+        assertThatCode(() -> song.withModification(() -> line.addElement(line.elementCount(), finalDoubleBarline())))
+            .doesNotThrowAnyException();
+    }
+
+    /** A song of two lines, the last carrying the song's terminal. */
+    private static Song twoLineSong() {
+        var song = new Song();
+        song.withModification(() -> song.addLine(0, new Line(song)));
+
+        assertThat(song.isTerminalOfItsSong(lastLine(song).getElement(terminalIndex(song))))
+            .as("the fixture reaches the cases only if the last line carries its song's terminal")
+            .isTrue();
+
+        return song;
+    }
+
+    private static Line lastLine(Song song) {
+        return song.getLine(song.lineCount() - 1);
+    }
+
+    /** The index of the last element of {@code song}'s last line, where its terminal stands. */
+    private static int terminalIndex(Song song) {
+        return lastLine(song).elementCount() - 1;
     }
 
     private static void insertRun(Line line, List<StaffElement> elements) {

@@ -20,15 +20,27 @@
 
 package songscribe.message.mutation;
 
+import java.util.List;
+
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * Mutation recording a single element deletion from a line.
- * The element reference is required because after deletion the element is no longer accessible via the line.
+ * Mutation recording the deletion of a contiguous range of elements from a line; a single
+ * element is a range of one. The elements are carried because after the deletion they are no
+ * longer reachable through the line.
+ *
+ * @param line            the line the elements were deleted from
+ * @param range           the indices the elements held before the deletion
+ * @param deletedElements the removed elements, in order; {@code range.size()} of them
  */
-public record ElementDeletion(Line line, int index, StaffElement deletedElement)
+public record ElementDeletion(Line line, ElementRange range, List<StaffElement> deletedElements)
     implements Mutation, LineScopedMutation {
+
+    public ElementDeletion {
+        deletedElements = List.copyOf(deletedElements);
+    }
 
     @Override
     public Line getLine() {

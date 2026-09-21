@@ -38,7 +38,6 @@ import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
@@ -217,9 +216,7 @@ public record ChainEdit(int lineIndex, int from, int to, Set<StaffPosition> vaca
             case ElementInsertion insertion ->
                 inserted(insertion.line().index(), insertion.index(), List.of(insertion.element()));
             case ElementDeletion deletion ->
-                removed(deletion.line().index(), deletion.index(), List.of(deletion.deletedElement()));
-            case ElementRangeDeletion deletion ->
-                removed(deletion.line().index(), deletion.from(), deletion.deletedElements());
+                removed(deletion.line().index(), deletion.range().begin(), deletion.deletedElements());
             case ElementReplacement replacement -> replaced(
                 replacement.line().index(), replacement.index(),
                 List.of(replacement.oldElement()), List.of(replacement.newElement())

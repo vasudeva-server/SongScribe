@@ -21,8 +21,11 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
@@ -32,9 +35,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 
@@ -44,6 +49,12 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
  * and a trill remove it, a tie and an ending stand beside it. A kind whose two touching spans are
  * one gesture — a hairpin — treats a span flush against it as one it meets; every other kind
  * leaves that span standing.
+ *
+ * <p>A deletion that leaves two same-kind hairpins touching joins them by the same reach. Every
+ * edit a line makes asks its spans first, an insertion and an in-place modification as well as a
+ * deletion, which is what removes a tuplet the edit leaves rhythmically invalid. And a
+ * line places each endpoint of a span in itself, in the line beside it, or nowhere, which is what
+ * puts a tie across a line break in both lines' registries.
  */
 class LineSpansTest extends UnitTest {
 
@@ -90,6 +101,12 @@ class LineSpansTest extends UnitTest {
     private static final ElementRange FLUSH =
         new ElementRange(EXISTING.end() + SPAN_ADJACENCY_REACH, LINE_LENGTH - 1);
 
+    /** {@link #OVERLAPPING} less its last element: a span that starts past the line's first element. */
+    private static final ElementRange INNER = new ElementRange(OVERLAPPING.begin(), OVERLAPPING.end() - 1);
+
+    /** A span starting inside {@link #INNER} and running past its end. */
+    private static final ElementRange PAST_INNER = new ElementRange(INNER.begin() + 1, OVERLAPPING.end());
+
     /** A tie joins two neighboring notes, so its fixtures are pairs rather than the wide ranges. */
     private static final ElementRange EXISTING_TIE = new ElementRange(0, 1);
 
@@ -117,7 +134,9 @@ class LineSpansTest extends UnitTest {
         add(line, testCase, testCase.added());
 
         var expected = switch (testCase.outcome()) {
-            case MERGED -> List.of(new ElementRange(testCase.existing().begin(), testCase.added().end()));
+            case MERGED -> List.of(new ElementRange(
+                Math.min(testCase.existing().begin(), testCase.added().begin()),
+                Math.max(testCase.existing().end(), testCase.added().end())));
             case ONLY_THE_NEW -> List.of(testCase.added());
             case BOTH -> List.of(testCase.existing(), testCase.added());
         };
@@ -142,19 +161,28 @@ class LineSpansTest extends UnitTest {
             new DisplacementCase("a beam absorbs the beam it overlaps",
                 Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
+            new DisplacementCase("a beam absorbs the beam its end falls inside",
+                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                OVERLAPPING, EXISTING, Outcome.MERGED),
+            new DisplacementCase("a beam absorbs the beam its start falls inside",
+                Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
+                INNER, PAST_INNER, Outcome.MERGED),
             new DisplacementCase("a beam leaves the beam flush against it standing",
                 Beam.class, LineSpansTest::lineOfQuavers, LineSpansTest::newBeam,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("a crescendo absorbs the crescendo it overlaps",
                 Crescendo.class, LineSpansTest::lineOfQuavers, Crescendo::new,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
-            new DisplacementCase("a crescendo absorbs the crescendo flush against it",
+            new DisplacementCase("a crescendo absorbs the crescendo flush against its start",
                 Crescendo.class, LineSpansTest::lineOfQuavers, Crescendo::new,
                 EXISTING, FLUSH, Outcome.MERGED),
+            new DisplacementCase("a crescendo absorbs the crescendo flush against its end",
+                Crescendo.class, LineSpansTest::lineOfQuavers, Crescendo::new,
+                FLUSH, EXISTING, Outcome.MERGED),
             new DisplacementCase("a diminuendo absorbs the diminuendo it overlaps",
                 Diminuendo.class, LineSpansTest::lineOfQuavers, Diminuendo::new,
                 EXISTING, OVERLAPPING, Outcome.MERGED),
-            new DisplacementCase("a diminuendo absorbs the diminuendo flush against it",
+            new DisplacementCase("a diminuendo absorbs the diminuendo flush against its start",
                 Diminuendo.class, LineSpansTest::lineOfQuavers, Diminuendo::new,
                 EXISTING, FLUSH, Outcome.MERGED),
             new DisplacementCase("a tuplet removes the tuplet it overlaps",
@@ -178,6 +206,250 @@ class LineSpansTest extends UnitTest {
         );
     }
 
+    // ------------------------------------------------------------------------
+    // Hairpins across a deletion
+    // ------------------------------------------------------------------------
+
+    /** The element between {@link #EXISTING} and the crescendo after it, which each case deletes. */
+    private static final int DELETED_INDEX = EXISTING.end() + 1;
+
+    /** A crescendo the deletion leaves touching {@link #EXISTING}. */
+    private static final ElementRange ONE_ELEMENT_ON = new ElementRange(DELETED_INDEX + 1, DELETED_INDEX + 2);
+
+    /** A crescendo the deletion leaves one surviving element away from {@link #EXISTING}. */
+    private static final ElementRange TWO_ELEMENTS_ON = new ElementRange(DELETED_INDEX + 2, DELETED_INDEX + 3);
+
+    /** The first element of {@link #FAR}: one past the reach of {@link #ONE_ELEMENT_ON}'s end. */
+    private static final int FAR_BEGIN = ONE_ELEMENT_ON.end() + SPAN_ADJACENCY_REACH + 1;
+
+    /** A crescendo the deletion leaves apart from {@link #ONE_ELEMENT_ON}. */
+    private static final ElementRange FAR = new ElementRange(FAR_BEGIN, FAR_BEGIN + 1);
+
+    /** A crescendo whose first note is the deleted element. */
+    private static final ElementRange FROM_DELETED = new ElementRange(DELETED_INDEX, ONE_ELEMENT_ON.end());
+
+    private static final int HAIRPIN_LINE_LENGTH = FAR.end() + 1;
+
+    private static final int ONE_PLACE_BACK = -1;
+
+    /** {@link #EXISTING} and {@link #ONE_ELEMENT_ON} as one crescendo, once the deletion leaves them touching. */
+    private static final ElementRange JOINED =
+        new ElementRange(EXISTING.begin(), ONE_ELEMENT_ON.shiftedBy(ONE_PLACE_BACK).end());
+
+    private static final double FIRST_HAIRPIN_X1_SHIFT_SS = 0.5;
+
+    /**
+     * The element at {@link #DELETED_INDEX} deleted from a line of crescendos.
+     *
+     * @param description the case, as the test's display name
+     * @param crescendos  the crescendos before the deletion, in the order they are added
+     * @param expected    the crescendos the line holds afterwards, in any order
+     */
+    private record HairpinDeletionCase(String description, List<ElementRange> crescendos, List<ElementRange> expected) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("hairpinDeletionCases")
+    void testADeletionJoinsTheSameKindHairpinsItLeavesTouching(HairpinDeletionCase testCase) {
+        var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
+        testCase.crescendos().forEach(range -> crescendoOver(line, range).addTo(line));
+
+        deleteElement(line, DELETED_INDEX);
+
+        assertThat(rangesOf(line, Crescendo.class)).containsExactlyInAnyOrderElementsOf(testCase.expected());
+    }
+
+    static Stream<HairpinDeletionCase> hairpinDeletionCases() {
+        return Stream.of(
+            new HairpinDeletionCase("two crescendos left touching become one over both",
+                List.of(EXISTING, ONE_ELEMENT_ON), List.of(JOINED)),
+            new HairpinDeletionCase("crescendos added in the reverse of their order on the line join from the earlier start",
+                List.of(ONE_ELEMENT_ON, EXISTING), List.of(JOINED)),
+            new HairpinDeletionCase("one surviving element between them keeps them apart",
+                List.of(EXISTING, TWO_ELEMENTS_ON),
+                List.of(EXISTING, TWO_ELEMENTS_ON.shiftedBy(ONE_PLACE_BACK))),
+            new HairpinDeletionCase("each run left touching becomes one, apart from the next run",
+                List.of(EXISTING, ONE_ELEMENT_ON, FAR),
+                List.of(JOINED, FAR.shiftedBy(ONE_PLACE_BACK))),
+            new HairpinDeletionCase("a crescendo that loses its first note starts on the note after it",
+                List.of(FROM_DELETED),
+                List.of(new ElementRange(DELETED_INDEX, FROM_DELETED.end() + ONE_PLACE_BACK)))
+        );
+    }
+
+    @Test
+    void testTheJoinedHairpinCarriesTheFirstOnesOffsets() {
+        var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
+        var first = crescendoOver(line, EXISTING);
+        first.setX1ShiftSs(FIRST_HAIRPIN_X1_SHIFT_SS);
+        first.addTo(line);
+        crescendoOver(line, ONE_ELEMENT_ON).addTo(line);
+
+        deleteElement(line, DELETED_INDEX);
+
+        assertThat(line.spanRegistry().getSpans()).singleElement()
+            .isInstanceOfSatisfying(Crescendo.class,
+                joined -> assertThat(joined.getX1ShiftSs()).isEqualTo(FIRST_HAIRPIN_X1_SHIFT_SS));
+    }
+
+    @Test
+    void testAHairpinWhoseEndpointsBothSurviveADeletionIsLeftAsItIs() {
+        var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
+        var hairpin = crescendoOver(line, EXISTING);
+        hairpin.addTo(line);
+
+        deleteElement(line, DELETED_INDEX);
+
+        assertThat(line.spanRegistry().getSpans())
+            .as("the same hairpin, not a copy of it")
+            .containsExactly(hairpin);
+    }
+
+    // ------------------------------------------------------------------------
+    // Every edit asks the spans first
+    // ------------------------------------------------------------------------
+
+    /** An element strictly inside the triplet over {@link #EXISTING}. */
+    private static final int TRIPLET_MEMBER = EXISTING.begin() + 1;
+
+    /**
+     * One edit that leaves the triplet over {@link #EXISTING} rhythmically invalid.
+     *
+     * @param description the edit, as the test's display name
+     * @param edit        performs it on the line
+     */
+    private record UnbalancingEdit(String description, Consumer<Line> edit) {}
+
+    static Stream<UnbalancingEdit> unbalancingEdits() {
+        return Stream.of(
+            new UnbalancingEdit("an insertion inside its bracket",
+                line -> line.addElement(TRIPLET_MEMBER, quaver())),
+            new UnbalancingEdit("a dot added to a member",
+                line -> line.modifyElement(TRIPLET_MEMBER, EnumSet.of(ElementField.DOT_COUNT),
+                    () -> ((NoteElement) line.getElement(TRIPLET_MEMBER)).setDots(Dots.ONE))));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unbalancingEdits")
+    void testAnEditThatUnbalancesATupletRemovesIt(UnbalancingEdit testCase) {
+        var line = lineOfQuavers();
+        newTriplet(line.getElement(EXISTING.begin()), line.getElement(EXISTING.end())).addTo(line);
+
+        testCase.edit().accept(line);
+
+        assertThat(rangesOf(line, Tuplet.class)).isEmpty();
+    }
+
+    // ------------------------------------------------------------------------
+    // Where an endpoint sits, as one line sees it
+    // ------------------------------------------------------------------------
+
+    /** The lines of the song the bound cases ask about, by index. */
+    private static final int LINE_BEFORE = 0;
+    private static final int ASKING_LINE = 1;
+    private static final int LINE_AFTER = 2;
+    private static final int LINE_TWO_ON = 3;
+    private static final int REMOVED_LINE = 4;
+
+    /** The element of the asking line that is the span's other endpoint, and the one a local endpoint is. */
+    private static final int LOCAL_INDEX = 0;
+    private static final int ENDPOINT_INDEX = 1;
+
+    /**
+     * One endpoint, as the asking line places it.
+     *
+     * @param description the case, as the test's display name
+     * @param endpoint    picks the endpoint out of the song
+     * @param expected    where the asking line says it sits
+     */
+    private record BoundCase(String description, Function<Song, NoteElement> endpoint, SpanBound expected) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("boundCases")
+    void testAnEndpointIsPlacedInTheLineBesideItOrNowhere(BoundCase testCase) {
+        var song = songForBounds();
+        var askingLine = song.getLine(ASKING_LINE);
+        var local = (NoteElement) askingLine.getElement(LOCAL_INDEX);
+        var endpoint = testCase.endpoint().apply(song);
+        var spans = askingLine.spanRegistry();
+        var endingThere = new Tie(local, endpoint);
+
+        assertThat(spans.anchorIndexOf(new Tie(endpoint, local))).isEqualTo(testCase.expected());
+        assertThat(spans.endIndexOf(endingThere)).isEqualTo(testCase.expected());
+        assertThat(spans.rangeOf(endingThere))
+            .isEqualTo(testCase.expected() instanceof SpanBound.At
+                ? new ElementRange(LOCAL_INDEX, ENDPOINT_INDEX)
+                : null);
+    }
+
+    static Stream<BoundCase> boundCases() {
+        return Stream.of(
+            new BoundCase("in the asking line, at its index",
+                song -> noteOn(song, ASKING_LINE), new SpanBound.At(ENDPOINT_INDEX)),
+            new BoundCase("in the line before, before the line",
+                song -> noteOn(song, LINE_BEFORE), SpanBound.BEFORE_LINE),
+            new BoundCase("in the line after, after the line",
+                song -> noteOn(song, LINE_AFTER), SpanBound.AFTER_LINE),
+            new BoundCase("two lines on, absent",
+                song -> noteOn(song, LINE_TWO_ON), SpanBound.ABSENT),
+            new BoundCase("in no line, absent",
+                song -> crotchet(), SpanBound.ABSENT),
+            new BoundCase("in a line the song no longer holds, absent",
+                song -> {
+                    var note = noteOn(song, REMOVED_LINE);
+                    song.withoutMutationTracking(() -> song.removeLine(REMOVED_LINE));
+
+                    return note;
+                },
+                SpanBound.ABSENT)
+        );
+    }
+
+    @Test
+    void testBoundCasesCoverEveryUnpositionedBound() {
+        assertThat(boundCases().map(BoundCase::expected))
+            .contains(SpanBound.Unpositioned.values());
+    }
+
+    @Test
+    void testATieAcrossALineBreakIsInBothLinesRegistriesAndLeavesBothTogether() {
+        var song = songForBounds();
+        var anchorLine = song.getLine(ASKING_LINE);
+        var endLine = song.getLine(LINE_AFTER);
+        var tie = new Tie(noteOn(song, ASKING_LINE), noteOn(song, LINE_AFTER));
+
+        song.withModification(() -> tie.addTo(anchorLine));
+
+        assertThat(anchorLine.spanRegistry().getSpans()).containsExactly(tie);
+        assertThat(endLine.spanRegistry().getSpans()).containsExactly(tie);
+
+        song.withModification(() -> tie.removeFrom(endLine));
+
+        assertThat(anchorLine.spanRegistry().getSpans()).isEmpty();
+        assertThat(endLine.spanRegistry().getSpans()).isEmpty();
+    }
+
+    /** A song of five lines of two crotchets each. */
+    private static Song songForBounds() {
+        SongFactory.LineBuilder twoCrotchets = line -> {
+            line.addElement(crotchet());
+            line.addElement(crotchet());
+        };
+
+        return SongFactory.buildSong(twoCrotchets, twoCrotchets, twoCrotchets, twoCrotchets, twoCrotchets);
+    }
+
+    private static NoteElement noteOn(Song song, int lineIndex) {
+        return (NoteElement) song.getLine(lineIndex).getElement(ENDPOINT_INDEX);
+    }
+
+    private static Crescendo crescendoOver(Line line, ElementRange range) {
+        return new Crescendo(line.getElement(range.begin()), line.getElement(range.end()));
+    }
+
+    private static void deleteElement(Line line, int index) {
+        line.deleteRange(line.effectiveRange(ElementRange.single(index)));
+    }
+
     /** The classes a sealed hierarchy bottoms out in, reached through every sealed level. */
     private static List<Class<?>> leavesOf(Class<?> sealedRoot) {
         var permitted = sealedRoot.getPermittedSubclasses();
@@ -196,9 +468,13 @@ class LineSpansTest extends UnitTest {
     }
 
     private static Line lineOfQuavers() {
+        return lineOfQuavers(LINE_LENGTH);
+    }
+
+    private static Line lineOfQuavers(int length) {
         var line = detachedLine();
 
-        for (var i = 0; i < LINE_LENGTH; i++) {
+        for (var i = 0; i < length; i++) {
             line.addElement(quaver());
         }
 
@@ -236,8 +512,13 @@ class LineSpansTest extends UnitTest {
 
     /** The extents of every span on {@code line} of the case's kind, in registry order. */
     private static List<ElementRange> rangesOfKind(Line line, DisplacementCase testCase) {
+        return rangesOf(line, testCase.kind());
+    }
+
+    /** The extents of every span on {@code line} of {@code kind}, in registry order. */
+    private static List<ElementRange> rangesOf(Line line, Class<? extends Span> kind) {
         return line.spanRegistry().getSpans().stream()
-            .filter(testCase.kind()::isInstance)
+            .filter(kind::isInstance)
             .map(span -> new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex()))
             .toList();
     }

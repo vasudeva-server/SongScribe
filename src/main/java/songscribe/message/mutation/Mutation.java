@@ -25,7 +25,7 @@ package songscribe.message.mutation;
  * Subscribers use {@code instanceof} / pattern matching to filter to specific mutation types.
  */
 public sealed interface Mutation
-    permits ElementInsertion, ElementDeletion, ElementRangeDeletion, ElementModification, ElementReplacement,
+    permits ElementInsertion, ElementDeletion,ElementModification, ElementReplacement,
             LineInsertion, LineDeletion,
             LineKeyChange, LineLayoutChange,
     SpanAddition,
