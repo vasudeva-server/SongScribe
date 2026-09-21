@@ -20,7 +20,9 @@
 
 package songscribe.dom;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -39,9 +41,12 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * What {@link Line} promises about a position and about a run landing at one.
  *
  * <p>{@link Line#insertRun} repairs both of its seams — the successor's against the last element
- * of the run, the predecessor's against the first. {@link Line#canInsertElementAt} and
+ * of the run, the predecessor's against the first — and a glissando loses its target to an
+ * insertion and to {@link Line#deleteRange} alike. {@link Line#canInsertElementAt} and
  * {@link Line#canBearSyllableAt} are the two questions every caller asks about a position, and
- * both turn on the closed pairs a line can hold.
+ * both turn on the closed pairs a line can hold. {@link Line#keyAt} and
+ * {@link Line#keyAtEndOfLineAfterRemoving} read the key a position is in, and an append keeps the
+ * song's terminal last.
  */
 class LineTest extends UnitTest {
 
@@ -50,60 +55,70 @@ class LineTest extends UnitTest {
 
     private static final String SYLLABLE = "la";
 
-    @Test
-    void testANonPitchedRunStripsThePredecessorsOrphanedGlissando() {
+    /**
+     * One edit that changes which element follows the line's first note.
+     *
+     * @param description      the edit, as part of the test's display name
+     * @param edit             performs it on a line holding the note and its follower
+     * @param leavesNoteBehind whether a pitched note stands directly after the first note
+     *     afterwards, by way of this edit's insertion
+     */
+    private record FollowerEdit(String description, Consumer<Line> edit, boolean leavesNoteBehind) {}
+
+    /**
+     * One slide on the first note, under one {@link FollowerEdit}.
+     *
+     * @param description the case, as the test's display name
+     * @param slide       the slide the first note carries before the edit
+     * @param edit        the edit that changes its follower
+     */
+    private record SlideCase(String description, Slide slide, FollowerEdit edit) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    private static Stream<FollowerEdit> followerEdits() {
+        return Stream.of(
+            new FollowerEdit("a non-pitched run inserted after it",
+                line -> insertRun(line, List.of(singleBarline(), keyChange(Key.NO_ACCIDENTALS))), false),
+            new FollowerEdit("a pitched run inserted after it",
+                line -> insertRun(line, List.of(crotchet(), crotchet())), true),
+            new FollowerEdit("its follower deleted",
+                line -> line.deleteRange(
+                    line.effectiveRange(new StaffElementRun.ElementRange(RUN_INDEX, RUN_INDEX))),
+                false));
+    }
+
+    /** Every {@link Slide} crossed with every {@link FollowerEdit}. */
+    static Stream<SlideCase> slideCases() {
+        return Stream.of(Slide.values())
+            .flatMap(slide -> followerEdits()
+                .map(edit -> new SlideCase(slide + ", " + edit.description(), slide, edit)));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("slideCases")
+    void testASlideSurvivesAChangeOfFollowerUnlessItsTargetIsGone(SlideCase testCase) {
         var line = detachedLine();
         var source = crotchet();
-        source.setSlide(Slide.GLISSANDO);
+        source.setSlide(testCase.slide());
         line.addElement(source);
         line.addElement(crotchet());
 
-        insertRun(line, List.of(singleBarline(), keyChange(Key.NO_ACCIDENTALS)));
+        testCase.edit().edit().accept(line);
 
-        assertThat(((NoteElement) line.getElement(0)).hasGlissando())
-            .as("the glissando's target is no longer the element after it, so it cannot survive")
-            .isFalse();
-    }
+        // Slide's own contract: a glissando connects to the note that follows, a fall has no
+        // target. Only a slide with a target can lose it.
+        var hasTarget = switch (testCase.slide()) {
+            case GLISSANDO -> true;
+            case FALL -> false;
+        };
+        var expectedSlide = hasTarget && !testCase.edit().leavesNoteBehind() ? null : testCase.slide();
 
-    @Test
-    void testANonPitchedRunLeavesThePredecessorsFallAlone() {
-        var line = detachedLine();
-        var source = crotchet();
-        source.setSlide(Slide.FALL);
-        line.addElement(source);
-        line.addElement(crotchet());
-
-        insertRun(line, List.of(singleBarline(), keyChange(Key.NO_ACCIDENTALS)));
-
-        assertThat(((NoteElement) line.getElement(0)).getSlide())
-            .as("a fall trails off the note itself and has no target to be orphaned from, so the "
-                + "repair that strips a glissando must leave it standing")
-            .isEqualTo(Slide.FALL);
-    }
-
-    @Test
-    void testAPitchedRunLandingInsideAGraceHostPairRemakesTheMelismaAgainstItsFirstElement() {
-        var line = detachedLine();
-        var grace = graceQuaver();
-        grace.setSlide(Slide.GLISSANDO);
-        grace.putLyric(new Lyric(Lyric.FIRST_VERSE, SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
-        line.addElement(grace);
-        line.addElement(crotchet());
-
-        insertRun(line, List.of(crotchet(), crotchet()));
-
-        var graceLyric = line.getElement(0).getLyricForVerse(Lyric.FIRST_VERSE);
-        var newHostLyric = line.getElement(RUN_INDEX).getLyricForVerse(Lyric.FIRST_VERSE);
-
-        assertThat(graceLyric).isNotNull();
-        assertThat(graceLyric.extend())
-            .as("the grace note carries the syllable, so its melisma runs across its new host")
-            .isEqualTo(Lyric.Extend.START);
-
-        assertThat(newHostLyric).isNotNull();
-        assertThat(newHostLyric.extend())
-            .as("the first element of the run is the new host, so it takes the carrier")
-            .isEqualTo(Lyric.Extend.STOP);
+        assertThat(source.getSlide()).isEqualTo(expectedSlide);
     }
 
     /**
@@ -122,9 +137,6 @@ class LineTest extends UnitTest {
 
     static Stream<InsertedRunCase> insertedRunCases() {
         return Stream.of(
-            // Blank notes are syllable slots arriving empty, so the word cannot be sung as one.
-            new InsertedRunCase("a run of notes interrupts the word",
-                List.of(crotchet(), crotchet()), Lyric.Syllabic.BEGIN),
             // The discriminating case: judged element by element, one interrupting element in the
             // run is enough. A run judged by its every element would leave this one transparent.
             new InsertedRunCase("a run mixing a transparent element with a note interrupts the word",
@@ -222,6 +234,116 @@ class LineTest extends UnitTest {
     void testCanBearSyllableAtRefusesEveryElementNoSyllableCanBeSungOn(PositionCase testCase) {
         assertThat(pairedLine().canBearSyllableAt(testCase.index()))
             .isEqualTo(testCase.canBearSyllable());
+    }
+
+    /** The keys of {@link #keyLine()}: the one it runs in, and the two its key changes establish. */
+    private static final Key RUNNING_KEY = Key.NO_ACCIDENTALS;
+    private static final Key FIRST_CHANGE_KEY = Key.TWO_SHARPS;
+    private static final Key SECOND_CHANGE_KEY = Key.THREE_FLATS;
+
+    /** {@link #keyLine()}, by position. */
+    private static final int FIRST_NOTE = 0;
+    private static final int FIRST_BARLINE = 1;
+    private static final int FIRST_KEY_CHANGE = 2;
+    private static final int NOTE_UNDER_FIRST_CHANGE = 3;
+    private static final int SECOND_KEY_CHANGE = 5;
+    private static final int LAST_NOTE = 6;
+
+    /**
+     * A line in {@link #RUNNING_KEY} holding {@code note, barline, key change, note, barline,
+     * key change, note}, the key changes establishing {@link #FIRST_CHANGE_KEY} and then
+     * {@link #SECOND_CHANGE_KEY}.
+     */
+    private static Line keyLine() {
+        var line = detachedLine();
+        line.setKey(RUNNING_KEY);
+        line.addElement(crotchet());
+        line.addElement(singleBarline());
+        line.addElement(keyChange(FIRST_CHANGE_KEY));
+        line.addElement(crotchet());
+        line.addElement(singleBarline());
+        line.addElement(keyChange(SECOND_CHANGE_KEY));
+        line.addElement(crotchet());
+
+        return line;
+    }
+
+    /**
+     * One index on {@link #keyLine()} and the key in effect there.
+     *
+     * @param description the case, as the test's display name
+     * @param index       the insertion index asked about
+     * @param expected    the key in effect at it
+     */
+    private record KeyAtCase(String description, int index, Key expected) {}
+
+    static Stream<KeyAtCase> keyAtCases() {
+        return Stream.of(
+            new KeyAtCase("index 0 is in the running key", FIRST_NOTE, RUNNING_KEY),
+            new KeyAtCase("an index with no key change at or before it is in the running key",
+                FIRST_BARLINE, RUNNING_KEY),
+            new KeyAtCase("a key change is in effect at its own index", FIRST_KEY_CHANGE, FIRST_CHANGE_KEY),
+            new KeyAtCase("a key change stays in effect past its index",
+                NOTE_UNDER_FIRST_CHANGE, FIRST_CHANGE_KEY),
+            new KeyAtCase("the insertion index past the last element is in the last key change's key",
+                LAST_NOTE + 1, SECOND_CHANGE_KEY));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyAtCases")
+    void testKeyAtIsTheLastKeyChangeAtOrBeforeTheIndexElseTheRunningKey(KeyAtCase testCase) {
+        assertThat(keyLine().keyAt(testCase.index())).isEqualTo(testCase.expected());
+    }
+
+    /**
+     * One range removed from {@link #keyLine()} and the key the line then leaves off in.
+     *
+     * @param description the case, as the test's display name
+     * @param named       the range a caller names, before widening
+     * @param expected    the key the line leaves off in without it
+     */
+    private record KeyAfterRemovingCase(String description, StaffElementRun.ElementRange named, Key expected) {}
+
+    static Stream<KeyAfterRemovingCase> keyAfterRemovingCases() {
+        return Stream.of(
+            new KeyAfterRemovingCase("a key change surviving after the range decides",
+                StaffElementRun.ElementRange.single(FIRST_KEY_CHANGE), SECOND_CHANGE_KEY),
+            new KeyAfterRemovingCase("with none surviving, the key in effect before the range",
+                StaffElementRun.ElementRange.single(SECOND_KEY_CHANGE), FIRST_CHANGE_KEY),
+            new KeyAfterRemovingCase("a range from index 0 leaves the running key",
+                new StaffElementRun.ElementRange(FIRST_NOTE, LAST_NOTE), RUNNING_KEY));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("keyAfterRemovingCases")
+    void testKeyAtEndOfLineAfterRemovingReadsTheSurvivingKeyChangeElseTheKeyBeforeTheRange(
+        KeyAfterRemovingCase testCase) {
+
+        var line = keyLine();
+
+        assertThat(line.keyAtEndOfLineAfterRemoving(line.effectiveRange(testCase.named())))
+            .isEqualTo(testCase.expected());
+    }
+
+    @Test
+    void testAppendingToTheLastLineOfASongKeepsTheTerminalLast() {
+        var song = new Song();
+        var line = song.getLine(song.lineCount() - 1);
+        var terminal = line.getElement(line.elementCount() - 1);
+
+        assertThat(song.isTerminalOfItsSong(terminal))
+            .as("the fixture reaches the case only if the line carries its song's terminal")
+            .isTrue();
+
+        var appended = List.of(crotchet(), crotchet(), crotchet());
+
+        song.withModification(() -> appended.forEach(line::addElement));
+
+        var expected = new ArrayList<StaffElement>(appended);
+        expected.add(terminal);
+
+        assertThat(line.getElements(new StaffElementRun.ElementRange(0, line.elementCount() - 1)))
+            .containsExactlyElementsOf(expected);
     }
 
     private static void insertRun(Line line, List<StaffElement> elements) {

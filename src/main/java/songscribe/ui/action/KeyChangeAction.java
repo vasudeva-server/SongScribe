@@ -94,36 +94,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
     }
 
     /**
-     * Whether a key change may be written at {@code index} on {@code line}.
-     *
-     * <p>Four positions are refused; every other index the mode's own geometry offers is taken.
-     *
-     * <ul>
-     *   <li><b>Index 0.</b> A {@link KeyChangeElement} is never the first element of a line —
-     *       its position invariant — and a key change there would only restate what the line's
-     *       header already says.</li>
-     *   <li><b>Every index past the line's last note</b>, {@link Line#lastNoteIndex()}. A key
-     *       change there governs no note on this line, so it says nothing the next line's own key
-     *       does not say, and the cautionary already draws that key at this line's end. The test
-     *       is the last note rather than the last element, because what a key change is worth is
-     *       the pitches it moves: the index of the last note is taken, and the positions before a
-     *       trailing barline, a trailing rest, or the end of the line are refused alike. A line
-     *       holding no note at all offers no position.</li>
-     *   <li><b>The two indices flanking a key change already on the line</b>: immediately before
-     *       the barline it sits behind, and immediately after it. The barline and the key
-     *       change are one unit — {@link Line#effectiveBegin} deletes them together — so the
-     *       position in front of the pair goes as well as the one behind it, or a second
-     *       barline-plus-key could be dropped directly in front of the first. The third index of
-     *       that neighborhood, the gap inside the pair, is {@link Line#canInsertElementAt}'s and
-     *       is refused before this predicate ever sees it: nothing goes there, whoever is
-     *       placing.</li>
-     *   <li><b>The index in front of a breath mark.</b> A breath mark stands only directly after
-     *       a duration element, and the inserted run ends with the key change —
-     *       {@link Line#canTrailRunAt}.</li>
-     * </ul>
-     *
-     * <p>Out-of-range indices answer {@code false} rather than throwing: the predicate is asked on
-     * every mouse move, and "nowhere to put it" is what an unavailable position means.
+     * Takes exactly the positions {@link Line#canInsertKeyChangeAt} accepts.
      *
      * @param line the line the pointer is over
      * @param index the insertion index under the pointer, the element it would land before
@@ -131,17 +102,7 @@ public final class KeyChangeAction extends UIAction implements InsertionPointMod
      */
     @Override
     public boolean acceptsInsertionIndex(Line line, int index) {
-        var lastNoteIndex = line.lastNoteIndex();
-
-        if (lastNoteIndex == null) {
-            return false;
-        }
-
-        return index > 0
-            && index <= lastNoteIndex
-            && !line.isKeyChangeAt(index - 1)
-            && !line.isKeyChangeAt(index + 1)
-            && line.canTrailRunAt(index, ElementType.KEY_CHANGE);
+        return line.canInsertKeyChangeAt(index);
     }
 
     /**

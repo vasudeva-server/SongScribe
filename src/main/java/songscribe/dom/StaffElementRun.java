@@ -477,9 +477,9 @@ public interface StaffElementRun {
      * </ul>
      *
      * <p>Two routes ask the halves rather than this. A paste asks each half separately, because
-     * each half has a dialog of its own to raise. A key-change insertion asks only
-     * {@link #canTrailRunAt}: its run never begins with a breath mark, and the slot rule it adds
-     * is its own. Every other way a run lands on a line asks this.
+     * each half has a dialog of its own to raise. {@link #canInsertKeyChangeAt} asks only
+     * {@link #canTrailRunAt} of the two: its run never begins with a breath mark, and the slot
+     * rules it adds are its own. Every other way a run lands on a line asks this.
      *
      * @param index the slot the run would be inserted at, so that its first element lands in
      *     front of the element currently at {@code index}
@@ -518,6 +518,55 @@ public interface StaffElementRun {
      */
     default boolean canTrailRunAt(int index, ElementType last) {
         return !isBreathMarkAt(index) || last.isDuration();
+    }
+
+    /**
+     * Whether a mid-line key change, with the barline it stands behind, may be inserted in front
+     * of the element at {@code index}.
+     *
+     * <p>The two slots {@link #canInsertElementAt} refuses are refused here too, and four more:
+     *
+     * <ul>
+     *   <li><b>Index 0.</b> A {@link KeyChangeElement} is never the first element of a line —
+     *       its position invariant — and a key change there would only restate what the line's
+     *       header already says.</li>
+     *   <li><b>Every index past the last note</b>, {@link #lastNoteIndex()}. A key change there
+     *       governs no note on this line, so it says nothing the next line's own key does not
+     *       say, and the cautionary already draws that key at this line's end. The test is the
+     *       last note rather than the last element, because what a key change is worth is the
+     *       pitches it moves: the index of the last note is taken, and the positions before a
+     *       trailing barline, a trailing rest, or the end of the line are refused alike. A run
+     *       holding no note at all offers no position.</li>
+     *   <li><b>The two indices flanking a key change already on the run</b>: immediately before
+     *       the barline it sits behind, and immediately after it. The barline and the key change
+     *       are one unit — {@link #effectiveBegin} deletes them together — so the position in
+     *       front of the pair goes as well as the one behind it, or a second barline-plus-key
+     *       could be dropped directly in front of the first.</li>
+     *   <li><b>The index in front of a breath mark.</b> A breath mark stands only directly after
+     *       a duration element, and the inserted run ends with the key change —
+     *       {@link #canTrailRunAt}.</li>
+     * </ul>
+     *
+     * <p>See {@code docs/key-changes.md} for what a mid-line key change means.
+     *
+     * @param index the slot the key change would be inserted at, so that it lands in front of the
+     *     element currently at {@code index}; out of range yields {@code false}, since no note
+     *     follows it
+     * @return {@code true} when a key change may be inserted at {@code index}
+     */
+    default boolean canInsertKeyChangeAt(int index) {
+        var lastNoteIndex = lastNoteIndex();
+
+        if (lastNoteIndex == null) {
+            return false;
+        }
+
+        return index > 0
+            && index <= lastNoteIndex
+            && canInsertElementAt(index)
+            && !isKeyChangeAt(index - 1)
+            && !isKeyChangeAt(index + 1)
+            && canTrailRunAt(index, ElementType.KEY_CHANGE);
     }
 
     // -------------------------------------------------------------------------
@@ -661,42 +710,10 @@ public interface StaffElementRun {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the index of every key change at or after {@code fromIndex} that restates the key
-     * already in effect where it stands — a stranded key change, which cancels nothing and so
-     * draws no signature at all.
-     *
-     * <p>The tracked key is never advanced past a stranded key change, because it already equals
-     * it. One forward pass therefore suffices, and removing one of them can neither create nor
-     * hide another: a key change that restates the key in effect cannot change the key in effect
-     * at any position.
-     *
-     * @param fromIndex   the lowest index to count a key change at
-     * @param keyInEffect the key in effect at {@code fromIndex}
-     * @return the indices, ascending
-     */
-    default List<Integer> strandedKeyChangeIndices(int fromIndex, Key keyInEffect) {
-        var indices = new ArrayList<Integer>();
-        var trackedKey = keyInEffect;
-
-        for (var index = Math.max(fromIndex, FIRST_LEGAL_KEY_CHANGE_INDEX);
-             index < effectiveElementCount(); index++) {
-
-            if (getElement(index) instanceof KeyChangeElement keyChange) {
-                if (keyChange.getKey() == trackedKey) {
-                    indices.add(index);
-                } else {
-                    trackedKey = keyChange.getKey();
-                }
-            }
-        }
-
-        return indices;
-    }
-
-    /**
      * Returns the {@link EffectiveRange} of every key change at or after {@code fromIndex} that
-     * restates the key already in effect immediately before it, each widened to the pair it
-     * belongs to, so the barline it sits behind goes with it.
+     * restates the key already in effect immediately before it — a stranded key change, which
+     * cancels nothing and so draws no signature at all — each widened to the pair it belongs to,
+     * so the barline it sits behind goes with it.
      *
      * <p>{@code keyInEffect} is the key that <em>will</em> be in effect at {@code fromIndex} once
      * the caller's edit commits, not what is in effect now: this query is pure and pre-mutation,
@@ -718,9 +735,24 @@ public interface StaffElementRun {
      *     {@link EditableRun#deleteRanges} discharges that obligation.
      */
     default List<EffectiveRange> redundantKeyChangeRanges(int fromIndex, Key keyInEffect) {
-        return strandedKeyChangeIndices(fromIndex, keyInEffect).stream()
-            .map(index -> effectiveRange(ElementRange.single(index)))
-            .toList();
+        var ranges = new ArrayList<EffectiveRange>();
+        var trackedKey = keyInEffect;
+
+        for (var index = Math.max(fromIndex, FIRST_LEGAL_KEY_CHANGE_INDEX);
+             index < effectiveElementCount(); index++) {
+
+            if (getElement(index) instanceof KeyChangeElement keyChange) {
+                // The tracked key never advances past a stranded key change, because it already
+                // equals it, so one forward pass finds every one of them.
+                if (keyChange.getKey() == trackedKey) {
+                    ranges.add(effectiveRange(ElementRange.single(index)));
+                } else {
+                    trackedKey = keyChange.getKey();
+                }
+            }
+        }
+
+        return ranges;
     }
 
     /**
@@ -744,8 +776,8 @@ public interface StaffElementRun {
      * what this run leaves in effect, whenever it holds a key change of its own.
      *
      * <p>A stranded key change restates the key running into it, so it gives the same answer as
-     * whatever precedes it: this needs no knowledge of {@link #strandedKeyChangeIndices}, and the
-     * two may be asked in either order.
+     * whatever precedes it: this needs no knowledge of {@link #redundantKeyChangeRanges(int, Key)},
+     * and the two may be asked in either order.
      *
      * <p>The bounded form is what an edit inserting a key change at {@code fromIndex} needs: the
      * key the run leaves off in afterwards is the inserted one <em>only if</em> no key change
@@ -768,20 +800,6 @@ public interface StaffElementRun {
         }
 
         return null;
-    }
-
-    /**
-     * Returns the key the last key change anywhere in this run establishes.
-     *
-     * <p>Null says the run changes key nowhere along its length, so the key it leaves off in is
-     * whatever it started in. That distinction is what a caller projecting an edit needs: under a
-     * <em>hypothetical</em> starting key, a run with a key change still ends in that change's key,
-     * and a run without one ends in the hypothetical.
-     *
-     * @return the last key change's key, or {@code null} when this run holds no key change
-     */
-    default @Nullable Key lastKeyChangeKey() {
-        return lastKeyChangeKeyFrom(FIRST_LEGAL_KEY_CHANGE_INDEX);
     }
 
     /**

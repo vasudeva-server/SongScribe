@@ -512,25 +512,11 @@ final class PreviewElementInserter {
         // setElement preserves the element index.
         if (line.isHostOfPairedGraceNote(elementIndex)
                 && !previewType.isPitchedNote()) {
-            var graceNoteIndex = elementIndex - 1;
-
             // setElement carried the old host's lyrics onto the replacement, which is not a
-            // pitched note and has no business holding a melisma carrier. Strip the glissando
-            // first so the sync sees an unpaired grace and converges to teardown, removing the
-            // carrier outright instead of leaving an empty lyric behind on the replacement.
-            // No hand-back here: the host the syllable would return to no longer exists.
-            // isHostOfPairedGraceNote answered true, so the element in front is a paired grace
-            // note, which is a note.
-            if (line.getElement(graceNoteIndex) instanceof NoteElement graceNote) {
-                line.modifyElement(graceNoteIndex, ElementField.SLIDE, graceNote::removeSlide);
-            }
-
-            line.syncGraceHostMelisma(graceNoteIndex);
-
-            // Any melisma reaching past this pair still has to be unwound before the grace
-            // note leaves the line, and the removal must be tracked for undo.
-            line.adjustExtendsForDeletion(graceNoteIndex);
-            line.removeElement(graceNoteIndex);
+            // pitched note and has no business holding a melisma carrier. The grace note's
+            // syllable goes with it, and the deletion takes the carrier its melisma left on the
+            // replacement along.
+            line.deleteRange(line.effectiveRange(StaffElementRun.ElementRange.single(elementIndex - 1)));
             elementIndex--;
         }
 

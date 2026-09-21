@@ -11,10 +11,10 @@ Run by `/design-pass 6` — register row `6`, *Line*.
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-unrepresentable-states.md](./step-3-unrepresentable-states.md) | `findings-3.md`. Execution reaches past the target: the `-1` sweep (3.13) across `dom`, `ui`, `layout`, `midi` and `io`, and rows 7, 12, 16 and 25's files. During review the user removed the dead `@Nullable` from `Line.getElementIndex` and from `LineSpans.boundOf`, with `boundOf`'s null branch (no caller passes null; the tree compiled both times) |
 | 4 Extraction | ✅ | ✅ | [step-4-extraction.md](./step-4-extraction.md) | `findings-4.md`. During review the user lifted the gate for one change: `Song.isAutoMaintainedTerminal` → `isTerminal` and `isAutoMaintainedTerminalOfItsSong` → `isTerminalOfItsSong` (row 12's file), then `TerminalMaintainer.isAutoMaintainedTerminal` → `isTerminal`; the tree compiled both times |
 | 5 Contracts | ✅ | ✅ | — | `findings-5.md`. Settled at the gate: items 1–3 and 6 as proposed. Item 4: key-change insertion put a breath mark behind a key change, so `KeyChangeAction.acceptsInsertionIndex` refuses the slot in front of a breath mark, and the `deleteElement` cascade goes. Item 5: a grace note may be entered in front of a paired grace note; grace mode's press asks `canInsertElementAt` and `isInsideGraceHostPair` goes; a grace-note click never reaches plain note entry, because `PreviewElementInserter` refuses a grace preview outside grace mode; grace mode inserts through its own entry point, which never replaces and returns what it inserted, in place of `forceInsert`. Lone grace notes are not implemented now; they will enter through grace mode (Return commits the grace note alone) |
-| 6 Test triage | ⏳ | ⏳ | — | |
-| 7 Test-only surface | ⏳ | ⏳ | — | |
-| 8a Suite gate | ⏳ | n/a | — | |
-| 8b Visual gate | ⏳ | n/a | — | |
+| 6 Test triage | ✅ | ✅ | — | `findings-6.md`. The deletion checkpoint settled three promises, stated in `EditableRun.deleteRange`'s contract and in `docs/lyrics.md`, *Deleting elements closes the chains up*: a word closes up around the gap, a melisma follows its syllable, and a paired grace note deleted alone takes its syllable with it. `deleteRange` is one path: it removes the range, then settles the chains across the gap from the lyrics that remain. An insertion that interrupts settles them by the same rule, so both find a neighbor past a rest, a barline, a breath mark or a key change; `LyricRunTest` states that for an insertion |
+| 7 Test-only surface | ✅ | ✅ | — | `findings-7.md`, not opened in roughdraft at the user's request. Settled: item 1 as proposed, item 2 with option (b). `lastKeyChangeKey` is deleted, and `MusicXmlStrandedKeyChangeTest` asserts the key changes a line holds. `strandedKeyChangeIndices` is inlined into `redundantKeyChangeRanges(int, Key)`, and `StrandedKeyChangeTest`'s stranded cases assert ranges |
+| 8a Suite gate | ✅ | n/a | — | |
+| 8b Visual gate | ✅ | n/a | — | |
 | 9 Diagrams | ⏳ | ⏳ | — | |
 | 10 Coverage | ⏳ | n/a | — | |
 | 11 Mutation | ⏳ | n/a | — | opportunistic |
@@ -82,7 +82,7 @@ register at step 13, before this file is deleted.
   test asserts — `Span.addTo`'s displacement policy and replay skip,
   `Span.removeFrom`'s no-op, `removesConfirmableSpan`, the three
   `TerminalMaintainer` checks.
-- **→ Step 7.** `StaffElementRun.lastKeyChangeKey` has no production caller; only
+- **Closed at step 7.** `StaffElementRun.lastKeyChangeKey` has no production caller; only
   `MusicXmlStrandedKeyChangeTest` calls it. `strandedKeyChangeIndices` has one production
   caller, `redundantKeyChangeRanges` in the same interface, and `StrandedKeyChangeTest` calls
   it directly. Found at step 5.
@@ -102,6 +102,20 @@ register at step 13, before this file is deleted.
   repairs when the insertion was not an append.
 - **→ Step 6.** Also untested: a refused host aborts the pairing; `AcceptedInsertion.land` and
   `landWithoutRepairs`.
+- **Carried to the register, → Pass 9.** Found at step 6 and after step 7: `AcceptedInsertion.land`
+  skips `insertRun`'s repairs on an append, and the lyric chain repairs stop at the line edge. The
+  user decided that a line break is a gap and that words and melismas both cross it, and deferred
+  the lyric-system redesign to pass 9. The register's pass 9 item on chains crossing a line break
+  holds the finding and the correct structure.
+- **Fixed after step 7, → Row 24 (user lifted the gate).** Found at step 7. `KeyChangeAction.acceptsInsertionIndex` (`ui/action/KeyChangeAction.java:133`)
+  is a function of the line and the index alone: it reads no state of the action. It sits on the
+  action because the action is the `InsertionPointMode.Client`, so `KeyChangeActionTest:53` builds a
+  full mock environment (`MockEnvHelper.setupMockEnv().frame()`) to ask a question about a line. The
+  rule of where a key change may stand is a placement rule on the run, beside `canInsertElementAt` and
+  `canTrailRunAt`; the action's override then delegates to it, and the test needs no frame. Done:
+  `StaffElementRun.canInsertKeyChangeAt` holds the rule and also asks `canInsertElementAt`; the
+  action delegates; `StaffElementRunTest` carries the cases, with the two slots inside a pair added;
+  `KeyChangeActionTest` is deleted. Nothing for row 24 to carry.
 - **→ Row 12.** `plans/check-findings.md` #7: `Line` reaches a concrete `Song`,
   and `UnitTest.minimalSongMock()` grows a stub per forwarding method.
 - **→ Row 7.** `Ending.hasRepeatSplit(line, int, int)` takes a transposable index

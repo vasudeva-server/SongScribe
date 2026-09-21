@@ -122,8 +122,8 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      * Opens the dialog on the key running at {@code insertionIndex}, ready to write a new key
      * change there.
      *
-     * <p>The position has already been accepted by {@code KeyChangeAction.acceptsInsertionIndex},
-     * which is where every rule about where a key change may go lives — including that it never
+     * <p>The position has already been accepted by {@link Line#canInsertKeyChangeAt}, which is
+     * where every rule about where a key change may go lives — including that it never
      * lands on or beside one that is already there. This entry point is therefore for a position
      * with no key change on it; {@link #editKeyChange} is for one that has.
      *

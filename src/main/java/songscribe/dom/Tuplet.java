@@ -42,7 +42,7 @@ import songscribe.message.mutation.TupletRemoval;
  * The tuplet bracket is typically placed above if stems point down,
  * below if stems point up.
  */
-public class Tuplet extends Span {
+public final class Tuplet extends Span {
 
     /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px

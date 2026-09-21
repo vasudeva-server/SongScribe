@@ -106,11 +106,35 @@ syllable slot that arrived empty, so the word can no longer be sung as one word;
 a repeat carries nothing at all. The judgement is made over the whole inserted run
 at once: one interrupting element in it breaks the chains.
 
-Two repairs in that same pass deliberately do *not* read that rule — stripping a
-glissando, and syncing a grace note's melisma with its host. Those are about which
-element a pairing points at rather than about who a syllable's neighbours are, and
-a barline standing between a note and its glissando target orphans it however
-transparent it is to a word.
+One repair in that same pass deliberately does *not* read that rule — stripping a
+glissando. It is about which element a pairing points at rather than about who a
+syllable's neighbours are, and a barline standing between a note and its glissando
+target orphans it however transparent it is to a word.
+
+### Deleting elements closes the chains up
+
+A syllable belongs to its note and goes with it. That holds for a paired grace
+note too: deleted alone, it takes its syllable along, and its host is left an
+ordinary note with no lyric.
+
+What remains is then made whole again, verse by verse, and judged over the whole
+deleted range at once:
+
+- **A word closes up around the gap.** One that lost its last syllables ends on
+  the syllable before the gap; one that lost its first begins on the syllable
+  after it; one that lost only middle syllables stays one word; one left with a
+  single syllable is a single-syllable word. Two different words never join: if
+  a word ended inside the range, what stands before the gap and what stands after
+  it stay apart.
+- **A melisma follows its syllable.** If the syllable went, the extender goes and
+  the notes it ran under are left empty. If only notes under the extender went,
+  it closes on the last one that remains, and with none remaining the syllable is
+  an ordinary one.
+
+Neighbours are found the way a chain runs: past every element that holds no
+lyric. Deleting a rest or a barline from inside a word changes nothing, and one
+standing beside the range does not hide the syllable behind it. An insertion that
+interrupts finds its neighbours the same way.
 
 Layout says the same thing and has to: a column bearing no syllable leaves an
 active extender running and a pending hyphen open, so a melisma is drawn straight

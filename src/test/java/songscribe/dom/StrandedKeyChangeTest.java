@@ -23,7 +23,6 @@ package songscribe.dom;
 import java.util.List;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -32,22 +31,19 @@ import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
-import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.keyChange;
-import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * Which key changes restate the key already in effect where they stand, and what goes with one
  * when it is removed.
  *
- * <p>Two questions, asked one after the other and tested together because neither answer means
- * anything alone. {@link StaffElementRun#strandedKeyChangeIndices} names the key changes;
- * {@link StaffElementRun#redundantKeyChangeRanges(Key)} turns each index into the range a deletion
- * covers, which is the element it is paired with as well as the key change itself.
+ * <p>One question: {@link StaffElementRun#redundantKeyChangeRanges(int, Key)} names each such key
+ * change by the range a deletion covers, which is the element it is paired with as well as the key
+ * change itself.
  *
- * <p>Both are asked here of a {@link DetachedLyricRun} as well as of a {@link Line}, because a
- * clipboard fragment has to answer them too and the rule is one rule.
+ * <p>It is asked here of a {@link DetachedLyricRun} as well as of a {@link Line}, because a
+ * clipboard fragment has to answer it too and the rule is one rule.
  *
  * <p>What rides on the answer is that a stranded key change draws nothing: it cancels no
  * accidentals and reserves no width, so it is invisible on screen while still refusing the two
@@ -73,43 +69,20 @@ class StrandedKeyChangeTest extends UnitTest {
 
     /**
      * One list of elements to scan, and what
-     * {@link StaffElementRun#strandedKeyChangeIndices} must answer.
+     * {@link StaffElementRun#redundantKeyChangeRanges(int, Key)} must answer.
      *
      * @param description the case, which doubles as the parameterized display name
      * @param elements    the elements to scan
      * @param fromIndex   the lowest index to count a key change at
      * @param keyInEffect the key in effect at {@code fromIndex}
-     * @param expected    the indices the scan must report, ascending
+     * @param expected    the ranges the scan must report, ascending
      */
     private record StrandedCase(
         String description,
         List<StaffElement> elements,
         int fromIndex,
         Key keyInEffect,
-        List<Integer> expected
-    ) {
-
-        @Override
-        public String toString() {
-            return description;
-        }
-    }
-
-    /**
-     * One list of elements, and the key {@link StaffElementRun#lastKeyChangeKeyFrom} must read
-     * off it.
-     *
-     * @param description the case, which doubles as the parameterized display name
-     * @param elements    the elements to scan
-     * @param fromIndex   the lowest index to count a key change at
-     * @param expected    the key the last key change at or after {@code fromIndex} establishes, or
-     *                    null when none stands there
-     */
-    private record LastKeyCase(
-        String description,
-        List<StaffElement> elements,
-        int fromIndex,
-        @Nullable Key expected
+        List<StaffElementRun.ElementRange> expected
     ) {
 
         @Override
@@ -142,21 +115,6 @@ class StrandedKeyChangeTest extends UnitTest {
         }
     }
 
-    /**
-     * One kind of element a mid-line key change may stand behind, all of which the pair rule
-     * treats alike.
-     *
-     * @param description the case, which doubles as the parameterized display name
-     * @param barline     the element standing in front of the key change
-     */
-    private record BarlineCase(String description, StaffElement barline) {
-
-        @Override
-        public String toString() {
-            return description;
-        }
-    }
-
     /** A run of {@code note, barline, key change}, which is the shortest legal placement. */
     private static List<StaffElement> keyChangeRun(Key key) {
         return List.of(crotchet(), singleBarline(), keyChange(key));
@@ -169,6 +127,11 @@ class StrandedKeyChangeTest extends UnitTest {
             crotchet(), singleBarline(), keyChange(second));
     }
 
+    /** The range a deletion of the key change at {@code index} covers: it and its barline. */
+    private static StaffElementRun.ElementRange pairAt(int index) {
+        return new StaffElementRun.ElementRange(index - 1, index);
+    }
+
     static Stream<StrandedCase> strandedCases() {
         return Stream.of(
             new StrandedCase(
@@ -176,48 +139,45 @@ class StrandedKeyChangeTest extends UnitTest {
                 keyChangeRun(OTHER_KEY), 1, RUNNING_KEY, List.of()),
             new StrandedCase(
                 "a key change restating the key in effect is stranded",
-                keyChangeRun(RUNNING_KEY), 1, RUNNING_KEY, List.of(FIRST_KEY_CHANGE_INDEX)),
+                keyChangeRun(RUNNING_KEY), 1, RUNNING_KEY, List.of(pairAt(FIRST_KEY_CHANGE_INDEX))),
             new StrandedCase(
                 "a key change restating what an earlier key change established is stranded",
                 twoKeyChangeRuns(OTHER_KEY, OTHER_KEY), 1, RUNNING_KEY,
-                List.of(SECOND_KEY_CHANGE_INDEX)),
+                List.of(pairAt(SECOND_KEY_CHANGE_INDEX))),
             new StrandedCase(
                 "consecutive restatements are all reported, since the tracked key never advances "
                     + "past a stranded one",
                 twoKeyChangeRuns(RUNNING_KEY, RUNNING_KEY), 1, RUNNING_KEY,
-                List.of(FIRST_KEY_CHANGE_INDEX, SECOND_KEY_CHANGE_INDEX)),
+                List.of(pairAt(FIRST_KEY_CHANGE_INDEX), pairAt(SECOND_KEY_CHANGE_INDEX))),
             new StrandedCase(
                 "a key change below fromIndex is neither reported nor allowed to move the "
                     + "tracked key",
                 twoKeyChangeRuns(OTHER_KEY, RUNNING_KEY), SECOND_KEY_CHANGE_INDEX - 1, RUNNING_KEY,
-                List.of(SECOND_KEY_CHANGE_INDEX)),
+                List.of(pairAt(SECOND_KEY_CHANGE_INDEX))),
             new StrandedCase(
                 "the first key change is measured against keyInEffect, not against the key the "
                     + "list opens in",
-                keyChangeRun(OTHER_KEY), 1, OTHER_KEY, List.of(FIRST_KEY_CHANGE_INDEX)));
+                keyChangeRun(OTHER_KEY), 1, OTHER_KEY, List.of(pairAt(FIRST_KEY_CHANGE_INDEX))));
     }
 
-    static Stream<LastKeyCase> lastKeyCases() {
+    /**
+     * Every supposed key differs from every key the case's run holds, so a key change the scan
+     * misses shows as the supposed key coming back.
+     */
+    static Stream<EndKeyCase> endKeyCases() {
         return Stream.of(
-            new LastKeyCase(
-                "the last key change's key, with earlier ones ignored",
-                twoKeyChangeRuns(OTHER_KEY, THIRD_KEY), 0, THIRD_KEY),
-            new LastKeyCase(
-                "a key change standing at fromIndex itself counts",
-                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX, OTHER_KEY),
-            new LastKeyCase(
-                "null when every key change is below fromIndex",
-                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX + 1, null),
-            new LastKeyCase(
-                "null for a run holding no key change at all",
-                List.of(crotchet(), singleBarline(), crotchet()), 0, null));
-    }
-
-    static Stream<BarlineCase> barlineCases() {
-        return Stream.of(
-            new BarlineCase("a single barline", singleBarline()),
-            new BarlineCase("a double barline", doubleBarline()),
-            new BarlineCase("a repeat", repeatLeft()));
+            new EndKeyCase(
+                "the last of several key changes decides the key the run leaves off in",
+                twoKeyChangeRuns(OTHER_KEY, THIRD_KEY), 0, RUNNING_KEY, THIRD_KEY),
+            new EndKeyCase(
+                "a key change at fromIndex counts",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX, THIRD_KEY, OTHER_KEY),
+            new EndKeyCase(
+                "a key change below fromIndex is ignored",
+                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX + 1, THIRD_KEY, THIRD_KEY),
+            new EndKeyCase(
+                "a run holding no key change leaves off in the key it was supposed to be in",
+                List.of(crotchet(), singleBarline(), crotchet()), 0, OTHER_KEY, OTHER_KEY));
     }
 
     /** A line in {@link #RUNNING_KEY} holding {@code elements} from index 0. */
@@ -237,69 +197,9 @@ class StrandedKeyChangeTest extends UnitTest {
     @MethodSource("strandedCases")
     void testEveryKeyChangeRestatingTheKeyTrackedWhereItStandsIsReported(StrandedCase testCase) {
         assertThat(new DetachedLyricRun(testCase.elements())
-            .strandedKeyChangeIndices(testCase.fromIndex(), testCase.keyInEffect()))
-            .isEqualTo(testCase.expected());
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("lastKeyCases")
-    void testTheKeyARunLeavesInEffectIsItsLastKeyChangeAtOrAfterTheGivenIndex(
-        LastKeyCase testCase) {
-
-        assertThat(new DetachedLyricRun(testCase.elements())
-            .lastKeyChangeKeyFrom(testCase.fromIndex()))
-            .isEqualTo(testCase.expected());
-    }
-
-    /**
-     * One list of elements, and the key {@link StaffElementRun#keyAtEndUnder(Key)} must say it
-     * leaves off in, counting every key change it holds.
-     *
-     * @param description the case, which doubles as the parameterized display name
-     * @param elements    the elements to scan
-     * @param runningKey  the key to suppose the run starts in
-     * @param expected    the key the run leaves off in
-     */
-    private record WholeRunEndKeyCase(
-        String description,
-        List<StaffElement> elements,
-        Key runningKey,
-        Key expected
-    ) {
-
-        @Override
-        public String toString() {
-            return description;
-        }
-    }
-
-    static Stream<WholeRunEndKeyCase> wholeRunEndKeyCases() {
-        return Stream.of(
-            new WholeRunEndKeyCase(
-                "a run holding key changes leaves off in the last one's key",
-                twoKeyChangeRuns(OTHER_KEY, THIRD_KEY), RUNNING_KEY, THIRD_KEY),
-            new WholeRunEndKeyCase(
-                "a run holding no key change leaves off in the key it was supposed to start in",
-                List.of(crotchet(), singleBarline(), crotchet()), OTHER_KEY, OTHER_KEY));
-    }
-
-    static Stream<EndKeyCase> endKeyCases() {
-        return Stream.of(
-            new EndKeyCase(
-                "a key change at fromIndex decides the key the run leaves off in",
-                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX, THIRD_KEY, OTHER_KEY),
-            new EndKeyCase(
-                "a key change below fromIndex leaves the run in the key it was supposed to be in",
-                keyChangeRun(OTHER_KEY), FIRST_KEY_CHANGE_INDEX + 1, THIRD_KEY, THIRD_KEY));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("wholeRunEndKeyCases")
-    void testARunLeavesOffInItsLastKeyChangeElseTheKeyItWasSupposedToStartIn(
-        WholeRunEndKeyCase testCase) {
-
-        assertThat(new DetachedLyricRun(testCase.elements()).keyAtEndUnder(testCase.runningKey()))
-            .isEqualTo(testCase.expected());
+            .redundantKeyChangeRanges(testCase.fromIndex(), testCase.keyInEffect()))
+            .extracting(StaffElementRun.EffectiveRange::range)
+            .containsExactlyElementsOf(testCase.expected());
     }
 
     @ParameterizedTest(name = "{0}")
@@ -312,20 +212,6 @@ class StrandedKeyChangeTest extends UnitTest {
             .isEqualTo(testCase.expected());
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("barlineCases")
-    void testARangeTakesTheBarlineTheStrandedKeyChangeStandsBehind(BarlineCase testCase) {
-        var line = lineHolding(
-            List.of(crotchet(), testCase.barline(), keyChange(RUNNING_KEY)));
-
-        assertThat(line.redundantKeyChangeRanges(RUNNING_KEY))
-            .containsExactly(
-                line.effectiveRange(new StaffElementRun.ElementRange(
-                    FIRST_KEY_CHANGE_INDEX - 1,
-                    FIRST_KEY_CHANGE_INDEX
-                )));
-    }
-
     @Test
     void testRangesAreMeasuredAgainstTheKeyPassedInRatherThanTheLinesOwn() {
         var line = lineHolding(keyChangeRun(OTHER_KEY));
@@ -336,11 +222,9 @@ class StrandedKeyChangeTest extends UnitTest {
 
         assertThat(line.redundantKeyChangeRanges(OTHER_KEY))
             .as("under the key the caller's edit will leave the line in, the key change restates it")
+            .extracting(StaffElementRun.EffectiveRange::range)
             .containsExactly(
-                line.effectiveRange(new StaffElementRun.ElementRange(
-                    FIRST_KEY_CHANGE_INDEX - 1,
-                    FIRST_KEY_CHANGE_INDEX
-                )));
+                new StaffElementRun.ElementRange(FIRST_KEY_CHANGE_INDEX - 1, FIRST_KEY_CHANGE_INDEX));
     }
 
     @Test
@@ -350,10 +234,8 @@ class StrandedKeyChangeTest extends UnitTest {
         assertThat(line.redundantKeyChangeRanges(SECOND_KEY_CHANGE_INDEX, THIRD_KEY))
             .as("the earlier key change is behind the edit and is not counted, while the later one "
                 + "restates the key the edit leaves in effect and takes its barline with it")
+            .extracting(StaffElementRun.EffectiveRange::range)
             .containsExactly(
-                line.effectiveRange(new StaffElementRun.ElementRange(
-                    SECOND_KEY_CHANGE_INDEX - 1,
-                    SECOND_KEY_CHANGE_INDEX
-                )));
+                new StaffElementRun.ElementRange(SECOND_KEY_CHANGE_INDEX - 1, SECOND_KEY_CHANGE_INDEX));
     }
 }

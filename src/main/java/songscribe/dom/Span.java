@@ -53,7 +53,7 @@ import songscribe.message.mutation.SpanRemoval;
  * narrowed getter can never hand back anything but the narrower type. {@link NoteSpan} is the
  * one narrowing in the codebase.
  */
-public abstract class Span extends LineElement {
+public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin, Tuplet, Trill, Ending {
 
     /**
      * Creates a span reaching from the anchor element to the end element.

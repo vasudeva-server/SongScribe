@@ -1,7 +1,7 @@
 # Score View
 
 Exercises: `ScoreViewController`, `PasteModeManager`, `Fragment`, `KeyChangeStranding`,
-`AccidentalChain`
+`AccidentalChain`, `PreviewElementInserter`, `GraceModeManager`
 
 ## A key move that strands a mid-line key change
 
@@ -24,3 +24,10 @@ in effect by one of the edits below.
    deselect, then Paste and click in line 3's first measure. The pasted C key change
    lands with its barline, and line 3's original C key change disappears with the
    barline in front of it, leaving exactly one C key change on the line.
+
+## Note entry
+
+5. With a grace-note action selected, press to place a grace note, drag left without
+   releasing, then release. The grace note is removed. Then click and release to place
+   one, and press Escape. That grace note is removed too: a grace note with no host never
+   stays on the line.

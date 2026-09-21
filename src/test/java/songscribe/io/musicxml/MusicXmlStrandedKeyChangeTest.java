@@ -20,10 +20,14 @@
 
 package songscribe.io.musicxml;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Key;
+import songscribe.dom.KeyChangeElement;
+import songscribe.dom.Line;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
@@ -76,9 +80,9 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
         var read = roundTrip(written);
         var repaired = read.getLine(SECOND_LINE);
 
-        assertThat(repaired.lastKeyChangeKey())
+        assertThat(keyChangeKeys(repaired))
             .as("the key change restated the key its own line establishes, so it drew nothing")
-            .isNull();
+            .isEmpty();
         assertThat(repaired.effectiveElementCount())
             .as("the barline it stood behind went with it, leaving the notes either side")
             .isEqualTo(NOTES_EITHER_SIDE_OF_THE_PAIR);
@@ -112,12 +116,21 @@ class MusicXmlStrandedKeyChangeTest extends UnitTest {
                 .isEmpty();
         }
 
-        assertThat(read.getLine(THIRD_LINE).lastKeyChangeKey())
+        assertThat(keyChangeKeys(read.getLine(THIRD_LINE)))
             .as("this one changes the key the line inherited, so it survives untouched")
-            .isEqualTo(CHANGED_KEY);
-        assertThat(read.getLine(FOURTH_LINE).lastKeyChangeKey())
+            .containsExactly(CHANGED_KEY);
+        assertThat(keyChangeKeys(read.getLine(FOURTH_LINE)))
             .as("this one restates the key the line before it left off in")
-            .isNull();
+            .isEmpty();
         assertKeyPropagationInvariant(read);
+    }
+
+    /** The key of every key change on {@code line}, in order. */
+    private static List<Key> keyChangeKeys(Line line) {
+        return line.getElements().stream()
+            .filter(KeyChangeElement.class::isInstance)
+            .map(KeyChangeElement.class::cast)
+            .map(KeyChangeElement::getKey)
+            .toList();
     }
 }

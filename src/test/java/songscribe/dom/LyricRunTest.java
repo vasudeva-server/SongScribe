@@ -32,7 +32,9 @@ import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.keyChange;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * Which insertions break a word or a melisma and which are transparent to one — the promise
@@ -111,6 +113,73 @@ class LyricRunTest extends UnitTest {
             .isNull();
     }
 
+    /**
+     * What one element's first-verse lyric must read as after an insertion.
+     *
+     * @param index    the element's index once the note is in
+     * @param syllabic its syllabic, or {@code null} when it holds no syllable
+     * @param extend   its extend, or {@code null} when it holds no lyric at all
+     */
+    private record Probe(int index, Lyric.@Nullable Syllabic syllabic, Lyric.@Nullable Extend extend) {}
+
+    /**
+     * One blank note inserted where a chain's neighbor stands past an element holding no lyric.
+     *
+     * @param description    the case, as the test's display name
+     * @param elements       the line's elements, in order
+     * @param insertionIndex where the note lands
+     * @param probes         what the chain's members must then read as
+     */
+    private record DistantNeighborCase(
+        String description, List<StaffElement> elements, int insertionIndex, List<Probe> probes
+    ) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    private static final int AFTER_SECOND_ELEMENT = 2;
+    private static final int LAST_OF_FOUR = 3;
+    private static final int LAST_OF_FIVE = 4;
+
+    static Stream<DistantNeighborCase> distantNeighborCases() {
+        return Stream.of(
+            new DistantNeighborCase("the word ends on a syllable standing past a barline before the insertion",
+                List.of(openingSyllable(Lyric.Extend.NONE, Lyric.Syllabic.BEGIN), singleBarline(),
+                    closingSyllable()),
+                AFTER_SECOND_ELEMENT,
+                List.of(new Probe(0, Lyric.Syllabic.SINGLE, Lyric.Extend.NONE))),
+            new DistantNeighborCase("a new word starts on a syllable standing past a rest after the insertion",
+                List.of(openingSyllable(Lyric.Extend.NONE, Lyric.Syllabic.BEGIN), crotchetRest(),
+                    closingSyllable()),
+                INSERTION_INDEX,
+                List.of(new Probe(LAST_OF_FOUR, Lyric.Syllabic.SINGLE, Lyric.Extend.NONE))),
+            new DistantNeighborCase("the melisma breaks past a rest on either side of the insertion",
+                List.of(openingSyllable(Lyric.Extend.START, Lyric.Syllabic.SINGLE), crotchetRest(),
+                    crotchetRest(), closingCarrier()),
+                AFTER_SECOND_ELEMENT,
+                List.of(
+                    new Probe(0, Lyric.Syllabic.SINGLE, Lyric.Extend.NONE),
+                    new Probe(LAST_OF_FIVE, null, null)))
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("distantNeighborCases")
+    void testAnInterruptingInsertionFindsAChainsNeighborPastAnElementHoldingNoLyric(DistantNeighborCase testCase) {
+        var line = detachedLine();
+        testCase.elements().forEach(line::addElement);
+
+        line.insertRun(testCase.insertionIndex(), List.of(crotchet()));
+
+        for (var probe : testCase.probes()) {
+            assertThat(syllabicAt(line, probe.index())).isEqualTo(probe.syllabic());
+            assertThat(extendAt(line, probe.index())).isEqualTo(probe.extend());
+        }
+    }
+
     static Stream<InsertedElement> transparentElements() {
         return Stream.of(
             new InsertedElement("a rest bears a carrier but never a syllable", StaffElementFactory::crotchetRest),
@@ -132,30 +201,42 @@ class LyricRunTest extends UnitTest {
     /** Two syllables of one hyphenated word, with the insertion point between them. */
     private Line lineWithHyphenatedWord() {
         var line = detachedLine();
-        var opening = crotchet();
-        opening.putLyric(
-            new Lyric(Lyric.FIRST_VERSE, FIRST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-        line.addElement(opening);
-
-        var closing = crotchet();
-        closing.putLyric(
-            new Lyric(Lyric.FIRST_VERSE, LAST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.END, false));
-        line.addElement(closing);
+        line.addElement(openingSyllable(Lyric.Extend.NONE, Lyric.Syllabic.BEGIN));
+        line.addElement(closingSyllable());
 
         return line;
+    }
+
+    /** A note carrying {@link #FIRST_SYLLABLE}. */
+    private static NoteElement openingSyllable(Lyric.Extend extend, Lyric.Syllabic syllabic) {
+        var note = crotchet();
+        note.putLyric(new Lyric(Lyric.FIRST_VERSE, FIRST_SYLLABLE, extend, syllabic, false));
+
+        return note;
+    }
+
+    /** A note carrying {@link #LAST_SYLLABLE} as the end of a word. */
+    private static NoteElement closingSyllable() {
+        var note = crotchet();
+        note.putLyric(
+            new Lyric(Lyric.FIRST_VERSE, LAST_SYLLABLE, Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+
+        return note;
+    }
+
+    /** A note carrying the carrier that closes a melisma. */
+    private static NoteElement closingCarrier() {
+        var note = crotchet();
+        note.putLyric(Lyric.carrier(Lyric.FIRST_VERSE, Lyric.Extend.STOP));
+
+        return note;
     }
 
     /** A syllable and the carrier closing its melisma, with the insertion point between them. */
     private Line lineWithMelisma() {
         var line = detachedLine();
-        var syllable = crotchet();
-        syllable.putLyric(
-            new Lyric(Lyric.FIRST_VERSE, FIRST_SYLLABLE, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
-        line.addElement(syllable);
-
-        var carrier = crotchet();
-        carrier.putLyric(Lyric.carrier(Lyric.FIRST_VERSE, Lyric.Extend.STOP));
-        line.addElement(carrier);
+        line.addElement(openingSyllable(Lyric.Extend.START, Lyric.Syllabic.SINGLE));
+        line.addElement(closingCarrier());
 
         return line;
     }

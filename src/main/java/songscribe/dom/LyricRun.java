@@ -21,8 +21,11 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -93,183 +96,82 @@ public interface LyricRun extends StaffElementRun {
     // -------------------------------------------------------------------------
 
     /**
-     * Adjusts the syllabic value on the element at {@code prevIndex} when the neighbor
-     * to its right is inserted (blank note) or deleted.
+     * Settles, in every verse, the word and the melisma that reach the gap at {@code gapIndex}:
+     * the position between what stands before it and what stands at or after it.
      *
-     * <p>For insertion ({@code deletedElement} is null): always breaks the syllabic chain on
-     * the predecessor, since the new blank note interrupts it.
-     *
-     * <p>For deletion ({@code deletedElement} is the element being removed): breaks the
-     * predecessor's chain only in verses where the deleted element did not continue
-     * the chain (i.e., it has no lyric for that verse or its syllabic is not BEGIN/MIDDLE).
+     * <p>A chain may cross the gap only where the caller says so. Where it may not, the word
+     * before the gap ends there, the syllable after it begins a word, the melisma before it
+     * closes on its last member, and the carriers after it go. Where it may, a chain whose two
+     * sides both still stand is left as it is, and a side left without its other side is settled
+     * as above. An element that holds no lyric for a verse is no neighbor in that verse, so the
+     * sides are found past any rest, barline, breath mark or key change.
      *
      * <p>Must be called inside a modification bracket.
+     *
+     * @param gapIndex the index of the first element after the gap
+     * @param versesThatMayCross the verses whose chains may run across the gap
      */
-    default void adjustSyllablesForNeighborChange(int prevIndex, @Nullable StaffElement deletedElement) {
-        if (!hasIndex(prevIndex)) {
-            return;
+    private void settleChainsAcross(int gapIndex, Predicate<Integer> versesThatMayCross) {
+        for (var verse : verseNumbers()) {
+            var mayCross = versesThatMayCross.test(verse);
+
+            settleMelismaAcross(gapIndex, verse, mayCross);
+            settleWordAcross(gapIndex, verse, mayCross);
         }
-
-        var prevElement = getElement(prevIndex);
-        var lyricsToClear = new ArrayList<Lyric>();
-
-        for (var lyric : prevElement.getLyrics()) {
-            if (!Lyric.syllabicContinues(lyric.syllabic())) {
-                continue;
-            }
-
-            if (deletedElement == null) {
-                lyricsToClear.add(lyric);
-            } else {
-                var matchingDeletedLyric = deletedElement.getLyricForVerse(lyric.verse());
-                var deletedSyllabic = matchingDeletedLyric != null ? matchingDeletedLyric.syllabic() : null;
-
-                if (!Lyric.syllabicContinues(deletedSyllabic)) {
-                    lyricsToClear.add(lyric);
-                }
-            }
-        }
-
-        if (lyricsToClear.isEmpty()) {
-            return;
-        }
-
-        modifyElement(prevIndex, ElementField.LYRIC, () -> {
-            for (var lyric : lyricsToClear) {
-                var prevOfPrevLyric = prevIndex > 0
-                    ? getElement(prevIndex - 1).getLyricForVerse(lyric.verse()) : null;
-                var prevOfPrevSyllabic = prevOfPrevLyric != null ? prevOfPrevLyric.syllabic() : null;
-                var prevContinues = prevOfPrevSyllabic == Lyric.Syllabic.BEGIN
-                    || prevOfPrevSyllabic == Lyric.Syllabic.MIDDLE;
-                var newSyllabic = prevContinues ? Lyric.Syllabic.END : Lyric.Syllabic.SINGLE;
-                prevElement.putLyric(
-                    new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, false));
-            }
-        });
     }
 
-    /**
-     * Adjusts the syllabic value on the element at {@code insertionIndex + 1} after a bare
-     * note has been inserted at {@code insertionIndex}. The inserted note carries no lyric,
-     * so a successor that was mid-word or end-of-word now has no preceding syllable:
-     *
-     * <ul>
-     *   <li>{@link Lyric.Syllabic#MIDDLE} → {@link Lyric.Syllabic#BEGIN}</li>
-     *   <li>{@link Lyric.Syllabic#END} → {@link Lyric.Syllabic#SINGLE}</li>
-     * </ul>
-     *
-     * <p>Carrier lyrics ({@code syllabic == null}) are unaffected.
-     * Must be called inside a modification bracket, after {@link Line#addElement(int, StaffElement)}.
-     */
-    default void adjustSyllablesForSuccessorAfterInsertion(int insertionIndex) {
-        var successorIndex = insertionIndex + 1;
+    private void settleMelismaAcross(int gapIndex, int verse, boolean mayCross) {
+        var beforeIndex = previousLyricBearingIndex(gapIndex, verse);
+        var afterIndex = lyricBearingIndexAtOrAfter(gapIndex, verse);
+        var beforeLyric = beforeIndex == null ? null : getElement(beforeIndex).getLyricForVerse(verse);
+        var afterLyric = afterIndex == null ? null : getElement(afterIndex).getLyricForVerse(verse);
+        var isOpenBefore = beforeLyric != null
+            && (beforeLyric.extend() == Lyric.Extend.START || beforeLyric.extend() == Lyric.Extend.CONTINUE);
+        var isCarriedAfter = afterLyric != null && afterLyric.isCarrier();
+        var crosses = mayCross && isOpenBefore && isCarriedAfter;
 
-        if (successorIndex >= effectiveElementCount()) {
+        if (crosses) {
             return;
         }
 
-        var successor = getElement(successorIndex);
-        var lyricsToAdjust = new ArrayList<Lyric>();
-
-        for (var lyric : successor.getLyrics()) {
-            var syllabic = lyric.syllabic();
-
-            if (syllabic == Lyric.Syllabic.MIDDLE || syllabic == Lyric.Syllabic.END) {
-                lyricsToAdjust.add(lyric);
-            }
+        if (isOpenBefore && beforeIndex != null) {
+            closeMelismaAt(beforeIndex, verse);
         }
 
-        if (lyricsToAdjust.isEmpty()) {
-            return;
+        if (isCarriedAfter && afterIndex != null) {
+            removeCarriersFrom(afterIndex, verse);
         }
-
-        modifyElement(successorIndex, ElementField.LYRIC, () -> {
-            for (var lyric : lyricsToAdjust) {
-                var newSyllabic = lyric.syllabic() == Lyric.Syllabic.MIDDLE
-                    ? Lyric.Syllabic.BEGIN
-                    : Lyric.Syllabic.SINGLE;
-                successor.putLyric(
-                    new Lyric(lyric.verse(), lyric.text(), lyric.extend(), newSyllabic, lyric.compound()));
-            }
-        });
     }
 
-    /**
-     * Adjusts the melisma extend chain when a bare note is inserted at {@code insertionIndex}.
-     * The predecessor at {@code insertionIndex - 1} may be part of a melisma chain; inserting
-     * a note with no extend breaks the chain there. Must be called <em>before</em>
-     * {@link Line#addElement(int, StaffElement)} while the pre-insertion indices are still valid.
-     *
-     * <ul>
-     *   <li>{@link Lyric.Extend#START}: predecessor cleared to {@code NONE}; cascade-clear
-     *       {@code CONTINUE}/{@code STOP} from {@code insertionIndex} onward.</li>
-     *   <li>{@link Lyric.Extend#CONTINUE}: predecessor promoted to {@code STOP}; cascade-clear
-     *       {@code CONTINUE}/{@code STOP} from {@code insertionIndex} onward.</li>
-     *   <li>{@link Lyric.Extend#STOP}/{@link Lyric.Extend#NONE}: no action.</li>
-     * </ul>
-     */
-    default void adjustExtendsForInsertion(int insertionIndex) {
-        adjustExtends(insertionIndex - 1, insertionIndex);
-    }
+    private void settleWordAcross(int gapIndex, int verse, boolean mayCross) {
+        var beforeIndex = previousTextBearingIndex(gapIndex, verse);
 
-    /**
-     * The body of {@link #adjustExtendsForInsertion}, with the two indices it derives from the
-     * insertion point passed in: the chain member that loses its successor
-     * ({@code predecessorIndex}) and the first surviving member of the broken chain
-     * ({@code cascadeStartIndex}). They differ by the inserted element, which sits between
-     * them once it is in the list — hence the two callers, one before the insertion and one
-     * after it.
-     */
-    private void adjustExtends(int predecessorIndex, int cascadeStartIndex) {
-        // One pending rewrite of the predecessor's melisma extend, in the one method that
-        // makes them: the list is built before the modification bracket opens and applied
-        // inside it, so the before/after clones bracket every verse's fix together.
-        record ExtendFix(Lyric lyric, Lyric.Extend newExtend) {}
+        if (beforeIndex != null) {
+            var beforeLyric = getElement(beforeIndex).getLyricForVerse(verse);
+            var crosses = mayCross && hasFollowingTextBearingLyric(beforeIndex, verse);
 
-        if (predecessorIndex < 0 || predecessorIndex >= effectiveElementCount()) {
-            return;
-        }
-
-        var predecessorElement = getElement(predecessorIndex);
-        var fixes = new ArrayList<ExtendFix>();
-
-        for (var lyric : predecessorElement.getLyrics()) {
-            switch (lyric.extend()) {
-                case START -> fixes.add(new ExtendFix(lyric, Lyric.Extend.NONE));
-                case CONTINUE -> fixes.add(new ExtendFix(lyric, Lyric.Extend.STOP));
-                default -> { }
+            if (beforeLyric != null && isWordContinuingLyric(beforeLyric) && !crosses) {
+                setSyllableBoundary(beforeIndex, verse, true, false);
             }
         }
 
-        if (fixes.isEmpty()) {
-            return;
-        }
-
-        modifyElement(predecessorIndex, ElementField.LYRIC, () -> {
-            for (var fix : fixes) {
-                var lyric = fix.lyric();
-                predecessorElement.putLyric(
-                    new Lyric(lyric.verse(), lyric.text(), fix.newExtend(), lyric.syllabic(), lyric.compound()));
-            }
-        });
-
-        for (var fix : fixes) {
-            cascadeClearExtend(cascadeStartIndex, fix.lyric().verse());
-        }
+        fixSuccessorSyllabic(gapIndex - 1, verse, previousLyricContinues(gapIndex, verse));
     }
 
     /**
      * Breaks the lyric chains that the run about to be inserted at {@code insertionIndex}
-     * interrupts — the syllabic chain on the predecessor and the melisma chain running through
-     * it. Must be called inside a modification bracket, <em>before</em>
-     * {@link Line#addElement(int, StaffElement)}, while the pre-insertion indices still hold.
+     * interrupts: in every verse, the word and the melisma that run across the position. The
+     * word before it ends there and the syllable after it begins a word; the melisma closes on
+     * its last member before it and the carriers after it go. Must be called inside a
+     * modification bracket, <em>before</em> {@link Line#addElement(int, StaffElement)}, while the
+     * pre-insertion indices still hold.
      *
      * <p>A run every element of which carries the chains onward without ever taking a syllable —
      * a barline, a breath mark, a key change, a rest — breaks nothing and is left alone. That is
      * {@link ElementType#interruptsLyricChain()}'s answer, and the run is judged by it as a
      * whole: one interrupting element in it breaks the chains for the run.
      *
-     * <p>Only the predecessor half of the repair belongs here. The rest runs after the
+     * <p>Only the lyric half of the repair belongs here. The glissando half runs after the
      * insertion — see {@link #repairNeighborsAfterInsertion} — so an insertion path calls
      * this, inserts, then calls that. A path that inserts first and records later wants
      * {@link #repairNeighborsAfterUntrackedInsertion} instead, which does both halves in
@@ -283,8 +185,7 @@ public interface LyricRun extends StaffElementRun {
             return;
         }
 
-        adjustSyllablesForNeighborChange(insertionIndex - 1, null);
-        adjustExtendsForInsertion(insertionIndex);
+        settleChainsAcross(insertionIndex, verse -> false);
     }
 
     /**
@@ -330,23 +231,15 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Repairs what the run of elements just inserted at {@code firstInsertedIndex} could only
-     * disturb once it was in the list: the successor's syllabic chain, a connecting glissando on
-     * the predecessor left with no valid target, and the grace-host melisma of a pair the
-     * insertion landed inside. The predecessor half of the repair runs before the insertion —
-     * see {@link #repairNeighborsBeforeInsertion}.
+     * disturb once it was in the list: a connecting glissando on the predecessor left with no
+     * valid target. The lyric half of the repair runs before the insertion — see
+     * {@link #repairNeighborsBeforeInsertion}.
      *
-     * <p><b>The two halves key off opposite ends of the run.</b> The successor's chain is broken
-     * by the <em>last</em> element inserted, because that is the one now standing in front of it.
-     * The glissando and the melisma are broken by the <em>first</em>, because that is the one now
-     * standing behind the predecessor. A path that inserts more than one element and passes a
-     * single index therefore repairs one half against the wrong element, which is why the whole
-     * run is a parameter rather than each caller's own arithmetic.
-     *
-     * <p>The successor's chain, like the predecessor's, survives a run that interrupts nothing —
-     * see {@link #repairNeighborsBeforeInsertion}. The glissando and the melisma do not read that
-     * rule: they are about which element a pairing points at, not about who a syllable's
-     * neighbors are, and a barline standing between a note and its glissando target orphans it
-     * however transparent it is to a word.
+     * <p>The glissando is broken by the <em>first</em> element of the run, because that is the
+     * one now standing behind the predecessor. It does not read the rule the lyric chains read:
+     * it is about which element a pairing points at, not about who a syllable's neighbors are,
+     * and a barline standing between a note and its glissando target orphans it however
+     * transparent it is to a word.
      *
      * <p>Must be called inside a modification bracket, <em>after</em> every
      * {@link Line#addElement(int, StaffElement)} of the run.
@@ -355,26 +248,12 @@ public interface LyricRun extends StaffElementRun {
      * @param insertedRun the run that landed there, in the order it landed; must not be empty
      */
     default void repairNeighborsAfterInsertion(int firstInsertedIndex, List<? extends StaffElement> insertedRun) {
-        if (interruptsLyricChains(insertedRun)) {
-            adjustSyllablesForSuccessorAfterInsertion(firstInsertedIndex + insertedRun.size() - 1);
-        }
-
         // A connecting glissando joins a note to the note that immediately follows it.
         // Inserting another pitched note simply re-targets it, but inserting anything else
         // (rest, breath mark, grace note, barline, key change) leaves it with no valid
         // target, so remove it from the preceding note.
         if (!getElement(firstInsertedIndex).getType().isPitchedNote()) {
             removeGlissandoInto(firstInsertedIndex);
-        }
-
-        // A pitched insertion between a grace note and its host re-targets the glissando, so
-        // the inserted element is the new host. The extend adjustment made before the insertion
-        // removed the melisma that pointed at the old host — carrier and all, leaving it an
-        // ordinary note free to take a syllable of its own — so re-establish the melisma against
-        // the new host. The non-pitched case fell through the glissando strip above and no
-        // longer reads as paired.
-        if (isPairedGraceNote(firstInsertedIndex - 1)) {
-            syncGraceHostMelisma(firstInsertedIndex - 1);
         }
     }
 
@@ -398,95 +277,110 @@ public interface LyricRun extends StaffElementRun {
         var insertedRun = List.of(getElement(insertedIndex));
 
         if (interruptsLyricChains(insertedRun)) {
-            adjustSyllablesForNeighborChange(insertedIndex - 1, null);
-            adjustExtends(insertedIndex - 1, insertedIndex + 1);
+            // The inserted element holds no lyric yet, so the gap it opened is found on either
+            // side of it from its own index.
+            settleChainsAcross(insertedIndex, verse -> false);
         }
 
         repairNeighborsAfterInsertion(insertedIndex, insertedRun);
     }
 
     /**
-     * Adjusts the melisma extends of neighboring elements when the element at
-     * {@code deletedIndex} is about to be deleted. Must be called inside a modification
-     * bracket while the element is still in the list.
+     * The verses in which a word ends inside {@code range}: some syllable there is the last of
+     * its word. Across such a range, what stands before it and what stands after it are
+     * different words, so no word may close up over it once it is gone.
      *
-     * <ul>
-     *   <li>{@link Lyric.Extend#START} deleted: kills the chain — cascades {@code NONE} to
-     *       all following elements through the {@code STOP}.</li>
-     *   <li>{@link Lyric.Extend#CONTINUE} deleted: chain heals naturally, no adjustment needed.</li>
-     *   <li>{@link Lyric.Extend#STOP} deleted: the immediately preceding {@code CONTINUE} is
-     *       promoted to {@code STOP}; if the preceding element has {@code START} (2-element
-     *       chain), it is cleared to {@code NONE}.</li>
-     * </ul>
+     * @param range the elements about to be deleted
+     * @return the verse numbers, in no particular order
      */
-    default void adjustExtendsForDeletion(int deletedIndex) {
-        if (deletedIndex < 0 || deletedIndex >= effectiveElementCount()) {
-            return;
-        }
+    default Set<Integer> versesWithWordEndIn(ElementRange range) {
+        var verses = new HashSet<Integer>();
 
-        var deletedElement = getElement(deletedIndex);
-
-        for (var lyric : deletedElement.getLyrics()) {
-            switch (lyric.extend()) {
-                case START -> cascadeClearExtend(deletedIndex + 1, lyric.verse());
-                case STOP -> adjustPrecedingForStopDeletion(deletedIndex - 1, lyric.verse());
-                default -> { }
+        for (var index = range.begin(); index <= range.end(); index++) {
+            for (var lyric : getElement(index).getLyrics()) {
+                if (!lyric.isCarrier() && !isWordContinuingLyric(lyric)) {
+                    verses.add(lyric.verse());
+                }
             }
         }
+
+        return verses;
     }
 
-    private void cascadeClearExtend(int startIndex, int verse) {
+    /**
+     * Repairs the lyric chains around a range that has just been removed, so that in every verse
+     * the syllables that remain form whole words and whole melismas:
+     *
+     * <ul>
+     *   <li>a word that lost syllables closes up around the gap, and a word left without its
+     *       beginning or its end begins or ends on the syllable that remains;</li>
+     *   <li>a melisma that lost its syllable loses its carriers too; one that lost only carriers
+     *       closes on the last member that remains, and one left with no carrier is an ordinary
+     *       syllable.</li>
+     * </ul>
+     *
+     * <p>Must be called inside a modification bracket, <em>after</em> the removal. The repairs
+     * are recorded after the removal they belong to, which is what reverse-order undo needs:
+     * their indices hold only while the range is out of the list.
+     *
+     * @param gapIndex the index the removed range began at
+     * @param versesWithWordEnd what {@link #versesWithWordEndIn} answered for the range before
+     *     it was removed
+     */
+    default void repairChainsAfterDeletion(int gapIndex, Set<Integer> versesWithWordEnd) {
+        settleChainsAcross(gapIndex, verse -> !versesWithWordEnd.contains(verse));
+    }
+
+    /**
+     * Removes the melisma carriers found from {@code startIndex} on, through the close of their
+     * chain. An element holding no {@code verse} lyric is passed over, since a melisma runs
+     * through a rest or a barline; the first syllable ends the walk.
+     */
+    private void removeCarriersFrom(int startIndex, int verse) {
         for (var i = startIndex; i < effectiveElementCount(); i++) {
             var element = getElement(i);
             var lyric = element.getLyricForVerse(verse);
 
-            if (lyric == null || lyric.extend() == Lyric.Extend.NONE) {
+            if (lyric == null) {
+                continue;
+            }
+
+            if (!lyric.isCarrier()) {
                 break;
             }
 
-            var isStop = lyric.extend() == Lyric.Extend.STOP;
-
             // A carrier has no text of its own, so clearing its extend would strand an empty
             // lyric — one that still counts as lyric-bearing for lyric navigation. Drop the
-            // entry instead. The cascade only ever walks the members of a chain downstream of
-            // its START, which are carriers by construction, so the else branch is unreachable
-            // as things stand; it is there to keep a malformed chain from losing its text.
-            if (lyric.isCarrier()) {
-                modifyElement(i, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
-            } else {
-                modifyElement(i, ElementField.LYRIC, () ->
-                    element.putLyric(
-                        new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
-            }
+            // entry instead.
+            modifyElement(i, ElementField.LYRIC, () -> element.removeLyricForVerse(verse));
 
-            if (isStop) {
+            if (lyric.extend() == Lyric.Extend.STOP) {
                 break;
             }
         }
     }
 
-    private void adjustPrecedingForStopDeletion(int precedingIndex, int verse) {
-        if (precedingIndex < 0) {
+    /**
+     * Makes the melisma member at {@code index} the last of its chain: a carrier there becomes
+     * the close, and a syllable there loses its extender, since one note carries no melisma.
+     * No-op when the {@code verse} lyric at {@code index} is absent or is not an open member.
+     */
+    private void closeMelismaAt(int index, int verse) {
+        var lyric = getElement(index).getLyricForVerse(verse);
+
+        if (lyric == null) {
             return;
         }
 
-        var precedingLyric = getElement(precedingIndex).getLyricForVerse(verse);
-
-        if (precedingLyric == null) {
-            return;
-        }
-
-        var existingExtend = precedingLyric.extend();
+        var existingExtend = lyric.extend();
 
         if (existingExtend != Lyric.Extend.CONTINUE && existingExtend != Lyric.Extend.START) {
             return;
         }
 
-        // CONTINUE → STOP: preceding note becomes the new terminus
-        // START → NONE: 2-note chain collapses (a single note cannot carry a melisma)
         var newExtend = existingExtend == Lyric.Extend.CONTINUE ? Lyric.Extend.STOP : Lyric.Extend.NONE;
 
-        setExtendForVerse(precedingIndex, verse, newExtend);
+        setExtendForVerse(index, verse, newExtend);
     }
 
     /**
@@ -990,9 +884,8 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Moves the {@code verse} syllable from {@code fromIndex} to {@code toIndex}, replacing
-     * whatever lyric the target held. Used in both directions by the automatic grace-host
-     * melisma: host→grace when a pair is formed (the syllable belongs to the grace), and
-     * grace→host when the grace alone is deleted (the host is an ordinary note again).
+     * whatever lyric the target held. Used by the automatic grace-host melisma, host→grace
+     * when a pair is formed: the syllable belongs to the grace.
      *
      * <p>The melisma extend is not carried across — the target receives the syllable at
      * {@link Lyric.Extend#NONE}, and {@link #syncGraceHostMelisma} re-establishes an
@@ -1228,8 +1121,8 @@ public interface LyricRun extends StaffElementRun {
      *
      * <p>Nothing here is a new rule. Everything outside the run is gone, which is the
      * situation a deletion produces, so the repairs are the ones a deletion already runs:
-     * {@link #cascadeClearExtend} for the orphaned carriers at the head,
-     * {@link #adjustPrecedingForStopDeletion} for the chain left open at the tail, and
+     * {@link #removeCarriersFrom} for the orphaned carriers at the head,
+     * {@link #closeMelismaAt} for the chain left open at the tail, and
      * {@link #fixSuccessorSyllabic}/{@link #endDanglingWord} for the words broken at either
      * end.
      *
@@ -1254,7 +1147,7 @@ public interface LyricRun extends StaffElementRun {
         // START is gone and it extends nothing — exactly what deleting that START leaves
         // behind. A text-bearing head is left alone: a melisma it starts is the run's own.
         if (firstLyric != null && firstLyric.isCarrier()) {
-            cascadeClearExtend(firstIndex, verse);
+            removeCarriersFrom(firstIndex, verse);
         }
 
         // The head has no predecessor at all, so its syllable cannot be continuing one.
@@ -1266,7 +1159,7 @@ public interface LyricRun extends StaffElementRun {
         var tailIndex = previousLyricBearingIndex(effectiveCount, verse);
 
         if (tailIndex != null) {
-            adjustPrecedingForStopDeletion(tailIndex, verse);
+            closeMelismaAt(tailIndex, verse);
         }
 
         var lastTextIndex = previousTextBearingIndex(effectiveCount, verse);

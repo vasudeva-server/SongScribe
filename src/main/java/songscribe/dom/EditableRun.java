@@ -86,14 +86,17 @@ public interface EditableRun extends LyricRun {
      * <p><b>This is the whole of a multi-element insertion, and it exists so that no caller
      * assembles one out of parts.</b> The steps are not independent — {@link
      * LyricRun#repairNeighborsBeforeInsertion} reads pre-insertion indices, so it must run before
-     * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} keys its
-     * two halves off opposite ends of the run, so it must run after the last. A caller that
+     * the first {@link #addElement}, and {@link LyricRun#repairNeighborsAfterInsertion} reads
+     * the run's first element where it landed, so it must run after the last. A caller that
      * open-codes the sequence can leave out a step, and leaving one out shows up as a glissando
-     * pointing at a barline or a melisma pointing at an element that is no longer the host,
-     * neither of which fails anywhere near the insertion.
+     * pointing at a barline or a word hyphenated into an empty note, neither of which fails
+     * anywhere near the insertion.
      *
      * @param index the index the first element lands at, {@code 0..}{@link #elementCount()}
      * @param run the elements to insert, in the order they land; must not be empty
+     * @invariant {@code index} satisfies {@link #canInsertElementAt}, so no insertion lands
+     *     between a mid-line key change and its barline, or between a paired grace note and
+     *     its host
      * @effects inserts the elements and applies the neighbor repairs to this run, each through
      *     the primitives and {@link #modifyElement}, so an implementor that records gets one
      *     record per step
@@ -110,8 +113,13 @@ public interface EditableRun extends LyricRun {
 
     /**
      * Deletes the elements {@code range} covers and repairs what the removal leaves behind: an
-     * incoming glissando whose target is going, and the syllable relations and melisma extends of
-     * the neighbors.
+     * incoming glissando whose target is going, and the words and melismas the range ran
+     * through.
+     * <p>
+     * A syllable goes with its note, a paired grace note's syllable included: deleting the grace
+     * note alone leaves its host an ordinary note with no lyric. What the lyrics that remain
+     * then read as is the chain rule in {@code docs/lyrics.md}, <i>Deleting elements closes the
+     * chains up</i>.
      * <p>
      * The range is the one {@link StaffElementRun#effectiveRange} widened, so the breath mark
      * directly after the caller's elements goes with them. Nothing past the widened range goes:
@@ -129,45 +137,31 @@ public interface EditableRun extends LyricRun {
      * computed at, so the caller runs it before calling this.
      *
      * @param effectiveRange the range to delete
-     * @effects removes the elements through one {@link #removeRange}, or one
-     *     {@link #removeElement} per element when a paired grace note at the range's head makes
-     *     the removal non-contiguous, and applies the neighbor repairs through
-     *     {@link #modifyElement}; an implementor that records gets one record per step
+     * @invariant in every verse, a word that lost syllables to the range closes up around the
+     *     gap: one that lost its end ends on the syllable before the range, one that lost its
+     *     beginning begins on the syllable after it, one that lost only middle syllables stays
+     *     one word, and one left with a single syllable is a single-syllable word
+     * @invariant in every verse, a melisma that lost its syllable to the range loses its
+     *     extender, and the notes it ran under are left with no lyric; one that lost only notes
+     *     under its extender closes on the last note that remains under it, and one left with
+     *     none is an ordinary syllable
+     * @invariant an element holding no lyric is no neighbor to a word or a melisma: deleting a
+     *     rest, a barline, a breath mark or a key change changes no lyric, and one standing
+     *     beside the range does not stop the two repairs above
+     * @invariant the note in front of the range keeps no glissando into it
+     * @effects removes the elements through one {@link #removeRange} and applies the repairs
+     *     through {@link #modifyElement}; an implementor that records gets one record per step
      */
     default void deleteRange(EffectiveRange effectiveRange) {
         var range = effectiveRange.range();
-
-        // A paired grace note at the head of the range hands its syllable back to the note it
-        // decorated, and a pair further along the range does the same — neither of which a single
-        // range removal expresses. Fall back to the per-element loop, which re-derives each
-        // element's own pairing as it reaches it.
-        if (isPairedGraceNote(range.begin())) {
-            deleteRangeElementwise(range.begin(), range.end());
-            return;
-        }
-
-        // The whole range is removed here, both ends included. The grace-note case is the other
-        // branch's business, so what reaches this one is a range widened over a breath mark, or
-        // over the barline a key change sits behind.
-        var rangeBegin = range.begin();
-        var rangeEnd = range.end();
+        var versesWithWordEnd = versesWithWordEndIn(range);
 
         // Recorded like every other change here — stripping it raw would leave undo restoring the
         // deleted elements but not the glissando.
-        removeGlissandoInto(rangeBegin);
-
-        // Adjust syllable relations and melisma extends on neighbors before removing. Both helpers
-        // require the target elements to still be present in the list.
-        adjustSyllablesForNeighborChange(rangeBegin - 1, getElement(rangeBegin));
-
-        // When the range was widened to include a trailing breath mark or a paired barline, this
-        // loop also runs over it. Neither carries lyrics, so adjustExtendsForDeletion is a
-        // harmless no-op for them.
-        for (var i = rangeBegin; i <= rangeEnd; i++) {
-            adjustExtendsForDeletion(i);
-        }
+        removeGlissandoInto(range.begin());
 
         removeRange(range);
+        repairChainsAfterDeletion(range.begin(), versesWithWordEnd);
     }
 
     /**
@@ -186,69 +180,5 @@ public interface EditableRun extends LyricRun {
         for (var i = ranges.size() - 1; i >= 0; i--) {
             deleteRange(ranges.get(i));
         }
-    }
-
-    /**
-     * Deletes {@code begin} through {@code end} one element at a time, for the range whose removal
-     * is non-contiguous. The bounds are already widened; each element's own pairing is re-derived
-     * by {@link #deleteElement} as the loop reaches it.
-     */
-    private void deleteRangeElementwise(int begin, int end) {
-        for (var i = end; i >= begin; i--) {
-            var removedCount = deleteElement(i);
-
-            // When deleteElement also removes a preceding paired grace note,
-            // skip the extra index so we don't process an already-removed element.
-            i -= (removedCount - 1);
-        }
-    }
-
-    /**
-     * Deletes the element at {@code index} and, if the preceding element is a paired grace note,
-     * removes that as well.
-     *
-     * @return the number of elements removed (1 or 2)
-     */
-    private int deleteElement(int index) {
-        // If the preceding note is a paired grace note, it becomes orphaned when
-        // this note is deleted and must be removed along with it.
-        var hasPrecedingPairedGraceNote = isHostOfPairedGraceNote(index);
-
-        // Determine the left edge of the deletion — if a paired grace note precedes
-        // the deleted note, it is also being removed, so the gap starts there.
-        var firstDeletedIndex = hasPrecedingPairedGraceNote ? index - 1 : index;
-
-        // firstDeletedIndex is the deletion's left edge, so it is the index a glissando
-        // reaching in from the element before it targets.
-        removeGlissandoInto(firstDeletedIndex);
-
-        // Adjust syllable relations and melisma extends before removing —
-        // both methods require the element at index to still be in the list.
-        // This must run before the hand-back below: it decides whether to break the
-        // predecessor's word by reading the deleted element's own lyric, which the
-        // transfer would have already moved away.
-        adjustSyllablesForNeighborChange(firstDeletedIndex - 1, getElement(index));
-
-        // Deleting a paired grace note on its own hands its syllable back to the host,
-        // which becomes an ordinary note again and is eligible to carry a lyric. Runs
-        // before adjustExtendsForDeletion so it sees the final lyric state: the transfer
-        // takes the melisma START off the grace and drops the host's STOP carrier, so
-        // there is no longer a chain to unwind.
-        if (isPairedGraceNote(index)) {
-            transferLyrics(index, index + 1);
-        }
-
-        adjustExtendsForDeletion(index);
-
-        // Remove the host note first (higher index), then the orphaned grace note.
-        // Removing the higher index first keeps index - 1 valid.
-        removeElement(index);
-
-        if (hasPrecedingPairedGraceNote) {
-            removeElement(index - 1);
-            return 2;
-        }
-
-        return 1;
     }
 }

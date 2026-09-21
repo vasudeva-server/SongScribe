@@ -32,20 +32,172 @@ import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
- * What {@link Line#deleteRange} covers, and the order {@link Line#deleteRanges} takes several
- * ranges in.
+ * What {@link Line#deleteRange} leaves of the lyrics around the range it removes, and the order
+ * {@link Line#deleteRanges} takes several ranges in.
  *
  * <p>The deletion an edit performs, as against the {@link Line#removeRange} primitive beneath it.
- * It is handed the range {@link StaffElementRun#effectiveRange} resolved, so what these cases
- * check is that naming either half of a pair covers both. Every fixture here is built around the
- * one pair a key edit creates and destroys — a mid-line key change and the barline it stands
- * behind — because that is the pair whose two halves mean nothing apart.
+ * The lyric cases state its contract: a syllable goes with its note, a word closes up around the
+ * gap, a melisma follows its syllable, and an element holding no lyric is no neighbor to either.
  */
 class LineDeletionTest extends UnitTest {
+
+    /** The indices of a lyric fixture's third and fourth elements. */
+    private static final int THIRD = 2;
+    private static final int FOURTH = 3;
+
+    /** How {@link #lyricsOf} writes an element that holds no lyric. */
+    private static final String NO_LYRIC = "none";
+
+    /** How {@link #lyricsOf} writes a melisma carrier, in front of its extend. */
+    private static final String CARRIER = "_";
+
+    /**
+     * One deletion, and the lyrics the line is left with.
+     *
+     * @param description the case, as the test's display name
+     * @param elements    the line's elements, in order
+     * @param named       the range the caller names, before widening
+     * @param expected    what {@link #lyricsOf} must read off the line afterwards
+     */
+    private record LyricCase(
+        String description, List<StaffElement> elements, StaffElementRun.ElementRange named, List<String> expected
+    ) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    private static NoteElement syllable(String text, Lyric.Syllabic syllabic, Lyric.Extend extend) {
+        return withLyric(crotchet(), new Lyric(Lyric.FIRST_VERSE, text, extend, syllabic, false));
+    }
+
+    private static NoteElement syllable(String text, Lyric.Syllabic syllabic) {
+        return syllable(text, syllabic, Lyric.Extend.NONE);
+    }
+
+    private static NoteElement carrier(Lyric.Extend extend) {
+        return withLyric(crotchet(), Lyric.carrier(Lyric.FIRST_VERSE, extend));
+    }
+
+    /** A grace note paired with the note after it, carrying the pair's syllable and its melisma. */
+    private static NoteElement pairedGrace(String text, Lyric.Syllabic syllabic) {
+        var grace = withLyric(
+            graceQuaver(), new Lyric(Lyric.FIRST_VERSE, text, Lyric.Extend.START, syllabic, false));
+        grace.setSlide(Slide.GLISSANDO);
+
+        return grace;
+    }
+
+    private static NoteElement withLyric(NoteElement note, Lyric lyric) {
+        note.putLyric(lyric);
+
+        return note;
+    }
+
+    /** The first-verse lyric of every element on {@code line}, in order, one string each. */
+    private static List<String> lyricsOf(Line line) {
+        return elementsOf(line).stream()
+            .map(element -> element.getLyricForVerse(Lyric.FIRST_VERSE))
+            .map(lyric -> {
+                if (lyric == null) {
+                    return NO_LYRIC;
+                }
+
+                return lyric.isCarrier()
+                    ? CARRIER + lyric.extend()
+                    : lyric.text() + " " + lyric.syllabic() + " " + lyric.extend();
+            })
+            .toList();
+    }
+
+    static Stream<LyricCase> lyricCases() {
+        return Stream.of(
+            new LyricCase("a word that loses its last syllable ends on the one before",
+                List.of(syllable("hel", Lyric.Syllabic.BEGIN), syllable("lo", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(1),
+                List.of("hel SINGLE NONE")),
+            new LyricCase("a word that loses its first syllable begins on the next",
+                List.of(syllable("hel", Lyric.Syllabic.BEGIN), syllable("lo", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(0),
+                List.of("lo SINGLE NONE")),
+            new LyricCase("a word that loses a middle syllable stays one word",
+                List.of(syllable("a", Lyric.Syllabic.BEGIN), syllable("b", Lyric.Syllabic.MIDDLE),
+                    syllable("c", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(1),
+                List.of("a BEGIN NONE", "c END NONE")),
+            new LyricCase("a word that loses every syllable but its first is a single syllable",
+                List.of(syllable("a", Lyric.Syllabic.BEGIN), syllable("b", Lyric.Syllabic.MIDDLE),
+                    syllable("c", Lyric.Syllabic.MIDDLE), syllable("d", Lyric.Syllabic.END)),
+                new StaffElementRun.ElementRange(1, FOURTH),
+                List.of("a SINGLE NONE")),
+            new LyricCase("two words that each lose a syllable do not join",
+                List.of(syllable("a", Lyric.Syllabic.BEGIN), syllable("b", Lyric.Syllabic.END),
+                    syllable("c", Lyric.Syllabic.BEGIN), syllable("d", Lyric.Syllabic.END)),
+                new StaffElementRun.ElementRange(1, THIRD),
+                List.of("a SINGLE NONE", "d SINGLE NONE")),
+            new LyricCase("a rest deleted from inside a word changes no lyric",
+                List.of(syllable("hel", Lyric.Syllabic.BEGIN), crotchetRest(),
+                    syllable("lo", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(1),
+                List.of("hel BEGIN NONE", "lo END NONE")),
+            new LyricCase("a barline beside the range does not hide the syllable behind it",
+                List.of(syllable("hel", Lyric.Syllabic.BEGIN), singleBarline(),
+                    syllable("lo", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(THIRD),
+                List.of("hel SINGLE NONE", NO_LYRIC)),
+            new LyricCase("a pair that goes whole counts as the note of its grace note's syllable",
+                List.of(syllable("a", Lyric.Syllabic.BEGIN), pairedGrace("b", Lyric.Syllabic.MIDDLE),
+                    carrier(Lyric.Extend.STOP), syllable("c", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(THIRD),
+                List.of("a BEGIN NONE", "c END NONE")),
+            new LyricCase("a melisma that loses its syllable loses its extender and its carriers",
+                List.of(syllable("la", Lyric.Syllabic.SINGLE, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP)),
+                StaffElementRun.ElementRange.single(0),
+                List.of(NO_LYRIC, NO_LYRIC)),
+            new LyricCase("a melisma that loses its close closes on the note before",
+                List.of(syllable("la", Lyric.Syllabic.SINGLE, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP)),
+                StaffElementRun.ElementRange.single(THIRD),
+                List.of("la SINGLE START", CARRIER + Lyric.Extend.STOP)),
+            new LyricCase("a melisma that loses a note inside it keeps its close",
+                List.of(syllable("la", Lyric.Syllabic.SINGLE, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP)),
+                StaffElementRun.ElementRange.single(1),
+                List.of("la SINGLE START", CARRIER + Lyric.Extend.STOP)),
+            new LyricCase("a melisma that loses every note under it is an ordinary syllable",
+                List.of(syllable("la", Lyric.Syllabic.SINGLE, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP)),
+                new StaffElementRun.ElementRange(1, THIRD),
+                List.of("la SINGLE NONE")),
+            new LyricCase("a rest in front of a deleted close does not leave the melisma open",
+                List.of(syllable("la", Lyric.Syllabic.SINGLE, Lyric.Extend.START), crotchetRest(),
+                    carrier(Lyric.Extend.STOP)),
+                StaffElementRun.ElementRange.single(THIRD),
+                List.of("la SINGLE NONE", NO_LYRIC)),
+            new LyricCase("a paired grace note deleted alone takes its syllable, and its host is left empty",
+                List.of(pairedGrace("la", Lyric.Syllabic.SINGLE), carrier(Lyric.Extend.STOP)),
+                StaffElementRun.ElementRange.single(0),
+                List.of(NO_LYRIC)));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("lyricCases")
+    void testDeleteRangeLeavesWholeWordsAndWholeMelismas(LyricCase testCase) {
+        var line = lineHolding(testCase.elements());
+
+        line.deleteRange(line.effectiveRange(testCase.named()));
+
+        assertThat(lyricsOf(line)).isEqualTo(testCase.expected());
+    }
 
     /** The key the fixture line runs in, and the one both its key changes restate. */
     private static final Key LINE_KEY = Key.NO_ACCIDENTALS;
@@ -56,22 +208,6 @@ class LineDeletionTest extends UnitTest {
     private static final int SECOND_BARLINE_INDEX = 4;
     private static final int SECOND_KEY_CHANGE_INDEX = 5;
     private static final int LAST_NOTE_INDEX = 6;
-
-    /**
-     * One deletion, and what the fixture line is left holding.
-     *
-     * @param description the case, which doubles as the parameterized display name
-     * @param begin       the first index the caller names, before widening
-     * @param end         the last index the caller names, before widening
-     * @param surviving   the fixture indices of the elements that must remain, in order
-     */
-    private record DeletionCase(String description, int begin, int end, List<Integer> surviving) {
-
-        @Override
-        public String toString() {
-            return description;
-        }
-    }
 
     /**
      * A line in {@link #LINE_KEY} holding {@code note, barline, key change, note, barline,
@@ -114,38 +250,6 @@ class LineDeletionTest extends UnitTest {
         return indices.stream().map(elements::get).toList();
     }
 
-    static Stream<DeletionCase> deletionCases() {
-        return Stream.of(
-            new DeletionCase(
-                "naming the key change takes the barline it stands behind",
-                FIRST_KEY_CHANGE_INDEX, FIRST_KEY_CHANGE_INDEX,
-                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX,
-                    LAST_NOTE_INDEX)),
-            new DeletionCase(
-                "naming the barline takes the key change standing behind it",
-                FIRST_BARLINE_INDEX, FIRST_BARLINE_INDEX,
-                List.of(0, MIDDLE_NOTE_INDEX, SECOND_BARLINE_INDEX, SECOND_KEY_CHANGE_INDEX,
-                    LAST_NOTE_INDEX)),
-            new DeletionCase(
-                "a range naming a note on its own reaches no pair and takes only that note",
-                MIDDLE_NOTE_INDEX, MIDDLE_NOTE_INDEX,
-                List.of(0, FIRST_BARLINE_INDEX, FIRST_KEY_CHANGE_INDEX, SECOND_BARLINE_INDEX,
-                    SECOND_KEY_CHANGE_INDEX, LAST_NOTE_INDEX)));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("deletionCases")
-    void testDeleteRangeCoversTheWidenedRangeAndNothingElse(DeletionCase testCase) {
-        var elements = fixtureElements();
-        var line = lineHolding(elements);
-
-        line.deleteRange(line.effectiveRange(
-            new StaffElementRun.ElementRange(testCase.begin(), testCase.end())));
-
-        assertThat(elementsOf(line))
-            .containsExactlyElementsOf(at(elements, testCase.surviving()));
-    }
-
     @Test
     void testDeleteRangesRemovesTheElementsEveryRangeNamed() {
         var elements = fixtureElements();
@@ -159,7 +263,8 @@ class LineDeletionTest extends UnitTest {
 
         assertThat(elementsOf(line))
             .as("taken in ascending order the first removal would shift the second range onto the "
-                + "wrong elements, so both pairs surviving intact is the ordering's whole claim")
+                + "wrong elements, so both pairs gone and every note standing is the ordering's "
+                + "whole claim")
             .containsExactlyElementsOf(at(elements, List.of(0, MIDDLE_NOTE_INDEX, LAST_NOTE_INDEX)));
     }
 }

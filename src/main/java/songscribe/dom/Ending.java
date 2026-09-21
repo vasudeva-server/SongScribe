@@ -40,7 +40,7 @@ import songscribe.engraving.EngravingConstants;
  *            replacing it with a bar that does not close a repeat — invalidates the ending
  *            instead, so no attached ending is ever without its split
  */
-public class Ending extends Span {
+public final class Ending extends Span {
 
     /**
      * Height of volta bracket tick marks in staff-space units.

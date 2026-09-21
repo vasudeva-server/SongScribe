@@ -257,8 +257,45 @@ the reason for it is still in hand.
   pending hyphen is carried into the next line, and `LyricRun.endDanglingWord`
   ends a word whose next syllable is not in the run. Melismas are laid out
   across a break (`Result.hasTrailingContinuation` feeds the next line's
-  leading stub), but whether the chain repairs keep one intact when either side
-  of the break is edited has not been checked.
+  leading stub).
+
+  **Pass 6 checked the chain repairs, and they do not keep a crossing chain
+  intact.** The user settled the rule: **a line break is a gap, and words and
+  melismas both cross it.** An edit that interrupts a chain at a line edge
+  settles it on both lines, exactly as it would mid-line. The dom lyric model
+  cannot do that, because `LyricRun` has no reach past its own run. Every walk
+  along a chain stops at the line edge:
+
+  - `settleChainsAcross` (`LyricRun.java:114`), which all three edit repairs go
+    through: the insertion repair (`:188`), the untracked insertion repair
+    (`:282`) and the deletion repair (`:331`). At index 0, `fixSuccessorSyllabic`
+    makes the line's first syllable begin a word while the previous line's last
+    syllable still hyphenates into it. On an append, the last syllable's word
+    ends or its melisma closes, and the next line's first syllable or carriers
+    are left pointing back at a chain that is gone.
+  - `setSyllableBoundary`'s successor propagation, the lyric-deletion
+    adjustments, and `backfillSyllabic` (`:392`), which makes every line's first
+    syllable begin a word on a legacy load.
+  - The lyric editors, `LyricEditor` and `LyricChainEditor`, which never reach
+    another line.
+
+  The correct structure is a chain that runs the length of the song. `LyricRun`
+  gets its neighboring runs: a `Line` reaches the lines before and after it
+  through its song, and a detached run has none. Every walk along a chain then
+  continues into the neighboring run when it reaches an edge. Making only the
+  three edit repairs cross lines is not a fix, because lyric entry at a line
+  edge would still stop there. Pass 12's `Line`-to-concrete-`Song` finding
+  bears on how a line reaches its neighbors.
+
+  `AcceptedInsertion.land` (`ui/component/score/AcceptedInsertion.java:70–82`)
+  assembles `EditableRun.insertRun`'s repair sequence by hand and skips both
+  repairs on an append. The skip keeps a crossing chain whole today, where
+  `insertRun` would break one side of it. Once the repairs cross lines, `land`
+  goes through `insertRun` unchanged and its skip is deleted. `appends()` has a
+  second reader under the same rule: `GraceModeManager.enterGraceNote`
+  (`ui/edit/GraceModeManager.java:539`) owes the deferred repairs only when the
+  grace note was not an append, so that condition goes too, and with it
+  `appends()`.
 - **→ Pass 12.** Two diagrams sit outside pass 4's target and were not judged at
   its step 9: `Song.java` L909 and L977 (pseudocode for the line-insertion and
   line-deletion mutation sequences), and `SongMetadata.java` L38 (the per-field
@@ -283,6 +320,8 @@ the reason for it is still in hand.
   log-only by default and has `SongScribe.main` install the dialog policy, and it
   deletes `MessageBusScope`, `MessageCenter.pushBus`, `popBus` and `SCOPE_STACK`
   outright, so none of them is a member this row inherits.
+- **→ Pass 16.** `MusicXmlCrossLineSpanTest` was added by pass 6 and is
+  untriaged: its subject is the MusicXML reader, which is row 16's.
 
 ## Blockers
 
