@@ -124,7 +124,7 @@ table, never up the numbers.
 | 3  | Staff geometry | `engraving` | ✅ | Every stroke width is base × named multiplier, with no bare literal standing in for one. `EngravingConstants` collects the LilyPond base thickness and everything derived from it that has no single owner; `StemMetrics`, `BeamMetrics`, `LedgerLine`, `StaffPosition` and `BarStroke` are new types that each own one measurement, replacing `LineThickness` and `SMuFLConstants`, both dissolved. `StaffPosition` carries its own `MIN`/`MAX` range and clamps into it, so the two callers that used to check a raw `int` cannot skip the check. The accidental-advance rule — ink width plus natural kerning — moved off `StaffHeaderMetrics` onto `Key.DrawnAccidental` in `dom`, which is total over its own value and its neighbour's rather than partial in its contract. The ledger-line threshold, stated twice before, is now `LedgerLine.forEachOffsetSs`, read by both its callers. The design it arrived at is `engraving/package-info.java`. |
 | 4  | Durations and element types | `dom`: `BeatUnit`, `NoteValue`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ✅ | The vocabulary every element is built from. `Duration` is now `BeatUnit`, an enum over `(NoteValue, dotted)`; `ElementType` carries a `Kind` and an `ElementAppearance` — sealed over `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied through the constructor, so the appearance mapping is total and the bounds computation is one exhaustive switch with no lookup that can miss. Every appearance arm has its own element leaf (`NoteElement`, `GlyphElement`, `BarElement`, `KeyChangeElement`), sealed under `StaffElement`/`StructuralElement`; the notehead and volta accessors that used to live on `ElementType` moved to the appearance types that actually carry them. `ElementLocation` stays a plain address record — its guard and its transposable `matches` method are both gone, since nothing produces the out-of-range value they existed to catch. Seven runtime guards, six `@Nullable`s and two sentinel values retired; four types introduced (`Kind`, `NoteValue`, `ElementBounds`, `PreviewHover`), each replacing a set of parallel fields or a partial lookup with a total one. |
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
-| 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | 🔄 | Everything except key state, which pass 0 settled. |
+| 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ✅ | Everything except key state, which pass 0 settled. |
 | 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainEdit`, `ProjectedEdit` | ⏳ | The chain walk: which accidental each note sounds and draws, decided again after every edit. `docs/accidentals.md`. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
@@ -340,6 +340,22 @@ the reason for it is still in hand.
   order across undo, which re-adds a span at the end of the list. Row 7 decides
   whether the registry promises an order at all, or whether the tie queries state
   the one they need.
+- **→ Pass 7.** `LineSpans.sweep` (`dom/LineSpans.java:383`) returns at once when
+  `line.getSong().isReplaying()`. A batch replays whole and in order, so the companion
+  span changes are already applied at each replayed element change, and the sweep would
+  find nothing to do. No test can make the check fail. Row 7 decides whether the check is
+  dead, or names the batch that needs it; row 15 owns the replay flag and can answer what
+  a batch carries.
+- **→ Pass 12.** `Line` holds a concrete `Song` (`Line.java:139`) and calls ten of its
+  members: `lineCount`, `applyChange`, `getLine`, `indexOfLine`, `inheritedKeyOf`,
+  `checkTerminalPolicyForInsertion`, `checkTerminalPolicyForReplacement`,
+  `checkTerminalPolicyForRemoval` and `isTerminal`; `LineSpans` adds `isReplaying`.
+  `UnitTest.minimalSongMock()` therefore mocks the whole `Song` class. Row 12 decides the
+  narrow interface a line needs from its song. Pass 9's lyric chains need a line to reach
+  its neighboring lines through its song, so the two decisions are one.
+- **→ Pass 7.** `Ending.hasRepeatSplit(Line, int anchorIndex, int endIndex)` takes two
+  indices of one type, in an order the caller must know. `MeasureMapper:710` is the
+  reader-side caller. Row 7 judges whether an ending's span should be the argument.
 
 ## Blockers
 
