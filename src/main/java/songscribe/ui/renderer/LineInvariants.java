@@ -374,9 +374,10 @@ public final class LineInvariants {
      * <p>
      * Playback and the hover highlight are properties of a note, not of the things hanging
      * off it, so no variant but {@link HitTarget.Element} carries them; that variant is drawn
-     * through {@link #colorFor(HitTarget.Element, int)}.
+     * through {@link #colorFor(HitTarget.Element, Integer)}.
      *
      * @param target the thing being drawn, as a click would address it
+     * @return the selection color when {@code target} is selected, otherwise the default color
      */
     public Color colorFor(HitTarget target) {
         return isSelected(target) ? selectionColor : Color.BLACK;
@@ -387,18 +388,28 @@ public final class LineInvariants {
      * counterpart of {@link #getElementColor(int)}: playback, then selection of this exact
      * target, then the hovered replaced-element highlight.
      * <p>
+     * Playback and hover are asked by position, so an element that has no position in the
+     * line — a preview being dragged — is colored by selection alone.
+     * <p>
      * {@code elementIndex} is not derived here: the call site already has it from its own
      * loop, so deriving it would repeat a lookup the caller has already done.
      *
      * @param target       the element being drawn, as a click would address it
-     * @param elementIndex that element's index within the line
+     * @param elementIndex that element's index within the line, or {@code null} when the
+     *     element is not in the line
+     * @return the playing color, else the selection color, else the hover highlight, else the
+     *     default color; for a {@code null} index, what {@link #colorFor(HitTarget)} returns
      */
-    public Color colorFor(HitTarget.Element target, int elementIndex) {
+    public Color colorFor(HitTarget.Element target, @Nullable Integer elementIndex) {
+        var targetColor = colorFor((HitTarget) target);
+
+        if (elementIndex == null) {
+            return targetColor;
+        }
+
         if (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex)) {
             return ScoreView.getPlayingNoteColor();
         }
-
-        var targetColor = colorFor((HitTarget) target);
 
         if (!isDefaultColor(targetColor)) {
             return targetColor;

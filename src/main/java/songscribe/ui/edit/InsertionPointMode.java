@@ -498,7 +498,7 @@ public final class InsertionPointMode {
     private void clearTarget() {
         targetLineComponent = null;
         targetIndex = null;
-        insertionMarkerOverlay.setTarget(null, -1);
+        insertionMarkerOverlay.clearTarget();
     }
 
     /**

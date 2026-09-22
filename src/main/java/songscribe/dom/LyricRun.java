@@ -440,7 +440,7 @@ public interface LyricRun extends StaffElementRun {
 
     /**
      * Adjusts the syllable boundary on the lyric at {@code (index, verse)} and propagates the
-     * change to the next lyric-bearing element so its {@link Lyric.Syllabic} stays consistent
+     * change to the next syllable so its {@link Lyric.Syllabic} stays consistent
      * with the chain. The lyric at {@code index} must already exist and must not be a carrier
      * ({@link Lyric.Extend#STOP} / {@link Lyric.Extend#CONTINUE}); typical use is right after a
      * text write to fix up the syllabic chain.
@@ -455,7 +455,7 @@ public interface LyricRun extends StaffElementRun {
      *       {@code isCompound}.</li>
      * </ul>
      *
-     * <p>The next lyric-bearing element (if it has a non-null syllabic) is rewritten to whichever
+     * <p>The next syllable, found past any melisma carriers, is rewritten to whichever
      * of BEGIN/MIDDLE/END/SINGLE matches its own continues-status combined with this element's
      * new continues-status. Element rewrites that would not actually change the stored value are
      * skipped to avoid emitting redundant {@code ElementModification}s.
@@ -592,35 +592,31 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * Reletters the syllable on the first lyric-bearing element after {@code index} so that
-     * it agrees with whether its predecessor continues into it. No-op when no lyric-bearing
-     * element follows, or when the one that does is a melisma carrier.
+     * Reletters the first syllable after {@code index} so that it agrees with whether its
+     * predecessor continues into it. The syllable is found past any melisma carriers, which
+     * belong to the syllable before them. No-op when no syllable follows.
      *
      * @param index the position whose successor is relettered, or {@code null} when the
-     *     successor is the run's first lyric-bearing element, because the syllable at issue
-     *     has no predecessor at all — a deleted head, or the head of a run
+     *     successor is the run's first syllable, because the syllable at issue has no
+     *     predecessor at all — a deleted head, or the head of a run
      * @param verse the verse whose chain is repaired
      * @param predecessorContinues whether the syllable at {@code index} continues into its
      *     successor; always {@code false} when {@code index} is {@code null}
      */
     private void fixSuccessorSyllabic(@Nullable Integer index, int verse, boolean predecessorContinues) {
-        var nextIndex = index == null ? firstLyricBearingIndex(verse) : nextLyricBearingIndex(index, verse);
+        var nextIndex = textBearingIndexAtOrAfter(index == null ? 0 : index + 1, verse);
 
         if (nextIndex == null) {
-            trace("fixSuccessorSyllabic({}): no lyric-bearing successor", index);
+            trace("fixSuccessorSyllabic({}): no syllable follows", index);
             return;
         }
 
         var nextLyric = getElement(nextIndex).getLyricForVerse(verse);
 
-        if (nextLyric == null || nextLyric.syllabic() == null) {
-            trace("fixSuccessorSyllabic({}): successor {} is a carrier, nothing to fix",
-                index, nextIndex);
-            return;
+        if (nextLyric != null) {
+            trace("fixSuccessorSyllabic({}): successor {}", index, nextIndex);
+            reletterSyllable(nextIndex, verse, nextLyric, predecessorContinues);
         }
-
-        trace("fixSuccessorSyllabic({}): successor {}", index, nextIndex);
-        reletterSyllable(nextIndex, verse, nextLyric, predecessorContinues);
     }
 
     /**
@@ -666,14 +662,6 @@ public interface LyricRun extends StaffElementRun {
 
         var prevLyric = getElement(prevIndex).getLyricForVerse(verse);
         return prevLyric != null && Lyric.syllabicContinues(prevLyric.syllabic());
-    }
-
-    /**
-     * Walks forward from {@code index + 1} and returns the index of the first element whose
-     * {@code verse} lyric is non-null, or {@code null} if there is none.
-     */
-    private @Nullable Integer nextLyricBearingIndex(int index, int verse) {
-        return lyricBearingIndexAtOrAfter(index + 1, verse);
     }
 
     /**
@@ -726,6 +714,23 @@ public interface LyricRun extends StaffElementRun {
         return null;
     }
 
+    /**
+     * Walks forward from {@code start} and returns the index of the first element carrying a
+     * text-bearing {@code verse} syllable, or {@code null} if there is none. Melisma carriers
+     * are skipped, as {@link #previousTextBearingIndex} skips them going backward.
+     */
+    private @Nullable Integer textBearingIndexAtOrAfter(int start, int verse) {
+        for (var i = start; i < elementCount(); i++) {
+            var lyric = getElement(i).getLyricForVerse(verse);
+
+            if (lyric != null && lyric.syllabic() != null) {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
     private static boolean isWordContinuingLyric(Lyric lyric) {
         return lyric.syllabic() == Lyric.Syllabic.BEGIN
             || lyric.syllabic() == Lyric.Syllabic.MIDDLE
@@ -733,18 +738,17 @@ public interface LyricRun extends StaffElementRun {
     }
 
     /**
-     * Whether the first element after {@code fromIndex} that carries a {@code verse} lyric
-     * carries a syllable of its own, rather than being a melisma carrier.
+     * Whether a {@code verse} syllable stands anywhere after {@code fromIndex}. Melisma
+     * carriers between the two do not count and do not hide it: they belong to the syllable
+     * before them, so a word runs on past its own melisma.
+     *
+     * @param fromIndex the index the search starts after
+     * @param verse the verse searched
+     * @return {@code true} when some element after {@code fromIndex} holds a text-bearing
+     *     {@code verse} lyric
      */
     default boolean hasFollowingTextBearingLyric(int fromIndex, int verse) {
-        var forwardIndex = nextLyricBearingIndex(fromIndex, verse);
-
-        if (forwardIndex == null) {
-            return false;
-        }
-
-        var forwardLyric = getElement(forwardIndex).getLyricForVerse(verse);
-        return forwardLyric != null && forwardLyric.syllabic() != null;
+        return textBearingIndexAtOrAfter(fromIndex + 1, verse) != null;
     }
 
     /**
@@ -840,7 +844,7 @@ public interface LyricRun extends StaffElementRun {
 
         trace("endDanglingWord({}): ending dangling word", index);
 
-        // setSyllableBoundary also adjusts the next lyric-bearing element.
+        // setSyllableBoundary also adjusts the next syllable.
         setSyllableBoundary(index, verse, true, false);
     }
 

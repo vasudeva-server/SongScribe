@@ -970,4 +970,64 @@ public interface StaffElementRun {
             return "EffectiveRange" + range;
         }
     }
+
+    /**
+     * Where a run of elements is inserted: at a plain index, or in place of a range this
+     * insertion deletes first. The two shapes hold the insertion index and the range to delete
+     * as one value, so a caller cannot supply an index that disagrees with the range's begin.
+     */
+    sealed interface InsertionTarget {
+
+        /**
+         * The index the inserted run's first element lands at.
+         *
+         * @return {@link AtIndex#index()} for that shape, or {@link Replacing#range()}'s begin
+         *     for the other
+         */
+        int insertIndex();
+
+        /**
+         * The range this insertion deletes before it inserts.
+         *
+         * @return {@link Replacing#range()} for that shape, or {@code null} for {@link AtIndex}
+         */
+        @Nullable EffectiveRange deleteRange();
+
+        /**
+         * Inserts at {@code index}, deleting nothing first.
+         *
+         * @param index the index the inserted run's first element lands at
+         */
+        record AtIndex(int index) implements InsertionTarget {
+
+            @Override
+            public int insertIndex() {
+                return index;
+            }
+
+            @Override
+            public @Nullable EffectiveRange deleteRange() {
+                return null;
+            }
+        }
+
+        /**
+         * Deletes {@code range} first, and inserts where it began.
+         *
+         * @param range the range this insertion deletes first
+         * @invariant {@link #insertIndex()} is {@code range.range().begin()}
+         */
+        record Replacing(EffectiveRange range) implements InsertionTarget {
+
+            @Override
+            public int insertIndex() {
+                return range.range().begin();
+            }
+
+            @Override
+            public EffectiveRange deleteRange() {
+                return range;
+            }
+        }
+    }
 }

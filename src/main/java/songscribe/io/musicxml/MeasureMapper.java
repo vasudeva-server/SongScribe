@@ -105,7 +105,8 @@ import songscribe.io.ReadAnnotation;
  * when one note both opens and closes one; the first tempo mark of the first measure is
  * the song's own; and a tie may cross a line boundary, while a hairpin and a volta may
  * not. A beam, a tuplet bracket or a trill whose two ends land on different lines is a
- * span no line can hold, so the pass that pairs it rejects the document as corrupt.
+ * span no line can hold, so the pass that pairs it drops that span, logs a warning and
+ * reads the rest of the document.
  *
  * <p>A {@link Line} is committed to the song only once its elements are complete. While a
  * line is detached it is never the song's last line, which is what makes
@@ -1320,8 +1321,7 @@ final class MeasureMapper {
      * Unlike the other per-note spans, a tuplet is not a legitimate document state
      * without both brackets spanning at least two non-rest notes (see #518), so a
      * dangling start or an orphan stop is rejected as a corrupt document rather than
-     * silently dropped. A tuplet whose brackets are on different lines is dropped with a
-     * warning, as a beam or a trill is.
+     * silently dropped.
      *
      * <p>{@code <normal-type>} is the trust discriminator. A file that carries it states
      * a complete {@code <time-modification>}, so its {@code <normal-notes>} is taken at

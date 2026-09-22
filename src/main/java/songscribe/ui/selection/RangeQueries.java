@@ -333,8 +333,8 @@ public final class RangeQueries {
     }
 
     /**
-     * Returns the index of the element a glissando toggle would act on, or -1 when the range
-     * is ineligible.
+     * Returns the index of the element a glissando toggle would act on, or {@code null} when the
+     * range is ineligible.
      *
      * <p>A glissando lives on its <b>source</b> note and connects forward to the element that
      * immediately follows it, so the source is not always inside the range: a single selected

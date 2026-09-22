@@ -175,7 +175,7 @@ public final class Beam extends NoteSpan {
      * group agrees by construction rather than by a write-back.
      *
      * @return the group direction, never null
-     * @throws IllegalStateException if this beam's anchor is in no line
+     * @throws IllegalStateException if this beam's anchor or its end is in no line
      */
     public Direction direction() {
         var beamStart = requireAnchorElementIndex();

@@ -163,13 +163,8 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      *     {@link SpanOutcome.Simple#REMOVE}
      */
     public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change, Line line) {
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
-
-        // A hairpin whose endpoints are not both in this line has nothing here to judge.
-        if (anchorIndex == null || endIndex == null) {
-            return SpanOutcome.Simple.KEEP;
-        }
+        var anchorIndex = requireAnchorElementIndex();
+        var endIndex = requireEndElementIndex();
 
         if (change instanceof ElementChange.Deletion deletion) {
             return outcomeForDeletion(deletion, line, new ElementRange(anchorIndex, endIndex));

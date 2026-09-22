@@ -187,10 +187,10 @@ public final class SelectionCoordinator implements Disposable {
 
     /**
      * Returns the index of the line that currently has the selection,
-     * or -1 if no line does.
+     * or {@code null} if no line does.
      */
-    public int getActiveLineIndex() {
-        return activeLineIndex == null ? -1 : activeLineIndex;
+    public @Nullable Integer getActiveLineIndex() {
+        return activeLineIndex;
     }
 
     /**

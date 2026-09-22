@@ -63,13 +63,13 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
     }
 
     /**
-     * Retargets this marker to {@code line} and {@code index}, or hides it when {@code line} is
-     * null. Safe to call every time the tracked insertion point changes, including when only the
-     * index changes on the same line — the base class only recomputes bounds when the line moves
-     * or {@link #inkDidChange()} is called, and a same-line retarget needs the latter since the
-     * line reference itself does not change.
+     * Retargets this marker to {@code line} and {@code index}. Safe to call every time the
+     * tracked insertion point changes, including when only the index changes on the same line —
+     * the base class only recomputes bounds when the line moves or {@link #inkDidChange()} is
+     * called, and a same-line retarget needs the latter since the line reference itself does not
+     * change.
      */
-    public void setTarget(@Nullable LineComponent line, int index) {
+    public void setTarget(LineComponent line, int index) {
         targetIndex = index;
 
         if (line == getTargetLine()) {
@@ -77,6 +77,14 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         } else {
             setTargetLine(line);
         }
+    }
+
+    /**
+     * Hides the marker by clearing its target line and index.
+     */
+    public void clearTarget() {
+        targetIndex = null;
+        setTargetLine(null);
     }
 
     /**

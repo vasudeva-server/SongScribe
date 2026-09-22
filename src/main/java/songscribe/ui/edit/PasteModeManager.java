@@ -22,6 +22,7 @@ package songscribe.ui.edit;
 
 import songscribe.Strings;
 import songscribe.dom.Line;
+import songscribe.dom.StaffElementRun;
 import songscribe.ui.component.InsertionPointOverlay;
 import songscribe.ui.component.ScoreView;
 import songscribe.undo.UndoController;
@@ -133,7 +134,8 @@ public final class PasteModeManager implements InsertionPointMode.Client {
         // that PasteAction relies on must be set here around the bracket instead.
         var outcome = UndoController.withPendingOpNameResult(
             Strings.get(Strings.ACTION_EDIT_OP_PASTE),
-            () -> line.getSong().withModificationResult(() -> controller.tryInsertFragment(line, index, null)));
+            () -> line.getSong().withModificationResult(
+                () -> controller.tryInsertFragment(line, new StaffElementRun.InsertionTarget.AtIndex(index))));
 
         return switch (outcome) {
             case LINE_FULL, EMPTY, DECLINED_BY_ALERT -> InsertionPointMode.Placement.DECLINED;

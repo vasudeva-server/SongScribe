@@ -430,7 +430,7 @@ public final class ScoreInputHandler extends KeyAdapter
             var bounds = selection.range();
             var begin = bounds.begin();
             var end = bounds.end();
-            var lineIndex = coordinator.getActiveLineIndex();
+            var lineIndex = line.index();
 
             if (end > begin) {
                 // Collapse the range toward the arrow, landing one step in from the trailing edge.

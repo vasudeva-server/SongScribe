@@ -21,7 +21,6 @@
 package songscribe.dom;
 
 import java.util.List;
-import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -151,9 +150,8 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
 
     /**
      * The line the anchor element belongs to, or {@code null} when the anchor sits in no
-     * line. Null-safe so callers deciding which lines a span reaches — including
-     * {@link LineSpans#appendChild} and {@link Song#removeSpansBetweenNonAdjacentLines} —
-     * express that in one call rather than each repeating the unwrap.
+     * line. Null-safe so callers deciding which lines a span reaches express that in one
+     * call rather than each repeating the unwrap.
      * <p>
      * This is the endpoint's <em>own</em> line, which is not the same question as where the
      * endpoint sits relative to some other line; for that, ask that line's registry via
@@ -290,17 +288,6 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
     }
 
     /**
-     * Returns true if rewriting {@code fields} of the element at {@code index} in place
-     * invalidates this span. Default is false; subclasses may override.
-     * <p>
-     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
-     * for why a new span type should override {@code outcomeFor} rather than this.
-     */
-    protected boolean isInvalidatedByModification(int index, Set<ElementField> fields, Line line) {
-        return false;
-    }
-
-    /**
      * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
      * this span. Default is false; subclasses may override.
      * <p>
@@ -332,17 +319,20 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * endpoint. Reading the old element as deleted would silently remove every span whose
      * endpoint is edited.
      * <p>
-     * The default is a bridge over the five per-shape predicates — {@link #isInvalidatedBy},
-     * {@link #isInvalidatedByInsertion}, {@link #isInvalidatedByDeletion},
-     * {@link #isInvalidatedByReplacement} and {@link #isInvalidatedByModification} — routing
-     * each change shape to exactly the predicate the sweep consults for it, so a subclass
-     * that overrides only those keeps behaving as it always has. A subclass overriding
-     * {@code outcomeFor} need not implement any of them.
+     * The default is a bridge over the four per-shape predicates — {@link #isInvalidatedBy},
+     * {@link #isInvalidatedByInsertion}, {@link #isInvalidatedByDeletion} and
+     * {@link #isInvalidatedByReplacement} — routing each change shape to exactly the
+     * predicate the sweep consults for it, and keeping the span through an in-place
+     * modification, which has no predicate. A subclass overriding {@code outcomeFor} need
+     * not implement any of them.
      * <p>
      * A span either survives a change or it does not, which is all {@link SpanOutcome.Simple}
      * can say. A hairpin is the one kind that can survive in a different shape, and the
      * sweep asks it that wider question through
      * {@link Hairpin#hairpinOutcomeFor(ElementChange, Line)} instead.
+     * <p>
+     * Both questions are put only to {@link LineSpans#judgeableSpans}, so an implementor may
+     * rely on {@code line} placing both of this span's ends.
      *
      * @param change the pending change, not yet applied to {@code line}
      * @param line   the line being changed, still in its pre-change state
@@ -372,8 +362,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
                 yield isInvalidatedBy(deletedElements) || isInvalidatedByDeletion(deletedElements, line);
             }
 
-            case ElementChange.Modification modification ->
-                isInvalidatedByModification(modification.index(), modification.fields(), line);
+            case ElementChange.Modification _ -> false;
         };
     }
 

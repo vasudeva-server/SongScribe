@@ -55,7 +55,6 @@ class NoteDragHandler {
 
     private final LineComponent lc;
 
-    private boolean dragActive = false;
     private boolean dragMoved = false;
     private boolean pressPreservedMultiSelection = false;
     @Nullable
@@ -99,11 +98,15 @@ class NoteDragHandler {
     // ======================================================================
 
     boolean isDragActive() {
-        return dragActive;
+        return dragElementIndex != null;
     }
 
-    int getDragElementIndex() {
-        return dragElementIndex == null ? -1 : dragElementIndex;
+    /**
+     * @return the index of the element being dragged, or {@code null} when no drag is active.
+     */
+    @Nullable
+    Integer getDragElementIndex() {
+        return dragElementIndex;
     }
 
     // ======================================================================
@@ -191,7 +194,6 @@ class NoteDragHandler {
         PreviewElementManager.clearPreviewElement();
         EditModeManager.setPreviewElementVisible(false);
 
-        dragActive = true;
         lc.repaint();
         return true;
     }
@@ -320,7 +322,6 @@ class NoteDragHandler {
             }
         }
 
-        dragActive = false;
         dragElementIndex = null;
         dragLine = null;
         dragGroup.clear();

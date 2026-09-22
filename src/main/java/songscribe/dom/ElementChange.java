@@ -95,7 +95,7 @@ public sealed interface ElementChange {
     default boolean removesConfirmableSpan() {
         var line = line();
 
-        return line.spanRegistry().getSpans().stream()
+        return line.spanRegistry().judgeableSpans().stream()
             .filter(Span::requiresInvalidationConfirm)
             .anyMatch(span -> span.outcomeFor(this, line) == SpanOutcome.Simple.REMOVE);
     }

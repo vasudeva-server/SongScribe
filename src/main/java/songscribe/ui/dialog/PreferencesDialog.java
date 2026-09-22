@@ -201,7 +201,8 @@ public class PreferencesDialog extends BaseDialog {
      * instruments tab restores one whenever Swing clears it — so an absent row is a
      * broken list rather than a state to convert.
      *
-     * @param index the selected row, {@code null} when the list has no selection
+     * @param index the selected row; nullable only because the selection binding's type is,
+     *     and never {@code null} while the list keeps its selection
      * @return the program of the instrument at that row
      * @throws IllegalStateException if {@code index} is {@code null}
      */

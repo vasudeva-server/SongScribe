@@ -117,6 +117,20 @@ public final class LineSpans implements SpanLookup {
         return spansView;
     }
 
+    /**
+     * The spans a pending edit to this line is put to: those whose two ends this line can
+     * both place. A span with an {@link SpanBound#ABSENT} end — a detached endpoint, or one in
+     * a line the song no longer holds — is on its way out, and the edit is not what removes
+     * it, so no span type is ever asked to judge one.
+     *
+     * @return a copy, in the order the spans were added, safe to hold while spans are removed
+     */
+    List<Span> judgeableSpans() {
+        return spans.stream()
+            .filter(span -> !anchorIndexOf(span).isAbsent() && !endIndexOf(span).isAbsent())
+            .toList();
+    }
+
     @Override
     public SpanBound anchorIndexOf(Span span) {
         return boundOf(span.getAnchorElement());
@@ -373,7 +387,7 @@ public final class LineSpans implements SpanLookup {
         var doomed = new ArrayList<Span>();
         var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
 
-        for (var span : spans) {
+        for (var span : judgeableSpans()) {
             // Only a hairpin can reshape, so only a hairpin is asked the wider question: the
             // merge that consumes a Reshape replaces a run with a copy of a hairpin, and
             // there is nothing it could do with any other kind of span.

@@ -583,15 +583,6 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the identifier of the beam group this column belongs to, or {@code null} if it is
-     * not beamed. Adjacent beam groups have distinct ids so the spacing calculator keeps them
-     * separate.
-     */
-    public @Nullable Integer getBeamGroupId() {
-        return beamGroupId;
-    }
-
-    /**
      * Returns whether this column and {@code other} sit in the same beam group. False when either is
      * unbeamed, so two unbeamed columns do not count as sharing a group. Single source of truth for
      * the "one beam spans this gap" question, which the beam-internal rest reduction and

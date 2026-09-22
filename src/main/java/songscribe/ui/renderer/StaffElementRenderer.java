@@ -413,10 +413,8 @@ public final class StaffElementRenderer implements ElementRenderer<StaffElement>
         }
 
         try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            var elementIndex = frame.currentElementIndex();
-            var accidentalColor = elementIndex != null
-                ? invariants.colorFor(new HitTarget.Element(note), elementIndex)
-                : invariants.colorFor(new HitTarget.Element(note));
+            var accidentalColor =
+                invariants.colorFor(new HitTarget.Element(note), frame.currentElementIndex());
 
             if (!LineInvariants.isDefaultColor(accidentalColor)) {
                 g2.setColor(accidentalColor);

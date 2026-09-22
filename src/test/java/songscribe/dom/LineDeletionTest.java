@@ -186,7 +186,31 @@ class LineDeletionTest extends UnitTest {
             new LyricCase("a paired grace note deleted alone takes its syllable, and its host is left empty",
                 List.of(pairedGrace("la", Lyric.Syllabic.SINGLE), carrier(Lyric.Extend.STOP)),
                 StaffElementRun.ElementRange.single(0),
-                List.of(NO_LYRIC)));
+                List.of(NO_LYRIC)),
+            new LyricCase("a rest deleted after a melisma inside a word changes no lyric",
+                List.of(syllable("glo", Lyric.Syllabic.BEGIN, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP), crotchetRest(),
+                    syllable("ri", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(FOURTH),
+                List.of("glo BEGIN START", CARRIER + Lyric.Extend.CONTINUE, CARRIER + Lyric.Extend.STOP,
+                    "ri END NONE")),
+            new LyricCase("a melisma inside a word that loses a note under it stays inside the word",
+                List.of(syllable("glo", Lyric.Syllabic.BEGIN, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP),
+                    syllable("ri", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(1),
+                List.of("glo BEGIN START", CARRIER + Lyric.Extend.STOP, "ri END NONE")),
+            new LyricCase("a word that loses the syllable after its melisma ends on the melisma's syllable",
+                List.of(syllable("glo", Lyric.Syllabic.BEGIN, Lyric.Extend.START),
+                    carrier(Lyric.Extend.CONTINUE), carrier(Lyric.Extend.STOP),
+                    syllable("ri", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(FOURTH),
+                List.of("glo SINGLE START", CARRIER + Lyric.Extend.CONTINUE, CARRIER + Lyric.Extend.STOP)),
+            new LyricCase("a rest deleted after a pair inside a word changes no lyric",
+                List.of(syllable("a", Lyric.Syllabic.BEGIN), pairedGrace("b", Lyric.Syllabic.MIDDLE),
+                    carrier(Lyric.Extend.STOP), crotchetRest(), syllable("c", Lyric.Syllabic.END)),
+                StaffElementRun.ElementRange.single(FOURTH),
+                List.of("a BEGIN NONE", "b MIDDLE START", CARRIER + Lyric.Extend.STOP, "c END NONE")));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -197,6 +221,17 @@ class LineDeletionTest extends UnitTest {
         line.deleteRange(line.effectiveRange(testCase.named()));
 
         assertThat(lyricsOf(line)).isEqualTo(testCase.expected());
+    }
+
+    @Test
+    void testDeleteRangeLeavesNoGlissandoIntoTheRange() {
+        var source = crotchet();
+        source.setSlide(Slide.GLISSANDO);
+        var line = lineHolding(List.of(source, crotchet(), crotchet()));
+
+        line.deleteRange(line.effectiveRange(StaffElementRun.ElementRange.single(1)));
+
+        assertThat(source.getSlide()).isNull();
     }
 
     /** The key the fixture line runs in, and the one both its key changes restate. */

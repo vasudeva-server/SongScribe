@@ -1331,10 +1331,9 @@ public final class ScoreViewController {
      * it renders overflowing and flagged, which is what the program does everywhere outside the
      * edits {@code KeyEditFitCalculator} covers.
      *
-     * @param line        The destination line
-     * @param insertIndex The index where the fragment's first element will land; the begin of
-     *                    {@code deleteRange} when there is one
-     * @param deleteRange The range to delete first, or null for pure insertion
+     * @param line   The destination line
+     * @param target Where the fragment lands: a plain index, or a range this paste deletes
+     *               first and the index it leaves the fragment at
      * @return {@code EMPTY} when the clipboard holds nothing; {@code LINE_FULL} when the fit gate
      *     refused the paste; {@code DECLINED_BY_ALERT} when a breath-mark alert refused the chosen
      *     point and the notator may pick another; {@code CANCELLED} when the notator declined a
@@ -1343,14 +1342,15 @@ public final class ScoreViewController {
      *     the key already running here — the gesture is spent and the caller should complete it,
      *     even though no element was placed. Only {@code INSERTED} means the line was mutated
      */
-    public FragmentInsertOutcome tryInsertFragment(
-        Line line, int insertIndex, StaffElementRun.@Nullable EffectiveRange deleteRange) {
-
+    public FragmentInsertOutcome tryInsertFragment(Line line, StaffElementRun.InsertionTarget target) {
         var fragment = clipboardManager.getFragment();
 
         if (fragment == null || fragment.elements().isEmpty()) {
             return FragmentInsertOutcome.EMPTY;
         }
+
+        var insertIndex = target.insertIndex();
+        var deleteRange = target.deleteRange();
 
         // The elements the paste-replace removes, for the projections and the spacing
         // calculation, which read the raw range. The paired grace note before the caller's
@@ -1457,7 +1457,7 @@ public final class ScoreViewController {
         var committed = AccidentalFitGate.fits(
             line, restamps, clones, lyricRenderMetrics, () -> {
                 var fit = InsertionSpacingCalculator.calculateFragmentInsertion(
-                    line, clones, insertIndex, rawDeleteRange, lyricRenderMetrics);
+                    line, clones, target, lyricRenderMetrics);
 
                 if (!fit.fitsWithinLine(line.getSong().getLineWidthSs().value())) {
                     OptionDialogs.showErrorMessage(
@@ -1616,7 +1616,7 @@ public final class ScoreViewController {
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
         // closes empty, posts no notification, and the selection stays intact.
         var outcome = score.getSong().withModificationResult(() -> {
-            var result = tryInsertFragment(line, effective.range().begin(), effective);
+            var result = tryInsertFragment(line, new StaffElementRun.InsertionTarget.Replacing(effective));
 
             if (result == FragmentInsertOutcome.INSERTED) {
                 // Clear the selection before the bracket closes so action handlers

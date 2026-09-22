@@ -92,11 +92,11 @@ public sealed interface Selection {
     record Range(Line line, ElementRange range, int anchor) implements Selection {
 
         /**
-         * @throws IllegalArgumentException if the range begins before the line's first element,
-         *     or if the anchor lies outside it. {@link ElementRange} already rejects a reversed
-         *     range, and a range that selects nothing is not stored at all — the coordinator
-         *     holds null for that — so constructing one is a caller bug rather than a state to
-         *     represent. The anchor holds inside the range for two separate
+         * @throws IllegalArgumentException if the anchor lies outside the range.
+         *     {@link ElementRange} already rejects a reversed range and one that begins before
+         *     the line's first element, and a range that selects nothing is not stored at all —
+         *     the coordinator holds null for that — so constructing one is a caller bug rather
+         *     than a state to represent. The anchor holds inside the range for two separate
          *     reasons, neither of which is this check: an extension derives both ends from the
          *     anchor itself, so it cannot place the anchor outside them; a splice can, every
          *     time a mutation deletes the anchored element, and {@link #spliced} clamps it
@@ -104,11 +104,6 @@ public sealed interface Selection {
          *     an anchor of its own, not that a routine path overshot.
          */
         public Range {
-            if (range.begin() < 0) {
-                throw new IllegalArgumentException(
-                    "Selection.Range must begin at an element of the line, got " + range);
-            }
-
             if (!range.contains(anchor)) {
                 throw new IllegalArgumentException(
                     "Selection.Range anchor " + anchor + " must lie within " + range);

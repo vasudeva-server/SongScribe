@@ -295,19 +295,20 @@ public final class Tuplet extends Span {
      * written duration changed": a note swapped for a rest of the same value keeps the group's
      * total time but can starve it of the non-rest notes {@link #hasValidSpan} demands, so it
      * goes too. The user re-brackets what they meant.
-     * <p>
-     * A tuplet whose endpoints are not both in {@code line} has nothing there to judge and is
-     * kept.
      *
      * @param change the pending change, not yet applied to {@code line}
      * @param line   the line being changed, still in its pre-change state
+     * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the group,
+     *     otherwise {@link SpanOutcome.Simple#KEEP}
+     * @throws IllegalStateException if an end of this tuplet sits in a line other than
+     *     {@code line}; a tuplet never crosses a line
      */
     @Override
     public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
         var range = line.spanRegistry().rangeOf(this);
 
         if (range == null) {
-            return SpanOutcome.Simple.KEEP;
+            throw new IllegalStateException("A tuplet's two ends must sit in the line being edited");
         }
 
         var invalidated = switch (change) {
@@ -365,7 +366,9 @@ public final class Tuplet extends Span {
     }
 
     /**
-     * Returns the time this group occupies, or null while the ratio is unresolved.
+     * Returns the time this group occupies.
+     *
+     * @return the ratio, or {@code null} while it is unresolved
      */
     public @Nullable TupletRatio getRatio() {
         return ratio;

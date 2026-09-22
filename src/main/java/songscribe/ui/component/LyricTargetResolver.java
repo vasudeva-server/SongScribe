@@ -40,9 +40,14 @@ public final class LyricTargetResolver {
     }
 
     /**
-     * Returns the index the editor should open on for a gesture aimed at {@code index},
-     * or null when there is no such target. A grace-host pair's lyric lives on the grace
-     * note, so a gesture on the host resolves to the grace note.
+     * Returns the index the editor should open on for a gesture aimed at {@code index}.
+     * A grace-host pair's lyric lives on the grace note, so a gesture on the host resolves
+     * to the grace note.
+     *
+     * @param line  the line the gesture landed on
+     * @param index the index of the element the gesture aimed at
+     * @return the index to open the editor on, or {@code null} when the element the gesture
+     *     resolves to can bear no syllable
      */
     public static @Nullable Integer resolveLyricTarget(Line line, int index) {
         var targetIndex = line.isHostOfPairedGraceNote(index) ? index - 1 : index;

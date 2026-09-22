@@ -130,14 +130,9 @@ public final class Tie extends NoteSpan {
     }
 
     /**
-     * This tie's endpoints as {@code line} resolves them, or {@code null} when {@code line}
-     * can say nothing about where one of them sits.
-     * <p>
-     * Both rules below resolve through here, so "unresolvable" is defined once and the
-     * insertion and replacement checks cannot disagree about a tie whose endpoint has been
-     * detached or whose far line the song no longer holds. An {@link SpanBound#ABSENT} bound
-     * has no direction, so neither rule may read it as bounding anything: the tie is on its
-     * way out, and the edit is not what removes it.
+     * This tie's endpoints as {@code line} resolves them. Neither bound is
+     * {@link SpanBound#ABSENT}: an edit is put only to {@link LineSpans#judgeableSpans}, the
+     * spans whose two ends the line can both place.
      * <p>
      * Resolving through the asking line is what makes a cross-line tie work. Its two
      * endpoints live in different lines, so {@link #requireAnchorElementIndex()} and
@@ -145,16 +140,9 @@ public final class Tie extends NoteSpan {
      * lines — for a tie anchored at index 7 of one line and ending at index 0 of the next,
      * every "between them" test would be {@code index > 7 && index <= 0} and never true.
      */
-    private @Nullable Endpoints resolveIn(Line line) {
+    private Endpoints resolveIn(Line line) {
         var spans = line.spanRegistry();
-        var anchorBound = spans.anchorIndexOf(this);
-        var endBound = spans.endIndexOf(this);
-
-        if (anchorBound.isAbsent() || endBound.isAbsent()) {
-            return null;
-        }
-
-        return new Endpoints(anchorBound, endBound);
+        return new Endpoints(spans.anchorIndexOf(this), spans.endIndexOf(this));
     }
 
     /**
@@ -186,10 +174,6 @@ public final class Tie extends NoteSpan {
 
         var endpoints = resolveIn(line);
 
-        if (endpoints == null) {
-            return false;
-        }
-
         // The end's index is inside the invalidating range where the anchor's is not:
         // inserting at the end's index displaces the end note rightwards, so the new element
         // lands between the two, while inserting at the anchor's displaces the anchor and
@@ -219,11 +203,6 @@ public final class Tie extends NoteSpan {
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
         var endpoints = resolveIn(line);
-
-        if (endpoints == null) {
-            return false;
-        }
-
         var replacedIndex = line.getElementIndex(oldElement);
 
         if (!endpoints.covers(replacedIndex)) {

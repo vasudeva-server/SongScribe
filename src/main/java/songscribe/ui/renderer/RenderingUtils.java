@@ -164,16 +164,9 @@ public final class RenderingUtils {
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        Color targetColor;
-
-        if (target instanceof HitTarget.Element element) {
-            var elementIndex = frame.currentElementIndex();
-            targetColor = elementIndex != null
-                ? invariants.colorFor(element, elementIndex)
-                : invariants.colorFor(element);
-        } else {
-            targetColor = invariants.colorFor(target);
-        }
+        var targetColor = target instanceof HitTarget.Element element
+            ? invariants.colorFor(element, frame.currentElementIndex())
+            : invariants.colorFor(target);
 
         if (!LineInvariants.isDefaultColor(targetColor)) {
             return targetColor;

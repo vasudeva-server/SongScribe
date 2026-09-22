@@ -255,6 +255,9 @@ public final class GraceModeManager {
      * Valid throughout grace mode, i.e. whenever {@link #isInProgress()} is true: the grace
      * note's index is recorded before the state leaves {@link State#INACTIVE} and is only
      * cleared after it returns there.
+     *
+     * @return the index of the slot after the grace note
+     * @throws IllegalStateException if grace mode is not in progress
      */
     public int getHostInsertionIndex() {
         return requireActiveGrace().index() + 1;

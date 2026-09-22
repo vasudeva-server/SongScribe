@@ -1000,7 +1000,7 @@ public class LineComponent extends ScoreComponent
     protected void released(MouseEvent e, ScoreView view) {
         // Capture before handleRelease() clears it. Refreshed on every release, so
         // clicked can never read a value left over from an earlier press.
-        pressHitIndex = noteDragHandler.isDragActive() ? noteDragHandler.getDragElementIndex() : null;
+        pressHitIndex = noteDragHandler.getDragElementIndex();
 
         if (getGraceModeManager().mouseReleased(this, e)) {
             return;

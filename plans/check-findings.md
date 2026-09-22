@@ -1,414 +1,445 @@
-# Check Findings — design pass 6 working tree
+# Check Findings — design-pass-6 branch against develop
 
-Scope: the uncommitted diff against `HEAD` (87 production files, 9 test files) plus
-`docs/span-invalidation.md`, `docs/key-changes.md`, `docs/mutations.md`,
-`docs/hairpin-editing.md` and the four plan files under `plans/`.
+Scope: every file the branch changed since it forked from `develop` — 194 production
+files, 22 test files, `docs/lyrics.md`, `docs/span-invalidation.md` and the plan files
+under `plans/design-pass-6/`. Four axes ran over four slices of the production code
+(`dom` line and span types; `dom` runs and edits with `undo` and `message`; the UI
+interaction packages with `binding`; everything else) and two slices of the tests.
 
-No concrete production bug was found. Every moved body was compared with its old
-form: the replay bypass, the absent-span no-op, the merge reach, the terminal
-checks, the range invariant at every construction site and the detach guard
-removal all behave as before or as the plan intended.
+Confidence is stated per finding. "Checked by me" means I read the code after the
+reviewing agent reported it.
+
+---
+
+## Production bug
+
+### Finding 1 — Deleting a note or a rest after a mid-word melisma splits the word
+
+**Where.** `src/main/java/songscribe/dom/LyricRun.java:150`, in the private method that
+settles a hyphenated word across the gap a deletion leaves (`settleWordAcross`). The same
+faulty question is asked at `LyricRun.java:836` (the method that ends a word whose next
+syllable is gone, `endDanglingWord`), inside the method that re-letters the syllable after
+an edited one (`fixSuccessorSyllabic`), and at
+`src/main/java/songscribe/ui/component/LyricChainEditor.java:86` (the lyric editor's "am I
+inside a hyphenated word" check).
+
+**What the code does now.** A melisma is stored as a syllable followed by text-less
+"carrier" lyrics on the notes the extender runs under. When the repair code looks
+*backward* for the previous syllable it skips carriers (`previousTextBearingIndex`). When
+it looks *forward* it does not: `hasFollowingTextBearingLyric` inspects only the first
+element after the syllable that holds any lyric, and answers "no syllable follows" when
+that element is a carrier.
+
+**What is wrong.** Take one word, "Glo-ri", where "Glo" is sung over three notes and a
+rest stands before "ri":
+
+    Glo (begins word, starts melisma) · carrier · carrier · rest · ri (ends word)
+
+Delete the rest. Nothing of the word or the melisma was deleted, and `docs/lyrics.md`
+says so plainly: "Deleting a rest or a barline from inside a word changes nothing."
+The code finds "Glo" as the syllable before the gap, asks whether a syllable follows it,
+sees the carrier, answers no, and ends the word on "Glo". "ri" is then re-lettered as a
+word of its own. The notator sees the hyphen between "Glo" and "ri" disappear. The same
+happens when a note *under* the extender is deleted, and for a paired grace note in the
+middle of a word, because its host note holds a carrier. Copying a range that contains
+such a word goes through `endDanglingWord` and ends the word early in the copy.
+
+The lyric record permits the state: `LineDeletionTest` itself builds a `MIDDLE` syllable
+followed by a carrier.
+
+**Would a test in scope have caught it?** No. Every melisma case in
+`LineDeletionTest.lyricCases()` uses a single-syllable word ("la"), and every word case
+has no melisma, so the two chains are never exercised together.
+
+**What to do instead.** Give the forward direction the same query the backward direction
+has: a private `nextTextBearingIndex(index, verse)` that skips carriers, mirroring
+`previousTextBearingIndex`. `hasFollowingTextBearingLyric` becomes "`nextTextBearingIndex`
+is not null", and `fixSuccessorSyllabic` re-letters the element that query returns rather
+than giving up at a carrier. That fixes all four sites at once, because they share the two
+methods. Add `LyricCase` rows where the word carries the melisma: a rest deleted between
+the carriers and the next syllable, a carrier deleted from inside, and the paired-grace
+form.
+
+Confidence: high. Checked by me against the method bodies and the doc.
 
 ---
 
 ## Design findings
 
-### 1. The tuplet's invalidation rule is split between `Tuplet` and `Line`'s primitives
+### Finding 2 — "No index" is `null` inside four classes and `-1` again at their edge
 
-**Where.** `Line.java` — the insert primitive (`addElement(int, …)`), the modify
-primitive (`modifyElement`), the single-removal and range-removal primitives;
-`Tuplet.java`, which overrides only `isInvalidatedByReplacement`;
-`LineSpans.removeOverlappingTuplets`.
+**Where.**
+- `src/main/java/songscribe/ui/component/score/NoteDragHandler.java:103-106`
+  (`getDragElementIndex()`), read once at `LineComponent.java:1002`.
+- `src/main/java/songscribe/ui/selection/SelectionCoordinator.java:192-194`
+  (`getActiveLineIndex()`), read from `ScoreInputHandler.java:432`, `ScoreView.java:671`,
+  `LineSelectionHandler.java:574` and `AttachmentDialogController.java:279`.
+- `src/main/java/songscribe/ui/component/LyricEditor.java:1369-1375` (two private lookup
+  helpers) and the three methods they feed (`advanceWithIndex`, `openIndexOrDismiss`,
+  `breakChainCommitAndAdvance`).
+- `src/main/java/songscribe/ui/component/score/InsertionMarkerOverlay.java:72`
+  (`setTarget(line, int index)`), called with `-1` from `InsertionPointMode.java:501`.
 
-**What the code does now.** The span registry's sweep asks every span what should
-happen to it when an edit lands, and that is the whole story for ties, beams,
-hairpins, endings and trills. For tuplets it is half the story. A tuplet answers
-"remove me" only for a replacement. For an insertion inside its bracket, or a
-deletion strictly inside it, the tuplet says "keep", so each of `Line`'s
-primitives removes the tuplet by hand before running the sweep: the insert
-primitive looks up the tuplet at the index and removes it if the index is past
-the anchor; the two removal primitives and the modify primitive call
-`removeOverlappingTuplets`. Each of those four blocks sits inside its own
-`if (!song.isReplaying())`, so the "skip while replaying" decision is written four
-times in `Line` and a fifth time in `Span.addTo`.
+**What the code does now.** The branch replaced the `-1` "no index" value with a nullable
+`Integer` almost everywhere. These four classes made the field nullable and then convert
+it back to `-1` at the accessor another class calls (`return dragElementIndex == null ?
+-1 : dragElementIndex;`). `SelectionCoordinator` does it for one accessor and not for its
+sibling: `getSelectedLine()` returns `null` for "none", `getActiveLineIndex()` returns
+`-1`, off the same field.
 
-**What is wrong.** "Any structural change inside my bracket removes me" is a fact
-about tuplets, and it lives in the class that holds the element list instead of on
-the tuplet. Visible consequences:
+**What is wrong.** The compiler forces a caller to handle `null`; it cannot force a check
+for `-1`. Each class already held the safe value and discarded it at the one point where a
+wrong index does damage — the hand-over to the class about to use it. Three concrete
+symptoms:
 
-- `Line`'s primitives are not the "place the element and repair nothing" primitives
-  their Javadoc promises; each carries a tuplet special case.
-- The modify primitive keeps a replay guard whose own comment says the replayer
-  never calls it ("the gate keeps the suppression contract symmetric"). A guard no
-  caller can reach, kept for symmetry.
-- `ScoreViewController.tryInsertFragment` (around line 1483) carries a comment
-  explaining that the insert primitive's tuplet removal "is now redundant but
-  harmless" on the paste path. Code explaining that a built-in policy is dead is
-  the code naming its own dead weight; the comment also narrates history ("now").
-- `SelectionActionApplier.validateSpans` exists solely to call
-  `removeOverlappingTuplets` after a batch replacement, with a comment saying beams
-  and ties need nothing because the sweep handles them. A UI class knows that one
-  span kind is not covered by the model's own sweep.
-- `LineSpans.removeOverlappingTuplets`'s Javadoc names callers that do not exist
-  (`SelectionCoordinator`, `PreviewElementManager`). Its real callers are
-  `Tuplet.applyDisplacementPolicy`, three `Line` primitives and `validateSpans`.
-- The next span kind whose survival depends on its interior rather than its
-  endpoints gets another block in every primitive.
+- `InsertionMarkerOverlay.targetIndex` is declared nullable, but clearing the marker
+  stores `-1`, so a `targetIndex == null` test can never see the cleared state. It is
+  harmless today only because the line field is nulled too and is tested first.
+- `NoteDragHandler` keeps a `dragActive` boolean that is set and cleared together with
+  `dragElementIndex`. It is a second copy of "is the index present", kept in step by hand,
+  and `LineComponent.released()` must consult it to decode the `-1`.
+- `RangeQueries.java:336`: the summary sentence of `glissandoSourceIndex` still says "or
+  -1 when the range is ineligible"; the method now returns `null`.
 
-**Readers traced.** `removeOverlappingTuplets`: `Tuplet.applyDisplacementPolicy`,
-`Line.modifyElement`, `Line.removeElement`, `Line.removeRange`,
-`SelectionActionApplier.validateSpans`. `findTupletAt`: `Line.addElement` and
-`ModificationSession.removeTupletsInvalidatedFrom`.
+`plans/design-pass-6/step-3-unrepresentable-states.md:821-824` left the
+`getActiveLineIndex()` call sites "to other phases"; no later phase took them. The other
+three sites are in no plan.
 
-**Corrected design.** `Tuplet` overrides the insertion and deletion predicates (or
-`outcomeFor` outright) to answer "remove" when the change falls strictly inside its
-range, next to the replacement predicate that is already there. The insert and two
-removal primitives then contain only: terminal check, sweep, post the mutation.
-The replay guard moves into `LineSpans.sweep`, whose only callers are those
-primitives, so "the sweep is skipped while replaying" is written once. The modify
-primitive is the one edit that is not an `ElementChange` shape; the clean form is a
-fourth shape, `Modification`, in the sealed interface so the sweep covers field
-changes too and the doc's "one funnel" sentence is fully true. `validateSpans`
-then disappears, unless a whole-range batch rule is what the product wants, in
-which case its comment says so instead of saying the sweep does not cover tuplets.
+**Corrected design.** `null` crosses the boundary.
+- `NoteDragHandler.getDragElementIndex()` returns `@Nullable Integer`; `dragActive` is
+  deleted and `isDragActive()` becomes `dragElementIndex != null`.
+- `SelectionCoordinator.getActiveLineIndex()` returns `@Nullable Integer`, like its
+  sibling.
+- `LyricEditor`'s two helpers return `@Nullable Integer` and the three methods they feed
+  take one, testing `!= null` where they test `>= 0`.
+- `InsertionMarkerOverlay` gets `setTarget(LineComponent, int)` and `clearTarget()`, so a
+  null line paired with a real index — which the single setter permits and nothing
+  produces — cannot be written.
+- The `RangeQueries` sentence is corrected.
 
-**What it touches.** `Tuplet.java` (one or two overrides), `ElementChange.java`
-(one new shape if `Modification` is added), `Line.java` (four primitives shrink),
-`LineSpans.java` (`sweep` gains the guard; `removeOverlappingTuplets` loses three
-callers and its Javadoc is rewritten), `ScoreViewController.java` (one comment
-block), `SelectionActionApplier.java` (one method and its comment).
-`docs/span-invalidation.md` already describes the target state. No test in scope
-exercises the pre-sweep tuplet removal, so nothing in the suite is deleted.
+**What the change touches.** 4 production classes change one signature each; call sites:
+1 in `LineComponent`, 4 for the active-line accessor, 9 inside `LyricEditor`, 1 in
+`InsertionPointMode`. No test changes: none of these classes has a test.
 
-**What it costs to leave.** Every future primitive or edit shape re-implements the
-tuplet rule by hand; every reader of `Line` learns that the sweep is complete for
-five kinds and not the sixth; the paste path keeps explaining why a model policy
-is a no-op there. Recommendation: do it. It finishes the sweep the pass set out to
-build. Confidence high.
+**Recommendation.** Do it. It completes the conversion the rest of the branch made, at the
+four places where the old encoding still reaches a consumer.
 
-### 2. `DetachedLyricRun` implements `EditableRun` for no reader, and `Fragment.run()` copies a list to protect against an edit nobody makes
+Confidence: high. `NoteDragHandler` and `InsertionMarkerOverlay` checked by me; the other
+two were reported independently by the Design agent and the Contract agent.
 
-**Where.** `DetachedLyricRun.java` lines 39 and 70–86; `Fragment.java`, `run()`
-(around line 518); `EditableRun.java` class Javadoc lines 41–44 against the method
-contracts at lines 88–94, 132–133, 183–184.
+### Finding 3 — Each span type decides for itself what a detached end means, and one forgot
 
-**What the code does now.** Phase 3 gave the clipboard's detached run three edit
-primitives so it could implement the new `EditableRun` interface, and made
-`Fragment.run()` hand it a fresh `ArrayList` copy because, its Javadoc says, the
-run edits the list it is given.
+**Where.** `src/main/java/songscribe/dom/Ending.java:333`, `:363`, `:452` (the three
+methods that say whether a deletion, a replacement or an insertion invalidates a first- or
+second-ending bracket), against `Tie.java:148-158`, `Tuplet.java:305-311` and
+`Hairpin.java:165-172`.
 
-**What is wrong.** Nothing edits a detached run. `Fragment.run()` returns
-`StaffElementRun`, so the edits are unreachable through it; every production
-caller of `insertRun`, `deleteRange` and `deleteRanges` holds a `Line`; and the
-three primitives on `DetachedLyricRun` have no reference anywhere, production or
-test. The three methods, the copy on every paste, and the Javadoc paragraph
-explaining the copy all exist to satisfy the interface. The interface's own
-contract shows the strain: its class Javadoc says it promises nothing about undo
-and that a detached run belongs to no document, while its three edit methods
-still say "must be called inside a modification bracket", "records into the open
-bracket" and "throws if the song has no bracket or the range covers the song's
-terminal". A caller holding a detached run is told about a song it does not have.
+**What the code does now.** Before an edit lands, every span on the line is asked whether
+the edit invalidates it. A span whose end is attached to no line cannot be affected.
+`Tie`, `Tuplet` and `Hairpin` each test for that state first and answer "keep". `Ending`
+calls `requireAnchorElementIndex()` / `requireEndElementIndex()`, which throw
+`IllegalStateException` in that state. `Ending.isInvalidatedByInsertion` then tests
+`anchorIndex >= 0 && endIndex >= 0`, which can never be false, because the accessors it
+just called throw rather than return a negative number.
 
-**Corrected design.** Two designs leave the code sound, and which one is a product
-question: is a clipboard fragment ever meant to be edited in place? If yes,
-`Fragment.run()` returns `EditableRun` so the capability is reachable and the copy
-is justified. If no, `DetachedLyricRun` goes back to `LyricRun`, its three
-primitives and the copy and its paragraph go, and `EditableRun` stays as the single
-home of the three edit sequences with `Line` its only implementor (or collapses
-into `Line`; with one implementor the interface is a Javadoc distinction, not a
-variation axis). Either way the three method contracts lose the bracket, recording
-and terminal clauses, which belong on `Line`'s primitives (finding 8).
+**What is wrong.** One rule — "a span with an end in no line is not affected by an edit to
+this line" — is written three times in three subclasses and missing from the fourth. The
+`LineSpans` class comment describes a span with detached ends sitting in a registry as a
+legitimate state. The reviewing agent could not build an input that leaves an `Ending` in
+that state today, so nothing is known to crash; if one is ever reachable, the next edit on
+that line fails with an uncaught exception instead of leaving the bracket alone. The next
+span type added will have to remember the rule a fifth time.
 
-**What it touches.** `DetachedLyricRun.java`, `Fragment.java`, `EditableRun.java`,
-and three `{@link DetachedLyricRun}` sentences in `LyricRun`, `StaffElementRun`,
-`EditableRun`. No test changes.
+**Corrected design.** The rule lives once, in the registry. The state the four types share
+is "an end this line cannot place" (`SpanBound.ABSENT`: a detached endpoint, or one in a
+line the song no longer holds). "No range on this line" is the wrong test, because a tie
+may cross to the next line and must still be judged. `LineSpans.judgeableSpans()` yields
+only the spans whose two ends the line can both place, and the two callers that put an
+edit to spans — `LineSpans.sweep` and `ElementChange.removesConfirmableSpan` — iterate it,
+which also covers the hairpin path the sweep enters through `hairpinOutcomeFor`. No span
+type sees the state: `Tie.resolveIn` is total, `Hairpin` reads its indices through the
+throwing accessors as `Ending` does, and `Ending`'s two dead `>= 0` tests go. A `Tuplet`
+with an end in a different line throws `IllegalStateException`; a tuplet never crosses a
+line.
 
-**What it costs to leave.** Every reader of `Fragment.run()` is told the run edits
-the list, keeps the copy, and looks for the edit that never comes. Recommendation:
-remove the implementor unless a paste-time edit is planned. Confidence high on the
-no-reader fact, medium on collapsing the interface.
+**What the change touches.** `LineSpans.java` (one query added, the sweep loop),
+`ElementChange.java` (one call), `Tie.java`, `Tuplet.java`, `Hairpin.java` (one guard
+removed each), `Ending.java` (two dead tests removed), `Span.java` (the precondition stated
+on `outcomeFor`). No test changes.
 
-### 3. `Span.addTo(LineSpans)` makes every caller unwrap a line so the span can wrap it back
+**Recommendation.** Do it. It removes the one way the four span types disagree.
 
-**Where.** `LineSpans.line()` (lines 82–85); `Span.addTo` and `removeFrom`
-(`var line = spans.line(); if (!line.getSong().isReplaying()) …`); `Tuplet` and
-`Trill` displacement policies (`rangeIn(spans.line())`).
+Confidence: medium. The asymmetry and the dead tests are checked by me. The `Tie` comment
+names the reachable case: a cross-line tie whose far line the song no longer holds.
 
-**What the code does now.** Roughly forty call sites write
-`span.addTo(line.spans())`. The span then asks the registry for its line back, and
-the line for its song, to decide whether to skip the displacement policy.
-`LineSpans.line()` has exactly those four readers, all inside span kinds.
+### Finding 4 — A tuplet's note count is a bare number whose valid range lives elsewhere
 
-**What is wrong.** A caller holding a `Line` has to reach into it for the registry
-so the span can reach back out for the line. The accessor exists only for that
-round trip. The registry's own write primitives are already package-private, so
-nothing outside `dom` needs to hold a `LineSpans` to add a span.
+**Where.** `src/main/java/songscribe/dom/Tuplet.java` (the `grade` field and both
+constructors) and `src/main/java/songscribe/dom/TupletValidator.java:310`.
 
-**Corrected design.** `Span.addTo(Line)` and `removeFrom(Line)`; inside,
-`line.spans().add(this, record)`. `LineSpans.line()` and the four reach-backs go;
-`rangeIn` takes the line it already needs. `line.spans()` stays for the lookup
-queries, which genuinely are the registry's.
+**What the code does now.** A tuplet's printed number (3 for a triplet) is an `int`. Any
+`int` is accepted: `new Tuplet(anchor, end, 99, ratio)` compiles and runs. The legal range,
+2 to 7, is two constants in `TupletValidator`, tested in one private method. Both file
+readers (`MeasureMapper.buildTuplet`, and `LineIO` for legacy files) pass the number
+straight from the file into the constructor, and a pass over the loaded document later
+drops any tuplet whose number is out of range. `RangeQueries.validGradesFor` loops over
+the same two constants to build the tuplet menu.
 
-**What it touches.** `Span.java`, six kind classes, `LineSpans.java`,
-`MutationReplayer.java` (twenty-four arms drop `.spans()`), and the call sites a
-reference lookup on `Span/addTo` and `Span/removeFrom` lists, about twenty-five
-files; `SongFactory`, `EndingBracketGeometryTest`, `VoltaAlignmentFixtureTest` one
-line each.
+**What is wrong.** The set of legal values is small and known, the branch gave the ratio a
+type of its own (`TupletRatio`) for exactly this reason, and the number beside it was left
+raw. A tuplet object can exist in a state every consumer would call illegal, and each
+consumer relies on a pass having run first. The reviewing agent judged this deliberate,
+because full validation needs the whole document. That is true of *placement* and
+*notatability*; it is not true of the range, which needs nothing but the number.
 
-**What it costs to leave.** Every new caller learns the unwrap-and-rewrap shape,
-and the accessor stays as a reach-through. Recommendation: do it. Confidence
-medium; it is a judgement about which object the verb belongs on, and the
-accessor's reader list is what decides it.
+**Corrected design.** A `TupletGrade` record whose constructor rejects a value outside 2
+to 7, owning `MIN`/`MAX` and the "every legal grade" sequence that `validGradesFor`
+iterates. `Tuplet` holds a `TupletGrade`. The two readers convert at the boundary: a
+number outside the range produces the same "tuplet dropped" load warning the load pass
+produces today. `TupletValidator.divisionFailure` loses its range branch and
+`Reason.BAD_RATIO` loses that producer.
 
-### 4. "Where does this span sit in this line" is answered three different ways
+**What the change touches.** One new record; `Tuplet.java`, `TupletValidator.java`,
+`TupletLoadPass.java`, `MeasureMapper.java`, `LineIO.java`, `RangeQueries.java`,
+`MusicEditOperations.createValidatedTuplet`, `TupletMenuItems`, plus the tuplet fixtures
+in `SpanTest`, `LineSpansTest` and `ElementChangeTest`. Any test of the out-of-range
+branch of the validator is removed, not rewritten.
 
-**Where.** `LineSpans.mergeOverlapping` (lines 430–469) and its comment saying
-`indexOr`'s fallback "is unreachable here"; `Span.rangeIn`;
-`RangeQueries.java:512`; `HairpinEndpoints.java:108–109`;
-`LineInvariants.java:149–150`; `ElementColumn.java:742, 748`.
+**Recommendation.** Do it, in the same spirit as `TupletRatio`. I did not read every
+reader of `getGrade()`; the count above comes from the agent's trace and the two
+references I checked.
 
-**What the code does now.** The registry answers `anchorIndexOf(span)` and
-`endIndexOf(span)` separately, and every caller that wants a span's extent asks
-both on the same line. Inside `mergeOverlapping`, a predicate builds the range of
-each candidate to filter, then throws it away, so the caller re-resolves each
-survivor and has to write a fallback it documents as unreachable. `Span.rangeIn`
-is a third route via `line.getElementIndex` directly, which bypasses the
-span-bound semantics and silently yields the range `(-1, -1)` for a span whose
-endpoints are not in the line, because the record's invariant only checks
-`begin <= end`.
+Confidence: medium.
 
-**What is wrong.** One query, three implementations, and the worst form of guard
-from the design guide: an unreachable branch that returns a plausible default.
+### Finding 5 — The same "which color method" branch is written in two renderers
 
-**Corrected design.** One method on `LineSpans`, `rangeOf(span)`, returning the
-span's `ElementRange` when both bounds resolve and a clear absent answer
-otherwise. `mergeOverlapping` filters over span-and-range pairs and never
-re-resolves; `rangeIn` goes; the four external pairs become one call each.
+**Where.** `src/main/java/songscribe/ui/renderer/RenderingUtils.java:169-176`
+(`decorationColor`) and `src/main/java/songscribe/ui/renderer/StaffElementRenderer.java:415-419`
+(`renderAccidental`).
 
-**What it touches.** `LineSpans.java`, `Span.java`, `Tuplet.java`, `Trill.java`
-and the four callers above. The return shape for "absent" is the one open
-question. Confidence high on the duplication.
+**What the code does now.** The class that owns coloring rules, `LineInvariants`, has two
+methods: one colors an element by selection only, the other also knows about playback and
+hover and needs the element's index. A preview element being dragged has no index. Both
+renderers therefore write the same three lines: "if the frame has an index call the
+second method, otherwise the first".
 
-### 5. `TupletValidator.Result` holds three fields for a two-state idea, and the tuplet ratio work is not in the plan
+**What is wrong.** The rule "an element with no index gets selection coloring only" is
+stated twice, outside the class that owns coloring. A change to it must be made in both
+places, and missing one shows up as a color that differs between a note and its
+accidental.
 
-**Where.** `TupletValidator.java:137–149`. The tree also carries
-`TupletRatio.java`, `NotatableValue.java` and matching changes in `Tuplet`,
-`TupletLoadPass`, `MeasureMapper`, `NoteBuilder`, `LineTrackBuilder`, none of
-which any phase of `class-design.md` names.
+**Corrected design.** `LineInvariants` gets one method that takes the element and the
+frame's nullable index and makes the choice. The two renderers call it. The two-argument
+public overload becomes private.
 
-**What the code does now.** The record is `(boolean valid, @Nullable Reason,
-@Nullable TupletRatio)` with a compact constructor that throws when `valid`
-disagrees with which nullable is present. Readers: `valid()` in
-`ModificationSession`, `PasteSpanReconciliation`, `RangeQueries`; `ratio()` and
-`reason()` in `TupletLoadPass`.
+**What the change touches.** `LineInvariants.java`, and the 2 call sites. These are the
+only two callers of the pattern (reference search by the agent).
 
-**What is wrong.** The runtime guard is the type admitting it cannot carry its own
-invariant. Every new reader must remember to check `valid` before `ratio`.
+**Recommendation.** Do it.
 
-**Corrected design.** `sealed interface Result permits Valid(TupletRatio ratio),
-Invalid(Reason reason)`. The boolean, both nullables and the guard disappear; each
-reader becomes a pattern match.
+Confidence: high on the duplication (agent's reference search; not re-run by me).
 
-**What it touches.** `TupletValidator` (record, `invalid` helper, two construction
-sites), `TupletLoadPass`, `ModificationSession`, `PasteSpanReconciliation`,
-`RangeQueries`, one site each; tests naming `Result` re-pointed. Recommendation:
-do it. Confidence high on the shape. The separate question is whether the tuplet
-ratio work belongs in this tree at all; that is asked below.
+### Finding 6 — One of the five "does this edit invalidate me" hooks has no user
 
-### 6. `ElementChange.Deletion` is a class for a reason that is not true
+**Where.** `src/main/java/songscribe/dom/Span.java`, `isInvalidatedByModification`
+(around line 292).
 
-**Where.** `ElementChange.java:186–190`.
+**What the code does now.** `Span` offers five overridable questions, one per kind of
+edit. Four are overridden by `Beam`, `Tie` or `Ending`. The one about an in-place
+modification of an element is overridden by no span type; `Tuplet`, the only type that
+cares about a modification, overrides the dispatching method (`outcomeFor`) instead.
 
-**What the code does now.** The Javadoc says "Not a record: `deletedElements` is
-derived from the line rather than stored, and a record would have to carry it as a
-component." A record may declare any method; only its state must be components.
+**What is wrong.** Nothing breaks. A reader adding a span type sees a documented extension
+point and must work out that it is unused and that the class's own advice is to override
+`outcomeFor`. It is generality with no caller.
 
-**What to do.** `record Deletion(Line line, ElementRange range)` with
-`deletedElements()` as a method, the same shape as `Insertion` and `Replacement`.
-The hand-written field, constructor and accessor go. Confidence high.
+**What to do instead.** Delete the hook; the dispatcher answers "keep" for a modification.
+One method and one `switch` arm in `Span.java`; no call sites.
 
-### 7. `Line` fetches a concrete `Song`, and the test fixture grows a stub per forwarding method (for the record)
-
-**Where.** `UnitTest.java`, `minimalSongMock()`; `plans/design-pass-6/findings-1-2.md`
-line 235, which records that the dependence stays concrete.
-
-**What the code does now.** The shared mock now stubs a fourth `Song` method
-(`applyChange`) before a `Line` can be built, because `Line.applyChange` forwards
-there unconditionally.
-
-**What is wrong.** Every forwarding method added to `Line` adds a stub to the
-fixture; that is the hidden-dependency tell. What `Line` needs from its song is a
-narrow set: post a mutation, ask replay and suspension state, ask key inheritance,
-ask terminal policy. Not introduced by this pass, but demonstrated by it.
-Recorded for a later pass rather than proposed here. Confidence medium.
+Confidence: high. Checked by me: a symbol search over `dom/` finds only the declaration.
 
 ---
 
 ## Contract findings
 
-### Proposed changes to existing contracts
+### Finding 7 — Proposed change to an existing contract: the MusicXML reader says it rejects what it drops
 
-### 8. `EditableRun`'s three edit methods promise a bracket and a song the interface says it does not have
+**Where.** `src/main/java/songscribe/io/musicxml/MeasureMapper.java:107-108` (class
+comment), against `endsOnStartLine` (about line 753) and the comment on `resolveTuplets`
+(line 1323).
 
-Symptom of finding 2, listed here because it is a change to an existing contract.
-`EditableRun.insertRun`, `deleteRange`, `deleteRanges` keep the Javadoc they had on
-`Line`: "must be called inside a modification bracket", "records into the open
-bracket", "throws if the song has neither a bracket nor suspended tracking, or if
-the range covers the song-owned terminal". The class Javadoc says the interface
-promises nothing about undo. Change: strip those clauses from the three methods;
-state once on the interface that when the run is a `Line`, every primitive posts
-through the song's bracket and `Line`'s primitive contracts say what they throw.
-Also `StaffElementRun.redundantKeyChangeRanges` still says
-"`{@link Line#deleteRanges}` discharges that obligation" for a member now on
-`EditableRun`. Confidence high.
+**What it promises now.** "A beam, a tuplet bracket or a trill whose two ends land on
+different lines is a span no line can hold, so the pass that pairs it rejects the document
+as corrupt."
 
-### 9. `Song.applyChange` states its throw condition less precisely than the two forwarders that cite it
+**What the code does.** It logs a warning, skips that one span and loads the rest. The
+method comment 1200 lines further down says so: "dropped with a warning, as a beam or a
+trill is". `MusicXmlCrossLineSpanTest` asserts the drop.
 
-`Song.applyChange`'s `@throws` says "if called outside a modification bracket",
-while its prose says a suspended mutator runs without a bracket. `Line.applyChange`
-(lines 176–186) delegates to it, says the promises are the song's, and then
-restates the precise two-condition clause ("neither an open bracket nor suspended
-tracking"); `Line.setKey` (lines 214–215) restates it a third time. A file reader,
-which runs under suspension with no bracket, cannot tell from the owner's tag that
-it will not be thrown at. Change: put the two-condition clause on
-`Song.applyChange`; `Line.applyChange` and `Line.setKey` link instead of
-restating. Confidence high.
+**Why it matters.** A reader of the class comment believes such a file is refused. Two
+things are possible, and they are different decisions: the class comment is stale and
+should say "drops the span and logs a warning"; or the drop is the mistake, since only
+SongScribe-authored files are read, SongScribe cannot write such a span, and the same
+class rejects a dangling tuplet as corrupt. See the question on this finding.
 
-### Missing or wrong contracts
+Whichever way it goes, the rule is stated once, on the class, and the restatement on
+`resolveTuplets` is cut. `MusicXmlCrossLineSpanTest`'s class comment claims "with a
+warning" and asserts no warning; nothing reads that log line, so the comment is trimmed to
+what is asserted rather than a log assertion added.
 
-### 10. `Line.getElements(ElementRange)` has a line comment where six caller files need a contract
+Confidence: high on the contradiction. Checked by me.
 
-`Line.java:532–538`. No `@return`, no `@throws`, and nothing saying the result is a
-live view of the line's list. `ElementChange.Deletion.deletedElements` relies on
-that liveness. A caller that keeps the list across an edit gets a
-`ConcurrentModificationException` with no warning. Write: returns an unmodifiable
-live view valid until the elements next change; throws `IndexOutOfBoundsException`
-when the range reaches past the element count. Confidence high.
+### Finding 8 — Public members nothing calls
 
-### 11. `Line.removeElement` and `removeRange` say they exist for replay, and three edit paths call them
+- `src/main/java/songscribe/ui/playback/PlaybackController.java:150-158`:
+  `getPreviousPlayingLine()` and `setPreviousPlayingLine()`. The branch changed their type
+  from `int` to nullable `Integer`. No production code and no test calls either; the class
+  reads and writes the field directly. Delete both.
+- `src/main/java/songscribe/layout/ElementColumn.java` (about line 103):
+  `getBeamGroupId()`. Same story: re-typed and re-documented by the branch, called by
+  nothing; `sharesBeamGroupWith` reads the field. Delete it.
 
-`Line.java:540–545, 578–584`: "An edit deletes through `deleteRange` instead; this
-is for replaying a recorded mutation." `EditableRun.deleteRange` calls
-`removeRange`, `deleteElement` calls `removeElement` twice, and
-`TerminalMaintainer.maintainOnLastLineChange` calls `removeElement`. A reader
-adding a caller would conclude the sweep matters only for replay. Reword: the
-primitive beneath `deleteRange`, also what replay calls. Confidence high.
+Confidence: high. Checked by me: all three reference searches return nothing.
 
-### 12. `Span.addTo` and `removeFrom` say the record goes "into the open bracket"
+### Finding 9 — Contracts that contradict themselves or omit an error
 
-`Span.java:186–187, 212–213`. Under suspended tracking, which is how the loaders
-call `addTo`, nothing is recorded; with tracking on and no bracket, the call
-throws from `Song.applyChange`. Neither is stated, so a loader cannot tell it needs
-no bracket and an editor cannot tell it needs one. Fix by linking: posts through
-the line's song, see `Song#applyChange` for recording, suspension and what is
-thrown. Confidence high.
+- `src/main/java/songscribe/ui/dialog/PreferencesDialog.java:241-258`, `indexToProgram`:
+  the `@param` line describes `null` as "when the list has no selection", a handled input;
+  the `@throws` line says `null` raises `IllegalStateException`. The prose above them has
+  it right (the list always has a selection). A caller who reads the `@param` passes `null`
+  and crashes. Reword the `@param` as the precondition.
+- `src/main/java/songscribe/dom/Beam.java:178-180`, `direction()`: `@throws` names a
+  detached anchor only; the body also throws for a detached end. A caller who checks the
+  anchor still gets the exception. Name both.
+- `src/main/java/songscribe/ui/edit/GraceModeManager.java:259`,
+  `getHostInsertionIndex()`: outside grace mode it used to return a meaningless 0 and now
+  throws `IllegalStateException`. The comment states the precondition and not the
+  consequence. Add the `@throws`.
+- `src/main/java/songscribe/ui/MusicEditOperations.java:401`, `toggleTuplet`: throws
+  `IllegalStateException` for three different conditions (selection is a strict part of an
+  existing tuplet; the toggle info says it cannot toggle; fewer than two non-grace
+  elements). The comment mentions the first, in passing, with no `@throws`. Name all three.
+- `src/main/java/songscribe/ui/selection/Selection.java:106-116`, `Selection.Range`
+  constructor: tests `range.begin() < 0` and documents a `@throws` for it. `ElementRange`
+  already rejects a negative begin, so the test cannot fire. A reader cannot tell which of
+  the two documented failures is real. Delete the test and its clause.
+- `src/main/java/songscribe/dom/Span.java:156`: the comment on `getAnchorLine()` links to
+  `LineSpans#appendChild`, which is private. Point it at a reachable member or drop the
+  link.
 
-### 13. `LineSpans.removeOverlappingTuplets` and `removeTrillsOverlapping` have stale or missing contracts
+Confidence: high on each (mechanical). The `Selection.Range` and `Beam` items are agent
+reports I did not re-read.
 
-`LineSpans.java:493–511`. The first names callers that do not exist and claims to
-emit a `TupletRemoval` itself, which is now the tuplet's own record. The second is
-a one-line summary with no bracket precondition. Write one shape for both: what is
-removed, that each removal is that span's own recorded mutation via
-`Span#removeFrom`, and the bracket rule by link. Resolves with finding 1 for the
-first; the second needs writing regardless. Confidence high.
+### Finding 10 — A paste method takes two values that must agree
 
-### 14. The `ElementChange` factories opened to the UI have no `@param`, `@return` or `@throws`
+**Where.** `src/main/java/songscribe/ui/component/ScoreViewController.java:1332`,
+`tryInsertFragment(line, insertIndex, deleteRange)`.
 
-`ElementChange.java:162–175, 241–273`. `forReplacement` calls `line.getElement(index)`
-at build time, so a UI caller handing it the element count gets
-`IndexOutOfBoundsException` from the factory, unstated. `Replacement.endingEffect`
-returns a value with no `@return`. Add index ranges, `@return`, and the throw on
-`forReplacement`. Confidence high.
+**What the code does now.** When a paste replaces a selection, `insertIndex` must equal the
+start of `deleteRange`; only the comment says so. The body reads `insertIndex` in some
+places and the range in others.
 
-### 15. The terminal policy is stated four times
+**What is wrong.** A caller that passes a mismatched pair gets no error and a wrong key or
+spacing calculation. Both current callers pass a matching pair.
 
-`TerminalMaintainer.java:47–55, 197–262` and `Song`'s three delegations. "A final
-double barline may only be appended at the end of the last line" appears in the
-class Javadoc, the check's summary, its `@throws`, and again in `Song`'s
-`@throws`; the other two checks repeat the pattern. The class doc holds the
-policy; each check's `@throws` names its condition once; `Song`'s one-line
-delegations keep a summary and `@see` and drop the restated `@throws`. Confidence
-high.
+**What to do instead.** A small sealed value for "where the paste goes" with two shapes —
+at an index, or replacing a range — built by each caller; the method derives the index
+from it. One method, 2 call sites.
 
-### 16. `Line.keyAtEndOfLineAfterRemoving` duplicates a passage of `docs/key-changes.md`
+Confidence: medium (agent report; not re-read by me).
 
-`Line.java:314–317` and `docs/key-changes.md:248–251` both explain that a deletion
-computes its reach unconditionally because removing no key change leaves the end
-key where it was. The Javadoc cites the doc with `{@code}` rather than a link. Cut
-the Javadoc to the promise and link the doc for the why. Confidence medium.
+### Finding 11 — Five parameters where four is the limit
 
-### 17. `LineSpans`' class Javadoc duplicates the new section of `docs/span-invalidation.md`
+`src/main/java/songscribe/layout/InsertionSpacingCalculator.java` (about line 379),
+`calculateFragmentInsertion(line, fragment, insertIndex, deleteRange, lyricRenderMetrics)`.
+The project rule requires a record parameter above four. `insertIndex` and `deleteRange`
+are the same coupled pair as in Finding 10, so the value type proposed there replaces two
+of the five and brings the count to four.
 
-`LineSpans.java:34–53` and the doc's "What stays with the registry" both state in
-full that a span enters or leaves only through itself, each kind carrying its own
-policy and record, and that the registry keeps the hairpin merge. Trim the class
-doc to what no doc holds (the one-directional membership invariant and cross-line
-double-listing) and link the doc. Confidence medium.
+### Finding 12 — Missing `@return` / `@param` tags, and one unfinished sentence
 
-### 18. The register's deferred item on `StaffElementRun.getElement` was deleted without being done
+Mechanical; the tag is what the IDE shows at a call site.
 
-`plans/design-pass-register.md` dropped the "→ Pass 6" item saying `getElement`
-states no range and no `@throws`. `getElement` is unchanged
-(`/** The element at {@code index}. */`), and the new `EditableRun.addElement(int,
-StaffElement)` likewise states no valid range for `index` (it is called up to
-`elementCount()` by `insertRun`). Step 5 of the pass owns contracts, so this is a
-note that the claim is still open, and the register line should come back until it
-is closed. Confidence high.
+- `dom/Tuplet.java:370` `getRatio()` — no `@return` (it must say what `null` means).
+- `dom/Tuplet.java:280-306` `outcomeFor` override — no `@return`; `Hairpin`'s override has one.
+- `ui/renderer/LineInvariants.java`, both `colorFor` overloads — no `@return`.
+- `ui/MusicEditOperations.java`: `toggleBeamWithPredecessor` (:171), `toggleTieInRange`
+  (:259), `createValidatedTuplet` (:463), `resolveHairpinAction` (:687) — no `@return`;
+  the first, third and fourth also lack `@param`.
+- `ui/component/LyricTargetResolver.java`, `resolveLyricTarget` — no `@return`.
+- `io/LineIO.java:136-142`, private record `SegmentParts(a, b, data)` — `@param` for `data`
+  only. It has one caller; drop the tag and keep the summary sentence.
+- `binding/Binding.java:38`, `@param <T>`: "nullable when the target's is" stops
+  mid-clause. Its siblings say "declared `@Nullable` when absence is a value the graph
+  carries".
 
-### 19. Stale prose left by the pass
+### Finding 13 — One sentence repeated on three sibling methods
 
-- `ScoreViewController.java:1472, 1477`: the paste comment names `addPastedSpan`
-  twice; that method no longer exists, the merge is `Span.addTo`'s policy. Line
-  1483 narrates history ("now redundant"). Part of finding 1.
-- `Span.java:266`: "the only entry point `Line` uses"; the sweep is now the
-  registry's.
-- `UnitTest.java`, `minimalSongMock()`: "now that `Line.applyChange` forwards to
-  it unconditionally" narrates a change. Drop "now that" for "since".
-- `plans/design-pass-6/class-design.md:6` says "Status: In Progress" while every
-  phase is complete.
-- Phase 4 and Phase 7 file lists name `docs/hairpin-editing.md` and
-  `docs/mutations.md`; neither was changed. Both were read against the new shape
-  and neither says the line guards a bracket or hosts the merge rules, so no
-  rewrite was needed; the record should say the reread found nothing to change.
+`src/main/java/songscribe/dom/TerminalMaintainer.java:200-263`: each of the three
+`checkTerminalPolicyFor…` methods opens with "Returns without checking while the policy is
+bypassed". The class comment already states when the policy is off. Drop the three copies.
 
-### 20. Carried signature finding: `nearestNonGraceIndex(int fromIndex, int step)`
-
-`findings-1-2.md` I4 already records that `step` is a direction selected by a bare
-`-1`/`1`. The move onto `StaffElementRun` preserved it. Belongs to step 3 of the
-pass; noted so it is not lost.
-
-### 21. Questionable: rename `Line.spans()`
-
-Every call site reads `line.spans().getSpans()` or `line.spans().findTieAt(…)`; a
-caller reading `spans()` expects the spans and gets the registry. `spanRegistry()`
-would say what comes back. Low confidence; readability only, nothing behaves
-wrongly. Asked below.
-
----
-
-## Correctness & Efficiency
-
-### 22. `removesConfirmableSpan` walks the span list twice when once decides it
-
-`ElementChange.java:75–86`. It first checks that no span asks for confirmation and
-returns false, then filters by the same predicate and asks each survivor. When none
-match, the second expression is already false. Delete the pre-check; the contract
-sentence "false when the line carries no such span" stays true. Confidence high.
+Confidence: low weight; nothing has drifted yet.
 
 ---
 
 ## Test Conformance
 
-### 23. No test in scope asserts any contract this pass wrote
+No test in scope was found that passes while the code is broken, and none that asserts
+something no contract promises.
 
-The test diff is mechanical re-pointing. Promises with no test: `ElementRange`'s
-`begin <= end` constructor throw (only a gap if a caller can hand it a reversed
-pair; every construction site checked derives the pair in order, so today the
-guard is unreachable and needs no test); `Span.addTo`'s displacement policy and
-replay skip; `Span.removeFrom`'s no-op on an absent span; `removesConfirmableSpan`;
-the three `TerminalMaintainer` checks. `record.md` shows step 6 (test triage) has
-not run, so this is the state of a pass mid-way, not a finished increment skipping
-tests. Recorded so step 6 has the list; nothing to fix in this review.
+### Finding 14 — A promised repair of `deleteRange` has no test anywhere
 
-The re-pointed tests are correct: `deleteRange` is always handed the widened
-range, and `LineTest` resolves unchanged against the moved members.
+**Where.** `src/main/java/songscribe/dom/EditableRun.java`, `deleteRange`; its test is
+`src/test/java/songscribe/dom/LineDeletionTest.java`.
+
+**The clause.** One of the method's four stated invariants: "the note in front of the range
+keeps no glissando into it."
+
+**What is wrong.** `LineDeletionTest` covers the three lyric invariants and not this one,
+and no other test sets up a glissando into a deleted note (the repair method has two
+production callers and no test caller). The design does not enforce it — it is an explicit
+repair step — and a notator reaches it by drawing a glissando from A to B and deleting B.
+If the step were lost, A would keep a glissando that points at nothing, and nothing would
+fail.
+
+**What to do.** One case: a note with a glissando into the next note, delete the next note,
+assert the glissando is gone. (The rows Finding 1 adds belong to the same test.)
+
+Confidence: high.
+
+---
+
+## Behavior change to confirm
+
+### Finding 15 — A batch barline change no longer removes a tuplet it did not touch
+
+**Where.** `src/main/java/songscribe/ui/selection/SelectionActionApplier.java`; the branch
+deleted its `validateSpans` step and `Line.removeOverlappingTuplets`.
+
+**Before.** After any batch replacement over a selection, every tuplet that overlapped the
+*selection* was removed. Select a triplet plus the barline after it, apply "double
+barline": only the barline is replaced, and the triplet bracket vanished.
+
+**Now.** Each single replacement asks each tuplet whether it is affected. A tuplet goes
+only when a replaced element is inside it and its type or dots changed. In the example the
+triplet stays.
+
+For every case where a note inside the tuplet changes (five traced), old and new agree.
+The new rule is strictly narrower, and it is the one `Tuplet.outcomeFor`'s comment states.
+No plan file or test names this change, so it is listed for confirmation rather than as a
+defect.
+
+---
+
+## Reported by an agent, checked, and not a finding
+
+- `KeyChangeDialogController.editKeyChange` lost a "beep and log when the double-clicked
+  key change is not on the line" guard. The one caller passes a key change it hit-tested
+  on the same line in the same event, so the guarded case cannot occur; the guard was dead.
+- The first Design report on slice 1 claimed four unused hooks on `Span`. It came from a
+  wildcard symbol search that returned nothing in error; three of the four are overridden.
+  Finding 6 is what remains.
+- The second re-lettering call at the end of `settleWordAcross` looked redundant. It is
+  not: it is the call that reaches the syllable after the gap. Finding 1's fix makes the
+  first call reach it too; the duplicate work that results is one no-op comparison.

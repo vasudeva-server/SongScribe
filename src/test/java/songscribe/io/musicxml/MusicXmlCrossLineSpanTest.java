@@ -42,7 +42,7 @@ import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBo
 
 /**
  * A span that opens on one line and closes on the next cannot be represented — a line holds its
- * own spans — so the reader drops it with a warning and reads the rest of the document. The span
+ * own spans — so the reader drops it and reads the rest of the document. The span
  * kinds the reader pairs across the whole part are the ones that can state it: a beam, a tuplet
  * and a trill.
  *

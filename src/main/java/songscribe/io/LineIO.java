@@ -201,6 +201,8 @@ public final class LineIO {
          * The two leading integers of a segment and, when the segment has a second comma,
          * the text after it.
          *
+         * @param a the first integer
+         * @param b the second integer
          * @param data the text after the second comma, or null when the segment has none
          */
         private record SegmentParts(int a, int b, @Nullable String data) {}

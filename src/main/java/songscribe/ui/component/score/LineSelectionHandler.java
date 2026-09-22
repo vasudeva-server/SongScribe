@@ -572,7 +572,8 @@ class LineSelectionHandler {
         // clearing first, so the outgoing line is still active here. On the handlePress
         // path there is nothing to do — it calls ScoreView.clearSelection() up front,
         // which repaints the outgoing line itself and leaves no active line behind.
-        var deselectedLine = scoreView.getLineComponent(coordinator.getActiveLineIndex());
+        var activeLineIndex = coordinator.getActiveLineIndex();
+        var deselectedLine = activeLineIndex == null ? null : scoreView.getLineComponent(activeLineIndex);
 
         if (coordinator.selectSingleElement(lc.getLineIndex(), elementIndex)) {
             scoreView.selectionChanged();

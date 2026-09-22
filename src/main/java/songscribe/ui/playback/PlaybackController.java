@@ -161,14 +161,6 @@ public final class PlaybackController {
         registeredScore = score;
     }
 
-    public static @Nullable Integer getPreviousPlayingLine() {
-        return previousPlayingLine;
-    }
-
-    public static void setPreviousPlayingLine(@Nullable Integer line) {
-        previousPlayingLine = line;
-    }
-
     @Nullable
     public static ElementSelection getActiveSelection() {
         return activeSelection;

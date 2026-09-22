@@ -196,8 +196,7 @@ public final class TerminalMaintainer {
 
     /**
      * Checks that inserting an element of type {@code incoming} at {@code index} of {@code line}
-     * honors the terminal policy in the class Javadoc. Returns without checking while the policy
-     * is bypassed.
+     * honors the terminal policy in the class Javadoc.
      *
      * @throws IllegalStateException if {@code incoming} is a {@code FINAL_DOUBLE_BARLINE} and
      *     {@code index} is not {@link Line#elementCount()} of the last line
@@ -215,8 +214,7 @@ public final class TerminalMaintainer {
 
     /**
      * Checks that replacing the element at {@code index} of {@code line} with one of type
-     * {@code incoming} honors the terminal policy in the class Javadoc. Returns without checking
-     * while the policy is bypassed.
+     * {@code incoming} honors the terminal policy in the class Javadoc.
      *
      * @throws IllegalStateException if {@code incoming} is a {@code FINAL_DOUBLE_BARLINE} and
      *     {@code index} is not the last position of the last line, or if the displaced element
@@ -242,7 +240,7 @@ public final class TerminalMaintainer {
 
     /**
      * Checks that removing {@code range} from {@code line} honors the terminal policy in the
-     * class Javadoc. Returns without checking while the policy is bypassed.
+     * class Javadoc.
      *
      * @throws IllegalStateException if a position in {@code range} holds the auto-maintained
      *     terminal

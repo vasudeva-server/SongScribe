@@ -1243,7 +1243,7 @@ public final class LyricEditor extends MyJTextField {
         advanceWithIndex(commitSpec.kind(), commitSpec.extend(), findPreviousEligibleIndex());
     }
 
-    private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, int nextIndex) {
+    private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, @Nullable Integer nextIndex) {
         if (!ensureLyricFits(kind, extend)) {
             trace("advance: refused, the lyric does not fit");
             return;
@@ -1257,7 +1257,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     // Must NOT be inside an open modification bracket — opens its own.
-    private void breakChainCommitAndAdvance(CommitKind kind, int nextIndex) {
+    private void breakChainCommitAndAdvance(CommitKind kind, @Nullable Integer nextIndex) {
         if (!ensureLyricFits(kind, Lyric.Extend.NONE)) {
             trace("breakChainCommitAndAdvance: refused, the lyric does not fit");
             return;
@@ -1340,12 +1340,12 @@ public final class LyricEditor extends MyJTextField {
         return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
 
-    private void openIndexOrDismiss(int nextIndex) {
+    private void openIndexOrDismiss(@Nullable Integer nextIndex) {
         if (LogUtils.isTracingLyrics(LOG)) {
-            logState(nextIndex >= 0 ? "moving to " + nextIndex : "no target element, dismissing");
+            logState(nextIndex != null ? "moving to " + nextIndex : "no target element, dismissing");
         }
 
-        if (nextIndex >= 0) {
+        if (nextIndex != null) {
             dismiss(false);
             openOn(score, line, line.getElement(nextIndex));
         } else {
@@ -1365,14 +1365,12 @@ public final class LyricEditor extends MyJTextField {
         openOn(score, line, line.getElement(index));
     }
 
-    private int findNextEligibleIndex() {
-        var index = LyricTargetResolver.findNextEligibleIndex(line, line.getElementIndex(element));
-        return index == null ? -1 : index;
+    private @Nullable Integer findNextEligibleIndex() {
+        return LyricTargetResolver.findNextEligibleIndex(line, line.getElementIndex(element));
     }
 
-    private int findPreviousEligibleIndex() {
-        var index = LyricTargetResolver.findPreviousEligibleIndex(line, line.getElementIndex(element));
-        return index == null ? -1 : index;
+    private @Nullable Integer findPreviousEligibleIndex() {
+        return LyricTargetResolver.findPreviousEligibleIndex(line, line.getElementIndex(element));
     }
 
     private void handleHyphen() {
@@ -1384,7 +1382,7 @@ public final class LyricEditor extends MyJTextField {
 
             var nextIndex = findNextEligibleIndex();
 
-            if (nextIndex < 0) {
+            if (nextIndex == null) {
                 reject("hyphen over a carrier with no element to hyphenate to");
                 return;
             }
@@ -1397,7 +1395,7 @@ public final class LyricEditor extends MyJTextField {
         if (!commitText().isEmpty()) {
             var nextIndex = findNextEligibleIndex();
 
-            if (nextIndex < 0) {
+            if (nextIndex == null) {
                 reject("hyphen with no element to hyphenate to");
                 return;
             }
@@ -1434,7 +1432,7 @@ public final class LyricEditor extends MyJTextField {
 
         var nextIndex = findNextEligibleIndex();
 
-        if (nextIndex < 0) {
+        if (nextIndex == null) {
             reject("lone hyphen with no next eligible element");
             return;
         }
@@ -1455,7 +1453,7 @@ public final class LyricEditor extends MyJTextField {
 
         var nextIndex = findNextEligibleIndex();
 
-        if (nextIndex < 0) {
+        if (nextIndex == null) {
             reject("compound with no element to join to");
             return;
         }
@@ -1505,7 +1503,7 @@ public final class LyricEditor extends MyJTextField {
 
         var nextIndex = findNextEligibleIndex();
 
-        if (nextIndex < 0) {
+        if (nextIndex == null) {
             reject("underscore with no element to carry the melisma");
             return;
         }
@@ -1576,7 +1574,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var followingIndex = LyricTargetResolver.findNextEligibleIndex(line, nextIndex);
-        openIndexOrDismiss(followingIndex == null ? -1 : followingIndex);
+        openIndexOrDismiss(followingIndex);
     }
 
     /**

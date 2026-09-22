@@ -277,7 +277,13 @@ public abstract sealed class AttachmentDialogController<T extends Copyable<T>>
      */
     private static @Nullable AttachmentTarget selectionTarget(MainFrame mainFrame) {
         var scoreView = mainFrame.requireScoreView();
-        var line = scoreView.getSong().getLine(scoreView.getSelectionCoordinator().getActiveLineIndex());
+        var activeLineIndex = scoreView.getSelectionCoordinator().getActiveLineIndex();
+
+        if (activeLineIndex == null) {
+            return null;
+        }
+
+        var line = scoreView.getSong().getLine(activeLineIndex);
 
         return AttachmentTarget.forElement(line, scoreView.getSingleSelectedElement());
     }

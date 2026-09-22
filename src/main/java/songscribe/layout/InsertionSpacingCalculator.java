@@ -33,7 +33,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Slide;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.StaffElementRun;
 
 /**
  * Spacing calculations for element insertion operations.
@@ -352,8 +352,8 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * Calculates the fit for inserting a multi-element fragment at {@code insertIndex},
-     * optionally replacing a deleted range (paste-replace). Pure measurement — the line and the
+     * Calculates the fit for inserting a multi-element fragment at {@code target}, optionally
+     * replacing a deleted range first (paste-replace). Pure measurement — the line and the
      * fragment elements are never mutated; the projection is built on lightweight columns.
      * <p>
      * The multi-element analogue of {@link #calculateInsertion}: it builds the projected line the
@@ -367,11 +367,9 @@ public final class InsertionSpacingCalculator {
      * syllable-less columns for both.
      *
      * @param fragment           The elements to be inserted, in order (must be non-empty)
-     * @param insertIndex        The index where the fragment's first element will land
-     *                           (must equal {@code deleteRange.begin()} when a range is given)
-     * @param deleteRange        The range a paste-replace deletes first, or null for pure insertion.
-     *                           It must be the effective range — widened exactly as the deletion
-     *                           will widen it — so the fit check sees what the deletion removes
+     * @param target             Where the fragment lands: a plain index, or the effective range
+     *                           this paste-replace deletes first and the index it leaves the
+     *                           fragment at
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return A {@link FragmentInsertionResult} with the projected spring chain its fit gate solves
@@ -379,14 +377,15 @@ public final class InsertionSpacingCalculator {
     public static FragmentInsertionResult calculateFragmentInsertion(
         Line line,
         List<? extends StaffElement> fragment,
-        int insertIndex,
-        @Nullable ElementRange deleteRange,
+        StaffElementRun.InsertionTarget target,
         @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (fragment.isEmpty()) {
             throw new IllegalArgumentException("fragment must not be empty");
         }
 
+        var insertIndex = target.insertIndex();
+        var deleteRange = target.deleteRange() == null ? null : target.deleteRange().range();
         var effectiveCount = line.effectiveElementCount();
 
         if (insertIndex < 0 || insertIndex > effectiveCount) {
@@ -394,15 +393,8 @@ public final class InsertionSpacingCalculator {
                 "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']');
         }
 
-        if (deleteRange != null) {
-            if (deleteRange.begin() < 0 || deleteRange.end() >= effectiveCount) {
-                throw new IllegalArgumentException("invalid deleteRange " + deleteRange);
-            }
-
-            if (insertIndex != deleteRange.begin()) {
-                throw new IllegalArgumentException(
-                    "insertIndex " + insertIndex + " must equal deleteRange.begin() " + deleteRange.begin());
-            }
+        if (deleteRange != null && (deleteRange.begin() < 0 || deleteRange.end() >= effectiveCount)) {
+            throw new IllegalArgumentException("invalid deleteRange " + deleteRange);
         }
 
         // The projected chain: surviving predecessors, the fragment's clones, then the surviving

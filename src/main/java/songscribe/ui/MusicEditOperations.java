@@ -167,6 +167,10 @@ public final class MusicEditOperations {
      * addTo} widens at both ends, so with beams [0,1] and [2,3], beaming element 2 to its
      * predecessor yields a single [0,3]. That matches what the select-mode toggle does from the
      * same call, and the two must not disagree.
+     *
+     * @param line         the line holding the element
+     * @param elementIndex the index of the later of the two elements
+     * @return {@code true} when the line was modified
      */
     public static boolean toggleBeamWithPredecessor(Line line, int elementIndex) {
         if (!line.hasIndex(elementIndex)) {
@@ -255,6 +259,8 @@ public final class MusicEditOperations {
      *
      * <p>The single-element case is a cross-line tie, which can find no partner to toggle; every
      * other case changes the line, because the range names the two endpoints outright.
+     *
+     * @return {@code true} when the line was modified
      */
     private static boolean toggleTieInRange(ElementSelection range) {
         var line = range.line();
@@ -394,9 +400,15 @@ public final class MusicEditOperations {
      * bracket and deletes it, which runs through {@code deleteSelectedTarget()}.</p>
      *
      * <p>Callers must pass the {@link TupletToggleInfo} obtained from {@link #canToggleTuplet()}
-     * so there is a single source of truth for the decision. Any branch that would have been a
-     * silent no-op in the old API now throws {@link IllegalStateException} — the UI gates these
-     * via action enable state, so reaching them indicates a caller bug.
+     * so there is a single source of truth for the decision. The UI gates every refused case
+     * via action enable state, so reaching one indicates a caller bug. Does nothing when
+     * there is no selected range.
+     *
+     * @param tupletSize the grade asked for
+     * @param info       what {@link #canToggleTuplet()} answered for the current selection
+     * @throws IllegalStateException if the selection is a strict sub-range of the existing
+     *     tuplet; if {@code info.canToggle()} is {@code false}; or if the selection holds fewer
+     *     than two non-grace elements, which means {@code info} is stale
      */
     public void toggleTuplet(int tupletSize, TupletToggleInfo info) {
         var range = selectedRange();
@@ -459,6 +471,8 @@ public final class MusicEditOperations {
      * The UI gates tuplet creation on the same validator, so an invalid verdict here
      * means the caller skipped that gate — the same contract as the other
      * {@link IllegalStateException}s in {@link #toggleTuplet}.
+     *
+     * @return the tuplet over {@code span}, not yet added to {@code line}
      */
     private Tuplet createValidatedTuplet(Line line, ElementRange span, int tupletSize) {
         var result = TupletValidator.validateDerived(
@@ -683,6 +697,9 @@ public final class MusicEditOperations {
      *       trailing rest is the second column.
      *   <li>A lone rest: {@code INELIGIBLE} — a rest cannot anchor a hairpin.
      * </ul>
+     *
+     * @param kind the hairpin kind the menu item adds
+     * @return what the item would do for the current selection, with the span it would act on
      */
     public HairpinResolution resolveHairpinAction(Hairpin.Kind kind) {
         var range = coordinator.getRange();
