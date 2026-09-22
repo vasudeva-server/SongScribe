@@ -1209,8 +1209,7 @@ public final class ScoreViewController {
 
         // A deletion that takes a key change with it leaves the key that was running before the
         // range running past it, which can leave a later key change on this same line restating
-        // it. keyAt's bound is inclusive, so it is asked one index below the range; index 0 can
-        // hold no key change, so asking about it is the same question.
+        // it.
         var keyAfterRemoval = line.keyBefore(range.begin());
         var strandedAfter = line.redundantKeyChangeRanges(range.end() + 1, keyAfterRemoval);
 
@@ -1362,9 +1361,7 @@ public final class ScoreViewController {
         // projection below re-reads.
         var successorIndex = rawDeleteRange == null ? insertIndex : rawDeleteRange.end() + 1;
 
-        // The key the fragment's first element lands in. keyAt's bound is inclusive, so it is
-        // asked one index lower — index 0 can hold no key change, so asking about it is the
-        // same question.
+        // The key the fragment's first element lands in.
         var keyAtInsertion = line.keyBefore(insertIndex);
 
         // Fresh clones every paste — the stored fragment is never itself inserted.

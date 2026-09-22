@@ -92,13 +92,13 @@ class ProjectedEditTest extends UnitTest {
     }
 
     private static Fixture replacementCase() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F);
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f | " + OTHER + " " + F);
         var line = song.getLine(0);
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
         return new Fixture(song,
-            ProjectedEdit.replacing(line, ElementRange.single(1), List.of(keyChange)),
-            () -> line.setElement(1, keyChange));
+            ProjectedEdit.replacing(line, ElementRange.single(2), List.of(keyChange)),
+            () -> line.setElement(2, keyChange));
     }
 
     /**
@@ -110,8 +110,8 @@ class ProjectedEditTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F, OTHER + " " + F);
         var line = song.getLine(0);
         var fragment = List.<StaffElement>of(
-            StaffElementFactory.note(OTHER), StaffElementFactory.keyChange(Key.ONE_SHARP),
-            StaffElementFactory.note(F, Accidental.NATURAL));
+            StaffElementFactory.note(OTHER), StaffElementFactory.singleBarline(),
+            StaffElementFactory.keyChange(Key.ONE_SHARP), StaffElementFactory.note(F, Accidental.NATURAL));
 
         return new Fixture(song,
             ProjectedEdit.inserting(line, 1, fragment),

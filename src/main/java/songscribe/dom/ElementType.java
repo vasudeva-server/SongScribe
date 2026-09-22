@@ -445,7 +445,9 @@ public enum ElementType {
 
     /**
      * Whether the chain walk looks through this element when deciding what intervenes before a
-     * note: a rest or a breath mark.
+     * note.
+     *
+     * @return {@code true} for a rest or a breath mark
      */
     public boolean isTransparentInChain() {
         return isRest() || isBreathMark();

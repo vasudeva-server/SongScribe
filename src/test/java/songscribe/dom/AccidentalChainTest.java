@@ -41,8 +41,8 @@ import static org.assertj.core.api.Assertions.tuple;
 import static songscribe.dom.SongFactory.compactSong;
 
 /**
- * {@link AccidentalChain#walkSong}'s and {@link AccidentalChain#walk}'s promise: the policy
- * stated on {@link AccidentalChain} decides every note's chain state, and a single edit's walk
+ * {@link AccidentalChain#walkSong}'s and {@link AccidentalChain#walk}'s promise: the rule
+ * stated on {@link ChainedAccidental} decides every note's chain state, and a single edit's walk
  * touches exactly the notes the policy says it must and none past its stopping point.
  *
  * <p>Every case names the staff position of the notes it follows as a bare integer — the walk
@@ -136,7 +136,7 @@ class AccidentalChainTest extends UnitTest {
     /** A key change ends what was in force at every position, even one the new key does not alter. */
     private static SongCase keyChangeEndsInForceCase() {
         var song = compactSong(Key.NO_ACCIDENTALS,
-            F + "f " + F + " K:ONE_SHARP " + F);
+            F + "f " + F + " | K:ONE_SHARP " + F);
 
         return new SongCase("a key change ending what is in force", song,
             List.of(ChainType.ANCHOR, ChainType.IMPLICIT, ChainType.IN_KEY));
@@ -287,16 +287,16 @@ class AccidentalChainTest extends UnitTest {
             new EditCase("a key change inside the edited range puts its key in force, and the walk goes on to the next key change",
                 () -> compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F),
                 song -> insert(song, new Cursor(0, 1),
-                    StaffElementFactory.note(OTHER), StaffElementFactory.keyChange(Key.ONE_SHARP),
-                    StaffElementFactory.note(F, Accidental.NATURAL)),
+                    StaffElementFactory.note(OTHER), StaffElementFactory.singleBarline(),
+                    StaffElementFactory.keyChange(Key.ONE_SHARP), StaffElementFactory.note(F, Accidental.NATURAL)),
                 List.of(
                     new ExpectedRestamp(new Cursor(0, 1), Accidental.NATURAL, ChainType.IN_KEY),
-                    new ExpectedRestamp(new Cursor(0, 3), Accidental.NATURAL, ChainType.ANCHOR),
-                    new ExpectedRestamp(new Cursor(0, 5), Accidental.FLAT, ChainType.ANCHOR))),
+                    new ExpectedRestamp(new Cursor(0, 4), Accidental.NATURAL, ChainType.ANCHOR),
+                    new ExpectedRestamp(new Cursor(0, 6), Accidental.FLAT, ChainType.ANCHOR))),
             new EditCase("what is in force arriving at the edit stops at a key change before it",
-                () -> compactSong(Key.NO_ACCIDENTALS, F + "f K:ONE_SHARP " + OTHER + " " + F),
-                song -> choose(song, new Cursor(0, 3), Accidental.FLAT),
-                List.of(new ExpectedRestamp(new Cursor(0, 3), Accidental.FLAT, ChainType.ANCHOR))),
+                () -> compactSong(Key.NO_ACCIDENTALS, F + "f | K:ONE_SHARP " + OTHER + " " + F),
+                song -> choose(song, new Cursor(0, 4), Accidental.FLAT),
+                List.of(new ExpectedRestamp(new Cursor(0, 4), Accidental.FLAT, ChainType.ANCHOR))),
             new EditCase("what is in force arriving at the edit stops at the start of a line with its own key",
                 () -> SongFactory.buildSong(
                     line -> {
@@ -337,15 +337,15 @@ class AccidentalChainTest extends UnitTest {
 
     @Test
     void testInsertingAKeyChangeWalksOnToTheNextKeyChangeRestatingEveryNoteItAlters() {
-        var song = compactSong(Key.NO_ACCIDENTALS, B + "f " + OTHER + " " + B + "n " + OTHER + " " + B + "n");
+        var song = compactSong(Key.NO_ACCIDENTALS, "| " + B + "f " + OTHER + " " + B + "n " + OTHER + " " + B + "n");
         var line = song.getLine(0);
-        var leadingFlat = (NoteElement) line.getElement(0);
-        var firstNatural = (NoteElement) line.getElement(2);
-        var trailingNatural = (NoteElement) line.getElement(4);
-        var firstOther = (NoteElement) line.getElement(1);
+        var leadingFlat = (NoteElement) line.getElement(1);
+        var firstNatural = (NoteElement) line.getElement(3);
+        var trailingNatural = (NoteElement) line.getElement(5);
+        var firstOther = (NoteElement) line.getElement(2);
         var originalFirstOther = firstOther.chainedAccidental();
 
-        var restamps = AccidentalChain.walk(song, insert(song, new Cursor(0, 0), StaffElementFactory.keyChange(Key.ONE_FLAT)));
+        var restamps = AccidentalChain.walk(song, insert(song, new Cursor(0, 1), StaffElementFactory.keyChange(Key.ONE_FLAT)));
 
         assertRestamps(restamps,
             tuple(leadingFlat, Accidental.FLAT, ChainType.IN_KEY),

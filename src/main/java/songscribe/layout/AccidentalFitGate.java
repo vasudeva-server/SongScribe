@@ -88,9 +88,9 @@ public final class AccidentalFitGate {
      * as the edit will leave it, and every other line a restamp widens as it stands, each with the
      * walk's decisions drawn.
      *
-     * <p>Every note named by a restamp is stamped plainly with
-     * {@link AccidentalState.Stamped} of the restamp's state before anything is measured, so both
-     * measurements see the accidentals the edit will draw. {@code editedLineFits} is the edit's
+     * <p>Every note named by a restamp is stamped plainly, through
+     * {@link AccidentalChain.Restamp#stamp}, before anything is measured, so both measurements
+     * see the accidentals the edit will draw. {@code editedLineFits} is the edit's
      * own fit check over its projection of {@code editedLine}, evaluated with the stamps in place;
      * every other line holding a restamp that changes what its note draws is measured with
      * {@link InsertionSpacingCalculator#fitsInPlace} over its current effective elements. The

@@ -4,10 +4,8 @@
 
 The target's doc is `docs/accidentals.md`. The eight target classes hold no diagram in their Javadoc. Two Javadoc blocks use HTML lists, and neither is a diagram:
 
-- `AccidentalChain.java:57–77` is the walk's algorithm as a numbered list of prose rules.
-- `ChainedAccidental.java:35–46` is the five states, the contract of `ChainType.decide`.
-
-Step 5 settled both as contract prose (`findings-5.md`).
+- The private `Walk` class in `AccidentalChain.java` carries the walk's algorithm as a numbered list of prose rules. It is implementation prose, not a contract.
+- `ChainedAccidental.java:35–46` is the five states, the contract of `ChainType.decide`. Step 5 settled it as contract prose (`findings-5.md`).
 
 Two diagrams exist.
 

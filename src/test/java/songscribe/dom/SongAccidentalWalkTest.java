@@ -106,7 +106,9 @@ class SongAccidentalWalkTest extends UnitTest {
             new WalkCase("a line inserted with its own key", SongAccidentalWalkTest::lineInsertionWithOwnKeyCase),
             new WalkCase("a note replaced by a key change", SongAccidentalWalkTest::elementReplacementCase),
             new WalkCase("a key change's key altered in place", SongAccidentalWalkTest::keyChangeAlteredCase),
-            new WalkCase("a line holding a key change removed", SongAccidentalWalkTest::lineRemovalWithKeyChangeCase));
+            new WalkCase("a line holding a key change removed", SongAccidentalWalkTest::lineRemovalWithKeyChangeCase),
+            new WalkCase("a key change deleted on its own", SongAccidentalWalkTest::keyChangeDeletionCase),
+            new WalkCase("an empty line inserted with no key of its own", SongAccidentalWalkTest::emptyLineInsertionCase));
     }
 
     private static Fixture noteInsertionCase() {
@@ -141,13 +143,34 @@ class SongAccidentalWalkTest extends UnitTest {
     }
 
     private static Fixture keyChangeInsertionCase() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f | " + F);
         var line = song.getLine(0);
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
         return new Fixture(song,
-            () -> line.addElement(0, keyChange),
+            () -> line.addElement(2, keyChange),
             () -> line.removeElement(line.getElementIndex(keyChange)));
+    }
+
+    /** The edit removes only the key change, so it routes through {@link ChainEdit#removed}'s rekey clause. */
+    private static Fixture keyChangeDeletionCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f | K:ONE_SHARP " + OTHER + " " + F);
+        var line = song.getLine(0);
+        var keyChange = line.getElement(2);
+
+        return new Fixture(song,
+            () -> line.removeElement(2),
+            () -> line.addElement(2, keyChange));
+    }
+
+    /** The inserted line is empty and has no key, so it inherits the key running into it and moves none. */
+    private static Fixture emptyLineInsertionCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F, "" + F);
+        var insertedLine = new Line(song);
+
+        return new Fixture(song,
+            () -> song.addLine(1, insertedLine),
+            () -> song.removeLine(1));
     }
 
     private static Fixture lineDeletionCase() {
@@ -201,14 +224,14 @@ class SongAccidentalWalkTest extends UnitTest {
 
     /** The edit replaces a note with a key change, so it routes through {@link ChainEdit#replaced}. */
     private static Fixture elementReplacementCase() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F);
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f | " + OTHER + " " + F);
         var line = song.getLine(0);
-        var replaced = (NoteElement) line.getElement(1);
+        var replaced = (NoteElement) line.getElement(2);
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
         return new Fixture(song,
-            () -> line.setElement(1, keyChange),
-            () -> line.setElement(1, replaced));
+            () -> line.setElement(2, keyChange),
+            () -> line.setElement(2, replaced));
     }
 
     /**
@@ -217,13 +240,13 @@ class SongAccidentalWalkTest extends UnitTest {
      * the edit reaches the next key change.
      */
     private static Fixture keyChangeAlteredCase() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f K:ONE_SHARP " + OTHER + " " + F);
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f | K:ONE_SHARP " + OTHER + " " + F);
         var line = song.getLine(0);
-        var keyChange = (KeyChangeElement) line.getElement(1);
+        var keyChange = (KeyChangeElement) line.getElement(2);
 
         return new Fixture(song,
-            () -> line.modifyElement(1, ElementField.KEY, () -> keyChange.setKey(Key.ONE_FLAT)),
-            () -> line.modifyElement(1, ElementField.KEY, () -> keyChange.setKey(Key.ONE_SHARP)));
+            () -> line.modifyElement(2, ElementField.KEY, () -> keyChange.setKey(Key.ONE_FLAT)),
+            () -> line.modifyElement(2, ElementField.KEY, () -> keyChange.setKey(Key.ONE_SHARP)));
     }
 
     /**
@@ -233,7 +256,7 @@ class SongAccidentalWalkTest extends UnitTest {
      * change.
      */
     private static Fixture lineRemovalWithKeyChangeCase() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f", OTHER + " K:ONE_SHARP " + OTHER, OTHER + " " + F);
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f", OTHER + " | K:ONE_SHARP " + OTHER, OTHER + " " + F);
         var removedLine = song.getLine(1);
 
         return new Fixture(song,

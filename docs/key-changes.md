@@ -234,11 +234,14 @@ change, so a note the old key covered and the new one does not gains an
 accidental, and one the new key covers loses it, with nothing asked of the
 notator.
 
-Six edits move a key and owe that reach, and the interesting member of the set is
-the one that does not: **inserting a line moves no key**, because the new line is
-empty, so it inherits the key running into it and hands that same key straight on.
 Every edit that changes a key, writes or removes one, or brings one in from the
-clipboard is in; an edit that only changes what surrounds a key is not.
+clipboard moves a key and owes that reach; an edit that only changes what
+surrounds a key does not. The interesting member of the set is a line insertion,
+which is in or out by what the line brings: **inserting an empty line moves no
+key**, because the line inherits the key running into it and hands that same key
+straight on, while a line inserted with its own key, or with a key change on it —
+an undone removal brings such a line back — moves the key every later line
+inherits.
 
 The sequence that reach forces is written in one place, and an edit supplies only
 what it does to the line it lands on. Every line of a reach is described the same

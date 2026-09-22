@@ -41,47 +41,13 @@ import songscribe.engraving.StaffPosition;
  * intervening — are stated in {@link ChainedAccidental}'s class Javadoc, which is the contract
  * of {@link ChainType#decide}, and in {@code docs/accidentals.md}.
  *
- * <h2>The walk</h2>
- *
- * <p>A walk keeps: {@code key}, the key in force at the current element, seeded at the edit's
- * start from the nearest key change before it on its line, else the key the line starts in;
- * {@code inForce[p]}, what is in force at staff position {@code p}, seeded the first time the
- * walk meets {@code p} by scanning back from the edit's start for the nearest note at {@code p}
- * and taking its sounding — the scan stops at a key change or the start of a line with its own
- * key, and finding no note gives {@code key}'s alteration for {@code p}; {@code open}, the
- * positions whose next note is still to be decided, starting as the edit's vacated positions;
- * {@code previous}, the element before the current one skipping rests and breath marks, or
- * none at the start of a line; and {@code span}, the elements of the edited range plus the
- * first element at or after its end that is not a rest or a breath mark.
- *
- * <p>For each element {@code e} from the edit's start onward, in song order across lines:
- * <ol>
- * <li><em>Key change.</em> Meeting a key change, or entering a line with its own key, is a key
- *     change at that element. If {@code e} is the first element walked or lies in the edited
- *     range, {@code key} is set from it, every {@code inForce[p]} becomes its alteration for
- *     {@code p}, and the walk goes on. Otherwise the walk stops.</li>
- * <li><em>Note.</em> A note at position {@code p} is decided when it is
- *     {@link AccidentalState.Chosen Chosen} or {@link AccidentalState.Adopting Adopting},
- *     when {@code p} is in {@code open}, when the edit reaches the next key change, or when it
- *     is in {@code span}. Its sounding is {@code Chosen}'s alteration, {@code inForce[p]} for
- *     {@code Adopting}, and its own for a {@link ChainedAccidental}; its type is decided as
- *     above. A restamp is emitted when the note was {@code Chosen} or {@code Adopting}, or its
- *     stored type differs. Then a {@code Chosen} or {@code Adopting} note adds {@code p} to
- *     {@code open} and a decided {@code ChainedAccidental} note removes it; decided or not,
- *     {@code inForce[p]} becomes the note's sounding.</li>
- * <li><em>Advance.</em> Unless {@code e} is a rest or a breath mark, {@code previous} becomes
- *     {@code e}.</li>
- * <li><em>Stop</em> after {@code e} when {@code e} is at or past the end of {@code span},
- *     {@code open} is empty and the edit reaches only the untouched note, or at the end of
- *     the song.</li>
- * </ol>
- *
- * <p>Stopping early is sound because after any note the in-force alteration at its position
- * is that note's sounding: an edit's effect at a position ends with the first untouched note
- * there, whose sounding is what it was before the edit, so every later note at that position
- * is decided against what it was decided against before. A key change is the exception, since
- * the key's alteration feeds every note's state, and so an edit that moved a key walks on to
- * the next key change — {@link ChainEdit.Reach} names the two.
+ * <p>A walk decides the notes an edit can reach and no more, which is sound because after any
+ * note the in-force alteration at its position is that note's sounding: an edit's effect at a
+ * position ends with the first untouched note there, whose sounding is what it was before the
+ * edit, so every later note at that position is decided against what it was decided against
+ * before. A key change is the exception, since the key's alteration feeds every note's state,
+ * and so an edit that moved a key walks on to the next key change — {@link ChainEdit.Reach}
+ * names the two.
  *
  * <p>A static holder with no instances.
  */
@@ -111,7 +77,7 @@ public final class AccidentalChain {
     }
 
     /**
-     * Decides every note {@code edit} can reach in {@code song}, under the policy above.
+     * Decides every note {@code edit} can reach in {@code song}, under the rule in {@link ChainedAccidental}'s class Javadoc.
      *
      * <p>Every note in the edited range that is {@code Chosen} or {@code Adopting} is decided,
      * so a caller that applies the result leaves no such note on the line.
@@ -128,7 +94,7 @@ public final class AccidentalChain {
     }
 
     /**
-     * Decides every note {@code edit} can reach in {@code view}, under the policy above.
+     * Decides every note {@code edit} can reach in {@code view}, under the rule in {@link ChainedAccidental}'s class Javadoc.
      * {@link ProjectedEdit} is what pairs a projected view with the edit it projects.
      *
      * @param view the song the edit has landed in, or a projection of it as the edit will
@@ -188,7 +154,44 @@ public final class AccidentalChain {
         return restamps;
     }
 
-    /** One walk's state; see the class Javadoc for what each field keeps. */
+    /**
+     * One walk's state and its loop.
+     *
+     * <p>A walk keeps: {@code key}, the key in force at the current element, seeded at the
+     * edit's start from the nearest key change before it on its line, else the key the line
+     * starts in; {@code inForce[p]}, what is in force at staff position {@code p}, seeded the
+     * first time the walk meets {@code p} by scanning back from the edit's start for the nearest
+     * note at {@code p} and taking its sounding — the scan stops at a key change or the start of
+     * a line with its own key, and finding no note gives {@code key}'s alteration for {@code p};
+     * {@code open}, the positions whose next note is still to be decided, starting as the edit's
+     * vacated positions; {@code previous}, the element before the current one skipping rests
+     * and breath marks, or none at the start of a line; and {@code span}, the elements of the
+     * edited range plus the first element at or after its end that is not a rest or a breath
+     * mark.
+     *
+     * <p>For each element {@code e} from the edit's start onward, in song order across lines:
+     * <ol>
+     * <li><em>Key change.</em> Meeting a key change, or entering a line with its own key, is a
+     *     key change at that element. If {@code e} is the first element walked or lies in the
+     *     edited range, {@code key} is set from it, every {@code inForce[p]} becomes its
+     *     alteration for {@code p}, and the walk goes on. Otherwise the walk stops.</li>
+     * <li><em>Note.</em> A note at position {@code p} is decided when it is
+     *     {@link AccidentalState.Chosen Chosen} or {@link AccidentalState.Adopting Adopting},
+     *     when {@code p} is in {@code open}, when the edit reaches the next key change, or when
+     *     it is in {@code span}. Its sounding is {@code Chosen}'s alteration, {@code inForce[p]}
+     *     for {@code Adopting}, and its own for a {@link ChainedAccidental}; its type is decided
+     *     by {@link ChainType#decide}. A restamp is emitted when the note was {@code Chosen} or
+     *     {@code Adopting}, or its stored type differs. Then a {@code Chosen} or
+     *     {@code Adopting} note adds {@code p} to {@code open} and a decided
+     *     {@code ChainedAccidental} note removes it; decided or not, {@code inForce[p]} becomes
+     *     the note's sounding.</li>
+     * <li><em>Advance.</em> Unless {@code e} is a rest or a breath mark, {@code previous}
+     *     becomes {@code e}.</li>
+     * <li><em>Stop</em> after {@code e} when {@code e} is at or past the end of {@code span},
+     *     {@code open} is empty and the edit reaches only the untouched note, or at the end of
+     *     the song.</li>
+     * </ol>
+     */
     private static final class Walk {
 
         private final AccidentalScanView view;

@@ -298,6 +298,8 @@ public final class Line implements EditableRun {
      * Returns the key in force just before {@code index}: {@link #getRunningKey()}, overridden
      * by the last {@link KeyChangeElement} at an index below {@code index}. An element inserted
      * at {@code index} is in this key, and a key change standing at {@code index} is not counted.
+     * Index 0 never holds a key change — see {@link KeyChangeElement}'s position invariant — so
+     * {@code keyBefore(1)} equals {@code keyBefore(0)}.
      *
      * @param index an insertion index, {@code 0..}{@link #elementCount()}
      * @return the key in force just before that index; {@link #getRunningKey()} at 0
