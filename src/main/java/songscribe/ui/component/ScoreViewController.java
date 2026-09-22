@@ -1211,7 +1211,7 @@ public final class ScoreViewController {
         // range running past it, which can leave a later key change on this same line restating
         // it. keyAt's bound is inclusive, so it is asked one index below the range; index 0 can
         // hold no key change, so asking about it is the same question.
-        var keyAfterRemoval = line.keyAt(Math.max(range.begin() - 1, 0));
+        var keyAfterRemoval = line.keyBefore(range.begin());
         var strandedAfter = line.redundantKeyChangeRanges(range.end() + 1, keyAfterRemoval);
 
         return KeyChangeStranding.ofMidLineEdit(
@@ -1365,7 +1365,7 @@ public final class ScoreViewController {
         // The key the fragment's first element lands in. keyAt's bound is inclusive, so it is
         // asked one index lower — index 0 can hold no key change, so asking about it is the
         // same question.
-        var keyAtInsertion = line.keyAt(Math.max(insertIndex - 1, 0));
+        var keyAtInsertion = line.keyBefore(insertIndex);
 
         // Fresh clones every paste — the stored fragment is never itself inserted.
         // Instantiated before any mutation because the span reconciliation below decides

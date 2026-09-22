@@ -19,15 +19,15 @@
  */
 package songscribe.dom;
 
-import java.util.List;
-
 import org.jspecify.annotations.Nullable;
 
 /**
  * The song as the chain walk reads it: its lines by index, the elements on each, and the key
  * each line establishes of its own. {@link AccidentalChain} reads nothing about the song
  * except through one of these, so a walk over the live song and a walk over a projection of
- * an edit that has not happened yet cannot disagree about a note.
+ * an edit that has not happened yet cannot disagree about a note. {@link Live} is the song as
+ * it stands; {@link ProjectedEdit} holds the one projection, so that a projected view is never
+ * paired with an edit on another line.
  *
  * <p>The key a line starts in is never answered here. The walk asks it only of the line an edit
  * starts on, and a projection changes neither that line's own key nor any line before it, so the
@@ -37,7 +37,7 @@ import org.jspecify.annotations.Nullable;
  * <p>Every method takes a line index in {@code 0..lineCount() - 1}; a view is never asked
  * about a line outside its song.
  */
-public interface AccidentalScanView {
+interface AccidentalScanView {
 
     /**
      * How many lines the song has.
@@ -111,48 +111,6 @@ public interface AccidentalScanView {
         @Override
         public @Nullable Key ownKey(int lineIndex) {
             return song.getLine(lineIndex).getKey();
-        }
-    }
-
-    /**
-     * The live song with the elements of one line replaced by what an edit will leave there.
-     * Every other line, and the projected line's own key, read as they stand.
-     * {@link ProjectedEdit} builds one together with the edit it projects.
-     *
-     * @param song      the song viewed
-     * @param lineIndex the index of the line the edit changes
-     * @param elements  the elements that line will hold once the edit lands
-     */
-    record Projected(Song song, int lineIndex, List<? extends StaffElement> elements)
-        implements AccidentalScanView {
-
-        public Projected {
-            elements = List.copyOf(elements);
-        }
-
-        @Override
-        public int lineCount() {
-            return song.lineCount();
-        }
-
-        @Override
-        public Line line(int index) {
-            return song.getLine(index);
-        }
-
-        @Override
-        public int elementCount(int index) {
-            return (index == lineIndex) ? elements.size() : song.getLine(index).elementCount();
-        }
-
-        @Override
-        public StaffElement elementAt(int index, int elementIndex) {
-            return (index == lineIndex) ? elements.get(elementIndex) : song.getLine(index).getElement(elementIndex);
-        }
-
-        @Override
-        public @Nullable Key ownKey(int index) {
-            return song.getLine(index).getKey();
         }
     }
 }

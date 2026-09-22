@@ -37,33 +37,9 @@ import songscribe.engraving.StaffPosition;
  * song after a recorded change and a walk over a projection of an edit that has not landed
  * both come here, so an edit's preview and its result cannot disagree about a note.
  *
- * <h2>The policy</h2>
- *
- * <p><b>In force.</b> A written accidental stays in force at its staff position until an
- * accidental written at that position replaces it or a key change ends it. Barlines, repeats,
- * line breaks, rests, breath marks and notes at other positions change nothing about what is
- * in force. Where nothing is in force a note sounds its key's alteration for its pitch class,
- * {@link Accidental#NATURAL} when the key does not alter it. After any note, what is in force
- * at its position is that note's sounding alteration, whatever its state.
- *
- * <p><b>Chain.</b> The notes at one staff position from an anchor up to, and not including,
- * the next anchor or cancel at that position, or the next key change. A chain crosses
- * barlines, repeats and line breaks; its notes need not be adjacent.
- *
- * <p><b>Intervening.</b> Something intervenes before a note when the element immediately
- * before it, skipping rests and breath marks, is a note or grace note at another staff
- * position, a barline or a repeat, or when nothing but rests and breath marks stands before
- * it on its line. A tie changes nothing.
- *
- * <p><b>The five states</b> are decided for every note from its <em>sounding</em>
- * alteration, what is <em>in force</em> before it at its position, and the <em>key's</em>
- * alteration for its pitch class, by {@link ChainType#decide}:
- * {@link ChainType#IN_KEY} when sounding equals the key's and the key's is in force;
- * {@link ChainType#ANCHOR} when sounding differs from what is in force and from the key's;
- * {@link ChainType#CANCEL} when sounding differs from what is in force and equals the key's;
- * {@link ChainType#REPETITION} when sounding equals what is in force, which differs from the
- * key's, and something intervenes; {@link ChainType#IMPLICIT} when the same holds and nothing
- * intervenes. Anchors, cancels and repetitions are written; the other two are not.
+ * <p>The five states, and the concepts they rest on — what is in force, a chain, and something
+ * intervening — are stated in {@link ChainedAccidental}'s class Javadoc, which is the contract
+ * of {@link ChainType#decide}, and in {@code docs/accidentals.md}.
  *
  * <h2>The walk</h2>
  *
@@ -86,25 +62,26 @@ import songscribe.engraving.StaffPosition;
  *     on. Otherwise the walk stops.</li>
  * <li><em>Note.</em> A note at position {@code p} is decided when it is
  *     {@link AccidentalState.Chosen Chosen} or {@link AccidentalState.Adopting Adopting},
- *     when {@code p} is in {@code open}, when the edit rekeys, or when it is in {@code span}.
- *     Its sounding is {@code Chosen}'s alteration, {@code inForce[p]} for {@code Adopting},
- *     and its own for {@link AccidentalState.Stamped Stamped}; its type is decided as above.
- *     A restamp is emitted when the note was {@code Chosen} or {@code Adopting}, or its stored
- *     type differs. Then a {@code Chosen} or {@code Adopting} note adds {@code p} to
- *     {@code open} and a decided {@code Stamped} note removes it; decided or not,
+ *     when {@code p} is in {@code open}, when the edit reaches the next key change, or when it
+ *     is in {@code span}. Its sounding is {@code Chosen}'s alteration, {@code inForce[p]} for
+ *     {@code Adopting}, and its own for a {@link ChainedAccidental}; its type is decided as
+ *     above. A restamp is emitted when the note was {@code Chosen} or {@code Adopting}, or its
+ *     stored type differs. Then a {@code Chosen} or {@code Adopting} note adds {@code p} to
+ *     {@code open} and a decided {@code ChainedAccidental} note removes it; decided or not,
  *     {@code inForce[p]} becomes the note's sounding.</li>
  * <li><em>Advance.</em> Unless {@code e} is a rest or a breath mark, {@code previous} becomes
  *     {@code e}.</li>
  * <li><em>Stop</em> after {@code e} when {@code e} is at or past the end of {@code span},
- *     {@code open} is empty and the edit does not rekey, or at the end of the song.</li>
+ *     {@code open} is empty and the edit reaches only the untouched note, or at the end of
+ *     the song.</li>
  * </ol>
  *
  * <p>Stopping early is sound because after any note the in-force alteration at its position
  * is that note's sounding: an edit's effect at a position ends with the first untouched note
  * there, whose sounding is what it was before the edit, so every later note at that position
  * is decided against what it was decided against before. A key change is the exception, since
- * the key's alteration feeds every note's state, and so a rekeying edit walks on to the next
- * key change.
+ * the key's alteration feeds every note's state, and so an edit that moved a key walks on to
+ * the next key change — {@link ChainEdit.Reach} names the two.
  *
  * <p>A static holder with no instances.
  */
@@ -121,39 +98,78 @@ public final class AccidentalChain {
      * @param state the state the note is decided to have
      */
     public record Restamp(Line line, NoteElement note, ChainedAccidental state) {
+
+        /**
+         * Gives the note the decided state, plainly: nothing is recorded, so a caller inside a
+         * modification bracket passes this as the mutator of {@link Line#modifyElement}.
+         *
+         * @effects {@code note.accidentalState()} is {@code state} afterwards
+         */
+        public void stamp() {
+            note.setAccidentalState(state);
+        }
     }
 
     /**
-     * Decides every note {@code edit} can reach in {@code view}, under the policy above.
+     * Decides every note {@code edit} can reach in {@code song}, under the policy above.
      *
      * <p>Every note in the edited range that is {@code Chosen} or {@code Adopting} is decided,
      * so a caller that applies the result leaves no such note on the line.
      *
-     * @param view the song the edit has landed in, or a projection of it as the edit will
-     *             leave it
-     * @param edit the edit, in {@code view}'s coordinates
+     * @param song the song the edit has landed in
+     * @param edit the edit, in {@code song}'s coordinates
      * @return the restamps, in song order, so that applying them left to right leaves every
      *     note stamped as decided; empty when no note's state changes
-     * @invariant every restamp names a note {@code view} holds, on the live line it is on or
-     *     is about to land on
+     * @invariant every restamp names a note {@code song} holds, on the live line it is on
      * @invariant no restamp names a note before the edit's start
      */
-    public static List<Restamp> walk(AccidentalScanView view, ChainEdit edit) {
-        return new Walk(view, edit).run();
+    public static List<Restamp> walk(Song song, ChainEdit edit) {
+        return walk(new AccidentalScanView.Live(song), edit);
     }
 
     /**
-     * Decides every note in {@code view}, for the load pass: walks from the song's first
-     * element, and again from every key change and every line with its own key, each walk
-     * rekeying so that it decides every note up to the next key change.
+     * Decides every note {@code edit} can reach in {@code view}, under the policy above.
+     * {@link ProjectedEdit} is what pairs a projected view with the edit it projects.
      *
-     * @param view the song to decide
+     * @param view the song the edit has landed in, or a projection of it as the edit will
+     *             leave it
+     * @param edit the edit, in {@code view}'s coordinates
+     * @return the restamps, as {@link #walk(Song, ChainEdit)} answers them
+     * @invariant every restamp names a note {@code view} holds, on the live line it is on or
+     *     is about to land on
+     */
+    static List<Restamp> walk(AccidentalScanView view, ChainEdit edit) {
+        // A removal at the end of the song, or of its last line, starts one past every element.
+        var first = existingAtOrAfter(view, edit.start());
+        return (first == null) ? List.of() : new Walk(view, edit, first).run();
+    }
+
+    /** The first place at or after {@code cursor} that holds an element, or null at the end of the song. */
+    private static @Nullable Cursor existingAtOrAfter(AccidentalScanView view, Cursor cursor) {
+        var lineIndex = cursor.lineIndex();
+        var index = cursor.index();
+
+        while ((lineIndex < view.lineCount()) && (index >= view.elementCount(lineIndex))) {
+            lineIndex++;
+            index = 0;
+        }
+
+        return (lineIndex < view.lineCount()) ? new Cursor(lineIndex, index) : null;
+    }
+
+    /**
+     * Decides every note in {@code song}, for the load pass: walks from the song's first
+     * element, and again from every key change and every line with its own key, each walk
+     * reaching the next key change so that it decides every note up to there.
+     *
+     * @param song the song to decide
      * @return the restamps, in song order, so that applying them left to right leaves every
      *     note in the song stamped as decided
-     * @invariant afterwards every {@code Chosen} or {@code Adopting} note in {@code view} has a
+     * @invariant afterwards every {@code Chosen} or {@code Adopting} note in {@code song} has a
      *     restamp
      */
-    public static List<Restamp> walkSong(AccidentalScanView view) {
+    public static List<Restamp> walkSong(Song song) {
+        var view = new AccidentalScanView.Live(song);
         var restamps = new ArrayList<Restamp>();
         var first = true;
 
@@ -162,7 +178,7 @@ public final class AccidentalChain {
                 var startsOwnKey = (index == 0) && (view.ownKey(lineIndex) != null);
 
                 if (first || startsOwnKey || (view.elementAt(lineIndex, index) instanceof KeyChangeElement)) {
-                    restamps.addAll(walk(view, new ChainEdit(lineIndex, index, index, Set.of(), true)));
+                    restamps.addAll(walk(view, ChainEdit.rekeyingFrom(new Cursor(lineIndex, index))));
                 }
 
                 first = false;
@@ -172,28 +188,15 @@ public final class AccidentalChain {
         return restamps;
     }
 
-    /** A place in the song: an index on a line, ordered in song order. */
-    private record Cursor(int lineIndex, int index) implements Comparable<Cursor> {
-
-        @Override
-        public int compareTo(Cursor other) {
-            var byLine = Integer.compare(lineIndex, other.lineIndex);
-            return (byLine != 0) ? byLine : Integer.compare(index, other.index);
-        }
-
-        Cursor next() {
-            return new Cursor(lineIndex, index + 1);
-        }
-    }
-
     /** One walk's state; see the class Javadoc for what each field keeps. */
     private static final class Walk {
 
         private final AccidentalScanView view;
-        private final ChainEdit edit;
         private final Cursor rangeStart;
         private final Cursor rangeEnd;
         private final @Nullable Cursor spanEnd;
+        private final Cursor firstWalked;
+        private final boolean reachesNextKeyChange;
         private final Map<StaffPosition, Accidental> inForce = new HashMap<>();
         private final Set<StaffPosition> open;
         private final List<Restamp> restamps = new ArrayList<>();
@@ -201,25 +204,23 @@ public final class AccidentalChain {
         private boolean inForceIsKey = false;
         private @Nullable StaffElement previous;
 
-        Walk(AccidentalScanView view, ChainEdit edit) {
+        /**
+         * @param firstWalked the first place at or after the edit's start that holds an element
+         */
+        Walk(AccidentalScanView view, ChainEdit edit, Cursor firstWalked) {
             this.view = view;
-            this.edit = edit;
-            rangeStart = new Cursor(edit.lineIndex(), edit.from());
-            rangeEnd = new Cursor(edit.lineIndex(), edit.to());
+            this.firstWalked = firstWalked;
+            rangeStart = edit.start();
+            rangeEnd = edit.end();
             spanEnd = firstUnskippedAtOrAfter(rangeEnd);
+            reachesNextKeyChange = (edit.reach() == ChainEdit.Reach.TO_NEXT_KEY_CHANGE);
             open = new HashSet<>(edit.vacated());
-            key = Key.DEFAULT;
+            key = keyBefore(rangeStart);
+            previous = previousBefore(rangeStart);
         }
 
         List<Restamp> run() {
-            var cursor = existingAtOrAfter(rangeStart);
-
-            if (cursor == null) {
-                return restamps;
-            }
-
-            key = keyBefore(rangeStart);
-            previous = previousBefore(rangeStart);
+            var cursor = firstWalked;
             var first = true;
 
             while (cursor != null) {
@@ -269,16 +270,16 @@ public final class AccidentalChain {
             var state = note.accidentalState();
             var current = inForceAt(position);
             var sounding = switch (state) {
-                case AccidentalState.Stamped stamped -> stamped.chained().accidental();
+                case ChainedAccidental chained -> chained.accidental();
                 case AccidentalState.Chosen chosen -> chosen.sounding();
                 case AccidentalState.Adopting _ -> current;
             };
-            var stamped = (state instanceof AccidentalState.Stamped);
-            var decided = !stamped || open.contains(position) || edit.rekeys() || inSpan(cursor);
+            var stamped = (state instanceof ChainedAccidental);
+            var decided = !stamped || open.contains(position) || reachesNextKeyChange || inSpan(cursor);
 
             if (decided) {
-                var type = ChainType.decide(sounding, current, key.alterationFor(pitchClassOf(position)), intervenes(position));
-                var stored = (state instanceof AccidentalState.Stamped stampedState) ? stampedState.chained().type() : null;
+                var type = ChainType.decide(sounding, current, key.alterationAt(position), intervenes(position));
+                var stored = (state instanceof ChainedAccidental chained) ? chained.type() : null;
 
                 if (stored != type) {
                     restamps.add(new Restamp(view.line(cursor.lineIndex()), note, new ChainedAccidental(sounding, type)));
@@ -309,7 +310,7 @@ public final class AccidentalChain {
         }
 
         private boolean stopsAfter(Cursor cursor) {
-            if (edit.rekeys() || !open.isEmpty()) {
+            if (reachesNextKeyChange || !open.isEmpty()) {
                 return false;
             }
 
@@ -374,23 +375,16 @@ public final class AccidentalChain {
         }
 
         private Accidental keyAlterationFor(StaffPosition position) {
-            return key.alterationFor(pitchClassOf(position));
+            return key.alterationAt(position);
         }
 
-        /** The key in force just before {@code cursor}: the nearest key change before it on its line, else the key the line starts in. */
+        /**
+         * The key in force just before {@code cursor}, read from the live line: a projection
+         * changes nothing before the edit's start, so the live line's key changes there are the
+         * view's.
+         */
         private Key keyBefore(Cursor cursor) {
-            var keyChange = lastKeyChangeBefore(cursor.lineIndex(), cursor.index());
-            return (keyChange != null) ? keyChange : view.line(cursor.lineIndex()).getRunningKey();
-        }
-
-        private @Nullable Key lastKeyChangeBefore(int lineIndex, int endExclusive) {
-            for (var index = endExclusive - 1; index >= 0; index--) {
-                if (view.elementAt(lineIndex, index) instanceof KeyChangeElement keyChange) {
-                    return keyChange.getKey();
-                }
-            }
-
-            return null;
+            return view.line(cursor.lineIndex()).keyBefore(cursor.index());
         }
 
         private @Nullable StaffElement previousBefore(Cursor cursor) {
@@ -415,26 +409,12 @@ public final class AccidentalChain {
             return found;
         }
 
-        /** The first place at or after {@code cursor} that holds an element, or null at the end of the song. */
         private @Nullable Cursor existingAtOrAfter(Cursor cursor) {
-            var lineIndex = cursor.lineIndex();
-            var index = cursor.index();
-
-            while ((lineIndex < view.lineCount()) && (index >= view.elementCount(lineIndex))) {
-                lineIndex++;
-                index = 0;
-            }
-
-            return (lineIndex < view.lineCount()) ? new Cursor(lineIndex, index) : null;
+            return AccidentalChain.existingAtOrAfter(view, cursor);
         }
 
         private static boolean skipped(StaffElement element) {
-            var type = element.getType();
-            return type.isRest() || type.isBreathMark();
-        }
-
-        private static PitchClass pitchClassOf(StaffPosition position) {
-            return PitchClass.at(position.value());
+            return element.getType().isTransparentInChain();
         }
     }
 }

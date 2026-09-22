@@ -22,6 +22,8 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
@@ -31,13 +33,48 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * <p>A gated edit walks the accidental chains over the song as the edit will leave it before
  * anything commits, and that walk reads two descriptions of the one edit — the song with the
  * line's elements swapped, and where on the line the swap stands. Both are derived here from the
- * live line and the swap, so the walk is never handed a projection of one line and an edit on
- * another.
+ * live line and the swap, and the projected view exists nowhere else, so the walk is never
+ * handed a projection of one line and an edit on another.
  *
  * <p>Built before the edit and read before it commits: the removed elements and the projected
  * list are taken from the line when this is built.
  */
 public final class ProjectedEdit {
+
+    /**
+     * The live song with the elements of one line replaced by what the edit will leave there.
+     * Every other line, and the projected line's own key, read as they stand.
+     */
+    private final class Projected implements AccidentalScanView {
+
+        private final Song song = line.getSong();
+        private final int lineIndex = line.index();
+
+        @Override
+        public int lineCount() {
+            return song.lineCount();
+        }
+
+        @Override
+        public Line line(int index) {
+            return song.getLine(index);
+        }
+
+        @Override
+        public int elementCount(int index) {
+            return (index == lineIndex) ? elements.size() : song.getLine(index).elementCount();
+        }
+
+        @Override
+        public StaffElement elementAt(int index, int elementIndex) {
+            return (index == lineIndex) ? elements.get(elementIndex) : song.getLine(index).getElement(elementIndex);
+        }
+
+        @Override
+        public @Nullable Key ownKey(int index) {
+            return song.getLine(index).getKey();
+        }
+    }
 
     private final Line line;
     private final int index;
@@ -106,10 +143,6 @@ public final class ProjectedEdit {
      * @return the restamps {@link AccidentalChain#walk} decides for the edit
      */
     public List<AccidentalChain.Restamp> walk() {
-        var lineIndex = line.index();
-
-        return AccidentalChain.walk(
-            new AccidentalScanView.Projected(line.getSong(), lineIndex, elements),
-            ChainEdit.replaced(lineIndex, index, removed, inserted));
+        return AccidentalChain.walk(new Projected(), ChainEdit.replaced(new Cursor(line.index(), index), removed, inserted));
     }
 }

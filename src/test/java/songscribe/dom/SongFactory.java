@@ -81,7 +81,7 @@ public final class SongFactory {
      * has to start stamped.
      *
      * @param builders one per line, in song order
-     * @return the song, every note {@link AccidentalState.Stamped Stamped}
+     * @return the song, every note holding a {@link ChainedAccidental}
      */
     public static Song buildSong(LineBuilder... builders) {
         var song = new Song();
@@ -120,7 +120,7 @@ public final class SongFactory {
      * @param startingKey the key the first line establishes
      * @param notations   one compact notation per line, in song order; see
      *                    {@link #addCompactElements} for the grammar
-     * @return the song, every note {@link AccidentalState.Stamped Stamped}
+     * @return the song, every note holding a {@link ChainedAccidental}
      */
     public static Song compactSong(Key startingKey, String... notations) {
         var builders = new LineBuilder[notations.length];

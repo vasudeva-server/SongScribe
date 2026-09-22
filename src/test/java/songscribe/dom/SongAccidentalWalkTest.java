@@ -65,7 +65,7 @@ class SongAccidentalWalkTest extends UnitTest {
         var before = snapshot(song);
 
         song.withModification(edit);
-        assertThat(AccidentalChain.walkSong(new AccidentalScanView.Live(song)))
+        assertThat(AccidentalChain.walkSong(song))
             .as("the recorded edit already leaves every note as a fresh walk would decide it")
             .isEmpty();
 

@@ -401,10 +401,10 @@ public final class NoteElement extends StaffElement implements Dottable {
      * Returns the chain walk's decision for this note.
      *
      * @return the chained accidental
-     * @throws IllegalStateException unless the note is {@link AccidentalState.Stamped}
+     * @throws IllegalStateException unless the walk has decided the note
      */
     public ChainedAccidental chainedAccidental() {
-        if (accidentalState instanceof AccidentalState.Stamped(var chained)) {
+        if (accidentalState instanceof ChainedAccidental chained) {
             return chained;
         }
 
@@ -421,7 +421,7 @@ public final class NoteElement extends StaffElement implements Dottable {
      */
     public Accidental soundingAccidental() {
         return switch (accidentalState) {
-            case AccidentalState.Stamped(var chained) -> chained.accidental();
+            case ChainedAccidental chained -> chained.accidental();
             case AccidentalState.Chosen(var sounding) -> sounding;
             case AccidentalState.Adopting _ -> throw new IllegalStateException(
                 "An adopting note has no sounding accidental: " + this);
@@ -437,8 +437,7 @@ public final class NoteElement extends StaffElement implements Dottable {
      */
     public @Nullable Accidental drawnAccidental() {
         return switch (accidentalState) {
-            case AccidentalState.Stamped(var chained) ->
-                chained.isWritten() ? chained.accidental() : null;
+            case ChainedAccidental chained -> chained.isWritten() ? chained.accidental() : null;
             case AccidentalState.Chosen(var sounding) -> sounding;
             case AccidentalState.Adopting _ -> null;
         };

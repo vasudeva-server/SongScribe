@@ -26,6 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.engraving.EngravingConstants;
+import songscribe.engraving.StaffPosition;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.Copyable;
@@ -212,6 +213,17 @@ public enum Key implements Copyable<Key> {
      */
     public Accidental alterationFor(PitchClass pitchClass) {
         return altersPitchClass(pitchClass) ? signatureAccidental() : Accidental.NATURAL;
+    }
+
+    /**
+     * The alteration this key applies to the pitch class written at {@code position}:
+     * {@link #alterationFor} of {@link PitchClass#at}.
+     *
+     * @param position a staff position
+     * @return the alteration, NATURAL where the key does not alter that pitch class
+     */
+    public Accidental alterationAt(StaffPosition position) {
+        return alterationFor(PitchClass.at(position.value()));
     }
 
     /**

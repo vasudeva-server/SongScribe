@@ -19,7 +19,6 @@
  */
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
 
 /**
  * A pitch as the staff writes it: a pitch class and an octave, with no accidental. This is
@@ -66,12 +65,12 @@ public record DiatonicPitch(PitchClass pitchClass, int octave) {
     /**
      * Returns the MIDI note number this pitch sounds as when altered by {@code accidental}.
      *
-     * @param accidental the accidental in effect, or null when the pitch sounds natural
+     * @param accidental the accidental in effect
      * @return the MIDI note number
      */
-    public int midi(@Nullable Accidental accidental) {
+    public int midi(Accidental accidental) {
         return (octave + MIDI_OCTAVE_ORIGIN) * SEMITONES_PER_OCTAVE
             + pitchClass.semitone()
-            + Accidental.semitoneAdjustmentOf(accidental);
+            + accidental.semitones();
     }
 }

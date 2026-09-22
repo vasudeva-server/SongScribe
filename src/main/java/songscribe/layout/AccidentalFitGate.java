@@ -144,7 +144,7 @@ public final class AccidentalFitGate {
             var note = restamp.note();
             var prior = note.accidentalState();
             var drawnBefore = note.drawnAccidental();
-            note.setAccidentalState(new AccidentalState.Stamped(restamp.state()));
+            restamp.stamp();
             var drawnChanged = !Objects.equals(drawnBefore, note.drawnAccidental());
             stamped.add(new Stamped(restamp.line(), note, prior, drawnChanged));
         }

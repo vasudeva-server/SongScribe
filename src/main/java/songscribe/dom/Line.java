@@ -291,7 +291,20 @@ public final class Line implements EditableRun {
             );
         }
 
-        for (var scanIndex = Math.min(elementIndex, elements.size() - 1); scanIndex > 0; scanIndex--) {
+        return keyBefore(Math.min(elementIndex + 1, elements.size()));
+    }
+
+    /**
+     * Returns the key in force just before {@code index}: {@link #getRunningKey()}, overridden
+     * by the last {@link KeyChangeElement} at an index below {@code index}. An element inserted
+     * at {@code index} is in this key, and a key change standing at {@code index} is not counted.
+     *
+     * @param index an insertion index, {@code 0..}{@link #elementCount()}
+     * @return the key in force just before that index; {@link #getRunningKey()} at 0
+     * @invariant {@code keyBefore(elementCount())} equals {@link #keyAtEndOfLine()}
+     */
+    public Key keyBefore(int index) {
+        for (var scanIndex = index - 1; scanIndex > 0; scanIndex--) {
             if (elements.get(scanIndex) instanceof KeyChangeElement keyChange) {
                 return keyChange.getKey();
             }
@@ -335,9 +348,7 @@ public final class Line implements EditableRun {
             return survivingKey;
         }
 
-        var begin = range.begin();
-
-        return begin > 0 ? keyAt(begin - 1) : getRunningKey();
+        return keyBefore(range.begin());
     }
 
     /**

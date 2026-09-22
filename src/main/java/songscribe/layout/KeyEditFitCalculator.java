@@ -373,7 +373,7 @@ public final class KeyEditFitCalculator {
         Line line, int index, Key key, ElementColumnBuilder columnBuilder) {
 
         return columnBuilder.buildDetachedColumn(
-            KeyChangeElement.forMeasurement(key, line.keyAt(index - 1)),
+            KeyChangeElement.forMeasurement(key, line.keyBefore(index)),
             line.getSong().getActiveVerse());
     }
 }

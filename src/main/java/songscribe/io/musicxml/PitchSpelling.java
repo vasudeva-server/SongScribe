@@ -92,6 +92,6 @@ public final class PitchSpelling {
      * sounds correct whether or not the note shows a visible accidental.
      */
     public static int soundingAlterFor(NoteElement note) {
-        return Accidental.semitoneAdjustmentOf(note.soundingAccidental());
+        return note.soundingAccidental().semitones();
     }
 }

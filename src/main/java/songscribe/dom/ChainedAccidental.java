@@ -45,15 +45,16 @@ import java.util.Objects;
  *       key's, and nothing intervenes. Not written.</li>
  * </ul>
  *
- * <p>The constructor is package-private so that only {@code AccidentalChain}, in this package,
- * constructs one, which is what makes every instance a decision of the rule rather than a value
- * some caller chose. That restriction is why this is a final class rather than a record: an
- * explicitly declared canonical constructor must be at least as accessible as the record class
- * (JLS §8.10.4), so a public record cannot restrict who constructs it.
+ * <p>This is the {@link AccidentalState} of a note the walk has decided. The constructor is
+ * package-private so that only {@code AccidentalChain}, in this package, constructs one, which
+ * is what makes every instance a decision of the rule rather than a value some caller chose.
+ * That restriction is why this is a final class rather than a record: an explicitly declared
+ * canonical constructor must be at least as accessible as the record class (JLS §8.10.4), so a
+ * public record cannot restrict who constructs it.
  *
  * <p>Immutable; two instances are equal when their accidentals and types are.
  */
-public final class ChainedAccidental {
+public final class ChainedAccidental implements AccidentalState {
 
     /**
      * The place a note holds in the accidental chain at its staff position, and with it whether
@@ -82,11 +83,7 @@ public final class ChainedAccidental {
         }
 
         /**
-         * Decides a note's state from the rule in the class Javadoc. Equal sounding and in force
-         * gives {@link #IN_KEY} when the key's alteration is in force, else {@link #REPETITION}
-         * when something intervenes and {@link #IMPLICIT} when nothing does; differing sounding
-         * and in force gives {@link #CANCEL} when sounding equals the key's alteration, else
-         * {@link #ANCHOR}.
+         * Decides a note's state under the rule in the class Javadoc.
          *
          * @param sounding      the alteration the note sounds
          * @param inForce       the alteration in force at the note's staff position before it;

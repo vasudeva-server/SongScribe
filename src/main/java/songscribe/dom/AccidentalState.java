@@ -25,24 +25,16 @@ package songscribe.dom;
  * pitch of its own yet.
  *
  * <p>A note is constructed {@link Adopting}. The song runs the chain walk after every recorded
- * change, so a note on a line of a song is {@link Stamped} except while a file is being read —
- * the load pass stamps every note at its end — and within the one {@code Song.applyChange} call
- * that set its intent. {@link Chosen} and {@link Adopting} otherwise live on notes not on a
- * line: the preview note, a selection action's stand-in, a detached replacement. A gate that
- * measures such a note for fit may stamp it plainly.
+ * change, so a note on a line of a song holds a {@link ChainedAccidental} except while a file is
+ * being read — the load pass stamps every note at its end — and within the one
+ * {@code Song.applyChange} call that set its intent. {@link Chosen} and {@link Adopting}
+ * otherwise live on notes not on a line: the preview note, a selection action's stand-in, a
+ * detached replacement. A gate that measures such a note for fit may stamp it plainly.
  *
- * <p>Only {@link Adopting} has no sounding alteration: a {@link Stamped} note sounds its chained
- * accidental's alteration and a {@link Chosen} note sounds what it was pitched with.
+ * <p>Only {@link Adopting} has no sounding alteration: a {@link ChainedAccidental} sounds its
+ * alteration and a {@link Chosen} note sounds what it was pitched with.
  */
-public sealed interface AccidentalState {
-
-    /**
-     * The chain walk has decided this note.
-     *
-     * @param chained the walk's decision: the alteration the note sounds and its place in its
-     *                chain
-     */
-    record Stamped(ChainedAccidental chained) implements AccidentalState {}
+public sealed interface AccidentalState permits ChainedAccidental, AccidentalState.Chosen, AccidentalState.Adopting {
 
     /**
      * Pitched by the notator, a selection action or a file; not yet walked.

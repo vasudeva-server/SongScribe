@@ -415,7 +415,7 @@ public final class InsertionSpacingCalculator {
         // knows it: the key in effect just before the insertion point, moved on by each key
         // change the fragment itself carries. Each one is measured through a stand-in told that
         // key, so a pasted or inserted signature reserves the room its naturals actually need.
-        var runningKey = insertIndex >= 1 ? line.keyAt(insertIndex - 1) : line.getRunningKey();
+        var runningKey = line.keyBefore(insertIndex);
 
         for (var element : fragment) {
             var measured = element;

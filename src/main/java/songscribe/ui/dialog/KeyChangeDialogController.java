@@ -287,7 +287,7 @@ public final class KeyChangeDialogController extends DocumentDialogController<Ke
      */
     private void changeMidLineKey(Key key) {
         var keyChange = site.boundKeyChange();
-        var keyBefore = line.keyAt(elementIndex - 1);
+        var keyBefore = line.keyBefore(elementIndex);
         var strandsItself = key == keyBefore;
         var ownRange = line.effectiveRange(StaffElementRun.ElementRange.single(elementIndex));
 

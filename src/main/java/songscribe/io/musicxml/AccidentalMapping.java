@@ -30,7 +30,7 @@ import songscribe.dom.Accidental;
  * their MusicXML {@code <accidental>} glyph token.
  *
  * <p>The sounding {@code <alter>} semitone is <b>not</b> kept here: it is derived
- * from {@link songscribe.dom.Accidental#semitoneAdjustmentOf} (the same source
+ * from {@link Accidental#semitones()} (the same source
  * playback uses) via {@link PitchSpelling}, so there is a single source of truth
  * for the alteration.
  *

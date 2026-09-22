@@ -444,6 +444,14 @@ public enum ElementType {
     }
 
     /**
+     * Whether the chain walk looks through this element when deciding what intervenes before a
+     * note: a rest or a breath mark.
+     */
+    public boolean isTransparentInChain() {
+        return isRest() || isBreathMark();
+    }
+
+    /**
      * @return {@code true} for the mid-line key change type
      */
     public boolean isKeyChange() {

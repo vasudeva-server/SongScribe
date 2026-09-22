@@ -200,7 +200,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      *
      * @param element a stamped note
      * @return {@code true} when this action shows as selected for the note
-     * @throws IllegalStateException unless the note is {@link AccidentalState.Stamped}
+     * @throws IllegalStateException unless the walk has decided the note
      */
     @Override
     public boolean matchesElement(NoteElement element) {
@@ -220,7 +220,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      * @param line  the line holding the note
      * @param index the note's index in {@code line}; the element there is a stamped note
      * @return {@code true} when the toggle is allowed
-     * @throws IllegalStateException unless the note is {@link AccidentalState.Stamped}
+     * @throws IllegalStateException unless the walk has decided the note
      */
     @Override
     public boolean canToggle(Line line, int index) {
@@ -250,7 +250,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      * {@code k} in the class Javadoc's table.
      */
     private static Accidental keyAlterationAt(Line line, int index, NoteElement note) {
-        return line.keyAt(index).alterationFor(PitchClass.at(note.getStaffPosition().value()));
+        return line.keyAt(index).alterationAt(note.getStaffPosition());
     }
 
     @Override

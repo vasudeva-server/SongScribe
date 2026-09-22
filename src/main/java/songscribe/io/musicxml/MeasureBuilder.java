@@ -338,7 +338,7 @@ final class MeasureBuilder {
                 // would drop the key change without a word.
                 var newKey = ((KeyChangeElement) element).getKey();
                 measure.getNoteOrBackupOrForward()
-                    .add(buildKeyOnlyAttributes(context, line.keyAt(i - 1), newKey));
+                    .add(buildKeyOnlyAttributes(context, line.keyBefore(i), newKey));
                 state.runningKey = newKey;
                 output.measure = measure;
             } else {

@@ -31,9 +31,9 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.AccidentalChain;
-import songscribe.dom.AccidentalScanView;
 import songscribe.dom.AccidentalState;
 import songscribe.dom.ChainEdit;
+import songscribe.dom.Cursor;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
@@ -562,15 +562,13 @@ public final class GraceModeManager {
         var song = line.getSong();
 
         var restamps = AccidentalChain.walk(
-            new AccidentalScanView.Live(song),
-            ChainEdit.inserted(line.index(), graceNoteIndex, List.of(insertedGraceNote))
-        );
+            song, ChainEdit.inserted(new Cursor(line.index(), graceNoteIndex), List.of(insertedGraceNote)));
 
         for (var restamp : restamps) {
             var restampedNote = restamp.note();
             savedAccidentalStates.add(
                 new SavedAccidentalState(restamp.line(), restampedNote, restampedNote.accidentalState()));
-            restampedNote.setAccidentalState(new AccidentalState.Stamped(restamp.state()));
+            restamp.stamp();
         }
 
         // Deselect all embellishment actions. This must precede the duration selection
@@ -773,12 +771,8 @@ public final class GraceModeManager {
 
             // The suspended removal ran no chain walk either; the notes the insertion's walk
             // restamped are walked back the same way, plainly, leaving no undo step.
-            var restamps = AccidentalChain.walk(
-                new AccidentalScanView.Live(song), ChainEdit.removed(line.index(), idx, List.of(grace.note())));
-
-            for (var restamp : restamps) {
-                restamp.note().setAccidentalState(new AccidentalState.Stamped(restamp.state()));
-            }
+            AccidentalChain.walk(song, ChainEdit.removed(new Cursor(line.index(), idx), List.of(grace.note())))
+                .forEach(AccidentalChain.Restamp::stamp);
 
             // No SongDidChangeNotification fires while tracking is suspended, so
             // invalidate the line's layout directly to reflect the removal.

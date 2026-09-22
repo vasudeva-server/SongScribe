@@ -190,7 +190,7 @@ public final class KeyChangeElement extends StructuralElement {
         var line = getParentLine();
 
         if (line != null) {
-            return line.keyAt(line.getElementIndex(this) - 1);
+            return line.keyBefore(line.getElementIndex(this));
         }
 
         var detached = detachedPreviousKey;

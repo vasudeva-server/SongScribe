@@ -69,7 +69,7 @@ public record LoadMigrations(
      * @param accidentalsConverted whether the reader converted retired accidentals while
      *                             parsing
      * @return what the migrations changed
-     * @effects every note of {@code song} is {@link AccidentalState.Stamped Stamped} afterwards
+     * @effects every note of {@code song} holds a {@link ChainedAccidental} afterwards
      */
     public static LoadMigrations run(Song song, boolean accidentalsConverted) {
         var tupletReport = TupletLoadPass.run(song);

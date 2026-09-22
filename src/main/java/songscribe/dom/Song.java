@@ -1420,14 +1420,9 @@ public final class Song implements Disposable {
             return;
         }
 
-        for (var restamp : AccidentalChain.walk(new AccidentalScanView.Live(this), edit)) {
+        for (var restamp : AccidentalChain.walk(this, edit)) {
             var line = restamp.line();
-            var note = restamp.note();
-            var state = new AccidentalState.Stamped(restamp.state());
-
-            line.modifyElement(
-                line.getElementIndex(note), ElementField.ACCIDENTAL, () -> note.setAccidentalState(state)
-            );
+            line.modifyElement(line.getElementIndex(restamp.note()), ElementField.ACCIDENTAL, restamp::stamp);
         }
     }
 
@@ -1910,19 +1905,17 @@ public final class Song implements Disposable {
      * <p>A freshly parsed song needs this once. It is read under suspended mutation tracking, where
      * no chain walk runs, so its notes are {@link AccidentalState.Chosen Chosen} where the file
      * writes an accidental and {@link AccidentalState.Adopting Adopting} where it is bare, while
-     * every edit afterwards assumes a note on a line is {@link AccidentalState.Stamped Stamped}.
+     * every edit afterwards assumes a note on a line holds a {@link ChainedAccidental}.
      * The walk reads each line's running key, so the inherited keys must be settled first — see
      * {@link #rebuildInheritedKeysAfterParsing()}.
      *
      * <p>The stamps are recorded nowhere — no mutation, no undo entry — because they establish the
      * state the document is read in rather than editing it.
      *
-     * @effects every note of this song is {@link AccidentalState.Stamped Stamped} afterwards
+     * @effects every note of this song holds a {@link ChainedAccidental} afterwards
      */
     public void stampAccidentalsAfterParsing() {
-        for (var restamp : AccidentalChain.walkSong(new AccidentalScanView.Live(this))) {
-            restamp.note().setAccidentalState(new AccidentalState.Stamped(restamp.state()));
-        }
+        AccidentalChain.walkSong(this).forEach(AccidentalChain.Restamp::stamp);
     }
 
     /**

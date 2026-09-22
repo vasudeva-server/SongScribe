@@ -67,7 +67,6 @@ class PitchLatticeTest extends UnitTest {
     void testMidiSoundsThePitchTheCorpusRecordsForEveryAccidental(PitchLatticeCase testCase) {
         var pitch = DiatonicPitch.at(testCase.staffPosition());
 
-        assertThat(pitch.midi(null)).isEqualTo(testCase.midiNatural());
         assertThat(pitch.midi(Accidental.NATURAL)).isEqualTo(testCase.midiNatural());
         assertThat(pitch.midi(Accidental.FLAT)).isEqualTo(testCase.midiFlat());
         assertThat(pitch.midi(Accidental.SHARP)).isEqualTo(testCase.midiSharp());

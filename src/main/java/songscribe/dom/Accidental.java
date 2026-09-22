@@ -1,7 +1,5 @@
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.smufl.SMuFLGlyph;
 
 /**
@@ -23,25 +21,14 @@ public enum Accidental {
         this.glyph = glyph;
     }
 
-    private int semitones() {
-        return semitones;
-    }
-
     /**
-     * Returns the alteration {@code accidental} applies to the natural pitch of a staff
-     * position, in semitones, or 0 when there is no accidental at all.
+     * Returns the alteration this accidental applies to the natural pitch of a staff position.
      *
-     * <p>Every caller that compares accidentals by how they <em>sound</em> rather than by
-     * which constant they are goes through here, so that rule is stated once: no accidental
-     * and {@link #NATURAL} both answer 0, while remaining distinct as notation — a natural
-     * draws a glyph and an absent accidental draws nothing.
-     *
-     * @param accidental the accidental written on the note, or null when it carries none
-     * @return the signed offset from the natural pitch, {@code -2} for {@link #DOUBLE_FLAT}
-     *     through {@code 2} for {@link #DOUBLE_SHARP}
+     * @return the signed offset from the natural pitch in semitones, {@code -2} for
+     *     {@link #DOUBLE_FLAT} through {@code 2} for {@link #DOUBLE_SHARP}
      */
-    public static int semitoneAdjustmentOf(@Nullable Accidental accidental) {
-        return (accidental == null) ? 0 : accidental.semitones();
+    public int semitones() {
+        return semitones;
     }
 
     /**

@@ -186,7 +186,7 @@ class AccidentalChainTest extends UnitTest {
         var originalSixth = sixth.chainedAccidental();
 
         fifth.setAccidentalState(new AccidentalState.Chosen(Accidental.NATURAL));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), new ChainEdit(0, 4, 5, Set.of(), false));
+        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 4), fifth, fifth));
 
         assertRestamps(restamps, tuple(fifth, Accidental.NATURAL, ChainType.CANCEL), tuple(sixth, Accidental.FLAT, ChainType.ANCHOR));
         assertThat(sixth.chainedAccidental()).isEqualTo(originalSixth);
@@ -204,7 +204,7 @@ class AccidentalChainTest extends UnitTest {
         var third = (NoteElement) line.getElement(2);
 
         second.setAccidentalState(new AccidentalState.Chosen(Accidental.NATURAL));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), new ChainEdit(0, 1, 2, Set.of(), false));
+        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 1), second, second));
 
         assertRestamps(restamps, tuple(second, Accidental.NATURAL, ChainType.IN_KEY), tuple(third, Accidental.FLAT, ChainType.ANCHOR));
     }
@@ -219,7 +219,7 @@ class AccidentalChainTest extends UnitTest {
         var originalEighth = eighth.chainedAccidental();
 
         seventh.setAccidentalState(new AccidentalState.Chosen(Accidental.FLAT));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), new ChainEdit(0, 6, 7, Set.of(), false));
+        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 6), seventh, seventh));
 
         assertRestamps(restamps, tuple(seventh, Accidental.FLAT, ChainType.IMPLICIT), tuple(ninth, Accidental.NATURAL, ChainType.CANCEL));
         assertThat(eighth.chainedAccidental())
@@ -235,8 +235,8 @@ class AccidentalChainTest extends UnitTest {
         var natural = (NoteElement) line.getElement(2);
 
         song.withoutMutationTracking(() -> line.removeElement(0));
-        var edit = ChainEdit.removed(0, 0, List.of(flat));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), edit);
+        var edit = ChainEdit.removed(new Cursor(0, 0), List.of(flat));
+        var restamps = AccidentalChain.walk(song, edit);
 
         assertRestamps(restamps, tuple(natural, Accidental.NATURAL, ChainType.IN_KEY));
     }
@@ -249,8 +249,8 @@ class AccidentalChainTest extends UnitTest {
         var trailing = (NoteElement) line.getElement(2);
 
         song.withoutMutationTracking(() -> line.removeElement(1));
-        var edit = ChainEdit.removed(0, 1, List.of(intervening));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), edit);
+        var edit = ChainEdit.removed(new Cursor(0, 1), List.of(intervening));
+        var restamps = AccidentalChain.walk(song, edit);
 
         assertRestamps(restamps, tuple(trailing, Accidental.FLAT, ChainType.IMPLICIT));
     }
@@ -263,8 +263,8 @@ class AccidentalChainTest extends UnitTest {
         var farNote = (NoteElement) line.getElement(4);
 
         song.withoutMutationTracking(() -> line.removeElement(0));
-        var edit = ChainEdit.removed(0, 0, List.of(leadingFlat));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), edit);
+        var edit = ChainEdit.removed(new Cursor(0, 0), List.of(leadingFlat));
+        var restamps = AccidentalChain.walk(song, edit);
 
         assertRestamps(restamps, tuple(farNote, Accidental.FLAT, ChainType.ANCHOR));
     }
@@ -279,8 +279,8 @@ class AccidentalChainTest extends UnitTest {
 
         moved.setStaffPosition(new StaffPosition(F));
         moved.setAccidentalState(new AccidentalState.Adopting());
-        var edit = ChainEdit.modified(0, 1, before, moved);
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), edit);
+        var edit = ChainEdit.modified(new Cursor(0, 1), before, moved);
+        var restamps = AccidentalChain.walk(song, edit);
 
         assertRestamps(restamps, tuple(moved, Accidental.FLAT, ChainType.IMPLICIT), tuple(trailing, Accidental.FLAT, ChainType.IMPLICIT));
     }
@@ -297,8 +297,8 @@ class AccidentalChainTest extends UnitTest {
 
         var keyChange = StaffElementFactory.keyChange(Key.ONE_FLAT);
         song.withoutMutationTracking(() -> line.addElement(0, keyChange));
-        var edit = ChainEdit.inserted(0, 0, List.of(keyChange));
-        var restamps = AccidentalChain.walk(new AccidentalScanView.Live(song), edit);
+        var edit = ChainEdit.inserted(new Cursor(0, 0), List.of(keyChange));
+        var restamps = AccidentalChain.walk(song, edit);
 
         assertRestamps(restamps,
             tuple(leadingFlat, Accidental.FLAT, ChainType.IN_KEY),
