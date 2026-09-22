@@ -21,8 +21,11 @@
 package songscribe.dom;
 
 import java.util.List;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.message.mutation.ElementField;
@@ -73,63 +76,136 @@ class SongAccidentalWalkTest extends UnitTest {
         assertThat(snapshot(song)).as("undoing the edit restores every note's prior state").isEqualTo(before);
     }
 
-    @Test
-    void testANoteInsertion() {
+    /** A song, the edit under test and its inverse, built together so the edit can close over whatever the song needs it to. */
+    private record Fixture(Song song, Runnable edit, Runnable undo) {}
+
+    private record WalkCase(String description, Supplier<Fixture> arrange) {
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("walkCases")
+    void testEditWalksItselfAndUndoRestores(WalkCase testCase) {
+        var fixture = testCase.arrange().get();
+
+        assertEditWalksItselfAndUndoRestores(fixture.song(), fixture.edit(), fixture.undo());
+    }
+
+    static Stream<WalkCase> walkCases() {
+        return Stream.of(
+            new WalkCase("a note insertion", SongAccidentalWalkTest::noteInsertionCase),
+            new WalkCase("a range deletion", SongAccidentalWalkTest::rangeDeletionCase),
+            new WalkCase("a pitch change to adopting", SongAccidentalWalkTest::pitchChangeToAdoptingCase),
+            new WalkCase("a key change insertion", SongAccidentalWalkTest::keyChangeInsertionCase),
+            new WalkCase("a line deletion", SongAccidentalWalkTest::lineDeletionCase),
+            new WalkCase("a line's own key changed", SongAccidentalWalkTest::lineKeyChangeCase),
+            new WalkCase("a line with its own key removed", SongAccidentalWalkTest::lineRemovalWithOwnKeyCase),
+            new WalkCase("a line inserted with its own key", SongAccidentalWalkTest::lineInsertionWithOwnKeyCase),
+            new WalkCase("a note replaced by a key change", SongAccidentalWalkTest::elementReplacementCase));
+    }
+
+    private static Fixture noteInsertionCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
         var line = song.getLine(0);
         var inserted = StaffElementFactory.note(OTHER);
 
-        assertEditWalksItselfAndUndoRestores(
-            song,
+        return new Fixture(song,
             () -> line.addElement(1, inserted),
             () -> line.removeElement(line.getElementIndex(inserted)));
     }
 
-    @Test
-    void testARangeDeletion() {
+    private static Fixture rangeDeletionCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F + " " + F);
         var line = song.getLine(0);
         var removed = (NoteElement) line.getElement(1);
 
-        assertEditWalksItselfAndUndoRestores(
-            song,
+        return new Fixture(song,
             () -> line.removeElement(1),
             () -> line.addElement(1, removed));
     }
 
-    @Test
-    void testAPitchChangeToAdopting() {
+    private static Fixture pitchChangeToAdoptingCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
         var line = song.getLine(0);
         var note = (NoteElement) line.getElement(1);
         var beforeState = note.clone();
 
-        assertEditWalksItselfAndUndoRestores(
-            song,
+        return new Fixture(song,
             () -> line.modifyElement(1, ElementField.ACCIDENTAL, () -> note.setAccidentalState(new AccidentalState.Adopting())),
             () -> line.modifyElement(1, ElementField.ACCIDENTAL, () -> note.copyStateFrom(beforeState)));
     }
 
-    @Test
-    void testAKeyChangeInsertion() {
+    private static Fixture keyChangeInsertionCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
         var line = song.getLine(0);
         var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
 
-        assertEditWalksItselfAndUndoRestores(
-            song,
+        return new Fixture(song,
             () -> line.addElement(0, keyChange),
             () -> line.removeElement(line.getElementIndex(keyChange)));
     }
 
-    @Test
-    void testALineDeletion() {
+    private static Fixture lineDeletionCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F, "" + F);
         var removedLine = song.getLine(1);
 
-        assertEditWalksItselfAndUndoRestores(
-            song,
+        return new Fixture(song,
             () -> song.removeLine(1),
             () -> song.addLine(1, removedLine));
+    }
+
+    /** The edit is a {@link Line#setKey} on an already-loaded line, which routes through {@link ChainEdit#lineRekeyed}. */
+    private static Fixture lineKeyChangeCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F, "" + F);
+        var secondLine = song.getLine(1);
+
+        return new Fixture(song,
+            () -> secondLine.setKey(Key.ONE_SHARP),
+            () -> secondLine.setKey(null));
+    }
+
+    /** The removed line carries its own key, so the edit routes through {@link ChainEdit#lineRemoved}'s rekey clause. */
+    private static Fixture lineRemovalWithOwnKeyCase() {
+        var song = SongFactory.buildSong(
+            line -> SongFactory.addCompactElements(line, F + "f " + F),
+            line -> {
+                line.setKey(Key.ONE_SHARP);
+                SongFactory.addCompactElements(line, "" + F);
+            });
+        var removedLine = song.getLine(1);
+
+        return new Fixture(song,
+            () -> song.removeLine(1),
+            () -> song.addLine(1, removedLine));
+    }
+
+    /** The inserted line carries its own key, so the edit routes through {@link ChainEdit#lineInserted}'s rekey clause. */
+    private static Fixture lineInsertionWithOwnKeyCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
+        var insertedLine = new Line(song);
+
+        song.withoutMutationTracking(() -> {
+            insertedLine.setKey(Key.ONE_SHARP);
+            SongFactory.addCompactElements(insertedLine, "" + F);
+        });
+
+        return new Fixture(song,
+            () -> song.addLine(1, insertedLine),
+            () -> song.removeLine(1));
+    }
+
+    /** The edit replaces a note with a key change, so it routes through {@link ChainEdit#replaced}. */
+    private static Fixture elementReplacementCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F);
+        var line = song.getLine(0);
+        var replaced = (NoteElement) line.getElement(1);
+        var keyChange = StaffElementFactory.keyChange(Key.ONE_SHARP);
+
+        return new Fixture(song,
+            () -> line.setElement(1, keyChange),
+            () -> line.setElement(1, replaced));
     }
 }

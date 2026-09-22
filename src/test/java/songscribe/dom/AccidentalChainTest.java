@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -227,46 +228,50 @@ class AccidentalChainTest extends UnitTest {
             .isEqualTo(originalEighth);
     }
 
-    @Test
-    void testDeletingTheAnchorLeavesTheSurvivingCancelInKey() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F + "n");
-        var line = song.getLine(0);
-        var flat = (NoteElement) line.getElement(0);
-        var natural = (NoteElement) line.getElement(2);
+    private record ExpectedRestamp(int index, Accidental accidental, ChainType type) {}
 
-        song.withoutMutationTracking(() -> line.removeElement(0));
-        var edit = ChainEdit.removed(new Cursor(0, 0), List.of(flat));
-        var restamps = AccidentalChain.walk(song, edit);
-
-        assertRestamps(restamps, tuple(natural, Accidental.NATURAL, ChainType.IN_KEY));
+    private record RemovalCase(String description, String notation, int removedIndex, List<ExpectedRestamp> expected) {
+        @Override
+        public String toString() {
+            return description;
+        }
     }
 
-    @Test
-    void testDeletingTheInterveningNoteCollapsesTheRepetitionToImplicit() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("removalCases")
+    void testRemovingANoteRedecidesTheNotesTheEditReaches(RemovalCase testCase) {
+        var song = compactSong(Key.NO_ACCIDENTALS, testCase.notation());
         var line = song.getLine(0);
-        var intervening = (NoteElement) line.getElement(1);
-        var trailing = (NoteElement) line.getElement(2);
+        var removed = line.getElement(testCase.removedIndex());
+        var expectedNotes = testCase.expected().stream()
+            .map(restamp -> (NoteElement) line.getElement(restamp.index()))
+            .toList();
 
-        song.withoutMutationTracking(() -> line.removeElement(1));
-        var edit = ChainEdit.removed(new Cursor(0, 1), List.of(intervening));
+        song.withoutMutationTracking(() -> line.removeElement(testCase.removedIndex()));
+        var edit = ChainEdit.removed(new Cursor(0, testCase.removedIndex()), List.of(removed));
         var restamps = AccidentalChain.walk(song, edit);
 
-        assertRestamps(restamps, tuple(trailing, Accidental.FLAT, ChainType.IMPLICIT));
+        var expected = new Tuple[expectedNotes.size()];
+
+        for (var i = 0; i < expected.length; i++) {
+            var restamp = testCase.expected().get(i);
+            expected[i] = tuple(expectedNotes.get(i), restamp.accidental(), restamp.type());
+        }
+
+        assertRestamps(restamps, expected);
     }
 
-    @Test
-    void testDeletingANoteReachesPastInterveningOtherPositionNotesToRedecideItsVacatedPosition() {
-        var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + OTHER + " " + OTHER + " " + F);
-        var line = song.getLine(0);
-        var leadingFlat = (NoteElement) line.getElement(0);
-        var farNote = (NoteElement) line.getElement(4);
-
-        song.withoutMutationTracking(() -> line.removeElement(0));
-        var edit = ChainEdit.removed(new Cursor(0, 0), List.of(leadingFlat));
-        var restamps = AccidentalChain.walk(song, edit);
-
-        assertRestamps(restamps, tuple(farNote, Accidental.FLAT, ChainType.ANCHOR));
+    static Stream<RemovalCase> removalCases() {
+        return Stream.of(
+            new RemovalCase("deleting the anchor leaves the surviving cancel in key",
+                F + "f " + OTHER + " " + F + "n", 0,
+                List.of(new ExpectedRestamp(2, Accidental.NATURAL, ChainType.IN_KEY))),
+            new RemovalCase("deleting the intervening note collapses the repetition to implicit",
+                F + "f " + OTHER + " " + F, 1,
+                List.of(new ExpectedRestamp(2, Accidental.FLAT, ChainType.IMPLICIT))),
+            new RemovalCase("deleting a note reaches past intervening notes at another position to redecide its vacated position",
+                F + "f " + OTHER + " " + OTHER + " " + OTHER + " " + F, 0,
+                List.of(new ExpectedRestamp(4, Accidental.FLAT, ChainType.ANCHOR))));
     }
 
     @Test
@@ -310,7 +315,7 @@ class AccidentalChainTest extends UnitTest {
     }
 
     private static void assertRestamps(
-        List<Restamp> restamps, org.assertj.core.groups.Tuple... expected) {
+        List<Restamp> restamps, Tuple... expected) {
 
         assertThat(restamps)
             .extracting(Restamp::note, restamp -> restamp.state().accidental(), restamp -> restamp.state().type())

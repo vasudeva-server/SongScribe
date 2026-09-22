@@ -11,10 +11,10 @@ Run by `/design-pass 6b` — register row `6b`, *Accidentals*.
 | 3 Unrepresentable states | ✅ | ✅ | — | `findings-3.md`. Done: the five `ChainEdit` factories take a `Cursor`; `Walk` is built only when an element exists at or after the edit's start, and seeds `key` and `previous` in its constructor. Decided against: `AccidentalScanView.elementAt(Cursor)` — it keeps `(int, int)`. |
 | 4 Extraction | ✅ | ✅ | — | `findings-4.md`. Done: `Restamp.stamp()`; `Line.keyBefore(int)` with its eight callers moved off `keyAt(i - 1)`; `Key.alterationAt(StaffPosition)`; `ElementType.isTransparentInChain()`. |
 | 5 Contracts | ✅ | ✅ | — | `findings-5.md`. Done: `ChainType.decide`'s summary cites the class Javadoc instead of restating it; `AccidentalChain`'s *The policy* section is cut and replaced by a citation to `ChainedAccidental`'s class Javadoc and `docs/accidentals.md`. |
-| 6 Test triage | ⏳ | ⏳ | — | |
-| 7 Test-only surface | ⏳ | ⏳ | — | |
-| 8a Suite gate | ⏳ | n/a | — | |
-| 8b Visual gate | ⏳ | n/a | — | |
+| 6 Test triage | ✅ | ✅ | — | `findings-6.md`. Done: three `AccidentalChainTest` removal tests and all five `SongAccidentalWalkTest` tests each folded into one parameterized case table, the latter gaining four new cases (line rekey, line removal that rekeys, line insertion with its own key, element replacement); `ChainEditTest.java` and `ProjectedEditTest.java` added, one promise each. `./scripts/test.sh AccidentalChainTest SongAccidentalWalkTest ChainEditTest ProjectedEditTest`: 27 passed. |
+| 7 Test-only surface | ✅ | ✅ | — | `findings-7.md`. Every member with a caller outside `src/test/java/` was checked; none exists solely for a test, no replaceable process-global, no misnamed internal API, no incomplete lifecycle. Nothing to fix. |
+| 8a Suite gate | ✅ | n/a | — | `./scripts/compile.sh --test`: SUCCESS. `./scripts/test.sh AccidentalChainTest SongAccidentalWalkTest ChainEditTest ProjectedEditTest`: 27 passed. |
+| 8b Visual gate | ✅ | n/a | — | |
 | 9 Diagrams | ⏳ | ⏳ | — | |
 | 10 Coverage | ⏳ | n/a | — | |
 | 11 Mutation | ⏳ | n/a | — | opportunistic |
@@ -33,19 +33,22 @@ the step is small enough to hold in one sitting.
 
 Production, in `src/main/java/songscribe/dom/`: `Accidental.java`,
 `AccidentalChain.java`, `AccidentalScanView.java`, `AccidentalState.java`,
-`ChainEdit.java`, `ProjectedEdit.java`.
+`ChainedAccidental.java`, `ChainEdit.java`, `Cursor.java`, `ProjectedEdit.java`
+(`ChainedAccidental` was folded in at the step 2 gate; `Cursor` was extracted at
+step 4 — both missing from this list until now).
 
 Tests, in `src/test/java/songscribe/dom/`: `AccidentalChainTest.java`,
-`SongAccidentalWalkTest.java`.
+`SongAccidentalWalkTest.java`, `ChainEditTest.java`, `ProjectedEditTest.java`
+(the last two added at step 6, `findings-6.md`).
 
 ## Baseline
 
 | Measure | Before | After |
 |---|---|---|
 | Start commit | `71abd397` | |
-| Production lines | 1121 | |
-| Test lines | 454 | |
-| Tests passing | 21 | |
+| Production lines | 1289 (1121 recorded at step 0, corrected for the two files the Target list was missing) | 1388 |
+| Test lines | 454 | 649 |
+| Tests passing | 21 | 27 |
 
 ## Findings claimed
 
