@@ -39,7 +39,7 @@ import static songscribe.dom.SongFactory.compactSong;
  * recording its structural inverse — restores every note's prior state.
  *
  * <p>Each case records one edit through the same public route the UI edits through (an
- * {@code addElement}, {@code removeElement}, {@code modifyElement}, {@code setKey},
+ * {@code addElement}, {@code removeElement}, {@code setElement}, {@code modifyElement}, {@code setKey},
  * {@code addLine} or {@code removeLine} inside a modification bracket), which is what makes the
  * song run the chain walk in the first place; there is no separate call to trigger it.
  */
@@ -104,7 +104,9 @@ class SongAccidentalWalkTest extends UnitTest {
             new WalkCase("a line's own key changed", SongAccidentalWalkTest::lineKeyChangeCase),
             new WalkCase("a line with its own key removed", SongAccidentalWalkTest::lineRemovalWithOwnKeyCase),
             new WalkCase("a line inserted with its own key", SongAccidentalWalkTest::lineInsertionWithOwnKeyCase),
-            new WalkCase("a note replaced by a key change", SongAccidentalWalkTest::elementReplacementCase));
+            new WalkCase("a note replaced by a key change", SongAccidentalWalkTest::elementReplacementCase),
+            new WalkCase("a key change's key altered in place", SongAccidentalWalkTest::keyChangeAlteredCase),
+            new WalkCase("a line holding a key change removed", SongAccidentalWalkTest::lineRemovalWithKeyChangeCase));
     }
 
     private static Fixture noteInsertionCase() {
@@ -207,5 +209,35 @@ class SongAccidentalWalkTest extends UnitTest {
         return new Fixture(song,
             () -> line.setElement(1, keyChange),
             () -> line.setElement(1, replaced));
+    }
+
+    /**
+     * The edit changes a key change's key through {@link Line#modifyElement}, so it routes through
+     * {@link ChainEdit#modified}'s rekey clause; the note past the span is decided only because
+     * the edit reaches the next key change.
+     */
+    private static Fixture keyChangeAlteredCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f K:ONE_SHARP " + OTHER + " " + F);
+        var line = song.getLine(0);
+        var keyChange = (KeyChangeElement) line.getElement(1);
+
+        return new Fixture(song,
+            () -> line.modifyElement(1, ElementField.KEY, () -> keyChange.setKey(Key.ONE_FLAT)),
+            () -> line.modifyElement(1, ElementField.KEY, () -> keyChange.setKey(Key.ONE_SHARP)));
+    }
+
+    /**
+     * The removed line holds a mid-line key change but no key of its own, so the edit routes
+     * through {@link ChainEdit#lineRemoved}'s rekey clause; the line behind it inherits a new
+     * key, and its note past the span is decided only because the edit reaches the next key
+     * change.
+     */
+    private static Fixture lineRemovalWithKeyChangeCase() {
+        var song = compactSong(Key.NO_ACCIDENTALS, F + "f", OTHER + " K:ONE_SHARP " + OTHER, OTHER + " " + F);
+        var removedLine = song.getLine(1);
+
+        return new Fixture(song,
+            () -> song.removeLine(1),
+            () -> song.addLine(1, removedLine));
     }
 }

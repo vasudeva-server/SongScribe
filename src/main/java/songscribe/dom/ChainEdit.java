@@ -60,8 +60,8 @@ import songscribe.message.mutation.TupletRemoval;
  * walk reads, and what the change can have moved. The walk decides every note the edit can
  * reach from this alone — see {@link AccidentalChain#walk}.
  *
- * <p>The edited range starts at {@link #start()} and covers {@link #length()} elements of that
- * line, indexed as the song stands after the edit: an insertion covers what it inserted, a
+ * <p>The edited range covers the elements of one line from {@link #start()} up to
+ * {@link #end()}, indexed as the song stands after the edit: an insertion covers what it inserted, a
  * modification covers the one element, and a removal is the empty range at the point it removed
  * from.
  *
@@ -113,13 +113,6 @@ public final class ChainEdit {
      */
     public Cursor start() {
         return start;
-    }
-
-    /**
-     * @return how many elements the edited range covers on its line; {@code 0} for a removal
-     */
-    public int length() {
-        return length;
     }
 
     /**

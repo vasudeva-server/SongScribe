@@ -57,9 +57,9 @@ import songscribe.engraving.StaffPosition;
  * <p>For each element {@code e} from the edit's start onward, in song order across lines:
  * <ol>
  * <li><em>Key change.</em> Meeting a key change, or entering a line with its own key, is a key
- *     change at that element. If {@code e} is the first element walked, {@code key} is set
- *     from it, every {@code inForce[p]} becomes its alteration for {@code p}, and the walk goes
- *     on. Otherwise the walk stops.</li>
+ *     change at that element. If {@code e} is the first element walked or lies in the edited
+ *     range, {@code key} is set from it, every {@code inForce[p]} becomes its alteration for
+ *     {@code p}, and the walk goes on. Otherwise the walk stops.</li>
  * <li><em>Note.</em> A note at position {@code p} is decided when it is
  *     {@link AccidentalState.Chosen Chosen} or {@link AccidentalState.Adopting Adopting},
  *     when {@code p} is in {@code open}, when the edit reaches the next key change, or when it
@@ -235,7 +235,7 @@ public final class AccidentalChain {
                 var ownKey = (cursor.index() == 0) ? view.ownKey(cursor.lineIndex()) : null;
                 var keyChange = (element instanceof KeyChangeElement keyChangeElement) ? keyChangeElement.getKey() : null;
 
-                if (((ownKey != null) || (keyChange != null)) && !first) {
+                if (((ownKey != null) || (keyChange != null)) && !first && !inRange(cursor)) {
                     break;
                 }
 
@@ -319,8 +319,12 @@ public final class AccidentalChain {
         }
 
         private boolean inSpan(Cursor cursor) {
-            var inRange = (cursor.compareTo(rangeStart) >= 0) && (cursor.compareTo(rangeEnd) < 0);
-            return inRange || cursor.equals(spanEnd);
+            return inRange(cursor) || cursor.equals(spanEnd);
+        }
+
+        /** Whether {@code cursor} is in the edited range; the walk never stands before its start. */
+        private boolean inRange(Cursor cursor) {
+            return cursor.compareTo(rangeEnd) < 0;
         }
 
         /** Puts {@code newKey} in force: it ends every accidental in force at every position. */

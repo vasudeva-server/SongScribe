@@ -15,9 +15,9 @@ Run by `/design-pass 6b` — register row `6b`, *Accidentals*.
 | 7 Test-only surface | ✅ | ✅ | — | `findings-7.md`. Every member with a caller outside `src/test/java/` was checked; none exists solely for a test, no replaceable process-global, no misnamed internal API, no incomplete lifecycle. Nothing to fix. |
 | 8a Suite gate | ✅ | n/a | — | `./scripts/compile.sh --test`: SUCCESS. `./scripts/test.sh AccidentalChainTest SongAccidentalWalkTest ChainEditTest ProjectedEditTest`: 27 passed. |
 | 8b Visual gate | ✅ | n/a | — | |
-| 9 Diagrams | ⏳ | ⏳ | — | |
-| 10 Coverage | ⏳ | n/a | — | |
-| 11 Mutation | ⏳ | n/a | — | opportunistic |
+| 9 Diagrams | ✅ | ✅ | — | `findings-9.md`. Both diagrams kept, no change: the worked example in `docs/accidentals.md` (pinned by `AccidentalChainTest`) and the line-key table in `docs/key-changes.md` (row 0's doc, judged here because the target's doc links it). |
+| 10 Coverage | ✅ | n/a | — | `./scripts/coverage.sh unit` over the four target test classes, reported in the terminal. **Defect fixed:** the walk stopped at a key change past the edit's start even inside the edited range, so a pasted fragment holding one was projected without the notes after it; a key change inside the range now rekeys and the walk goes on (`AccidentalChain` rule 1 and `Walk.run`). Confirmed by the two cases below failing against the old rule. Deleted: `ChainEdit.length()` (no caller) and `Walk.inSpan`'s always-true `rangeStart` conjunct. Tests added: `AccidentalChainTest.testAnEditRedecidesTheNotesItReaches`, five cases (key change inside the range; in-force seed stopping at a key change and at an own-key line start; `previous` and span end skipping rests); `SongAccidentalWalkTest` rows for a key change altered in place and a line holding a key change removed; `ProjectedEditTest` rewritten as a case table asserting every note, with a fragment row. Every other unrun region left alone with its reason given at the step. `./scripts/test.sh AccidentalChainTest SongAccidentalWalkTest ChainEditTest ProjectedEditTest`: 35 passed; `AccidentalFitGateTest InheritedKeyPropagationTest`: 12 passed. |
+| 11 Mutation | ✅ | n/a | — | `./scripts/mutation-test.sh songscribe.dom.ChainEdit`, run because the claimed carry-forward finding was itself a mutation result over this class. Every mutant that finding named is now detected, by the cases steps 6 and 10 added. What survives is in three groups, none a gap: the `Reach` widening direction (`anyRekeys`, `endsInForce`, and the rekey clauses at `ChainEdit.java:185`, `:250`, `:270`) — `reachesNextKeyChange` only keeps the walk running and marks more notes decided (`AccidentalChain.java:278`, `:313`), and a re-decided note restamps only on a differing type (`:283`), so a wider reach preserves the answer and no test can detect it; the null arm of `of` (`:308`, 13 mutants), whose exhaustive switch over the sealed `Mutation` hierarchy makes the compiler carry the promise; and the `ElementModification` branches at `:203–209`, already in *Findings raised*. Nothing to fix. |
 | 12 Adversarial review | ⏳ | n/a | — | complete only when the user says it passed |
 | 13 Close out | ⏳ | ⏳ | — | |
 
@@ -46,9 +46,9 @@ Tests, in `src/test/java/songscribe/dom/`: `AccidentalChainTest.java`,
 | Measure | Before | After |
 |---|---|---|
 | Start commit | `71abd397` | |
-| Production lines | 1289 (1121 recorded at step 0, corrected for the two files the Target list was missing) | 1388 |
-| Test lines | 454 | 649 |
-| Tests passing | 21 | 27 |
+| Production lines | 1289 (1121 recorded at step 0, corrected for the two files the Target list was missing) | 1385 |
+| Test lines | 454 | 821 |
+| Tests passing | 21 | 35 |
 
 ## Findings claimed
 
@@ -84,3 +84,15 @@ register at step 13, before this file is deleted.
   is `Stamped`" (`AccidentalState.java:27–32`) is prose;
   `NoteElement.setAccidentalState` is public with 14 production call sites in
   9 classes.
+- **Register, the row that owns `message/mutation`.** "`beforeElement` and
+  `afterElement` are snapshots of one element" is prose on `ElementModification`;
+  the record's public constructor accepts any pair. `Line.java:549` is the only
+  production site, and `ChainEditTest.java:49` builds one by hand. So
+  `ChainEdit.modified` and `ChainEdit.isRestamp` keep branches for pairs no
+  production code records (an `after` that is not a note, `endsInForce(after)`
+  differing from `endsInForce(before)`); they answer such a pair correctly, so
+  they are not defects. The correct structure: `ElementModification` becomes a
+  final class with a private constructor and one factory that takes the element
+  and the mutator and makes both clones itself — not a record, for the JLS
+  §8.10.4 reason `ChainedAccidental` states — and `ChainEdit.modified` then reads
+  one element type. Raised at step 10.

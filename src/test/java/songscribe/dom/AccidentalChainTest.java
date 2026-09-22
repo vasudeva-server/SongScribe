@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.assertj.core.groups.Tuple;
@@ -186,8 +188,7 @@ class AccidentalChainTest extends UnitTest {
         var sixth = (NoteElement) line.getElement(5);
         var originalSixth = sixth.chainedAccidental();
 
-        fifth.setAccidentalState(new AccidentalState.Chosen(Accidental.NATURAL));
-        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 4), fifth, fifth));
+        var restamps = AccidentalChain.walk(song, choose(song, new Cursor(0, 4), Accidental.NATURAL));
 
         assertRestamps(restamps, tuple(fifth, Accidental.NATURAL, ChainType.CANCEL), tuple(sixth, Accidental.FLAT, ChainType.ANCHOR));
         assertThat(sixth.chainedAccidental()).isEqualTo(originalSixth);
@@ -204,8 +205,7 @@ class AccidentalChainTest extends UnitTest {
         var second = (NoteElement) line.getElement(1);
         var third = (NoteElement) line.getElement(2);
 
-        second.setAccidentalState(new AccidentalState.Chosen(Accidental.NATURAL));
-        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 1), second, second));
+        var restamps = AccidentalChain.walk(song, choose(song, new Cursor(0, 1), Accidental.NATURAL));
 
         assertRestamps(restamps, tuple(second, Accidental.NATURAL, ChainType.IN_KEY), tuple(third, Accidental.FLAT, ChainType.ANCHOR));
     }
@@ -219,8 +219,7 @@ class AccidentalChainTest extends UnitTest {
         var ninth = (NoteElement) line.getElement(8);
         var originalEighth = eighth.chainedAccidental();
 
-        seventh.setAccidentalState(new AccidentalState.Chosen(Accidental.FLAT));
-        var restamps = AccidentalChain.walk(song, ChainEdit.modified(new Cursor(0, 6), seventh, seventh));
+        var restamps = AccidentalChain.walk(song, choose(song, new Cursor(0, 6), Accidental.FLAT));
 
         assertRestamps(restamps, tuple(seventh, Accidental.FLAT, ChainType.IMPLICIT), tuple(ninth, Accidental.NATURAL, ChainType.CANCEL));
         assertThat(eighth.chainedAccidental())
@@ -228,7 +227,8 @@ class AccidentalChainTest extends UnitTest {
             .isEqualTo(originalEighth);
     }
 
-    private record ExpectedRestamp(int index, Accidental accidental, ChainType type) {}
+    /** A restamp a case expects, its note named by where it stands once the edit has landed. */
+    private record ExpectedRestamp(Cursor at, Accidental accidental, ChainType type) {}
 
     private record RemovalCase(String description, String notation, int removedIndex, List<ExpectedRestamp> expected) {
         @Override
@@ -243,35 +243,80 @@ class AccidentalChainTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, testCase.notation());
         var line = song.getLine(0);
         var removed = line.getElement(testCase.removedIndex());
-        var expectedNotes = testCase.expected().stream()
-            .map(restamp -> (NoteElement) line.getElement(restamp.index()))
-            .toList();
 
         song.withoutMutationTracking(() -> line.removeElement(testCase.removedIndex()));
         var edit = ChainEdit.removed(new Cursor(0, testCase.removedIndex()), List.of(removed));
-        var restamps = AccidentalChain.walk(song, edit);
 
-        var expected = new Tuple[expectedNotes.size()];
-
-        for (var i = 0; i < expected.length; i++) {
-            var restamp = testCase.expected().get(i);
-            expected[i] = tuple(expectedNotes.get(i), restamp.accidental(), restamp.type());
-        }
-
-        assertRestamps(restamps, expected);
+        assertRestamps(AccidentalChain.walk(song, edit), expectedTuples(song, testCase.expected()));
     }
 
     static Stream<RemovalCase> removalCases() {
         return Stream.of(
             new RemovalCase("deleting the anchor leaves the surviving cancel in key",
                 F + "f " + OTHER + " " + F + "n", 0,
-                List.of(new ExpectedRestamp(2, Accidental.NATURAL, ChainType.IN_KEY))),
+                List.of(new ExpectedRestamp(new Cursor(0, 1), Accidental.NATURAL, ChainType.IN_KEY))),
             new RemovalCase("deleting the intervening note collapses the repetition to implicit",
                 F + "f " + OTHER + " " + F, 1,
-                List.of(new ExpectedRestamp(2, Accidental.FLAT, ChainType.IMPLICIT))),
+                List.of(new ExpectedRestamp(new Cursor(0, 1), Accidental.FLAT, ChainType.IMPLICIT))),
             new RemovalCase("deleting a note reaches past intervening notes at another position to redecide its vacated position",
                 F + "f " + OTHER + " " + OTHER + " " + OTHER + " " + F, 0,
-                List.of(new ExpectedRestamp(4, Accidental.FLAT, ChainType.ANCHOR))));
+                List.of(new ExpectedRestamp(new Cursor(0, 3), Accidental.FLAT, ChainType.ANCHOR))));
+    }
+
+    /** A song, and an edit that lands in it untracked and answers the {@link ChainEdit} describing itself. */
+    private record EditCase(
+        String description, Supplier<Song> song, Function<Song, ChainEdit> edit, List<ExpectedRestamp> expected) {
+
+        @Override
+        public String toString() {
+            return description;
+        }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("editCases")
+    void testAnEditRedecidesTheNotesItReaches(EditCase testCase) {
+        var song = testCase.song().get();
+        var edit = testCase.edit().apply(song);
+
+        assertRestamps(AccidentalChain.walk(song, edit), expectedTuples(song, testCase.expected()));
+    }
+
+    static Stream<EditCase> editCases() {
+        return Stream.of(
+            new EditCase("a key change inside the edited range puts its key in force, and the walk goes on to the next key change",
+                () -> compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " " + F),
+                song -> insert(song, new Cursor(0, 1),
+                    StaffElementFactory.note(OTHER), StaffElementFactory.keyChange(Key.ONE_SHARP),
+                    StaffElementFactory.note(F, Accidental.NATURAL)),
+                List.of(
+                    new ExpectedRestamp(new Cursor(0, 1), Accidental.NATURAL, ChainType.IN_KEY),
+                    new ExpectedRestamp(new Cursor(0, 3), Accidental.NATURAL, ChainType.ANCHOR),
+                    new ExpectedRestamp(new Cursor(0, 5), Accidental.FLAT, ChainType.ANCHOR))),
+            new EditCase("what is in force arriving at the edit stops at a key change before it",
+                () -> compactSong(Key.NO_ACCIDENTALS, F + "f K:ONE_SHARP " + OTHER + " " + F),
+                song -> choose(song, new Cursor(0, 3), Accidental.FLAT),
+                List.of(new ExpectedRestamp(new Cursor(0, 3), Accidental.FLAT, ChainType.ANCHOR))),
+            new EditCase("what is in force arriving at the edit stops at the start of a line with its own key",
+                () -> SongFactory.buildSong(
+                    line -> {
+                        line.setKey(Key.NO_ACCIDENTALS);
+                        SongFactory.addCompactElements(line, F + "f");
+                    },
+                    line -> {
+                        line.setKey(Key.ONE_SHARP);
+                        SongFactory.addCompactElements(line, OTHER + " " + F);
+                    }),
+                song -> choose(song, new Cursor(1, 1), Accidental.FLAT),
+                List.of(new ExpectedRestamp(new Cursor(1, 1), Accidental.FLAT, ChainType.ANCHOR))),
+            new EditCase("the element before the edit skips rests and breath marks",
+                () -> compactSong(Key.NO_ACCIDENTALS, F + "f " + OTHER + " R " + F + "s"),
+                song -> choose(song, new Cursor(0, 3), Accidental.FLAT),
+                List.of(new ExpectedRestamp(new Cursor(0, 3), Accidental.FLAT, ChainType.REPETITION))),
+            new EditCase("the span's last element skips rests and breath marks",
+                () -> compactSong(Key.NO_ACCIDENTALS, F + "f " + F + " R " + F),
+                song -> insert(song, new Cursor(0, 2), StaffElementFactory.singleBarline()),
+                List.of(new ExpectedRestamp(new Cursor(0, 4), Accidental.FLAT, ChainType.REPETITION))));
     }
 
     @Test
@@ -300,10 +345,7 @@ class AccidentalChainTest extends UnitTest {
         var firstOther = (NoteElement) line.getElement(1);
         var originalFirstOther = firstOther.chainedAccidental();
 
-        var keyChange = StaffElementFactory.keyChange(Key.ONE_FLAT);
-        song.withoutMutationTracking(() -> line.addElement(0, keyChange));
-        var edit = ChainEdit.inserted(new Cursor(0, 0), List.of(keyChange));
-        var restamps = AccidentalChain.walk(song, edit);
+        var restamps = AccidentalChain.walk(song, insert(song, new Cursor(0, 0), StaffElementFactory.keyChange(Key.ONE_FLAT)));
 
         assertRestamps(restamps,
             tuple(leadingFlat, Accidental.FLAT, ChainType.IN_KEY),
@@ -312,6 +354,37 @@ class AccidentalChainTest extends UnitTest {
         assertThat(firstOther.chainedAccidental())
             .as("a position the new key does not alter is undisturbed")
             .isEqualTo(originalFirstOther);
+    }
+
+    /** Chooses {@code accidental} for the note at {@code at}, untracked, and answers the edit that describes it. */
+    private static ChainEdit choose(Song song, Cursor at, Accidental accidental) {
+        var note = (NoteElement) song.getLine(at.lineIndex()).getElement(at.index());
+        var before = note.clone();
+
+        note.setAccidentalState(new AccidentalState.Chosen(accidental));
+        return ChainEdit.modified(at, before, note);
+    }
+
+    /** Inserts {@code elements} at {@code at}, untracked, and answers the edit that describes it. */
+    private static ChainEdit insert(Song song, Cursor at, StaffElement... elements) {
+        var line = song.getLine(at.lineIndex());
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < elements.length; i++) {
+                line.addElement(at.index() + i, elements[i]);
+            }
+        });
+
+        return ChainEdit.inserted(at, List.of(elements));
+    }
+
+    /** Each expected restamp as the tuple {@link #assertRestamps} compares, its note read from {@code song} as it stands. */
+    private static Tuple[] expectedTuples(Song song, List<ExpectedRestamp> expected) {
+        return expected.stream()
+            .map(restamp -> tuple(
+                song.getLine(restamp.at().lineIndex()).getElement(restamp.at().index()),
+                restamp.accidental(), restamp.type()))
+            .toArray(Tuple[]::new);
     }
 
     private static void assertRestamps(
