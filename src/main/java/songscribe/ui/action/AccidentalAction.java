@@ -241,8 +241,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      */
     @Override
     public void applyToElement(Line line, int index, NoteElement element, boolean selected) {
-        element.setAccidentalState(
-            new AccidentalState.Chosen(selected ? accidental : keyAlterationAt(line, index, element)));
+        element.choose(selected ? accidental : keyAlterationAt(line, index, element));
     }
 
     /**
@@ -250,7 +249,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
      * {@code k} in the class Javadoc's table.
      */
     private static Accidental keyAlterationAt(Line line, int index, NoteElement note) {
-        return line.keyAt(index).alterationAt(note.getStaffPosition());
+        return line.keyBefore(index).alterationAt(note.getStaffPosition());
     }
 
     @Override

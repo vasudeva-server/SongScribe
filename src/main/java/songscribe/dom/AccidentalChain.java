@@ -72,7 +72,7 @@ public final class AccidentalChain {
          * @effects {@code note.accidentalState()} is {@code state} afterwards
          */
         public void stamp() {
-            note.setAccidentalState(state);
+            note.stamp(state);
         }
     }
 

@@ -66,13 +66,12 @@ public final class PitchShifter {
      * Captures the original state of a single note in a pitch-shift group.
      * {@code line} is the note's own line — a group formed across a cross-line tie holds
      * entries from two different lines, so every entry carries the line {@code index}
-     * resolves into rather than assuming the group's caller-supplied line. {@code beforeClone}
-     * is a pre-mutation snapshot the note is put back to before {@link #commitPitchShift}
-     * records its move, so the {@link ElementModification#beforeElement()} of that record is
-     * the note's real prior state; {@code originalStaffPosition} is the staff position the
-     * shift delta is added to.
+     * resolves into rather than assuming the group's caller-supplied line.
+     * {@code originalStaffPosition} is the staff position the shift delta is added to, and the
+     * one the note is put back to before {@link #commitPitchShift} records its move, so the
+     * {@link ElementModification#beforeElement()} of that record is the note's real prior state.
      */
-    record PitchShiftEntry(Line line, int index, StaffPosition originalStaffPosition, NoteElement beforeClone) {}
+    record PitchShiftEntry(Line line, int index, StaffPosition originalStaffPosition) {}
 
     /**
      * Shifts the pitch of every pitched note in {@code range} (tie chains expanded) by
@@ -88,7 +87,7 @@ public final class PitchShifter {
      * <p>
      * {@code deltaSp} is clamped so no note leaves the valid staff range; if the
      * range holds no notes or the clamped delta is zero, nothing happens.
-     * Pre-mutation clones for the {@link ElementModification} records are captured
+     * The original staff positions for the {@link ElementModification} records are captured
      * before the shift is applied. The move, the commit, and the single note played once the
      * commit's chain walk has decided its sounding pitch are the exact same operations a mouse
      * drag performs on release.
@@ -167,7 +166,7 @@ public final class PitchShifter {
      * every note in the range — grace notes included, since they shift exactly like pitched
      * notes — with each note's tie chain fully expanded so tied notes move together, including
      * a chain that crosses into an adjacent line through a cross-line tie. Each entry captures
-     * the note's own line, current staff position, and a pre-mutation clone. Returns an empty
+     * the note's own line and current staff position. Returns an empty
      * list if the range holds no notes.
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, ElementRange range) {
@@ -207,7 +206,7 @@ public final class PitchShifter {
             }
 
             var index = elementLine.getElementIndex(note);
-            group.add(new PitchShiftEntry(elementLine, index, note.getStaffPosition(), note.clone()));
+            group.add(new PitchShiftEntry(elementLine, index, note.getStaffPosition()));
         }
 
         return group;
@@ -281,8 +280,9 @@ public final class PitchShifter {
      * the accidental restamps the song's chain walk makes for it are one undo step. The staff
      * positions must already have been mutated before this is called.
      * <p>
-     * Every group note is first put back plainly to its {@code beforeClone}, and only then is
-     * each move recorded through {@link Line#modifyElement}. The song walks the chain after
+     * Every group note is first put back plainly to its {@code originalStaffPosition}, and only
+     * then is each move recorded through {@link Line#modifyElement}. A move changes only the
+     * staff position, so that puts the note back as it stood before the move. The song walks the chain after
      * every recorded change and records its restamps between the moves, so a note whose move is
      * recorded later may already have been restamped by an earlier one; recording from the
      * restored notes gives each record the note's real prior state, which is what undo puts
@@ -312,10 +312,8 @@ public final class PitchShifter {
 
             for (var entry : group) {
                 var note = entry.line().noteAt(entry.index());
-                var before = entry.beforeClone();
                 landedPositions.add(note.getStaffPosition());
-                note.setStaffPosition(before.getStaffPosition());
-                note.setAccidentalState(before.accidentalState());
+                note.setStaffPosition(entry.originalStaffPosition());
             }
 
             for (var i = 0; i < group.size(); i++) {
@@ -331,7 +329,7 @@ public final class PitchShifter {
                             note.setStaffPosition(landedPosition);
 
                             if (moved) {
-                                note.setAccidentalState(new AccidentalState.Adopting());
+                                note.adopt();
                             }
                         }
                 );

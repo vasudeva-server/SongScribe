@@ -544,7 +544,7 @@ public final class StaffElementIO {
                     sawLegacyAccidental = true;
                 }
 
-                note.setAccidentalState(new AccidentalState.Chosen(accidental));
+                note.choose(accidental);
             } else if (tag.equals(XML_PREFIX_IN_PARENTHESIS)) {
                 // Read and ignored: parentheses are no longer tracked.
             } else if (tag.equals(XML_VOLUME) && str.equals("LOUDER")) { //old

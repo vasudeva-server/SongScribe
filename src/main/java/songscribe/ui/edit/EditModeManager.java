@@ -344,11 +344,11 @@ public final class EditModeManager {
         }
 
         var accidentalAction = Actions.ACCIDENTAL_ACTION_GROUP.getSelected();
-        note.setAccidentalState(
-            (accidentalAction != null)
-                ? new AccidentalState.Chosen(accidentalAction.getAccidental())
-                : new AccidentalState.Adopting()
-        );
+        if (accidentalAction != null) {
+            note.choose(accidentalAction.getAccidental());
+        } else {
+            note.adopt();
+        }
 
         note.clearArticulations();
 

@@ -444,15 +444,91 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * Writes what this note knows about its own accidental.
+     * Pitches this note with {@code sounding}, for the chain walk to decide.
      *
-     * @param state the new state
-     * @effects changes what {@link #accidentalState()}, {@link #chainedAccidental()},
-     *     {@link #soundingAccidental()}, {@link #drawnAccidental()} and {@link #getPitch()}
-     *     answer
+     * @param sounding the alteration the note sounds
+     * @effects {@link #accidentalState()} is {@link AccidentalState.Chosen} with
+     *     {@code sounding} afterwards
      */
-    public void setAccidentalState(AccidentalState state) {
-        accidentalState = state;
+    public void choose(Accidental sounding) {
+        accidentalState = new AccidentalState.Chosen(sounding);
+    }
+
+    /**
+     * Pitches this note as {@code source} is pitched, for the chain walk to decide.
+     *
+     * @param source the note whose pitch to take
+     * @effects this note is {@link AccidentalState.Chosen} with {@code source}'s sounding
+     *     alteration, or {@link AccidentalState.Adopting} when {@code source} is adopting
+     */
+    public void pitchAs(NoteElement source) {
+        accidentalState = switch (source.accidentalState) {
+            case ChainedAccidental chained -> new AccidentalState.Chosen(chained.accidental());
+            case AccidentalState.Chosen chosen -> chosen;
+            case AccidentalState.Adopting adopting -> adopting;
+        };
+    }
+
+    /**
+     * Takes away this note's own pitch, so it sounds what is in force where it lands.
+     *
+     * @effects {@link #accidentalState()} is {@link AccidentalState.Adopting} afterwards
+     */
+    public void adopt() {
+        accidentalState = new AccidentalState.Adopting();
+    }
+
+    /**
+     * Gives this note the chain walk's decision. Package-private so that only
+     * {@link AccidentalChain.Restamp#stamp} writes one.
+     *
+     * @param decided the walk's decision for this note
+     */
+    void stamp(ChainedAccidental decided) {
+        accidentalState = decided;
+    }
+
+    /**
+     * Saves this note's accidental state, so that it can be put back later.
+     *
+     * @return a saved state that {@link SavedAccidental#restore} puts back on this note only
+     */
+    public SavedAccidental saveAccidentalState() {
+        return new SavedAccidental(this, accidentalState);
+    }
+
+    /**
+     * A note's accidental state as it stood when {@link #saveAccidentalState} was called. It
+     * can put that state back on that note only, so no caller can give a note a state it did
+     * not hold before.
+     */
+    public static final class SavedAccidental {
+
+        private final NoteElement note;
+        private final AccidentalState state;
+
+        private SavedAccidental(NoteElement note, AccidentalState state) {
+            this.note = note;
+            this.state = state;
+        }
+
+        /**
+         * @return the note whose state this is
+         */
+        public NoteElement note() {
+            return note;
+        }
+
+        /**
+         * Puts the saved state back on the note, plainly: nothing is recorded, so a caller
+         * inside a modification bracket passes this as the mutator of
+         * {@link Line#modifyElement}.
+         *
+         * @effects {@code note().accidentalState()} is the saved state afterwards
+         */
+        public void restore() {
+            note.accidentalState = state;
+        }
     }
 
     // ========================================================================

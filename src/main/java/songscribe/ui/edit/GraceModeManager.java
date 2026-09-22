@@ -135,7 +135,7 @@ public final class GraceModeManager {
      * before. The pairing bracket records the restamp from {@code saved}, so undo puts that
      * state back; an abort's removal walk restores it without a record.
      */
-    private record SavedAccidentalState(Line line, NoteElement note, AccidentalState saved) {}
+    private record SavedAccidentalState(Line line, NoteElement.SavedAccidental saved) {}
 
     // The notes the untracked insertion's walk restamped, in walk order, until the pairing
     // records them or the abort drops them.
@@ -565,9 +565,8 @@ public final class GraceModeManager {
             song, ChainEdit.inserted(new Cursor(line.index(), graceNoteIndex), List.of(insertedGraceNote)));
 
         for (var restamp : restamps) {
-            var restampedNote = restamp.note();
             savedAccidentalStates.add(
-                new SavedAccidentalState(restamp.line(), restampedNote, restampedNote.accidentalState()));
+                new SavedAccidentalState(restamp.line(), restamp.note().saveAccidentalState()));
             restamp.stamp();
         }
 
@@ -707,15 +706,16 @@ public final class GraceModeManager {
             // it replaced and recorded from there, so undo restores the state the walk
             // replaced, not the one it decided.
             for (var savedState : savedAccidentalStates) {
-                var restampedNote = savedState.note();
+                var saved = savedState.saved();
+                var restampedNote = saved.note();
                 var restampedLine = savedState.line();
-                var decided = restampedNote.accidentalState();
-                restampedNote.setAccidentalState(savedState.saved());
+                var decided = restampedNote.saveAccidentalState();
+                saved.restore();
 
                 restampedLine.modifyElement(
                     restampedLine.getElementIndex(restampedNote),
                     ElementField.ACCIDENTAL,
-                    () -> restampedNote.setAccidentalState(decided)
+                    decided::restore
                 );
             }
 

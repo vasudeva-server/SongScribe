@@ -31,9 +31,9 @@ import songscribe.error.RuntimeError;
  *
  * <p><strong>The site is stated by whoever resolved it, and never re-derived.</strong> Whether the
  * index carries a key change already is a fact the resolver has; asking the line to recover it
- * would put a lookup in the way of an answer that already arrived. That is also what frees
- * {@link Line#keyAt} from its inclusive bound: the one case that needs the key of a key change
- * sitting <em>on</em> the index reads it off the element instead.
+ * would put a lookup in the way of an answer that already arrived. It is also what makes the answer
+ * correct: {@link Line#keyBefore} excludes a key change standing at the given index, so the one case
+ * that needs the key of a key change sitting <em>on</em> the index reads it off the element instead.
  *
  * <p>Build one through {@link #lineKey}, {@link #existingKeyChange} or {@link #newPosition} rather
  * than through the canonical constructor, so the index convention is stated once here rather than
@@ -112,7 +112,7 @@ public record KeyChangeSite(Line line, int elementIndex, Binding binding) {
             // its own key is the answer without a query whose bound has to be argued about.
             case EXISTING_KEY_CHANGE -> boundKeyChange().getKey();
 
-            case NEW_POSITION -> line.keyAt(elementIndex);
+            case NEW_POSITION -> line.keyBefore(elementIndex);
         };
     }
 

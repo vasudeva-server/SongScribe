@@ -211,7 +211,7 @@ public final class SongFactory {
         var accidental = accidentalOf(matcher.group(3));
 
         if (accidental != null) {
-            note.setAccidentalState(new AccidentalState.Chosen(accidental));
+            note.choose(accidental);
         }
 
         return note;

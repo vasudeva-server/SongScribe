@@ -286,7 +286,7 @@ final class PreviewElementInserter {
         if (replacement instanceof NoteElement note && previewElement instanceof NoteElement previewNote) {
             // The preview note is Chosen or Adopting; the walk in the fit gate decides what the
             // replacement sounds and stamps it before the replacement lands.
-            note.setAccidentalState(previewNote.accidentalState());
+            note.pitchAs(previewNote);
 
             // Articulations are a note-entry decoration the user sets on the preview element via
             // the toolbar/menu, exactly like the accidental above. Carry them over from the

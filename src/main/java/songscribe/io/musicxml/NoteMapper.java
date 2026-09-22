@@ -245,7 +245,7 @@ final class NoteMapper {
         }
 
         if (accidental != null) {
-            element.setAccidentalState(new AccidentalState.Chosen(accidental));
+            element.choose(accidental);
         }
 
         return usedLegacyAccidental;

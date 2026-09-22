@@ -328,7 +328,7 @@ class AccidentalChainTest extends UnitTest {
         var before = moved.clone();
 
         moved.setStaffPosition(new StaffPosition(F));
-        moved.setAccidentalState(new AccidentalState.Adopting());
+        moved.adopt();
         var edit = ChainEdit.modified(new Cursor(0, 1), before, moved);
         var restamps = AccidentalChain.walk(song, edit);
 
@@ -361,7 +361,7 @@ class AccidentalChainTest extends UnitTest {
         var note = (NoteElement) song.getLine(at.lineIndex()).getElement(at.index());
         var before = note.clone();
 
-        note.setAccidentalState(new AccidentalState.Chosen(accidental));
+        note.choose(accidental);
         return ChainEdit.modified(at, before, note);
     }
 

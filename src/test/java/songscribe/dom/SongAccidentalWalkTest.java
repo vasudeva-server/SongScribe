@@ -138,7 +138,7 @@ class SongAccidentalWalkTest extends UnitTest {
         var beforeState = note.clone();
 
         return new Fixture(song,
-            () -> line.modifyElement(1, ElementField.ACCIDENTAL, () -> note.setAccidentalState(new AccidentalState.Adopting())),
+            () -> line.modifyElement(1, ElementField.ACCIDENTAL, note::adopt),
             () -> line.modifyElement(1, ElementField.ACCIDENTAL, () -> note.copyStateFrom(beforeState)));
     }
 

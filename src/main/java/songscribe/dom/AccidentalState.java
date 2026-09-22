@@ -31,6 +31,13 @@ package songscribe.dom;
  * otherwise live on notes not on a line: the preview note, a selection action's stand-in, a
  * detached replacement. A gate that measures such a note for fit may stamp it plainly.
  *
+ * <p>A note gets a {@link ChainedAccidental} in three ways only: from the walk, through
+ * {@link AccidentalChain.Restamp#stamp}; from a state the same note held before, through
+ * {@link NoteElement.SavedAccidental#restore}; and through {@link StaffElement#copyStateFrom},
+ * which a clone and undo replay use to copy the whole state of a note that holds one. Every
+ * other write sets an intent — {@link NoteElement#choose},
+ * {@link NoteElement#adopt} or {@link NoteElement#pitchAs} — which the next walk replaces.
+ *
  * <p>Only {@link Adopting} has no sounding alteration: a {@link ChainedAccidental} sounds its
  * alteration and a {@link Chosen} note sounds what it was pitched with.
  */

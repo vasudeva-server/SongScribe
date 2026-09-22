@@ -49,7 +49,7 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * of the run, the predecessor's against the first — and a glissando loses its target to an
  * insertion and to {@link Line#deleteRange} alike. {@link Line#canInsertElementAt} and
  * {@link Line#canBearSyllableAt} are the two questions every caller asks about a position, and
- * both turn on the closed pairs a line can hold. {@link Line#keyAt} and
+ * both turn on the closed pairs a line can hold. {@link Line#keyBefore} and
  * {@link Line#keyAtEndOfLineAfterRemoving} read the key a position is in, and an append keeps the
  * song's terminal last. An edit that breaks the terminal policy throws, and the one final double
  * barline the policy allows, appended to the last line, does not.
@@ -252,7 +252,6 @@ class LineTest extends UnitTest {
     private static final int FIRST_NOTE = 0;
     private static final int FIRST_BARLINE = 1;
     private static final int FIRST_KEY_CHANGE = 2;
-    private static final int NOTE_UNDER_FIRST_CHANGE = 3;
     private static final int SECOND_KEY_CHANGE = 5;
     private static final int LAST_NOTE = 6;
 
@@ -276,30 +275,33 @@ class LineTest extends UnitTest {
     }
 
     /**
-     * One index on {@link #keyLine()} and the key in effect there.
+     * One index on {@link #keyLine()} and the key in force just before it.
      *
      * @param description the case, as the test's display name
      * @param index       the insertion index asked about
-     * @param expected    the key in effect at it
+     * @param expected    the key in force just before it
      */
-    private record KeyAtCase(String description, int index, Key expected) {}
+    private record KeyBeforeCase(String description, int index, Key expected) {}
 
-    static Stream<KeyAtCase> keyAtCases() {
+    static Stream<KeyBeforeCase> keyBeforeCases() {
         return Stream.of(
-            new KeyAtCase("index 0 is in the running key", FIRST_NOTE, RUNNING_KEY),
-            new KeyAtCase("an index with no key change at or before it is in the running key",
+            new KeyBeforeCase("index 0 is the running key", FIRST_NOTE, RUNNING_KEY),
+            new KeyBeforeCase("an index with no key change below it is the running key",
                 FIRST_BARLINE, RUNNING_KEY),
-            new KeyAtCase("a key change is in effect at its own index", FIRST_KEY_CHANGE, FIRST_CHANGE_KEY),
-            new KeyAtCase("a key change stays in effect past its index",
-                NOTE_UNDER_FIRST_CHANGE, FIRST_CHANGE_KEY),
-            new KeyAtCase("the insertion index past the last element is in the last key change's key",
+            new KeyBeforeCase("a key change is not counted at its own index",
+                FIRST_KEY_CHANGE, RUNNING_KEY),
+            new KeyBeforeCase("a key change is counted at the index just after it",
+                FIRST_KEY_CHANGE + 1, FIRST_CHANGE_KEY),
+            new KeyBeforeCase("a key change stays in force until the next one",
+                SECOND_KEY_CHANGE, FIRST_CHANGE_KEY),
+            new KeyBeforeCase("the insertion index past the last element is in the last key change's key",
                 LAST_NOTE + 1, SECOND_CHANGE_KEY));
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("keyAtCases")
-    void testKeyAtIsTheLastKeyChangeAtOrBeforeTheIndexElseTheRunningKey(KeyAtCase testCase) {
-        assertThat(keyLine().keyAt(testCase.index())).isEqualTo(testCase.expected());
+    @MethodSource("keyBeforeCases")
+    void testKeyBeforeIsTheLastKeyChangeBelowTheIndexElseTheRunningKey(KeyBeforeCase testCase) {
+        assertThat(keyLine().keyBefore(testCase.index())).isEqualTo(testCase.expected());
     }
 
     /**

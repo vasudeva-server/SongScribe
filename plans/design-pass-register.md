@@ -125,7 +125,7 @@ table, never up the numbers.
 | 4  | Durations and element types | `dom`: `BeatUnit`, `NoteValue`, `ElementType`, `ElementLocation`, `ElementAppearance`, `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance`, `KeySignatureAppearance` | ✅ | The vocabulary every element is built from. `Duration` is now `BeatUnit`, an enum over `(NoteValue, dotted)`; `ElementType` carries a `Kind` and an `ElementAppearance` — sealed over `NoteheadAppearance`, `GlyphAppearance`, `BarAppearance` and `KeySignatureAppearance` — supplied through the constructor, so the appearance mapping is total and the bounds computation is one exhaustive switch with no lookup that can miss. Every appearance arm has its own element leaf (`NoteElement`, `GlyphElement`, `BarElement`, `KeyChangeElement`), sealed under `StaffElement`/`StructuralElement`; the notehead and volta accessors that used to live on `ElementType` moved to the appearance types that actually carry them. `ElementLocation` stays a plain address record — its guard and its transposable `matches` method are both gone, since nothing produces the out-of-range value they existed to catch. Seven runtime guards, six `@Nullable`s and two sentinel values retired; four types introduced (`Kind`, `NoteValue`, `ElementBounds`, `PreviewHover`), each replacing a set of parallel fields or a partial lookup with a total one. |
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ✅ | Everything except key state, which pass 0 settled. |
-| 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainedAccidental`, `ChainEdit`, `ProjectedEdit` | 🔄 | The chain walk: which accidental each note sounds and draws, decided again after every edit. `docs/accidentals.md`. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. |
+| 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainedAccidental`, `ChainEdit`, `Cursor`, `ProjectedEdit` | ✅ | The chain walk: which accidental each note sounds and draws, decided again after every edit. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. `ChainedAccidental` is the walk's decision and one of the three `AccidentalState`s; its package-private constructor, and `NoteElement`'s package-private `stamp`, make every decision on a note the walk's own. A note otherwise takes an intent (`choose`, `adopt`, `pitchAs`) or puts back its own earlier state (`NoteElement.SavedAccidental`). `ChainEdit` is a final class whose range is a `Cursor` and a length, and whose reach is a `Reach` enum, so a transposed line and element index does not compile. A key change inside an edited range rekeys the walk instead of stopping it. `Line.keyAt` is deleted, and `Line.keyBefore` is the one key query. The design it arrived at is `docs/accidentals.md`. |
 | 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
@@ -347,6 +347,34 @@ the reason for it is still in hand.
 - **→ Pass 7.** `Ending.hasRepeatSplit(Line, int anchorIndex, int endIndex)` takes two
   indices of one type, in an order the caller must know. `MeasureMapper:710` is the
   reader-side caller. Row 7 judges whether an ending's span should be the argument.
+- **→ Pass 13.** `ElementModification` (`message/mutation`) states as prose that
+  `beforeElement` and `afterElement` are snapshots of one element, but its public record
+  constructor accepts any pair. `Line.java:520` is the one production site;
+  `ChainEditTest.java:49` builds one by hand. So `ChainEdit.modified` and
+  `ChainEdit.isRestamp` keep branches for pairs that no production code records: an
+  `after` that is not a note, and `endsInForce(after)` that differs from
+  `endsInForce(before)`. They answer such a pair correctly, so they are not defects. The
+  correct structure: `ElementModification` becomes a final class with a private
+  constructor and one factory that takes the element and the mutator and makes both
+  clones itself. It is not a record, for the JLS §8.10.4 reason `ChainedAccidental`'s
+  class Javadoc states. `ChainEdit.modified` then reads one element type.
+- **→ Pass 13.** Recording completeness (`docs/mutations.md`, *Recording completeness*)
+  is a contract on the modification bracket, and no type enforces it. Every setter on a
+  live element is public, for example `NoteElement.setStaffPosition`
+  (`NoteElement.java:115`), `choose` (`:453`), `pitchAs` (`:464`) and `adopt` (`:477`).
+  A write outside a `Line.modifyElement` mutator (`Line.java:493`, `:507`) is not
+  recorded, so undo does not see it, and `Song.applyChange` runs no chain walk for it:
+  the note keeps a stale or undecided accidental state, and
+  `NoteElement.chainedAccidental()` throws later. No production caller does this by
+  mistake today. Two write live notes outside a recorded change on purpose:
+  `PitchShifter.moveGroup` (`ui/component/score/PitchShifter.java:145`) moves staff
+  positions live during a drag, and `commitPitchShift` puts them back and records the
+  move; `GraceModeManager.enterGraceNote` (`ui/edit/GraceModeManager.java:516`) and
+  `abort` (`:763`) insert and remove a grace note untracked and stamp its neighbors
+  plainly through `AccidentalChain.Restamp.stamp`. Row 13 decides the route by which a
+  write to a live element is recorded, and the form those two sites take for a change
+  that is deliberately not recorded. A fix for accidental intent alone is a special case
+  of this rule, not a fix.
 
 ## Blockers
 

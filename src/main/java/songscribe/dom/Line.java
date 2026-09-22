@@ -266,35 +266,6 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Returns the key in effect at {@code elementIndex} within this line: {@link #getRunningKey()},
-     * overridden by the last {@link KeyChangeElement} at or before that index.
-     *
-     * <p>The bound is <em>inclusive</em>: a key change at {@code elementIndex} is in effect at
-     * {@code elementIndex}. {@code keyAt(0)} therefore always equals {@link #getRunningKey()},
-     * because index 0 can never hold a key change — see {@link KeyChangeElement}'s position
-     * invariant.
-     *
-     * <p>The domain is an <em>insertion</em> index, so {@link #elementCount()} is valid and means
-     * the position just past the last element: a caller resolving what an element about to be
-     * appended would be in has an index to ask about. An empty line answers
-     * {@link #getRunningKey()} at its one valid index.
-     *
-     * @param elementIndex the index into this line's elements, {@code 0..}{@link #elementCount()}
-     * @return the key in effect at that index; never null
-     * @throws IndexOutOfBoundsException if {@code elementIndex} is negative or greater than
-     *                                   {@link #elementCount()}
-     */
-    public Key keyAt(int elementIndex) {
-        if (elementIndex < 0 || elementIndex > elements.size()) {
-            throw new IndexOutOfBoundsException(
-                "element index " + elementIndex + " out of bounds for line of " + elements.size()
-            );
-        }
-
-        return keyBefore(Math.min(elementIndex + 1, elements.size()));
-    }
-
-    /**
      * Returns the key in force just before {@code index}: {@link #getRunningKey()}, overridden
      * by the last {@link KeyChangeElement} at an index below {@code index}. An element inserted
      * at {@code index} is in this key, and a key change standing at {@code index} is not counted.
@@ -317,9 +288,7 @@ public final class Line implements EditableRun {
 
     /**
      * Returns the key in effect after this line's last element — the key the next line inherits.
-     *
-     * <p>Prefer this to {@code keyAt(elementCount() - 1)}, which is the same answer on a line with
-     * elements and an {@link IndexOutOfBoundsException} on one without.
+     * Equal to {@code keyBefore(elementCount())}, see that method's {@code @invariant}.
      *
      * @return the key in effect at the end of this line, which is {@link #getRunningKey()} when
      *         the line is empty; never null

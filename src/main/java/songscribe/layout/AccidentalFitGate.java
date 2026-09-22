@@ -31,7 +31,6 @@ import java.util.function.BooleanSupplier;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.AccidentalChain;
-import songscribe.dom.AccidentalState;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
@@ -52,7 +51,7 @@ import songscribe.dom.StaffElement;
  * measuring before deciding therefore pull against each other, and this class is the one place
  * that resolves them.
  *
- * <p>A restamp is written plainly with {@link NoteElement#setAccidentalState}, which records
+ * <p>A restamp is written plainly with {@link AccidentalChain.Restamp#stamp}, which records
  * nothing — mutation recording happens only through {@link Line#modifyElement} — so the gate
  * changes what the notes draw without making anything undoable. The song runs the chain walk
  * after every recorded change, so once the accepted edit commits, the walk stamps every live note
@@ -71,12 +70,11 @@ public final class AccidentalFitGate {
      * A note the gate stamped, with what it held before so the gate can put it back.
      *
      * @param line           The live line the note is on or is about to land on
-     * @param note           The note
-     * @param prior          The state the note held on entry
+     * @param prior          The note, with the state it held on entry
      * @param drawnChanged   Whether stamping changed what the note draws, and so the width of its
      *                       column
      */
-    private record Stamped(Line line, NoteElement note, AccidentalState prior, boolean drawnChanged) {
+    private record Stamped(Line line, NoteElement.SavedAccidental prior, boolean drawnChanged) {
     }
 
     private AccidentalFitGate() {
@@ -142,11 +140,11 @@ public final class AccidentalFitGate {
 
         for (var restamp : restamps) {
             var note = restamp.note();
-            var prior = note.accidentalState();
+            var prior = note.saveAccidentalState();
             var drawnBefore = note.drawnAccidental();
             restamp.stamp();
             var drawnChanged = !Objects.equals(drawnBefore, note.drawnAccidental());
-            stamped.add(new Stamped(restamp.line(), note, prior, drawnChanged));
+            stamped.add(new Stamped(restamp.line(), prior, drawnChanged));
         }
 
         return stamped;
@@ -179,15 +177,15 @@ public final class AccidentalFitGate {
     }
 
     /**
-     * Puts each stamped note's prior state back with the plain setter, except the notes in
+     * Puts each stamped note's prior state back plainly, except the notes in
      * {@code keepStamped}, which keep the state the gate gave them.
      */
     private static void restore(List<Stamped> stamped, Set<StaffElement> keepStamped) {
         for (var stamp : stamped) {
-            var note = stamp.note();
+            var prior = stamp.prior();
 
-            if (!keepStamped.contains(note)) {
-                note.setAccidentalState(stamp.prior());
+            if (!keepStamped.contains(prior.note())) {
+                prior.restore();
             }
         }
     }

@@ -44,7 +44,7 @@ public final class StaffElementFactory {
         note.setStaffPosition(new StaffPosition(staffPosition));
 
         if (accidental != null) {
-            note.setAccidentalState(new AccidentalState.Chosen(accidental));
+            note.choose(accidental);
         }
 
         return note;

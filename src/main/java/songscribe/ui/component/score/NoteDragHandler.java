@@ -311,7 +311,7 @@ class NoteDragHandler {
         if (dragMoved) {
             // The pitch mutations were already applied live during handleDrag, so
             // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
-            // press-time beforeClone, then the grace-note cleanup — one bracket, one undo step.
+            // press-time staff position, then the grace-note cleanup — one bracket, one undo step.
             PitchShifter.commitPitchShift(dragLine, dragGroup);
 
             // Nothing sounds during the live drag itself; the anchor is played only now, once
