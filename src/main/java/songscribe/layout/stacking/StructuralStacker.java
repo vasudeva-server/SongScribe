@@ -769,17 +769,20 @@ public class StructuralStacker {
      * <p>
      * Each ending computes its bracket ranges (first and second brackets split
      * at the REPEAT_RIGHT barline), then collision regions are created for each
-     * bracket and stacked together as one element.
+     * bracket and stacked together as one element. The ending's layout is recorded as a
+     * {@link LayoutResult.DecorationLayout.Volta} carrying those ranges, which is where the
+     * renderer reads them.
      */
     private void stackEndings(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResultBuilder builder) {
 
+        var decorationLayouts = builder.decorationLayouts();
+
         for (var ending : line.spanRegistry().findSpans(Ending.class)) {
             var anchor = ending.getAnchorElement();
 
-            // Compute bracket ranges (stored on the Ending for renderer use)
             var brackets = EndingBracketGeometry.computeBracketRanges(
                 ending,
                 line,
@@ -818,7 +821,12 @@ public class StructuralStacker {
             stackAboveWithRegions(structuralExtents, ending, allRegions,
                 anchorXSs, widthSs,
                 ENDING_MARGIN_SS,
-                staffPosition, builder.decorationLayouts(), null);
+                staffPosition, decorationLayouts, null);
+
+            // The shared placement records bounds only; the ending's layout also carries the
+            // brackets it was placed from.
+            decorationLayouts.putDecorationLayout(ending, LayoutResult.DecorationLayout.Volta.of(
+                decorationLayouts.requireDecorationLayout(ending), brackets));
         }
     }
 

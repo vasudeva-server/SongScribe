@@ -27,7 +27,6 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Attachment;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Crescendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
@@ -167,8 +166,8 @@ public final class OpNames {
     }
 
     /**
-     * Names a hairpin deletion by subtype: {@code Delete Crescendo} for a {@link
-     * Crescendo}, otherwise {@code Delete Diminuendo}.
+     * Names a hairpin deletion by kind: {@code Delete Crescendo} for
+     * {@link Hairpin.Kind#CRESCENDO}, otherwise {@code Delete Diminuendo}.
      *
      * @return the localized name for the deletion
      */

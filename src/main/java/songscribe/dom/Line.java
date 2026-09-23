@@ -39,6 +39,8 @@ import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LineLayoutChange;
 import songscribe.message.mutation.LineLayoutField;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
 
 /**
  * One system of the score: an {@link EditableRun element run} that belongs to a {@link Song} and
@@ -60,6 +62,11 @@ import songscribe.message.mutation.Mutation;
  * element changes, and the merge rules belong to that registry, and a span enters or leaves it
  * through its own {@link Span#addTo}/{@link Span#removeFrom}. The element primitives only hand
  * each pending change to the registry before they apply it.
+ *
+ * <p><b>Ties.</b> A tie is not a span: it is a note's own state, and its end is derived (see
+ * {@link NoteElement}). The line is where a tie is recorded — {@link #addTie} and
+ * {@link #removeTie} — and where the tie rule judges its ties, {@link #applyTieRule}, which
+ * {@link Song} runs when the outermost modification bracket closes.
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
@@ -336,13 +343,41 @@ public final class Line implements EditableRun {
      *         measured before it is added
      */
     public @Nullable Key nextLineRunningKey() {
+        var next = nextLine();
+
+        return next == null ? null : next.getRunningKey();
+    }
+
+    /**
+     * The line that follows this one in its song.
+     *
+     * @return the next line, or {@code null} when this line is its song's last line or is not
+     *     one of its song's lines
+     */
+    @Nullable Line nextLine() {
         var lineIndex = song.indexOfLine(this);
 
-        if (lineIndex == null || isLast()) {
+        if (lineIndex == null || lineIndex == song.lineCount() - 1) {
             return null;
         }
 
-        return song.getLine(lineIndex + 1).getRunningKey();
+        return song.getLine(lineIndex + 1);
+    }
+
+    /**
+     * The line that precedes this one in its song.
+     *
+     * @return the previous line, or {@code null} when this line is its song's first line or is
+     *     not one of its song's lines
+     */
+    @Nullable Line previousLine() {
+        var lineIndex = song.indexOfLine(this);
+
+        if (lineIndex == null || lineIndex == 0) {
+            return null;
+        }
+
+        return song.getLine(lineIndex - 1);
     }
 
     // ========================================================================
@@ -355,33 +390,26 @@ public final class Line implements EditableRun {
     // Both addElement overloads attach; removeElement and removeRange detach; setElement does
     // both, detaching the outgoing element and attaching the incoming one.
     //
-    // A span is never attached to a line at all. Its inherited parentLine stays null for
-    // its whole life, and Span.isIn(Line) derives parentage from where its endpoints sit;
-    // how the span registry keeps both lines of a straddling pair holding the span is
-    // LineSpans' to state.
-    //
-    // Attachments (articulations, fermatas) live in neither list, so none of this
-    // covers them: LineElement.addChild/removeChild own their parentLine, and
-    // propagateParentLine is what carries a host element's line down to them.
+    // A span has no line pointer: Span.isIn(Line) derives the lines it is in from where its
+    // endpoints sit. What hangs on a staff element — attachments, articulations — has none
+    // either: its line is its host's, read through the host, so attaching or detaching the
+    // host carries them along with nothing to push down.
     //
     // Invariant:
     //   staff element — element.getParentLine() == L ⟺ L.elements contains the element,
     //   and null ⟺ the element is in no line at all.
     // ========================================================================
 
-    /** Points {@code element} and everything below it at this line. */
+    /** Points {@code element} at this line. */
     private void attach(StaffElement element) {
         elementIndexMap = null;
         element.setParentLine(this);
-        element.propagateParentLine(this);
     }
 
-    /** Clears {@code element}'s line pointer, and those of everything below it. */
+    /** Clears {@code element}'s line pointer. */
     private void detach(StaffElement element) {
         elementIndexMap = null;
-
         element.setParentLine(null);
-        element.propagateParentLine(null);
     }
 
     /**
@@ -390,9 +418,7 @@ public final class Line implements EditableRun {
      * <p>
      * An append is an insertion at the end, and it goes through the insertion primitive,
      * {@link #addElement(int, StaffElement)}, so everything that primitive promises applies to
-     * it: the span sweep, the mutation it posts, and the terminal check. The sweep matters even
-     * at the end of a line, because a tie whose end note is on the next line has everything
-     * after its anchor between its two notes.
+     * it: the span sweep, the mutation it posts, and the terminal check.
      *
      * @param element the element to append
      * @throws IllegalStateException if the insertion breaks the song's terminal policy — see
@@ -423,8 +449,8 @@ public final class Line implements EditableRun {
     public void addElement(int index, StaffElement element) {
         song.checkTerminalPolicyForInsertion(this, index, element.getType());
 
-        // Companion span changes precede the primary insertion so reverse-order undo
-        // restores the primary element before re-adding dependent spans.
+        // Companion span changes precede the primary insertion so reverse-order undo restores
+        // the primary element before re-adding dependent spans.
         spans.sweep(new ElementChange.Insertion(this, index, element));
 
         applyChange(
@@ -457,10 +483,10 @@ public final class Line implements EditableRun {
         var oldElement = elements.get(index);
 
         // Decided before the mutator so findRepeatSplitElement sees the pre-replacement line.
-        // Companion span changes precede the primary replacement so reverse-order undo
-        // restores the primary element before re-adding dependent spans. The anchor
-        // re-pointing in the mutator below runs on replay too — it is self-inverting and
-        // required for span references to stay valid.
+        // Companion span changes precede the primary replacement so reverse-order undo restores
+        // the primary element before re-adding dependent spans. The anchor re-pointing in the
+        // mutator below runs on replay too — it is self-inverting and required for span
+        // references to stay valid.
         spans.sweep(new ElementChange.Replacement(this, index, element));
 
         applyChange(
@@ -595,8 +621,8 @@ public final class Line implements EditableRun {
         var to = range.end();
         var deletedElements = List.copyOf(elements.subList(from, to + 1));
 
-        // Companion span changes precede the primary deletion so reverse-order undo
-        // re-inserts the elements before re-adding the spans anchored to them.
+        // Companion span changes precede the primary deletion so reverse-order undo re-inserts
+        // the elements before re-adding the spans anchored to them.
         spans.sweep(new ElementChange.Deletion(this, range));
 
         applyChange(
@@ -606,6 +632,113 @@ public final class Line implements EditableRun {
                 elements.subList(from, to + 1).clear();
             }
         );
+    }
+
+    // ========================================================================
+    // Ties
+    // ========================================================================
+
+    /**
+     * Ties {@code anchor} to the next note and posts one {@link TieAddition}. The note the tie
+     * ends on is derived, not given — see {@link NoteElement#tie()} — so this names only the
+     * anchor.
+     * <p>
+     * Nothing here judges the tie: a caller ties a note where the user or a file placed a tie,
+     * and the tie rule (see {@link NoteElement}) judges it when the outermost modification
+     * bracket closes, like any other tie in a line the bracket touched.
+     *
+     * @param anchor a note of this line whose {@link ElementType#kind()} is
+     *     {@link ElementType.Kind#NOTE}, which is not checked here: a caller converts at its
+     *     boundary, so that only such a note is ever tied; while the song is replaying, the note
+     *     the replayed record names, whichever line holds it at that point of the replay
+     * @effects when {@code anchor} is not already tied, posts the {@link TieAddition} through
+     *     {@link #applyChange}, under {@link Song#applyChange}'s bracket rule, and leaves
+     *     {@link NoteElement#isTiedToNext()} {@code true}; when it is already tied, records
+     *     nothing
+     */
+    public void addTie(NoteElement anchor) {
+        if (anchor.isTiedToNext()) {
+            return;
+        }
+
+        applyChange(new TieAddition(this, anchor), anchor::tieToNext);
+    }
+
+    /**
+     * Unties {@code anchor} from the next note and posts one {@link TieRemoval}.
+     *
+     * @param anchor a note of this line; while the song is replaying, the note the replayed
+     *     record names, whichever line holds it at that point of the replay
+     * @effects when {@code anchor} is tied, posts the {@link TieRemoval} through
+     *     {@link #applyChange}, under {@link Song#applyChange}'s bracket rule, and leaves
+     *     {@link NoteElement#isTiedToNext()} {@code false}; on an untied note, records nothing
+     */
+    public void removeTie(NoteElement anchor) {
+        if (!anchor.isTiedToNext()) {
+            return;
+        }
+
+        applyChange(new TieRemoval(this, anchor), anchor::untie);
+    }
+
+    /**
+     * Runs the tie rule (see {@link NoteElement}) over every tied note of this line: each one is
+     * judged by {@link Tie#holds} against the element its walk reaches, in this line or at the
+     * start of the next, and each tie that does not hold is removed through
+     * {@link #removeTie}. {@link Song} calls it when the outermost modification bracket
+     * closes, once every change in the bracket has landed.
+     *
+     * @effects posts a {@link TieRemoval} for each tie that does not hold; nothing else
+     */
+    void applyTieRule() {
+        var next = nextLine();
+
+        for (var i = 0; i < elements.size(); i++) {
+            if (elements.get(i) instanceof NoteElement anchor
+                    && anchor.isTiedToNext()
+                    && !Tie.holds(anchor, Tie.endAfter(elements, i, next))) {
+                removeTie(anchor);
+            }
+        }
+    }
+
+    /**
+     * The ties this line draws, one entry per tie or tie half it owns.
+     * <p>
+     * A line owns the tie that starts on each of its notes: whole when the end is in this line,
+     * and as the half running off the right edge when the end is in the next line. It also owns
+     * the half entering from its left edge of a tie whose anchor is in the previous line, which
+     * ends on this line's first note. So an intra-line tie is listed once, from its anchor, and
+     * a tie across a line break is listed once in each of its two lines.
+     * <p>
+     * The one statement of that ownership rule: layout builds a
+     * {@code LayoutResult.TieLayout} for each entry, and the renderer iterates the same list to
+     * draw them.
+     *
+     * @return the ties, in the order of the notes they were found on
+     */
+    public List<Tie> ownedTies() {
+        var ties = new ArrayList<Tie>();
+
+        for (var element : elements) {
+            if (!(element instanceof NoteElement note)) {
+                continue;
+            }
+
+            var incoming = note.incomingTie();
+
+            if (incoming != null && !contains(incoming.anchor())) {
+                ties.add(incoming);
+            }
+
+            var outgoing = note.tie();
+
+            if (outgoing != null) {
+                ties.add(outgoing);
+            }
+        }
+
+        return ties;
     }
 
     @Override
@@ -645,9 +778,7 @@ public final class Line implements EditableRun {
      * This is the query a caller asks when it does not know whether the element is on this line;
      * {@link #getElementIndex} assumes it is. The answer is read from the element's parent
      * pointer, which is an exact membership test: a staff element's parent line is written only
-     * by {@link #attach} and {@link #detach}, {@code LineElement.propagateParentLine} reaches only
-     * an element's children, and no {@link Attachment} or {@link Articulation} is a
-     * {@link StaffElement}.
+     * by {@link #attach} and {@link #detach}.
      *
      * @return {@code true} when {@code element.getParentLine() == this}
      */

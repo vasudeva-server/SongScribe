@@ -454,7 +454,7 @@ final class PreviewElementInserter {
                 if (!EndingConfirms.confirmInvalidation(lc)) {
                     return;
                 }
-                // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
+                // proceed: line.setElement removes the ending through Ending.outcomeFor
             }
             case Ending.EndingEffect.CompensateEnd ce -> {
                 if (!EndingConfirms.confirmCompensateEnd(lc, ce)) {

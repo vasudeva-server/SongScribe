@@ -31,10 +31,7 @@ import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
-import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
@@ -78,7 +75,6 @@ import songscribe.dom.TupletValidator;
  *   <tr><th>Kind</th><th>Target</th><th>Fragment</th></tr>
  *   <tr><td>{@link Tuplet}</td><td>removed</td><td>tuplets dropped</td></tr>
  *   <tr><td>{@link Beam}</td><td>removed</td><td>beams dropped</td></tr>
- *   <tr><td>{@link Tie}</td><td>removed unless the paste is all separators</td><td>kept</td></tr>
  *   <tr><td>{@link Trill}</td><td>removed</td><td>kept</td></tr>
  *   <tr><td>{@link Hairpin}</td><td colspan="2">by type — see below</td></tr>
  *   <tr><td>{@link Ending}</td><td>kept</td><td>endings dropped</td></tr>
@@ -87,11 +83,12 @@ import songscribe.dom.TupletValidator;
  * <p>Tuplets and beams are rhythmic groupings: a group that no longer covers the
  * notes it was written for is not merely misplaced but wrong, and a pasted group
  * dropped into the wreckage of a broken one is equally wrong — so both sides go.
- * Ties and trills bind specific adjacent notes, so a straddled one is dropped, but
- * a fragment's own tie or trill still binds its own notes and is kept. The one thing
- * a straddled tie survives is a paste made entirely of the separators a tie may cross
- * — a barline, repeat, clef or key change — since a tie over those is ordinary
- * notation, and drawing one in by hand has always left the tie alone.
+ * A trill binds specific adjacent notes, so a straddled one is dropped, but a
+ * fragment's own trill still binds its own notes and is kept. A tie is not a span
+ * and this class does not judge one: it is state the anchor note carries, travels
+ * with the pasted notes however they land, and is judged by the tie rule when the
+ * paste's modification bracket closes, the same as any other tie in a line the
+ * bracket touched — including one that spans the paste point.
  *
  * <p><b>Hairpins reconcile by type</b>, because a crescendo and a diminuendo say
  * opposite things when they <em>overlap</em> — which is all this class ever judges,
@@ -110,9 +107,9 @@ import songscribe.dom.TupletValidator;
  * same-type hairpins left nose to tail are one hairpin, but that is the same rule
  * that applies when the user draws a hairpin flush against an existing one, so it
  * lives where drawing already handles it: {@code tryInsertFragment} adds each pasted
- * span through {@link Span#addTo}, which runs the hairpin's own displacement
- * policy, {@link Hairpin#applyDisplacementPolicy}, and
- * that policy absorbs an overlapping <em>or adjacent</em> same-type hairpin. A
+ * span through {@link Span#addTo}, which applies the hairpin's displacement,
+ * {@link Hairpin#displacement}, and
+ * that displacement absorbs an overlapping <em>or adjacent</em> same-type hairpin. A
  * different type merges with nothing and the two hairpins stand side by side, again
  * exactly as when drawn. Nothing here needs to know about it.
  *
@@ -135,25 +132,10 @@ import songscribe.dom.TupletValidator;
  * kept and the fragment's is dropped. Whether the destination ending survives the
  * pasted <em>content</em> is a separate and more precise question that
  * {@link Line#addElement} already answers per clone via
- * {@code Ending.isInvalidatedByInsertion}, the ending's own barline/repeat-aware
+ * {@link Ending#outcomeFor}, the ending's own barline/repeat-aware
  * rule; this class does not second-guess it. A fragment carrying a whole ending
  * necessarily carries that ending's own barlines, so in practice that rule usually
  * removes the destination ending too, and the paste is confirmed on those terms.
- *
- * <p>That per-clone sweep in {@link Line#addElement} is not ending-specific:
- * {@code Tie.isInvalidatedByInsertion} rides it too, so a clone landing between two
- * tied notes drops the destination tie. For a tie whose endpoints both sit in this
- * line the straddle rule above has already removed any tie the paste lands inside of,
- * so by the time the clones go in there is nothing left for the sweep to find. A tie
- * straddling a line boundary is the one the straddle rule deliberately declines to
- * judge — see {@link #reconcile} — and the sweep owns it outright.
- *
- * <p>The two reach the same verdict because they consult the same rule.
- * {@link #reconcile} is handed the fragment's elements for no other purpose than to
- * ask {@code Tie.isLegalSeparator} what is actually being pasted, which is what the
- * sweep asks per clone. Without that it dropped a straddled destination tie whatever
- * the fragment held, so pasting a lone barline between two tied notes removed the tie
- * where drawing that same barline in left it.
  *
  * @param targetSpansToRemove     Spans on the destination line to remove before inserting
  * @param fragmentSpans           The fragment's spans that should still be added
@@ -176,36 +158,21 @@ public record PasteSpanReconciliation(
      * <p>Must be called on the <em>pre-mutation</em> line: every index below is a
      * live index into the line as it stands before the paste's delete and insert.
      *
-     * @param line             The destination line, before any paste mutation
-     * @param insertIndex      The index the fragment's first element will land at
-     * @param deleteRange      The range a paste-replace deletes first, or null for a pure
-     *                         insertion
-     * @param fragmentElements The elements the instantiated fragment will insert, in order
-     * @param fragmentSpans    The spans the instantiated fragment carries
+     * @param line          The destination line, before any paste mutation
+     * @param insertIndex   The index the fragment's first element will land at
+     * @param deleteRange   The range a paste-replace deletes first, or null for a pure
+     *                      insertion
+     * @param fragmentSpans The spans the instantiated fragment carries
      */
     public static PasteSpanReconciliation reconcile(
         Line line,
         int insertIndex,
         @Nullable ElementRange deleteRange,
-        List<StaffElement> fragmentElements,
         List<Span> fragmentSpans
     ) {
         // The first index after the paste region. For a pure insertion the region is
         // empty, so it collapses onto insertIndex itself.
         var firstIndexAfterRegion = deleteRange == null ? insertIndex : deleteRange.end() + 1;
-
-        // A tie may legally span a barline, repeat, clef or key change, so a paste made
-        // entirely of those puts nothing between the tied notes that a tie may not cross.
-        // The same test Line.addElement's per-clone sweep applies, asked once for the whole
-        // fragment so the two cannot reach different answers about the same paste.
-        //
-        // Empty is excluded explicitly rather than left to allMatch, which is vacuously true
-        // on an empty list and would read "this paste disturbs no tie" from a paste that
-        // inserts nothing at all. ScoreViewController.tryInsertFragment already refuses an
-        // empty fragment, so this is unreachable today — but that guard is in another class,
-        // and the vacuous answer is the wrong one to fall back on if it ever moves.
-        var pastesOnlySeparatorsATieMayCross = !fragmentElements.isEmpty()
-            && fragmentElements.stream().allMatch(element -> Tie.isLegalSeparator(element.getType()));
 
         var toRemove = new ArrayList<Span>();
         var dropTuplets = false;
@@ -219,15 +186,12 @@ public record PasteSpanReconciliation(
         var spans = line.spanRegistry();
 
         for (var span : spans.getSpans()) {
-            // Both endpoints have to be positions in this line before they can be compared
-            // against a position in it. A tie straddling a line boundary resolves one endpoint
-            // to an edge it runs off, so the comparison below would be arithmetic across two
-            // different lines, and whether it happened to come out right would depend on the
-            // two lines' relative lengths rather than on anything musical. Its half of the
-            // paste is owned by the per-clone sweep in Line.addElement, which resolves against
-            // the receiving line — and applies the tie's separator rule while it is there.
-            if (!(spans.anchorIndexOf(span) instanceof SpanBound.At(var anchorIndex))
-                    || !(spans.endIndexOf(span) instanceof SpanBound.At(var endIndex))) {
+            // Both endpoints have to resolve before they can be compared against a position
+            // in this line: a detached endpoint bounds nothing to compare.
+            var anchorIndex = span.getAnchorElementIndex();
+            var endIndex = span.getEndElementIndex();
+
+            if (anchorIndex == null || endIndex == null) {
                 continue;
             }
 
@@ -247,11 +211,6 @@ public record PasteSpanReconciliation(
                 case Beam beam -> {
                     toRemove.add(beam);
                     dropBeams = true;
-                }
-                case Tie tie -> {
-                    if (!pastesOnlySeparatorsATieMayCross) {
-                        toRemove.add(tie);
-                    }
                 }
                 case Trill trill -> toRemove.add(trill);
                 case Hairpin hairpin -> {
@@ -350,10 +309,6 @@ public record PasteSpanReconciliation(
      * where it came from would delete it. What the destination can still break is the span's
      * <em>placement</em>: a beat barrier or a barline, repeat or breath mark now inside it.
      * Those are checked strictly, exactly as creating the tuplet by hand there would be.
-     * <p>
-     * A tuplet with no ratio yet cannot occur on the clipboard — the load pass resolves or
-     * drops every one before a song is ever shown — but if one arrives, its ratio is derived
-     * from the destination as creation would.
      */
     private static boolean isRejectedByTarget(Line line, Tuplet tuplet) {
         var beginIndex = tuplet.requireAnchorElementIndex();
@@ -367,16 +322,8 @@ public record PasteSpanReconciliation(
         }
 
         var context = TupletValidator.describeSpan(line, new ElementRange(beginIndex, endIndex));
-        var ratio = tuplet.getRatio();
-        TupletValidator.Result result;
-
-        if (ratio == null) {
-            result = TupletValidator.validate(
-                context, tuplet.getGrade(), TupletValidator.Strictness.STRICT);
-        } else {
-            result = TupletValidator.validateStated(
-                context, tuplet.getGrade(), ratio, TupletValidator.Strictness.STRICT);
-        }
+        var result = TupletValidator.validateStated(
+            context, tuplet.getGrade(), tuplet.getRatio(), TupletValidator.Strictness.STRICT);
 
         return result instanceof TupletValidator.Result.Invalid;
     }

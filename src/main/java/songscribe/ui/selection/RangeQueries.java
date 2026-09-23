@@ -77,10 +77,12 @@ public final class RangeQueries {
      * or {@code null} if the element does not sit at an eligible line boundary (#493).
      *
      * <p>All of these must hold: {@code index} is the element a tie would leave or enter
-     * {@code line} through — see {@link #tieExitIndex}/{@link #tieEntryIndex} — an adjacent
-     * line exists on that side and offers such an element of its own, both elements are
-     * pitched notes, and the two share a pitch. A line with only one of them checks the
-     * boundary before the line first, so it never also offers the boundary after it.
+     * {@code line} through — the first non-separator of the line
+     * ({@link Tie#firstNonSeparatorIndexFrom}) for the entry side, the last
+     * ({@link Tie#lastNonSeparatorIndexBefore}) for the exit side — an adjacent line exists on
+     * that side and offers such an element of its own, both elements are pitched notes, and the
+     * two share a pitch. A line with only one of them checks the boundary before the line
+     * first, so it never also offers the boundary after it.
      */
     public static @Nullable BoundaryTie boundaryTieAt(Line line, int index) {
         var song = line.getSong();
@@ -91,19 +93,20 @@ public final class RangeQueries {
 
         BoundaryTie candidate = null;
 
-        var entryIndex = tieEntryIndex(line);
-        var exitIndex = tieExitIndex(line);
+        var entryIndex = Tie.firstNonSeparatorIndexFrom(line.getElements(), 0);
+        var exitIndex = Tie.lastNonSeparatorIndexBefore(line.getElements(), line.elementCount());
 
         if (entryIndex != null && index == entryIndex && !line.isFirst()) {
             var previousLine = song.getLine(line.index() - 1);
-            var anchorIndex = tieExitIndex(previousLine);
+            var previousElements = previousLine.getElements();
+            var anchorIndex = Tie.lastNonSeparatorIndexBefore(previousElements, previousElements.size());
 
             if (anchorIndex != null && previousLine.getElement(anchorIndex) instanceof NoteElement anchor) {
                 candidate = new BoundaryTie(anchor, note);
             }
         } else if (exitIndex != null && index == exitIndex && !line.isLast()) {
             var nextLine = song.getLine(line.index() + 1);
-            var endIndex = tieEntryIndex(nextLine);
+            var endIndex = Tie.firstNonSeparatorIndexFrom(nextLine.getElements(), 0);
 
             if (endIndex != null && nextLine.getElement(endIndex) instanceof NoteElement end) {
                 candidate = new BoundaryTie(note, end);
@@ -129,56 +132,6 @@ public final class RangeQueries {
         return anchor.getType().isPitchedNote()
             && end.getType().isPitchedNote()
             && anchor.getPitch() == end.getPitch();
-    }
-
-    /**
-     * The index of the element a tie entering {@code line} from the previous line ends on,
-     * found by walking forward from the line's first element past every element a tie may
-     * straddle.
-     *
-     * <p>Not simply the first element. {@link Tie#isLegalSeparator} lets a barline, repeat or
-     * breath mark sit between a tie's two notes, so the walk passes them. It and
-     * {@link #tieExitIndex} are one question put to two lines: which element of this line a tie
-     * from the previous line lands on, and which element the user must have selected for a tie
-     * to leave the previous line.
-     *
-     * <p>A grace note is not a legal separator, so one sitting before the end note stops the
-     * walk instead of being passed over — matching what {@link Tie#isInvalidatedByInsertion}
-     * does to a tie the moment a grace note appears there.
-     *
-     * @return the index, or {@code null} when every element of the line is a legal separator
-     */
-    private static @Nullable Integer tieEntryIndex(Line line) {
-        for (var i = 0; line.hasIndex(i); i++) {
-            if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * The index of the element a tie leaving {@code line} for the next line anchors to, found
-     * by walking backward from the line's last element past every element a tie may straddle —
-     * {@link #tieEntryIndex} from the other edge.
-     *
-     * <p>A line that ends with a barline is the ordinary case rather than a corner one, so
-     * pinning the candidate to the last element would refuse the tie for most of the lines a
-     * user actually writes. A grace note after the anchor stops the walk, as it does in
-     * {@link #tieEntryIndex}, and so does a final double barline: nothing may sound across the
-     * end of the piece.
-     *
-     * @return the index, or {@code null} when every element of the line is a legal separator
-     */
-    private static @Nullable Integer tieExitIndex(Line line) {
-        for (var i = line.elementCount() - 1; line.hasIndex(i); i--) {
-            if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
-                return i;
-            }
-        }
-
-        return null;
     }
 
     /**
@@ -248,7 +201,7 @@ public final class RangeQueries {
             return false;
         }
 
-        var shouldConnect = line.spanRegistry().findExactTie(bounds) == null;
+        var shouldConnect = !anchorNote.isTiedTo(endNote);
 
         // Conflict: tying would connect what a beam already connects. The raw range bounds
         // are correct here, unlike beaming/tupleting: the only interior a tie allows holds a
@@ -273,13 +226,13 @@ public final class RangeQueries {
      * wrong-pitch <em>note</em> at {@code index - 1} fails both, because a note is not a legal
      * separator — a refusal, which is what the user should get.
      *
-     * <p>There is no widen-or-break branch, unlike the beam side: ties never coalesce, since
-     * {@link Tie#addTo} does no span merging and holds one tie per pair, so the toggle is a
-     * plain add or remove of the exact tie over the pair.
+     * <p>There is no widen-or-break branch, unlike the beam side: ties never coalesce, since a
+     * tie always joins a note to the next one ({@link NoteElement#tie()}), so the toggle is a
+     * plain add or remove of the tie over the pair.
      *
-     * <p>Grace notes are not transparent here, though they are for beams. A tie is invalidated
-     * the moment a grace note appears between its notes, and a grace note is refused at either
-     * endpoint, so nothing walks past one (refs #592).
+     * <p>Grace notes are not transparent here, though they are for beams. A grace note is not a
+     * legal separator, so the walk that derives a tie's end stops at one, and a grace note is
+     * refused at either endpoint, so nothing walks past one (refs #592).
      *
      * <p>The single-element shape is accepted only when the boundary tie it would create runs
      * <em>backward</em> into {@code index} — {@link #boundaryTieAt} returns the forward
@@ -477,8 +430,7 @@ public final class RangeQueries {
         }
 
         var coversExisting = (firstTuplet != null)
-            && Span.exactly(grouped).test(
-                line.spanRegistry().anchorIndexOf(firstTuplet), line.spanRegistry().endIndexOf(firstTuplet));
+            && Span.exactly(grouped).test(firstTuplet.getAnchorElementIndex(), firstTuplet.getEndElementIndex());
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still
@@ -550,6 +502,8 @@ public final class RangeQueries {
      * to the span already being covered by an existing tie (remove mode).
      */
     private static boolean shouldConnectTieSelection(Line line, ElementRange range) {
-        return !line.spanRegistry().sameTieAt(range.begin(), range.end());
+        return !(line.getElement(range.begin()) instanceof NoteElement first
+            && line.getElement(range.end()) instanceof NoteElement second
+            && first.isTiedTo(second));
     }
 }

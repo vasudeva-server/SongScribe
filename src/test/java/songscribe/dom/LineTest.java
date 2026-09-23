@@ -366,8 +366,8 @@ class LineTest extends UnitTest {
         line.addElement(after);
 
         // Hairpins, because a hairpin survives the replacement of an endpoint by another note.
-        var endingOnIt = new Crescendo(before, replaced);
-        var anchoredOnIt = new Diminuendo(replaced, after);
+        var endingOnIt = new Hairpin(Hairpin.Kind.CRESCENDO, before, replaced);
+        var anchoredOnIt = new Hairpin(Hairpin.Kind.DIMINUENDO, replaced, after);
         endingOnIt.addTo(line);
         anchoredOnIt.addTo(line);
 

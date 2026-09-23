@@ -30,10 +30,6 @@ public sealed interface Mutation
             LineKeyChange, LineLayoutChange,
     SpanAddition,
     SpanRemoval,
-            BeamingAddition, BeamingRemoval,
             TieAddition, TieRemoval,
-            TupletAddition, TupletRemoval,
-            CrescendoAddition, CrescendoRemoval,
-            DiminuendoAddition, DiminuendoRemoval,
             MetadataChange, FontChange, LayoutChange, LyricsChange {
 }

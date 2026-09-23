@@ -21,22 +21,20 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
-import songscribe.dom.Span;
-import songscribe.dom.Tie;
+import songscribe.dom.NoteElement;
 
 /**
- * Mutation recording the removal of a tie span from a line.
+ * Mutation recording that a note was untied from the next note. The tie's end is derived, not
+ * recorded — see {@link NoteElement#tie()}.
+ *
+ * @param line   {@code anchor}'s line
+ * @param anchor the note that became untied
  */
-public record TieRemoval(Line line, Tie tie)
-    implements Mutation, LineScopedMutation, SpanMutation {
+public record TieRemoval(Line line, NoteElement anchor)
+    implements Mutation, LineScopedMutation {
 
     @Override
     public Line getLine() {
         return line;
-    }
-
-    @Override
-    public Span getSpan() {
-        return tie;
     }
 }

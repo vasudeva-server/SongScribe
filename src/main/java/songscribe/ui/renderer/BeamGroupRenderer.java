@@ -25,6 +25,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.geom.Path2D;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -110,14 +111,14 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             return;
         }
 
-        var line = invariants.requireCurrentLine();
-        var beginIndex = beam.requireAnchorElementIndex();
-        var endIndex = beam.requireEndElementIndex();
-        var highlightColor = getBeamHighlightColor(invariants, beginIndex, endIndex);
+        var highlightColor = getBeamHighlightColor(
+            invariants, beam.requireAnchorElementIndex(), beam.requireEndElementIndex());
         var beamLayout = invariants.getLayoutResult().getBeamLayout(beam);
-        var outerNotes = new Point(beginIndex, endIndex);
-        doDrawBeams(g2, line, invariants, frame, beam, outerNotes,
-            beginIndex, endIndex, beginIndex, endIndex, false, 0, highlightColor != null, beamLayout,
+        var members = beam.members();
+        var lastPosition = members.size() - 1;
+        var outerNotes = new Point(0, lastPosition);
+        doDrawBeams(g2, members, invariants, frame, beam, outerNotes,
+            0, lastPosition, 0, lastPosition, false, 0, highlightColor != null, beamLayout,
             highlightColor != null ? highlightColor : invariants.getSelectionColor());
     }
 
@@ -181,74 +182,77 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         return null;
     }
 
+    /**
+     * Draws the beam at {@code recursionLevel} over the run of {@code members} at positions
+     * {@code beginPosition} to {@code endPosition}, then recurses into each run of members that
+     * carries the next level. Every position here, including {@code outerNotes}, is a position
+     * in {@code members}, not a line index, so a grace note the beam passes over never starts,
+     * ends or splits a run.
+     */
     private void doDrawBeams(
         Graphics2D g2,
-        Line line,
+        List<NoteElement> members,
         LineInvariants invariants,
         ElementFrame frame,
         Beam beam,
         Point outerNotes,
-        int beginIndex,
-        int endIndex,
-        int prevBeginIndex,
-        int prevEndIndex,
+        int beginPosition,
+        int endPosition,
+        int prevBeginPosition,
+        int prevEndPosition,
         boolean isPrevLeftOriented,
         int recursionLevel,
         boolean selected,
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        var beginNote = line.getElement(beginIndex);
+        var beginNote = members.get(beginPosition);
         var direction = beam.direction();
         var leftOriented = false;
 
         // Half beam (single note at this level)
-        if (beginIndex == endIndex) {
-            if (beginNote.getType().isGraceNote()) {
-                return;
-            }
-
+        if (beginPosition == endPosition) {
             var stubStemLayout = invariants.getLayoutResult().getStemLayout(beginNote);
 
             if (stubStemLayout != null) {
                 leftOriented = !stubStemLayout.stubRight();
-            } else if (prevBeginIndex == prevEndIndex) {
+            } else if (prevBeginPosition == prevEndPosition) {
                 leftOriented = isPrevLeftOriented;
             } else {
-                leftOriented = (beginIndex != prevBeginIndex);
+                leftOriented = (beginPosition != prevBeginPosition);
             }
 
             int begin, end;
 
             if (leftOriented) {
                 begin = outerNotes.x;
-                end = endIndex;
+                end = endPosition;
             } else {
-                begin = beginIndex;
+                begin = beginPosition;
                 end = outerNotes.y;
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            drawBeam(g2, beam, invariants, begin, end, direction, type, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, invariants, members.get(begin), members.get(end), direction, type, recursionLevel, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            drawBeam(g2, beam, invariants, beginIndex, endIndex, direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, invariants, beginNote, members.get(endPosition), direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
         var beamLevel = recursionLevel + 1;
         Integer startSubBeam = null;
 
-        for (var i = beginIndex; i <= endIndex + 1; i++) {
-            if (i <= endIndex && beam.noteTypeInLevel(i, beamLevel)) {
+        for (var i = beginPosition; i <= endPosition + 1; i++) {
+            if (i <= endPosition && beam.noteTypeInLevel(members.get(i), beamLevel)) {
                 if (startSubBeam == null) {
                     startSubBeam = i;
                 }
             } else {
                 if (startSubBeam != null) {
-                    doDrawBeams(g2, line, invariants, frame, beam, outerNotes,
-                        startSubBeam, i - 1, beginIndex, endIndex,
+                    doDrawBeams(g2, members, invariants, frame, beam, outerNotes,
+                        startSubBeam, i - 1, beginPosition, endPosition,
                         leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
                     startSubBeam = null;
                 }
@@ -258,10 +262,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     private void drawBeam(
         Graphics2D g2,
-        Beam beam,
         LineInvariants invariants,
-        int beginIndex,
-        int endIndex,
+        NoteElement beginNote,
+        NoteElement endNote,
         Direction direction,
         BeamType type,
         int recursionLevel,
@@ -269,8 +272,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        var beginNote = beam.noteAt(beginIndex);
-        var endNote = beam.noteAt(endIndex);
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
         var isUpper = direction.isUp();

@@ -30,7 +30,7 @@ the Gradle filter matches the name as a suffix. Count the two classes apart.
 | Step | Status | Gate | Plan | Notes |
 |---|---|---|---|---|
 | 1 Inventory | ✅ | ✅ | — | `findings-1-2.md`, *What it found* |
-| 2 Class design | ✅ | ✅ | — | `findings-1-2.md`, *Decisions* |
+| 2 Class design | ✅ | ✅ | [step-2-plan.md](step-2-plan.md) | `findings-1-2.md`, *Decisions*. Settled while planning: `TieAddition`/`TieRemoval` stay as the tie's records, over `(Line, NoteElement)`; `Tie` is a derived record `(anchor, end)`. Two defects fixed in the plan's Phase 11: the MusicXML reader rounds offsets, and an ending's offset is not saved |
 | 3 Unrepresentable states | ⏳ | ⏳ | — | |
 | 4 Extraction | ⏳ | ⏳ | — | |
 | 5 Contracts | ⏳ | ⏳ | — | |

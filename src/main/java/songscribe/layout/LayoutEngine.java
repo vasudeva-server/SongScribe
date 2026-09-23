@@ -247,7 +247,7 @@ public class LayoutEngine {
         // Step 5b: Calculate stem layouts for unbeamed notes
         calculateUnbeamedStems(line, columns, builder);
 
-        // Step 6: Calculate tie geometry for all tie spans
+        // Step 6: Calculate tie geometry for every tie and tie half the line owns
         calculateTies(line, columns, builder);
 
         // Step 6b: Calculate slide geometry for every note carrying a glissando or a fall
@@ -465,29 +465,21 @@ public class LayoutEngine {
         var elementToColumn = elementToColumnMap(columns);
 
         for (var beam : beams) {
-            var beamStart = beam.requireAnchorElementIndex();
-            var beamEnd = beam.requireEndElementIndex();
+            var members = beam.members();
+            var memberCount = members.size();
             var stemDirection = beam.direction();
 
             // Collect the group's stems in BeamScoring's scoring space (Y-up positive,
-            // y=0 at the middle staff line, X measured from the first stem).  Elements
-            // without a column are skipped, mirroring computeBeamElementGeometry.
-            var spanSize = beamEnd - beamStart + 1;
-            var stemInputs = new ArrayList<BeamScoring.StemInput>(spanSize);
+            // y=0 at the middle staff line, X measured from the first stem).  Members
+            // without a column are skipped, mirroring computeBeamElementGeometry. Only
+            // members are stems here, so a grace note's pitch never tilts the beam, skews
+            // the concaveness test, or dilutes forcedFraction.
+            var stemInputs = new ArrayList<BeamScoring.StemInput>(memberCount);
             var firstColumnXSs = 0.0;
             var forcedStemCount = 0;
-            var memberCount = 0;
 
-            for (var i = beamStart; i <= beamEnd; i++) {
-                var element = beam.noteAt(i);
-
-                // A grace note inside the span is not one of the beam's stems: its pitch must
-                // not tilt the beam, skew the concaveness test, or dilute forcedFraction.
-                if (element.getType().isGraceNote()) {
-                    continue;
-                }
-
-                memberCount++;
+            for (var i = 0; i < memberCount; i++) {
+                var element = members.get(i);
 
                 // LilyPond Beam::forced_stem_count: a stem is forced when it points away from
                 // its head's natural direction, whether the notator or the group turned it,
@@ -526,8 +518,8 @@ public class LayoutEngine {
 
             if (LogUtils.isTracingBeams(LOG)) {
                 LOG.debug(
-                    "  span={} beamMembers={} scoredStems={} forcedStemCount={}",
-                    spanSize, memberCount, stemInputs.size(), forcedStemCount);
+                    "  beamMembers={} scoredStems={} forcedStemCount={}",
+                    memberCount, stemInputs.size(), forcedStemCount);
             }
 
             // Beam geometry in SongScribe layout space (Y-down positive).  startYSs is
@@ -540,7 +532,10 @@ public class LayoutEngine {
                 var forcedFraction = (double) forcedStemCount / memberCount;
 
                 if (LogUtils.isTracingBeams(LOG)) {
-                    LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
+                    LOG.debug(
+                        "--- beam elements {}..{} ---",
+                        beam.requireAnchorElementIndex(),
+                        beam.requireEndElementIndex());
                 }
 
                 var beamPosition = BeamScoring.solve(stemInputs, dirSign, forcedFraction);
@@ -569,20 +564,16 @@ public class LayoutEngine {
             var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
 
             if (!stemInputs.isEmpty()) {
-                for (var i = beamStart; i <= beamEnd; i++) {
-                    // A grace note's stem stops at its own length instead of running to the
-                    // beam, so it is left to calculateUnbeamedStems rather than measured here.
-                    if (beam.noteAt(i).getType().isGraceNote()) {
-                        continue;
-                    }
-
-                    var geometry = computeBeamElementGeometry(beam, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
+                // Only members run to the beam: a grace note's stem stops at its own length, so
+                // it is left to calculateUnbeamedStems rather than measured here.
+                for (var i = 0; i < memberCount; i++) {
+                    var element = members.get(i);
+                    var geometry = computeBeamElementGeometry(element, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 
                     if (geometry == null) {
                         continue;
                     }
 
-                    var element = geometry.element();
                     var elementYSs = geometry.elementYSs();
                     var beamYSs = geometry.beamYSs();
                     var stemLenSs = geometry.stemLenSs();
@@ -598,12 +589,12 @@ public class LayoutEngine {
 
                     // Determine stub direction for partial-beam elements. The beam owns the
                     // rule so the writer can use the same one.
-                    var stubRight = beam.stubRight(i);
+                    var stubRight = beam.stubRight(element);
 
                     // How far back French beaming pulls the drawn stem. Resolved here rather
                     // than in StaffElementRenderer so the per-paint path stays a field read, matching
                     // stubRight above.
-                    var frenchShorteningLevels = beam.frenchBeamShortening(i);
+                    var frenchShorteningLevels = beam.frenchBeamShortening(element);
 
                     if (LogUtils.isTracingBeams(LOG)) {
                         LOG.debug(
@@ -636,9 +627,8 @@ public class LayoutEngine {
 
     @Nullable
     private BeamElementGeometry computeBeamElementGeometry(
-        Beam beam, int i, Map<StaffElement, ElementColumn> elementToColumn,
+        NoteElement element, Map<StaffElement, ElementColumn> elementToColumn,
         boolean stemsUp, double slope, double firstXSs, double startYSs) {
-        var element = beam.noteAt(i);
         var column = elementToColumn.get(element);
 
         if (column == null) {
@@ -648,7 +638,7 @@ public class LayoutEngine {
         var elementYSs = element.getStaffPosition().toSs();
         var beamYSs = slope * (column.getXSs() - firstXSs) + startYSs;
         var stemLenSs = stemsUp ? (elementYSs - beamYSs) : (beamYSs - elementYSs);
-        return new BeamElementGeometry(element, elementYSs, beamYSs, stemLenSs);
+        return new BeamElementGeometry(elementYSs, beamYSs, stemLenSs);
     }
 
     /**
@@ -703,13 +693,14 @@ public class LayoutEngine {
     }
 
     /**
-     * Calculates tie geometry for all tie spans in the line.
+     * Calculates tie geometry for every tie and tie half the line owns — see
+     * {@link Line#ownedTies}.
      * <p>
      * Ports LilyPond's single-tie {@code slur_shape} curve (bezier-bow.cc) plus endpoint gaps
      * and staff-line avoidance (tie-formatting-problem.cc) to SongScribe's staff-space coordinate
      * system. Each tie produces a filled lens shape defined by an outer and an inner cubic Bézier
      * curve that share start/end points, creating natural tapering at the endpoints.
-     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie span.
+     * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each one.
      * <p>
      * A tie whose two notes sit in different lines is laid out once per line, and each line draws
      * only the half it owns; {@link #tieLayout} carries the geometry of both cases.
@@ -719,7 +710,7 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResultBuilder builder) {
 
-        var ties = line.spanRegistry().findTies();
+        var ties = line.ownedTies();
 
         if (ties.isEmpty()) {
             return;
@@ -873,7 +864,7 @@ public class LayoutEngine {
         // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
         // The dot belongs to the left note and sits under the arc's path, so the check applies only
         // where that note is in this line: a half entering from the left edge passes over no dot.
-        var anchorNote = tie.getAnchorElement();
+        var anchorNote = tie.anchor();
         var notePosition = anchorNote.getStaffPosition();
         var dotRowCoincides = anchorColumn != null
             && tieSeatRowHasDot(anchorNote, notePosition, arcSignSs);
@@ -1299,7 +1290,6 @@ public class LayoutEngine {
     }
 
     private record BeamElementGeometry(
-        NoteElement element,
         double elementYSs,
         double beamYSs,
         double stemLenSs) {}

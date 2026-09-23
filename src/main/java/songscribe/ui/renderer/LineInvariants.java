@@ -30,11 +30,10 @@ import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
-import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.error.RuntimeError;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
@@ -101,25 +100,16 @@ public final class LineInvariants {
     private final @Nullable Playing playing;
     private final ViewScale viewScale;
 
-    /** Tie span containing the playing note, resolved once; null when nothing is playing. */
-    @Nullable
-    private final Tie playingTieSpan;
-
     /**
-     * Where the playing tie's two endpoints sit relative to this line, resolved once alongside
-     * the tie itself. Null exactly when {@link #playingTieSpan} is.
+     * The elements of this line the playing note's tie passes over, both notes included, or
+     * {@code null} when nothing is playing or the playing note is not tied. See
+     * {@link #playingTieRange(Line, Playing)}.
      * <p>
-     * Cached because {@link #isElementInPlayingTie} is asked once per element as the line
-     * paints, and for a tie crossing a line boundary resolving the far endpoint walks the
-     * song's line list to work out which side of this line it fell off. That answer is the
-     * same for every element, so it is resolved for the line rather than for each of them.
+     * Resolved once for the line because {@link #isElementInPlayingTie} is asked once per
+     * element as the line paints, and the answer comes from the tie's two notes, which are the
+     * same for every element.
      */
-    @Nullable
-    private final SpanBound playingTieAnchorBound;
-
-    /** @see #playingTieAnchorBound */
-    @Nullable
-    private final SpanBound playingTieEndBound;
+    private final @Nullable ElementRange playingTieRange;
 
     private LineInvariants(
         Builder b,
@@ -139,17 +129,47 @@ public final class LineInvariants {
         selectionColor = b.selectionColor;
         playing = b.playing;
         viewScale = b.viewScale;
-        playingTieSpan = (b.playing != null && b.currentLine != null)
-            ? b.currentLine.spanRegistry().findTieAt(b.playing.noteIndex())
+        playingTieRange = (b.playing != null && b.currentLine != null)
+            ? playingTieRange(b.currentLine, b.playing)
             : null;
+    }
 
-        if (playingTieSpan == null || b.currentLine == null) {
-            playingTieAnchorBound = null;
-            playingTieEndBound = null;
-        } else {
-            playingTieAnchorBound = b.currentLine.spanRegistry().anchorIndexOf(playingTieSpan);
-            playingTieEndBound = b.currentLine.spanRegistry().endIndexOf(playingTieSpan);
+    /**
+     * The elements of {@code line} that the tie through the playing note passes over.
+     * <p>
+     * The tie is the one the playing note starts, or else the one it ends. Each of its notes in
+     * {@code line} bounds the range at its own index; a note in the neighboring line leaves the
+     * range open to that edge of {@code line}, so the half of a tie crossing a line break covers
+     * exactly the elements it is drawn over here.
+     *
+     * @param line    the line being painted
+     * @param playing the playing note, as an index into {@code line}
+     * @return the range, or {@code null} when the playing note is not a note of {@code line}
+     *     or is not tied
+     */
+    private static @Nullable ElementRange playingTieRange(Line line, Playing playing) {
+        var noteIndex = playing.noteIndex();
+
+        if (!line.hasIndex(noteIndex) || !(line.getElement(noteIndex) instanceof NoteElement note)) {
+            return null;
         }
+
+        var tie = note.tie();
+
+        if (tie == null) {
+            tie = note.incomingTie();
+        }
+
+        if (tie == null) {
+            return null;
+        }
+
+        var anchor = tie.anchor();
+        var end = tie.end();
+        var begin = line.contains(anchor) ? line.getElementIndex(anchor) : 0;
+        var last = line.contains(end) ? line.getElementIndex(end) : line.elementCount() - 1;
+
+        return new ElementRange(begin, last);
     }
 
     /**
@@ -503,28 +523,17 @@ public final class LineInvariants {
     }
 
     /**
-     * Returns whether the given element index is part of the same tie span
+     * Returns whether the given element index is part of the same tie
      * as the currently playing note, making it co-highlighted during playback.
      * <p>
-     * Answers for the half of the tie that lies in the line being painted. A tie crossing a
-     * line boundary is asked separately by each line's invariants, and each reports its own
-     * half; neither speaks for the other line's elements.
+     * Answers for the half of the tie that lies in the line being painted; neither line of a
+     * tie crossing a line break speaks for the other line's elements.
      *
      * @param elementIndex the element index to check
      * @return true if the element is in the same tie as the playing note
      */
     public boolean isElementInPlayingTie(int elementIndex) {
-        // Receiver-relative resolution, done once for the line rather than per element. Reading
-        // the pair off the tie would take the anchor index from one line and the end index from
-        // the other, and for a cross-line tie the resulting 7 <= i && i <= 0 is unsatisfiable,
-        // so the highlight would silently never fire. Resolving against currentLine yields
-        // At(7)/AFTER_LINE here and BEFORE_LINE/At(0) in the next line, and each half covers
-        // exactly the elements it passes over. The two bounds are null whenever the tie is.
-        if (playingTieAnchorBound == null || playingTieEndBound == null) {
-            return false;
-        }
-
-        return Span.containing(elementIndex).test(playingTieAnchorBound, playingTieEndBound);
+        return playingTieRange != null && playingTieRange.contains(elementIndex);
     }
 
     /**

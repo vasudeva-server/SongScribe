@@ -31,9 +31,7 @@ import songscribe.Strings;
 import songscribe.dom.AccidentalState;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
-import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.dom.Tie;
 import songscribe.engraving.StaffPosition;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
@@ -170,91 +168,45 @@ public final class PitchShifter {
      * list if the range holds no notes.
      */
     static List<PitchShiftEntry> buildPitchShiftGroup(Line line, ElementRange range) {
-        // Collect all unique elements, expanding each selected note's tie chain to its full
+        // Collect all unique notes, expanding each selected note's tie chain to its full
         // transitive closure — chained ties (note1-2 tied, note2-3 tied separately, possibly
         // across a line break) must move as one unit even though each link is its own two-note
-        // Tie. Traversed by element identity, not index arithmetic: a tie's two endpoints can
-        // resolve through two different lines, so an index only ever means something once it is
-        // paired with the line it belongs to.
-        var groupElements = new LinkedHashSet<StaffElement>();
-        var pending = new ArrayDeque<StaffElement>();
+        // Tie. Traversed by note identity, not index arithmetic: a tie's two notes can sit in
+        // two different lines, so an index only ever means something once it is paired with
+        // the line it belongs to.
+        var groupNotes = new LinkedHashSet<NoteElement>();
+        var pending = new ArrayDeque<NoteElement>();
 
         for (var element : line.getElements(range)) {
-            if (element.getType().isNote()) {
-                pending.add(element);
+            if (element instanceof NoteElement note && note.getType().isNote()) {
+                pending.add(note);
             }
         }
 
         while (!pending.isEmpty()) {
-            var element = pending.remove();
+            var note = pending.remove();
 
-            if (groupElements.add(element)) {
-                addTiePartnersOf(element, pending);
+            if (groupNotes.add(note)) {
+                pending.addAll(note.tiePartners());
             }
         }
 
         var group = new ArrayList<PitchShiftEntry>();
 
-        for (var element : groupElements) {
-            var elementLine = element.getParentLine();
+        for (var note : groupNotes) {
+            var noteLine = note.getParentLine();
 
-            // A tie chain's separator (see addTiePartnersOf) has no pitch to shift, so it is
-            // walked but never entered. An element detached mid-traversal (which should not
-            // happen on a live selection) has nothing to resolve an index against.
-            if (!(element instanceof NoteElement note) || elementLine == null) {
+            // A note detached mid-traversal (which should not happen on a live selection) has
+            // nothing to resolve an index against.
+            if (noteLine == null) {
                 continue;
             }
 
-            var index = elementLine.getElementIndex(note);
-            group.add(new PitchShiftEntry(elementLine, index, note.getStaffPosition()));
+            var index = noteLine.getElementIndex(note);
+            group.add(new PitchShiftEntry(noteLine, index, note.getStaffPosition()));
         }
 
         return group;
-    }
-
-    /**
-     * Queues every element that a tie touching {@code element} pulls into the group.
-     * <p>
-     * A tie whose two endpoints share a line contributes its whole index range, not just the
-     * two endpoints — a legal separator sitting between them (a barline, refs #726) travels
-     * with the chain exactly as it did before this traversal became endpoint-based. A cross-line
-     * tie has nothing between its endpoints by construction (the anchor is the last element of
-     * one line, the end is the first of the next), so only the two endpoints themselves are
-     * queued.
-     */
-    private static void addTiePartnersOf(StaffElement element, ArrayDeque<StaffElement> pending) {
-        var elementLine = element.getParentLine();
-
-        if (elementLine == null) {
-            return;
-        }
-
-        for (var tie : elementLine.spanRegistry().findTiesTouching(element)) {
-            queueTieSpan(tie, pending);
-        }
-    }
-
-    /** Queues the elements {@code tie} contributes to the pitch-shift group. See {@link #addTiePartnersOf}. */
-    private static void queueTieSpan(Tie tie, ArrayDeque<StaffElement> pending) {
-        var anchor = tie.getAnchorElement();
-        var endElement = tie.getEndElement();
-        var anchorLine = anchor.getParentLine();
-        var endLine = endElement.getParentLine();
-
-        //noinspection ObjectEquality
-        if (anchorLine != null && anchorLine == endLine) {
-            var anchorIndex = anchorLine.getElementIndex(anchor);
-            var endIndex = anchorLine.getElementIndex(endElement);
-
-            for (var j = anchorIndex; j <= endIndex; j++) {
-                pending.add(anchorLine.getElement(j));
-            }
-
-            return;
-        }
-
-        pending.add(anchor);
-        pending.add(endElement);
     }
 
     /**

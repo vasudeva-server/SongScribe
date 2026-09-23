@@ -21,10 +21,23 @@
 package songscribe.dom;
 
 /**
- * A written note value: a base element type plus its dots.
+ * A written note value with its dots: the value a tuplet ratio counts its normal notes in.
+ * <p>
+ * It is not a {@link BeatUnit}: a beat allows one dot, and a ratio's value allows two.
  *
- * @param type the base element type
- * @param dots the dots the value carries
+ * @param value the undotted note value
+ * @param dots  the dots the value carries
  */
-public record NotatableValue(ElementType type, Dots dots) {
+public record NotatableValue(NoteValue value, Dots dots) {
+
+    /**
+     * Returns this value's written duration.
+     *
+     * @return the note value's ticks lengthened by the dots, at
+     *     {@link songscribe.midi.MidiSequenceBuilder#PPQ} ticks per quarter
+     * @invariant exact for every {@link NoteValue} and {@link Dots} pair — see {@link Dots#augment}
+     */
+    public int ticks() {
+        return dots.augment(value.ticks());
+    }
 }

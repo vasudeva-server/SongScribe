@@ -34,16 +34,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
+import songscribe.dom.Beam;
+import songscribe.dom.Ending;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
+import songscribe.dom.Span;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.MessageSubscription;
-import songscribe.message.mutation.BeamingAddition;
-import songscribe.message.mutation.BeamingRemoval;
-import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
-import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementModification;
@@ -62,8 +62,6 @@ import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
-import songscribe.message.mutation.TupletAddition;
-import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -263,7 +261,7 @@ public final class UndoController {
 
         try {
             var mutations = step.mutations();
-            song.withModification(() -> song.withReplay(() -> {
+            song.withReplay(() -> song.withModification(() -> {
                 for (var i = mutations.size() - 1; i >= 0; i--) {
                     MutationReplayer.applyUndo(scoreView, mutations.get(i));
                 }
@@ -311,7 +309,7 @@ public final class UndoController {
         applyingReplay = true;
 
         try {
-            song.withModification(() -> song.withReplay(() -> {
+            song.withReplay(() -> song.withModification(() -> {
                 for (var mutation : step.mutations()) {
                     MutationReplayer.applyRedo(scoreView, mutation);
                 }
@@ -581,15 +579,29 @@ public final class UndoController {
             case LineDeletion _ -> Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE);
             case LineKeyChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_KEY);
             case LineLayoutChange _, LayoutChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_LAYOUT);
-            case BeamingAddition _, BeamingRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_BEAMING);
             case TieAddition _, TieRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_TIE);
-            case TupletAddition _, TupletRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_TUPLET);
-            case CrescendoAddition _, CrescendoRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_CRESCENDO);
-            case DiminuendoAddition _, DiminuendoRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_DIMINUENDO);
-            case SpanAddition _, SpanRemoval _ -> Strings.get(Strings.ACTION_EDIT_OP_SPAN);
+            case SpanAddition addition -> Strings.get(spanOpNameKey(addition.element()));
+            case SpanRemoval removal -> Strings.get(spanOpNameKey(removal.element()));
             case MetadataChange metadataChange -> Strings.get(metadataOpNameKey(metadataChange.field()));
             case FontChange _ -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_FONTS);
             case LyricsChange _ -> Strings.get(Strings.ACTION_EDIT_OP_EDIT_LYRICS);
+        };
+    }
+
+    /**
+     * The operation-name key for adding or removing {@code span}, by its kind. Exhaustive over
+     * the sealed {@link Span} hierarchy, so a new kind cannot go unnamed.
+     */
+    private static String spanOpNameKey(Span span) {
+        return switch (span) {
+            case Beam _ -> Strings.ACTION_EDIT_OP_BEAMING;
+            case Tuplet _ -> Strings.ACTION_EDIT_OP_TUPLET;
+            case Hairpin hairpin -> switch (hairpin.getKind()) {
+                case CRESCENDO -> Strings.ACTION_EDIT_OP_CRESCENDO;
+                case DIMINUENDO -> Strings.ACTION_EDIT_OP_DIMINUENDO;
+            };
+            case Trill _ -> Strings.ACTION_EDIT_OP_TRILL;
+            case Ending _ -> Strings.ACTION_EDIT_OP_ENDING;
         };
     }
 

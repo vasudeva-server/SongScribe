@@ -329,7 +329,7 @@ final class HeaderMapper {
             return;
         }
 
-        song.getAttributionElement().setUserYOffsetSs(MusicXmlUnits.tenthsToSs(offsetTenths));
+        song.getAttributionElement().setUserYOffsetSs(MusicXmlUnits.tenthsToExactSs(offsetTenths));
         attributionOffsetRead = true;
     }
 

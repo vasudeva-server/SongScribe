@@ -64,10 +64,9 @@ import org.jspecify.annotations.Nullable;
  *       rather than an NPE. {@code MusicXmlReaderLenienceTest} is the
  *       specification for which values those are.</li>
  *   <li><b>Optional scalars that need converting.</b> A generated enum, a
- *       {@code BigDecimal}/{@code BigInteger}, a {@code yes|no}, or a
- *       {@code tenths} measurement, each turned into what the model wants and
- *       {@code null}-or-fallback when absent — {@link #token}, {@link #isYes},
- *       {@link #decimal}, {@link #integer}, {@link #tenthsToSs}.</li>
+ *       {@code BigDecimal}/{@code BigInteger}, or a {@code yes|no}, each turned
+ *       into what the model wants and {@code null}-or-fallback when absent —
+ *       {@link #token}, {@link #isYes}, {@link #decimal}, {@link #integer}.</li>
  *   <li><b>{@code JAXBElement} lists.</b> The heterogeneous
  *       {@code List<JAXBElement<?>>} properties such as
  *       {@code Encoding.getEncodingDateOrEncoderOrSoftware()}, unwrapped by
@@ -142,14 +141,6 @@ final class ProxyMusicAccess {
     /** An optional {@code xs:integer} as an {@code int}, or {@code fallback} when absent. */
     static int integer(@Nullable BigInteger value, int fallback) {
         return value == null ? fallback : value.intValue();
-    }
-
-    /**
-     * An optional {@code tenths}-valued attribute converted to SongScribe
-     * staff-spaces, or 0 when the attribute is absent.
-     */
-    static int tenthsToSs(@Nullable BigDecimal tenths) {
-        return tenths == null ? 0 : MusicXmlUnits.tenthsToSs(tenths.doubleValue());
     }
 
     /** The local element name of one member of a heterogeneous {@code JAXBElement} list. */
@@ -272,15 +263,16 @@ final class ProxyMusicAccess {
             return null;
         }
 
-        return new EndingMarker(ending.getNumber(), token(ending.getType(), StartStopDiscontinue::value));
+        return new EndingMarker(
+            ending.getNumber(), token(ending.getType(), StartStopDiscontinue::value), ending.getRelativeY());
     }
 
     /**
-     * One {@code <ending number type>} read off a {@code <barline>}. Both fields may
-     * be null for malformed input; the consumers compare with null-safe
-     * {@code equals}.
+     * One {@code <ending number type relative-y>} read off a {@code <barline>}.
+     * {@code number} and {@code type} may be null for malformed input; the consumers
+     * compare with null-safe {@code equals}.
      */
-    record EndingMarker(@Nullable String number, @Nullable String type) {}
+    record EndingMarker(@Nullable String number, @Nullable String type, @Nullable BigDecimal relativeY) {}
 
     // -------------------------------------------------------------------------
     // Note

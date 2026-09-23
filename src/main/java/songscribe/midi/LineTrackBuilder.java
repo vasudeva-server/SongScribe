@@ -73,12 +73,11 @@ public class LineTrackBuilder {
         var writtenTicks = element.playedDuration();
         var tuplet = line.spanRegistry().findTupletAt(elementIndex);
 
-        var ratio = (tuplet == null) ? null : tuplet.getRatio();
-
-        if ((tuplet == null) || (ratio == null)) {
+        if (tuplet == null) {
             return writtenTicks;
         }
 
+        var ratio = tuplet.getRatio();
         var normalNotes = ratio.normalNotes();
         var grade = tuplet.getGrade();
         var writtenTicksBefore = 0L;
@@ -331,19 +330,9 @@ public class LineTrackBuilder {
             var duration = getElementDurationWithTuplet(elementIndex);
 
             if (element instanceof NoteElement note) {
-                var spans = line.spanRegistry();
-                var tieSpan = spans.findTieAt(elementIndex);
                 var velocity = noteVelocity(note, velocityMap, lineIndex, elementIndex);
-
-                // Receiver-relative resolution. Reading the indices off the tie would compare
-                // an index resolved in the anchor's line with elementIndex in this one, so a
-                // tie crossing a line boundary would match whichever line happened to have an
-                // element at the other line's index — a note-on struck or swallowed in the
-                // wrong place, silently. Only an At bound names a position in this line, which
-                // is what suppresses the note-on for a note tied in from the previous line and
-                // the note-off for a note tied out into the next one.
-                var strikesNote = tieSpan == null || spans.anchorIndexOf(tieSpan).isAt(elementIndex);
-                var releasesNote = tieSpan == null || spans.endIndexOf(tieSpan).isAt(elementIndex);
+                var strikesNote = note.incomingTie() == null;
+                var releasesNote = note.tie() == null;
 
                 if (strikesNote) {
                     slideHelper.createPendingResets(track, trackTicks, 0);

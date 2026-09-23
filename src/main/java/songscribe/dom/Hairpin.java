@@ -27,14 +27,13 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
- * Base class for hairpin dynamic markings (crescendo and diminuendo).
+ * A hairpin dynamic marking: a crescendo or a diminuendo, as its {@link Kind} says.
  * <p>
  * A hairpin is a wedge-shaped marking placed above the staff that indicates
  * a gradual change in volume. The user can adjust the horizontal endpoints
  * and vertical position.
  */
-public abstract sealed class Hairpin extends Span implements IntrinsicHeight
-        permits Crescendo, Diminuendo {
+public final class Hairpin extends Span implements IntrinsicHeight {
 
     /**
      * Height of the hairpin opening in staff-space units. LilyPond's {@code Hairpin.height}
@@ -75,49 +74,44 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
      */
     public static final int MIN_COLUMNS = 2;
 
+    /** Whether this is a crescendo or a diminuendo. */
+    private final Kind kind;
+
     /** User-controlled left-endpoint horizontal shift in staff-space units. */
     private double x1ShiftSs;
 
     /** User-controlled right-endpoint horizontal shift in staff-space units. */
     private double x2ShiftSs;
 
-    /** User-controlled vertical shift in staff-space units. */
-    private double yShiftSs;
-
     /**
-     * Creates a hairpin spanning from anchor to end element.
+     * Creates a hairpin of {@code kind} spanning from anchor to end element.
      *
+     * @param kind          Whether the hairpin is a crescendo or a diminuendo
      * @param anchorElement The starting element of the hairpin
      * @param endElement    The ending element of the hairpin
      */
-    protected Hairpin(StaffElement anchorElement, StaffElement endElement) {
+    public Hairpin(Kind kind, StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
+        this.kind = kind;
     }
 
     /**
-     * Creates a new instance of the concrete hairpin subtype (Crescendo or Diminuendo),
-     * anchored to the given elements. Called by {@link #createCopy}, which then carries
-     * over the Hairpin fields shared by both subtypes in one place.
+     * Which of the two hairpins this is.
+     *
+     * @return the kind this hairpin was created with
      */
-    protected abstract Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd);
+    public Kind getKind() {
+        return kind;
+    }
 
     /**
-     * Which of the two hairpins this is. The single answer to that question — use it
-     * rather than {@code instanceof} or a {@code getClass()} comparison, so a caller
-     * that only needs the type never has to know the class hierarchy.
-     */
-    public abstract Kind getKind();
-
-    /**
-     * Absorbs every same-kind hairpin overlapping or adjacent to this one into it: a hairpin
-     * drawn flush against a same-type one continues it rather than starting a second — one
-     * uninterrupted dynamic gesture, one hairpin — so the merge absorbs
-     * {@link LineSpans.Absorb#ADJACENT adjacent} spans. The kind's concrete class is the
-     * merge type, so a crescendo never absorbs a diminuendo.
+     * {@link Displacement#ABSORB_ADJACENT}: a hairpin drawn flush against a same-kind one
+     * continues it rather than starting a second — one uninterrupted dynamic gesture, one
+     * hairpin.
      */
     @Override
-    protected void applyDisplacementPolicy(Line line) {
-        line.spanRegistry().mergeOverlapping(this, getKind().spanType(), LineSpans.Absorb.ADJACENT);
+    protected Displacement displacement() {
+        return Displacement.ABSORB_ADJACENT;
     }
 
     /**
@@ -172,8 +166,8 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
 
         // Every other shape removes no element, so none of them can pull an endpoint in and
         // all are answered alike — one call rather than an arm apiece saying the same thing.
-        // The exhaustive switch in Span.outcomeFor is what forces a new shape to be
-        // considered here too.
+        // The exhaustive switches in the other kinds' outcomeFor are what force a new shape
+        // to be considered, and this is where a hairpin considers it.
         return outcomeForRepointing(change, line.getElement(anchorIndex), line.getElement(endIndex));
     }
 
@@ -448,11 +442,10 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
     }
 
     @Override
-    protected final Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = createHairpin(newAnchor, newEnd);
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = new Hairpin(kind, newAnchor, newEnd);
         copy.x1ShiftSs = x1ShiftSs;
         copy.x2ShiftSs = x2ShiftSs;
-        copy.yShiftSs = yShiftSs;
         return copy;
     }
 
@@ -472,43 +465,23 @@ public abstract sealed class Hairpin extends Span implements IntrinsicHeight
         this.x2ShiftSs = x2ShiftSs;
     }
 
-    public double getYShiftSs() {
-        return yShiftSs;
-    }
-
-    public void setYShiftSs(double yShiftSs) {
-        this.yShiftSs = yShiftSs;
-    }
-
     @Override
     public double intrinsicHeightSs() {
         return HAIRPIN_OPENING_HEIGHT_SS;
     }
 
     /**
-     * Which of the two hairpins a crescendo or diminuendo is — a plain two-value tag
-     * rather than a {@code Class} token, since a hairpin is always constructed
-     * directly ({@code new Crescendo}/{@code new Diminuendo}), never reflectively.
+     * Which of the two hairpins one is: a crescendo, getting louder and opening to the right
+     * ({@literal <}), or a diminuendo, getting softer and opening to the left ({@literal >}).
      * <p>
-     * It names the type before there is an instance to ask, which is what both the
+     * It names the kind before there is an instance to ask, which is what both the
      * MusicXML reader (holding a wedge open while its end note is awaited) and the
      * hairpin menu (resolving what one item would do) need. Where an instance is in
      * hand, ask it: {@link Hairpin#getKind()}.
      */
     public enum Kind {
-        CRESCENDO(Crescendo.class),
-        DIMINUENDO(Diminuendo.class);
-
-        private final Class<? extends Hairpin> spanType;
-
-        Kind(Class<? extends Hairpin> spanType) {
-            this.spanType = spanType;
-        }
-
-        /** The concrete subclass this kind names, for {@code SpanLookup} queries. */
-        public Class<? extends Hairpin> spanType() {
-            return spanType;
-        }
+        CRESCENDO,
+        DIMINUENDO;
 
         /** The other kind — the one this may share an endpoint with. */
         public Kind opposite() {

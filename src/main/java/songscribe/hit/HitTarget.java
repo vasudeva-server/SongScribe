@@ -22,7 +22,7 @@ package songscribe.hit;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.LineElement;
+import songscribe.dom.LineContent;
 import songscribe.dom.NoteElement;
 import songscribe.dom.StaffElement;
 
@@ -77,13 +77,14 @@ public sealed interface HitTarget {
 
         /**
          * The element this target hangs off, used by the selection layer's single liveness
-         * rule — walk the parent chain and check that the element is still on a line. Every
-         * variant answers this in one line, so revalidation needs no per-variant switch.
+         * rule — check that the element is still on its line. Every variant answers this in one
+         * line, so revalidation needs no per-variant switch.
          *
-         * @return the owning element, or {@code null} for {@link StaffLine}, which addresses
-         *         the staff line itself rather than anything on it
+         * @return the owning element — a staff element, an attachment, an articulation or a
+         *         span — or {@code null} for {@link StaffLine}, which addresses the staff line
+         *         itself rather than anything on it
          */
-        @Nullable LineElement owner();
+        @Nullable LineContent owner();
     }
 
     /**
@@ -153,7 +154,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return hairpin;
         }
     }
@@ -167,7 +168,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return ending;
         }
     }
@@ -181,7 +182,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public @Nullable LineElement owner() {
+        public @Nullable LineContent owner() {
             return null;
         }
     }
@@ -195,7 +196,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return articulation;
         }
     }
@@ -209,12 +210,20 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return attachment;
         }
     }
 
-    /** A tie or slur curve. */
+    /**
+     * A tie curve, or the half of one a line draws when the tie crosses a line break.
+     *
+     * <p>A tie is owned by its anchor note: the anchor stores the tie and the end is derived
+     * from it (see {@link NoteElement#tie()}), so {@link #owner()} answers the anchor. The
+     * anchor is on only the first of a line-crossing tie's two lines, so the selection layer
+     * asks whether a tie target is live from both of its notes rather than from the owner
+     * alone.
+     */
     record Tie(songscribe.dom.Tie tie) implements Selectable {
 
         @Override
@@ -223,8 +232,8 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
-            return tie;
+        public NoteElement owner() {
+            return tie.anchor();
         }
     }
 
@@ -237,7 +246,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return beam;
         }
     }
@@ -251,7 +260,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return trill;
         }
     }
@@ -265,7 +274,7 @@ public sealed interface HitTarget {
         }
 
         @Override
-        public LineElement owner() {
+        public LineContent owner() {
             return tuplet;
         }
     }

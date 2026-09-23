@@ -162,7 +162,7 @@ class EndingBracketGeometryTest extends UnitTest {
     /** A line carrying one ending, with a stub column per element. */
     private record Fixture(Line line, Ending ending, List<ElementColumn> columns) {
 
-        List<Ending.BracketRange> bracketRanges() {
+        List<BracketRange> bracketRanges() {
             return EndingBracketGeometry.computeBracketRanges(
                 ending, line, element -> columns.get(line.getElementIndex(element)));
         }

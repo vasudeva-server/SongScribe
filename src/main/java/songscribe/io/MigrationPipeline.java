@@ -57,7 +57,7 @@ final class MigrationPipeline {
             var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
             ctx.lineWidthSs /= pps;
             ctx.rowHeightAdjustmentSs /= pps;
-            FormatMigrator.migratePixelsToStaffSpace(ctx.lines);
+            ctx.pendingTuplets = FormatMigrator.migratePixelsToStaffSpace(ctx.lines, ctx.pendingTuplets);
         }),
         new SongMigration(StageId.LINE_WIDTH_FIX,
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,

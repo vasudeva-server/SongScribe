@@ -48,7 +48,6 @@ The decision is per span kind, and the two sides can be dropped independently:
 | --- | --- | --- |
 | tuplet | removed | dropped |
 | beam | removed | dropped |
-| tie | removed | kept |
 | trill | removed | kept |
 | hairpin | kept, unless contradicted | same-type dropped |
 | ending | kept | dropped |
@@ -57,8 +56,8 @@ The shape of that table follows from what each kind means. Tuplets and beams are
 rhythmic groupings: one that no longer covers the notes it was written for is
 wrong, and a pasted group dropped into the wreckage of a broken one is equally
 wrong, so both sides go — per kind, so a straddled beam does not cost a pasted
-tuplet. Ties and trills bind particular notes, so the straddling one is wrong
-while the fragment's own still binds the fragment's own notes.
+tuplet. A trill binds particular notes, so the straddling one is wrong while the
+fragment's own still binds the fragment's own notes.
 
 A hairpin reads correctly over any stretch of notes, so a straddled one is kept
 and simply widened, and the fragment's — necessarily a shorter one of the same
@@ -70,6 +69,15 @@ still valid notation, but one nested inside another never is.
 A paste that merely clips a group at its edge is deliberately not treated as a
 straddle: that group dies anyway when it loses an endpoint, and the pasted group
 lands contiguous at the boundary rather than interleaved with orphaned remains.
+
+**A tie is not in the table because it is not a span.** It is state on its anchor
+note, so it travels with the notes: a copied note that was tied is pasted tied,
+even when the capture clipped the note it was tied to. None of this decides
+whether a tie survives the paste. The tie rule does, once, when the paste's
+bracket closes, over every line the paste touched — a pasted tie, a tie on the
+destination that the paste point splits, and a tie on the note just before the
+paste alike. Each survives only while it still reaches a note of the same pitch.
+See [span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
 
 **Abutment is somebody else's problem.** Two same-type hairpins nose to tail are
 one hairpin — the same rule that applies when the user *draws* one flush against

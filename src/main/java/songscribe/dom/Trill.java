@@ -41,8 +41,6 @@ public final class Trill extends Span implements IntrinsicHeight {
         TRILL_GLYPH_HEIGHT_SS = bbox.heightSs();
     }
 
-    private int yPositionSs = 0;
-
     /**
      * Creates a trill spanning multiple elements.
      *
@@ -64,34 +62,16 @@ public final class Trill extends Span implements IntrinsicHeight {
     }
 
     /**
-     * Removes every existing trill that overlaps this one before it is added. Each removal
-     * is its own recorded mutation, so replacing a displaced trill is undoable.
+     * {@link Displacement#REPLACE_OVERLAPPING}: a new trill replaces every trill it overlaps.
      */
     @Override
-    protected void applyDisplacementPolicy(Line line) {
-        var spans = line.spanRegistry();
-        spans.removeOverlapping(Trill.class, spans.requireRangeOf(this));
+    protected Displacement displacement() {
+        return Displacement.REPLACE_OVERLAPPING;
     }
 
     @Override
     protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = new Trill(newAnchor, newEnd);
-        copy.yPositionSs = yPositionSs;
-        return copy;
-    }
-
-    /**
-     * Returns the user-adjustable Y offset for this trill.
-     */
-    public int getYPositionSs() {
-        return yPositionSs;
-    }
-
-    /**
-     * Sets the user-adjustable Y offset for this trill.
-     */
-    public void setYPositionSs(int yPositionSs) {
-        this.yPositionSs = yPositionSs;
+        return new Trill(newAnchor, newEnd);
     }
 
     /**

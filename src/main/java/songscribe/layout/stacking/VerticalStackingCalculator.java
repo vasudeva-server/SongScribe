@@ -27,13 +27,10 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Attribution;
 import songscribe.dom.CollisionRegion;
-import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.NoteElement;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StaffPosition;
 import songscribe.font.DocumentFontsHolder;
@@ -270,10 +267,8 @@ public class VerticalStackingCalculator {
      *   <li>{@link LineElement#getUserXOffsetSs()} /
      *       {@link LineElement#getUserYOffsetSs()}:
      *       base offsets for all decoration elements</li>
-     *   <li>{@link Trill#getYPositionSs()}: additional Y offset for trills</li>
-     *   <li>{@link Ending#getYPositionSs()}: additional Y offset for endings</li>
-     *   <li>{@link Tuplet#getVerticalPositionSs()}: tuplet bracket Y offset</li>
-     *   <li>{@link Hairpin}: crescendo / diminuendo shifts in staff-space units</li>
+     *   <li>{@link Hairpin}: crescendo / diminuendo horizontal endpoint shifts in
+     *       staff-space units</li>
      * </ul>
      */
     private void applyManualOffsets(LayoutResultBuilder builder) {
@@ -299,13 +294,9 @@ public class VerticalStackingCalculator {
             var x2ExtraSs = 0.0;
 
             switch (element) {
-                case Trill trill -> yOffsetSs += trill.getYPositionSs();
-                case Ending ending -> yOffsetSs += ending.getYPositionSs();
-                case Tuplet tuplet -> yOffsetSs += tuplet.getVerticalPositionSs();
                 case Hairpin hairpin -> {
                     x1ExtraSs = hairpin.getX1ShiftSs();
                     x2ExtraSs = hairpin.getX2ShiftSs();
-                    yOffsetSs += hairpin.getYShiftSs();
                 }
                 default -> {
                 }

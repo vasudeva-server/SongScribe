@@ -86,8 +86,7 @@ public sealed interface ElementChange {
      * Asks those spans the same question {@link LineSpans#sweep} does, so the answer is the
      * one the sweep will act on and a prompt and the edit it precedes cannot disagree about
      * what the edit costs. Only spans that ask to be confirmed
-     * ({@link Span#requiresInvalidationConfirm}) are consulted: a tie an insertion
-     * displaces goes silently, so it must not raise the ending confirm.
+     * ({@link Span#requiresInvalidationConfirm}) are consulted.
      *
      * @return false when the line carries no such span; otherwise true exactly when one of
      *     them answers {@link SpanOutcome.Simple#REMOVE} for this change

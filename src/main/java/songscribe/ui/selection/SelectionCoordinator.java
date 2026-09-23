@@ -29,12 +29,15 @@ import java.util.Map;
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Articulation;
+import songscribe.dom.Attachment;
 import songscribe.dom.Line;
-import songscribe.dom.LineElement;
+import songscribe.dom.LineContent;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.lifecycle.Disposable;
 import songscribe.message.Message;
@@ -446,11 +449,11 @@ public final class SelectionCoordinator implements Disposable {
      * The leading {@code activeLineIndex} gate is kind-dependent. Every {@link HitTarget} kind
      * except {@link HitTarget.Tie} lives on exactly one line, so asking about any other line
      * must answer {@code false} — the gate short-circuits that before the switch runs. A tie
-     * can be cross-line (#493): one {@link songscribe.dom.Tie} object present in both lines'
-     * span lists, half drawn by each. Both lines' repaints ask this method with their own line
-     * index (see {@code LineRenderer.buildInvariants}), so the tie case answers instead from
-     * {@link songscribe.dom.Tie#isIn} against the line at {@code lineIndex} — record equality
-     * alone would report the tie selected on every line in the song.
+     * can cross a line break (#493), with half drawn by each of its two lines. Both lines'
+     * repaints ask this method with their own line index (see
+     * {@code LineRenderer.buildInvariants}), so the tie case answers from record equality and
+     * from whether the line at {@code lineIndex} holds one of the tie's two notes — record
+     * equality alone would report the tie selected on every line in the song.
      * <p>
      * The switch is exhaustive on purpose. A {@code default} arm would silently answer
      * {@code false} for a kind added later, which is exactly how the staff line went
@@ -461,7 +464,7 @@ public final class SelectionCoordinator implements Disposable {
     public boolean isSelected(HitTarget target, int lineIndex) {
         if (target instanceof HitTarget.Tie(var tie)) {
             var line = getLine(lineIndex);
-            return isSelectedTarget(target) && line != null && tie.isIn(line);
+            return isSelectedTarget(target) && line != null && isDrawnOn(tie, line);
         }
 
         if (activeLineIndex == null || activeLineIndex != lineIndex) {
@@ -543,10 +546,17 @@ public final class SelectionCoordinator implements Disposable {
      * e.g. after an undo/redo that removed the selected notation outright. No-op if the
      * current selection is still valid, or if it is not a target.
      * <p>
-     * One rule covers every kind a selection can hold, rather than one arm per kind.
-     * {@link HitTarget.Selectable#owner()} names the element the target hangs off, so walking
-     * to the root of the parent chain and asking {@link #isOnLine} whether that root is still
-     * on the line answers for an articulation on a note, a tie and a hairpin alike.
+     * One rule covers every kind a selection can hold but a tie, rather than one arm per kind.
+     * {@link HitTarget.Selectable#owner()} names the element the target hangs off, so asking
+     * {@link #isOnLine} whether that element is still on the line answers for an articulation
+     * on a note and a hairpin alike.
+     * <p>
+     * A tie is the exception, for two reasons. Its owner is its anchor note, which stays on its
+     * line when the tie is removed, so the owner's line cannot tell a removed tie from a live
+     * one; the tie is live while its anchor still derives it
+     * ({@link songscribe.dom.NoteElement#tie()}). And a tie across a line break can be selected
+     * from either of its two lines, while its anchor is on only the first, so it reads as on
+     * the line when either of its notes is.
      *
      * @return whether the selection was cleared
      */
@@ -554,16 +564,36 @@ public final class SelectionCoordinator implements Disposable {
         var line = getActiveLine();
         var target = getSelectedTarget();
 
-        // A null owner means the target is the staff line itself, which cannot go stale.
-        var owner = (target == null) ? null : target.owner();
-
-        if (line == null || owner == null || isOnLine(owner, line)) {
+        if (line == null || target == null || isLiveOn(target, line)) {
             return false;
         }
 
         // The line stays active: only what was selected on it went stale.
         clearActiveSelection();
         return true;
+    }
+
+    /**
+     * Returns whether {@code target} still names something live on {@code line}. See
+     * {@link #revalidateDecorationSelection}.
+     */
+    private static boolean isLiveOn(HitTarget.Selectable target, Line line) {
+        if (target instanceof HitTarget.Tie(var tie)) {
+            return tie.equals(tie.anchor().tie()) && isDrawnOn(tie, line);
+        }
+
+        // A null owner means the target is the staff line itself, which cannot go stale.
+        var owner = target.owner();
+
+        return owner == null || isOnLine(owner, line);
+    }
+
+    /**
+     * Returns whether {@code line} draws {@code tie} or a half of it: whether it holds either of
+     * the tie's two notes.
+     */
+    private static boolean isDrawnOn(Tie tie, Line line) {
+        return line.contains(tie.anchor()) || line.contains(tie.end());
     }
 
     /**
@@ -617,35 +647,29 @@ public final class SelectionCoordinator implements Disposable {
     }
 
     /**
-     * Returns whether {@code element} still hangs off {@code line}.
+     * Returns whether {@code owner} still hangs off {@code line}.
      * <p>
-     * Sub-elements — an articulation, a fermata — carry no line of their own, so the walk
-     * climbs to the root of the parent chain and asks about that element instead.
+     * A staff element answers from its own parent line, which the line clears when it drops
+     * the element, so a reference comparison against {@code line} settles it in constant time.
+     * An attachment or an articulation answers its host's line, which is null once it is taken
+     * off its host, so the same comparison settles it.
      * <p>
-     * A staff element answers from its own {@code parentLine} field, which
-     * {@link Line#detach} clears when the line drops it, so a reference comparison against
-     * {@code line} settles it in constant time.
-     * <p>
-     * A span has no such field — it is never attached, and {@link Span#isIn} derives
-     * parentage from its endpoints, which a removal leaves exactly where they were. So a
-     * span is asked of the line's span list instead, the only record of a span having been
-     * removed. That list is short, it is scanned once per mutation rather than per element,
-     * and it is what makes a cross-line tie answer yes for <em>both</em> of the lines it is
-     * drawn across: a removal takes it out of both lists together, and until then both hold
-     * it.
+     * A span has no parent line: {@link Span#isIn} derives the lines it is in from its
+     * endpoints, which a removal leaves exactly where they were. So a span is asked of the
+     * line's span list instead, the only record of a span having been removed. That list is
+     * short, and it is scanned once per mutation rather than per element.
+     *
+     * @param owner what a {@link HitTarget.Selectable} target hangs off
+     * @param line the line the selection is on
+     * @return {@code true} when {@code owner} is live on {@code line}
      */
-    private static boolean isOnLine(LineElement element, Line line) {
-        var root = element;
-
-        for (var parent = root.getParentElement(); parent != null; parent = root.getParentElement()) {
-            root = parent;
-        }
-
-        if (root instanceof Span span) {
-            return line.spanRegistry().getSpans().contains(span);
-        }
-
-        return root.getParentLine() == line;
+    private static boolean isOnLine(LineContent owner, Line line) {
+        return switch (owner) {
+            case StaffElement element -> element.getParentLine() == line;
+            case Attachment attachment -> attachment.getParentLine() == line;
+            case Articulation articulation -> articulation.getParentLine() == line;
+            case Span span -> line.spanRegistry().getSpans().contains(span);
+        };
     }
 
     @SuppressWarnings("ObjectEquality")

@@ -26,8 +26,6 @@ import java.awt.geom.Line2D;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.engraving.EngravingConstants;
@@ -136,8 +134,9 @@ public final class HairpinRenderer {
     /**
      * Renders all hairpins (crescendo and diminuendo) for a line using layout results.
      * <p>
-     * Iterates all {@link Crescendo} and {@link Diminuendo} entries in the layout
-     * (both new spans and those bridged from legacy intervals during layout).
+     * Iterates all {@link Hairpin} entries in the layout (both new spans and those
+     * bridged from legacy intervals during layout), reading each one's wedge direction
+     * from its own {@link Hairpin#getKind()}.
      */
     public void renderHairpinsFromLine(
         Graphics2D g2,
@@ -145,11 +144,7 @@ public final class HairpinRenderer {
     ) {
         var decorationLayouts = invariants.getLayoutResult().decorationLayouts();
 
-        for (var entry : decorationLayouts.getDecorationLayoutsByType(Crescendo.class)) {
-            renderSingleHairpin(entry.getKey(), entry.getValue(), g2, invariants);
-        }
-
-        for (var entry : decorationLayouts.getDecorationLayoutsByType(Diminuendo.class)) {
+        for (var entry : decorationLayouts.getDecorationLayoutsByType(Hairpin.class)) {
             renderSingleHairpin(entry.getKey(), entry.getValue(), g2, invariants);
         }
     }

@@ -829,13 +829,6 @@ public abstract class E2ETest {
         }));
     }
 
-    protected boolean isTied(int lineIndex, int noteIndex) {
-        return Boolean.TRUE.equals(GuiActionRunner.execute(() -> {
-            var line = song().getLine(lineIndex);
-            return line.spanRegistry().findTieAt(noteIndex) != null;
-        }));
-    }
-
     // -- Coordinate helpers --
 
     /**

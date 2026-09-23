@@ -40,6 +40,7 @@ import songscribe.engraving.EngravingConstants;
 import songscribe.error.RuntimeError;
 import songscribe.hit.HitTarget;
 import songscribe.layout.CautionaryKeySignature;
+import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.FlatLafKey;
@@ -416,7 +417,7 @@ class LineRenderer {
     }
 
     /**
-     * Renders ties between notes.
+     * Renders the ties and tie halves this line owns ({@link Line#ownedTies}).
      *
      * @param g2    Graphics context
      * @param invariants   Line invariants
@@ -425,26 +426,25 @@ class LineRenderer {
     private void renderTies(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
         var tieRenderer = TieRenderer.getInstance();
         var line = invariants.requireCurrentLine();
-        var ties = line.spanRegistry().findTies();
 
-        for (var span : ties) {
-            renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(span, line),
-                () -> tieRenderer.renderTie(g2, span, invariants, frame));
+        for (var tie : line.ownedTies()) {
+            renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(tie, line),
+                () -> tieRenderer.renderTie(g2, tie, invariants, frame));
         }
     }
 
     /**
      * Returns the index the preview shift must weigh {@code tie} against in {@code line}.
      * <p>
-     * Receiver-relative resolution: the preview shift's {@code fromIndex} is a position in the line
-     * being painted, so the tie's start has to be one too. Reading it off the tie would hand
-     * an index resolved in the anchor's own line to a comparison against this line's shift
-     * boundary, and a tie tied in from the previous line would be shifted or left unshifted
-     * according to where its anchor sat over there. An anchor off this line's left edge means
-     * the half enters at element 0 and shifts exactly when the whole line does.
+     * The preview shift's {@code fromIndex} is a position in the line being painted, so the
+     * tie's start has to be one too: its anchor's index when the anchor is in {@code line}, and
+     * {@code 0} when it is in the previous line, since the half entering from the left edge
+     * starts before every element here and shifts exactly when the whole line does.
      */
     static int previewShiftStartOf(Tie tie, Line line) {
-        return line.spanRegistry().anchorIndexOf(tie).indexOr(0);
+        var anchor = tie.anchor();
+
+        return line.contains(anchor) ? line.getElementIndex(anchor) : 0;
     }
 
     /**

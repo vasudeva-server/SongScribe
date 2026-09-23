@@ -175,18 +175,14 @@ public class MidiSequenceBuilder {
 
     /**
      * Returns the first ending in {@code endings} covering {@code elementIndex}, or null when
-     * none does — {@link LineSpans#findEndingAt} against a list already narrowed to one line's
-     * endings, so a per-note call does not re-walk that line's every span.
-     * <p>
-     * {@code endings} must be {@code line}'s own, since the positions are resolved against
-     * {@code line}.
+     * none does — a list already narrowed to one line's endings, so a per-note call does not
+     * re-walk that line's every span.
      */
-    private static @Nullable Ending endingCovering(Line line, List<Ending> endings, int elementIndex) {
+    private static @Nullable Ending endingCovering(List<Ending> endings, int elementIndex) {
         var covers = Span.containing(elementIndex);
-        var spans = line.spanRegistry();
 
         for (var ending : endings) {
-            if (covers.test(spans.anchorIndexOf(ending), spans.endIndexOf(ending))) {
+            if (covers.test(ending.getAnchorElementIndex(), ending.getEndElementIndex())) {
                 return ending;
             }
         }
@@ -234,7 +230,7 @@ public class MidiSequenceBuilder {
                 var noteType = note.getType();
 
                 // Resolve the ending covering this element once; reused below.
-                var ending = endingCovering(line, endings, noteIndex);
+                var ending = endingCovering(endings, noteIndex);
 
                 // The closing REPEAT_RIGHT of a secondary (REPEAT_LEFT_RIGHT-split) ending
                 // must not start a spurious third pass, so exclude it from the repeat-marker

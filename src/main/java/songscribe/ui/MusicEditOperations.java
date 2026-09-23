@@ -21,16 +21,14 @@
 package songscribe.ui;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
-import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.Beam;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.Direction;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
@@ -42,12 +40,11 @@ import songscribe.dom.LineSpans;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Stem;
-import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
+import songscribe.error.RuntimeError;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.mutation.ElementField;
 import songscribe.ui.selection.ElementSelection;
@@ -219,15 +216,15 @@ public final class MusicEditOperations {
             return false;
         }
 
-        // Conflict: beaming may not connect what a tie already connects, the same rule
-        // RangeQueries.canToggleBeaming applies. A break is never blocked by a tie.
-        if (spans.sameTieAt(predecessorIndex, elementIndex)) {
-            return false;
-        }
-
         // Both are beamable, so both are notes.
         var anchorNote = line.noteAt(predecessorIndex);
         var endNote = line.noteAt(elementIndex);
+
+        // Conflict: beaming may not connect what a tie already connects, the same rule
+        // RangeQueries.canToggleBeaming applies. A break is never blocked by a tie.
+        if (anchorNote.isTiedTo(endNote)) {
+            return false;
+        }
 
         line.getSong().withModification(() -> new Beam(anchorNote, endNote).addTo(line));
 
@@ -265,8 +262,8 @@ public final class MusicEditOperations {
     private static boolean toggleTieInRange(ElementSelection range) {
         var line = range.line();
 
-        // A tie spans the selection itself: its endpoints are the two notes, and any
-        // separator between them stays outside the tie (refs #527).
+        // A tie joins the two notes the selection begins and ends on, and any separator
+        // between them stays outside the tie (refs #527).
         var bounds = range.range();
         var beginIndex = bounds.begin();
         var endIndex = bounds.end();
@@ -276,14 +273,15 @@ public final class MusicEditOperations {
                 return toggleBoundaryTie(line, beginIndex);
             }
 
-            var spans = line.spanRegistry();
-            var exactTie = spans.findExactTie(bounds);
+            // canToggleTie has admitted the range, so both endpoints are pitched notes with at
+            // most a legal separator between them, and the tie added to the first ends on the
+            // second.
+            var anchor = line.noteAt(beginIndex);
 
-            if (exactTie == null) {
-                // canToggleTie has admitted the range, so both endpoints are pitched notes.
-                new Tie(line.noteAt(beginIndex), line.noteAt(endIndex)).addTo(line);
+            if (anchor.isTiedTo(line.noteAt(endIndex))) {
+                line.removeTie(anchor);
             } else {
-                exactTie.removeFrom(line);
+                line.addTie(anchor);
             }
 
             return true;
@@ -310,13 +308,10 @@ public final class MusicEditOperations {
     /**
      * Toggles the cross-line tie candidate at {@code index} in {@code line}, if any (#493).
      * <p>
-     * {@code Span.exactly}/{@code findExactTie} can never match a cross-line half — only an
-     * {@code At} bound can equal a queried index, and a cross-line half's far bound is always
-     * {@link SpanBound#BEFORE_LINE} or {@link SpanBound#AFTER_LINE} — so add-versus-remove is
-     * decided by {@link LineSpans#findTieBetween}, which matches the two real endpoints by identity
-     * instead. That also keeps this from ever mistaking a same-line tie that merely ends on
-     * the boundary note (a chained tie) for the boundary tie itself: such a tie's elements
-     * never equal {@code boundaryTie}'s.
+     * The tie is recorded on the anchor's line, which is the line before {@code line} when
+     * {@code index} is where a tie enters {@code line}. Add-versus-remove is decided by
+     * {@link NoteElement#isTiedTo} over the two notes, so a same-line tie that merely ends on
+     * the boundary note (a chained tie) is never mistaken for the boundary tie itself.
      *
      * @return Whether a partner was found and the tie toggled
      */
@@ -327,13 +322,17 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var spans = line.spanRegistry();
-        var existingTie = spans.findTieBetween(boundaryTie.anchor(), boundaryTie.end());
+        var anchor = boundaryTie.anchor();
+        var anchorLine = anchor.getParentLine();
 
-        if (existingTie == null) {
-            new Tie(boundaryTie.anchor(), boundaryTie.end()).addTo(line);
+        if (anchorLine == null) {
+            throw RuntimeError.exit("a boundary tie candidate's anchor is in no line");
+        }
+
+        if (anchor.isTiedTo(boundaryTie.end())) {
+            anchorLine.removeTie(anchor);
         } else {
-            existingTie.removeFrom(line);
+            anchorLine.addTie(anchor);
         }
 
         return true;
@@ -547,18 +546,8 @@ public final class MusicEditOperations {
         line.getSong().withModification(Strings.get(opNameKey), () -> {
             // Span.addTo applies each kind's own displacement policy, which merges
             // overlapping same-type spans — the extend path depends on that.
-            var added = switch (kind) {
-                case CRESCENDO -> {
-                    var hairpin = new Crescendo(anchorElement, endElement);
-                    hairpin.addTo(line);
-                    yield (Hairpin) hairpin;
-                }
-                case DIMINUENDO -> {
-                    var hairpin = new Diminuendo(anchorElement, endElement);
-                    hairpin.addTo(line);
-                    yield (Hairpin) hairpin;
-                }
-            };
+            var added = new Hairpin(kind, anchorElement, endElement);
+            added.addTo(line);
 
             // mergeOverlappingSpans widens the added hairpin in place, so its indices
             // after the add are the merged range — which can reach past what the
@@ -729,11 +718,14 @@ public final class MusicEditOperations {
         // the boundary and opposite-type checks below would run against a span that
         // never exists. Each pass either strictly widens the union or ends the loop, so
         // this terminates in at most one pass per same-type hairpin on the line.
+        //
+        // The reach window stops at the first element: a span at the start of the line
+        // has nothing before it to absorb, and an element range cannot begin before 0.
         do {
-            var sameType = spans.findSpans(
-                kind.spanType(),
+            var sameType = spans.findHairpins(
+                kind,
                 Span.overlapping(new ElementRange(
-                    spanBegin - LineSpans.SPAN_ADJACENCY_REACH,
+                    Math.max(0, spanBegin - LineSpans.SPAN_ADJACENCY_REACH),
                     spanEnd + LineSpans.SPAN_ADJACENCY_REACH)));
             isExtend = !sameType.isEmpty();
 
@@ -789,9 +781,7 @@ public final class MusicEditOperations {
         }
 
         // Two hairpins may meet on one shared element; more than that is a collision.
-        if (spans.hasSpan(
-                kind.opposite().spanType(),
-                Span.overlappingBeyondEndpoint(hairpinRange))) {
+        if (spans.hasHairpin(kind.opposite(), Span.overlappingBeyondEndpoint(hairpinRange))) {
             return blockedHairpinResolution();
         }
 
@@ -956,11 +946,11 @@ public final class MusicEditOperations {
         var spans = line.spanRegistry();
 
         for (var ending : spans.findEndings()) {
-            var anchorBound = spans.anchorIndexOf(ending);
-            var endBound = spans.endIndexOf(ending);
+            var anchorIndex = ending.getAnchorElementIndex();
+            var endIndex = ending.getEndElementIndex();
 
             for (var i = begin; i <= end; i++) {
-                if (Span.containing(i).test(anchorBound, endBound)) {
+                if (Span.containing(i).test(anchorIndex, endIndex)) {
                     return true;
                 }
             }
@@ -1025,11 +1015,7 @@ public final class MusicEditOperations {
         var precedingElementIndex = Ending.openingElementIndex(line, selectionBegin);
 
         if (precedingElementIndex == selectionBegin) {
-            return EndingValidationResult.valid(
-                EndingValidationResult.PrecedingAction.NONE,
-                selectionBegin,
-                selectionEnd
-            );
+            return EndingValidationResult.valid(selectionBegin, selectionEnd);
         }
 
         var precedingType = line.getElement(precedingElementIndex).getType();
@@ -1038,11 +1024,7 @@ public final class MusicEditOperations {
                 || precedingType == ElementType.REPEAT_LEFT
                 || precedingType == ElementType.REPEAT_LEFT_RIGHT) {
             // Extend span start backward to include the preceding element
-            return EndingValidationResult.valid(
-                EndingValidationResult.PrecedingAction.EXTEND_SPAN,
-                precedingElementIndex,
-                selectionEnd
-            );
+            return EndingValidationResult.valid(precedingElementIndex, selectionEnd);
         }
 
         // Unreachable today: the only element types left are the right repeat, the
@@ -1170,56 +1152,42 @@ public final class MusicEditOperations {
                 }
             }
 
-            // Apply the same change to tie partners that fall outside the selection. Chained
-            // ties (note1-2 tied, note2-3 tied separately) must be walked to their full
-            // transitive closure so every note in the chain gets updated, not just the
-            // immediate partner of a selected note.
-            var visited = new TreeSet<Integer>();
+            // Apply the same change to every note a tie joins to the selection, in whichever
+            // line each one sits. Chained ties (note1-2 tied, note2-3 tied separately) must be
+            // walked to their full transitive closure so every note in the chain gets updated,
+            // not just the immediate partner of a selected note, and a chain that crosses a
+            // line break is followed into that line rather than stopped at the edge.
+            var visited = new HashSet<NoteElement>();
 
             for (var i = bounds.begin(); i <= bounds.end(); i++) {
-                visited.add(i);
+                if (line.getElement(i) instanceof NoteElement note) {
+                    visited.add(note);
+                }
             }
 
-            var tiePartnersToModify = new TreeSet<Integer>();
+            var tiePartnersToModify = new ArrayList<NoteElement>();
             var pending = new ArrayDeque<>(visited);
 
             while (!pending.isEmpty()) {
-                var i = pending.remove();
-                var tieSpan = spans.findTieAt(i);
+                var note = pending.remove();
 
-                if (tieSpan == null) {
-                    continue;
-                }
-
-                // Receiver-relative resolution. Reading the pair off the tie takes the anchor
-                // index from the anchor's own line and the end index from the end's own line,
-                // so a tie crossing a line boundary yields 7..0 — an inverted range that walks
-                // nothing and silently flips no partner at all. Asking `line` gives
-                // At(7)/AFTER_LINE here and BEFORE_LINE/At(0) in the next line, so each line
-                // walks exactly its own half. The off-edge bound clamps to this line's own
-                // edge because every element below is indexed into `line`; the far half is not
-                // reachable from here. findTieAt has already rejected a tie with an ABSENT
-                // bound, so a non-At bound can only be BEFORE_LINE on the anchor or
-                // AFTER_LINE on the end.
-                var tieStart = spans.anchorIndexOf(tieSpan).indexOr(0);
-                var tieEnd = spans.endIndexOf(tieSpan).indexOr(line.elementCount() - 1);
-
-                for (var j = tieStart; j <= tieEnd; j++) {
-                    if (visited.add(j)) {
-                        pending.add(j);
-
-                        if (!bounds.contains(j)) {
-                            tiePartnersToModify.add(j);
-                        }
+                for (var partner : note.tiePartners()) {
+                    if (visited.add(partner)) {
+                        pending.add(partner);
+                        tiePartnersToModify.add(partner);
                     }
                 }
             }
 
-            // The walk queued every index between a tie's two notes, and a legal separator — a
-            // barline, say — may sit there; only the notes take a stem change.
-            for (var partnerIndex : tiePartnersToModify) {
-                if (line.getElement(partnerIndex) instanceof NoteElement partner) {
-                    applyStemChange(line, partnerIndex, stemFields, flippedDirection(partner, change));
+            for (var partner : tiePartnersToModify) {
+                var partnerLine = partner.getParentLine();
+
+                if (partnerLine != null) {
+                    applyStemChange(
+                        partnerLine,
+                        partnerLine.getElementIndex(partner),
+                        stemFields,
+                        flippedDirection(partner, change));
                 }
             }
         });

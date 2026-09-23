@@ -21,22 +21,20 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
-import songscribe.dom.Span;
-import songscribe.dom.Tie;
+import songscribe.dom.NoteElement;
 
 /**
- * Mutation recording the addition of a tie span to a line.
+ * Mutation recording that a note was tied to the next note. The tie's end is derived, not
+ * recorded — see {@link NoteElement#tie()}.
+ *
+ * @param line   the line the tie was recorded on, which is {@code anchor}'s line
+ * @param anchor the note that became tied
  */
-public record TieAddition(Line line, Tie tie)
-    implements Mutation, LineScopedMutation, SpanMutation {
+public record TieAddition(Line line, NoteElement anchor)
+    implements Mutation, LineScopedMutation {
 
     @Override
     public Line getLine() {
         return line;
-    }
-
-    @Override
-    public Span getSpan() {
-        return tie;
     }
 }

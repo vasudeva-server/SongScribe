@@ -23,14 +23,11 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Hairpin.Kind;
 
 /**
- * Bidirectional mapping between SongScribe {@link Hairpin} subclasses
- * ({@link Crescendo}, {@link Diminuendo}) and their MusicXML
+ * Bidirectional mapping between a {@link Hairpin}'s {@link Kind} and its MusicXML
  * {@code <wedge type>} token ({@code "crescendo"}, {@code "diminuendo"}).
  *
  * <p>The wedge {@code type="stop"} token has no SongScribe counterpart; it is
@@ -58,8 +55,8 @@ final class WedgeTypeMapping {
     /**
      * Returns the MusicXML {@code <wedge type>} token for the given {@link Hairpin}.
      *
-     * <p>{@link Crescendo} maps to {@code "crescendo"};
-     * {@link Diminuendo} maps to {@code "diminuendo"}.
+     * <p>{@link Kind#CRESCENDO} maps to {@code "crescendo"};
+     * {@link Kind#DIMINUENDO} maps to {@code "diminuendo"}.
      */
     static String wedgeType(Hairpin hairpin) {
         return switch (hairpin.getKind()) {

@@ -54,7 +54,17 @@ instead, so an accent can tuck under the curve of what sits above it.
 
 Endings are the one exception to whole-element collision: a bracket reserves
 several separate regions rather than one, because only its top line needs
-clearance. Content nested *inside* the bracket does not collide with it.
+clearance. Content nested *inside* the bracket does not collide with it. Where
+each of an ending's two brackets starts and stops is layout output: stacking
+measures the brackets, and the layout result carries them beside the ending's
+placement, so the renderer draws the brackets stacking measured rather than
+measuring its own. The ending itself holds none of it.
+
+A line lays out the ties it owns: the tie that starts on each of its notes, and
+the incoming half of a tie whose anchor is in the line before. A tie that
+crosses a line break is therefore two halves, each a complete arc placed by its
+own line: the first runs to the staff's right edge, and the second starts where
+the music of the next line does, past its clef and key signature.
 
 ## Where the first note sits
 

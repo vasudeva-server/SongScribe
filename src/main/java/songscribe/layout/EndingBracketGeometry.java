@@ -68,20 +68,21 @@ public final class EndingBracketGeometry {
     }
 
     /**
-     * Computes the bracket ranges for an ending and stores them on it.
+     * Computes the bracket ranges for an ending.
      * <p>
-     * Determines where each visual bracket starts and ends by examining the
-     * element types (barlines, repeats) in the line. The ranges are stored on the
-     * ending, and both stacking and rendering read them from there rather than
-     * deriving positions of their own.
+     * Determines where each visual bracket starts and ends by examining the element types
+     * (barlines, repeats) in the line. The stacking pass places the ending from these ranges and
+     * records them in its {@link LayoutResult.DecorationLayout.Volta}, where rendering reads them
+     * rather than deriving positions of its own.
      *
      * @param ending   the ending to compute ranges for
      * @param line     the line containing the ending
      * @param columnFn function that returns the {@link ElementColumn} of an element,
      *                 from which its X position and horizontal extents are read
-     * @return the computed bracket ranges (also stored on the ending)
+     * @return the first and second bracket, in that order; empty when the ending's anchor or end
+     *     index is not an index of {@code line}
      */
-    public static List<Ending.BracketRange> computeBracketRanges(
+    public static List<BracketRange> computeBracketRanges(
         Ending ending,
         Line line,
         Function<? super StaffElement, ElementColumn> columnFn
@@ -90,9 +91,7 @@ public final class EndingBracketGeometry {
         var end = ending.requireEndElementIndex();
 
         if (!line.hasIndex(start) || !line.hasIndex(end)) {
-            List<Ending.BracketRange> noRanges = List.of();
-            ending.setBracketRanges(noRanges);
-            return noRanges;
+            return List.of();
         }
 
         // The ending owns which of its elements is the split. Searching for it again here
@@ -108,10 +107,7 @@ public final class EndingBracketGeometry {
         var firstBracket = firstBracketRange(startElement, split, columnFn);
         var secondBracket = secondBracketRange(endElement, end, split, line, columnFn);
 
-        var bracketRanges = List.of(firstBracket, secondBracket);
-        ending.setBracketRanges(bracketRanges);
-
-        return bracketRanges;
+        return List.of(firstBracket, secondBracket);
     }
 
     /**
@@ -122,7 +118,7 @@ public final class EndingBracketGeometry {
      * @param columnFn     supplies an element's column
      * @return the bracket's range
      */
-    private static Ending.BracketRange firstBracketRange(
+    private static BracketRange firstBracketRange(
         StaffElement startElement,
         BarElement split,
         Function<? super StaffElement, ElementColumn> columnFn
@@ -141,7 +137,7 @@ public final class EndingBracketGeometry {
 
         var x2 = columnFn.apply(split).getXSs() + split.bar().closingAnchorSs();
 
-        return new Ending.BracketRange(x1, x2, 1, true);
+        return new BracketRange(x1, x2, 1, true);
     }
 
     /**
@@ -154,7 +150,7 @@ public final class EndingBracketGeometry {
      * @param columnFn   supplies an element's column
      * @return the bracket's range
      */
-    private static Ending.BracketRange secondBracketRange(
+    private static BracketRange secondBracketRange(
         StaffElement endElement,
         int end,
         BarElement split,
@@ -168,12 +164,12 @@ public final class EndingBracketGeometry {
             var x2 = columnFn.apply(endElement).getRightEdgeXSs()
                 + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
 
-            return new Ending.BracketRange(x1, x2, 2, false);
+            return new BracketRange(x1, x2, 2, false);
         }
 
         var x2 = columnFn.apply(closingBar).getXSs() + closingBar.bar().closingAnchorSs();
 
-        return new Ending.BracketRange(x1, x2, 2, closingBar.getType().closesSection());
+        return new BracketRange(x1, x2, 2, closingBar.getType().closesSection());
     }
 
     /**
@@ -204,7 +200,7 @@ public final class EndingBracketGeometry {
      * @return list of collision sub-regions
      */
     public static List<CollisionRegion> computeCollisionRegions(
-        Ending.BracketRange bracket,
+        BracketRange bracket,
         double xBaseSs
     ) {
         var spanWidthSs = bracket.inkRightXSs() - bracket.x1Ss();

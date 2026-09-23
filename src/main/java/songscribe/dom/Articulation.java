@@ -26,13 +26,18 @@ import org.jspecify.annotations.Nullable;
  * One articulation marking on a note: a {@link NoteElement} child whose only state of its own is
  * its {@link ArticulationType}, which decides what it draws and how much room it takes.
  * <p>
- * The note owns it. {@link NoteElement#addArticulation} makes the note its parent and
- * {@link NoteElement#removeArticulation} detaches it, so {@link #owner()} is answered from the
- * parent-element pointer every {@link LineElement} carries rather than from a pointer of its own.
+ * <b>The owner and the line.</b> The note owns it: {@link NoteElement#addArticulation} sets
+ * {@link #owner()} and {@link NoteElement#removeArticulation} and
+ * {@link NoteElement#clearArticulations} clear it, and nothing else writes it. An articulation's
+ * line is its note's line, derived on every ask rather than stored, so it follows the note into
+ * and out of a line with nothing to keep in step.
  */
-public final class Articulation extends LineElement implements IntrinsicHeight {
+public final class Articulation extends LineElement implements LineContent, IntrinsicHeight {
 
     private final ArticulationType type;
+
+    /** Written only by {@link NoteElement}'s add and remove methods. */
+    private @Nullable NoteElement owner;
 
     /**
      * Creates an articulation of the given kind, not yet on any note.
@@ -68,7 +73,26 @@ public final class Articulation extends LineElement implements IntrinsicHeight {
      *         {@link NoteElement#addArticulation} and after {@link NoteElement#removeArticulation}
      */
     public @Nullable NoteElement owner() {
-        return (NoteElement) getParentElement();
+        return owner;
+    }
+
+    /**
+     * Sets the note this articulation is on. Package-private so that only
+     * {@link NoteElement}'s add and remove methods, which keep the note's articulation list in
+     * step, can write it.
+     */
+    void setOwner(@Nullable NoteElement owner) {
+        this.owner = owner;
+    }
+
+    /**
+     * Returns the line this articulation is in, which is its note's.
+     *
+     * @return the note's line, or {@code null} when the articulation is on no note or its note
+     *     is in no line
+     */
+    public @Nullable Line getParentLine() {
+        return StaffElement.parentLineOf(owner);
     }
 
     /**

@@ -30,16 +30,15 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
 import songscribe.dom.Beam;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
+import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
-import songscribe.dom.Tie;
 import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
 import songscribe.util.StringUtils;
 
 public final class LineIO {
@@ -251,12 +250,22 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Tie} spans from the parsed tie index pairs.
-         * Called at end-of-line after all elements have been loaded.
+         * Ties the anchor named by each parsed tie index pair. The end is derived, not read from
+         * the file, so the pair's second index is not used; a pair whose anchor is not a
+         * {@link ElementType.Kind#NOTE} note is ignored, the way a reader converts at its
+         * boundary. Called at end-of-line after all elements have been loaded.
          */
         private void createTiesFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingTiePairs) {
-                addNoteSpanFromPair(line, pair, "tie", Tie::new);
+                var anchorIndex = pair[0];
+
+                if (anchorIndex < 0 || anchorIndex >= line.elementCount()) {
+                    throw DocumentValidation.corrupt(LOG, "tie anchor index out of range: {}", anchorIndex);
+                }
+
+                if (line.getElement(anchorIndex) instanceof NoteElement anchor && anchor.getType().isPitchedNote()) {
+                    line.addTie(anchor);
+                }
             }
 
             pendingTiePairs.clear();
@@ -302,10 +311,10 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Crescendo} spans from the parsed crescendo data.
+         * Creates crescendo {@link Hairpin} spans from the parsed crescendo data.
          * Called at end-of-line after all elements have been loaded.
          * <p>
-         * Added through {@link Crescendo#addTo}, whose displacement policy merges a
+         * Added through {@link Hairpin#addTo}, whose displacement policy merges a
          * legacy file's two same-type hairpins that overlap or merely touch into the one
          * hairpin they musically are.
          */
@@ -317,10 +326,10 @@ public final class LineIO {
 
                 var anchorElement = line.getElement(start);
                 var endElement = line.getElement(end);
-                var crescendo = new Crescendo(anchorElement, endElement);
+                var crescendo = new Hairpin(Hairpin.Kind.CRESCENDO, anchorElement, endElement);
                 crescendo.setX1ShiftSs(data[2]);
                 crescendo.setX2ShiftSs(data[3]);
-                crescendo.setYShiftSs(data[4]);
+                crescendo.setUserYOffsetSs(data[4]);
                 crescendo.addTo(line);
             }
 
@@ -328,7 +337,7 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Diminuendo} spans from the parsed diminuendo data.
+         * Creates diminuendo {@link Hairpin} spans from the parsed diminuendo data.
          * Called at end-of-line after all elements have been loaded. Merge semantics
          * mirror {@link #createCrescendosFromPending}.
          */
@@ -340,10 +349,10 @@ public final class LineIO {
 
                 var anchorElement = line.getElement(start);
                 var endElement = line.getElement(end);
-                var diminuendo = new Diminuendo(anchorElement, endElement);
+                var diminuendo = new Hairpin(Hairpin.Kind.DIMINUENDO, anchorElement, endElement);
                 diminuendo.setX1ShiftSs(data[2]);
                 diminuendo.setX2ShiftSs(data[3]);
-                diminuendo.setYShiftSs(data[4]);
+                diminuendo.setUserYOffsetSs(data[4]);
                 diminuendo.addTo(line);
             }
 
@@ -356,17 +365,25 @@ public final class LineIO {
         }
 
         /**
-         * Stores parsed tuplet data until elements are loaded.
-         * Format per entry: [anchorIndex, endIndex, grade, verticalPositionSs * 1000 as int].
-         * verticalPositionSs is stored as-is (a double) in a wrapper; using a double[] for simplicity.
+         * Stores parsed tuplet data until elements are loaded, one line at a time.
+         * Format per entry: [anchorIndex, endIndex, grade, yOffsetSs].
          */
-        private final List<double[]> pendingTupletData = new ArrayList<>();
+        private final List<double[]> pendingTupletSegments = new ArrayList<>();
+
+        /**
+         * Every tuplet this reader has resolved so far, across the whole document. Kept for
+         * the whole document rather than cleared per line, since the ratio a stated-less
+         * tuplet needs is only settled once the whole song has been read: {@link
+         * songscribe.dom.TupletLoadPass#run} derives it from the beat at the anchor, which a
+         * tempo change later in the file may still redefine while this reader is mid-parse.
+         */
+        private final List<PendingTuplet> pendingTupletData = new ArrayList<>();
 
         private void parseTupletData(String str) {
             forEachSegment(str, (begin, end) -> {
                 var segment = parseSegmentAB(str, begin, end);
                 var grade = 3; // default to triplet
-                var verticalPositionSs = 0.0;
+                var yOffsetSs = 0.0;
 
                 var data = segment.data();
 
@@ -383,46 +400,45 @@ public final class LineIO {
 
                     if (parts.length > 1) {
                         try {
-                            verticalPositionSs = Double.parseDouble(parts[1]);
+                            yOffsetSs = Double.parseDouble(parts[1]);
                         } catch (NumberFormatException e) {
-                            LOG.warn("Corrupt document: malformed tuplet verticalPositionSs: '{}', using default {}", parts[1], verticalPositionSs);
-                            verticalPositionSs = 0.0;
+                            LOG.warn("Corrupt document: malformed tuplet yOffsetSs: '{}', using default {}", parts[1], yOffsetSs);
+                            yOffsetSs = 0.0;
                         }
                     }
                 }
 
-                pendingTupletData.add(new double[]{segment.a(), segment.b(), grade, verticalPositionSs});
+                pendingTupletSegments.add(new double[]{segment.a(), segment.b(), grade, yOffsetSs});
             });
         }
 
         /**
-         * Creates {@link Tuplet} spans from the pending tuplet data.
+         * Resolves each parsed tuplet segment's anchor and end against {@code line}'s
+         * now-complete elements and appends a {@link PendingTuplet} with no stated ratio.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createTupletsFromPending(Line line) throws SAXException {
-            for (var data : pendingTupletData) {
+            for (var data : pendingTupletSegments) {
                 var anchorIdx = (int) data[0];
                 var endIdx = (int) data[1];
                 var grade = (int) data[2];
-                var verticalPositionSs = (int) data[3];
+                var yOffsetSs = data[3];
                 DocumentValidation.requireIndexInRange(LOG, anchorIdx, endIdx, line.elementCount(), "tuplet");
 
                 var anchorElement = line.getElement(anchorIdx);
                 var endElement = line.getElement(endIdx);
-                // Mid-parse: the beat may still change in a later line, so the ratio is
-                // left to the post-load pass.
-                var tuplet = Tuplet.withUnresolvedRatio(anchorElement, endElement, grade);
 
-                if (!tuplet.hasValidSpan(line)) {
-                    throw DocumentValidation.corrupt(
-                        LOG, "Corrupt document: tuplet does not span at least two non-rest notes: {}, {}", anchorIdx, endIdx);
-                }
-
-                tuplet.setVerticalPositionSs(verticalPositionSs);
-                tuplet.addTo(line);
+                pendingTupletData.add(new PendingTuplet(anchorElement, endElement, grade, null, yOffsetSs));
             }
 
-            pendingTupletData.clear();
+            pendingTupletSegments.clear();
+        }
+
+        /**
+         * Returns every tuplet this reader has found in the document, with no stated ratio.
+         */
+        public List<PendingTuplet> pendingTuplets() {
+            return List.copyOf(pendingTupletData);
         }
 
         /**
@@ -603,7 +619,7 @@ public final class LineIO {
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var trill = new Trill(anchorElement, endElement);
-                trill.setYPositionSs(pair[2]);
+                trill.setUserYOffsetSs(pair[2]);
                 trill.addTo(line);
             }
 

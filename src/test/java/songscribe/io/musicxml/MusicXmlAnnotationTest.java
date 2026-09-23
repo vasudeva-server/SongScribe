@@ -56,11 +56,10 @@ class MusicXmlAnnotationTest extends UnitTest {
     private static final String ANNOTATION_TEXT = "dolce";
 
     /**
-     * A hand-placed offset, in whole staff spaces. Whole because {@code relative-y} is written and
-     * read in tenths of a staff space rounded to an integer, so a fractional offset would be
-     * asserting a precision the format does not promise.
+     * A hand-placed offset that is a fraction of a staff space, so the case fails if either side
+     * of the {@code relative-y} conversion rounds it.
      */
-    private static final double USER_Y_OFFSET_SS = 3;
+    private static final double USER_Y_OFFSET_SS = 3.25;
 
     @ParameterizedTest
     @EnumSource(LeftCenterRight.class)

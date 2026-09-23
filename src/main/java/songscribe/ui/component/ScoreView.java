@@ -687,26 +687,27 @@ public final class ScoreView
     }
 
     /**
-     * Repaints both lines a cross-line tie is drawn on; does nothing for any other target.
+     * Repaints the line of a tie's anchor and the line of its end; does nothing for any other
+     * target.
      * <p>
      * Every {@link HitTarget} kind but one is drawn wholly by the line component the user
-     * clicked, so that component repainting itself is enough. A tie can straddle a line
-     * boundary (#493): one {@link songscribe.dom.Tie} sits in both lines' span lists with half
-     * drawn by each, and {@link SelectionCoordinator#isSelected} answers "selected" for both.
-     * Without this the far half keeps painting the stale color until something unrelated
-     * happens to repaint it.
+     * clicked, so that component repainting itself is enough. A tie can cross a line break
+     * (#493), with half drawn by each of its two lines, and
+     * {@link SelectionCoordinator#isSelected} answers "selected" for both. Without this the far
+     * half keeps painting the stale color until something unrelated happens to repaint it.
      * <p>
-     * Both halves are repainted rather than only the far one, so no caller has to work out
-     * which half it is holding. Repainting the near one again costs nothing — Swing coalesces
-     * it with the repaint that line already asked for.
+     * Both lines are repainted rather than only the far one, so no caller has to work out
+     * which half it is holding. For a tie within one line the two are the same line, and
+     * repainting it again costs nothing — Swing coalesces it with the repaint that line
+     * already asked for.
      */
     public void repaintTieHalves(@Nullable HitTarget target) {
         if (!(target instanceof HitTarget.Tie(var tie))) {
             return;
         }
 
-        repaintLine(tie.getAnchorLine());
-        repaintLine(tie.getEndLine());
+        repaintLine(tie.anchor().getParentLine());
+        repaintLine(tie.end().getParentLine());
     }
 
     /**

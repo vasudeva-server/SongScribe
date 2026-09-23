@@ -72,7 +72,7 @@ public enum Dots {
      *
      * <p>At both tick bases in use — {@link songscribe.midi.MidiSequenceBuilder#PPQ} in the
      * model and {@link songscribe.io.musicxml.NoteTypeMapping#DIVISIONS} in MusicXML — every
-     * {@link NoteValue} augments exactly, so the exception is reachable only by a caller
+     * {@link NoteValue} augments exactly, so the integer division truncates only for a caller
      * supplying a base of its own.
      *
      * @param ticks the undotted duration

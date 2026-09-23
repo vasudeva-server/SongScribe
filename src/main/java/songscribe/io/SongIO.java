@@ -37,6 +37,7 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.PartialDate;
+import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
 import songscribe.dom.StaffElement;
@@ -186,6 +187,10 @@ public final class SongIO {
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
         private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
+
+        // Populated by getSong(), from the reader's own pending tuplets migrated to
+        // staff-space units. Empty before getSong() has run.
+        private List<PendingTuplet> resolvedPendingTuplets = List.of();
 
         /**
          * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
@@ -628,6 +633,16 @@ public final class SongIO {
                 || (lineReader != null && lineReader.sawLegacyAccidental());
         }
 
+        /**
+         * Returns every tuplet this document's reader found, in staff-space units and with no
+         * stated ratio when the file states none, as {@link LoadMigrations#run} requires them.
+         * Empty before {@link #getSong()} has run, and for a v1.0 document, which predates
+         * tuplets.
+         */
+        public List<PendingTuplet> pendingTuplets() {
+            return resolvedPendingTuplets;
+        }
+
         public Song getSong() throws SAXException {
             // For legacy files that predate the discrete attribution tags, derive
             // composer/lyricist (and, for v1.0 only, date/place) from the blob.
@@ -646,8 +661,10 @@ public final class SongIO {
             ctx.majorVersion = majorVersion;
             ctx.minorVersion = minorVersion;
             ctx.lyrics = lyrics;
+            ctx.pendingTuplets = lineReader != null ? lineReader.pendingTuplets() : List.of();
 
             MigrationPipeline.runPreAssembly(ctx);
+            resolvedPendingTuplets = ctx.pendingTuplets;
 
             // Line 0 has nothing to inherit from, so it takes the document-level key when the
             // file gave it none of its own. Done before the lines reach the Song, because that

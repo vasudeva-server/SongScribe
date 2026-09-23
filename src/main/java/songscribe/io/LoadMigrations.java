@@ -19,16 +19,19 @@
  */
 package songscribe.io;
 
+import java.util.List;
+
 import songscribe.dom.AccidentalState;
 import songscribe.dom.BreathMarkLoadPass;
+import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.TupletLoadPass;
 
 /**
  * What a load changed in the document on its way in, as one value.
  *
- * @param tupletReport         every tuplet the post-parse pass removed or completed, in
- *                             document order; empty when the file's tuplets were taken as
+ * @param tupletReport         every tuplet the post-parse pass dropped or derived a ratio for,
+ *                             in document order; empty when the file's tuplets were taken as
  *                             they stood
  * @param breathMarkReport     every breath mark the post-parse pass removed for not following
  *                             a note or a rest, in document order; empty when every breath
@@ -44,7 +47,7 @@ public record LoadMigrations(
     /**
      * Whether this load changed nothing in the document.
      *
-     * @return {@code true} when no tuplet was removed or completed, no breath mark was removed
+     * @return {@code true} when no tuplet was dropped or given a derived ratio, no breath mark was removed
      *         and no retired accidental was converted
      */
     public boolean isEmpty() {
@@ -59,20 +62,25 @@ public record LoadMigrations(
      * tuplet pass has settled which notes the song holds: a note the file writes an accidental on
      * sounds that accidental, a bare note adopts what is in force, and parentheses are ignored.
      * This is the only supported way to run the passes, because the tuplet pass must settle
-     * first — a tuplet it drops or completes changes which notes the walk reads. The breath-mark
+     * first — a tuplet it drops or adds changes which notes the walk reads. The breath-mark
      * pass reads no tuplet and changes no note, so its place in the order is free; it runs after
      * the tuplet pass so that a removed breath mark's index in the report is its index in the
      * settled line.
      *
      * @param song                 the song to settle, immediately after parsing and before it
      *                             is installed
+     * @param pendingTuplets       the tuplets the reader found in {@code song}, as
+     *                             {@link TupletLoadPass#run} requires them
      * @param accidentalsConverted whether the reader converted retired accidentals while
      *                             parsing
      * @return what the migrations changed
-     * @effects every note of {@code song} holds a {@link ChainedAccidental} afterwards
+     * @effects adds to {@code song} every pending tuplet the tuplet pass does not drop; every
+     *     note of {@code song} holds a {@link ChainedAccidental} afterwards
      */
-    public static LoadMigrations run(Song song, boolean accidentalsConverted) {
-        var tupletReport = TupletLoadPass.run(song);
+    public static LoadMigrations run(
+        Song song, List<PendingTuplet> pendingTuplets, boolean accidentalsConverted
+    ) {
+        var tupletReport = TupletLoadPass.run(song, pendingTuplets);
         var breathMarkReport = BreathMarkLoadPass.run(song);
         song.stampAccidentalsAfterParsing();
 

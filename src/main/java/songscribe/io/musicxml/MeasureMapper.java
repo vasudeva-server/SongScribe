@@ -45,8 +45,6 @@ import songscribe.dom.Annotation;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
@@ -55,15 +53,15 @@ import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
 import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
+import songscribe.dom.NoteValue;
+import songscribe.dom.PendingTuplet;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.TempoMarking;
-import songscribe.dom.Tie;
 import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
 import songscribe.dom.TupletRatio;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
@@ -128,7 +126,6 @@ final class MeasureMapper {
     private static final String BEAM_BEGIN_MARKER = "<beam>begin</beam>";
     private static final String BEAM_END_MARKER = "<beam>end</beam>";
     private static final String TIED_START_MARKER = "<tied type=\"start\">";
-    private static final String TIED_STOP_MARKER = "<tied type=\"stop\">";
     private static final String TUPLET_START_MARKER = "<tuplet type=\"start\">";
     private static final String WAVY_LINE_START_MARKER = "<wavy-line type=\"start\">";
     private static final String WAVY_LINE_STOP_MARKER = "<wavy-line type=\"stop\">";
@@ -191,7 +188,7 @@ final class MeasureMapper {
     ) {}
 
     /** A {@code <wedge>} start's kind and its user-adjustable shifts. */
-    private record WedgeStart(Hairpin.Kind kind, int x1ShiftSs, int yShiftSs) {}
+    private record WedgeStart(Hairpin.Kind kind, double x1ShiftSs, double yShiftSs) {}
 
     /** A hairpin whose start wedge has bound to {@code anchor} and awaits its stop. */
     private record OpenHairpin(StaffElement anchor, WedgeStart start) {}
@@ -209,7 +206,7 @@ final class MeasureMapper {
      * A trill whose start wavy line has bound to {@code anchor}, on {@code line}, and awaits its
      * stop.
      */
-    private record OpenTrill(StaffElement anchor, Line line, int yPositionSs) {}
+    private record OpenTrill(StaffElement anchor, Line line, double yPositionSs) {}
 
     // -------------------------------------------------------------------------
     // Walk state — the whole of it
@@ -231,6 +228,12 @@ final class MeasureMapper {
     // to its replacement; carried into SongLoadResult.Success by the caller.
     private boolean accidentalsConverted = false;
 
+    // Every tuplet bracket the walk has closed, with no stated ratio when the file states
+    // none; carried to the post-load pass by the caller, the way a reader's pending tuplets
+    // always are — a mapper cannot build a Tuplet, since the beat a stated-less ratio derives
+    // from may still change in a later measure while the walk is mid-part.
+    private final List<PendingTuplet> pendingTuplets = new ArrayList<>();
+
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
 
@@ -238,6 +241,12 @@ final class MeasureMapper {
         this.song = song;
         this.features = features;
     }
+
+    /**
+     * What one part's walk produced: whether any note's {@code <accidental>} was a retired
+     * legacy token converted to its replacement, and the tuplet brackets it closed.
+     */
+    record Result(boolean accidentalsConverted, List<PendingTuplet> pendingTuplets) {}
 
     // -------------------------------------------------------------------------
     // Package API
@@ -247,14 +256,12 @@ final class MeasureMapper {
      * Maps {@code score}'s first part onto {@code song}'s lines, honoring only the
      * per-note attributes {@code features} declares.
      *
-     * @return true when any note's {@code <accidental>} was a retired legacy token
-     *         converted to its replacement
      * @throws SAXException if the document is corrupt (a tuplet with no valid span,
      *                      a note before any line has been started, a {@code <fifths>} no key
      *                      can hold, or a mid-measure {@code <key>} with no barline
      *                      before it)
      */
-    static boolean map(ScorePartwise score, Song song, Set<SupportedFeature> features) throws SAXException {
+    static Result map(ScorePartwise score, Song song, Set<SupportedFeature> features) throws SAXException {
         var mapper = new MeasureMapper(song, features);
         var part = ProxyMusicAccess.firstPart(score);
 
@@ -262,7 +269,7 @@ final class MeasureMapper {
             mapper.mapPart(part);
         }
 
-        return mapper.accidentalsConverted;
+        return new Result(mapper.accidentalsConverted, mapper.pendingTuplets);
     }
 
     private void mapPart(ScorePartwise.Part part) throws SAXException {
@@ -646,6 +653,7 @@ final class MeasureMapper {
     private static void resolveEndings(List<ChildSite> sites) {
         StaffElement anchor = null;
         var anchorFromNextNote = false;
+        var anchorYOffsetSs = 0.0;
         StaffElement lastElement = null;
         Line line = null;
 
@@ -680,11 +688,12 @@ final class MeasureMapper {
                         // across a line break, so the deferral outlives the drop above.
                         anchorFromNextNote = host == null;
                         anchor = host;
+                        anchorYOffsetSs = MusicXmlUnits.tenthsToExactSs(marker.relativeY());
                     } else if (MusicXmlTags.NUMBER_2.equals(marker.number()) && isStop) {
                         var end = host != null ? host : lastElement;
 
                         if (anchor != null && end != null) {
-                            buildEnding(line, anchor, end);
+                            buildEnding(line, anchor, end, anchorYOffsetSs);
                             anchor = null;
                             anchorFromNextNote = false;
                         } else {
@@ -717,7 +726,7 @@ final class MeasureMapper {
      * {@code line}, unless no repeat splits its two brackets, which {@link Ending}'s invariant
      * requires; a span without one is not a valid ending and is dropped on import.
      */
-    private static void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end) {
+    private static void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end, double yOffsetSs) {
         if (line == null) {
             return;
         }
@@ -727,7 +736,9 @@ final class MeasureMapper {
             return;
         }
 
-        new Ending(anchor, end).addTo(line);
+        var ending = new Ending(anchor, end);
+        ending.setUserYOffsetSs(yOffsetSs);
+        ending.addTo(line);
     }
 
     // -------------------------------------------------------------------------
@@ -809,7 +820,7 @@ final class MeasureMapper {
 
         return new ReadAnnotation(
             new Annotation(text, alignment, placement),
-            ProxyMusicAccess.tenthsToSs(words.getRelativeY()));
+            MusicXmlUnits.tenthsToExactSs(words.getRelativeY()));
     }
 
     /**
@@ -1110,14 +1121,14 @@ final class MeasureMapper {
     private static OpenHairpin applyWedges(@Nullable OpenHairpin open, NoteSite noteSite, List<Wedge> wedges) {
         WedgeStart start = null;
         var hasStop = false;
-        var stopX2ShiftSs = 0;
+        var stopX2ShiftSs = 0.0;
 
         for (var wedge : wedges) {
             var type = wedge.getType();
 
             if (type == WedgeType.STOP) {
                 hasStop = true;
-                stopX2ShiftSs = ProxyMusicAccess.tenthsToSs(wedge.getRelativeX());
+                stopX2ShiftSs = MusicXmlUnits.tenthsToExactSs(wedge.getRelativeX());
                 continue;
             }
 
@@ -1141,8 +1152,8 @@ final class MeasureMapper {
             }
 
             start = new WedgeStart(kind,
-                ProxyMusicAccess.tenthsToSs(wedge.getRelativeX()),
-                ProxyMusicAccess.tenthsToSs(wedge.getRelativeY()));
+                MusicXmlUnits.tenthsToExactSs(wedge.getRelativeX()),
+                MusicXmlUnits.tenthsToExactSs(wedge.getRelativeY()));
         }
 
         if (open == null && start != null) {
@@ -1160,7 +1171,7 @@ final class MeasureMapper {
         @Nullable OpenHairpin open,
         NoteSite noteSite,
         boolean hasStop,
-        int x2ShiftSs
+        double x2ShiftSs
     ) {
         if (!hasStop) {
             return open;
@@ -1176,25 +1187,19 @@ final class MeasureMapper {
     }
 
     /**
-     * Builds a {@link Crescendo} or {@link Diminuendo} over [{@code anchor},
-     * {@code end}]. Added through {@link Hairpin#addTo}, whose displacement policy
-     * merges a file carrying two same-type wedges that overlap or merely touch into
-     * the one hairpin it musically is.
+     * Builds a crescendo or diminuendo {@link Hairpin} over [{@code anchor}, {@code end}].
+     * Added through {@link Hairpin#addTo}, whose displacement policy merges a file
+     * carrying two same-type wedges that overlap or merely touch into the one hairpin
+     * it musically is.
      */
-    private static void buildHairpin(Line line, OpenHairpin open, StaffElement end, int x2ShiftSs) {
-        if (open.start().kind() == Hairpin.Kind.CRESCENDO) {
-            var crescendo = new Crescendo(open.anchor(), end);
-            applyHairpinShifts(crescendo, open, x2ShiftSs);
-            crescendo.addTo(line);
-        } else {
-            var diminuendo = new Diminuendo(open.anchor(), end);
-            applyHairpinShifts(diminuendo, open, x2ShiftSs);
-            diminuendo.addTo(line);
-        }
+    private static void buildHairpin(Line line, OpenHairpin open, StaffElement end, double x2ShiftSs) {
+        var hairpin = new Hairpin(open.start().kind(), open.anchor(), end);
+        applyHairpinShifts(hairpin, open, x2ShiftSs);
+        hairpin.addTo(line);
     }
 
     /** Restores the user-adjustable hairpin offsets from both of its wedges. */
-    private static void applyHairpinShifts(Hairpin hairpin, OpenHairpin open, int x2ShiftSs) {
+    private static void applyHairpinShifts(Hairpin hairpin, OpenHairpin open, double x2ShiftSs) {
         var start = open.start();
 
         if (start.x1ShiftSs() != 0) {
@@ -1206,7 +1211,7 @@ final class MeasureMapper {
         }
 
         if (start.yShiftSs() != 0) {
-            hairpin.setYShiftSs(start.yShiftSs());
+            hairpin.setUserYOffsetSs(start.yShiftSs());
         }
     }
 
@@ -1283,54 +1288,40 @@ final class MeasureMapper {
     }
 
     /**
-     * Collapses each note's {@code <tied>} markers into {@link Tie}s. Stop is processed
-     * before start so an interior note of a chain (which carries both) closes its pair
-     * and immediately re-opens the next, producing one tie per adjacent pair.
+     * Ties each {@link ElementType.Kind#NOTE} note whose {@code <tied>} marker carries a start.
+     * The end is derived, not read from the file: {@link Line#addTie} anchors the tie and
+     * {@link NoteElement#tie()} finds where it lands.
      */
     private static void resolveTies(List<NoteSite> notes) {
-        NoteElement start = null;
-
         for (var note : notes) {
-            var marker = NoteMapper.tieMarker(note.pmNote());
-
-            if (marker.stop()) {
-                var end = markedNote(note, TIED_STOP_MARKER);
-
-                if (end == null) {
-                    // The marker closed the pair; there is just no tie to build from it.
-                    start = null;
-                } else if (start == null) {
-                    warnOrphanStop(TIED_STOP_MARKER);
-                } else {
-                    new Tie(start, end).addTo(note.line());
-                    start = null;
-                }
+            if (!NoteMapper.tieMarker(note.pmNote()).start()) {
+                continue;
             }
 
-            if (marker.start()) {
-                warnDanglingStart(start, TIED_START_MARKER);
-                start = markedNote(note, TIED_START_MARKER);
+            var anchor = markedNote(note, TIED_START_MARKER);
+
+            if (anchor != null && anchor.getType().isPitchedNote()) {
+                note.line().addTie(anchor);
             }
         }
-
-        warnDanglingStart(start, TIED_START_MARKER);
     }
 
     /**
-     * Collapses each note's {@code <tuplet>} bracket markers into {@link Tuplet}s.
+     * Collapses each note's {@code <tuplet>} bracket markers into {@link PendingTuplet}s.
      * Unlike the other per-note spans, a tuplet is not a legitimate document state
      * without both brackets spanning at least two non-rest notes (see #518), so a
      * dangling start or an orphan stop is rejected as a corrupt document rather than
-     * silently dropped.
+     * silently dropped; whether the span holds enough notes is left to the post-load pass,
+     * which is where every other pending tuplet is judged too.
      *
      * <p>{@code <normal-type>} is the trust discriminator. A file that carries it states
      * a complete {@code <time-modification>}, so its {@code <normal-notes>} is taken at
-     * face value and the tuplet is built resolved. A file without it predates this
-     * format, or states a token this reader does not recognise; either way the ratio is
-     * unknown rather than corrupt, so the tuplet is built unresolved and the post-load
-     * pass derives the ratio from the beat in effect.
+     * face value and the pending tuplet carries that stated ratio. A file without it
+     * predates this format, or states a token this reader does not recognise; either way
+     * the ratio is unknown rather than corrupt, so the pending tuplet carries none and the
+     * post-load pass derives the ratio from the beat in effect.
      */
-    private static void resolveTuplets(List<NoteSite> notes) throws SAXException {
+    private void resolveTuplets(List<NoteSite> notes) throws SAXException {
         OpenTuplet open = null;
 
         for (var note : notes) {
@@ -1364,21 +1355,16 @@ final class MeasureMapper {
         }
     }
 
-    private static void buildTuplet(OpenTuplet open, NoteSite end) throws SAXException {
-        // Checked before hasValidSpan, which reads each endpoint's index on its own line and so
-        // cannot see that the endpoints sit on different lines.
+    private void buildTuplet(OpenTuplet open, NoteSite end) throws SAXException {
         if (!endsOnStartLine(open.line(), end, TUPLET_START_MARKER)) {
             return;
         }
 
         var marker = open.marker();
         var noteValue = statedNoteValue(marker);
-        var line = end.line();
-        Tuplet tuplet;
+        TupletRatio statedRatio = null;
 
-        if (noteValue == null) {
-            tuplet = Tuplet.withUnresolvedRatio(open.anchor(), end.element(), marker.actualNotes());
-        } else {
+        if (noteValue != null) {
             var normalNotes = marker.normalNotes();
 
             // SongScribe writes <normal-notes> beside every <normal-type> that states a ratio, so
@@ -1389,40 +1375,32 @@ final class MeasureMapper {
                         + " <normal-notes>");
             }
 
-            var ratio = new TupletRatio(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
-            tuplet = new Tuplet(open.anchor(), end.element(), marker.actualNotes(), ratio);
+            statedRatio = new TupletRatio(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
         }
 
-        if (!tuplet.hasValidSpan(line)) {
-            throw DocumentValidation.corrupt(
-                LOG, "Corrupt document: tuplet does not span at least two non-rest notes");
-        }
-
-        if (marker.verticalPositionSs() != 0) {
-            tuplet.setVerticalPositionSs(marker.verticalPositionSs());
-        }
-
-        tuplet.addTo(line);
+        pendingTuplets.add(new PendingTuplet(
+            open.anchor(), end.element(), marker.actualNotes(), statedRatio, marker.verticalPositionSs()));
     }
 
     /**
      * The written note value the anchor note's {@code <time-modification>} states,
-     * or {@code null} when the file states no usable one — no {@code <normal-type>},
-     * a token this reader does not know, or a {@code <normal-notes>} that is not a
-     * positive count. Each of those leaves the ratio to be derived rather than
-     * trusted, so none of them is an error.
+     * or {@code null} when the file states no {@code <normal-type>} or names a token
+     * this reader does not know. Either leaves the ratio to be derived rather than
+     * trusted, so neither is an error.
      */
     @Nullable
-    private static ElementType statedNoteValue(NoteMapper.TupletMarker marker) {
+    private static NoteValue statedNoteValue(NoteMapper.TupletMarker marker) {
         var token = marker.normalTypeToken();
 
-        if (token == null || marker.normalNotes() <= 0) {
+        if (token == null) {
             return null;
         }
 
         // <normal-type> names a written value, so it always maps to the pitched
         // ElementType: rest-ness and grace-ness belong to the note, not the ratio.
-        return NoteTypeMapping.forTypeToken(token.trim(), false, false);
+        var elementType = NoteTypeMapping.forTypeToken(token.trim(), false, false);
+
+        return elementType == null ? null : elementType.noteValue();
     }
 
     /**
@@ -1459,7 +1437,7 @@ final class MeasureMapper {
             var trill = anchor == element ? new Trill(anchor) : new Trill(anchor, element);
 
             if (open.yPositionSs() != 0) {
-                trill.setYPositionSs(open.yPositionSs());
+                trill.setUserYOffsetSs(open.yPositionSs());
             }
 
             trill.addTo(note.line());

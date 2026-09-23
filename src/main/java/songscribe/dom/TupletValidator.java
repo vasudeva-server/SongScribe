@@ -109,14 +109,8 @@ public final class TupletValidator {
     /** Shortest span a beat is subdivided down to, in PPQ ticks — the shortest written value. */
     private static final int SHORTEST_SPAN_TICKS = NoteValue.THIRTY_SECOND.ticks();
 
-    /** Returned by {@link #notatableTicks} for a value that is not writable as a note. */
-    private static final int NOT_NOTATABLE_TICKS = 0;
-
     /** Every writable note value, keyed by its duration in PPQ ticks. */
     private static final Map<Integer, NotatableValue> NOTATABLE_BY_TICKS = buildNotatableByTicks();
-
-    /** The same table inverted, for checking a value a file stated. */
-    private static final Map<NotatableValue, Integer> TICKS_BY_NOTATABLE = invert(NOTATABLE_BY_TICKS);
 
     private TupletValidator() {
     }
@@ -131,7 +125,8 @@ public final class TupletValidator {
         POWER_OF_TWO_RATIO,     // N / M is a power of two — renotation, not re-timing
         FERMATA,                // an element in the span carries a FermataAttachment
         BEAT_BARRIER,           // a beat barrier lies strictly inside the span
-        STRUCTURAL_BOUNDARY     // barline, repeat, or interior breath mark
+        STRUCTURAL_BOUNDARY,    // barline, repeat, or interior breath mark
+        TOO_FEW_NOTES           // fewer than two non-rest notes; judged by the load pass
     }
 
     /**
@@ -285,9 +280,7 @@ public final class TupletValidator {
             return invalid(divisionFailure);
         }
 
-        var statedTicks = notatableTicks(stated.noteValue());
-
-        if (statedTicks == NOT_NOTATABLE_TICKS || context.writtenTicks() / grade != statedTicks) {
+        if (context.writtenTicks() / grade != stated.noteValue().ticks()) {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
@@ -348,33 +341,70 @@ public final class TupletValidator {
     }
 
     /**
-     * Every tuplet anchored at or after {@code (fromLineIndex, fromElementIndex)}, in
-     * document order, each with its verdict. Pass {@code 0, 0} to cover the whole song.
+     * A tuplet a caller hands the walk at its anchor: what the caller knows it by, where it
+     * ends, and the number it prints.
+     *
+     * @param tuplet the caller's own tuplet, handed back unchanged in its {@link Verdict}
+     * @param end    the tuplet's last element
+     * @param grade  N, the printed tuplet number
+     * @param <T>    the caller's tuplet type
+     */
+    public record Anchored<T>(T tuplet, StaffElement end, int grade) {}
+
+    /**
+     * The tuplets a caller asks {@link #validateFrom} to judge, looked up by anchor.
+     *
+     * @param <T> the caller's tuplet type
+     */
+    @FunctionalInterface
+    public interface AnchoredTuplets<T> {
+
+        /**
+         * The caller's tuplet anchored at {@code index} in {@code line}.
+         *
+         * @param line  the line the walk is in
+         * @param index the index of the element the walk has reached
+         * @return the tuplet whose anchor is that element, or {@code null} when none is
+         */
+        @Nullable Anchored<T> anchoredAt(Line line, int index);
+    }
+
+    /**
+     * Judges every tuplet {@code tuplets} supplies at an anchor at or after {@code from}, in
+     * document order. Pass the song's first element to cover the whole song.
      *
      * <p>This is one forward walk rather than a {@link #describeSpan} per tuplet: the beat
      * is resolved once at the starting position and carried forward, so the walk costs
      * O(elements) rather than O(tuplets × elements). Beat barriers fall out of the same
      * walk, since a barrier is precisely an element that redefines the running beat.
      *
-     * <p>Tuplets never nest — {@code Line.addTuplet} removes overlapping ones — so at most
-     * one span is open at a time.
+     * <p>The walk opens one span at a time and does not look for overlap. The tuplets the
+     * caller supplies therefore must not overlap: those in a line's registry never do, since
+     * adding one displaces every tuplet it overlaps, and those a reader found never do, since
+     * the writer cannot produce two overlapping tuplets.
      *
-     * @param song              the song to walk
-     * @param fromLineIndex     the line to start at
-     * @param fromElementIndex  the element within that line to start at
-     * @param strictness        how much of the rule set to enforce
-     * @return one verdict per tuplet, in document order
+     * @param song       the song to walk
+     * @param from       the element to start at, which must exist in {@code song}
+     * @param strictness how much of the rule set to enforce
+     * @param tuplets    the tuplets to judge, by anchor
+     * @param <T>        the caller's tuplet type
+     * @return one verdict per tuplet {@code tuplets} supplied at an element the walk reached
+     *     outside any span already open, in document order
+     * @invariant a verdict's span begins at the element {@code tuplets} supplied it at, and ends
+     *     at the tuplet's end element when that sits at or after the anchor in the same line;
+     *     otherwise — the end in no line, in another line, or before the anchor — it is the
+     *     anchor alone
      */
-    public static List<Verdict> validateFrom(
-        Song song, int fromLineIndex, int fromElementIndex, Strictness strictness
+    public static <T> List<Verdict<T>> validateFrom(
+        Song song, ElementLocation from, Strictness strictness, AnchoredTuplets<T> tuplets
     ) {
-        var verdicts = new ArrayList<Verdict>();
-        var runningBeat = song.beatUnitAt(fromLineIndex, fromElementIndex);
-        var firstIndex = fromElementIndex;
+        var verdicts = new ArrayList<Verdict<T>>();
+        var runningBeat = song.beatUnitAt(from.lineIndex(), from.elementIndex());
+        var firstIndex = from.elementIndex();
 
-        for (var lineIndex = fromLineIndex; lineIndex < song.lineCount(); lineIndex++) {
+        for (var lineIndex = from.lineIndex(); lineIndex < song.lineCount(); lineIndex++) {
             var line = song.getLine(lineIndex);
-            OpenSpan open = null;
+            OpenSpan<T> open = null;
 
             for (var index = firstIndex; index < line.elementCount(); index++) {
                 var element = line.getElement(index);
@@ -389,16 +419,12 @@ public final class TupletValidator {
                 }
 
                 if (open == null) {
-                    var tuplet = line.spanRegistry().findTupletAt(index);
+                    var anchored = tuplets.anchoredAt(line, index);
 
                     // A barrier on the anchor defines the tuplet's beat instead of
                     // splitting it, so the span opens against the updated running beat.
-                    if (tuplet != null) {
-                        var anchorIndex = tuplet.getAnchorElementIndex();
-
-                        if (anchorIndex != null && anchorIndex == index) {
-                            open = new OpenSpan(tuplet, runningBeat);
-                        }
+                    if (anchored != null) {
+                        open = new OpenSpan<>(anchored, index, endIndexIn(line, anchored.end()), runningBeat);
                     }
                 } else if (barrierHere) {
                     open.noteBeatBarrier();
@@ -408,16 +434,10 @@ public final class TupletValidator {
                     open.accumulate(element, index);
 
                     if (open.closesAt(index)) {
-                        verdicts.add(open.close(lineIndex, strictness));
+                        verdicts.add(open.close(lineIndex, index, strictness));
                         open = null;
                     }
                 }
-            }
-
-            // A span whose end element is missing from the line is malformed and out of
-            // scope; judge it on what the line actually holds rather than dropping it here.
-            if (open != null) {
-                verdicts.add(open.close(lineIndex, strictness));
             }
 
             firstIndex = 0;
@@ -426,17 +446,31 @@ public final class TupletValidator {
         return verdicts;
     }
 
+    /** The index of {@code end} in {@code line}, or {@code null} when it sits in another line or none. */
+    private static @Nullable Integer endIndexIn(Line line, StaffElement end) {
+        return line.contains(end) ? line.getElementIndex(end) : null;
+    }
+
     /**
-     * A tuplet and the verdict the walk reached for it. The measured span rides along so a
-     * caller that wants to judge the tuplet a second way — the load pass re-judges one
-     * carrying a stated ratio — can do so without walking the beat again.
+     * A tuplet the caller supplied and the verdict the walk reached for it. The measured span
+     * rides along so a caller that wants to judge the tuplet a second way — the load pass
+     * re-judges one carrying a stated ratio — can do so without walking the beat again.
+     *
+     * @param lineIndex the index of the line holding the tuplet
+     * @param span      the elements the walk judged, from the anchor on — see
+     *                  {@link #validateFrom} for where it ends
+     * @param tuplet    the tuplet as the caller supplied it
+     * @param context   the span as the walk measured it
+     * @param result    the verdict under the walk's strictness, with a derived ratio
+     * @param <T>       the caller's tuplet type
      */
-    public record Verdict(int lineIndex, Tuplet tuplet, SpanContext context, Result result) {}
+    public record Verdict<T>(int lineIndex, ElementRange span, T tuplet, SpanContext context, Result result) {}
 
     /** The span facts accumulated for the one tuplet the forward walk currently has open. */
-    private static final class OpenSpan {
+    private static final class OpenSpan<T> {
 
-        private final Tuplet tuplet;
+        private final Anchored<T> anchored;
+        private final int anchorIndex;
         private final @Nullable Integer endIndex;
         private final int beatTicks;
         private final boolean beatDotted;
@@ -445,18 +479,18 @@ public final class TupletValidator {
         private boolean crossesBeatBarrier;
         private boolean crossesStructuralBoundary;
 
-        private OpenSpan(Tuplet tuplet, BeatUnit beatAtAnchor) {
-            this.tuplet = tuplet;
-            endIndex = tuplet.getEndElementIndex();
+        private OpenSpan(Anchored<T> anchored, int anchorIndex, @Nullable Integer endIndex, BeatUnit beatAtAnchor) {
+            this.anchored = anchored;
+            this.anchorIndex = anchorIndex;
+            this.endIndex = endIndex;
             beatTicks = beatAtAnchor.ticks();
             beatDotted = beatAtAnchor.dotted();
         }
 
         /**
          * Whether the walk, having accumulated the element at {@code index}, has reached
-         * this span's end. A tuplet whose end element sits in no line closes on its anchor
-         * alone: there is no position to walk towards, and the verdict then judges what the
-         * line actually holds of it.
+         * this span's end. A tuplet whose end element is not in the anchor's line closes on
+         * its anchor alone: there is no position in the line to walk towards.
          */
         private boolean closesAt(int index) {
             return endIndex == null || index >= endIndex;
@@ -482,14 +516,15 @@ public final class TupletValidator {
             }
         }
 
-        private Verdict close(int lineIndex, Strictness strictness) {
+        private Verdict<T> close(int lineIndex, int closingIndex, Strictness strictness) {
             var context = new SpanContext(
                 writtenTicks, beatTicks, beatDotted,
                 hasFermata, crossesBeatBarrier, crossesStructuralBoundary
             );
 
-            return new Verdict(
-                lineIndex, tuplet, context, validate(context, tuplet.getGrade(), strictness));
+            return new Verdict<>(
+                lineIndex, new ElementRange(anchorIndex, closingIndex), anchored.tuplet(), context,
+                validate(context, anchored.grade(), strictness));
         }
     }
 
@@ -576,8 +611,8 @@ public final class TupletValidator {
      * model maintains there. Treating either as a boundary would disable the tuplet
      * control on ordinary selections.
      *
-     * @param endIndex the index the span ends on, or null when its end element sits in no
-     *     line, so that no element is the span's end
+     * @param endIndex the index the span ends on, or null when its end element is not in the
+     *     span's line, so that no element is the span's end
      */
     private static boolean isStructuralBoundary(ElementType type, int index, @Nullable Integer endIndex) {
         return (endIndex == null || index != endIndex) && (type.isBar() || type.isBreathMark());
@@ -658,43 +693,24 @@ public final class TupletValidator {
         return value > 0 && (value & (value - 1)) == 0;
     }
 
-    /** The duration of a stated written value in PPQ ticks, or {@value #NOT_NOTATABLE_TICKS}. */
-    private static int notatableTicks(NotatableValue value) {
-        var ticks = TICKS_BY_NOTATABLE.get(value);
-
-        return ticks == null ? NOT_NOTATABLE_TICKS : ticks;
-    }
-
     private static Result invalid(Reason reason) {
         return new Result.Invalid(reason);
     }
 
     /**
-     * Every pitched note type at every {@link Dots} value, keyed by duration. Rests are
-     * excluded because they duplicate the note durations; the note table itself has no
-     * collisions.
+     * Every {@link NoteValue} at every {@link Dots} value, keyed by duration. No two of them
+     * share a duration.
      */
     private static Map<Integer, NotatableValue> buildNotatableByTicks() {
         var table = new HashMap<Integer, NotatableValue>();
 
         for (var value : NoteValue.values()) {
-            var type = value.note();
-
             for (var dots : Dots.values()) {
-                var probe = (NoteElement) type.newInstance();
-                probe.setDots(dots);
-                table.put(probe.writtenDuration(), new NotatableValue(type, dots));
+                var notatable = new NotatableValue(value, dots);
+                table.put(notatable.ticks(), notatable);
             }
         }
 
         return Map.copyOf(table);
-    }
-
-    private static Map<NotatableValue, Integer> invert(Map<Integer, NotatableValue> byTicks) {
-        var inverted = new HashMap<NotatableValue, Integer>();
-
-        byTicks.forEach((ticks, noteValue) -> inverted.put(noteValue, ticks));
-
-        return Map.copyOf(inverted);
     }
 }

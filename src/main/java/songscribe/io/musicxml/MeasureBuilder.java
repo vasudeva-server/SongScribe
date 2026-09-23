@@ -635,7 +635,9 @@ final class MeasureBuilder {
                 continue;
             }
 
-            attachEndingAnchor(context, outputs.get(anchorIndex), line.getElement(anchorIndex).getType());
+            attachEndingAnchor(
+                context, outputs.get(anchorIndex), line.getElement(anchorIndex).getType(),
+                ending.getUserYOffsetSs());
             attachEndingEnd(context, outputs.get(endIndex), line.getElement(endIndex).getType());
             attachEndingSplit(context, outputs.get(ending.getSplitIndex(line)));
         }
@@ -646,8 +648,13 @@ final class MeasureBuilder {
      * its measure with a forward-left barline and hosts the start there; a note anchor (issue
      * #306) has no barline of its own, so one is inserted immediately before the note; any
      * other anchor closes the previous measure as a right barline.
+     *
+     * <p>Carries the ending's {@code userYOffsetSs} as {@code relative-y}: the start volta is
+     * the one bracket the reader can recover the offset from, so the writer states it once,
+     * here.
      */
-    private static void attachEndingAnchor(BuildContext context, ElementOutput output, ElementType anchorType) {
+    private static void attachEndingAnchor(
+        BuildContext context, ElementOutput output, ElementType anchorType, double yOffsetSs) {
         @Nullable Barline host;
 
         if (anchorType == ElementType.REPEAT_LEFT) {
@@ -658,7 +665,7 @@ final class MeasureBuilder {
             host = output.rightBarline;
         }
 
-        attachEnding(context, host, MusicXmlTags.NUMBER_1, StartStopDiscontinue.START);
+        attachEnding(context, host, MusicXmlTags.NUMBER_1, StartStopDiscontinue.START, yOffsetSs);
     }
 
     /**
@@ -668,12 +675,12 @@ final class MeasureBuilder {
      */
     private static void attachEndingEnd(BuildContext context, ElementOutput output, ElementType endType) {
         if (endType == ElementType.REPEAT_LEFT) {
-            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP);
+            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP, 0);
         } else if (endType.isDuration()) {
             attachEnding(context, rightBarlineAfterContent(context, output), MusicXmlTags.NUMBER_2,
-                StartStopDiscontinue.DISCONTINUE);
+                StartStopDiscontinue.DISCONTINUE, 0);
         } else {
-            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP);
+            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP, 0);
         }
     }
 
@@ -688,7 +695,7 @@ final class MeasureBuilder {
      * streaming writer had to manufacture the barline at exactly the right moment instead.
      */
     private static void attachEndingSplit(BuildContext context, ElementOutput output) {
-        attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_1, StartStopDiscontinue.STOP);
+        attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_1, StartStopDiscontinue.STOP, 0);
 
         var left = output.leftBarline;
         var measureAfter = output.measureAfter;
@@ -699,7 +706,7 @@ final class MeasureBuilder {
             output.leftBarline = left;
         }
 
-        attachEnding(context, left, MusicXmlTags.NUMBER_2, StartStopDiscontinue.START);
+        attachEnding(context, left, MusicXmlTags.NUMBER_2, StartStopDiscontinue.START, 0);
     }
 
     /**
@@ -795,7 +802,8 @@ final class MeasureBuilder {
      * barline and would have written a document the schema rejects.
      */
     private static void attachEnding(
-        BuildContext context, @Nullable Barline host, String number, StartStopDiscontinue type) {
+        BuildContext context, @Nullable Barline host, String number, StartStopDiscontinue type,
+        double yOffsetSs) {
         if (host == null || host.getEnding() != null) {
             return;
         }
@@ -803,6 +811,7 @@ final class MeasureBuilder {
         var ending = context.factory().createEnding();
         ending.setNumber(number);
         ending.setType(type);
+        ending.setRelativeY(MusicXmlUnits.shiftTenths(yOffsetSs));
         host.setEnding(ending);
     }
 

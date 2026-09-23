@@ -20,47 +20,42 @@
 
 package songscribe.dom;
 
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
-import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.TieAddition;
-import songscribe.message.mutation.TieRemoval;
-
 /**
- * Represents a tie connecting two notes of the same pitch.
- * <p>
- * Ties connect exactly two notes and are rendered as a curved arc.
- * The placement (above or below) depends on the stem direction of the notes.
+ * A tie from a note to the next note, as {@link NoteElement#tie()} and
+ * {@link NoteElement#incomingTie()} derive it: the anchor stores that it is tied, and the end is
+ * the first element after it that is not a {@link #isLegalSeparator legal separator}, which may
+ * sit at the start of the next line.
+ *
+ * <p>A tie joins two notes whose {@link ElementType#kind()} is {@link ElementType.Kind#NOTE}.
+ * No other kind — a grace note among them — can be its anchor or its end, and the constructor
+ * refuses one, so no tie that breaks the rule can exist.
+ *
+ * <p>A value, not a document element. Nothing stores a tie and nothing registers one; each call
+ * to {@code tie()} makes a new one, so a caller never holds a tie that outlives the notes it was
+ * made from. Two ties made from the same two notes are equal, because {@link NoteElement}
+ * compares by identity, so a caller that asks whether two ties are the same tie asks
+ * {@link #equals}.
+ *
+ * <p>Ties are rendered as a curved arc, above or below the notes depending on the stems of the
+ * two notes.
+ *
+ * @param anchor the note that stores the tie
+ * @param end    the note the tie ends on
  */
-public final class Tie extends NoteSpan {
+public record Tie(NoteElement anchor, NoteElement end) {
 
     /**
-     * Creates a new tie between two notes.
-     *
-     * @param anchorElement The first (starting) note of the tie
-     * @param endElement    The second (ending) note of the tie
+     * @throws IllegalArgumentException when the kind of {@code anchor} or of {@code end} is not
+     *     {@link ElementType.Kind#NOTE}
      */
-    public Tie(NoteElement anchorElement, NoteElement endElement) {
-        super(anchorElement, endElement);
-    }
-
-    // Ties have no displacement policy: tie ranges never coalesce. A chain of tied notes is
-    // one Tie per adjacent pair, each rendered as its own arc, even when two ties share an
-    // endpoint note.
-
-    @Override
-    protected Mutation additionRecordFor(Line line) {
-        return new TieAddition(line, this);
-    }
-
-    @Override
-    protected Mutation removalRecordFor(Line line) {
-        return new TieRemoval(line, this);
-    }
-
-    @Override
-    protected NoteSpan createNoteCopy(NoteElement newAnchor, NoteElement newEnd) {
-        return new Tie(newAnchor, newEnd);
+    public Tie {
+        if (!anchor.getType().isPitchedNote() || !end.getType().isPitchedNote()) {
+            throw new IllegalArgumentException("A tie joins two notes of kind NOTE: " + anchor + ", " + end);
+        }
     }
 
     /**
@@ -80,15 +75,15 @@ public final class Tie extends NoteSpan {
      * </ul>
      *
      * <p>One definition, two readers: {@code RangeQueries.canToggleTie} asks it before letting
-     * the user create a tie over a separator, and {@link #isInvalidatedByInsertion} asks it
-     * before letting an insertion land inside an existing one. Were they to disagree on the
-     * types, an insertion could put an element between two tied notes that the user would
-     * have been forbidden to tie across.
+     * the user create a tie over a separator, and the walk that derives a tie's end
+     * ({@link NoteElement#tie()}) steps over exactly these types. Were they to disagree, the user
+     * could tie across an element the walk stops at, and the tie would end somewhere other than
+     * where it was drawn.
      *
      * <p>The two readers share the <em>type</em> rule only, not a count. Drawing a tie is
      * limited to two notes with at most one element between them, because that is all a
-     * selection can hold; an insertion has no such limit and deliberately lets separators
-     * accumulate, since each one still takes no time and the notes stay adjacent in the music.
+     * selection can hold; the walk has no such limit and lets separators accumulate, since each
+     * one still takes no time and the notes stay adjacent in the music.
      */
     public static boolean isLegalSeparator(ElementType type) {
         return type.isNonDuration()
@@ -97,140 +92,127 @@ public final class Tie extends NoteSpan {
     }
 
     /**
-     * This tie's two endpoints as one line resolved them, so that "between the two notes"
-     * is asked of the line performing the edit rather than of each endpoint's own line.
+     * The tie rule's test: whether a tie on {@code anchor} holds when its walk reaches
+     * {@code end}. It holds only when both are {@link ElementType.Kind#NOTE} notes at the same
+     * staff position that sound the same alteration. The written duration plays no part.
      *
-     * @param anchorBound where the anchor sits relative to the asking line
-     * @param endBound    where the end sits relative to the asking line
+     * <p>The rule runs when the outermost modification bracket closes, after every change and
+     * every chain-walk restamp in it has landed, so both notes are stamped and each has a
+     * sounding alteration to compare. {@link Line#applyTieRule} is its only caller.
+     *
+     * @param anchor a tied note
+     * @param end    the element the walk from {@code anchor} reaches, or {@code null} when it
+     *     reaches none
+     * @return {@code true} when the tie holds
      */
-    private record Endpoints(SpanBound anchorBound, SpanBound endBound) {
-
-        /** Whether the asking line's half of this tie passes over {@code index}. */
-        private boolean covers(int index) {
-            return Span.containing(index).test(anchorBound, endBound);
-        }
-
-        /**
-         * Whether {@code index} lies strictly past the anchor. An anchor off the asking
-         * line's left edge is before every index there, so in the line holding the tie's
-         * end everything up to that end lies past the anchor.
-         */
-        private boolean isAfterAnchor(int index) {
-            return !anchorBound.atOrAfter(index);
-        }
-
-        /**
-         * Whether {@code index} lies strictly short of the end — the mirror of
-         * {@link #isAfterAnchor}, so in the line holding the tie's anchor everything past
-         * that anchor lies short of an end off the right edge.
-         */
-        private boolean isBeforeEnd(int index) {
-            return !endBound.atOrBefore(index);
-        }
+    static boolean holds(NoteElement anchor, @Nullable StaffElement end) {
+        return anchor.getType().isPitchedNote()
+            && end instanceof NoteElement endNote
+            && endNote.getType().isPitchedNote()
+            && anchor.getStaffPosition().equals(endNote.getStaffPosition())
+            && anchor.soundingAccidental() == endNote.soundingAccidental();
     }
 
     /**
-     * This tie's endpoints as {@code line} resolves them. Neither bound is
-     * {@link SpanBound#ABSENT}: an edit is put only to {@link LineSpans#judgeableSpans}, the
-     * spans whose two ends the line can both place.
-     * <p>
-     * Resolving through the asking line is what makes a cross-line tie work. Its two
-     * endpoints live in different lines, so {@link #requireAnchorElementIndex()} and
-     * {@link #requireEndElementIndex()} would answer with two positions measured in two different
-     * lines — for a tie anchored at index 7 of one line and ending at index 0 of the next,
-     * every "between them" test would be {@code index > 7 && index <= 0} and never true.
-     */
-    private Endpoints resolveIn(Line line) {
-        var spans = line.spanRegistry();
-        return new Endpoints(spans.anchorIndexOf(this), spans.endIndexOf(this));
-    }
-
-    /**
-     * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * of {@code line} lands something between the two tied notes that may not sit there. A
-     * note or a rest breaks the tie — the notes no longer sound as one — as does anything
-     * else that is not a legal separator, such as a grace note. A barline or repeat takes no
-     * musical time, so a tie across one is ordinary notation and the insertion leaves it
-     * alone (refs #726).
-     * <p>
-     * For a tie straddling a line boundary the region between the two notes is whatever
-     * follows the anchor in the anchor's line plus whatever precedes the end in the end's
-     * line. That falls out of the bounds rather than being a separate rule: the asking line
-     * resolves its own endpoint to a position and the far one to an edge it runs off, and an
-     * edge is unbounded in its direction. Nothing here tests for index 0, so an end note
-     * preceded by a grace note is handled by where the end actually resolves.
-     * <p>
-     * Must be called on the <em>pre-insertion</em> line state.
+     * The element a tie from {@code elements[anchorIndex]} ends on: the first element after it
+     * that is not a legal separator, and when {@code elements} runs out first, the first such
+     * element of {@code following}. The walk crosses into {@code following} and no further.
      *
-     * @param insertedIndex the index at which the element will be inserted (pre-insertion)
-     * @param insertedType  the type of the element being inserted
-     * @param line          the line receiving the insertion (pre-insertion state)
+     * @param elements    a line's elements, or a projection of them
+     * @param anchorIndex the anchor's position in {@code elements}
+     * @param following   the line after the one {@code elements} describes, or {@code null} when
+     *                    there is none
+     * @return the end the walk reaches, or {@code null} when it reaches none
      */
-    @Override
-    protected boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
-        if (isLegalSeparator(insertedType)) {
-            return false;
-        }
-
-        var endpoints = resolveIn(line);
-
-        // The end's index is inside the invalidating range where the anchor's is not:
-        // inserting at the end's index displaces the end note rightwards, so the new element
-        // lands between the two, while inserting at the anchor's displaces the anchor and
-        // lands outside.
-        return endpoints.covers(insertedIndex) && endpoints.isAfterAnchor(insertedIndex);
-    }
-
-    /**
-     * Returns true if replacing {@code oldElement} with {@code newElement} leaves this tie in a
-     * state the user could not have created: an endpoint that is no longer a note sounding what
-     * it sounded before, or a separator that may no longer sit between the two notes. A
-     * replacement outside the tie leaves it alone (refs #726).
-     * <p>
-     * The replaced element's position and both endpoints are resolved in {@code line}, so a
-     * tie straddling a line boundary compares three positions measured the same way. See
-     * {@link #isInvalidatedByInsertion} for what the two lines' halves then cover.
-     * <p>
-     * Must be called on the <em>pre-replacement</em> line state, while {@code oldElement} is
-     * still in the line.
-     *
-     * @param oldElement the element being replaced (still in the line at call time)
-     * @param newElement the element that will replace it
-     * @param line       the line receiving the replacement (pre-replacement state)
-     */
-    @Override
-    protected boolean isInvalidatedByReplacement(
-        StaffElement oldElement, StaffElement newElement, Line line
+    static @Nullable StaffElement endAfter(
+        List<? extends StaffElement> elements, int anchorIndex, @Nullable Line following
     ) {
-        var endpoints = resolveIn(line);
-        var replacedIndex = line.getElementIndex(oldElement);
+        var end = firstNonSeparatorFrom(elements, anchorIndex + 1);
 
-        if (!endpoints.covers(replacedIndex)) {
-            return false;
+        if (end == null && following != null) {
+            end = firstNonSeparatorFrom(following.getElements(), 0);
         }
 
-        // Strictly inside: the replacement takes over the separator slot between the two notes,
-        // so it must be something a tie may straddle.
-        if (endpoints.isAfterAnchor(replacedIndex) && endpoints.isBeforeEnd(replacedIndex)) {
-            return !isLegalSeparator(newElement.getType());
+        return end;
+    }
+
+    /**
+     * The only note whose tie can end on {@code elements[endIndex]}: the last element before it
+     * that is not a legal separator, and when there is none, the last such element of
+     * {@code preceding}. The mirror of {@link #endAfter}, crossing one line break and no more.
+     *
+     * @param elements  a line's elements
+     * @param endIndex  the candidate end's position in {@code elements}
+     * @param preceding the line before the one {@code elements} describes, or {@code null} when
+     *                  there is none
+     * @return the candidate anchor, or {@code null} when the walk reaches none
+     */
+    static @Nullable StaffElement anchorBefore(
+        List<? extends StaffElement> elements, int endIndex, @Nullable Line preceding
+    ) {
+        var anchorIndex = lastNonSeparatorIndexBefore(elements, endIndex);
+
+        if (anchorIndex != null) {
+            return elements.get(anchorIndex);
         }
 
-        // An endpoint. Both notes are Stamped when a replacement lands, because a replacement's
-        // state is decided by its gate's projection before Line.setElement runs. The tie was
-        // legal before the edit, so it stays legal exactly when the incoming note sounds what
-        // the outgoing one did: pitched, same staff position, same sounding accidental. Only the
-        // written duration is then free to change.
-        return !(newElement instanceof NoteElement newNote && oldElement instanceof NoteElement oldNote)
-            || newNote.accidentalState() instanceof AccidentalState.Adopting
-            || !newNote.getStaffPosition().equals(oldNote.getStaffPosition())
-            || newNote.soundingAccidental() != oldNote.soundingAccidental();
+        if (preceding == null) {
+            return null;
+        }
+
+        var precedingElements = preceding.getElements();
+        var precedingIndex = lastNonSeparatorIndexBefore(precedingElements, precedingElements.size());
+
+        return precedingIndex == null ? null : precedingElements.get(precedingIndex);
+    }
+
+    /**
+     * The first element at or after {@code from} that is not a legal separator.
+     *
+     * @return the element, or {@code null} when every element from {@code from} on is a legal
+     *     separator, or {@code from} is past the last element
+     */
+    static @Nullable StaffElement firstNonSeparatorFrom(List<? extends StaffElement> elements, int from) {
+        var index = firstNonSeparatorIndexFrom(elements, from);
+
+        return index == null ? null : elements.get(index);
+    }
+
+    /**
+     * The position of the first element at or after {@code from} that is not a legal separator.
+     *
+     * @return the position, or {@code null} when every element from {@code from} on is a legal
+     *     separator, or {@code from} is past the last element
+     */
+    public static @Nullable Integer firstNonSeparatorIndexFrom(List<? extends StaffElement> elements, int from) {
+        for (var i = from; i < elements.size(); i++) {
+            if (!isLegalSeparator(elements.get(i).getType())) {
+                return i;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * The position of the last element before {@code before} that is not a legal separator.
+     *
+     * @param before a position in {@code 0..elements.size()}; the element there is not examined
+     * @return the position, or {@code null} when every element before {@code before} is a legal
+     *     separator
+     */
+    public static @Nullable Integer lastNonSeparatorIndexBefore(List<? extends StaffElement> elements, int before) {
+        for (var i = before - 1; i >= 0; i--) {
+            if (!isLegalSeparator(elements.get(i).getType())) {
+                return i;
+            }
+        }
+
+        return null;
     }
 
     /**
      * Returns whether this tie arcs above its notes rather than below them.
-     * <p>
-     * Declared here rather than on {@link Span} because a tie is the only span whose side is
-     * a computed property — every other span's side is fixed by its own geometry.
      */
     public boolean isAbove() {
         // isAbove and arcSign share one convention: arcSign < 0 == arc bulges up == tie above.
@@ -281,8 +263,8 @@ public final class Tie extends NoteSpan {
      * {@link NoteElement#getStaffPosition()}.
      */
     private Direction tieArcDirection() {
-        var left = getAnchorElement();
-        var right = getEndElement();
+        var left = anchor();
+        var right = end();
         var leftHasStem = left.getType().isNoteWithStem();
         var rightHasStem = right.getType().isNoteWithStem();
 

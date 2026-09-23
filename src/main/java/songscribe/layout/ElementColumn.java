@@ -32,7 +32,6 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
@@ -663,9 +662,6 @@ public final class ElementColumn {
     /**
      * Resolves a {@link Span} span's anchor and end elements to their columns, or {@code null}
      * when either endpoint has no column in {@code columnsByElement}.
-     * <p>
-     * A tie is the one span whose two notes may sit in different lines, and this method cannot
-     * tell that apart from an unplaceable span — use {@link #resolveTie} for ties.
      *
      * @param span              the span to resolve
      * @param columnsByElement  element-to-column lookup for the line being laid out
@@ -674,9 +670,15 @@ public final class ElementColumn {
     @Nullable
     public static SpanColumns resolveSpan(
         Span span, Map<StaffElement, ElementColumn> columnsByElement) {
-        var anchor = span.getAnchorElement();
-        var end = span.getEndElement();
+        return resolveEndpoints(span.getAnchorElement(), span.getEndElement(), columnsByElement);
+    }
 
+    /**
+     * Resolves two endpoint elements to their columns, or {@code null} when either has no
+     * column in {@code columnsByElement}.
+     */
+    private static @Nullable SpanColumns resolveEndpoints(
+        StaffElement anchor, StaffElement end, Map<StaffElement, ElementColumn> columnsByElement) {
         var anchorColumn = columnsByElement.get(anchor);
         var endColumn = columnsByElement.get(end);
 
@@ -688,8 +690,8 @@ public final class ElementColumn {
     }
 
     /**
-     * A {@link Span} span's anchor and end elements together with their resolved columns.
-     * Returned by {@link #resolveSpan}.
+     * Two endpoint elements together with their resolved columns: a {@link Span}'s, returned
+     * by {@link #resolveSpan}, or a whole tie's, carried by {@link TieColumns.Whole}.
      */
     public record SpanColumns(
         StaffElement anchor, StaffElement end, ElementColumn anchorColumn, ElementColumn endColumn) {}
@@ -698,43 +700,43 @@ public final class ElementColumn {
      * Resolves a tie against the line being laid out, telling a tie that runs off one edge of
      * that line apart from one the line cannot draw at all.
      * <p>
-     * Only a tie can straddle a line boundary, which is why this is a tie-only sibling of
-     * {@link #resolveSpan}: every other span type resolves both endpoints in one line or is not
-     * drawn. A tie that does straddle one is laid out once per line, and each line owns the
-     * endpoint that is actually in it — so which side is open comes from asking {@code line}
-     * where the far endpoint sits ({@link Line#anchorIndexOf} / {@link Line#endIndexOf}), never
-     * from the endpoint's own line. An endpoint that resolves to no direction at all
-     * ({@link SpanBound#ABSENT} — in no line, or in a line the song no longer holds)
-     * yields {@code null}: nothing is drawn rather than an arc running off an edge toward
-     * nothing.
+     * A tie's end may be in the line after its anchor's (see {@link NoteElement#tie()}), so a
+     * tie is laid out once in each line that holds one of its notes, and each line draws the
+     * part next to the note it holds. Which side is open follows from which of the two notes
+     * {@code line} holds: an anchor here with its end elsewhere runs off the right edge toward
+     * the next line, and an end here with its anchor elsewhere enters from the left edge.
      *
      * @param tie              the tie to resolve
      * @param line             the line being laid out
      * @param columnsByElement element-to-column lookup for that line
-     * @return the whole tie, the half this line owns, or {@code null} if the line draws no part of it
+     * @return the whole tie when both notes are in {@code line}, the half next to the one note
+     *     that is, or {@code null} when {@code line} holds neither or a note it holds has no
+     *     column
      */
     @Nullable
     public static TieColumns resolveTie(
         Tie tie, Line line, Map<StaffElement, ElementColumn> columnsByElement) {
-        var spanColumns = resolveSpan(tie, columnsByElement);
+        var anchor = tie.anchor();
+        var end = tie.end();
+        var anchorInLine = line.contains(anchor);
+        var endInLine = line.contains(end);
 
-        if (spanColumns != null) {
-            return new TieColumns.Whole(spanColumns);
+        if (anchorInLine && endInLine) {
+            var columns = resolveEndpoints(anchor, end, columnsByElement);
+
+            return columns == null ? null : new TieColumns.Whole(columns);
         }
 
-        var anchor = tie.getAnchorElement();
-        var end = tie.getEndElement();
+        if (anchorInLine) {
+            var anchorColumn = columnsByElement.get(anchor);
 
-        var anchorColumn = columnsByElement.get(anchor);
-
-        if (anchorColumn != null && line.spanRegistry().endIndexOf(tie) == SpanBound.AFTER_LINE) {
-            return new TieColumns.Half(anchor, anchorColumn, OpenSide.END);
+            return anchorColumn == null ? null : new TieColumns.Half(anchor, anchorColumn, OpenSide.END);
         }
 
-        var endColumn = columnsByElement.get(end);
+        if (endInLine) {
+            var endColumn = columnsByElement.get(end);
 
-        if (endColumn != null && line.spanRegistry().anchorIndexOf(tie) == SpanBound.BEFORE_LINE) {
-            return new TieColumns.Half(end, endColumn, OpenSide.START);
+            return endColumn == null ? null : new TieColumns.Half(end, endColumn, OpenSide.START);
         }
 
         return null;

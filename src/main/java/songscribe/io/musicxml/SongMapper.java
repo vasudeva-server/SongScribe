@@ -76,7 +76,7 @@ final class SongMapper {
 
         var song = Song.newParsingStub();
         var documentFonts = DocumentFonts.defaultFonts();
-        boolean accidentalsConverted;
+        MeasureMapper.Result mapped;
 
         // A load records no mutations, posts no notification and sets no modified flag.
         // begin/end rather than withoutMutationTracking(Runnable) because the mappers
@@ -85,7 +85,7 @@ final class SongMapper {
 
         try {
             HeaderMapper.map(score, song, documentFonts);
-            accidentalsConverted = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
+            mapped = MeasureMapper.map(score, song, SupportedFeature.declaredIn(score));
 
             // Restore the terminal invariant while tracking is still suspended so the
             // fix-ups are silent: the writer emits a line's closing barline only as a
@@ -110,7 +110,7 @@ final class SongMapper {
         // Run here rather than in the UI: SongLoader's headless route runs it too, and a
         // song whose tuplets were settled in only one of the two routes would export a
         // different MIDI file than it displays.
-        var migrations = LoadMigrations.run(song, accidentalsConverted);
+        var migrations = LoadMigrations.run(song, mapped.pendingTuplets(), mapped.accidentalsConverted());
 
         return new SongLoadResult.Success(
             song,

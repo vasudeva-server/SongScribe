@@ -87,6 +87,10 @@ public final class StaffElementFactory {
         return (NoteElement) ElementType.QUAVER.newInstance();
     }
 
+    public static NoteElement semiquaver() {
+        return (NoteElement) ElementType.SEMIQUAVER.newInstance();
+    }
+
     public static NoteElement graceQuaver() {
         return (NoteElement) ElementType.GRACE_QUAVER.newInstance();
     }

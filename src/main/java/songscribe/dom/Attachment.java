@@ -26,15 +26,19 @@ import org.jspecify.annotations.Nullable;
  * Abstract base class for elements that attach to staff elements.
  * <p>
  * Attachments include tempo markings, fermatas, annotations, dynamics, and beat changes.
- * The element owns it: {@link StaffElement#addAttachment} makes the element its parent
- * and {@link StaffElement#removeAttachment} detaches it, so {@link #owner()} is answered from
- * the parent-element pointer every {@link LineElement} carries rather than from a pointer of
- * its own.
+ * <p>
+ * <b>The owner and the line.</b> The staff element owns it: {@link StaffElement#addAttachment}
+ * sets {@link #owner()} and {@link StaffElement#removeAttachment} clears it, and nothing else
+ * writes it. An attachment's line is its owner's line, derived on every ask rather than stored,
+ * so it follows the owner into and out of a line with nothing to keep in step.
  * <p>
  * Vertical placement is determined by the layout calculator, not stored as a property.
  */
-public abstract sealed class Attachment extends LineElement
+public abstract sealed class Attachment extends LineElement implements LineContent
     permits FermataAttachment, DynamicAttachment, AnnotationAttachment, MetronomeAttachment {
+
+    /** Written only by {@link StaffElement}'s add and remove methods. */
+    private @Nullable StaffElement owner;
 
     /**
      * Returns the staff element this attachment is on.
@@ -43,7 +47,26 @@ public abstract sealed class Attachment extends LineElement
      *         {@link StaffElement#addAttachment} and after {@link StaffElement#removeAttachment}
      */
     public @Nullable StaffElement owner() {
-        return (StaffElement) getParentElement();
+        return owner;
+    }
+
+    /**
+     * Sets the staff element this attachment is on. Package-private so that only
+     * {@link StaffElement}'s add and remove methods, which keep the owner's attachment list in
+     * step, can write it.
+     */
+    void setOwner(@Nullable StaffElement owner) {
+        this.owner = owner;
+    }
+
+    /**
+     * Returns the line this attachment is in, which is its owner's.
+     *
+     * @return the owner's line, or {@code null} when the attachment is on no element or its
+     *     owner is in no line
+     */
+    public @Nullable Line getParentLine() {
+        return StaffElement.parentLineOf(owner);
     }
 
     /**
@@ -53,9 +76,8 @@ public abstract sealed class Attachment extends LineElement
      * <p>Base state travels through {@link LineElement#copyBaseStateFrom}, so a new subclass
      * cannot forget it — the same arrangement {@link Span#copy} uses. Subclasses carry their
      * own state in
-     * {@link #createCopy}. Does not copy the children a composite attachment holds, and does not
-     * set the parent element or line: {@link StaffElement#addAttachment} owns both, and every
-     * caller reaches it immediately.
+     * {@link #createCopy}. Does not set the owner: {@link StaffElement#addAttachment} owns it,
+     * and every caller reaches it immediately.
      *
      * @return an attachment of the same concrete type as this one, sharing no mutable state with
      *         it

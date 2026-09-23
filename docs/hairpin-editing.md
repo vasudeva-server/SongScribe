@@ -106,7 +106,7 @@ on, end on, or slope across, a surviving hairpin cannot be left with either.
 The response differs by what the edit made possible:
 
 - An **insertion or a replacement** that leaves an endpoint invalid **removes**
-  the hairpin, silently, the way ties and tuplets go; undo restores it. Neither
+  the hairpin, silently, the way beams and tuplets go; undo restores it. Neither
   deletes an element for the hairpin to pull back to, so there is no reliable
   "move the end there instead" to reach for. Left unchecked, re-pointing would
   quietly produce shapes the menu would never allow — a hairpin ending on a grace

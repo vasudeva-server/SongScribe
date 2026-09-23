@@ -31,10 +31,10 @@ import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.PendingTuplet;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
 
 /**
  * Migrates song data from legacy format (version 1) to new format (version 2).
@@ -99,9 +99,16 @@ public final class FormatMigrator {
      * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
      * diatonic step count) are NOT converted.
      *
-     * @param lines The lines with pixel values to convert
+     * @param lines          The lines with pixel values to convert
+     * @param pendingTuplets The tuplets the reader found, still to be resolved against a
+     *                       line's registry, converted the same way
+     * @return {@code pendingTuplets} with each entry's {@code yOffsetSs} converted to staff
+     *     spaces, with no rounding — a pending tuplet is not yet a span, so there is no
+     *     registry to convert it in place
      */
-    public static void migratePixelsToStaffSpace(List<? extends Line> lines) {
+    public static List<PendingTuplet> migratePixelsToStaffSpace(
+        List<? extends Line> lines, List<PendingTuplet> pendingTuplets
+    ) {
         var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
 
         for (var line : lines) {
@@ -110,21 +117,13 @@ public final class FormatMigrator {
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
-            // Tuplet.verticalPosition (pixel → staff-space conversion)
-            for (var tuplet : spans.findSpans(Tuplet.class)) {
-                if (tuplet.getVerticalPositionSs() != 0) {
-                    tuplet.setVerticalPositionSs(
-                        (int) Math.round(tuplet.getVerticalPositionSs() / pps)
-                    );
-                }
-            }
-
             // Hairpin shifts (crescendo + diminuendo)
             for (var hairpin : spans.findSpans(Hairpin.class)) {
-                if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0 || hairpin.getYShiftSs() != 0) {
+                if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0
+                    || hairpin.getUserYOffsetSs() != 0) {
                     hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
                     hairpin.setX2ShiftSs(hairpin.getX2ShiftSs() / pps);
-                    hairpin.setYShiftSs(hairpin.getYShiftSs() / pps);
+                    hairpin.setUserYOffsetSs(hairpin.getUserYOffsetSs() / pps);
                 }
             }
 
@@ -142,17 +141,22 @@ public final class FormatMigrator {
 
             // Convert per-instance Span offsets (Ending, Trill)
             for (var ending : spans.findSpans(Ending.class)) {
-                if (ending.getYPositionSs() != 0) {
-                    ending.setYPositionSs((int) Math.round(ending.getYPositionSs() / pps));
+                if (ending.getUserYOffsetSs() != 0) {
+                    ending.setUserYOffsetSs(ending.getUserYOffsetSs() / pps);
                 }
             }
 
             for (var trill : spans.findSpans(Trill.class)) {
-                if (trill.getYPositionSs() != 0) {
-                    trill.setYPositionSs((int) Math.round(trill.getYPositionSs() / pps));
+                if (trill.getUserYOffsetSs() != 0) {
+                    trill.setUserYOffsetSs(trill.getUserYOffsetSs() / pps);
                 }
             }
         }
+
+        return pendingTuplets.stream()
+            .map(pending -> new PendingTuplet(
+                pending.anchor(), pending.end(), pending.grade(), pending.statedRatio(), pending.yOffsetSs() / pps))
+            .toList();
     }
 
 
@@ -221,7 +225,7 @@ public final class FormatMigrator {
             var delta = endingOffset - endingDefault;
 
             for (var ending : spans.findSpans(Ending.class)) {
-                ending.setYPositionSs(ending.getYPositionSs() + delta);
+                ending.setUserYOffsetSs(ending.getUserYOffsetSs() + delta);
             }
         }
 
@@ -233,7 +237,7 @@ public final class FormatMigrator {
             var delta = trillOffset - trillDefault;
 
             for (var trill : spans.findSpans(Trill.class)) {
-                trill.setYPositionSs(trill.getYPositionSs() + delta);
+                trill.setUserYOffsetSs(trill.getUserYOffsetSs() + delta);
             }
         }
     }

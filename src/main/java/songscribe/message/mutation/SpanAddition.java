@@ -27,15 +27,10 @@ import songscribe.dom.Span;
  * Mutation recording the addition of a span to a line.
  */
 public record SpanAddition(Line line, Span element)
-    implements Mutation, LineScopedMutation, SpanMutation {
+    implements Mutation, LineScopedMutation {
 
     @Override
     public Line getLine() {
         return line;
-    }
-
-    @Override
-    public Span getSpan() {
-        return element;
     }
 }

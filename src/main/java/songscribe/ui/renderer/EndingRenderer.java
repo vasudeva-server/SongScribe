@@ -28,7 +28,9 @@ import songscribe.dom.Ending;
 import songscribe.engraving.EngravingConstants;
 import songscribe.font.TextMeasurement;
 import songscribe.hit.HitTarget;
+import songscribe.layout.BracketRange;
 import songscribe.layout.EndingBracketGeometry;
+import songscribe.layout.LayoutResult;
 import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -85,14 +87,19 @@ public final class EndingRenderer {
                 continue;
             }
 
-            var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
+            if (!(decorationLayout instanceof LayoutResult.DecorationLayout.Volta volta)) {
+                throw new IllegalStateException(
+                    "Ending decoration layout is not a Volta for " + ending);
+            }
+
+            var yTopSs = RenderingUtils.layoutYToComponentYSs(volta.ySs(), invariants);
 
             // The color depends only on the ending, so resolve it once rather than per bracket.
             // An ending belongs to no single note, so it has no owner whose color it could take.
             var color = RenderingUtils.decorationColor(
                 new HitTarget.Ending(ending), null, invariants, ElementFrame.LINE_LEVEL);
 
-            for (var bracket : ending.getBracketRanges()) {
+            for (var bracket : volta.brackets()) {
                 drawEnding(g2, ending, bracket, yTopSs, color);
             }
         }
@@ -110,7 +117,7 @@ public final class EndingRenderer {
     private void drawEnding(
         Graphics2D g2,
         Ending ending,
-        Ending.BracketRange bracket,
+        BracketRange bracket,
         double yTopSs,
         Color color
     ) {

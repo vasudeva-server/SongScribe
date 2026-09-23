@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -261,13 +262,13 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the tie geometry for a tie span, if it was computed during layout.
+     * Returns the tie geometry for a tie, if it was computed during layout.
      * <p>
-     * Returns null when the span was not laid out (e.g., degenerate
+     * Returns null when the tie was not laid out (e.g., degenerate
      * tie spanning notes that could not be positioned). Callers should skip rendering
      * if the result is null.
      *
-     * @param span The tie span to look up
+     * @param tie The tie to look up
      * @return the tie layout, or null if not computed
      */
     @Nullable
@@ -889,15 +890,18 @@ public final class LayoutResult {
      * <p>
      * All values are in staff-space units.
      * <p>
-     * A decoration either draws itself from the model — a hairpin, an ending, an articulation —
-     * or draws {@link DecorationContent} the layout pass typeset for it. The tuplet bracket is
-     * the one decoration whose line tilts, so it carries its own member with the extra
-     * {@code dySs} rise rather than every other kind carrying an always-zero field. A decoration
-     * layout without content is not a runtime possibility for the kinds that have content, and a
-     * reader of {@link Typeset#content()} never has to ask whether it is there.
+     * A decoration either draws itself from the model — a hairpin, an articulation — or draws
+     * {@link DecorationContent} the layout pass typeset for it. The tuplet bracket is the one
+     * decoration whose line tilts, so it carries its own member with the extra {@code dySs} rise
+     * rather than every other kind carrying an always-zero field. An ending likewise carries its
+     * own member with the {@link BracketRange}s layout computed for it, so the renderer draws
+     * the brackets the stacking pass measured. A decoration layout without content is not a
+     * runtime possibility for the kinds that have content, and a reader of
+     * {@link Typeset#content()} or {@link Volta#brackets()} never has to ask whether it is there.
      */
     public sealed interface DecorationLayout
-        permits DecorationLayout.Plain, DecorationLayout.Typeset, DecorationLayout.Sloped {
+        permits DecorationLayout.Plain, DecorationLayout.Typeset, DecorationLayout.Sloped,
+                DecorationLayout.Volta {
 
         /** X position (left edge) of the decoration. */
         double xSs();
@@ -935,8 +939,9 @@ public final class LayoutResult {
          * <p>
          * The one place nullability of the content is resolved: the stackers share a placement
          * core that serves both kinds, and this is where "no content" becomes {@link Plain}
-         * rather than a null a reader could meet. Never produces a {@link Sloped}: the tuplet
-         * stacker builds that member directly, since it is the only producer of a tilted layout.
+         * rather than a null a reader could meet. Never produces a {@link Sloped} or a
+         * {@link Volta}: the tuplet stacker builds the one and the ending stacker the other,
+         * each being the only producer of its member.
          *
          * @param xSs        X position (left edge) of the decoration
          * @param ySs        Y position (top edge) of the decoration
@@ -960,8 +965,8 @@ public final class LayoutResult {
         }
 
         /**
-         * The layout of a decoration that draws itself: a hairpin, a volta ending, an
-         * articulation, a tuplet bracket. It carries bounds and nothing else.
+         * The layout of a decoration that draws itself, such as a hairpin or an articulation. It
+         * carries bounds and nothing else.
          */
         record Plain(
             double xSs,
@@ -1016,6 +1021,73 @@ public final class LayoutResult {
             public Sloped shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
                 return new Sloped(
                     xSs + dxSs, ySs + dySsShift, dySs, widthSs + dWidthSs, heightSs, marginSs);
+            }
+        }
+
+        /**
+         * The layout of an ending: its placed bounds and the {@link BracketRange} of each of its
+         * visual brackets, which the renderer draws at the bounds' Y.
+         * <p>
+         * The brackets are layout output, derived from the columns of the line they were laid out
+         * on, so they live here rather than on the ending: a reader holding this layout holds the
+         * brackets that were measured when these bounds were placed.
+         *
+         * @param xSs      X position (left edge) of the ending: the first bracket's left edge
+         * @param ySs      Y position (top edge) of the ending
+         * @param widthSs  width of the ending, from the first bracket's left edge to the last
+         *                 bracket's right edge
+         * @param heightSs height of the ending
+         * @param marginSs bottom margin between the ending's bottom and the tier below
+         * @param brackets the ending's brackets in bracket order, in the line's layout space
+         * @invariant {@code brackets} is unmodifiable
+         * @invariant {@code brackets} is never empty: the ending stacker places no layout for an
+         *            ending it could compute no bracket for
+         */
+        record Volta(
+            double xSs,
+            double ySs,
+            double widthSs,
+            double heightSs,
+            double marginSs,
+            List<BracketRange> brackets) implements DecorationLayout {
+
+            public Volta {
+                brackets = List.copyOf(brackets);
+            }
+
+            /**
+             * Returns the layout of an ending placed at {@code placed}'s bounds with
+             * {@code brackets}.
+             *
+             * @param placed   the bounds the stacking pass placed the ending at
+             * @param brackets the ending's brackets in bracket order
+             * @return a layout with {@code placed}'s bounds carrying {@code brackets}
+             */
+            public static Volta of(DecorationLayout placed, List<BracketRange> brackets) {
+                return new Volta(
+                    placed.xSs(), placed.ySs(), placed.widthSs(), placed.heightSs(),
+                    placed.marginSs(), brackets);
+            }
+
+            /**
+             * {@inheritDoc}
+             * <p>
+             * The brackets move with the bounds: every bracket shifts by {@code dxSs}, and the
+             * change in width moves the last bracket's right edge, which is where the bounds'
+             * right edge lies.
+             */
+            @Override
+            public Volta shiftedBy(double dxSs, double dySsShift, double dWidthSs) {
+                var shifted = new ArrayList<BracketRange>(brackets.size());
+                var lastIndex = brackets.size() - 1;
+
+                for (var i = 0; i < brackets.size(); i++) {
+                    var dx2Ss = i == lastIndex ? dxSs + dWidthSs : dxSs;
+                    shifted.add(brackets.get(i).shiftedBy(dxSs, dx2Ss));
+                }
+
+                return new Volta(
+                    xSs + dxSs, ySs + dySsShift, widthSs + dWidthSs, heightSs, marginSs, shifted);
             }
         }
     }

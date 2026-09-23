@@ -50,7 +50,6 @@ import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
@@ -284,22 +283,19 @@ final class ScorePartwiseBuilder {
      * group.
      *
      * <p>A degenerate single-note beam produces nothing — one note cannot be beamed — and a
-     * grace note inside the span is not a member: the beam passes over it (refs #592).
+     * grace note inside the span is not a member, so it gets no {@code <beam>}: the beam passes
+     * over it (refs #592).
      */
     private static void applyBeams(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Beam.class, (line, beam, anchorIndex, endIndex) -> {
-            if (anchorIndex == endIndex) {
+        forEachSpanInRange(lines, Beam.class, (_, beam, _, _) -> {
+            var members = beam.members();
+
+            if (members.size() == 1) {
                 return;
             }
 
-            for (var i = anchorIndex; i <= endIndex; i++) {
-                var element = line.getElement(i);
-
-                if (element.getType().isGraceNote()) {
-                    continue;
-                }
-
-                addBeams(context, element, beamValues(beam, i, anchorIndex, endIndex));
+            for (var position = 0; position < members.size(); position++) {
+                addBeams(context, members.get(position), beamValues(beam, members, position));
             }
         });
     }
@@ -327,44 +323,48 @@ final class ScorePartwiseBuilder {
     }
 
     /**
-     * The {@code <beam>} text-content values for the note at {@code noteIndex} within the beam
-     * group [{@code anchorIndex}, {@code endIndex}], indexed by {@code number - 1}. An empty
-     * entry means no {@code <beam>} at that level.
+     * The {@code <beam>} text-content values for the member at {@code position} in
+     * {@code members}, indexed by {@code number - 1}. An empty entry means no {@code <beam>} at
+     * that level.
      *
      * <p>Level 0 (the primary beam) is always {@code begin}/{@code continue}/{@code end},
-     * never a hook. For each secondary level, the maximal contiguous run of notes at that
-     * level containing {@code noteIndex} decides: a run of two or more emits
+     * never a hook. For each secondary level, the maximal contiguous run of members at that
+     * level containing {@code position} decides: a run of two or more emits
      * {@code begin}/{@code continue}/{@code end}, and a run of one is a partial-beam hook
      * whose direction {@link Beam#stubRight} owns.
+     *
+     * @param members {@code beam}'s {@link Beam#members}
      */
-    private static String[] beamValues(Beam beam, int noteIndex, int anchorIndex, int endIndex) {
+    private static String[] beamValues(Beam beam, List<NoteElement> members, int position) {
         var values = new String[Beam.LEVEL_COUNT];
+        var lastPosition = members.size() - 1;
+        var member = members.get(position);
         Arrays.fill(values, MusicXmlUnits.NO_BEAM_AT_LEVEL);
-        values[PRIMARY_BEAM_LEVEL] = runValue(noteIndex, anchorIndex, endIndex);
+        values[PRIMARY_BEAM_LEVEL] = runValue(position, 0, lastPosition);
 
         for (var level = PRIMARY_BEAM_LEVEL + 1; level < Beam.LEVEL_COUNT; level++) {
-            if (!beam.noteTypeInLevel(noteIndex, level)) {
+            if (!beam.noteTypeInLevel(member, level)) {
                 continue;
             }
 
-            var runStart = noteIndex;
+            var runStart = position;
 
-            while (runStart > anchorIndex && beam.noteTypeInLevel(runStart - 1, level)) {
+            while (runStart > 0 && beam.noteTypeInLevel(members.get(runStart - 1), level)) {
                 runStart--;
             }
 
-            var runEnd = noteIndex;
+            var runEnd = position;
 
-            while (runEnd < endIndex && beam.noteTypeInLevel(runEnd + 1, level)) {
+            while (runEnd < lastPosition && beam.noteTypeInLevel(members.get(runEnd + 1), level)) {
                 runEnd++;
             }
 
             if (runStart == runEnd) {
-                values[level] = beam.stubRight(noteIndex)
+                values[level] = beam.stubRight(member)
                     ? MusicXmlTags.BEAM_FORWARD_HOOK
                     : MusicXmlTags.BEAM_BACKWARD_HOOK;
             } else {
-                values[level] = runValue(noteIndex, runStart, runEnd);
+                values[level] = runValue(position, runStart, runEnd);
             }
         }
 
@@ -372,12 +372,12 @@ final class ScorePartwiseBuilder {
     }
 
     /** The {@code begin}/{@code continue}/{@code end} value for a position within a beam run. */
-    private static String runValue(int noteIndex, int runStart, int runEnd) {
-        if (noteIndex == runStart) {
+    private static String runValue(int position, int runStart, int runEnd) {
+        if (position == runStart) {
             return MusicXmlTags.BEAM_BEGIN;
         }
 
-        if (noteIndex == runEnd) {
+        if (position == runEnd) {
             return MusicXmlTags.BEAM_END;
         }
 
@@ -389,53 +389,26 @@ final class ScorePartwiseBuilder {
      *
      * <p>Each note is visited once and emits its stop before its start, so an interior note of
      * a chain — the end of one tie and the anchor of the next — closes the loop the way the
-     * streaming writer did. Rests cannot be tied.
-     *
-     * <p>The endpoints are resolved <em>relative to the line</em>, through
-     * {@code anchorIndexOf}/{@code endIndexOf}, not read off the tie. Reading them off the tie
-     * would hand a cross-line tie the same two indices in both lines, so each line would emit
-     * a start <em>and</em> a stop and the file would carry unpaired markers.
+     * streaming writer did.
      */
     private static void applyTies(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         for (var entry : lines) {
             var line = entry.line();
-            var spans = line.spanRegistry();
             var count = line.elementCount();
-            var ties = spans.findTies();
-
-            if (ties.isEmpty()) {
-                continue;
-            }
-
-            var starts = new Tie[count];
-            var stops = new Tie[count];
-
-            for (var tie : ties) {
-                // No range check: an At bound is a position in this line by construction.
-                if (spans.anchorIndexOf(tie) instanceof SpanBound.At(var anchorIndex)) {
-                    starts[anchorIndex] = tie;
-                }
-
-                if (spans.endIndexOf(tie) instanceof SpanBound.At(var endIndex)) {
-                    stops[endIndex] = tie;
-                }
-            }
 
             for (var i = 0; i < count; i++) {
-                var element = line.getElement(i);
-
-                if (element.getType().isRest()) {
+                if (!(line.getElement(i) instanceof NoteElement note)) {
                     continue;
                 }
 
-                var pmNote = context.index().notes().get(element);
+                var pmNote = context.index().notes().get(note);
 
                 if (pmNote == null) {
                     continue;
                 }
 
-                addTie(context, pmNote, stops[i], StartStop.STOP, TiedType.STOP);
-                addTie(context, pmNote, starts[i], StartStop.START, TiedType.START);
+                addTie(context, pmNote, note.incomingTie(), StartStop.STOP, TiedType.STOP);
+                addTie(context, pmNote, note.tie(), StartStop.START, TiedType.START);
             }
         }
     }
@@ -481,7 +454,7 @@ final class ScorePartwiseBuilder {
     private static void applyTuplets(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
         forEachSpanInRange(lines, Tuplet.class, (line, tuplet, anchorIndex, endIndex) -> {
             addTupletBracket(context, line.getElement(anchorIndex), StartStop.START,
-                tuplet.getVerticalPositionSs());
+                tuplet.getUserYOffsetSs());
             addTupletBracket(context, line.getElement(endIndex), StartStop.STOP, 0);
         });
     }
@@ -530,7 +503,7 @@ final class ScorePartwiseBuilder {
         ornamentsOf(context, pmNote).getTrillMarkOrTurnOrDelayedTurn()
             .add(factory.createOrnamentsTrillMark(factory.createEmptyTrillSound()));
 
-        addWavyLine(context, element, StartStopContinue.START, trill.getYPositionSs());
+        addWavyLine(context, element, StartStopContinue.START, trill.getUserYOffsetSs());
     }
 
     /** Attaches one {@code <wavy-line>} marker to {@code element}'s note, if it takes one. */

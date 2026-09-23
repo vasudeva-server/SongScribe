@@ -21,6 +21,7 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
@@ -204,14 +205,17 @@ public final class ModificationSession {
 
     /**
      * Runs {@code body} in replay mode. Used by the undo engine while it
-     * mechanically re-applies a recorded mutation batch inside an open
-     * modification bracket: the batch already contains every change, so the
+     * mechanically re-applies a recorded mutation batch inside a modification
+     * bracket that {@code body} opens: the batch already contains every change, so the
      * helpers' companion side-work (terminal maintenance, line defaults, span
      * invalidation, tuplet auto-removal, span merging) must not re-run — it
      * would double-apply changes the batch carries — and the {@link Line}
      * terminal guards must accept the legitimate intermediate states that
      * arise mid-replay. Mutations are still recorded into the bracket, unlike
      * {@link #withoutMutationTracking(Runnable)}. Nestable.
+     *
+     * <p>The bracket opens and closes inside replay mode, so the tie rule does not run when it
+     * closes (see {@link #endModification}).
      */
     public void withReplay(Runnable body) {
         replayDepth++;
@@ -259,17 +263,49 @@ public final class ModificationSession {
      * mutation was accumulated, marks the song modified and posts a single
      * {@link SongDidChangeNotification} carrying all accumulated mutations.
      *
+     * <p>Just before the outermost bracket closes, while it is still open, the tie rule runs
+     * over the accumulated batch ({@link Song#applyTieRule}), so the tie removals it records
+     * land in the batch that is delivered. It runs once per edit, when every change and every
+     * restamp in the bracket has landed. It does not run on an empty batch, nor on a bracket
+     * that closes inside an undo or redo replay, whose batch already carries the removals the
+     * edit recorded, nor while mutation tracking is suspended, where nothing is recorded and a
+     * loaded tie is trusted. A bracket whose body threw closes through {@link #closeBracket}
+     * instead, without the rule: its edit stopped part way, so its notes may not be restamped.
+     *
      * <p>A beat-defining edit that removed tuplets also reports itself here, after the
      * song notification — this is the only point that knows the whole edit is over, and a
      * warning shown any earlier would sit in front of a score not yet relaid out.
      */
     public void endModification() {
+        var batch = accumulatedMutations;
+
+        try {
+            if (modificationDepth == 1 && batch != null && owesTieRule()) {
+                // A copy: each removal the rule records is appended to the live batch.
+                song.applyTieRule(List.copyOf(batch));
+            }
+        } finally {
+            closeBracket();
+        }
+    }
+
+    /**
+     * Closes a modification bracket without the tie rule, delivering the batch when it is the
+     * outermost one.
+     */
+    private void closeBracket() {
         modificationDepth--;
 
-        if (modificationDepth != 0) {
-            return;
+        if (modificationDepth == 0) {
+            deliverBatch();
         }
+    }
 
+    /**
+     * The close of the outermost bracket: delivers the accumulated batch and any tuplet-removal
+     * report. Runs even when the body or the tie rule throws, so no batch outlives its bracket.
+     */
+    private void deliverBatch() {
         if (accumulatedMutations != null) {
             song.setModified(true);
             // Wrap-and-transfer ownership: the notification constructor stores the
@@ -290,19 +326,21 @@ public final class ModificationSession {
     }
 
     /**
+     * Whether the outermost bracket, about to close with a batch, owes the tie rule a run: it
+     * is not closing inside an undo or redo replay, nor under suspended tracking.
+     */
+    private boolean owesTieRule() {
+        return !isReplaying() && !isMutationTrackingSuspended();
+    }
+
+    /**
      * Executes {@code body} inside a modification bracket, then posts a single
      * {@link SongDidChangeNotification} with all accumulated mutations.
      * Prefer this over {@link #beginModification()} / {@link #endModification()} to ensure
      * the depth counter is always balanced even if {@code body} throws.
      */
     public void withModification(Runnable body) {
-        beginModification();
-
-        try {
-            body.run();
-        } finally {
-            endModification();
-        }
+        inBracket(null, asSupplier(body));
     }
 
     /**
@@ -312,13 +350,7 @@ public final class ModificationSession {
      * {@link #beginModification(String)}).
      */
     public void withModification(String label, Runnable body) {
-        beginModification(label);
-
-        try {
-            body.run();
-        } finally {
-            endModification();
-        }
+        inBracket(label, asSupplier(body));
     }
 
     /**
@@ -329,13 +361,35 @@ public final class ModificationSession {
      * @return Whatever {@code body} returns
      */
     public <T> T withModificationResult(Supplier<T> body) {
-        beginModification();
+        return inBracket(null, body);
+    }
+
+    /**
+     * Runs {@code body} inside a modification bracket opened with {@code explicitLabel}. The
+     * bracket closes through {@link #endModification} when {@code body} returns, and through
+     * {@link #closeBracket} when it throws, so a half-applied edit is never judged by the tie
+     * rule and the rule cannot replace the body's exception with one of its own.
+     */
+    private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
+        beginModification(explicitLabel);
+        T result;
 
         try {
-            return body.get();
-        } finally {
-            endModification();
+            result = body.get();
+        } catch (Throwable thrown) {
+            closeBracket();
+            throw thrown;
         }
+
+        endModification();
+        return result;
+    }
+
+    private static Supplier<@Nullable Void> asSupplier(Runnable body) {
+        return () -> {
+            body.run();
+            return null;
+        };
     }
 
     /**
@@ -479,7 +533,7 @@ public final class ModificationSession {
      * @return {@code true} if at least one tuplet was removed
      */
     public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
-        var line = owner != null ? owner.getParentLine() : null;
+        var line = StaffElement.parentLineOf(owner);
 
         if (owner == null || line == null) {
             edit.run();
@@ -557,7 +611,8 @@ public final class ModificationSession {
         var removedAny = false;
 
         for (var verdict : TupletValidator.validateFrom(
-            song, lineIndex, startIndex, TupletValidator.Strictness.STRICT)
+            song, new ElementLocation(lineIndex, startIndex), TupletValidator.Strictness.STRICT,
+            ModificationSession::registryTupletAnchoredAt)
         ) {
             if (verdict.result() instanceof TupletValidator.Result.Invalid) {
                 verdict.tuplet().removeFrom(song.getLine(verdict.lineIndex()));
@@ -566,5 +621,16 @@ public final class ModificationSession {
         }
 
         return removedAny;
+    }
+
+    /** The tuplet in {@code line}'s registry whose anchor is the element at {@code index}, if any. */
+    private static TupletValidator.@Nullable Anchored<Tuplet> registryTupletAnchoredAt(Line line, int index) {
+        var tuplet = line.spanRegistry().findTupletAt(index);
+
+        if (tuplet == null || tuplet.getAnchorElement() != line.getElement(index)) {
+            return null;
+        }
+
+        return new TupletValidator.Anchored<>(tuplet, tuplet.getEndElement(), tuplet.getGrade());
     }
 }

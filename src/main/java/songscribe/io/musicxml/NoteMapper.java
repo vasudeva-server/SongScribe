@@ -125,7 +125,7 @@ final class NoteMapper {
     record TupletMarker(
         boolean start,
         boolean stop,
-        int verticalPositionSs,
+        double verticalPositionSs,
         int actualNotes,
         int normalNotes,
         @Nullable String normalTypeToken,
@@ -136,7 +136,7 @@ final class NoteMapper {
      * One note's {@code <wavy-line>} markers. A note carrying both bounds a
      * single-note trill. {@code yPositionSs} is already in staff spaces.
      */
-    record TrillMarker(boolean start, boolean stop, int yPositionSs) {}
+    record TrillMarker(boolean start, boolean stop, double yPositionSs) {}
 
     /**
      * Maps {@code pmNote} to a {@link StaffElement}, appends it to {@code line},
@@ -468,7 +468,7 @@ final class NoteMapper {
     static TupletMarker tupletMarker(Note pmNote) throws SAXException {
         var start = false;
         var stop = false;
-        var verticalPositionSs = 0;
+        var verticalPositionSs = 0.0;
 
         for (var child : notationChildren(pmNote)) {
             if (child instanceof Tuplet tuplet) {
@@ -476,7 +476,7 @@ final class NoteMapper {
 
                 if (type == StartStop.START) {
                     start = true;
-                    verticalPositionSs = ProxyMusicAccess.tenthsToSs(tuplet.getRelativeY());
+                    verticalPositionSs = MusicXmlUnits.tenthsToExactSs(tuplet.getRelativeY());
                 } else if (type == StartStop.STOP) {
                     stop = true;
                 }
@@ -525,7 +525,7 @@ final class NoteMapper {
     static TrillMarker trillMarker(Note pmNote) {
         var start = false;
         var stop = false;
-        var yPositionSs = 0;
+        var yPositionSs = 0.0;
 
         for (var child : notationChildren(pmNote)) {
             if (!(child instanceof Ornaments ornaments)) {
@@ -537,7 +537,7 @@ final class NoteMapper {
 
                 if (type == StartStopContinue.START) {
                     start = true;
-                    yPositionSs = ProxyMusicAccess.tenthsToSs(wavyLine.getRelativeY());
+                    yPositionSs = MusicXmlUnits.tenthsToExactSs(wavyLine.getRelativeY());
                 } else if (type == StartStopContinue.STOP) {
                     stop = true;
                 }

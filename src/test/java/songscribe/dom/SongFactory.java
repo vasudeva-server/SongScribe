@@ -188,7 +188,7 @@ public final class SongFactory {
                     line.addElement(note);
 
                     if (tieNext && previousNote != null) {
-                        new Tie(previousNote, note).addTo(line);
+                        line.addTie(previousNote);
                         tieNext = false;
                     }
 

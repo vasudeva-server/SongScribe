@@ -191,9 +191,9 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Adds computed tie geometry for a tie span.
+     * Adds computed tie geometry for a tie.
      *
-     * @param span      The tie span
+     * @param tie       The tie
      * @param tieLayout The computed tie geometry
      * @return This builder for chaining
      */
@@ -226,9 +226,9 @@ public class LayoutResultBuilder {
     }
 
     /**
-     * Returns the tie layout for a tie span from the builder's accumulated data.
+     * Returns the tie layout for a tie from the builder's accumulated data.
      *
-     * @param span The tie span to look up
+     * @param tie The tie to look up
      * @return The tie layout, or null if not yet computed
      */
     public @Nullable TieLayout getTieLayout(Tie tie) {

@@ -391,7 +391,7 @@ public final class HitRegionBuilder {
      * never widen the box.
      */
     private static void addTies(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var tie : line.spanRegistry().findTies()) {
+        for (var tie : line.ownedTies()) {
             var tieLayout = layoutResult.getTieLayout(tie);
 
             if (tieLayout == null) {

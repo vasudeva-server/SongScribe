@@ -29,28 +29,33 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
 
 /**
- * The spans drawn over one line's elements — beams, ties, trills, hairpins, tuplets and
- * endings — and everything that concerns them as a collection: the queries of
- * {@link SpanLookup}, the sweep that re-judges every span when an element changes, and the
- * merge rules that decide what two same-kind spans become. How the sweep, the per-kind
- * policies and the merge divide the work is in {@code docs/span-invalidation.md}.
+ * The spans drawn over one line's elements — beams, trills, hairpins, tuplets and endings —
+ * and everything that concerns them as a collection: every span query, expressed over three
+ * methods so the "iterate spans, filter by type, resolve both endpoint indices, compare" loop
+ * exists in exactly one place ({@link #findSpans(Class, Span.IndexPredicate)},
+ * {@link #findFirstSpan(Class, Span.IndexPredicate)} and {@link #findSpans(Class)}, with every
+ * typed query stated in terms of an index delegating to one of them via a
+ * {@link Span.IndexPredicate}); the sweep that re-judges every span when an element changes;
+ * and the merge rules that decide what two same-kind spans become. How the sweep, the per-kind
+ * policies and the merge divide the work is in {@code docs/span-invalidation.md}. A tie is not
+ * a span; it is a note's own state (see {@link NoteElement}).
  * <p>
  * One per {@link Line}, reached through {@link Line#spanRegistry()}, and the only writer of
  * the list it holds: a span enters or leaves only through {@link Span#addTo} and
  * {@link Span#removeFrom}, which end in {@link #add} and {@link #remove} here.
  * <p>
- * A span is never attached to a line: {@link Span#isIn} derives parentage from where its
- * endpoints sit, so a tie whose endpoints straddle a line boundary is in both lines, and
- * {@link #appendChild}/{@link #removeChild} keep both lines' registries holding it so every
- * sweep over a line's spans sees the half that belongs to it. The invariant is
+ * Every span lies in one line and sits in that line's registry only. A span is never attached
+ * to a line: {@link Span#isIn} derives parentage from where its endpoints sit. The invariant is
  * one-directional on purpose — {@code span.isIn(L) ⟹ L.spanRegistry().getSpans()} contains the
  * span — because a span with both endpoints detached is in no line by the derived answer, yet
- * is still in the registry it was added to, which is exactly where it sat before.
+ * is still in the registry it was added to, which is exactly where it sat before. So an
+ * endpoint of a span in this registry is either in this line or in no line.
  */
-public final class LineSpans implements SpanLookup {
+public final class LineSpans {
 
     /**
      * How far past a span's endpoint a same-type span may sit and still count as
@@ -62,40 +67,18 @@ public final class LineSpans implements SpanLookup {
      */
     public static final int SPAN_ADJACENCY_REACH = 1;
 
-    /**
-     * Which existing same-type spans a span being added absorbs in {@link #mergeOverlapping}:
-     * only those it overlaps, or also those flush against it.
-     */
-    enum Absorb {
-        /**
-         * Only a span sharing an element with the new one. Two spans written back to back
-         * are two deliberate groupings, not one gesture interrupted by an accident.
-         */
-        OVERLAPPING(0),
-
-        /**
-         * Also a span within {@link #SPAN_ADJACENCY_REACH} of an endpoint: two spans that
-         * close describe one uninterrupted gesture, so adding either merges them.
-         */
-        ADJACENT(SPAN_ADJACENCY_REACH);
-
-        /** How far past an endpoint, in elements, an existing span may sit and still be absorbed. */
-        private final int reach;
-
-        Absorb(int reach) {
-            this.reach = reach;
-        }
-    }
-
     private final Line line;
 
-    /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
+    /**
+     * This line's spans (beams, trills, crescendo, diminuendo, tuplets, endings), each with both
+     * endpoints in this line or in no line, and held in no other line's registry.
+     */
     private final List<Span> spans = new ArrayList<>();
 
     /**
      * Live unmodifiable view of {@link #spans}, held once rather than wrapped per call:
-     * every {@link SpanLookup} query iterates {@link #getSpans()}, and the wrapper tracks
-     * later mutations of {@code spans} anyway.
+     * every query below iterates {@link #getSpans()}, and the wrapper tracks later
+     * mutations of {@code spans} anyway.
      */
     private final List<Span> spansView = Collections.unmodifiableList(spans);
 
@@ -112,51 +95,40 @@ public final class LineSpans implements SpanLookup {
      *
      * @return an unmodifiable live view of this line's spans, in the order they were added
      */
-    @Override
     public List<Span> getSpans() {
         return spansView;
     }
 
     /**
-     * The spans a pending edit to this line is put to: those whose two ends this line can
-     * both place. A span with an {@link SpanBound#ABSENT} end — a detached endpoint, or one in
-     * a line the song no longer holds — is on its way out, and the edit is not what removes
-     * it, so no span type is ever asked to judge one.
+     * The spans a pending edit to this line is put to: those whose two index getters both
+     * resolve. A span with a detached endpoint — one sitting in no line, or in a line the song
+     * no longer holds — is on its way out, and the edit is not what removes it, so no span
+     * type is ever asked to judge one.
      *
      * @return a copy, in the order the spans were added, safe to hold while spans are removed
      */
     List<Span> judgeableSpans() {
         return spans.stream()
-            .filter(span -> !anchorIndexOf(span).isAbsent() && !endIndexOf(span).isAbsent())
+            .filter(span -> span.getAnchorElementIndex() != null && span.getEndElementIndex() != null)
             .toList();
-    }
-
-    @Override
-    public SpanBound anchorIndexOf(Span span) {
-        return boundOf(span.getAnchorElement());
-    }
-
-    @Override
-    public SpanBound endIndexOf(Span span) {
-        return boundOf(span.getEndElement());
     }
 
     /**
      * Returns the elements {@code span} covers in this line, from its anchor's position to its
-     * end's position, resolved the same way {@link #anchorIndexOf} and {@link #endIndexOf}
-     * resolve each endpoint. This is the query for a caller that needs the extent as a range —
-     * to widen it, to test what overlaps it, or to index the elements under it; a caller that
-     * has to tell an endpoint in a neighboring line from an absent one asks the two bound
-     * queries instead.
+     * end's position, read off the span's own two index getters. This is the query for a
+     * caller that needs the extent as a range — to widen it, to test what overlaps it, or to
+     * index the elements under it.
      *
      * @param span the span to place, whether or not it is in this registry
      * @return the inclusive range under {@code span}, or {@code null} when either endpoint
-     *     does not sit in this line — a cross-line tie's far endpoint, a detached endpoint, or
-     *     one in a line the song no longer holds
+     *     does not sit in a line — a detached endpoint, or one in a line the song no longer
+     *     holds
      */
     public @Nullable ElementRange rangeOf(Span span) {
-        if (anchorIndexOf(span) instanceof SpanBound.At(var anchorIndex)
-                && endIndexOf(span) instanceof SpanBound.At(var endIndex)) {
+        var anchorIndex = span.getAnchorElementIndex();
+        var endIndex = span.getEndElementIndex();
+
+        if (anchorIndex != null && endIndex != null) {
             return new ElementRange(anchorIndex, endIndex);
         }
 
@@ -181,122 +153,25 @@ public final class LineSpans implements SpanLookup {
         return range;
     }
 
-    /**
-     * Resolves one endpoint of a span against this line, for both accessors above.
-     * <p>
-     * Direction for an endpoint in another line comes from where the two lines actually sit in
-     * the song, not from which endpoint is being asked about: an anchor is not necessarily
-     * behind us just because it is the earlier of the pair.
-     * <p>
-     * Only the two neighbours get a direction. A span reaching further than that describes a
-     * jump nothing can draw — the two halves would run off opposite edges of lines with a
-     * whole line of unrelated music between them, each pointing at nothing — so it resolves
-     * to {@link SpanBound#ABSENT}, which stops this half drawing at all.
-     * {@link Song#removeSpansBetweenNonAdjacentLines} drops such a span when an insertion or
-     * deletion is what broke adjacency, but nothing checks adjacency when a span is created:
-     * the MusicXML reader carries one pending tie start across a whole part, so a file whose
-     * {@code <tied>} start and stop are separated by a complete line produces one. This is the
-     * single place every query, layout, export and render path resolves an endpoint through,
-     * so it is the one place that has to say no.
-     * <p>
-     * {@link Song#removeLine} leaves a deleted line's elements pointing at it, so an endpoint
-     * can also name a line the song no longer holds; that has no position at all and is
-     * likewise {@link SpanBound#ABSENT}.
-     * <p>
-     * Only a cross-line endpoint pays for the two {@link Song#indexOfLine} scans, and only
-     * ties are ever cross-line.
-     */
-    private SpanBound boundOf(StaffElement endpoint) {
-        var endpointLine = endpoint.getParentLine();
-
-        if (endpointLine == null) {
-            return SpanBound.ABSENT;
-        }
-
-        if (endpointLine == line) {
-            // The stored-parentage invariant guarantees this line's elements contain it.
-            return new SpanBound.At(line.getElementIndex(endpoint));
-        }
-
-        // A line the song no longer holds has no position, so no distance can be taken
-        // from it and it must not read as an adjacent neighbour.
-        var song = line.getSong();
-        var thisLineIndex = song.indexOfLine(line);
-        var endpointLineIndex = song.indexOfLine(endpointLine);
-
-        if (thisLineIndex == null || endpointLineIndex == null) {
-            return SpanBound.ABSENT;
-        }
-
-        return switch (endpointLineIndex - thisLineIndex) {
-            case -1 -> SpanBound.BEFORE_LINE;
-            case 1 -> SpanBound.AFTER_LINE;
-            default -> SpanBound.ABSENT;
-        };
-    }
-
     // ========================================================================
     // List writes
     // ========================================================================
 
     /**
-     * Returns the line holding an endpoint of {@code span} that is not this line, or
-     * {@code null} when neither endpoint is in another line.
-     * <p>
-     * A span reaches {@link #appendChild} either with both endpoints in this line, with
-     * both detached, or — for a cross-line tie — with one endpoint here and one in the
-     * adjacent line. This answers the third case, so that tie lands in both lines' lists.
-     */
-    private @Nullable Line otherLineOf(Span span) {
-        var anchorLine = span.getAnchorLine();
-
-        if (anchorLine != null && anchorLine != line) {
-            return anchorLine;
-        }
-
-        var endLine = span.getEndLine();
-
-        if (endLine != null && endLine != line) {
-            return endLine;
-        }
-
-        return null;
-    }
-
-    /**
-     * Appends {@code element} to {@code spans} — this line's, and the other line of the
-     * pair when the span's endpoints straddle a boundary. Call from inside an applyChange
-     * mutator lambda, so the list write moves with the recorded change.
-     * <p>
-     * The other line only gains the span if it is not already holding it. A span whose two
-     * endpoints share a line, added to a <em>different</em> line, names its own line as the
-     * other one and would otherwise land there twice — one copy from wherever it was first
-     * added, one from here — leaving {@link #removeChild}, which takes out a single copy per
-     * list, unable to get rid of it.
+     * Appends {@code element} to {@code spans}. Call from inside an applyChange mutator lambda,
+     * so the list write moves with the recorded change.
      */
     private void appendChild(Span element) {
         spans.add(element);
-
-        var otherLine = otherLineOf(element);
-
-        if (otherLine != null && !otherLine.spanRegistry().spans.contains(element)) {
-            otherLine.spanRegistry().spans.add(element);
-        }
     }
 
     /**
-     * Removes {@code element} from {@code spans} — this line's, and the other line of the
-     * pair, so a cross-line span leaves both halves together. Takes the index its caller
-     * already located in this line, rather than scanning the list a second time.
+     * Removes the span at {@code index} of {@code spans}, the index its caller already located,
+     * rather than scanning the list a second time. Call from inside an applyChange mutator
+     * lambda, so the list write moves with the recorded change.
      */
-    private void removeChild(Span element, int index) {
+    private void removeChild(int index) {
         spans.remove(index);
-
-        var otherLine = otherLineOf(element);
-
-        if (otherLine != null) {
-            otherLine.spanRegistry().spans.remove(element);
-        }
     }
 
     /**
@@ -318,28 +193,27 @@ public final class LineSpans implements SpanLookup {
     }
 
     /**
-     * Records {@code addition} and appends {@code span} inside it. The generic primitive
-     * every kind's {@link Span#addTo} ends in, after applying its own policy.
+     * Records a {@link SpanAddition} of {@code span} and appends it inside that record. The
+     * primitive {@link Span#addTo} ends in, after the span's displacement.
      */
-    void add(Span span, Mutation addition) {
-        line.applyChange(addition, () -> appendChild(span));
+    void add(Span span) {
+        line.applyChange(new SpanAddition(line, span), () -> appendChild(span));
     }
 
     /**
-     * Records {@code removal} and removes {@code span} inside it, or does nothing at all when
-     * {@code span} is not in this registry. The generic primitive every kind's
-     * {@link Span#removeFrom} ends in, and the one place the absent-span early return exists:
-     * a removal takes a cross-line span out of both lines' lists together, so a second call
-     * on either line finds nothing left to remove and records nothing.
+     * Records a {@link SpanRemoval} of {@code span} and removes it inside that record, or does
+     * nothing at all when {@code span} is not in this registry. The primitive
+     * {@link Span#removeFrom} ends in, and the one place the absent-span early return exists,
+     * so a second removal of the same span finds nothing left to remove and records nothing.
      */
-    void remove(Span span, Mutation removal) {
+    void remove(Span span) {
         var index = spans.indexOf(span);
 
         if (index < 0) {
             return;
         }
 
-        line.applyChange(removal, () -> removeChild(span, index));
+        line.applyChange(new SpanRemoval(line, span), () -> removeChild(index));
     }
 
     // ========================================================================
@@ -484,26 +358,23 @@ public final class LineSpans implements SpanLookup {
     }
 
     // ========================================================================
-    // Displacement policies the span kinds call from addTo
+    // The displacements Span.addTo applies
     // ========================================================================
 
     /**
-     * Absorbs same-type spans overlapping {@code span}'s endpoints: widens the span to
-     * cover them, then removes every {@code type} span fully subsumed by the widened
-     * range through its own {@link Span#removeFrom}. The tracked removals are emitted
-     * before the widened span's addition so undo restores the original spans after
-     * removing the merged one.
+     * The {@link Displacement#ABSORB_OVERLAPPING} and {@link Displacement#ABSORB_ADJACENT}
+     * displacements: widens {@code span} over every same-kind span ({@link Span#isSameKindAs})
+     * overlapping its endpoints or within {@code reach} of them, then removes every same-kind
+     * span fully subsumed by the widened range through its own {@link Span#removeFrom}. The
+     * tracked removals are emitted before the widened span's addition so undo restores the
+     * original spans after removing the merged one.
      *
-     * @param span   the span about to be added, whose endpoints both sit in this line
-     * @param type   the kind of span that may be absorbed — the concrete class, so a
-     *               crescendo never absorbs a diminuendo
-     * @param absorb {@link Absorb#ADJACENT} for a kind whose two touching spans are one
-     *               gesture, {@link Absorb#OVERLAPPING} for a kind that absorbs only what
-     *               it overlaps
+     * @param span  the span about to be added, whose endpoints both sit in this line
+     * @param reach how far past an endpoint, in elements, a same-kind span may sit and still be
+     *              absorbed; {@code 0} absorbs only what {@code span} overlaps
      */
-    <R extends Span> void mergeOverlapping(R span, Class<? extends R> type, Absorb absorb) {
+    void mergeOverlapping(Span span, int reach) {
         var own = requireRangeOf(span);
-        var reach = absorb.reach;
 
         // Only a span with both endpoints in this line is a merge candidate: the widening
         // below is arithmetic on these positions, then an index into this line's elements,
@@ -511,13 +382,13 @@ public final class LineSpans implements SpanLookup {
         // through would drag the widened span out to a neighbor's position, or past the end
         // of the list. Resolved once, before the setters below move the very indices they
         // are compared against.
-        var placed = new ArrayList<PlacedSpan<R>>();
+        var placed = new ArrayList<PlacedSpan>();
 
-        for (var existing : findSpans(type)) {
+        for (var existing : findSpans(span.getClass())) {
             var range = rangeOf(existing);
 
-            if (range != null) {
-                placed.add(new PlacedSpan<>(existing, range));
+            if (range != null && span.isSameKindAs(existing)) {
+                placed.add(new PlacedSpan(existing, range));
             }
         }
 
@@ -549,7 +420,22 @@ public final class LineSpans implements SpanLookup {
     }
 
     /** A span of this line paired with the range it covers in it. */
-    private record PlacedSpan<R extends Span>(R span, ElementRange range) {
+    private record PlacedSpan(Span span, ElementRange range) {
+    }
+
+    /**
+     * The {@link Displacement#REPLACE_OVERLAPPING} displacement: removes every same-kind span
+     * ({@link Span#isSameKindAs}) overlapping {@code span}'s range, as {@link Span#overlapping}
+     * judges it, so a half-detached one is found and removed too.
+     *
+     * @param span the span about to be added, whose endpoints both sit in this line
+     * @effects one {@link Span#removeFrom} per span removed, so each removal is its own
+     *     mutation, recorded under the rule that method states
+     */
+    void removeOverlappingSameKind(Span span) {
+        findSpans(span.getClass(), Span.overlapping(requireRangeOf(span))).stream()
+            .filter(span::isSameKindAs)
+            .forEach(existing -> existing.removeFrom(line));
     }
 
     /**
@@ -565,5 +451,139 @@ public final class LineSpans implements SpanLookup {
         for (var span : findSpans(type, Span.overlapping(range))) {
             span.removeFrom(line);
         }
+    }
+
+    // ========================================================================
+    // Span queries
+    // ========================================================================
+
+    /**
+     * Returns every span of {@code type} whose two index getters satisfy {@code matches}.
+     */
+    public <T extends Span> List<T> findSpans(Class<T> type, Span.IndexPredicate matches) {
+        var result = new ArrayList<T>();
+
+        for (var span : spans) {
+            if (isMatch(span, type, matches)) {
+                result.add(type.cast(span));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the first span of {@code type} whose two index getters satisfy {@code matches},
+     * or {@code null} if there is none. Short-circuits on the first match and allocates
+     * nothing.
+     */
+    public <T extends Span> @Nullable T findFirstSpan(Class<T> type, Span.IndexPredicate matches) {
+        for (var span : spans) {
+            if (isMatch(span, type, matches)) {
+                return type.cast(span);
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean isMatch(Span span, Class<? extends Span> type, Span.IndexPredicate matches) {
+        return type.isInstance(span) && matches.test(span.getAnchorElementIndex(), span.getEndElementIndex());
+    }
+
+    /**
+     * Returns every span of {@code type}, whatever its endpoints resolve to.
+     * <p>
+     * Filters by type only and resolves no endpoint positions — unlike routing through
+     * {@link #findSpans(Class, Span.IndexPredicate)} with an always-true predicate, which
+     * would still resolve both endpoints of every matching span because Java evaluates
+     * arguments eagerly.
+     */
+    public <T extends Span> List<T> findSpans(Class<T> type) {
+        var result = new ArrayList<T>();
+
+        for (var span : spans) {
+            if (type.isInstance(span)) {
+                result.add(type.cast(span));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns whether any span of {@code type} satisfies {@code matches}.
+     */
+    public boolean hasSpan(Class<? extends Span> type, Span.IndexPredicate matches) {
+        return findFirstSpan(type, matches) != null;
+    }
+
+    /**
+     * Returns the first {@link Beam} span whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any beam.
+     */
+    public @Nullable Beam findBeamAt(int elementIndex) {
+        return findFirstSpan(Beam.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns true if one and the same {@link Beam} covers both {@code firstIndex} and
+     * {@code secondIndex}.
+     */
+    public boolean sameBeamAt(int firstIndex, int secondIndex) {
+        var beamAtFirst = findBeamAt(firstIndex);
+
+        //noinspection ObjectEquality
+        return beamAtFirst != null && beamAtFirst == findBeamAt(secondIndex);
+    }
+
+    /**
+     * Returns the first {@link Tuplet} span whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any tuplet.
+     */
+    public @Nullable Tuplet findTupletAt(int elementIndex) {
+        return findFirstSpan(Tuplet.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns true if the given note index falls strictly inside any hairpin (crescendo or
+     * diminuendo), its bound elements excluded.
+     * <p>
+     * This is the editor's rule for where a text dynamic may go: a dynamic may sit on a
+     * hairpin's anchor or end element, but never under the wedge. See
+     * {@code docs/hairpin-editing.md}.
+     */
+    public boolean isInsideHairpin(int noteIndex) {
+        return hasSpan(Hairpin.class, Span.strictlyContaining(noteIndex));
+    }
+
+    /**
+     * Returns every hairpin of {@code kind} whose two index getters satisfy {@code matches}.
+     */
+    public List<Hairpin> findHairpins(Hairpin.Kind kind, Span.IndexPredicate matches) {
+        return findSpans(Hairpin.class, matches).stream()
+            .filter(hairpin -> hairpin.getKind() == kind)
+            .toList();
+    }
+
+    /**
+     * Returns whether any hairpin of {@code kind} satisfies {@code matches}.
+     */
+    public boolean hasHairpin(Hairpin.Kind kind, Span.IndexPredicate matches) {
+        return !findHairpins(kind, matches).isEmpty();
+    }
+
+    /**
+     * Returns whether any trill span overlaps {@code range}.
+     */
+    public boolean hasTrillOverlapping(ElementRange range) {
+        return hasSpan(Trill.class, Span.overlapping(range));
+    }
+
+    /**
+     * Returns all {@link Ending} spans in this line.
+     */
+    public List<Ending> findEndings() {
+        return findSpans(Ending.class);
     }
 }

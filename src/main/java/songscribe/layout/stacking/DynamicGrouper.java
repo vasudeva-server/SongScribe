@@ -27,7 +27,6 @@ import java.util.List;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.SpanBound;
 
 /**
  * Partitions a line's hairpins and text dynamics into the groups that must share one vertical
@@ -46,7 +45,7 @@ import songscribe.dom.SpanBound;
  *   <li>A text dynamic joins a hairpin's group when it sits on one of the hairpin's own bounds
  *       ({@code anchorIndex} or {@code endIndex}) or on the element immediately outside the span
  *       ({@code anchorIndex - 1} or {@code endIndex + 1}). This is an editor invariant, not a
- *       model one: {@code SpanLookup.isInsideHairpin} refuses to add a dynamic strictly inside a
+ *       model one: {@code LineSpans.isInsideHairpin} refuses to add a dynamic strictly inside a
  *       hairpin's range, and {@code MusicEditOperations.stripInteriorPointDynamics} removes one a
  *       new or extended hairpin swallows, so the editor never produces a dynamic strictly inside
  *       {@code (anchorIndex, endIndex)}. A file built by {@code MusicXmlNoteReader} or the legacy
@@ -150,8 +149,10 @@ public final class DynamicGrouper {
         var spans = line.spanRegistry();
 
         for (var hairpin : spans.findSpans(Hairpin.class)) {
-            if (spans.anchorIndexOf(hairpin) instanceof SpanBound.At(var anchorIndex)
-                && spans.endIndexOf(hairpin) instanceof SpanBound.At(var endIndex)) {
+            var anchorIndex = hairpin.getAnchorElementIndex();
+            var endIndex = hairpin.getEndElementIndex();
+
+            if (anchorIndex != null && endIndex != null) {
                 hairpins.add(new Member.OfHairpin(hairpin, anchorIndex, endIndex));
             }
         }

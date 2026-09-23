@@ -229,7 +229,7 @@ public final class HairpinEndpoints {
             return ownBound;
         }
 
-        if (hasOtherHairpin(hairpin, line, (anchorBound, endBound) -> endBound.isAt(anchorIndex))) {
+        if (hasOtherHairpin(hairpin, line, Span.endingAt(anchorIndex))) {
             // hairpin.cc:257 — x_points[d] = e.center() - d * padding / 3, with d == LEFT == -1.
             return new Tip(
                 anchorColumn.getNoteheadCenterXSs() + Hairpin.BACK_TO_BACK_PADDING_SS, false);
@@ -269,7 +269,7 @@ public final class HairpinEndpoints {
             return ownBound;
         }
 
-        if (hasOtherHairpin(hairpin, line, (anchorBound, endBound) -> anchorBound.isAt(endIndex))) {
+        if (hasOtherHairpin(hairpin, line, Span.anchoredAt(endIndex))) {
             return new Tip(
                 endColumn.getNoteheadCenterXSs() - Hairpin.BACK_TO_BACK_PADDING_SS, false);
         }

@@ -68,7 +68,7 @@ public final class SongLoader {
             // comes through here, and leaving it to ScoreView would have it play tuplets the
             // UI had dropped — two different MIDI files from one document, with no error on
             // either.
-            var migrations = LoadMigrations.run(song, reader.accidentalsConverted());
+            var migrations = LoadMigrations.run(song, reader.pendingTuplets(), reader.accidentalsConverted());
 
             return new SongLoadResult.Success(
                 song,

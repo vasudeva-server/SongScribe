@@ -101,10 +101,11 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
      * a paste can never join the copied syllables to whatever they land next to.
      *
      * <p>A span is captured only when the range contains <b>both</b> its endpoints; one with
-     * an endpoint outside is dropped from the fragment, and that applies to every span type
-     * including a {@link songscribe.dom.Tie}. Copying a range that clips a tie therefore
-     * copies the elements the user selected and nothing else — the capture is never refused
-     * and the clipboard is never left holding a span it cannot paste whole.
+     * an endpoint outside is dropped from the fragment. A {@link songscribe.dom.Tie} is not a
+     * span and is never dropped this way: it is state the anchor note carries, so a range that
+     * clips a tie still clones its anchor tied, and the tie rule judges what the clone reaches
+     * once the paste lands, the same as it judges any other tie in a line a paste's bracket
+     * touched.
      *
      * @param line  The line to capture from
      * @param range The elements to capture, as selected — capture widens it itself

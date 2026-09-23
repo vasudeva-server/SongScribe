@@ -224,11 +224,7 @@ public final class MigrationWindow extends JDialog {
         };
     }
 
-    private static String reasonText(TupletValidator.@Nullable Reason reason) {
-        if (reason == null) {
-            return Strings.get(Strings.DIALOG_MIGRATION_REASON_UNKNOWN);
-        }
-
+    private static String reasonText(TupletValidator.Reason reason) {
         return Strings.get(switch (reason) {
             case EMPTY_SPAN -> Strings.DIALOG_MIGRATION_REASON_EMPTY_SPAN;
             case NOT_NOTATABLE -> Strings.DIALOG_MIGRATION_REASON_NOT_NOTATABLE;
@@ -238,6 +234,7 @@ public final class MigrationWindow extends JDialog {
             case FERMATA -> Strings.DIALOG_MIGRATION_REASON_FERMATA;
             case BEAT_BARRIER -> Strings.DIALOG_MIGRATION_REASON_BEAT_BARRIER;
             case STRUCTURAL_BOUNDARY -> Strings.DIALOG_MIGRATION_REASON_STRUCTURAL_BOUNDARY;
+            case TOO_FEW_NOTES -> Strings.DIALOG_MIGRATION_REASON_TOO_FEW_NOTES;
         });
     }
 

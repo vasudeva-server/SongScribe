@@ -179,7 +179,7 @@ public final class SelectionActionApplier {
 
                 if (action instanceof UIAction.ElementReplaceable<?>) {
                     // An Invalidate effect needs no compensation here: setElement removes the
-                    // ending itself via isInvalidatedByReplacement.
+                    // ending itself through Ending.outcomeFor.
                     line.setElement(index, change.standIn());
                 } else if (action instanceof UIAction.ElementModifiable<?>) {
                     // Safe: action's own type parameter is E throughout this call, and
@@ -243,7 +243,7 @@ public final class SelectionActionApplier {
                         if (!EndingConfirms.confirmInvalidation(score)) {
                             continue;
                         }
-                        // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
+                        // proceed: line.setElement removes the ending through Ending.outcomeFor
                     }
                     case Ending.EndingEffect.CompensateEnd compensateEnd -> {
                         if (!EndingConfirms.confirmCompensateEnd(score, compensateEnd)) {

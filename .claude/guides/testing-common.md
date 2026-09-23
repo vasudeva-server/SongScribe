@@ -19,14 +19,9 @@ To find them, run `jet_brains_find_referencing_symbols` on the members that
 changed and take the test classes out of the results — the same lookup that
 decides which tests need rewriting.
 
-**The whole suite runs only when the user asks for it, and only the user can
-start it.** `.claude/hooks/no-full-test-suite.sh` denies a bare
-`./scripts/test.sh`, a bare `unit` or `e2e`, more than seven classes in one
-command, a loop driving the script, and Gradle's test tasks. There is no flag or
-sentinel that lifts it: the user runs the suite by typing `!./scripts/test.sh`,
-which the CLI executes directly and no hook sees. Ask for that rather than
-looking for a way around the hook. `scripts/test.sh` separately refuses pattern
-targets, so a wildcard cannot stand in for naming the classes.
+**The whole suite should only be run after asking the user.**
+`scripts/test.sh` separately refuses pattern targets, so a wildcard cannot stand
+in for naming the classes.
 
 Two reasons, and neither is about the cost of writing tests:
 

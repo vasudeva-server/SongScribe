@@ -24,6 +24,8 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.audiveris.proxymusic.ScorePartwise;
 import org.xml.sax.InputSource;
@@ -104,6 +106,19 @@ final class MusicXmlRoundTripSupport {
     /** The single part these fixtures declare and then fill. */
     private static final String PART_ID = "P1";
 
+    /** A written eighth note's {@code <duration>}, in the codec's divisions. */
+    static final String EIGHTH_DURATION = Integer.toString(MusicXmlUnits.DIVISIONS / 2);
+
+    private static final String MIDDLE_C_STEP = "C";
+    private static final String MIDDLE_C_OCTAVE = "4";
+
+    /** The {@code <pitch>} of middle C. */
+    static final String MIDDLE_C_PITCH =
+        element(MusicXmlTags.PITCH, element(MusicXmlTags.STEP, MIDDLE_C_STEP) + element(MusicXmlTags.OCTAVE, MIDDLE_C_OCTAVE));
+
+    private static final String NOTE_INDENT = "      ";
+    private static final String NOTE_CHILD_INDENT = "        ";
+
     // -- helpers --
 
     /**
@@ -140,6 +155,33 @@ final class MusicXmlRoundTripSupport {
             "    " + closeTag(MusicXmlTags.MEASURE) + '\n' +
             "  " + closeTag(MusicXmlTags.PART) + '\n' +
             closeTag(MusicXmlTags.SCORE_PARTWISE) + '\n';
+    }
+
+    /**
+     * A {@code <note>} inside a measure body, holding {@code children} in order, one per line.
+     * An empty child is left out, so a caller can pass a marker it may not need.
+     */
+    static String note(String... children) {
+        var markup = new StringBuilder(NOTE_INDENT + openTag(MusicXmlTags.NOTE) + '\n');
+
+        for (var child : children) {
+            if (!child.isEmpty()) {
+                markup.append(NOTE_CHILD_INDENT).append(child).append('\n');
+            }
+        }
+
+        return markup.append(NOTE_INDENT).append(closeTag(MusicXmlTags.NOTE)).append('\n').toString();
+    }
+
+    /** A middle-C eighth note carrying {@code markers} after its {@code <type>}. */
+    static String middleCEighth(String... markers) {
+        var children = new ArrayList<>(List.of(
+            MIDDLE_C_PITCH,
+            element(MusicXmlTags.DURATION, EIGHTH_DURATION),
+            element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH)));
+        children.addAll(List.of(markers));
+
+        return note(children.toArray(String[]::new));
     }
 
     static String writeToString(Song song) throws Exception {

@@ -51,14 +51,13 @@ class ElementChangeTest extends UnitTest {
 
     /**
      * The fixture line, by position: a note, the note the ending anchors on, the repeat that
-     * splits the ending, the note the ending ends on, and a note tied to it from outside the
-     * ending.
+     * splits the ending, the note the ending ends on, and a note after the ending.
      */
     private static final int NOTE_OUTSIDE_ENDING = 0;
     private static final int ENDING_ANCHOR = 1;
     private static final int ENDING_SPLIT = 2;
     private static final int ENDING_END = 3;
-    private static final int TIED_NOTE = 4;
+    private static final int NOTE_AFTER_ENDING = 4;
 
     /**
      * One change to the fixture line, and whether it takes away the ending's repeat split.
@@ -90,7 +89,7 @@ class ElementChangeTest extends UnitTest {
         int arrivalIndex
     ) {}
 
-    /** The fixture line, with its ending and with a tie, which asks for no confirmation. */
+    /** The fixture line, with its ending. */
     private static Line fixtureLine() {
         var line = detachedLine();
         line.addElement(crotchet());
@@ -100,7 +99,6 @@ class ElementChangeTest extends UnitTest {
         line.addElement(crotchet());
 
         new Ending(line.getElement(ENDING_ANCHOR), line.getElement(ENDING_END)).addTo(line);
-        new Tie((NoteElement) line.getElement(ENDING_END), (NoteElement) line.getElement(TIED_NOTE)).addTo(line);
 
         return line;
     }
@@ -111,7 +109,7 @@ class ElementChangeTest extends UnitTest {
 
     static Stream<ConfirmCase> confirmCases() {
         return Stream.of(
-            confirmInsertion("an insertion that displaces only the tie", TIED_NOTE, crotchet(), false),
+            confirmInsertion("an insertion after the ending", NOTE_AFTER_ENDING, crotchet(), false),
             confirmReplacement("a replacement of the split by a bar that closes no repeat",
                 ENDING_SPLIT, singleBarline(), true),
             confirmReplacement("a replacement of a note outside the ending",

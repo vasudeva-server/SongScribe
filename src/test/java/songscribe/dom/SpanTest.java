@@ -20,24 +20,18 @@
 
 package songscribe.dom;
 
-import java.util.ArrayList;
 import java.util.List;
 
-import net.engio.mbassy.listener.Handler;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.message.MessageSubscription;
-import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.ui.component.ScoreView;
-import songscribe.undo.MutationReplayer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static songscribe.dom.BatchReplay.redo;
+import static songscribe.dom.BatchReplay.undo;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
 import static songscribe.dom.StaffElementFactory.quaver;
 
@@ -59,27 +53,13 @@ class SpanTest extends UnitTest {
 
     private static final ElementRange MERGED = new ElementRange(EXISTING.begin(), FLUSH.end());
 
-    /** Takes the batch of each modification bracket that closes on the class's bus. */
-    private static final class BatchRecorder {
-        private final List<List<Mutation>> batches = new ArrayList<>();
-        private final MessageSubscription subscription = new MessageSubscription(this);
-
-        @Handler
-        void songDidChange(SongDidChangeNotification notification) {
-            batches.add(List.copyOf(notification.getMutations()));
-        }
-    }
-
     @Test
     void testRemovingASpanASecondTimeChangesNothingAndThrowsNothing() {
-        var line = detachedLine();
-
-        for (var i = 0; i < LINE_LENGTH; i++) {
-            line.addElement(quaver());
-        }
+        var line = lineOfQuavers(LINE_LENGTH);
 
         var removed = crescendoOver(line, EXISTING);
-        var bystander = new Diminuendo(line.getElement(FLUSH.begin()), line.getElement(FLUSH.end()));
+        var bystander = new Hairpin(
+            Hairpin.Kind.DIMINUENDO, line.getElement(FLUSH.begin()), line.getElement(FLUSH.end()));
         removed.addTo(line);
         bystander.addTo(line);
 
@@ -102,7 +82,7 @@ class SpanTest extends UnitTest {
         try {
             song.withModification(() -> crescendoOver(line, FLUSH).addTo(line));
 
-            var batch = recorder.batches.getFirst();
+            var batch = recorder.batches().getFirst();
 
             assertThat(crescendoRanges(line)).containsExactly(MERGED);
 
@@ -118,7 +98,7 @@ class SpanTest extends UnitTest {
                 .as("redo reproduces the batch as recorded, so the absorption is not derived again")
                 .containsExactly(MERGED);
         } finally {
-            recorder.subscription.dispose();
+            recorder.dispose();
         }
     }
 
@@ -135,7 +115,7 @@ class SpanTest extends UnitTest {
         try {
             song.withModification(() -> line.deleteRange(line.effectiveRange(EXISTING)));
 
-            var batch = recorder.batches.getFirst();
+            var batch = recorder.batches().getFirst();
             var survivors = elements.subList(EXISTING.end() + 1, elements.size());
 
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
@@ -153,7 +133,7 @@ class SpanTest extends UnitTest {
             assertThat(line.effectiveElements()).containsExactlyElementsOf(survivors);
             assertThat(line.spanRegistry().getSpans()).isEmpty();
         } finally {
-            recorder.subscription.dispose();
+            recorder.dispose();
         }
     }
 
@@ -168,42 +148,9 @@ class SpanTest extends UnitTest {
         });
     }
 
-    /** Replays {@code batch} backwards, as the undo engine does. */
-    private static void undo(Song song, List<Mutation> batch) {
-        var scoreView = scoreViewOf(song);
-
-        song.withModification(() -> song.withReplay(() -> {
-            for (var i = batch.size() - 1; i >= 0; i--) {
-                MutationReplayer.applyUndo(scoreView, batch.get(i));
-            }
-        }));
-    }
-
-    /** Replays {@code batch} forwards, as the undo engine does. */
-    private static void redo(Song song, List<Mutation> batch) {
-        var scoreView = scoreViewOf(song);
-
-        song.withModification(() -> song.withReplay(() -> {
-            for (var mutation : batch) {
-                MutationReplayer.applyRedo(scoreView, mutation);
-            }
-        }));
-    }
-
-    private static ScoreView scoreViewOf(Song song) {
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSong()).thenReturn(song);
-
-        return scoreView;
-    }
-
-    private static Crescendo crescendoOver(Line line, ElementRange range) {
-        return new Crescendo(line.getElement(range.begin()), line.getElement(range.end()));
-    }
-
     private static List<ElementRange> crescendoRanges(Line line) {
         return line.spanRegistry().getSpans().stream()
-            .filter(Crescendo.class::isInstance)
+            .filter(span -> span instanceof Hairpin hairpin && hairpin.getKind() == Hairpin.Kind.CRESCENDO)
             .map(span -> new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex()))
             .toList();
     }

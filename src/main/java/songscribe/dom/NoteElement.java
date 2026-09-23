@@ -57,12 +57,38 @@ import songscribe.smufl.StemmedNotehead;
  * detached note and a clipboard clone have a pitch without a line. Which state a note is in,
  * and when, is the contract of {@link AccidentalState}; how the chain walk decides a stamped
  * note is in {@code docs/accidentals.md}.
+ *
+ * <p>A note stores whether it is tied to the next note, and nothing more: the note the tie ends
+ * on is derived each time it is asked for ({@link #tie()}, {@link #incomingTie()}), so no edit
+ * has an end to keep up to date. Only a note whose {@link ElementType#kind()} is
+ * {@link ElementType.Kind#NOTE} is ever tied, and only such a note is ever a tie's end.
+ *
+ * <p>What an edit does have to keep is the <b>tie rule</b>: a tie stays only when its anchor and
+ * the element its walk reaches are both {@link ElementType.Kind#NOTE} notes at the same staff
+ * position that sound the same alteration ({@link Tie#holds}); otherwise
+ * {@link Line#removeTie} removes it. The rule runs one time per edit, when the outermost
+ * modification bracket closes, before the batch is delivered and while the bracket is still
+ * open, so each removal is recorded in the same batch. Every change and every chain-walk
+ * restamp in the bracket has landed by then, so every note is stamped. It judges every tied note
+ * in each line the batch touched and in the line before each of them ({@link Song#applyTieRule}
+ * says which lines those are); a tie the batch added is judged like any other. The removals come
+ * after the changes that broke the ties, and reverse-order undo is still correct: undo restores
+ * the ties first, against the final state, where every anchor is still in its line.
+ *
+ * <p>The rule does not run during replay, which applies the removals the batch recorded, or
+ * while mutation tracking is suspended, which covers a file load: a loaded tie is trusted.
+ * Apart from a note taking another note's state ({@link #copyStateFrom}, or a conversion from a
+ * note), only {@link Line#addTie} and {@link Line#removeTie} write whether a note is tied.
  */
 public final class NoteElement extends StaffElement implements Dottable {
 
     private StaffPosition staffPosition = new StaffPosition(0);
     private Dots dots = Dots.NONE;
     private @Nullable Slide slide = null;
+
+    /** Whether this note is tied to the next note. See the class Javadoc. */
+    private boolean tiedToNext = false;
+
     private Stem stem = Stem.AUTO;
     private AccidentalState accidentalState = new AccidentalState.Adopting();
 
@@ -275,6 +301,141 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     // ========================================================================
+    // Tie
+    // ========================================================================
+
+    /**
+     * Returns whether this note stores a tie to the next note. The tie's end is not stored; ask
+     * {@link #tie()} for it.
+     *
+     * @return {@code true} when this note is tied to the next note
+     * @invariant {@code true} only on a note whose {@link ElementType#kind()} is
+     *     {@link ElementType.Kind#NOTE}: {@link Line#addTie} takes only such a note, and the
+     *     copies and conversions that carry the flag drop it on any other
+     */
+    public boolean isTiedToNext() {
+        return tiedToNext;
+    }
+
+    /**
+     * Returns the tie that starts on this note.
+     *
+     * <p>The end is derived, never stored: it is the first element after this note that is not a
+     * legal separator ({@link Tie#isLegalSeparator} — an element with no duration, other than a
+     * final double barline or a key change). When this note's line runs out of elements first,
+     * the walk continues at the start of the next line of the song, so <b>the end may be in the
+     * next line</b>. It crosses that one line break and no more.
+     *
+     * <p>Each call makes a new {@link Tie}; ties made from the same two notes are equal.
+     *
+     * @return the tie from this note to its end, or {@code null} when this note stores no tie
+     *     ({@link #isTiedToNext()} is {@code false}), is in no line, or the walk reaches no note
+     *     to end on — its first non-separator is not a note whose {@link ElementType#kind()} is
+     *     {@link ElementType.Kind#NOTE}, or the song, or the next line, runs out first
+     * @invariant a non-null result's {@link Tie#anchor()} is this note, and
+     *     {@code result.end().incomingTie()} equals the result
+     */
+    public @Nullable Tie tie() {
+        var line = getParentLine();
+
+        if (!tiedToNext || line == null) {
+            return null;
+        }
+
+        var end = Tie.endAfter(line.getElements(), line.getElementIndex(this), line.nextLine());
+
+        return end instanceof NoteElement endNote && endNote.getType().isPitchedNote()
+            ? new Tie(this, endNote)
+            : null;
+    }
+
+    /**
+     * Returns the tie that ends on this note.
+     *
+     * <p>Walks back from this note over legal separators ({@link Tie#isLegalSeparator}), into
+     * the end of the previous line of the song when this note's line has nothing else before
+     * it. The first element that is not a legal separator is the only note whose tie can end
+     * here, so the walk crosses one line break and no more, as {@link #tie()}'s does.
+     *
+     * @return that note's {@link #tie()} when it ends on this note, or {@code null} when no tie
+     *     ends here: this note is in no line, the walk reaches no note, or the note it reaches
+     *     is not tied
+     * @invariant a non-null result's {@link Tie#end()} is this note, and
+     *     {@code result.anchor().tie()} equals the result
+     */
+    public @Nullable Tie incomingTie() {
+        var line = getParentLine();
+
+        if (line == null) {
+            return null;
+        }
+
+        var candidate = Tie.anchorBefore(line.getElements(), line.getElementIndex(this), line.previousLine());
+
+        if (!(candidate instanceof NoteElement anchor)) {
+            return null;
+        }
+
+        var tie = anchor.tie();
+
+        //noinspection ObjectEquality
+        return tie != null && tie.end() == this ? tie : null;
+    }
+
+    /**
+     * Returns whether this note's tie ends on {@code next}.
+     * <p>
+     * The one statement of "these two notes are already tied", which every tie toggle asks to
+     * choose between adding and removing.
+     *
+     * @param next the later of the two notes
+     * @return {@code true} when this note's tie ends on {@code next}
+     */
+    public boolean isTiedTo(NoteElement next) {
+        var tie = tie();
+
+        return tie != null && tie.equals(next.incomingTie());
+    }
+
+    /**
+     * Returns the notes a tie joins this note to: the end of the tie it starts and the
+     * anchor of the tie it ends, either of which may be in a neighboring line.
+     *
+     * @return the partners, in document order, empty when this note is not tied
+     */
+    public List<NoteElement> tiePartners() {
+        var partners = new ArrayList<NoteElement>(2);
+        var incoming = incomingTie();
+
+        if (incoming != null) {
+            partners.add(incoming.anchor());
+        }
+
+        var outgoing = tie();
+
+        if (outgoing != null) {
+            partners.add(outgoing.end());
+        }
+
+        return partners;
+    }
+
+    /**
+     * Ties this note to the next note. Called only inside the mutator of {@link Line#addTie}.
+     */
+    void tieToNext() {
+        tiedToNext = true;
+    }
+
+    /**
+     * Unties this note from the next note. Called only inside the mutator of
+     * {@link Line#removeTie}.
+     */
+    void untie() {
+        tiedToNext = false;
+    }
+
+    // ========================================================================
     // Articulations
     // ========================================================================
 
@@ -288,15 +449,15 @@ public final class NoteElement extends StaffElement implements Dottable {
     }
 
     /**
-     * Adds an articulation to this note, making the note its parent.
+     * Adds an articulation to this note, making the note its owner.
      *
      * @param articulation an articulation on no note, of a type this note does not already
      *     carry
-     * @effects appends it to {@link #getArticulations()} and to this element's children
+     * @effects appends it to {@link #getArticulations()} and makes this note its owner
      */
     public void addArticulation(Articulation articulation) {
         articulations.add(articulation);
-        addChild(articulation);
+        articulation.setOwner(this);
     }
 
     /**
@@ -304,11 +465,11 @@ public final class NoteElement extends StaffElement implements Dottable {
      * alone.
      *
      * @param articulation the articulation to remove
-     * @effects removes it from {@link #getArticulations()} and from this element's children
+     * @effects removes it from {@link #getArticulations()} and clears its owner
      */
     public void removeArticulation(Articulation articulation) {
         if (articulations.remove(articulation)) {
-            removeChild(articulation);
+            articulation.setOwner(null);
         }
     }
 
@@ -363,7 +524,7 @@ public final class NoteElement extends StaffElement implements Dottable {
      */
     public void clearArticulations() {
         for (var articulation : articulations) {
-            removeChild(articulation);
+            articulation.setOwner(null);
         }
 
         articulations.clear();
@@ -557,9 +718,14 @@ public final class NoteElement extends StaffElement implements Dottable {
 
     /**
      * Copies the state a pitch brings with it: the staff position, the accidental state, the
-     * stem, the slide, the articulations and the dot count. The whole of what a note holds beyond the base
-     * class, so an in-place restore through {@link #copyStateFrom} leaves nothing of the undone
-     * edit behind.
+     * stem, the slide, the tie to the next note, the articulations and the dot count. The whole
+     * of what a note holds beyond the base class, so an in-place restore through
+     * {@link #copyStateFrom} leaves nothing of the undone edit behind, and a replacement built
+     * from a copy of a tied note is tied too.
+     *
+     * <p>The tie is taken only when this note's {@link ElementType#kind()} is
+     * {@link ElementType.Kind#NOTE}, so that {@link #isTiedToNext()}'s invariant holds whatever
+     * the source.
      *
      * @param source the note whose state to take; always a {@code NoteElement}, because a copy
      *     names an element of the same class
@@ -571,15 +737,17 @@ public final class NoteElement extends StaffElement implements Dottable {
         accidentalState = sourceNote.accidentalState;
         stem = sourceNote.stem;
         slide = sourceNote.slide;
+        tiedToNext = sourceNote.tiedToNext && getType().isPitchedNote();
         dots = sourceNote.dots;
         copyArticulationsFrom(sourceNote);
     }
 
     /**
      * Takes from a converted note everything {@link #copySubtypeStateFrom} copies, so that a
-     * crotchet turned into a quaver keeps its pitch, accidental state, stem, slide and
+     * crotchet turned into a quaver keeps its pitch, accidental state, stem, slide, tie and
      * articulations; from any other source, only the dots, which is all such a source has that
-     * a note can hold.
+     * a note can hold. The tie is kept only when this note is {@link ElementType.Kind#NOTE}, so
+     * a note converted to a grace note is not tied.
      */
     @Override
     protected void applySubtypeConversionFrom(StaffElement source) {

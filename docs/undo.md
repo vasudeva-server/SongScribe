@@ -15,6 +15,10 @@ elements, and they stay valid across arbitrary interleaving of undo and redo
 because no instance is ever replaced underneath them. A replacement-based design
 would invalidate all three on every step and need each of them to re-resolve.
 
+A tie holds no such reference to keep valid. It is state on its anchor note, and
+the note it ends on is derived from wherever the notes stand once the step has
+replayed.
+
 ## The selection follows the edit
 
 Replaying a step mutates the line under whatever the user has selected, and a
@@ -74,7 +78,8 @@ declare their own name, which is why the save-and-restore of the pending name
 lives with the undo engine rather than inside the action template.
 
 Where nothing declares a name, one is derived from the kind of edit the batch's
-dominant record describes.
+dominant record describes — for a span's addition or removal, from the kind of
+span the record carries.
 
 ## Why not the toolkit's undo framework
 

@@ -20,20 +20,16 @@
 
 package songscribe.dom;
 
-import java.util.List;
-
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
 
 /**
  * Abstract base class for elements that span multiple elements.
  * <p>
- * Spans include ties, trills, crescendo/diminuendo hairpins,
+ * Spans include beams, trills, crescendo/diminuendo hairpins,
  * tuplet brackets, and first/second endings.
  * <p>
  * Each span has:
@@ -49,10 +45,10 @@ import songscribe.message.mutation.SpanRemoval;
  * override is what makes the narrowing a guarantee rather than a convention: every route by
  * which an endpoint enters through a base reference — {@link #setAnchorElement},
  * {@link #setEndElement} and {@link #copy} — consults it and refuses what it rejects, so a
- * narrowed getter can never hand back anything but the narrower type. {@link NoteSpan} is the
+ * narrowed getter can never hand back anything but the narrower type. {@link Beam} is the
  * one narrowing in the codebase.
  */
-public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin, Tuplet, Trill, Ending {
+public abstract sealed class Span extends LineElement implements LineContent permits Beam, Hairpin, Tuplet, Trill, Ending {
 
     /**
      * Creates a span reaching from the anchor element to the end element.
@@ -84,7 +80,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * @throws IllegalArgumentException if this span's type does not
      *     {@link #acceptsEndpoint accept} {@code anchorElement} as an endpoint
      */
-    public void setAnchorElement(StaffElement anchorElement) {
+    void setAnchorElement(StaffElement anchorElement) {
         this.anchorElement = requireAccepted(anchorElement);
     }
 
@@ -101,7 +97,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * @throws IllegalArgumentException if this span's type does not
      *     {@link #acceptsEndpoint accept} {@code endElement} as an endpoint
      */
-    public void setEndElement(StaffElement endElement) {
+    void setEndElement(StaffElement endElement) {
         this.endElement = requireAccepted(endElement);
     }
 
@@ -131,11 +127,6 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
     /**
      * Returns whether this span is in {@code line}, meaning either of its endpoints is.
      * <p>
-     * A span is never attached to a line: its inherited {@code parentLine} stays
-     * {@code null} for its whole life, and this derives parentage from where the endpoints
-     * sit instead. A span whose endpoints straddle a line boundary is therefore in both
-     * lines, which is what no single stored pointer could say.
-     * <p>
      * Two reference comparisons and nothing else: it allocates nothing and is safe to ask
      * on any path.
      * <p>
@@ -152,10 +143,6 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * The line the anchor element belongs to, or {@code null} when the anchor sits in no
      * line. Null-safe so callers deciding which lines a span reaches express that in one
      * call rather than each repeating the unwrap.
-     * <p>
-     * This is the endpoint's <em>own</em> line, which is not the same question as where the
-     * endpoint sits relative to some other line; for that, ask that line's registry via
-     * {@link LineSpans#anchorIndexOf}.
      */
     public @Nullable Line getAnchorLine() {
         return anchorElement.getParentLine();
@@ -171,145 +158,96 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
     // ========================================================================
 
     /**
-     * Adds this span to {@code line}'s span registry, applying this kind's own displacement
-     * policy and recording this kind's own mutation.
+     * Adds this span to {@code line}'s span registry, first displacing whatever same-kind spans
+     * this kind's {@link #displacement()} says it may not coexist with.
      * <p>
-     * The policy — what happens to the same-kind spans already there that this one may not
-     * coexist with — is {@link #applyDisplacementPolicy}'s, and each displacement is its own
-     * recorded mutation, emitted before this span's addition so undo restores the displaced
-     * spans after removing this one. A kind with a policy skips it while
+     * Each displacement is its own recorded mutation, emitted before this span's addition so
+     * undo restores the displaced spans after removing this one. Displacement is skipped while
      * {@link Song#isReplaying()}: the recorded batch already carries the companion mutations,
-     * and re-deriving them would apply them twice. The policy may widen this span's endpoints
-     * before it is added, which is what a merge is.
+     * and re-deriving them would apply them twice. An absorbing displacement may widen this
+     * span's endpoints before it is added, which is what a merge is.
      *
-     * @param line the line this span is being added to
-     * @effects posts {@link #additionRecordFor} through the line's song, after the
-     *     displacements the policy posts, and appends this span to the registry; what is
+     * @param line the line this span is being added to; both of this span's endpoints sit in it
+     * @effects posts one {@link SpanRemoval} per displaced span, then a {@link SpanAddition} for
+     *     this span, through the line's song, and appends this span to the registry; what is
      *     recorded, and what is thrown outside a bracket, is {@link Song#applyChange}'s promise
      */
     public final void addTo(Line line) {
+        var spans = line.spanRegistry();
+
         if (!line.getSong().isReplaying()) {
-            applyDisplacementPolicy(line);
+            var displacement = displacement();
+
+            switch (displacement) {
+                case COEXIST -> { }
+                case REPLACE_OVERLAPPING -> spans.removeOverlappingSameKind(this);
+                case ABSORB_OVERLAPPING, ABSORB_ADJACENT ->
+                    spans.mergeOverlapping(this, displacement.absorbReach());
+            }
         }
 
-        line.spanRegistry().add(this, additionRecordFor(line));
+        spans.add(this);
     }
 
     /**
-     * Removes this span from {@code line}'s span registry if it is there, recording this
-     * kind's own mutation, and is a no-op otherwise.
+     * What adding a span of this kind does to the same-kind spans already on its line. One
+     * constant per kind; {@link #addTo} is the one reader.
+     *
+     * @return this kind's displacement policy
+     */
+    protected abstract Displacement displacement();
+
+    /**
+     * Whether {@code other} is a span of the same kind as this one, the test every
+     * {@link Displacement} applies: the same concrete class, and for a hairpin the same
+     * {@link Hairpin.Kind}, so a crescendo never displaces a diminuendo.
+     *
+     * @return {@code true} when adding this span may displace {@code other}
+     */
+    final boolean isSameKindAs(Span other) {
+        if (other.getClass() != getClass()) {
+            return false;
+        }
+
+        return !(this instanceof Hairpin hairpin && other instanceof Hairpin otherHairpin)
+            || hairpin.getKind() == otherHairpin.getKind();
+    }
+
+    /**
+     * Removes this span from {@code line}'s span registry if it is there, recording its
+     * removal, and is a no-op otherwise.
      * <p>
-     * The no-op is a promise, not an accident: a removal takes a cross-line span out of both
-     * lines' registries together, so a second call on either line finds nothing left to
-     * remove and records nothing. A caller that cannot cheaply tell whether an earlier step
+     * The no-op is a promise, not an accident: a second call finds nothing left to remove and
+     * records nothing. A caller that cannot cheaply tell whether an earlier step
      * already removed the span — a sweep that doomed it, a merge that subsumed it, the paste
      * reconciliation — may therefore call this unconditionally. A raw list removal would drop
      * the span with no record and make undo of the enclosing operation lossy, which is why
      * this is the only route out.
      *
      * @param line the line this span is being removed from
-     * @effects when this span is in the registry, posts {@link #removalRecordFor} through the
-     *     line's song and removes the span; otherwise nothing. What is recorded, and what is
-     *     thrown outside a bracket, is {@link Song#applyChange}'s promise
+     * @effects when this span is in the registry, posts a {@link SpanRemoval} through the line's
+     *     song and removes the span; otherwise nothing. What is recorded, and what is thrown
+     *     outside a bracket, is {@link Song#applyChange}'s promise
      */
     public final void removeFrom(Line line) {
-        line.spanRegistry().remove(this, removalRecordFor(line));
+        line.spanRegistry().remove(this);
     }
 
     /**
-     * Makes room for this span among the same-kind spans already on {@code line}: removes or
-     * absorbs whatever this kind may not coexist with, each removal through that span's own
-     * {@link #removeFrom}. The base kind coexists with everything and does nothing. Called by
-     * {@link #addTo} before the addition, and never while replaying.
-     */
-    protected void applyDisplacementPolicy(Line line) {
-    }
-
-    /**
-     * The mutation {@link #addTo} records for this kind on {@code line}. The base records a
-     * {@link SpanAddition}; a kind with a record of its own returns that instead.
-     *
-     * @return the addition record naming {@code line} and this span
-     */
-    protected Mutation additionRecordFor(Line line) {
-        return new SpanAddition(line, this);
-    }
-
-    /**
-     * The mutation {@link #removeFrom} records for this kind on {@code line}. The base records
-     * a {@link SpanRemoval}; a kind with a record of its own returns that instead.
-     *
-     * @return the removal record naming {@code line} and this span
-     */
-    protected Mutation removalRecordFor(Line line) {
-        return new SpanRemoval(line, this);
-    }
-
-    /**
-     * Returns whether this span is invalidated by the given deletion.
-     * <p>
-     * A span is invalidated when its anchor or end element is among the deleted elements,
-     * because the range can no longer be rendered without both endpoints. Subclasses may override
-     * this method if their invalidation condition is more nuanced.
-     * <p>
-     * This is an implementation detail of the default {@link #outcomeFor}, which is the only
-     * caller and the only entry point the sweep ({@link LineSpans#sweep}) uses. A new span
-     * type should override
-     * {@code outcomeFor} instead — a boolean predicate can only ever say "remove me", so a
-     * type that implements this one silently forfeits {@link SpanOutcome.Reshape}.
-     *
-     * @param deletedElements the elements that were removed from the line
-     * @return {@code true} if this span should be removed as a result of the deletion
-     */
-    protected boolean isInvalidatedBy(List<StaffElement> deletedElements) {
-        return deletedElements.contains(anchorElement) || deletedElements.contains(endElement);
-    }
-
-    /**
-     * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * invalidates this span. Default is false; subclasses may override.
-     * <p>
-     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
-     * for why a new span type should override {@code outcomeFor} rather than this.
-     */
-    protected boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
-        return false;
-    }
-
-    /**
-     * Returns true if deleting the given elements invalidates this span beyond what
-     * {@link #isInvalidatedBy} already detects. Default is false; subclasses may override.
-     * <p>
-     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
-     * for why a new span type should override {@code outcomeFor} rather than this.
-     */
-    protected boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
-        return false;
-    }
-
-    /**
-     * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
-     * this span. Default is false; subclasses may override.
-     * <p>
-     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
-     * for why a new span type should override {@code outcomeFor} rather than this.
-     */
-    protected boolean isInvalidatedByReplacement(StaffElement oldElement, StaffElement newElement, Line line) {
-        return false;
-    }
-
-    /**
-     * Decides what should happen to this span when {@code change} lands on {@code line}.
+     * Decides what should happen to this span when {@code change} lands on {@code line}. This is
+     * the one hook the sweep ({@link LineSpans#sweep}) and
+     * {@link ElementChange#removesConfirmableSpan} put a change to; a kind with a rule of its
+     * own overrides it, and states that rule as one switch over the change.
      * <p>
      * <b>The decision is made before the change lands.</b> {@code line} still holds its
-     * pre-change elements; every judgement must be made against
-     * {@link ElementChange#projectedElements}, which is what the line will look like
-     * afterwards, and never against the line's current elements. Undo replays a step's
-     * mutations in reverse, so the companion span mutation this answer produces has to be
-     * recorded <em>before</em> the primary element mutation — deciding after the fact would
-     * record a span already re-pointed at the new element, and undo would restore it broken.
-     * {@code line} is passed only so an implementor can ask the line questions the projection
-     * cannot answer on its own, such as which spans it carries.
+     * pre-change elements; every judgement must be made against the change's own terms or
+     * against {@link ElementChange#projectedElements}, which is what the line will look like
+     * afterwards, and never by reading the line as though the change had landed. Undo replays a step's mutations in reverse, so the companion span
+     * mutation this answer produces has to be recorded <em>before</em> the primary element
+     * mutation — deciding after the fact would record a span already re-pointed at the new
+     * element, and undo would restore it broken. {@code line} is passed so an implementor can
+     * ask the line questions the change cannot answer on its own, such as which spans it
+     * carries.
      * <p>
      * <b>A replacement re-points, it does not delete.</b> {@link Line#setElement} points any
      * span whose anchor or end was the replaced element at the replacement. So under
@@ -319,12 +257,9 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * endpoint. Reading the old element as deleted would silently remove every span whose
      * endpoint is edited.
      * <p>
-     * The default is a bridge over the four per-shape predicates — {@link #isInvalidatedBy},
-     * {@link #isInvalidatedByInsertion}, {@link #isInvalidatedByDeletion} and
-     * {@link #isInvalidatedByReplacement} — routing each change shape to exactly the
-     * predicate the sweep consults for it, and keeping the span through an in-place
-     * modification, which has no predicate. A subclass overriding {@code outcomeFor} need
-     * not implement any of them.
+     * The default is the rule every kind shares and the whole of {@link Trill}'s:
+     * a deletion that takes an endpoint ({@link #isEndpointDeletedBy}) removes the span, and
+     * every other change keeps it.
      * <p>
      * A span either survives a change or it does not, which is all {@link SpanOutcome.Simple}
      * can say. A hairpin is the one kind that can survive in a different shape, and the
@@ -340,35 +275,34 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      *     otherwise {@link SpanOutcome.Simple#KEEP}
      */
     public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
-        return isInvalidatedByChange(change, line) ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
+        return removeWhen(change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion));
     }
 
     /**
-     * Routes {@code change} to the one per-shape predicate {@link Line} consulted for it
-     * before {@link #outcomeFor} existed. Separated from {@code outcomeFor} so the
-     * boolean-to-outcome mapping is written once rather than once per shape.
+     * Whether {@code deletion} takes this span's anchor or its end — the rule every kind
+     * shares, since a span cannot be drawn without both endpoints.
+     *
+     * @return {@code true} when the deleted elements include the anchor or the end
      */
-    private boolean isInvalidatedByChange(ElementChange change, Line line) {
-        return switch (change) {
-            case ElementChange.Insertion insertion ->
-                isInvalidatedByInsertion(insertion.index(), insertion.inserted().getType(), line);
+    protected final boolean isEndpointDeletedBy(ElementChange.Deletion deletion) {
+        var deletedElements = deletion.deletedElements();
 
-            case ElementChange.Replacement replacement ->
-                isInvalidatedByReplacement(replacement.oldElement(), replacement.newElement(), line);
+        return deletedElements.contains(anchorElement) || deletedElements.contains(endElement);
+    }
 
-            case ElementChange.Deletion deletion -> {
-                var deletedElements = deletion.deletedElements();
-
-                yield isInvalidatedBy(deletedElements) || isInvalidatedByDeletion(deletedElements, line);
-            }
-
-            case ElementChange.Modification _ -> false;
-        };
+    /**
+     * The {@link #outcomeFor} answer for a verdict stated as a boolean.
+     *
+     * @return {@link SpanOutcome.Simple#REMOVE} when {@code invalidated}, otherwise
+     *     {@link SpanOutcome.Simple#KEEP}
+     */
+    protected static SpanOutcome.Simple removeWhen(boolean invalidated) {
+        return invalidated ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
     }
 
     /**
      * Returns whether removing this span as a side effect of an edit warrants a
-     * user confirmation prompt. Default is false: spans such as beams, ties, and
+     * user confirmation prompt. Default is false: spans such as beams and
      * tuplets are removed silently. Subclasses may override (endings do, since their loss
      * is significant enough to confirm first).
      */
@@ -410,10 +344,6 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * The anchor element's index within its own line, for a caller that assumes the anchor
      * is in one: the edit, layout and render paths, which act only on spans whose endpoints
      * are attached and feed the index into a range, a loop bound or arithmetic.
-     * <p>
-     * This is the endpoint's <em>own</em> line, which is not the same question as where the
-     * anchor sits relative to some other line; for that, ask that line's registry via
-     * {@link LineSpans#anchorIndexOf}.
      *
      * @return the anchor's index within {@link #getAnchorLine}
      * @throws IllegalStateException when the anchor sits in no line because a removal
@@ -428,8 +358,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
 
     /**
      * The end element's index within its own line, for a caller that assumes the end is in
-     * one. See {@link #requireAnchorElementIndex} for which callers those are and for the
-     * relationship to {@link LineSpans}.
+     * one. See {@link #requireAnchorElementIndex} for which callers those are.
      *
      * @return the end's index within {@link #getEndLine}
      * @throws IllegalStateException when the end sits in no line because a removal
@@ -445,8 +374,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * The anchor element's index within its own line, or {@code null} when the anchor sits
      * in no line. For the load and validation paths, where a span may legitimately arrive
      * with an endpoint that a removal ({@link Line#removeElement}) has detached and the
-     * caller decides what to do about it — {@link Tuplet#hasValidSpan} and
-     * {@link Hairpin#outcomeFor} are the model.
+     * caller decides what to do about it — {@link Hairpin#outcomeFor} is the model.
      * <p>
      * A caller that assumes the anchor is attached asks {@link #requireAnchorElementIndex},
      * which states that assumption in its name and fails loudly when it is wrong.
@@ -471,43 +399,37 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
     }
 
     /**
-     * A test on a span's endpoints as the asking line resolved them.
-     * <p>
-     * The bounds are {@link SpanBound}s, not indices, because an endpoint may sit off one of
-     * that line's edges or nowhere at all; the queried positions stay {@code int} because a
-     * query is always a real in-line position. That asymmetry is what keeps a cross-line
-     * half from matching a query for a span genuinely anchored at this line's first or last
-     * element.
+     * A test on a span's two endpoint indices, each {@code null} when that endpoint sits in
+     * no line — a detached endpoint, or one in a line the song no longer holds.
      */
     @FunctionalInterface
     public interface IndexPredicate {
-        boolean test(SpanBound anchorBound, SpanBound endBound);
+        boolean test(@Nullable Integer anchorIndex, @Nullable Integer endIndex);
     }
 
     /**
      * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
      * <p>
-     * A half whose far endpoint is off an edge covers every element it passes over on the way
-     * there, so a cross-line tie's line-A half contains everything from its anchor to the last
-     * element. {@link SpanBound#ABSENT} is rejected outright: an endpoint with no position
-     * bounds nothing, so a half-detached span is never reported as covering an element.
+     * A {@code null} endpoint bounds nothing, so a half-detached span is never reported as
+     * covering an element.
      */
     public static IndexPredicate containing(int elementIndex) {
-        return (anchorBound, endBound) -> anchorBound.atOrBefore(elementIndex) && endBound.atOrAfter(elementIndex);
+        return (anchorIndex, endIndex) ->
+            anchorIndex != null && endIndex != null && anchorIndex <= elementIndex && elementIndex <= endIndex;
     }
 
     /**
      * A predicate matching a span overlapping {@code range}.
      * <p>
-     * Off-edge bounds read as unbounded in their direction, exactly as in {@link #containing}.
-     * An {@link SpanBound#ABSENT} anchor is deliberately <em>not</em> rejected: the trill
-     * sweeps in {@link Trill#applyDisplacementPolicy} and {@link LineSpans#removeOverlapping} rely on a
-     * half-detached span still being found so it can be cleaned up.
+     * A {@code null} anchor is deliberately <em>not</em> rejected: the replacing displacement
+     * ({@link Displacement#REPLACE_OVERLAPPING}) and {@link LineSpans#removeOverlapping} rely on
+     * a half-detached span still being found so it can be cleaned up. A {@code null} end is
+     * rejected, since nothing bounds the range from below without it.
      */
     public static IndexPredicate overlapping(ElementRange range) {
-        return (anchorBound, endBound) ->
-            (anchorBound.isAbsent() || anchorBound.atOrBefore(range.end()))
-                && endBound.atOrAfter(range.begin());
+        return (anchorIndex, endIndex) ->
+            (anchorIndex == null || anchorIndex <= range.end())
+                && endIndex != null && endIndex >= range.begin();
     }
 
     /**
@@ -519,20 +441,19 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * wedges back away from that shared column (LilyPond's back-to-back rule). More
      * than that one element in common is a genuine collision.
      * <p>
-     * Off-edge and absent bounds read exactly as in {@link #overlapping}, and
-     * {@link SpanBound#isAt} is false for all of them — so a half-detached span
-     * matches, and the caller treats it as a collision. That is deliberate: a bound
-     * with no position cannot be shown to share only an endpoint.
+     * A {@code null} bound equals nothing, so a half-detached span matches and the caller
+     * treats it as a collision: a bound with no position cannot be shown to share only an
+     * endpoint.
      */
     public static IndexPredicate overlappingBeyondEndpoint(ElementRange range) {
         // Built once here rather than inside the lambda: this predicate is tested
         // against every span on the line, on every selection change.
         var overlaps = overlapping(range);
 
-        return (anchorBound, endBound) ->
-            overlaps.test(anchorBound, endBound)
-                && !endBound.isAt(range.begin())
-                && !anchorBound.isAt(range.end());
+        return (anchorIndex, endIndex) ->
+            overlaps.test(anchorIndex, endIndex)
+                && !isAt(endIndex, range.begin())
+                && !isAt(anchorIndex, range.end());
     }
 
     /**
@@ -542,35 +463,44 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * A text dynamic may sit on a hairpin's bound, where the wedge pads away from it, but
      * never under the wedge, so the editor asks about the strict interior rather than the
      * inclusive range.
-     * <p>
-     * Off-edge and absent bounds read exactly as in {@link #containing}, which rejects
-     * {@link SpanBound#ABSENT} outright, and {@link SpanBound#isAt} is false for
-     * {@link SpanBound#BEFORE_LINE} / {@link SpanBound#AFTER_LINE} — so a bound with no
-     * position in the asking line cannot exempt an element, and every element the half
-     * covers reads as interior.
      */
     public static IndexPredicate strictlyContaining(int elementIndex) {
         // Built once here rather than inside the lambda: this predicate is tested
         // against every span on the line, on every selection change.
         var contains = containing(elementIndex);
 
-        return (anchorBound, endBound) ->
-            contains.test(anchorBound, endBound)
-                && !anchorBound.isAt(elementIndex)
-                && !endBound.isAt(elementIndex);
+        return (anchorIndex, endIndex) ->
+            contains.test(anchorIndex, endIndex) && !isAt(anchorIndex, elementIndex) && !isAt(endIndex, elementIndex);
     }
 
     /**
      * A predicate matching a span whose anchor is exactly {@code range}'s first element and
      * whose end is exactly its last.
-     * <p>
-     * Only a resolved position can equal a queried one — an off-edge bound is never coerced
-     * to index 0 or to the last index, so a cross-line half never answers an exact-range query.
      */
     public static IndexPredicate exactly(ElementRange range) {
-        return (anchorBound, endBound) ->
-            anchorBound instanceof SpanBound.At(var spanAnchorIndex) && spanAnchorIndex == range.begin() &&
-            endBound instanceof SpanBound.At(var spanEndIndex) && spanEndIndex == range.end();
+        return (anchorIndex, endIndex) -> isAt(anchorIndex, range.begin()) && isAt(endIndex, range.end());
+    }
+
+    /**
+     * A predicate matching a span whose anchor is the element at {@code elementIndex}.
+     */
+    public static IndexPredicate anchoredAt(int elementIndex) {
+        return (anchorIndex, endIndex) -> isAt(anchorIndex, elementIndex);
+    }
+
+    /**
+     * A predicate matching a span whose end is the element at {@code elementIndex}.
+     */
+    public static IndexPredicate endingAt(int elementIndex) {
+        return (anchorIndex, endIndex) -> isAt(endIndex, elementIndex);
+    }
+
+    /**
+     * Whether an endpoint index names {@code elementIndex}. A {@code null} endpoint sits in no
+     * line, so it names no element.
+     */
+    private static boolean isAt(@Nullable Integer endpointIndex, int elementIndex) {
+        return endpointIndex != null && endpointIndex == elementIndex;
     }
 
     /**
@@ -579,8 +509,7 @@ public abstract sealed class Span extends LineElement permits NoteSpan, Hairpin,
      * <p>
      * Base state travels through {@link LineElement#copyBaseStateFrom}, so a new subclass cannot
      * forget it and a new base field needs no change here. Subclasses carry their own
-     * subclass-specific state in {@link #createCopy}. Does not set {@code parentLine} — no span
-     * ever has one; see {@link #isIn} — and does not copy derived caches.
+     * subclass-specific state in {@link #createCopy}. Does not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy

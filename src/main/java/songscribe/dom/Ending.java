@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import songscribe.engraving.EngravingConstants;
-
 /**
  * Represents a first or second ending bracket above a repeated section.
  * <p>
@@ -52,37 +50,6 @@ public final class Ending extends Span {
 
     /** Vertical gap between the bracket's horizontal line and the top of the label. */
     public static final double LABEL_Y_OFFSET_SS = 0.5;
-
-    /**
-     * The x-range and properties of a single visual bracket (first or second ending).
-     *
-     * @param x1Ss             left edge X in staff spaces
-     * @param x2Ss             right edge X in staff spaces
-     * @param number           bracket number (1 or 2)
-     * @param hasClosingStroke whether the bracket has a right vertical tick
-     */
-    public record BracketRange(
-        double x1Ss, double x2Ss, int number, boolean hasClosingStroke
-    ) {
-        /**
-         * Returns the X the bracket's drawn ink reaches on the right: {@link #x2Ss} itself when a
-         * closing stroke gives the top arm a join to rest on, or half a volta stroke width past it
-         * when an open arm's round end-cap pushes the ink out to match where a closed bracket's
-         * right leg would reach.
-         *
-         * @return the X the bracket's ink reaches on the right, in staff spaces
-         */
-        public double inkRightXSs() {
-            return hasClosingStroke
-                ? x2Ss
-                : x2Ss + EngravingConstants.VOLTA_BRACKET_SS / 2;
-        }
-
-        /** Returns the label text for this bracket (e.g. "1." or "2."). */
-        public String label() {
-            return number + ".";
-        }
-    }
 
     /**
      * Describes the effect of replacing one element with another on this ending.
@@ -114,9 +81,6 @@ public final class Ending extends Span {
         record CompensateSplit(Ending ending, ElementType newSplitType) implements EndingEffect {}
     }
 
-    private int yPositionSs = 0;
-    private List<BracketRange> bracketRanges = List.of();
-
     /**
      * Creates an ending bracket.
      *
@@ -129,23 +93,7 @@ public final class Ending extends Span {
 
     @Override
     protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = new Ending(newAnchor, newEnd);
-        copy.yPositionSs = yPositionSs;
-        return copy;
-    }
-
-    /**
-     * Returns the user-adjustable Y offset for this ending bracket.
-     */
-    public int getYPositionSs() {
-        return yPositionSs;
-    }
-
-    /**
-     * Sets the user-adjustable Y offset for this ending bracket.
-     */
-    public void setYPositionSs(int yPositionSs) {
-        this.yPositionSs = yPositionSs;
+        return new Ending(newAnchor, newEnd);
     }
 
     /**
@@ -290,47 +238,65 @@ public final class Ending extends Span {
         return endType.isEndingTerminal();
     }
 
-    /**
-     * Returns the bracket ranges computed during layout.
-     */
-    public List<BracketRange> getBracketRanges() {
-        return bracketRanges;
-    }
-
-    /**
-     * Stores the bracket ranges computed during layout.
-     * <p>
-     * Called by {@code songscribe.layout.EndingBracketGeometry}, which owns the geometry:
-     * computing the ranges needs layout types this DOM class must not depend on.
-     *
-     * @param bracketRanges the computed ranges, in bracket order
-     */
-    public void setBracketRanges(List<BracketRange> bracketRanges) {
-        this.bracketRanges = bracketRanges;
-    }
-
     @Override
     public boolean requiresInvalidationConfirm() {
         return true;
     }
 
+    /** {@link Displacement#COEXIST}: adding an ending leaves every other ending in place. */
+    @Override
+    protected Displacement displacement() {
+        return Displacement.COEXIST;
+    }
+
     /**
-     * Returns true if deleting the given elements invalidates this ending beyond what
-     * {@link Span#isInvalidatedBy} already detects.
+     * Decides what happens to this ending when {@code change} lands (the conditions of issue
+     * #261):
+     * <ul>
+     *   <li>an insertion removes it when it puts a barline or repeat strictly inside it
+     *       ({@link #insertionAddsInteriorBar});</li>
+     *   <li>a deletion removes it when it takes an endpoint ({@link #isEndpointDeletedBy}), the
+     *       split, or every content element of either bracket ({@link #deletionBreaksBrackets});</li>
+     *   <li>a replacement removes it when {@link #checkReplacement} answers
+     *       {@link EndingEffect.Invalidate};</li>
+     *   <li>an in-place modification keeps it.</li>
+     * </ul>
+     *
+     * @param change the pending change, not yet applied to {@code line}
+     * @param line   the line being changed, still in its pre-change state
+     * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the ending,
+     *     otherwise {@link SpanOutcome.Simple#KEEP}
+     */
+    @Override
+    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
+        var invalidated = switch (change) {
+            case ElementChange.Insertion insertion ->
+                insertionAddsInteriorBar(insertion.index(), insertion.inserted().getType());
+
+            case ElementChange.Deletion deletion ->
+                isEndpointDeletedBy(deletion) || deletionBreaksBrackets(deletion.deletedElements(), line);
+
+            case ElementChange.Replacement replacement ->
+                checkReplacement(replacement.oldElement(), replacement.newElement(), line)
+                    instanceof EndingEffect.Invalidate;
+
+            case ElementChange.Modification _ -> false;
+        };
+
+        return removeWhen(invalidated);
+    }
+
+    /**
+     * Returns true if deleting {@code deletedElements} takes the split that parts this ending's
+     * two brackets, or every content element of either bracket.
      * <p>
      * Must be called on the <em>pre-deletion</em> line state so indices are stable.
-     * Checks:
-     * <ul>
-     *   <li>Condition 2: the REPEAT_RIGHT that splits first/second sub-spans is deleted.</li>
-     *   <li>Condition 4: all content elements in either sub-span are deleted.</li>
-     * </ul>
      *
      * @param deletedElements elements about to be deleted
      * @param line            the owning line (pre-deletion state)
      */
-    @Override
     @SuppressWarnings("SlowListContainsAll")
-    protected boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
+    private boolean deletionBreaksBrackets(List<StaffElement> deletedElements, Line line) {
         // Condition 2: the split element is deleted
         var splitElement = getSplitElement(line);
 
@@ -425,34 +391,15 @@ public final class Ending extends Span {
     }
 
     /**
-     * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
-     * this ending. Covers conditions 1, 2, and 3 from issue #261.
-     *
-     * @param oldElement the element being replaced (still in the line at call time)
-     * @param newElement the element that will replace it
-     * @param line       the owning line
-     */
-    @Override
-    protected boolean isInvalidatedByReplacement(
-        StaffElement oldElement, StaffElement newElement, Line line
-    ) {
-        return checkReplacement(oldElement, newElement, line) instanceof EndingEffect.Invalidate;
-    }
-
-    /**
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * invalidates this ending (condition 5 from issue #261).
+     * puts a barline or repeat strictly inside this ending (condition 5 from issue #261).
      * <p>
      * Must be called on the <em>pre-insertion</em> line state.
      *
      * @param insertedIndex the index at which the element will be inserted (pre-insertion)
      * @param insertedType  the type of the element being inserted
-     * @param line          the owning line (pre-insertion state)
      */
-    @Override
-    protected boolean isInvalidatedByInsertion(
-        int insertedIndex, ElementType insertedType, Line line
-    ) {
+    private boolean insertionAddsInteriorBar(int insertedIndex, ElementType insertedType) {
         if (!insertedType.isBar()) {
             return false;
         }

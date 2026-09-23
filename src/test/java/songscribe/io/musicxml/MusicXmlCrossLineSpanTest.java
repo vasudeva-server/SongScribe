@@ -37,6 +37,7 @@ import static songscribe.io.XmlFixtures.closeTag;
 import static songscribe.io.XmlFixtures.element;
 import static songscribe.io.XmlFixtures.emptyTag;
 import static songscribe.io.XmlFixtures.openTag;
+import static songscribe.io.musicxml.MusicXmlRoundTripSupport.middleCEighth;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.scoreWithMeasureBody;
 
@@ -72,12 +73,6 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
             return upToLast + separator + notes.getLast();
         }
     }
-
-    /** A written eighth note, which is what a beam joins and what a triplet's ratio names. */
-    private static final int EIGHTH_DURATION = MusicXmlUnits.DIVISIONS / 2;
-
-    private static final String MIDDLE_C_STEP = "C";
-    private static final String MIDDLE_C_OCTAVE = "4";
 
     private static final String TRIPLET_ACTUAL_NOTES = "3";
     private static final String TRIPLET_NORMAL_NOTES = "2";
@@ -115,54 +110,41 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
     static Stream<CrossLineCase> crossLineCases() {
         return Stream.of(
             new CrossLineCase("a beam", List.of(
-                note(beam(MusicXmlTags.BEAM_BEGIN)),
-                note(beam(MusicXmlTags.BEAM_END))), Beam.class),
+                middleCEighth(beam(MusicXmlTags.BEAM_BEGIN)),
+                middleCEighth(beam(MusicXmlTags.BEAM_END))), Beam.class),
             new CrossLineCase("a tuplet", List.of(
-                note(tripletRatio() + tupletBracket(MusicXmlTags.TYPE_START)),
-                note(tripletRatio()),
-                note(tripletRatio() + tupletBracket(MusicXmlTags.TYPE_STOP))), Tuplet.class),
+                middleCEighth(tripletRatio(), tupletBracket(MusicXmlTags.TYPE_START)),
+                middleCEighth(tripletRatio()),
+                middleCEighth(tripletRatio(), tupletBracket(MusicXmlTags.TYPE_STOP))), Tuplet.class),
             new CrossLineCase("a trill", List.of(
-                note(trill(MusicXmlTags.TYPE_START)),
-                note(trill(MusicXmlTags.TYPE_STOP))), Trill.class)
+                middleCEighth(trill(MusicXmlTags.TYPE_START)),
+                middleCEighth(trill(MusicXmlTags.TYPE_STOP))), Trill.class)
         );
-    }
-
-    /** A middle-C eighth note carrying {@code markers} after its {@code <type>}. */
-    private static String note(String markers) {
-        return
-            "      " + openTag(MusicXmlTags.NOTE) + '\n' +
-            "        " + element(MusicXmlTags.PITCH,
-                element(MusicXmlTags.STEP, MIDDLE_C_STEP) + element(MusicXmlTags.OCTAVE, MIDDLE_C_OCTAVE)) + '\n' +
-            "        " + element(MusicXmlTags.DURATION, Integer.toString(EIGHTH_DURATION)) + '\n' +
-            "        " + element(MusicXmlTags.NOTE_TYPE, NoteTypeMapping.TYPE_EIGHTH) + '\n' +
-            markers +
-            "      " + closeTag(MusicXmlTags.NOTE) + '\n';
     }
 
     /** The primary {@code <beam number="1">} marker with {@code beamValue}. */
     private static String beam(String beamValue) {
-        return "        " + openTag(MusicXmlTags.BEAM, MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
-            + beamValue + closeTag(MusicXmlTags.BEAM) + '\n';
+        return openTag(MusicXmlTags.BEAM, MusicXmlTags.ATTR_NUMBER, MusicXmlTags.NUMBER_1)
+            + beamValue + closeTag(MusicXmlTags.BEAM);
     }
 
     /** A triplet's {@code <time-modification>}, which every note under the bracket carries. */
     private static String tripletRatio() {
-        return "        " + element(MusicXmlTags.TIME_MOD,
+        return element(MusicXmlTags.TIME_MOD,
             element(MusicXmlTags.ACTUAL_NOTES, TRIPLET_ACTUAL_NOTES)
                 + element(MusicXmlTags.NORMAL_NOTES, TRIPLET_NORMAL_NOTES)
-                + element(MusicXmlTags.NORMAL_TYPE, NoteTypeMapping.TYPE_EIGHTH)) + '\n';
+                + element(MusicXmlTags.NORMAL_TYPE, NoteTypeMapping.TYPE_EIGHTH));
     }
 
     /** The {@code <tuplet>} bracket marker of {@code type}, which only the outer notes carry. */
     private static String tupletBracket(String type) {
-        return "        " + element(MusicXmlTags.NOTATIONS,
-            emptyTag(MusicXmlTags.TUPLET, MusicXmlTags.ATTR_TYPE, type)) + '\n';
+        return element(MusicXmlTags.NOTATIONS, emptyTag(MusicXmlTags.TUPLET, MusicXmlTags.ATTR_TYPE, type));
     }
 
     /** The {@code <wavy-line>} marker of {@code type}, inside {@code <ornaments>}. */
     private static String trill(String type) {
-        return "        " + element(MusicXmlTags.NOTATIONS,
+        return element(MusicXmlTags.NOTATIONS,
             element(MusicXmlTags.ORNAMENTS,
-                emptyTag(MusicXmlTags.WAVY_LINE, MusicXmlTags.ATTR_TYPE, type))) + '\n';
+                emptyTag(MusicXmlTags.WAVY_LINE, MusicXmlTags.ATTR_TYPE, type)));
     }
 }

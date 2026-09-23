@@ -45,9 +45,22 @@ import org.jspecify.annotations.Nullable;
  * {@link #copyStateFrom} by taking a whole list that already satisfies it; the attachment
  * bound is a precondition of {@link #addAttachment}, which the file readers enforce at the
  * boundary and the interactive paths keep by asking {@link #findAttachment} before adding.
+ *
+ * <p><b>The parent line.</b> {@link #getParentLine()} is the authoritative answer to "is this
+ * element live in the document?": {@code null} means in no line, whether never added or
+ * detached by a removal, and no membership scan is needed to decide. The line it answers is the
+ * line whose elements hold this one, and that is a two-way tie holding at modification-bracket
+ * boundaries: {@code getParentLine() == L} exactly when {@code L}'s elements contain this
+ * element. Inside a bracket a re-parent may briefly have attached the element to one line while
+ * another's list still holds it. What hangs on the element — its attachments, and a note's
+ * articulations — is in whatever line the element is in, derived rather than stored, so
+ * moving the element moves them with nothing to push down.
  */
-public abstract sealed class StaffElement extends LineElement implements Cloneable
+public abstract sealed class StaffElement extends LineElement implements LineContent, Cloneable
     permits NoteElement, StructuralElement {
+
+    /** Written only by {@code Line.attach} and {@code Line.detach}. */
+    private @Nullable Line parentLine;
 
     /**
      * This element's lyrics, at most one per verse. {@link #putLyric} and
@@ -209,6 +222,39 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
     }
 
     /**
+     * Returns the line this element is in. See the class Javadoc for the tie to that line's
+     * elements.
+     *
+     * @return the line, or {@code null} when the element is in no line — never added, or
+     *     detached by a removal
+     */
+    public @Nullable Line getParentLine() {
+        return parentLine;
+    }
+
+    /**
+     * Returns the line {@code element} is in, for a caller holding an element that may be
+     * absent — the host of something hung on an element, which has none until it is added.
+     *
+     * @param element the element, or {@code null}
+     * @return {@code element}'s line, or {@code null} when there is no element or it is in no
+     *     line
+     */
+    static @Nullable Line parentLineOf(@Nullable StaffElement element) {
+        return element != null ? element.getParentLine() : null;
+    }
+
+    /**
+     * Sets the line this element is in. The only callers are {@code Line.attach} and
+     * {@code Line.detach}; calling it elsewhere breaks the two-way tie in the class Javadoc.
+     * Package-private so the compiler enforces that, rather than leaving it to a reader of
+     * this comment.
+     */
+    void setParentLine(@Nullable Line parentLine) {
+        this.parentLine = parentLine;
+    }
+
+    /**
      * Returns a detached copy of this element: same class, same state, in no line.
      *
      * <p>Every implementation builds a bare element of its own class and fills it in through
@@ -267,11 +313,11 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
      * @param attachment an attachment on no element, of a class this element does not already
      *     carry; the file readers convert a document that breaks the second into a rejected
      *     document, so no interior caller checks it
-     * @effects appends it to {@link #getAttachments()} and to this element's children
+     * @effects appends it to {@link #getAttachments()} and makes this element its owner
      */
     public void addAttachment(Attachment attachment) {
         attachments.add(attachment);
-        addChild(attachment);
+        attachment.setOwner(this);
     }
 
     /**
@@ -279,11 +325,11 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
      * left alone. Afterwards {@link Attachment#owner()} answers {@code null} for it.
      *
      * @param attachment the attachment to remove
-     * @effects removes it from {@link #getAttachments()} and from this element's children
+     * @effects removes it from {@link #getAttachments()} and clears its owner
      */
     public void removeAttachment(Attachment attachment) {
         if (attachments.remove(attachment)) {
-            removeChild(attachment);
+            attachment.setOwner(null);
         }
     }
 
@@ -292,7 +338,7 @@ public abstract sealed class StaffElement extends LineElement implements Cloneab
      */
     private void clearAttachments() {
         for (var attachment : attachments) {
-            removeChild(attachment);
+            attachment.setOwner(null);
         }
 
         attachments.clear();

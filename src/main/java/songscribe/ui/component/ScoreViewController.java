@@ -46,6 +46,7 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.KeyChangeStranding;
 import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.ProjectedEdit;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
@@ -85,7 +86,9 @@ import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
-import songscribe.message.mutation.SpanMutation;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -116,6 +119,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 import songscribe.undo.OpNames;
@@ -521,7 +525,7 @@ public final class ScoreViewController {
         // Three mutually exclusive cases for the staff, checked widest first: a line insert or
         // delete rebuilds the LinePanel list; a change that reaches every line invalidates every
         // LinePanel's layout; and a line-scoped change invalidates only the LinePanels the change
-        // affects (one, or two for a span straddling a line boundary).
+        // affects (one, or two for a tie crossing a line break).
         //
         // The rebuild is tested ahead of the every-line case because it subsumes it — it
         // recreates every LinePanel, layout and all — while the reverse is not true, and a batch
@@ -543,7 +547,7 @@ public final class ScoreViewController {
         } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
-            var spans = mutatedSpans(message);
+            var tieReach = linesReached(message, message.getSong()::tieReach);
             var keyMoveReach = keyMoveReach(message);
 
             for (var linePanel : staffPanel.getLinePanels()) {
@@ -551,14 +555,14 @@ public final class ScoreViewController {
 
                 if (targetLine == null
                     || line == targetLine
-                    || spanReaches(spans, line)
+                    || tieReach.contains(line)
                     || keyMoveReach.contains(line)) {
                     linePanel.getLineComponent().invalidateLayout();
 
-                    // With neither a span nor a key move in the notification the named line is
-                    // the only one that can match, so the panels after it have nothing left to
-                    // be checked against.
-                    if (targetLine != null && spans.isEmpty() && keyMoveReach.isEmpty()) {
+                    // With neither a tie across a line break nor a key move in the notification
+                    // the named line is the only one that can match, so the panels after it have
+                    // nothing left to be checked against.
+                    if (targetLine != null && tieReach.isEmpty() && keyMoveReach.isEmpty()) {
                         break;
                     }
                 }
@@ -582,57 +586,18 @@ public final class ScoreViewController {
     }
 
     /**
-     * Every span this notification's mutations name, in the order the mutations were
-     * recorded, or an empty list when none of them names one.
+     * The union, over this notification's mutations, of the lines {@code reachedBy} answers for
+     * each, or an empty set when it answers none for every one of them.
      * <p>
-     * Collected once for the whole panel loop rather than re-derived per panel: the loop runs
-     * over every line on screen, and a single paste bundles dozens of mutations. An empty
-     * result is also what lets that loop stop at the line the notification names.
-     * <p>
-     * Every mutation carrying a span answers, not only the tie ones, so the answer matches
-     * the question {@link #spanReaches} asks. Only a tie can straddle a line boundary today,
-     * which is what makes the others no-ops rather than optional: a beam, tuplet or hairpin
-     * resolves to the one line it is in, and {@link Span#isIn} then reports that line alone —
-     * the same line the mutation already named. Including them costs nothing and means a span
-     * type that later gains a second line is drawn on both.
+     * A set rather than a list because two mutations in one batch routinely reach the same
+     * lines, and because the panel loop asks membership rather than order.
      */
-    private static List<Span> mutatedSpans(SongDidChangeNotification message) {
-        List<Span> spans = null;
-
-        for (var mutation : message.getMutations()) {
-            if (mutation instanceof SpanMutation spanMutation) {
-                if (spans == null) {
-                    spans = new ArrayList<>();
-                }
-
-                spans.add(spanMutation.getSpan());
-            }
-        }
-
-        return spans == null ? List.of() : spans;
-    }
-
-    /**
-     * Every line whose drawn key content this notification's mutations moved, or an empty set
-     * when none of them moves a key.
-     * <p>
-     * A key move is the one edit whose layout effect is not the line the mutation names. It runs
-     * forward through every line that inherits the moved key — each of whose headers is solved
-     * from the key it runs in — and back one line, whose trailing space is solved from the
-     * cautionary it leads into. Without this the line before the change redraws its cautionary
-     * from the live document while keeping the spacing it was solved with, and an inheriting line
-     * goes on drawing the key it was in before the edit.
-     * <p>
-     * {@link Song#keyMoveReach} is the one answer; this only unions it over the batch. A set
-     * rather than a list because two mutations in one batch — a key change and the accidentals
-     * the chain walk restamps after it — routinely reach the same lines, and because the panel loop below
-     * asks membership rather than order.
-     */
-    private static Set<Line> keyMoveReach(SongDidChangeNotification message) {
+    private static Set<Line> linesReached(
+        SongDidChangeNotification message, Function<Mutation, List<Line>> reachedBy) {
         Set<Line> reach = null;
 
         for (var mutation : message.getMutations()) {
-            var lines = message.getSong().keyMoveReach(mutation);
+            var lines = reachedBy.apply(mutation);
 
             if (!lines.isEmpty()) {
                 if (reach == null) {
@@ -647,29 +612,22 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns whether any of {@code spans} has an endpoint in {@code line}, making
-     * {@code line} one of the lines that draws it.
+     * Every line whose drawn key content this notification's mutations moved, or an empty set
+     * when none of them moves a key.
      * <p>
-     * A line-scoped mutation names one line, which for almost every span is the only line
-     * whose rendering it changes. A tie whose two notes sit in different lines is the
-     * exception: adding or removing it changes what <em>both</em> lines draw — one gains or
-     * loses the half running off its right edge, the other the half entering from the left —
-     * while the mutation still names only one of them. Without this, the far line keeps its
-     * cached {@code LayoutResult} and its half is never drawn, which is the half-tie the
-     * whole of #493 exists to prevent, arriving by way of the repaint rather than the model.
+     * A key move's layout effect reaches past the line the mutation names. It runs
+     * forward through every line that inherits the moved key — each of whose headers is solved
+     * from the key it runs in — and back one line, whose trailing space is solved from the
+     * cautionary it leads into. Without this the line before the change redraws its cautionary
+     * from the live document while keeping the spacing it was solved with, and an inheriting line
+     * goes on drawing the key it was in before the edit.
      * <p>
-     * Ties are the only spans that can straddle a boundary today; the test below is written
-     * over spans in general because the question — which lines does this span reach — has the
-     * same answer for all of them, not because the others are expected to.
+     * {@link Song#keyMoveReach} is the one answer; this only unions it over the batch, where a
+     * key change and the accidentals the chain walk restamps after it routinely reach the same
+     * lines.
      */
-    private static boolean spanReaches(List<Span> spans, Line line) {
-        for (var span : spans) {
-            if (span.isIn(line)) {
-                return true;
-            }
-        }
-
-        return false;
+    private static Set<Line> keyMoveReach(SongDidChangeNotification message) {
+        return linesReached(message, message.getSong()::keyMoveReach);
     }
 
     /**
@@ -1067,10 +1025,20 @@ public final class ScoreViewController {
             case HitTarget.Hairpin(var hairpin) ->
                 line.getSong().withModification(OpNames.deleteHairpinLabel(hairpin), () -> hairpin.removeFrom(line));
 
-            // LineSpans.removeChild also removes the tie from the other line of a cross-line
-            // tie, so both halves vanish under a single TieRemoval and one undo restores both.
-            case HitTarget.Tie(var tie) ->
-                line.getSong().withModification(OpNames.removeTieLabel(), () -> tie.removeFrom(line));
+            // A cross-line tie's anchor sits on only the first of its two lines (see
+            // HitTarget.Tie), which is not necessarily the line the hit was made against, so
+            // the removal is recorded on the anchor's own line.
+            case HitTarget.Tie(var tie) -> {
+                var anchor = tie.anchor();
+                var anchorLine = anchor.getParentLine();
+
+                if (anchorLine == null) {
+                    throw RuntimeError.exit("a selected tie's anchor is in no line");
+                }
+
+                anchorLine.getSong().withModification(
+                    OpNames.removeTieLabel(), () -> anchorLine.removeTie(anchor));
+            }
 
             case HitTarget.Beam(var beam) ->
                 line.getSong().withModification(OpNames.removeBeamLabel(), () -> beam.removeFrom(line));
@@ -1504,7 +1472,7 @@ public final class ScoreViewController {
         stranding.sweepExcept(line);
 
         var reconciliation = PasteSpanReconciliation.reconcile(
-            line, insertIndex, rawDeleteRange, clones, instantiated.spans());
+            line, insertIndex, rawDeleteRange, instantiated.spans());
 
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
@@ -1537,11 +1505,11 @@ public final class ScoreViewController {
         // element types invalidate, each by its own rule: the ending's
         // barline/repeat-aware one, which is more precise than the straddle test
         // PasteSpanReconciliation applies to the other span kinds, so endings are left
-        // to it; the tie's separator rule; and the tuplet's interior rule, which finds
-        // nothing here because the reconciliation above already removed a straddled
-        // tuplet. The tie's rule is not redundant: the reconciliation judges only ties
-        // with both endpoints in this line, leaving a tie that straddles a line
-        // boundary to this sweep, which resolves it against the receiving line.
+        // to it; and the tuplet's interior rule, which finds nothing here because the
+        // reconciliation above already removed a straddled tuplet. A tie is not a span
+        // and is not swept here at all: it is state the pasted notes carry with them,
+        // and the tie rule judges every tie the paste touches, including one that spans
+        // the paste point, when the caller's modification bracket closes.
         line.insertRun(insertAt, clones);
 
         // A pasted tuplet the destination's beat context rejects is dropped here

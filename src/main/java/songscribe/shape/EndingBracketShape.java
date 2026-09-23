@@ -24,13 +24,12 @@ import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.List;
 
-import songscribe.dom.Ending;
+import songscribe.layout.BracketRange;
 
 /**
  * The corner points of a first/second ending bracket: up the left leg, across the top, and (when
  * present) down the right leg. The caller strokes the returned polyline; this class holds the
- * geometry and reads the bracket's own range from the domain model, with no layout or renderer
- * dependency.
+ * geometry and reads the bracket's range as layout computed it, with no renderer dependency.
  */
 public final class EndingBracketShape {
 
@@ -41,7 +40,7 @@ public final class EndingBracketShape {
      * cleanly when stroked.
      *
      * <p>The horizontal arm ends where the bracket's ink reaches on the right, which is
-     * {@link Ending.BracketRange#inkRightXSs()}. A closed bracket's arm ends at an interior corner,
+     * {@link BracketRange#inkRightXSs()}. A closed bracket's arm ends at an interior corner,
      * where a stroker leaves a join, so its ink reaches the bracket's own right edge. An open
      * arm ends at a terminal cap, which {@code GraphicUtils.drawPath} pulls in half a stroke
      * width; pushing the endpoint out by that same half puts the open arm's ink at the X a
@@ -52,7 +51,7 @@ public final class EndingBracketShape {
      * @param yBottomSs bottom of the legs, in staff spaces
      * @return the bracket corner points, in draw order
      */
-    public static Point2D[] points(Ending.BracketRange bracket, double yTopSs, double yBottomSs) {
+    public static Point2D[] points(BracketRange bracket, double yTopSs, double yBottomSs) {
         var armEndXSs = bracket.inkRightXSs();
 
         var bracketPoints = new ArrayList<Point2D>(List.of(

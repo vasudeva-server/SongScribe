@@ -21,6 +21,7 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,11 +48,14 @@ import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineKeyChange;
+import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.LyricsChange;
 import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
 import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -908,20 +912,15 @@ public final class Song implements Disposable {
      * (see {@link #withoutMutationTracking}) — test setup can install lines with
      * arbitrary terminal elements.
      *
-     * <p>An insertion that lands <em>between</em> two lines pushes them apart, and a tie
-     * that straddled that boundary can no longer be drawn — its two halves have nothing
-     * left to meet across. Such a tie is removed by
-     * {@link #removeSpansBetweenNonAdjacentLines}. That is skipped while replaying: undo
-     * and redo replay the recorded span mutations themselves.
+     * <p>A tie on the last note of a line ends at the start of the next line, so the insertion
+     * can move the end of the tie crossing out of the line before {@code line} and of the tie
+     * crossing out of {@code line}. Both lines are ones the tie rule judges when the outermost
+     * modification bracket closes (see {@link #applyTieRule}).
      *
      * <pre>
      *  withModification {
      *    withAutoMaintenance {
      *      applyChange(LineInsertion(index, line), …)
-     *
-     *      if (line landed between two existing lines)
-     *        for each span of lines[index - 1] whose two lines are no longer adjacent
-     *          applyChange(&lt;typed span removal&gt; …)
      *
      *      if (line became the new last line) {
      *        if (prevLast.lastElement == FINAL_DOUBLE_BARLINE)
@@ -949,12 +948,6 @@ public final class Song implements Disposable {
         withModification(() -> modifications.withAutoMaintenance(() -> {
             applyChange(new LineInsertion(index, line), () -> lines.add(index, line));
 
-            // Only the pair the new line landed between can have been pulled apart; every
-            // other pair shifts by the same amount and stays adjacent.
-            if (index > 0 && index < lines.size() - 1 && !isReplaying()) {
-                removeSpansBetweenNonAdjacentLines(lines.get(index - 1));
-            }
-
             if (willBecomeNewLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 terminal.maintainOnLastLineChange(previousLastLine, line);
             }
@@ -976,18 +969,14 @@ public final class Song implements Disposable {
      *
      * <p>The removed line keeps its elements, and they keep pointing at it — the
      * {@link LineDeletion} record holds the line intact so undo can put it back unchanged.
-     * A span it shared with a surviving line therefore has to be taken out explicitly, or
-     * that line would go on drawing half a tie to a line no longer in the song;
-     * {@link #removeSpansBetweenNonAdjacentLines} does that. It is skipped while replaying:
-     * undo and redo replay the recorded span mutations themselves.
+     * A tie on the last note of the line before the removed one ended at the start of the
+     * removed line, and now ends in the line that follows instead, or nowhere; the tie rule
+     * judges it when the outermost modification bracket closes (see {@link #applyTieRule}).
      *
      * <pre>
      *  withModification {
      *    withAutoMaintenance {
      *      applyChange(LineDeletion(index, removed), …)
-     *
-     *      for each span the removed line shared with a surviving line
-     *        applyChange(&lt;typed span removal&gt; …)
      *
      *      if (removed line was the last line) {
      *        if (lines is now empty) {
@@ -1017,12 +1006,6 @@ public final class Song implements Disposable {
                 () -> lines.remove(index)
             );
 
-            // The deleted line is now in no position at all, so every span it shares with
-            // a line that survives it spans lines that are not adjacent.
-            if (!isReplaying()) {
-                removeSpansBetweenNonAdjacentLines(deletedLine);
-            }
-
             if (wasLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 if (!lines.isEmpty()) {
                     terminal.maintainOnLastLineChange(null, lines.getLast());
@@ -1034,41 +1017,63 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Removes from {@code line} every span whose two endpoints sit in lines that are no
-     * longer adjacent.
-     * <p>
-     * Only a tie can straddle a line break, and only between consecutive lines: its anchor
-     * is in one line and its end in the next. Once those two lines are no longer neighbors
-     * the tie describes a jump nothing can draw, so it is
-     * removed rather than left to render across a gap.
-     * <p>
-     * Both ways adjacency breaks come through here — a line inserted between the two, and
-     * one of the two leaving the song, which leaves it with no position in {@code lines} at
-     * all. A pair in the wrong order is caught the same way.
-     * <p>
-     * Spans with both endpoints in one line, and spans with an endpoint in no line, are
-     * untouched: neither says anything about a relationship between two lines.
-     * <p>
-     * The removal goes through {@link Span#removeFrom}, so it emits its own
-     * typed mutation and undo puts the span back into both lines' span lists. Call it from
-     * inside an open modification bracket.
+     * Runs the tie rule (see {@link NoteElement}) over the lines {@code batch} touched, and over
+     * the line before each of them. A touched line is a line a {@link LineScopedMutation} in the
+     * batch names, the line of a {@link LineInsertion}, and, for a {@link LineDeletion}, the line
+     * that now sits at its {@link LineDeletion#lineIndex()}, when there is one; a named line that
+     * is no longer one of this song's lines is not judged. Each line is judged once, through
+     * {@link Line#applyTieRule}.
+     *
+     * <p>Called by {@link ModificationSession#endModification} as the outermost bracket closes,
+     * while it is still open, so each removal lands in the batch that is delivered, after the
+     * changes that broke the ties. Reverse-order undo restores those ties first, against the
+     * final state, where every anchor is still in its line.
+     *
+     * @param batch the mutations the outermost bracket recorded, every change in them landed
+     * @effects posts a {@link songscribe.message.mutation.TieRemoval} for each tie in those lines
+     *     that does not hold
      */
-    private void removeSpansBetweenNonAdjacentLines(Line line) {
-        // Copied because each removal writes the list being read.
-        for (var span : List.copyOf(line.spanRegistry().getSpans())) {
-            var anchorLine = span.getAnchorLine();
-            var endLine = span.getEndLine();
+    void applyTieRule(List<Mutation> batch) {
+        var judged = new LinkedHashSet<Line>();
 
-            if (anchorLine == null || endLine == null || anchorLine == endLine) {
+        for (var mutation : batch) {
+            var touched = touchedLine(mutation);
+            var touchedIndex = touched == null ? null : indexOfLine(touched);
+
+            if (touched == null || touchedIndex == null) {
                 continue;
             }
 
-            if (!contains(anchorLine)
-                    || !contains(endLine)
-                    || endLine.index() - anchorLine.index() != 1) {
-                span.removeFrom(line);
+            if (touchedIndex > 0) {
+                judged.add(lines.get(touchedIndex - 1));
             }
+
+            judged.add(touched);
         }
+
+        judged.forEach(Line::applyTieRule);
+    }
+
+    /**
+     * The line {@code mutation} touches, as {@link #applyTieRule} defines it.
+     *
+     * @return the line, or {@code null} for a song-wide mutation, or for a {@link LineDeletion}
+     *     whose index no line now sits at
+     */
+    private @Nullable Line touchedLine(Mutation mutation) {
+        if (mutation instanceof LineScopedMutation scoped) {
+            return scoped.getLine();
+        }
+
+        if (mutation instanceof LineInsertion insertion) {
+            return insertion.line();
+        }
+
+        if (mutation instanceof LineDeletion deletion && deletion.lineIndex() < lines.size()) {
+            return lines.get(deletion.lineIndex());
+        }
+
+        return null;
     }
 
     /**
@@ -1641,6 +1646,89 @@ public final class Song implements Disposable {
         }
 
         return List.copyOf(reach);
+    }
+
+    /**
+     * Returns the lines, other than the one {@code mutation} names, whose drawn ties it can
+     * change.
+     *
+     * <p>A line draws the half of a tie that crosses into it from the line before it, so an edit
+     * near one edge of a line can change what the line beside it draws while the mutation's own
+     * record names only its own line. Deleting a tied last note, inserting a same-pitch note
+     * after an anchor, and flipping the stem of a note a crossing tie ends on are each felt this
+     * way.
+     *
+     * <p>The position a mutation names in its line L is an insertion's, a replacement's or a
+     * modification's index, a deletion's first index, or a {@link TieAddition}'s or
+     * {@link TieRemoval}'s anchor index. It reaches:
+     * <ul>
+     *   <li>L's next line, when there is one and the position is at or after L's last element
+     *       that is not a legal separator ({@link Tie#isLegalSeparator}), or L has no such
+     *       element;</li>
+     *   <li>L's previous line, when there is one and the position is at or before L's first
+     *       such element, or L has none.</li>
+     * </ul>
+     *
+     * @param mutation the mutation to ask about
+     * @return the lines, in no promised order, or empty when {@code mutation} names no such
+     *     position — any other kind of mutation, or a tie record whose anchor is no longer in the
+     *     line it names — or names one too far from either edge to reach a neighboring line
+     */
+    public List<Line> tieReach(Mutation mutation) {
+        var origin = tieReachOrigin(mutation);
+
+        if (origin == null) {
+            return List.of();
+        }
+
+        var line = origin.line();
+        var position = origin.position();
+        var elements = line.getElements();
+        var firstNonSeparator = Tie.firstNonSeparatorIndexFrom(elements, 0);
+        var lastNonSeparator = Tie.lastNonSeparatorIndexBefore(elements, elements.size());
+        var reach = new ArrayList<Line>();
+
+        if (!line.isLast() && (lastNonSeparator == null || position >= lastNonSeparator)) {
+            reach.add(line.nextLine());
+        }
+
+        if (!line.isFirst() && (firstNonSeparator == null || position <= firstNonSeparator)) {
+            reach.add(line.previousLine());
+        }
+
+        return List.copyOf(reach);
+    }
+
+    /**
+     * The line and element position {@link #tieReach} asks about for {@code mutation}.
+     *
+     * @return the origin, or {@code null} for a mutation that names no such position —
+     *     including a {@link TieAddition} or {@link TieRemoval} whose anchor is no longer on
+     *     the line it names
+     */
+    private static @Nullable TieReachOrigin tieReachOrigin(Mutation mutation) {
+        return switch (mutation) {
+            case ElementInsertion insertion -> new TieReachOrigin(insertion.line(), insertion.index());
+            case ElementReplacement replacement -> new TieReachOrigin(replacement.line(), replacement.index());
+            case ElementDeletion deletion -> new TieReachOrigin(deletion.line(), deletion.range().begin());
+            case ElementModification modification -> new TieReachOrigin(modification.line(), modification.index());
+            case TieAddition(var line, var anchor) -> tieAnchorOrigin(line, anchor);
+            case TieRemoval(var line, var anchor) -> tieAnchorOrigin(line, anchor);
+            default -> null;
+        };
+    }
+
+    private static @Nullable TieReachOrigin tieAnchorOrigin(Line line, NoteElement anchor) {
+        return line.contains(anchor) ? new TieReachOrigin(line, line.getElementIndex(anchor)) : null;
+    }
+
+    /**
+     * A position {@link #tieReach} asks about: {@code position} in {@code line}'s elements.
+     *
+     * @param line     the line the mutation names
+     * @param position the element position within it
+     */
+    private record TieReachOrigin(Line line, int position) {
     }
 
     private static boolean changesKey(StaffElement element) {

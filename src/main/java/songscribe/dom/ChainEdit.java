@@ -28,12 +28,6 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.engraving.StaffPosition;
-import songscribe.message.mutation.BeamingAddition;
-import songscribe.message.mutation.BeamingRemoval;
-import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
-import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
@@ -52,8 +46,6 @@ import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
-import songscribe.message.mutation.TupletAddition;
-import songscribe.message.mutation.TupletRemoval;
 
 /**
  * One edit as the chain walk sees it: where the song changed, in the coordinates of the song the
@@ -305,9 +297,8 @@ public final class ChainEdit {
             case LineInsertion insertion -> lineInserted(insertion.line());
             case LineDeletion deletion -> lineRemoved(deletion.lineIndex(), deletion.deletedLine());
             case LineKeyChange keyChange -> lineRekeyed(keyChange.line().index());
-            case LineLayoutChange _, SpanAddition _, SpanRemoval _, BeamingAddition _, BeamingRemoval _,
-                 TieAddition _, TieRemoval _, TupletAddition _, TupletRemoval _,
-                 CrescendoAddition _, CrescendoRemoval _, DiminuendoAddition _, DiminuendoRemoval _,
+            case LineLayoutChange _, SpanAddition _, SpanRemoval _,
+                 TieAddition _, TieRemoval _,
                  MetadataChange _, FontChange _, LayoutChange _, LyricsChange _ -> null;
         };
     }

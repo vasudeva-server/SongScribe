@@ -56,15 +56,17 @@ order to decide what to emit next; every read is a later pass revisiting a node
 an earlier one finished. A pass that can reach its target through a handle does
 so rather than searching a parent's child list.
 
-Each adjustment pass walks one kind of span and attaches to what it touches. Most
+Most adjustment passes walk one kind of span and attach to what it touches. They
 share one skeleton, because walking a line's spans of one type, reading both
 endpoint indices and dropping the span when either falls outside the line is the
-same decision every time. Two stand apart, and for reasons worth knowing: a tie
-is the one span that legitimately crosses a line boundary, so only the line being
-asked can tell its own element from the previous line's; and slide geometry needs
-a laid-out line, so that pass reaches each line *through the spans it is
-attaching* rather than looping lines, since laying out a line that has none would
-change that line's output as a side effect.
+same decision every time. Two stand apart, and for reasons worth knowing. A tie
+is not a span but state on its anchor note, and it may cross a line break, so its
+pass walks notes instead: each note writes the stop of the tie that ends on it
+and the start of the tie it anchors, and a crossing tie is written by the two
+notes it joins with no pairing between lines. And slide geometry needs a laid-out
+line, so that pass reaches each line *through the slides it is attaching* rather
+than looping lines, since laying out a line that has none would change that
+line's output as a side effect.
 
 **Pass order is mostly not observable, with one exception.** Several passes write
 into the same list of note annotations, which marshals in list order. The schema
@@ -98,24 +100,39 @@ Mapping runs with mutation tracking suspended, so a load records nothing, posts
 nothing and leaves the document unmodified. That suspension is also what makes it
 safe for the fix-up passes to add spans to lines already committed to the song —
 the invariant maintenance that would otherwise interfere is not running — and the
-reader restores it afterwards.
+reader restores it afterwards. The tie rule does not run under it either, so a
+tie the file carries is trusted as written.
 
 Load-time fix-ups run here rather than in the UI because the headless export
 route goes through this reader too, and a song whose tuplets were resolved on only
 one of the two routes would export differently from how it displays.
 
+**A reader never builds a tuplet.** A tuplet's ratio must be known, and a file
+that states none leaves it to be derived from the beat at the tuplet's start —
+which a tempo change later in the file can still redefine while the reader is
+mid-parse. So the mapper records each tuplet as a pending one, carrying only what
+the file said, and the load-time tuplet pass, once the song is complete, is the
+one place a pending tuplet becomes a tuplet on its line: it judges a stated ratio,
+derives a missing one, and drops what fails, leaving the notes. The legacy reader
+hands its pending tuplets to the same pass.
+
 **Mapping is one structural walk, then one resolution pass per kind of pairing
 mark.** The walk builds only what a single child settles on its own, and records
 where each child landed. The passes then run over those recorded positions, which
 is what lets a pass ask where an element sits without re-deriving it from the
-finished line. Each pass keeps its own cursor as a local and ends with its own
-"still open at the end" check, so there is never a question of which flush point a
-new mark belongs to.
+finished line. Each pass that pairs a start with a stop keeps its own cursor as a
+local and ends with its own "still open at the end" check, so there is never a
+question of which flush point a new mark belongs to.
 
-Order *within* a pass matters even where order between passes does not. A tie's
-stop resolves before its start on the same note, so an interior note of a chain
-closes its pair and reopens the next. A hairpin does the same, except where a note
-opens one that nothing else has open — then the start goes first, so a note
+Ties pair nothing. A tie's end is derived from where the notes stand, not stored,
+so the reader marks each note whose tie marker carries a start as tied and ignores
+the stop: the writer writes a stop only on the note the start's tie reaches, so it
+says nothing the derivation does not.
+
+Order *within* a pass matters even where order between passes does not. A
+hairpin's stop resolves before its start on the same note, so a note shared by
+two back-to-back hairpins closes one and opens the next — except where a note
+opens one that nothing else has open: then the start goes first, so a note
 carrying both bounds a single-note hairpin rather than closing one that never
 opened.
 

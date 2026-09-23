@@ -46,11 +46,13 @@ import org.xml.sax.SAXException;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.error.RuntimeErrorTestHelper;
 import songscribe.font.DocumentFonts;
 import songscribe.font.SourceSans3Font;
@@ -70,6 +72,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
  * Base class for unit tests. Suppresses modal error dialogs
@@ -332,6 +335,32 @@ public abstract class UnitTest {
      */
     protected static Line detachedLine() {
         return detachedLine(minimalSongMock());
+    }
+
+    /**
+     * Creates a {@link #detachedLine()} holding {@code length} quavers: a line where every
+     * element is a note that can carry any span.
+     *
+     * @param length how many quavers the line holds
+     */
+    protected static Line lineOfQuavers(int length) {
+        var line = detachedLine();
+
+        for (var i = 0; i < length; i++) {
+            line.addElement(quaver());
+        }
+
+        return line;
+    }
+
+    /**
+     * Creates a crescendo over {@code range} of {@code line}, not yet added to it.
+     *
+     * @param line  the line whose elements anchor and end the crescendo
+     * @param range the elements the crescendo spans
+     */
+    protected static Hairpin crescendoOver(Line line, ElementRange range) {
+        return new Hairpin(Hairpin.Kind.CRESCENDO, line.getElement(range.begin()), line.getElement(range.end()));
     }
 
     /**

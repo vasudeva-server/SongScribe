@@ -26,7 +26,8 @@ import java.awt.Graphics2D;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.SpanBound;
+import songscribe.dom.Line;
+import songscribe.dom.NoteElement;
 import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
@@ -83,14 +84,15 @@ public final class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders a tie for the given {@link Tie} span.
+     * Renders the given tie, or the half of it the line being painted owns.
      * <p>
      * Reads pre-computed geometry from {@link LayoutResult.TieLayout}. If no
      * layout was computed for this tie, the method returns without rendering.
      *
-     * @param g2  Graphics context (staff-space coordinate system)
-     * @param tie The tie span
-     * @param ctx Render context
+     * @param g2         Graphics context (staff-space coordinate system)
+     * @param tie        The tie
+     * @param invariants the line being painted and its render state
+     * @param frame      Element frame
      */
     public void renderTie(
         Graphics2D g2,
@@ -134,24 +136,18 @@ public final class TieRenderer {
      * and, failing that, if the tie is itself the selected target.
      * <p>
      * A tie crossing a line boundary has only one endpoint in the line being painted. The
-     * other names no element here and so contributes no color; the line that owns it colors
+     * other is not an element here and so contributes no color; the line that holds it colors
      * its own half from the same two checks.
      */
     Color determineTieColor(Tie tie, LineInvariants invariants) {
-        // Receiver-relative resolution. getElementColor indexes the line being painted, so
-        // reading the pair off the tie would ask this line for the color of its own element 7
-        // when the anchor is element 7 of a different line — the wrong note's playback
-        // highlight or selection would bleed onto the tie. Asking the painted line yields an
-        // At bound only for the endpoint it actually owns.
         var line = invariants.requireCurrentLine();
-        var spans = line.spanRegistry();
-        var anchorColor = endpointColor(spans.anchorIndexOf(tie), invariants);
+        var anchorColor = endpointColor(tie.anchor(), line, invariants);
 
         if (anchorColor != null) {
             return anchorColor;
         }
 
-        var endColor = endpointColor(spans.endIndexOf(tie), invariants);
+        var endColor = endpointColor(tie.end(), line, invariants);
 
         if (endColor != null) {
             return endColor;
@@ -167,16 +163,20 @@ public final class TieRenderer {
     }
 
     /**
-     * Returns the color the endpoint at {@code bound} imposes on the tie, or null when it
-     * imposes none — either because the endpoint lies outside the line being painted, or
-     * because it is drawn in the default color and so has nothing to impose.
+     * Returns the color {@code endpoint} imposes on the tie, or null when it imposes none —
+     * either because the endpoint is not in {@code line}, the line being painted, or because it
+     * is drawn in the default color and so has nothing to impose.
+     * <p>
+     * {@link LineInvariants#getElementColor} indexes the line being painted, so an endpoint in
+     * another line has no index to ask it about.
      */
-    private static @Nullable Color endpointColor(SpanBound bound, LineInvariants invariants) {
-        if (!(bound instanceof SpanBound.At(var index))) {
+    private static @Nullable Color endpointColor(
+        NoteElement endpoint, Line line, LineInvariants invariants) {
+        if (!line.contains(endpoint)) {
             return null;
         }
 
-        var color = invariants.getElementColor(index);
+        var color = invariants.getElementColor(line.getElementIndex(endpoint));
 
         if (LineInvariants.isDefaultColor(color)) {
             return null;

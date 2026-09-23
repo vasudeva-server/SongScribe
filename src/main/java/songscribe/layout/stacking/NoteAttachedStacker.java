@@ -415,21 +415,14 @@ public class NoteAttachedStacker {
     private void seedTieBounds() {
         var line = context.getLine();
         var builder = context.getBuilder();
-        var ties = line.spanRegistry().findTies();
+        var ties = line.ownedTies();
 
         if (ties.isEmpty()) {
             return;
         }
 
-        for (var span : ties) {
-            var startElement = span.getAnchorElement();
-            var endElement = span.getEndElement();
-
-            if (startElement == null || endElement == null) {
-                continue;
-            }
-
-            var tieLayout = builder.getTieLayout(span);
+        for (var tie : ties) {
+            var tieLayout = builder.getTieLayout(tie);
 
             if (tieLayout == null) {
                 continue;
@@ -447,7 +440,7 @@ public class NoteAttachedStacker {
             // Reserve on the side the renderer actually draws: Tie.arcSign() > 0 ⇒ arc below
             // (reserve on the below side, above=false); < 0 ⇒ arc above. Routing this through the
             // shared rule keeps a conflicting-stem tie from reserving the opposite side from its bulge.
-            var arcsDown = span.arcSign() > 0;
+            var arcsDown = tie.arcSign() > 0;
 
             seedTieArcIntoExtents(tieLayout, spanWidthSs, !arcsDown);
         }

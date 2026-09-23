@@ -42,8 +42,6 @@ import org.audiveris.proxymusic.Tied;
 import org.audiveris.proxymusic.TimeModification;
 import org.audiveris.proxymusic.YesNo;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import songscribe.dom.DiatonicPitch;
 import songscribe.dom.Dots;
@@ -87,8 +85,6 @@ import songscribe.error.RuntimeError;
  * order for every pass that uses it.
  */
 final class NoteBuilder {
-
-    private static final Logger LOG = LoggerFactory.getLogger(NoteBuilder.class);
 
     // Order of the <notations> children, as the streaming writer emitted them. The schema
     // accepts any order (the content model is an unbounded choice), so nothing but this
@@ -438,42 +434,24 @@ final class NoteBuilder {
 
     /**
      * Builds the {@code <time-modification>} for a note belonging to {@code tuplet}:
-     * {@code <actual-notes>} is the tuplet's grade, and — once the tuplet's ratio is known —
-     * {@code <normal-notes>}, {@code <normal-type>} and one {@code <normal-dot/>} per dot
-     * describe the written value whose time the group occupies.
-     *
-     * <p>{@code <normal-type>} is the discriminator the reader trusts: a file carrying it states
-     * its own ratio, so the reader takes {@code <normal-notes>} at face value. A tuplet whose
-     * ratio is still unresolved therefore emits neither, and falls back to the conventional
-     * power-of-two {@code <normal-notes>} so the document stays schema-valid; the reader hands
-     * such a tuplet to the post-load pass to have its ratio derived.
+     * {@code <actual-notes>} is the tuplet's grade, and {@code <normal-notes>},
+     * {@code <normal-type>} and one {@code <normal-dot/>} per dot describe the written value
+     * whose time the group occupies.
      */
     private static TimeModification buildTimeModification(BuildContext ctx, Tuplet tuplet) {
         var factory = ctx.factory();
-        var grade = tuplet.getGrade();
         var ratio = tuplet.getRatio();
-        var value = ratio == null ? null : ratio.noteValue().type().noteValue();
-        var normalTypeToken = value == null ? null : NoteTypeMapping.typeToken(value);
+        var value = ratio.noteValue().value();
         var timeModification = factory.createTimeModification();
 
-        timeModification.setActualNotes(BigInteger.valueOf(grade));
+        timeModification.setActualNotes(BigInteger.valueOf(tuplet.getGrade()));
+        timeModification.setNormalNotes(BigInteger.valueOf(ratio.normalNotes()));
+        timeModification.setNormalType(NoteTypeMapping.typeToken(value));
 
-        if (ratio == null || normalTypeToken == null) {
-            // Reaching here means a tuplet escaped the load pass without a ratio, which the
-            // model says cannot happen. Say so rather than letting a placeholder ratio go to
-            // disk unremarked: 2:1 is not the compound duplet a 2 over a dotted beat means.
-            LOG.warn("Writing a tuplet with grade {} whose ratio was never resolved;"
-                + " falling back to a placeholder <normal-notes>", grade);
-            timeModification.setNormalNotes(BigInteger.valueOf(largestPowerOfTwoBelowGrade(grade)));
-        } else {
-            timeModification.setNormalNotes(BigInteger.valueOf(ratio.normalNotes()));
-            timeModification.setNormalType(normalTypeToken);
+        var normalDots = timeModification.getNormalDot();
 
-            var normalDots = timeModification.getNormalDot();
-
-            for (var i = 0; i < ratio.noteValue().dots().count(); i++) {
-                normalDots.add(factory.createEmpty());
-            }
+        for (var i = 0; i < ratio.noteValue().dots().count(); i++) {
+            normalDots.add(factory.createEmpty());
         }
 
         return timeModification;
@@ -505,7 +483,7 @@ final class NoteBuilder {
 
     /**
      * The performed tick count for one note: its written duration, scaled by
-     * {@code normalNotes / grade} when the note belongs to a resolved tuplet.
+     * {@code normalNotes / grade} when the note belongs to a tuplet.
      *
      * <p>{@link NoteTypeMapping#DIVISIONS} is chosen so that this scaling is exact for every
      * note value, dots and tuplet ratio the validator accepts, so an inexact result means
@@ -517,14 +495,11 @@ final class NoteBuilder {
     private static int performedTicks(NoteValue value, Dots dots, @Nullable Tuplet tuplet) {
         var writtenTicks = dots.augment(NoteTypeMapping.baseTicks(value));
 
-        var ratio = (tuplet == null) ? null : tuplet.getRatio();
-
-        // An unresolved tuplet states no ratio to scale by — the post-load pass derives one, so
-        // until then the written duration is all there is.
-        if (tuplet == null || ratio == null) {
+        if (tuplet == null) {
             return writtenTicks;
         }
 
+        var ratio = tuplet.getRatio();
         var grade = tuplet.getGrade();
         var normalNotes = ratio.normalNotes();
         var product = writtenTicks * normalNotes;
@@ -538,21 +513,5 @@ final class NoteBuilder {
         }
 
         return product / grade;
-    }
-
-    /**
-     * Returns the largest power of two strictly less than {@code grade} (3→2, 5→4, 6→4, 7→4) —
-     * the placeholder {@code <normal-notes>} for a tuplet whose real ratio is not yet resolved.
-     * The schema requires the element, and no better value exists before the post-load pass has
-     * run.
-     */
-    private static int largestPowerOfTwoBelowGrade(int grade) {
-        var result = 1;
-
-        while (result * 2 < grade) {
-            result *= 2;
-        }
-
-        return result;
     }
 }

@@ -250,8 +250,9 @@ final class DirectionBuilder {
     /**
      * Builds the start wedge {@code <direction>} for {@code hairpin}:
      * {@code <wedge type="crescendo|diminuendo" number="1">}, carrying {@code x1ShiftSs} as
-     * {@code relative-x} and {@code yShiftSs} as {@code relative-y} (ss × 10 = tenths), each
-     * only when non-zero. Belongs immediately before the hairpin's anchor note.
+     * {@code relative-x} and the hairpin's {@code userYOffsetSs} as {@code relative-y}
+     * (ss × 10 = tenths), each only when non-zero. Belongs immediately before the hairpin's
+     * anchor note.
      */
     static Direction buildHairpinStartDirection(BuildContext context, Hairpin hairpin) {
         var factory = context.factory();
@@ -259,7 +260,7 @@ final class DirectionBuilder {
         wedge.setType(WedgeType.fromValue(WedgeTypeMapping.wedgeType(hairpin)));
         wedge.setNumber(WEDGE_NUMBER);
         wedge.setRelativeX(MusicXmlUnits.shiftTenths(hairpin.getX1ShiftSs()));
-        wedge.setRelativeY(MusicXmlUnits.shiftTenths(hairpin.getYShiftSs()));
+        wedge.setRelativeY(MusicXmlUnits.shiftTenths(hairpin.getUserYOffsetSs()));
 
         return buildWedgeDirection(factory, wedge);
     }
