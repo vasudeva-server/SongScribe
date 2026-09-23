@@ -126,7 +126,7 @@ table, never up the numbers.
 | 5  | Elements | `dom`: `StaffElement`, `LineElement`, `StructuralElement`, `NoteElement`, `Articulation`, `ArticulationType`, `AccidentalBounds`, `IntrinsicHeight` | ✅ | Everything except key state, which pass 0 settled. |
 | 6  | Line | `dom`: `Line`, `ElementChange`, `ProjectedElements`, `StaffElementRun` | ✅ | Everything except key state, which pass 0 settled. |
 | 6b | Accidentals | `dom`: `Accidental`, `AccidentalChain`, `AccidentalScanView`, `AccidentalState`, `ChainedAccidental`, `ChainEdit`, `Cursor`, `ProjectedEdit` | ✅ | The chain walk: which accidental each note sounds and draws, decided again after every edit. It reads lines and the mutations an edit records, and `Song` runs it, so it comes after row 6 and before row 12. `ChainedAccidental` is the walk's decision and one of the three `AccidentalState`s; its package-private constructor, and `NoteElement`'s package-private `stamp`, make every decision on a note the walk's own. A note otherwise takes an intent (`choose`, `adopt`, `pitchAs`) or puts back its own earlier state (`NoteElement.SavedAccidental`). `ChainEdit` is a final class whose range is a `Cursor` and a length, and whose reach is a `Reach` enum, so a transposed line and element index does not compile. A key change inside an edited range rekeys the walk instead of stopping it. `Line.keyAt` is deleted, and `Line.keyBefore` is the one key query. The design it arrived at is `docs/accidentals.md`. |
-| 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletValidator`, `TupletLoadPass`, `SlideZone` | ⏳ | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
+| 7  | Spans | `dom`: `Span`, `SpanBound`, `SpanLookup`, `SpanOutcome`, `LineSpans`, `NoteSpan`, `Beam`, `Crescendo`, `Diminuendo`, `Hairpin`, `Ending`, `EndingValidationResult`, `Trill`, `Tuplet`, `TupletRatio`, `TupletValidator`, `TupletLoadPass` | 🔄 | One framework with many members; anchored to elements, owned by `Line`. Pass 6 moved the registry into `LineSpans` and added `addTo`/`removeFrom` to `Span` and every subclass, each carrying its own merge policy and mutation record, so the per-kind add/remove methods no longer exist on `Line`. |
 | 8  | Ties | `dom`: `Tie` | ⏳ | Its own beast — cross-line, pitch-validated, invalidated by edits at both ends. |
 | 9  | Lyrics | `dom`: `Lyric`, `LyricRun`, `DetachedLyricRun` | ⏳ | `docs/lyrics.md`. |
 | 10 | Attachments | `dom`: `Attachment`, `AttachmentRemoval`, `Annotation`, `AnnotationAttachment`, `BeatChangeAttachment`, `DynamicAttachment`, `FermataAttachment`, `MetronomeAttachment`, `TempoChangeAttachment` | ⏳ | |
@@ -221,13 +221,6 @@ the reason for it is still in hand.
   `PreferencesDialog.ensureInstrumentsLoaded`, which this pass retires anyway.
   `PreferencesDialog.resetInstrumentsForTesting` is deleted, but the cache it
   reset is untouched and still lives on the dialog.
-- **→ Pass 7.** `Tuplet.getNoteValue()` returns a `@Nullable ElementType`,
-  standing in for a pitched note's written value. `NoteBuilder.buildTimeModification`
-  (L442) converts through `ElementType.noteValue()`. Now that `dom.NoteValue`
-  exists, `Tuplet.getNoteValue()` should hold one directly.
-- **→ Pass 7.** `Beam` names its members by index, so `BeamGroupRenderer.beamedNoteAt`
-  narrows each end to a `NoteElement` with a throw nothing can reach. A beam
-  that hands out its notes retires it.
 - **→ Pass 18.** `NoteGeometry.getLedgerLineBaseExtentSs` and `getLedgerLineExtentSs`
   (L639, L649) have no caller in either tree; only a Javadoc `{@link}` at L811
   names them. Dead.
@@ -323,20 +316,6 @@ the reason for it is still in hand.
   outright, so none of them is a member this row inherits.
 - **→ Pass 16.** `MusicXmlCrossLineSpanTest` was added by pass 6 and is
   untriaged: its subject is the MusicXML reader, which is row 16's.
-- **→ Pass 7.** `LineSpans.getSpans` promises "the order they were added", and every
-  span query iterates in that order. Only the tie queries depend on it:
-  `findTieAt` takes the first match, and a note can hold a tie in and a tie out.
-  Every reader of hairpins either sorts by position or asks only whether one
-  exists, and pass 6 deleted the sort in `applySpanRun` that tried to keep hairpin
-  order across undo, which re-adds a span at the end of the list. Row 7 decides
-  whether the registry promises an order at all, or whether the tie queries state
-  the one they need.
-- **→ Pass 7.** `LineSpans.sweep` (`dom/LineSpans.java:383`) returns at once when
-  `line.getSong().isReplaying()`. A batch replays whole and in order, so the companion
-  span changes are already applied at each replayed element change, and the sweep would
-  find nothing to do. No test can make the check fail. Row 7 decides whether the check is
-  dead, or names the batch that needs it; row 15 owns the replay flag and can answer what
-  a batch carries.
 - **→ Pass 12.** `Line` holds a concrete `Song` (`Line.java:139`) and calls ten of its
   members: `lineCount`, `applyChange`, `getLine`, `indexOfLine`, `inheritedKeyOf`,
   `checkTerminalPolicyForInsertion`, `checkTerminalPolicyForReplacement`,
@@ -344,9 +323,6 @@ the reason for it is still in hand.
   `UnitTest.minimalSongMock()` therefore mocks the whole `Song` class. Row 12 decides the
   narrow interface a line needs from its song. Pass 9's lyric chains need a line to reach
   its neighboring lines through its song, so the two decisions are one.
-- **→ Pass 7.** `Ending.hasRepeatSplit(Line, int anchorIndex, int endIndex)` takes two
-  indices of one type, in an order the caller must know. `MeasureMapper:710` is the
-  reader-side caller. Row 7 judges whether an ending's span should be the argument.
 - **→ Pass 13.** `ElementModification` (`message/mutation`) states as prose that
   `beforeElement` and `afterElement` are snapshots of one element, but its public record
   constructor accepts any pair. `Line.java:520` is the one production site;
