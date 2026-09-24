@@ -49,11 +49,11 @@ import songscribe.message.mutation.SpanRemoval;
  * {@link Span#removeFrom}, which end in {@link #add} and {@link #remove} here.
  * <p>
  * Every span lies in one line and sits in that line's registry only. A span is never attached
- * to a line: {@link Span#isIn} derives parentage from where its endpoints sit. The invariant is
- * one-directional on purpose — {@code span.isIn(L) ⟹ L.spanRegistry().getSpans()} contains the
- * span — because a span with both endpoints detached is in no line by the derived answer, yet
- * is still in the registry it was added to, which is exactly where it sat before. So an
- * endpoint of a span in this registry is either in this line or in no line.
+ * to a line: {@link Span#isIn} derives parentage from where its endpoints sit. Every endpoint of
+ * a span in this registry sits in this line: a deletion sweeps first and removes every span
+ * whose endpoint it takes, a replacement re-points, a merge moves endpoints only within the
+ * line, and replay undoes in reverse order. So {@link #rangeOf} and every
+ * {@link Span.IndexPredicate} are total over this registry.
  */
 public final class LineSpans {
 
@@ -71,16 +71,16 @@ public final class LineSpans {
 
     /**
      * This line's spans (beams, trills, crescendo, diminuendo, tuplets, endings), each with both
-     * endpoints in this line or in no line, and held in no other line's registry.
+     * endpoints in this line, and held in no other line's registry.
      */
-    private final List<Span> spans = new ArrayList<>();
+    private final List<Span<?>> spans = new ArrayList<>();
 
     /**
      * Live unmodifiable view of {@link #spans}, held once rather than wrapped per call:
      * every query below iterates {@link #getSpans()}, and the wrapper tracks later
      * mutations of {@code spans} anyway.
      */
-    private final List<Span> spansView = Collections.unmodifiableList(spans);
+    private final List<Span<?>> spansView = Collections.unmodifiableList(spans);
 
     LineSpans(Line line) {
         this.line = line;
@@ -95,62 +95,23 @@ public final class LineSpans {
      *
      * @return an unmodifiable live view of this line's spans, in the order they were added
      */
-    public List<Span> getSpans() {
+    public List<Span<?>> getSpans() {
         return spansView;
     }
 
     /**
-     * The spans a pending edit to this line is put to: those whose two index getters both
-     * resolve. A span with a detached endpoint — one sitting in no line, or in a line the song
-     * no longer holds — is on its way out, and the edit is not what removes it, so no span
-     * type is ever asked to judge one.
-     *
-     * @return a copy, in the order the spans were added, safe to hold while spans are removed
-     */
-    List<Span> judgeableSpans() {
-        return spans.stream()
-            .filter(span -> span.getAnchorElementIndex() != null && span.getEndElementIndex() != null)
-            .toList();
-    }
-
-    /**
-     * Returns the elements {@code span} covers in this line, from its anchor's position to its
-     * end's position, read off the span's own two index getters. This is the query for a
-     * caller that needs the extent as a range — to widen it, to test what overlaps it, or to
-     * index the elements under it.
+     * Returns the elements {@code span} covers, from its anchor's position to its end's
+     * position, read off the span's own two index getters. This is the query for a caller that
+     * needs the extent as a range — to widen it, to test what overlaps it, or to index the
+     * elements under it.
      *
      * @param span the span to place, whether or not it is in this registry
-     * @return the inclusive range under {@code span}, or {@code null} when either endpoint
-     *     does not sit in a line — a detached endpoint, or one in a line the song no longer
-     *     holds
-     */
-    public @Nullable ElementRange rangeOf(Span span) {
-        var anchorIndex = span.getAnchorElementIndex();
-        var endIndex = span.getEndElementIndex();
-
-        if (anchorIndex != null && endIndex != null) {
-            return new ElementRange(anchorIndex, endIndex);
-        }
-
-        return null;
-    }
-
-    /**
-     * As {@link #rangeOf}, for a caller whose contract already places both of {@code span}'s
-     * endpoints in this line.
-     *
-     * @param span the span to place; both endpoints in this line
      * @return the inclusive range under {@code span}
-     * @throws IllegalArgumentException if either endpoint does not sit in this line
+     * @throws IllegalStateException when either endpoint sits in no line, which is the case only
+     *     for a span outside every registry
      */
-    ElementRange requireRangeOf(Span span) {
-        var range = rangeOf(span);
-
-        if (range == null) {
-            throw new IllegalArgumentException("Both endpoints of " + span + " must be in this line");
-        }
-
-        return range;
+    public ElementRange rangeOf(Span<?> span) {
+        return new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex());
     }
 
     // ========================================================================
@@ -161,7 +122,7 @@ public final class LineSpans {
      * Appends {@code element} to {@code spans}. Call from inside an applyChange mutator lambda,
      * so the list write moves with the recorded change.
      */
-    private void appendChild(Span element) {
+    private void appendChild(Span<?> element) {
         spans.add(element);
     }
 
@@ -182,13 +143,28 @@ public final class LineSpans {
      */
     void repoint(StaffElement oldElement, StaffElement newElement) {
         for (var span : spans) {
-            if (span.getAnchorElement() == oldElement) {
-                span.setAnchorElement(newElement);
-            }
+            repointEndpoints(span, oldElement, newElement);
+        }
+    }
 
-            if (span.getEndElement() == oldElement) {
-                span.setEndElement(newElement);
-            }
+    /**
+     * Points each endpoint of {@code span} that is {@code oldElement} at {@code newElement},
+     * narrowed to {@code span}'s endpoint type.
+     *
+     * @throws IllegalArgumentException if an endpoint is {@code oldElement} and
+     *     {@code newElement} is not of {@code span}'s endpoint type
+     */
+    private static <E extends StaffElement> void repointEndpoints(
+        Span<E> span,
+        StaffElement oldElement,
+        StaffElement newElement
+    ) {
+        if (span.getAnchorElement() == oldElement) {
+            span.setAnchorElement(span.narrowEndpoint(newElement));
+        }
+
+        if (span.getEndElement() == oldElement) {
+            span.setEndElement(span.narrowEndpoint(newElement));
         }
     }
 
@@ -196,7 +172,7 @@ public final class LineSpans {
      * Records a {@link SpanAddition} of {@code span} and appends it inside that record. The
      * primitive {@link Span#addTo} ends in, after the span's displacement.
      */
-    void add(Span span) {
+    void add(Span<?> span) {
         line.applyChange(new SpanAddition(line, span), () -> appendChild(span));
     }
 
@@ -206,7 +182,7 @@ public final class LineSpans {
      * {@link Span#removeFrom} ends in, and the one place the absent-span early return exists,
      * so a second removal of the same span finds nothing left to remove and records nothing.
      */
-    void remove(Span span) {
+    void remove(Span<?> span) {
         var index = spans.indexOf(span);
 
         if (index < 0) {
@@ -258,20 +234,20 @@ public final class LineSpans {
             return;
         }
 
-        var doomed = new ArrayList<Span>();
+        var doomed = new ArrayList<Span<?>>();
         var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
 
-        for (var span : judgeableSpans()) {
+        for (var span : spans) {
             // Only a hairpin can reshape, so only a hairpin is asked the wider question: the
             // merge that consumes a Reshape replaces a run with a copy of a hairpin, and
             // there is nothing it could do with any other kind of span.
             if (span instanceof Hairpin hairpin) {
-                switch (hairpin.hairpinOutcomeFor(change, line)) {
+                switch (hairpin.hairpinOutcomeFor(change)) {
                     case SpanOutcome.Simple.KEEP -> { }
                     case SpanOutcome.Simple.REMOVE -> doomed.add(hairpin);
                     case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, hairpin, reshape);
                 }
-            } else if (span.outcomeFor(change, line) == SpanOutcome.Simple.REMOVE) {
+            } else if (span.outcomeFor(change) == SpanOutcome.Simple.REMOVE) {
                 doomed.add(span);
             }
         }
@@ -373,23 +349,15 @@ public final class LineSpans {
      * @param reach how far past an endpoint, in elements, a same-kind span may sit and still be
      *              absorbed; {@code 0} absorbs only what {@code span} overlaps
      */
-    void mergeOverlapping(Span span, int reach) {
-        var own = requireRangeOf(span);
+    <E extends StaffElement> void mergeOverlapping(Span<E> span, int reach) {
+        var own = rangeOf(span);
 
-        // Only a span with both endpoints in this line is a merge candidate: the widening
-        // below is arithmetic on these positions, then an index into this line's elements,
-        // and neither is meaningful for an endpoint that sits elsewhere — letting one
-        // through would drag the widened span out to a neighbor's position, or past the end
-        // of the list. Resolved once, before the setters below move the very indices they
-        // are compared against.
+        // Resolved once, before the setters below move the very indices they are compared
+        // against.
         var placed = new ArrayList<PlacedSpan>();
 
-        for (var existing : findSpans(span.getClass())) {
-            var range = rangeOf(existing);
-
-            if (range != null && span.isSameKindAs(existing)) {
-                placed.add(new PlacedSpan(existing, range));
-            }
+        for (var existing : sameKindSpans(span)) {
+            placed.add(new PlacedSpan(existing, rangeOf(existing)));
         }
 
         var mergedAnchorIdx = placed.stream()
@@ -406,11 +374,11 @@ public final class LineSpans {
             .orElse(own.end());
 
         if (mergedAnchorIdx != own.begin()) {
-            span.setAnchorElement(line.getElement(mergedAnchorIdx));
+            span.setAnchorElement(span.narrowEndpoint(line.getElement(mergedAnchorIdx)));
         }
 
         if (mergedEndIdx != own.end()) {
-            span.setEndElement(line.getElement(mergedEndIdx));
+            span.setEndElement(span.narrowEndpoint(line.getElement(mergedEndIdx)));
         }
 
         placed.stream()
@@ -420,34 +388,47 @@ public final class LineSpans {
     }
 
     /** A span of this line paired with the range it covers in it. */
-    private record PlacedSpan(Span span, ElementRange range) {
+    private record PlacedSpan(Span<?> span, ElementRange range) {
+    }
+
+    /**
+     * The spans in this registry of {@code span}'s kind ({@link Span#isSameKindAs}), in the
+     * order they were added.
+     *
+     * @return a copy, safe to hold while spans are removed
+     */
+    private List<Span<?>> sameKindSpans(Span<?> span) {
+        return spans.stream()
+            .filter(span::isSameKindAs)
+            .toList();
     }
 
     /**
      * The {@link Displacement#REPLACE_OVERLAPPING} displacement: removes every same-kind span
      * ({@link Span#isSameKindAs}) overlapping {@code span}'s range, as {@link Span#overlapping}
-     * judges it, so a half-detached one is found and removed too.
+     * judges it.
      *
      * @param span the span about to be added, whose endpoints both sit in this line
      * @effects one {@link Span#removeFrom} per span removed, so each removal is its own
      *     mutation, recorded under the rule that method states
      */
-    void removeOverlappingSameKind(Span span) {
-        findSpans(span.getClass(), Span.overlapping(requireRangeOf(span))).stream()
-            .filter(span::isSameKindAs)
+    void removeOverlappingSameKind(Span<?> span) {
+        var overlapsSpan = Span.overlapping(rangeOf(span));
+
+        sameKindSpans(span).stream()
+            .filter(existing -> overlapsSpan.test(rangeOf(existing)))
             .forEach(existing -> existing.removeFrom(line));
     }
 
     /**
-     * Removes every {@code type} span overlapping {@code range}. A span whose anchor is detached
-     * is still found and removed, so a half-detached span can be cleaned up.
+     * Removes every {@code type} span overlapping {@code range}.
      *
      * @param type  the kind of span to remove; a span of any other kind stays
      * @param range the elements a removed span overlaps, as {@link Span#overlapping} judges it
      * @effects one {@link Span#removeFrom} per span found, so each removal is its own mutation,
      *     recorded under the rule that method states
      */
-    public void removeOverlapping(Class<? extends Span> type, ElementRange range) {
+    public void removeOverlapping(Class<? extends Span<?>> type, ElementRange range) {
         for (var span : findSpans(type, Span.overlapping(range))) {
             span.removeFrom(line);
         }
@@ -458,9 +439,9 @@ public final class LineSpans {
     // ========================================================================
 
     /**
-     * Returns every span of {@code type} whose two index getters satisfy {@code matches}.
+     * Returns every span of {@code type} whose range satisfies {@code matches}.
      */
-    public <T extends Span> List<T> findSpans(Class<T> type, Span.IndexPredicate matches) {
+    public <T extends Span<?>> List<T> findSpans(Class<T> type, Span.IndexPredicate matches) {
         var result = new ArrayList<T>();
 
         for (var span : spans) {
@@ -473,11 +454,10 @@ public final class LineSpans {
     }
 
     /**
-     * Returns the first span of {@code type} whose two index getters satisfy {@code matches},
-     * or {@code null} if there is none. Short-circuits on the first match and allocates
-     * nothing.
+     * Returns the first span of {@code type} whose range satisfies {@code matches}, or
+     * {@code null} if there is none. Short-circuits on the first match.
      */
-    public <T extends Span> @Nullable T findFirstSpan(Class<T> type, Span.IndexPredicate matches) {
+    public <T extends Span<?>> @Nullable T findFirstSpan(Class<T> type, Span.IndexPredicate matches) {
         for (var span : spans) {
             if (isMatch(span, type, matches)) {
                 return type.cast(span);
@@ -487,8 +467,8 @@ public final class LineSpans {
         return null;
     }
 
-    private static boolean isMatch(Span span, Class<? extends Span> type, Span.IndexPredicate matches) {
-        return type.isInstance(span) && matches.test(span.getAnchorElementIndex(), span.getEndElementIndex());
+    private boolean isMatch(Span<?> span, Class<? extends Span<?>> type, Span.IndexPredicate matches) {
+        return type.isInstance(span) && matches.test(rangeOf(span));
     }
 
     /**
@@ -499,7 +479,7 @@ public final class LineSpans {
      * would still resolve both endpoints of every matching span because Java evaluates
      * arguments eagerly.
      */
-    public <T extends Span> List<T> findSpans(Class<T> type) {
+    public <T extends Span<?>> List<T> findSpans(Class<T> type) {
         var result = new ArrayList<T>();
 
         for (var span : spans) {
@@ -514,7 +494,7 @@ public final class LineSpans {
     /**
      * Returns whether any span of {@code type} satisfies {@code matches}.
      */
-    public boolean hasSpan(Class<? extends Span> type, Span.IndexPredicate matches) {
+    public boolean hasSpan(Class<? extends Span<?>> type, Span.IndexPredicate matches) {
         return findFirstSpan(type, matches) != null;
     }
 
@@ -558,7 +538,7 @@ public final class LineSpans {
     }
 
     /**
-     * Returns every hairpin of {@code kind} whose two index getters satisfy {@code matches}.
+     * Returns every hairpin of {@code kind} whose range satisfies {@code matches}.
      */
     public List<Hairpin> findHairpins(Hairpin.Kind kind, Span.IndexPredicate matches) {
         return findSpans(Hairpin.class, matches).stream()

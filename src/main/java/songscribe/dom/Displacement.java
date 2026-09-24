@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import org.jspecify.annotations.Nullable;
-
 /**
  * What a span being added does to the same-kind spans already on its line — its kind's
  * displacement policy, read by {@link Span#addTo} through {@link Span#displacement()}.
@@ -34,46 +32,22 @@ import org.jspecify.annotations.Nullable;
 enum Displacement {
 
     /** Leaves every existing span in place: two spans of the kind may overlap freely. */
-    COEXIST(null),
+    COEXIST,
 
     /** Removes every same-kind span overlapping the new one before it is added. */
-    REPLACE_OVERLAPPING(null),
+    REPLACE_OVERLAPPING,
 
     /**
      * Widens the new span over every same-kind span it overlaps and removes the spans the
      * widened range subsumes. Two spans written back to back stay two: they are two deliberate
      * groupings, not one gesture interrupted by an accident.
      */
-    ABSORB_OVERLAPPING(0),
+    ABSORB_OVERLAPPING,
 
     /**
      * As {@link #ABSORB_OVERLAPPING}, and also absorbs a same-kind span within
      * {@link LineSpans#SPAN_ADJACENCY_REACH} of an endpoint: two spans that close describe one
      * uninterrupted gesture, so adding either merges them.
      */
-    ABSORB_ADJACENT(LineSpans.SPAN_ADJACENCY_REACH);
-
-    /** How far past an endpoint, in elements, an absorbed span may sit; null when nothing is absorbed. */
-    private final @Nullable Integer reach;
-
-    Displacement(@Nullable Integer reach) {
-        this.reach = reach;
-    }
-
-    /**
-     * How far past the new span's endpoints, in elements, an existing same-kind span may sit and
-     * still be absorbed.
-     *
-     * @return {@code 0} for {@link #ABSORB_OVERLAPPING}, {@link LineSpans#SPAN_ADJACENCY_REACH}
-     *     for {@link #ABSORB_ADJACENT}
-     * @throws IllegalStateException for {@link #COEXIST} and {@link #REPLACE_OVERLAPPING},
-     *     which absorb nothing
-     */
-    int absorbReach() {
-        if (reach == null) {
-            throw new IllegalStateException(this + " absorbs nothing");
-        }
-
-        return reach;
-    }
+    ABSORB_ADJACENT
 }

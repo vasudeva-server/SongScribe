@@ -20,10 +20,12 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Set;
 import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
@@ -91,15 +93,6 @@ import songscribe.dom.StaffElementRun.ElementRange;
  */
 public final class TupletValidator {
 
-    /** Smallest printed tuplet number that says anything: a group of one re-times nothing. */
-    public static final int MIN_GRADE = 2;
-
-    /** Largest printed tuplet number this editor can create or a file may state. */
-    public static final int MAX_GRADE = 7;
-
-    /** The only grade the compound-beat fallback in {@link #chooseNormalNotes} applies to. */
-    private static final int COMPOUND_DUPLET_GRADE = 2;
-
     /** A dotted beat divides into three before subdividing binarily. */
     private static final int DOTTED_BEAT_PARTS = 3;
 
@@ -120,7 +113,7 @@ public final class TupletValidator {
     public enum Reason {
         EMPTY_SPAN,             // S == 0
         NOT_NOTATABLE,          // V = S/N is not an exact notatable value
-        BAD_RATIO,              // N not a positive integer, N == M, or N > 7
+        BAD_RATIO,              // N == M
         NO_CONVENTIONAL_SPAN,   // no conventional span below N (and no fallback)
         POWER_OF_TWO_RATIO,     // N / M is a power of two — renotation, not re-timing
         FERMATA,                // an element in the span carries a FermataAttachment
@@ -155,15 +148,20 @@ public final class TupletValidator {
     /**
      * Everything about a span that does not depend on N, computed once so the six
      * candidate grades can be tested without repeating the O(document) beat walk.
+     *
+     * @param writtenTicks      S, the summed written duration of the span's non-grace elements
+     * @param beat              B, the beat in effect at the span's anchor
+     * @param placementReasons  each of {@link Reason#FERMATA}, {@link Reason#BEAT_BARRIER} (a
+     *                          barrier strictly after the anchor element) and
+     *                          {@link Reason#STRUCTURAL_BOUNDARY} found in the span; stored as
+     *                          an unmodifiable copy
      */
-    public record SpanContext(
-        int writtenTicks,               // S
-        int beatTicks,                  // B, including its dot
-        boolean beatDotted,
-        boolean hasFermata,
-        boolean crossesBeatBarrier,     // barrier strictly after the anchor element
-        boolean crossesStructuralBoundary
-    ) {}
+    public record SpanContext(int writtenTicks, BeatUnit beat, Set<Reason> placementReasons) {
+
+        public SpanContext {
+            placementReasons = Set.copyOf(placementReasons);
+        }
+    }
 
     /**
      * Measures a span once, so every candidate grade can be tested against it without
@@ -177,15 +175,21 @@ public final class TupletValidator {
      */
     public static SpanContext describeSpan(Line line, ElementRange span) {
         var beat = line.getSong().beatUnitAt(line.index(), span.begin());
+        var placementReasons = EnumSet.noneOf(Reason.class);
 
-        return new SpanContext(
-            writtenTicks(line, span),
-            beat.ticks(),
-            beat.dotted(),
-            hasFermata(line, span),
-            crossesBeatBarrier(line, span, beat),
-            crossesStructuralBoundary(line, span)
-        );
+        if (hasFermata(line, span)) {
+            placementReasons.add(Reason.FERMATA);
+        }
+
+        if (crossesBeatBarrier(line, span, beat)) {
+            placementReasons.add(Reason.BEAT_BARRIER);
+        }
+
+        if (crossesStructuralBoundary(line, span)) {
+            placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
+        }
+
+        return new SpanContext(writtenTicks(line, span), beat, placementReasons);
     }
 
     /**
@@ -203,22 +207,21 @@ public final class TupletValidator {
      * @param strictness how much of the rule set to enforce
      * @return a valid result carrying the derived M and V, or the first reason it failed
      */
-    public static Result validate(SpanContext context, int grade, Strictness strictness) {
-        var strict = strictness == Strictness.STRICT;
+    public static Result validate(SpanContext context, TupletGrade grade, Strictness strictness) {
         var divisionFailure = divisionFailure(context.writtenTicks(), grade);
 
         if (divisionFailure != null) {
             return invalid(divisionFailure);
         }
 
-        var noteValueTicks = context.writtenTicks() / grade;
+        var noteValueTicks = context.writtenTicks() / grade.number();
         var noteValue = NOTATABLE_BY_TICKS.get(noteValueTicks);
 
         if (noteValue == null) {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        var placementFailure = placementFailure(context, strict);
+        var placementFailure = placementFailure(context, strictness);
 
         if (placementFailure != null) {
             return invalid(placementFailure);
@@ -229,14 +232,17 @@ public final class TupletValidator {
         // power-of-two ratio — means the printed number states nothing to preserve. The
         // lenient path exists to keep a ratio the file *stated*; that goes through
         // validateStated, which never reaches here.
-        var spans = conventionalSpans(noteValueTicks, context.beatTicks(), context.beatDotted());
-        var normalNotes = chooseNormalNotes(spans, grade, context.beatDotted());
+        var beat = context.beat();
+        var spans = conventionalSpans(noteValueTicks, beat);
+        var normalNotes = chooseNormalNotes(spans, grade, beat);
 
         if (normalNotes == null) {
             return invalid(Reason.NO_CONVENTIONAL_SPAN);
         }
 
-        if (grade % normalNotes == 0 && isPowerOfTwo(grade / normalNotes)) {
+        var actualNotes = grade.number();
+
+        if (actualNotes % normalNotes == 0 && isPowerOfTwo(actualNotes / normalNotes)) {
             return invalid(Reason.POWER_OF_TWO_RATIO);
         }
 
@@ -244,7 +250,7 @@ public final class TupletValidator {
     }
 
     /** Convenience: {@link #describeSpan} + {@link #validate}. */
-    public static Result validateDerived(Line line, ElementRange span, int grade, Strictness strictness) {
+    public static Result validateDerived(Line line, ElementRange span, TupletGrade grade, Strictness strictness) {
         return validate(describeSpan(line, span), grade, strictness);
     }
 
@@ -268,9 +274,9 @@ public final class TupletValidator {
      * @return a valid result echoing the stated ratio, or the reason it was rejected
      */
     public static Result validateStated(
-        SpanContext context, int grade, TupletRatio stated, Strictness strictness
+        SpanContext context, TupletGrade grade, TupletRatio stated, Strictness strictness
     ) {
-        if (grade == stated.normalNotes()) {
+        if (grade.number() == stated.normalNotes()) {
             return invalid(Reason.BAD_RATIO);
         }
 
@@ -280,11 +286,11 @@ public final class TupletValidator {
             return invalid(divisionFailure);
         }
 
-        if (context.writtenTicks() / grade != stated.noteValue().ticks()) {
+        if (context.writtenTicks() / grade.number() != stated.noteValue().ticks()) {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        var placementFailure = placementFailure(context, strictness == Strictness.STRICT);
+        var placementFailure = placementFailure(context, strictness);
 
         if (placementFailure != null) {
             return invalid(placementFailure);
@@ -294,22 +300,18 @@ public final class TupletValidator {
     }
 
     /**
-     * The constraints on N and on the span's total duration, shared by the derived and the
-     * stated paths: N is a usable printed number, the span holds some written duration, and
-     * that duration divides into N equal parts.
+     * The constraints on the span's total duration, shared by the derived and the stated
+     * paths: the span holds some written duration, and that duration divides into N equal
+     * parts.
      *
      * @return the reason it failed, or null when it did not
      */
-    private static @Nullable Reason divisionFailure(int writtenTicks, int grade) {
-        if (grade < MIN_GRADE || grade > MAX_GRADE) {
-            return Reason.BAD_RATIO;
-        }
-
+    private static @Nullable Reason divisionFailure(int writtenTicks, TupletGrade grade) {
         if (writtenTicks == 0) {
             return Reason.EMPTY_SPAN;
         }
 
-        if (writtenTicks % grade != 0) {
+        if (writtenTicks % grade.number() != 0) {
             return Reason.NOT_NOTATABLE;
         }
 
@@ -324,16 +326,22 @@ public final class TupletValidator {
      *
      * @return the reason it failed, or null when it did not
      */
-    private static @Nullable Reason placementFailure(SpanContext context, boolean strict) {
-        if (context.hasFermata()) {
+    private static @Nullable Reason placementFailure(SpanContext context, Strictness strictness) {
+        var reasons = context.placementReasons();
+
+        if (reasons.contains(Reason.FERMATA)) {
             return Reason.FERMATA;
         }
 
-        if (strict && context.crossesBeatBarrier()) {
+        if (strictness != Strictness.STRICT) {
+            return null;
+        }
+
+        if (reasons.contains(Reason.BEAT_BARRIER)) {
             return Reason.BEAT_BARRIER;
         }
 
-        if (strict && context.crossesStructuralBoundary()) {
+        if (reasons.contains(Reason.STRUCTURAL_BOUNDARY)) {
             return Reason.STRUCTURAL_BOUNDARY;
         }
 
@@ -344,12 +352,13 @@ public final class TupletValidator {
      * A tuplet a caller hands the walk at its anchor: what the caller knows it by, where it
      * ends, and the number it prints.
      *
-     * @param tuplet the caller's own tuplet, handed back unchanged in its {@link Verdict}
-     * @param end    the tuplet's last element
-     * @param grade  N, the printed tuplet number
-     * @param <T>    the caller's tuplet type
+     * @param tuplet   the caller's own tuplet, handed back unchanged in its {@link Verdict}
+     * @param endIndex the index of the tuplet's last element in the anchor's line, at or after
+     *                 the anchor
+     * @param grade    N, the printed tuplet number
+     * @param <T>      the caller's tuplet type
      */
-    public record Anchored<T>(T tuplet, StaffElement end, int grade) {}
+    public record Anchored<T>(T tuplet, int endIndex, TupletGrade grade) {}
 
     /**
      * The tuplets a caller asks {@link #validateFrom} to judge, looked up by anchor.
@@ -371,7 +380,8 @@ public final class TupletValidator {
 
     /**
      * Judges every tuplet {@code tuplets} supplies at an anchor at or after {@code from}, in
-     * document order. Pass the song's first element to cover the whole song.
+     * document order. Pass the song's first element to cover the whole song. {@code tuplets}
+     * supplies each tuplet's end index in the anchor's line, at or after the anchor.
      *
      * <p>This is one forward walk rather than a {@link #describeSpan} per tuplet: the beat
      * is resolved once at the starting position and carried forward, so the walk costs
@@ -390,10 +400,8 @@ public final class TupletValidator {
      * @param <T>        the caller's tuplet type
      * @return one verdict per tuplet {@code tuplets} supplied at an element the walk reached
      *     outside any span already open, in document order
-     * @invariant a verdict's span begins at the element {@code tuplets} supplied it at, and ends
-     *     at the tuplet's end element when that sits at or after the anchor in the same line;
-     *     otherwise — the end in no line, in another line, or before the anchor — it is the
-     *     anchor alone
+     * @invariant a verdict's span runs from the element {@code tuplets} supplied the tuplet at
+     *     to its {@link Anchored#endIndex()}
      */
     public static <T> List<Verdict<T>> validateFrom(
         Song song, ElementLocation from, Strictness strictness, AnchoredTuplets<T> tuplets
@@ -424,7 +432,7 @@ public final class TupletValidator {
                     // A barrier on the anchor defines the tuplet's beat instead of
                     // splitting it, so the span opens against the updated running beat.
                     if (anchored != null) {
-                        open = new OpenSpan<>(anchored, index, endIndexIn(line, anchored.end()), runningBeat);
+                        open = new OpenSpan<>(anchored, index, runningBeat);
                     }
                 } else if (barrierHere) {
                     open.noteBeatBarrier();
@@ -444,11 +452,6 @@ public final class TupletValidator {
         }
 
         return verdicts;
-    }
-
-    /** The index of {@code end} in {@code line}, or {@code null} when it sits in another line or none. */
-    private static @Nullable Integer endIndexIn(Line line, StaffElement end) {
-        return line.contains(end) ? line.getElementIndex(end) : null;
     }
 
     /**
@@ -471,33 +474,25 @@ public final class TupletValidator {
 
         private final Anchored<T> anchored;
         private final int anchorIndex;
-        private final @Nullable Integer endIndex;
-        private final int beatTicks;
-        private final boolean beatDotted;
+        private final int endIndex;
+        private final BeatUnit beat;
+        private final EnumSet<Reason> placementReasons = EnumSet.noneOf(Reason.class);
         private int writtenTicks;
-        private boolean hasFermata;
-        private boolean crossesBeatBarrier;
-        private boolean crossesStructuralBoundary;
 
-        private OpenSpan(Anchored<T> anchored, int anchorIndex, @Nullable Integer endIndex, BeatUnit beatAtAnchor) {
+        private OpenSpan(Anchored<T> anchored, int anchorIndex, BeatUnit beatAtAnchor) {
             this.anchored = anchored;
             this.anchorIndex = anchorIndex;
-            this.endIndex = endIndex;
-            beatTicks = beatAtAnchor.ticks();
-            beatDotted = beatAtAnchor.dotted();
+            endIndex = anchored.endIndex();
+            beat = beatAtAnchor;
         }
 
-        /**
-         * Whether the walk, having accumulated the element at {@code index}, has reached
-         * this span's end. A tuplet whose end element is not in the anchor's line closes on
-         * its anchor alone: there is no position in the line to walk towards.
-         */
+        /** Whether the walk, having accumulated the element at {@code index}, has reached this span's end. */
         private boolean closesAt(int index) {
-            return endIndex == null || index >= endIndex;
+            return index == endIndex;
         }
 
         private void noteBeatBarrier() {
-            crossesBeatBarrier = true;
+            placementReasons.add(Reason.BEAT_BARRIER);
         }
 
         private void accumulate(StaffElement element, int index) {
@@ -508,19 +503,16 @@ public final class TupletValidator {
             }
 
             if (element.findAttachment(FermataAttachment.class) != null) {
-                hasFermata = true;
+                placementReasons.add(Reason.FERMATA);
             }
 
             if (isStructuralBoundary(type, index, endIndex)) {
-                crossesStructuralBoundary = true;
+                placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
             }
         }
 
         private Verdict<T> close(int lineIndex, int closingIndex, Strictness strictness) {
-            var context = new SpanContext(
-                writtenTicks, beatTicks, beatDotted,
-                hasFermata, crossesBeatBarrier, crossesStructuralBoundary
-            );
+            var context = new SpanContext(writtenTicks, beat, placementReasons);
 
             return new Verdict<>(
                 lineIndex, new ElementRange(anchorIndex, closingIndex), anchored.tuplet(), context,
@@ -611,11 +603,10 @@ public final class TupletValidator {
      * model maintains there. Treating either as a boundary would disable the tuplet
      * control on ordinary selections.
      *
-     * @param endIndex the index the span ends on, or null when its end element is not in the
-     *     span's line, so that no element is the span's end
+     * @param endIndex the index the span ends on
      */
-    private static boolean isStructuralBoundary(ElementType type, int index, @Nullable Integer endIndex) {
-        return (endIndex == null || index != endIndex) && (type.isBar() || type.isBreathMark());
+    private static boolean isStructuralBoundary(ElementType type, int index, int endIndex) {
+        return index != endIndex && (type.isBar() || type.isBreathMark());
     }
 
     /**
@@ -628,11 +619,10 @@ public final class TupletValidator {
      * excluded. Excluding it is what makes a compound duplet infer 2:3 rather than the
      * meaningless 2:1.
      */
-    private static NavigableSet<Integer> conventionalSpans(
-        int noteValueTicks, int beatTicks, boolean beatDotted
-    ) {
+    private static NavigableSet<Integer> conventionalSpans(int noteValueTicks, BeatUnit beat) {
         var spans = new TreeSet<Integer>();
-        var divisionRoot = beatDotted ? beatTicks / DOTTED_BEAT_PARTS : beatTicks;
+        var beatTicks = beat.ticks();
+        var divisionRoot = beat.dotted() ? beatTicks / DOTTED_BEAT_PARTS : beatTicks;
 
         for (var ticks = divisionRoot; ticks >= SHORTEST_SPAN_TICKS; ticks /= 2) {
             addSpan(spans, ticks, noteValueTicks);
@@ -674,16 +664,16 @@ public final class TupletValidator {
      * @return M, or null when the beat offers no span at all
      */
     private static @Nullable Integer chooseNormalNotes(
-        NavigableSet<Integer> spans, int grade, boolean beatDotted
+        NavigableSet<Integer> spans, TupletGrade grade, BeatUnit beat
     ) {
-        var below = spans.lower(grade);
+        var below = spans.lower(grade.number());
 
         if (below != null) {
             return below;
         }
 
-        if (beatDotted && grade == COMPOUND_DUPLET_GRADE) {
-            return spans.higher(COMPOUND_DUPLET_GRADE);
+        if (beat.dotted() && grade == TupletGrade.DUPLET) {
+            return spans.higher(grade.number());
         }
 
         return null;

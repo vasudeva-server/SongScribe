@@ -26,6 +26,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
 import songscribe.dom.Key;
@@ -65,7 +67,7 @@ import songscribe.dom.StaffElementRun;
  * @param elements The captured elements, cloned from the source line
  * @param spans    The {@link Span} spans fully contained within {@code elements}
  */
-public record Fragment(List<StaffElement> elements, List<Span> spans) {
+public record Fragment(List<StaffElement> elements, List<Span<?>> spans) {
 
     // Defensive copies — the class contract is immutability, and both factories
     // build their lists incrementally before handing them over.
@@ -172,27 +174,38 @@ public record Fragment(List<StaffElement> elements, List<Span> spans) {
      * keeping only those whose anchor and end are both present in the map — a span
      * with an endpoint outside the captured run cannot be re-anchored and is dropped.
      */
-    private static List<Span> cloneSpans(
-        List<? extends Span> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
-        var clonedSpans = new ArrayList<Span>();
+    private static List<Span<?>> cloneSpans(
+        List<Span<?>> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
+        var clonedSpans = new ArrayList<Span<?>>();
 
         for (var span : source) {
-            var anchor = span.getAnchorElement();
-            var end = span.getEndElement();
+            var clone = cloneOnto(span, originalToClone);
 
-            if (anchor == null || end == null) {
-                continue;
-            }
-
-            var clonedAnchor = originalToClone.get(anchor);
-            var clonedEnd = originalToClone.get(end);
-
-            if (clonedAnchor != null && clonedEnd != null) {
-                clonedSpans.add(span.copy(clonedAnchor, clonedEnd));
+            if (clone != null) {
+                clonedSpans.add(clone);
             }
         }
 
         return clonedSpans;
+    }
+
+    /**
+     * Copies {@code span} onto the clones of its endpoints, each narrowed to its endpoint type.
+     * A clone is of its original's type, so the narrowing always succeeds.
+     *
+     * @return the copy, or {@code null} when either endpoint has no clone in
+     *     {@code originalToClone}
+     */
+    private static <E extends StaffElement> @Nullable Span<E> cloneOnto(
+        Span<E> span, Map<StaffElement, ? extends StaffElement> originalToClone) {
+        var clonedAnchor = originalToClone.get(span.getAnchorElement());
+        var clonedEnd = originalToClone.get(span.getEndElement());
+
+        if (clonedAnchor == null || clonedEnd == null) {
+            return null;
+        }
+
+        return span.copy(span.narrowEndpoint(clonedAnchor), span.narrowEndpoint(clonedEnd));
     }
 
     /**

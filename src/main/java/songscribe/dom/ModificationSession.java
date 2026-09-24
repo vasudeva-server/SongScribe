@@ -602,7 +602,7 @@ public final class ModificationSession {
         // A tuplet the edit landed inside is anchored before the edit, and the forward walk
         // only opens a span at its anchor — so back the start up to the anchor, or the one
         // tuplet the edit is most likely to have broken would never be judged.
-        var enclosingAnchorIndex = enclosingTuplet == null ? null : enclosingTuplet.getAnchorElementIndex();
+        var enclosingAnchorIndex = enclosingTuplet == null ? null : enclosingTuplet.requireAnchorElementIndex();
 
         if (enclosingAnchorIndex != null) {
             startIndex = Math.min(startIndex, enclosingAnchorIndex);
@@ -631,6 +631,6 @@ public final class ModificationSession {
             return null;
         }
 
-        return new TupletValidator.Anchored<>(tuplet, tuplet.getEndElement(), tuplet.getGrade());
+        return new TupletValidator.Anchored<>(tuplet, tuplet.requireEndElementIndex(), tuplet.getGrade());
     }
 }

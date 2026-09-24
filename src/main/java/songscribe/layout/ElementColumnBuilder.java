@@ -214,9 +214,9 @@ public class ElementColumnBuilder {
         // may sit, so a lyric gap is never widened past what it needs, nor compressed below it.
         column.setMinGapToNextSyllableSs(gapToNextSyllableSs);
         column.setMinCollisionGapToNextSyllableSs(gapToNextSyllableSs);
-        // Tag the column with its beam group (anchor index) so adjacent beam groups stay
-        // distinct and the spacing calculator does not merge them.
-        column.setBeamGroupId(beam != null ? beam.requireAnchorElementIndex() : null);
+        // Tag the column with its beam so adjacent beam groups stay distinct and the spacing
+        // calculator does not merge them.
+        column.setBeam(beam);
 
         return column;
     }

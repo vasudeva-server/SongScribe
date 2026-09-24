@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.engraving.BeamMetrics;
 import songscribe.engraving.Staff;
 import songscribe.engraving.StemMetrics;
@@ -38,11 +40,14 @@ import songscribe.engraving.StemMetrics;
  * what lets a note ask its beam for a direction before any column exists. The computed beam
  * geometry lives in {@code LayoutResult.BeamLayout}.
  *
- * <p>This is the one place the endpoint narrowing {@link Span} describes is written: the
- * constructor admits only notes, {@link #acceptsEndpoint} refuses anything else on the base
- * setters and {@link Span#copy}, and the two covariant getters are therefore the only casts in
- * the narrowing — every reader of a beam's endpoint gets a {@link NoteElement} without
- * re-proving it.
+ * <p>A beam's endpoints are notes, which the type argument states: the constructor, the
+ * endpoint getters and {@link Span#copy} are typed to {@link NoteElement}, so every reader of a
+ * beam's endpoint gets a note without re-proving it.
+ *
+ * <p>{@link #members} hands out each joined note as a {@link Member}, which answers the
+ * per-note questions — which levels it carries, which way its stub points, how far French
+ * beaming shortens its stem — from its place among the members. A note that is not a member
+ * has no {@link Member}, so none of those questions can be put about it.
  *
  * <p>Invariant: every element inside a beam's span is a note, both endpoints are beamable, and
  * every non-grace element strictly inside it is beamable. {@link #outcomeFor} keeps it through
@@ -58,13 +63,7 @@ import songscribe.engraving.StemMetrics;
  * because both endpoints are beamable, so its nearest members on either side are both members
  * of this beam.
  */
-public final class Beam extends Span {
-
-    /**
-     * Number of distinct beam levels: level 0 = 8th, level 1 = 16th, level 2 = 32nd. The
-     * MusicXML writer sizes its per-note beam-value arrays by it.
-     */
-    public static final int LEVEL_COUNT = NoteValue.THIRTY_SECOND.flagCount();
+public final class Beam extends Span<NoteElement> {
 
     /**
      * Vertical gap, in staff spaces, a grace note's stem tip must keep below an upward beam
@@ -79,65 +78,33 @@ public final class Beam extends Span {
     private static final double GRACE_STEM_BEAM_CLEARANCE_SS = 0.5;
 
     public Beam(NoteElement anchorElement, NoteElement endElement) {
-        super(anchorElement, endElement);
+        super(NoteElement.class, anchorElement, endElement);
     }
 
-    /** Returns the first note in this range. */
     @Override
-    public NoteElement getAnchorElement() {
-        return (NoteElement) super.getAnchorElement();
-    }
-
-    /** Returns the last note in this range. */
-    @Override
-    public NoteElement getEndElement() {
-        return (NoteElement) super.getEndElement();
-    }
-
-    /** Admits a note and nothing else. */
-    @Override
-    protected boolean acceptsEndpoint(StaffElement element) {
-        return element instanceof NoteElement;
+    protected Beam createCopy(NoteElement newAnchor, NoteElement newEnd) {
+        return new Beam(newAnchor, newEnd);
     }
 
     /**
-     * {@link Span#copy} has already put both elements past {@link #acceptsEndpoint}, so they
-     * are notes; this hands them on as such.
-     */
-    @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        return new Beam((NoteElement) newAnchor, (NoteElement) newEnd);
-    }
-
-    /**
-     * The line this beam's members are in. A beam never crosses a line, so the anchor's line is
-     * the whole group's.
+     * Returns the notes this beam joins, each with its place among them: every non-grace note
+     * from the anchor to the end, in line order.
      *
-     * @throws IllegalStateException if the anchor is in no line, which a removal that detached
-     *     it leaves behind until the span is cleaned up
-     */
-    private Line line() {
-        var line = getAnchorLine();
-
-        if (line == null) {
-            throw new IllegalStateException("beam anchor is in no line: " + this);
-        }
-
-        return line;
-    }
-
-    /**
-     * Returns the notes this beam joins: every non-grace note from the anchor to the end, in
-     * line order.
+     * <p>The list is built afresh on each call and reflects the line as it is then; a
+     * {@link Member} answers from the members as they were when it was built.
      *
      * @return this beam's members, a new unmodifiable list, never empty
      * @throws IllegalStateException if this beam's anchor or its end is in no line
-     * @invariant the first member is {@link #getAnchorElement()} and the last is
+     * @invariant the first member's note is {@link #getAnchorElement()} and the last's is
      *     {@link #getEndElement()}
-     * @invariant no member is a grace note
+     * @invariant no member's note is a grace note
      */
-    public List<NoteElement> members() {
-        return notesInSpan().filter(note -> !note.getType().isGraceNote()).toList();
+    public List<Member> members() {
+        var notes = notesInSpan().filter(note -> !note.getType().isGraceNote()).toList();
+
+        return IntStream.range(0, notes.size())
+            .mapToObj(position -> new Member(notes, position))
+            .toList();
     }
 
     /**
@@ -168,13 +135,12 @@ public final class Beam extends Span {
      * class invariant removes it ({@link #replacementBreaksInvariant}), and an insertion or an
      * in-place modification keeps it.
      *
-     * @param change the pending change, not yet applied to {@code line}
-     * @param line   the line being changed, still in its pre-change state
+     * @param change the pending change, not yet applied to {@code change.line()}
      * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the beam,
      *     otherwise {@link SpanOutcome.Simple#KEEP}
      */
     @Override
-    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.Simple outcomeFor(ElementChange change) {
         var invalidated = switch (change) {
             case ElementChange.Deletion deletion -> isEndpointDeletedBy(deletion);
             case ElementChange.Replacement replacement -> replacementBreaksInvariant(replacement);
@@ -248,11 +214,13 @@ public final class Beam extends Span {
         var maxStaffPos = Integer.MIN_VALUE;
 
         for (var member : members()) {
-            if (member.stem() instanceof Stem.Forced forced) {
+            var note = member.note();
+
+            if (note.stem() instanceof Stem.Forced forced) {
                 return forced.direction();
             }
 
-            var pos = member.getStaffPosition().value();
+            var pos = note.getStaffPosition().value();
             minStaffPos = Math.min(minStaffPos, pos);
             maxStaffPos = Math.max(maxStaffPos, pos);
         }
@@ -319,146 +287,10 @@ public final class Beam extends Span {
         var maxBeamCount = 0;
 
         for (var member : members()) {
-            maxBeamCount = Math.max(maxBeamCount, member.getType().beamCount());
+            maxBeamCount = Math.max(maxBeamCount, member.note().getType().beamCount());
         }
 
         return maxBeamCount;
-    }
-
-    // -------------------------------------------------------------------------
-    // Note-type-in-level predicate
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns {@code true} if {@code member} carries a beam at the given {@code level}. A
-     * sub-beam at level L joins each run of consecutive {@link #members} that are all in L.
-     *
-     * @param member one of this beam's {@link #members}
-     * @param level  the beam level to test against (0 = 8th, 1 = 16th, 2 = 32nd)
-     * @return {@code true} if {@code member} carries a beam at {@code level}
-     */
-    public boolean noteTypeInLevel(NoteElement member, int level) {
-        return member.getType().beamCount() > level;
-    }
-
-    // -------------------------------------------------------------------------
-    // Stub direction
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns {@code true} if the partial-beam stub on {@code member} should be drawn to the
-     * right; {@code false} if it should be drawn to the left or if no stub is needed on it.
-     *
-     * <p>A stub is needed at beam level L when neither the left nor the right neighbouring
-     * member shares level L. The direction rule is:
-     * <ul>
-     *   <li>first member in group → right</li>
-     *   <li>last member, or member immediately after a beam break → left</li>
-     *   <li>member immediately before a beam break → right</li>
-     *   <li>otherwise → toward the neighbour with more beams</li>
-     * </ul>
-     *
-     * @param member one of this beam's {@link #members}
-     * @return {@code true} for a stub drawn to the right; {@code false} for a stub drawn to the
-     *     left, or for no stub at all
-     */
-    public boolean stubRight(NoteElement member) {
-        var members = members();
-        var position = members.indexOf(member);
-        var lastPosition = members.size() - 1;
-        var myBeams = member.getType().beamCount();
-        var leftBeams = beamCountAt(members, position - 1);
-        var rightBeams = beamCountAt(members, position + 1);
-
-        var hasStub = false;
-
-        for (var level = 2; level <= myBeams; level++) {
-            if (leftBeams < level && rightBeams < level) {
-                hasStub = true;
-                break;
-            }
-        }
-
-        if (!hasStub) {
-            return false;
-        }
-
-        if (position == 0) {
-            return true;                          // first element → stub right
-        }
-
-        if (position == lastPosition || rightBeams < myBeams) {
-            return false;                         // last element or after break → left
-        }
-
-        //noinspection SimplifiableIfStatement
-        if (leftBeams < myBeams) {
-            return true;                          // element at a beam break → right
-        }
-
-        return rightBeams >= leftBeams;       // toward neighbour with more beams
-    }
-
-    // -------------------------------------------------------------------------
-    // French beaming
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns how many beam levels the stem at index {@code i} within this group is shortened
-     * by under French beaming — i.e. the number of beam translations between the outer beam
-     * and the innermost beam that passes straight <em>through</em> this stem.
-     *
-     * <p>A stem is shortened only for beams that pass through it, so it still terminates on a
-     * beam rather than in mid-air. Following LilyPond ({@code Beam::set_stem_lengths}, which
-     * intersects each stem's left and right beaming slices), the count is the number of beam
-     * levels shared with <em>both</em> neighbours, less one for the level the stem must still
-     * reach.
-     *
-     * <p>So a stem returns 0 — and runs out to the outer beam as usual — exactly when it shares
-     * no more than the outer beam with a neighbour: the first and last stem of a group, every
-     * stem carrying a single beam, and every stem whose <em>secondary</em> beam breaks. A break
-     * at a deeper level still shortens: in a 16th/32nd/32nd/16th group the second stem is where
-     * the 32nd sub-beam starts, yet it stops one level short, on the 16th beam. A stub is not a
-     * level the stem must reach either — it sits nearer the notehead and is covered on the way.
-     *
-     * <p>This is a drawing-time correction only: the logical stem tip stays at the outer beam,
-     * which is what beam placement and the stacker read.
-     *
-     * @param member one of this beam's {@link #members}, whose stem is tested
-     * @return the number of beam levels shared with both neighbours, less one for the level the
-     *     stem must still reach; 0 for the first and last stem of the group
-     */
-    public int frenchBeamShortening(NoteElement member) {
-        var members = members();
-        var position = members.indexOf(member);
-
-        // A note's beams always run 0..beamCount-1, so LilyPond's intersection of the
-        // stem's left and right beaming slices is simply the smallest of the three
-        // counts — the beams that reach this stem from both sides pass through it. The
-        // first and last stem have a missing neighbour, which counts as no beams.
-        var leftBeams = beamCountAt(members, position - 1);
-        var ownBeams = member.getType().beamCount();
-        var rightBeams = beamCountAt(members, position + 1);
-        var beamsThrough = Math.min(ownBeams, Math.min(leftBeams, rightBeams));
-
-        return Math.max(0, beamsThrough - 1);
-    }
-
-    /**
-     * Returns {@link ElementType#beamCount()} of the member at {@code position}, or 0 when
-     * {@code position} is outside {@code members}, which is how a neighbour past either end of
-     * the group reads.
-     *
-     * <p>Neighbours are members, so a grace note between two beamed notes is never the
-     * neighbour: the beam that decides a stem's length or stub is the one continuing to the
-     * note on the far side of the grace note, not the grace note's own flag.
-     */
-    private static int beamCountAt(List<NoteElement> members, int position) {
-        if (position < 0 || position >= members.size()) {
-            return 0;
-        }
-
-        return members.get(position).getType().beamCount();
     }
 
     /**
@@ -469,5 +301,163 @@ public final class Beam extends Span {
     @Override
     protected Displacement displacement() {
         return Displacement.ABSORB_OVERLAPPING;
+    }
+
+    // -------------------------------------------------------------------------
+    // Members
+    // -------------------------------------------------------------------------
+
+    /**
+     * A note a beam joins, together with its place among the beam's members. Only
+     * {@link Beam#members} creates one, so every member is a note its beam joins, and its
+     * neighbours are the members either side of it.
+     *
+     * <p>Neighbours are members, so a grace note between two beamed notes is never the
+     * neighbour: the beam that decides a stem's length or stub is the one continuing to the
+     * note on the far side of the grace note, not the grace note's own flag. A neighbour past
+     * either end of the group counts as carrying no beams.
+     */
+    public static final class Member {
+
+        /** The notes of every member of the beam, in line order. */
+        private final List<NoteElement> notes;
+
+        /** This member's position in {@link #notes}. */
+        private final int position;
+
+        private final NoteElement note;
+
+        private Member(List<NoteElement> notes, int position) {
+            this.notes = notes;
+            this.position = position;
+            this.note = notes.get(position);
+        }
+
+        /**
+         * Returns the note this member is.
+         *
+         * @return the member's note, never a grace note
+         */
+        public NoteElement note() {
+            return note;
+        }
+
+        /**
+         * Returns whether this member carries a beam at {@code level}. A sub-beam at a level
+         * joins each run of consecutive members that all carry it.
+         *
+         * @param level the beam level to test
+         * @return {@code true} if this member's note carries a beam at {@code level}
+         * @invariant every member carries {@link BeamLevel#EIGHTH}
+         */
+        public boolean carries(BeamLevel level) {
+            return level.isCarriedBy(note.getType());
+        }
+
+        /**
+         * Returns {@code true} if the partial-beam stub on this member should be drawn to the
+         * right; {@code false} if it should be drawn to the left or if no stub is needed on it.
+         *
+         * <p>A stub is needed at a level past the primary one when this member carries it and
+         * neither neighbouring member does. The direction rule is:
+         * <ul>
+         *   <li>first member in group → right</li>
+         *   <li>last member, or member immediately after a beam break → left</li>
+         *   <li>member immediately before a beam break → right</li>
+         *   <li>otherwise → toward the neighbour with more beams</li>
+         * </ul>
+         *
+         * @return {@code true} for a stub drawn to the right; {@code false} for a stub drawn to
+         *     the left, or for no stub at all
+         */
+        public boolean stubRight() {
+            var lastPosition = notes.size() - 1;
+            var myBeams = note.getType().beamCount();
+            var leftBeams = beamCountAt(position - 1);
+            var rightBeams = beamCountAt(position + 1);
+
+            var hasStub = false;
+
+            for (@Nullable BeamLevel level = BeamLevel.SIXTEENTH;
+                 level != null;
+                 level = level.next()) {
+                var levelNumber = level.number();
+
+                if (carries(level) && leftBeams < levelNumber && rightBeams < levelNumber) {
+                    hasStub = true;
+                    break;
+                }
+            }
+
+            if (!hasStub) {
+                return false;
+            }
+
+            if (position == 0) {
+                return true;                          // first element → stub right
+            }
+
+            if (position == lastPosition || rightBeams < myBeams) {
+                return false;                         // last element or after break → left
+            }
+
+            //noinspection SimplifiableIfStatement
+            if (leftBeams < myBeams) {
+                return true;                          // element at a beam break → right
+            }
+
+            return rightBeams >= leftBeams;       // toward neighbour with more beams
+        }
+
+        /**
+         * Returns how many beam levels this member's stem is shortened by under French beaming
+         * — i.e. the number of beam translations between the outer beam and the innermost beam
+         * that passes straight <em>through</em> this stem.
+         *
+         * <p>A stem is shortened only for beams that pass through it, so it still terminates on
+         * a beam rather than in mid-air. Following LilyPond ({@code Beam::set_stem_lengths},
+         * which intersects each stem's left and right beaming slices), the count is the number
+         * of beam levels shared with <em>both</em> neighbours, less one for the level the stem
+         * must still reach.
+         *
+         * <p>So a stem returns 0 — and runs out to the outer beam as usual — exactly when it
+         * shares no more than the outer beam with a neighbour: the first and last stem of a
+         * group, every stem carrying a single beam, and every stem whose <em>secondary</em> beam
+         * breaks. A break at a deeper level still shortens: in a 16th/32nd/32nd/16th group the
+         * second stem is where the 32nd sub-beam starts, yet it stops one level short, on the
+         * 16th beam. A stub is not a level the stem must reach either — it sits nearer the
+         * notehead and is covered on the way.
+         *
+         * <p>This is a drawing-time correction only: the logical stem tip stays at the outer
+         * beam, which is what beam placement and the stacker read.
+         *
+         * @return the number of beam levels shared with both neighbours, less one for the level
+         *     the stem must still reach; 0 for the first and last stem of the group
+         */
+        public int frenchShortening() {
+            // A note's beams always run from the primary level inward, so LilyPond's
+            // intersection of the stem's left and right beaming slices is simply the smallest
+            // of the three counts — the beams that reach this stem from both sides pass
+            // through it. The first and last stem have a missing neighbour, which counts as no
+            // beams.
+            var leftBeams = beamCountAt(position - 1);
+            var ownBeams = note.getType().beamCount();
+            var rightBeams = beamCountAt(position + 1);
+            var beamsThrough = Math.min(ownBeams, Math.min(leftBeams, rightBeams));
+
+            return Math.max(0, beamsThrough - 1);
+        }
+
+        /**
+         * Returns {@link ElementType#beamCount()} of the member at {@code memberPosition}, or 0
+         * when {@code memberPosition} is past either end of the group.
+         */
+        private int beamCountAt(int memberPosition) {
+            if (memberPosition < 0 || memberPosition >= notes.size()) {
+                return 0;
+            }
+
+            return notes.get(memberPosition).getType().beamCount();
+        }
     }
 }

@@ -26,7 +26,7 @@ import songscribe.dom.Span;
 /**
  * Mutation recording the addition of a span to a line.
  */
-public record SpanAddition(Line line, Span element)
+public record SpanAddition(Line line, Span<?> element)
     implements Mutation, LineScopedMutation {
 
     @Override

@@ -65,7 +65,7 @@ class MusicXmlCrossLineSpanTest extends UnitTest {
      *                    last its stop marker
      * @param spanType    the span the notes build when they all sit on one line
      */
-    private record CrossLineCase(String description, List<String> notes, Class<? extends Span> spanType) {
+    private record CrossLineCase(String description, List<String> notes, Class<? extends Span<?>> spanType) {
 
         /** The notes with {@code separator} between the last note and the ones before it. */
         String markupSplitBeforeLastNote(String separator) {

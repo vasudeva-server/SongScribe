@@ -153,7 +153,7 @@ public final class HitRegionBuilder {
         addArticulations(layoutResult, builder);
         addAttachments(layoutResult, builder);
         addTrills(layoutResult, builder);
-        addTuplets(line, layoutResult, builder);
+        addTuplets(layoutResult, builder);
         addTies(line, layoutResult, builder);
         addBeams(line, layoutResult, builder);
         addAttribution(layoutResult, builder);
@@ -364,13 +364,12 @@ public final class HitRegionBuilder {
      * run for it would make empty space above a beam select the tuplet.
      */
     private static void addTuplets(
-        Line line,
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
         for (var entry : layoutResult.decorationLayouts().<Tuplet>getDecorationLayoutsByType(Tuplet.class)) {
             var tuplet = entry.getKey();
-            var shapeSs = tupletHitShapeSs(tuplet, line, layoutResult, entry.getValue());
+            var shapeSs = tupletHitShapeSs(tuplet, layoutResult, entry.getValue());
 
             if (shapeSs == null) {
                 continue;
@@ -498,7 +497,6 @@ public final class HitRegionBuilder {
      */
     private static @Nullable Shape tupletHitShapeSs(
         Tuplet tuplet,
-        Line line,
         LayoutResult layoutResult,
         LayoutResult.DecorationLayout layout) {
 
@@ -519,8 +517,8 @@ public final class HitRegionBuilder {
         // A bracket reaches past the notes it spans at both ends, so the edges come from the same
         // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
         var anchorXSs = layout.xSs();
-        var leftEdgeXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
-            StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
+        var leftEdgeXSs = tuplet.bracketLeftEdgeXSs(
+            anchorXSs, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
         var rightEdgeXSs = Tuplet.bracketRightEdgeXSs(
             anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
 
@@ -537,7 +535,7 @@ public final class HitRegionBuilder {
 
         var numberRectSs = tupletNumberRectSs(tuplet, leftEdgeXSs, rightEdgeXSs, boxTopYAtSs);
 
-        if (tuplet.isNumberOnly(line)) {
+        if (tuplet.isNumberOnly()) {
             return numberRectSs;
         }
 

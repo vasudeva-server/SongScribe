@@ -23,13 +23,13 @@ package songscribe.ui.renderer;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
-import java.awt.Point;
 import java.awt.geom.Path2D;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Beam;
+import songscribe.dom.BeamLevel;
 import songscribe.dom.Direction;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
@@ -115,10 +115,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             invariants, beam.requireAnchorElementIndex(), beam.requireEndElementIndex());
         var beamLayout = invariants.getLayoutResult().getBeamLayout(beam);
         var members = beam.members();
-        var lastPosition = members.size() - 1;
-        var outerNotes = new Point(0, lastPosition);
-        doDrawBeams(g2, members, invariants, frame, beam, outerNotes,
-            0, lastPosition, 0, lastPosition, false, 0, highlightColor != null, beamLayout,
+        var allMembers = new MemberRun(0, members.size() - 1);
+        doDrawBeams(g2, members, invariants, frame, beam, allMembers,
+            allMembers, allMembers, false, BeamLevel.EIGHTH, highlightColor != null, beamLayout,
             highlightColor != null ? highlightColor : invariants.getSelectionColor());
     }
 
@@ -183,77 +182,79 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     }
 
     /**
-     * Draws the beam at {@code recursionLevel} over the run of {@code members} at positions
-     * {@code beginPosition} to {@code endPosition}, then recurses into each run of members that
-     * carries the next level. Every position here, including {@code outerNotes}, is a position
-     * in {@code members}, not a line index, so a grace note the beam passes over never starts,
-     * ends or splits a run.
+     * Draws the beam at {@code level} over {@code run}, then recurses into each run of members
+     * that carries the next level. Every position here, including those of {@code outerNotes}
+     * and {@code prevRun}, is a position in {@code members}, not a line index, so a grace note
+     * the beam passes over never starts, ends or splits a run.
      */
     private void doDrawBeams(
         Graphics2D g2,
-        List<NoteElement> members,
+        List<Beam.Member> members,
         LineInvariants invariants,
         ElementFrame frame,
         Beam beam,
-        Point outerNotes,
-        int beginPosition,
-        int endPosition,
-        int prevBeginPosition,
-        int prevEndPosition,
+        MemberRun outerNotes,
+        MemberRun run,
+        MemberRun prevRun,
         boolean isPrevLeftOriented,
-        int recursionLevel,
+        BeamLevel level,
         boolean selected,
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
     ) {
-        var beginNote = members.get(beginPosition);
+        var beginNote = members.get(run.first()).note();
         var direction = beam.direction();
         var leftOriented = false;
 
         // Half beam (single note at this level)
-        if (beginPosition == endPosition) {
+        if (run.isSingle()) {
             var stubStemLayout = invariants.getLayoutResult().getStemLayout(beginNote);
 
             if (stubStemLayout != null) {
                 leftOriented = !stubStemLayout.stubRight();
-            } else if (prevBeginPosition == prevEndPosition) {
+            } else if (prevRun.isSingle()) {
                 leftOriented = isPrevLeftOriented;
             } else {
-                leftOriented = (beginPosition != prevBeginPosition);
+                leftOriented = (run.first() != prevRun.first());
             }
 
             int begin, end;
 
             if (leftOriented) {
-                begin = outerNotes.x;
-                end = endPosition;
+                begin = outerNotes.first();
+                end = run.last();
             } else {
-                begin = beginPosition;
-                end = outerNotes.y;
+                begin = run.first();
+                end = outerNotes.last();
             }
 
             var type = leftOriented ? BeamType.ATTACH_RIGHT : BeamType.ATTACH_LEFT;
-            drawBeam(g2, invariants, members.get(begin), members.get(end), direction, type, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, invariants, members.get(begin).note(), members.get(end).note(), direction, type, level, selected, beamLayout, selectionColor);
         }
         // Full beam
         else {
-            drawBeam(g2, invariants, beginNote, members.get(endPosition), direction, BeamType.FULL, recursionLevel, selected, beamLayout, selectionColor);
+            drawBeam(g2, invariants, beginNote, members.get(run.last()).note(), direction, BeamType.FULL, level, selected, beamLayout, selectionColor);
         }
 
         // Sub-beams for inner levels.
-        var beamLevel = recursionLevel + 1;
+        var innerLevel = level.next();
+
+        if (innerLevel == null) {
+            return;
+        }
+
         Integer startSubBeam = null;
 
-        for (var i = beginPosition; i <= endPosition + 1; i++) {
-            if (i <= endPosition && beam.noteTypeInLevel(members.get(i), beamLevel)) {
+        for (var i = run.first(); i <= run.last() + 1; i++) {
+            if (i <= run.last() && members.get(i).carries(innerLevel)) {
                 if (startSubBeam == null) {
                     startSubBeam = i;
                 }
             } else {
                 if (startSubBeam != null) {
                     doDrawBeams(g2, members, invariants, frame, beam, outerNotes,
-                        startSubBeam, i - 1, beginPosition, endPosition,
-                        leftOriented, recursionLevel + 1, selected, beamLayout, selectionColor);
+                        new MemberRun(startSubBeam, i - 1), run,
+                        leftOriented, innerLevel, selected, beamLayout, selectionColor);
                     startSubBeam = null;
                 }
             }
@@ -267,7 +268,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         NoteElement endNote,
         Direction direction,
         BeamType type,
-        int recursionLevel,
+        BeamLevel level,
         boolean selected,
         LayoutResult.@Nullable BeamLayout beamLayout,
         Color selectionColor
@@ -280,8 +281,11 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
         var effectiveBeamDepthSs = BeamMetrics.BEAM_THICKNESS_SS + thickeningSs;
         var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
+        // The primary beam sits on the stem tip; each level further in steps one translation
+        // toward the noteheads.
+        var translationsFromTip = level.number() - BeamLevel.EIGHTH.number();
         var innerBeamOffsetSs =
-            BeamMetrics.beamTranslationSs(thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
+            BeamMetrics.beamTranslationSs(thickeningSs) * translationsFromTip * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
@@ -365,6 +369,18 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         return direction.isUp()
             ? elementYSs - StemMetrics.STEM_LENGTH_SS
             : elementYSs + StemMetrics.STEM_LENGTH_SS;
+    }
+
+    /**
+     * A run of consecutive beam members, by their positions in {@link Beam#members}: from
+     * {@code first} to {@code last}, both inclusive.
+     */
+    private record MemberRun(int first, int last) {
+
+        /** Returns whether the run is a single member, which draws a partial-beam stub. */
+        boolean isSingle() {
+            return first == last;
+        }
     }
 
     /**

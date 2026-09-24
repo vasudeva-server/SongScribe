@@ -58,10 +58,12 @@ import songscribe.dom.PendingTuplet;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.TempoMarking;
 import songscribe.dom.Trill;
+import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletRatio;
 import songscribe.io.DocumentValidation;
 import songscribe.io.ReadAnnotation;
@@ -731,12 +733,14 @@ final class MeasureMapper {
             return;
         }
 
-        if (!Ending.hasRepeatSplit(line, line.getElementIndex(anchor), line.getElementIndex(end))) {
+        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
+        var ending = Ending.spanning(line, range);
+
+        if (ending == null) {
             LOG.warn("Dropping split-less <ending> on import (no repeat between anchor and end)");
             return;
         }
 
-        var ending = new Ending(anchor, end);
         ending.setUserYOffsetSs(yOffsetSs);
         ending.addTo(line);
     }
@@ -1378,8 +1382,15 @@ final class MeasureMapper {
             statedRatio = new TupletRatio(normalNotes, new NotatableValue(noteValue, marker.normalDots()));
         }
 
+        var grade = TupletGrade.of(marker.actualNotes());
+
+        if (grade == null) {
+            throw DocumentValidation.corrupt(LOG,
+                "Corrupt document: <actual-notes> {} is outside 2..7", marker.actualNotes());
+        }
+
         pendingTuplets.add(new PendingTuplet(
-            open.anchor(), end.element(), marker.actualNotes(), statedRatio, marker.verticalPositionSs()));
+            open.anchor(), end.element(), grade, statedRatio, marker.verticalPositionSs()));
     }
 
     /**

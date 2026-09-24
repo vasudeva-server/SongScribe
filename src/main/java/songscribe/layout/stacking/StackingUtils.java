@@ -675,7 +675,7 @@ public final class StackingUtils {
     public static boolean isRangeCovered(
         StaffElement startNote,
         StaffElement endNote,
-        List<? extends Span> existingElements) {
+        List<? extends Span<?>> existingElements) {
 
         for (var element : existingElements) {
             if (element.getAnchorElement() == startNote && element.getEndElement() == endNote) {

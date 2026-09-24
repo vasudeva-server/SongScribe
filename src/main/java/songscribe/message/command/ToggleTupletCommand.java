@@ -21,6 +21,7 @@
 package songscribe.message.command;
 
 
+import songscribe.dom.TupletGrade;
 import songscribe.message.Message;
 import songscribe.ui.action.TupletAction;
 
@@ -36,12 +37,12 @@ public class ToggleTupletCommand extends Message {
         return action;
     }
 
-    public int getTupletSize() {
-        return action.getTuplet().getSize();
+    public TupletGrade getGrade() {
+        return action.getGrade();
     }
 
     @Override
     public String toString() {
-        return super.toString() + "(tuplet = " + getTupletSize() + ')';
+        return super.toString() + "(tuplet = " + getGrade() + ')';
     }
 }

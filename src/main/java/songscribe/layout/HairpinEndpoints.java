@@ -102,14 +102,7 @@ public final class HairpinEndpoints {
             return null;
         }
 
-        // Resolve through the line, never through Hairpin.requireAnchorElementIndex(): that answers
-        // from whichever line the endpoint belongs to, which would turn into silently wrong
-        // arithmetic below rather than a rejection here.
         var range = line.spanRegistry().rangeOf(hairpin);
-
-        if (range == null) {
-            return null;
-        }
 
         var anchorColumn = spanColumns.anchorColumn();
         var endColumn = spanColumns.endColumn();

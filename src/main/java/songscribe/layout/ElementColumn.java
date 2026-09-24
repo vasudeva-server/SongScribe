@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Beam;
 import songscribe.dom.Direction;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyChangeElement;
@@ -50,7 +51,7 @@ import songscribe.dom.Tie;
  * <p>
  * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
  * {@link #minGapToNextSyllableSs}, {@link #minCollisionGapToNextSyllableSs},
- * {@link #noteheadWidthSs} (note columns only) and {@link #beamGroupId}, then
+ * {@link #noteheadWidthSs} (note columns only) and {@link #beam}, then
  * {@link HorizontalSpacingCalculator} sets {@link #xSs} once positions are computed.
  * Every other field is immutable. Use {@link ElementColumnBuilder} to create instances.
  */
@@ -83,10 +84,9 @@ public final class ElementColumn {
     // the bare hyphen glyph width for hyphenated ones. Distinct from minGapToNextSyllableSs, which
     // is the wider comfortable/preferred gap the rest aims for.
     private double minCollisionGapToNextSyllableSs;
-    // Identifies which beam group this column belongs to (the beam's anchor element index),
-    // or null when not beamed. Set by ElementColumnBuilder so the spacing calculator
-    // can keep adjacent beam groups separate rather than merging them.
-    private @Nullable Integer beamGroupId;
+    // The beam this column belongs to, or null when not beamed. Set by ElementColumnBuilder so
+    // the spacing calculator can keep adjacent beam groups separate rather than merging them.
+    private @Nullable Beam beam;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
     // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
@@ -588,11 +588,11 @@ public final class ElementColumn {
      * {@link OpticalSpacing}'s knee exclusion both ask.
      */
     public boolean sharesBeamGroupWith(ElementColumn other) {
-        return beamGroupId != null && beamGroupId.equals(other.beamGroupId);
+        return beam != null && beam == other.beam;
     }
 
-    void setBeamGroupId(@Nullable Integer beamGroupId) {
-        this.beamGroupId = beamGroupId;
+    void setBeam(@Nullable Beam beam) {
+        this.beam = beam;
     }
 
     /**
@@ -669,7 +669,7 @@ public final class ElementColumn {
      */
     @Nullable
     public static SpanColumns resolveSpan(
-        Span span, Map<StaffElement, ElementColumn> columnsByElement) {
+        Span<?> span, Map<StaffElement, ElementColumn> columnsByElement) {
         return resolveEndpoints(span.getAnchorElement(), span.getEndElement(), columnsByElement);
     }
 

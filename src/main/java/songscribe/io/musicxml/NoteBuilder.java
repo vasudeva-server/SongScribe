@@ -444,7 +444,7 @@ final class NoteBuilder {
         var value = ratio.noteValue().value();
         var timeModification = factory.createTimeModification();
 
-        timeModification.setActualNotes(BigInteger.valueOf(tuplet.getGrade()));
+        timeModification.setActualNotes(BigInteger.valueOf(tuplet.getGrade().number()));
         timeModification.setNormalNotes(BigInteger.valueOf(ratio.normalNotes()));
         timeModification.setNormalType(NoteTypeMapping.typeToken(value));
 
@@ -500,7 +500,7 @@ final class NoteBuilder {
         }
 
         var ratio = tuplet.getRatio();
-        var grade = tuplet.getGrade();
+        var grade = tuplet.getGrade().number();
         var normalNotes = ratio.normalNotes();
         var product = writtenTicks * normalNotes;
 

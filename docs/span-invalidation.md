@@ -116,11 +116,10 @@ removal-plus-addition, never a third kind.
 ## What stays with the registry
 
 **Every span lies in one line**, and sits in that line's registry and no other:
-both of its endpoints are in that line, or an endpoint an edit has detached is in
-no line at all. No span reaches across a line break, so nothing about a span
-needs a second line's registry to answer it. The spans of a line are held
-separately from the element list, and a span enters or leaves the registry only
-through the span itself.
+both of its endpoints are in that line. No span reaches across a line break, so
+nothing about a span needs a second line's registry to answer it. The spans of a
+line are held separately from the element list, and a span enters or leaves the
+registry only through the span itself.
 
 Each kind states its **displacement policy** as one value — what happens to the
 same-kind spans already there when a new one arrives: they coexist, the new one

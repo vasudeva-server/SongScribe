@@ -112,7 +112,7 @@ public class TupletPopupButton extends PopupMenuButton {
         var info = ctrl.canToggleTuplet();
 
         for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
-            if (info.validGrades().contains(action.getTuplet().getSize())) {
+            if (info.validGrades().contains(action.getGrade())) {
                 setCurrentAction(action);
                 return;
             }

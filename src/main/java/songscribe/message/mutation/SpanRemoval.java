@@ -26,7 +26,7 @@ import songscribe.dom.Span;
 /**
  * Mutation recording the removal of a span from a line.
  */
-public record SpanRemoval(Line line, Span element)
+public record SpanRemoval(Line line, Span<?> element)
     implements Mutation, LineScopedMutation {
 
     @Override

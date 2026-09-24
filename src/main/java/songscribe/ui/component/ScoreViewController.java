@@ -381,7 +381,7 @@ public final class ScoreViewController {
         // backward to the governing beat and tests every candidate grade, and the cache
         // holds the answer for this very selection, warmed by the same notification that
         // enabled the action the user just triggered.
-        operations.toggleTuplet(message.getTupletSize(), canToggleTuplet());
+        operations.toggleTuplet(message.getGrade(), canToggleTuplet());
         score.selectionChanged();
     }
 
@@ -416,8 +416,8 @@ public final class ScoreViewController {
     public void handleFirstSecondEnding(FirstSecondEndingCommand message) {
         var result = Actions.MAKE_ENDING_ACTION.getCachedResult();
 
-        if (result != null && result.isValid()) {
-            operations.makeFirstSecondEnding(result);
+        if (result instanceof EndingValidationResult.Valid valid) {
+            operations.makeFirstSecondEnding(valid);
             MessageCenter.post(new DeselectCommand());
         }
     }

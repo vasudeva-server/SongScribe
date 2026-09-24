@@ -177,7 +177,7 @@ public class StructuralStacker {
             var anchorColumn = spanColumns.anchorColumn();
             var endColumn = spanColumns.endColumn();
 
-            var numberOnly = tuplet.isNumberOnly(line);
+            var numberOnly = tuplet.isNumberOnly();
             var heightSs = numberOnly ? Tuplet.numberOnlyHeightSs() : Tuplet.bracketedHeightSs();
             var marginSs = numberOnly ? TUPLET_NUMBER_MARGIN_SS : TUPLET_ARM_MARGIN_SS;
             var anchorXSs = anchorColumn.getXSs();
@@ -192,8 +192,8 @@ public class StructuralStacker {
             // over the note — stays clear. Compute the arm X positions the same way the renderer does
             // (shared Tuplet helpers) so reserved and drawn geometry match.
             var endXSs = anchorXSs + widthSs;
-            var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
-                StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
+            var leftArmXSs = tuplet.bracketLeftEdgeXSs(
+                anchorXSs, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
             var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
@@ -413,7 +413,7 @@ public class StructuralStacker {
      */
     static List<ElementColumn> collectNonRestSpannedColumns(
         Line line,
-        Span element,
+        Span<?> element,
         Map<StaffElement, ElementColumn> columnsByElement) {
 
         var columns = new ArrayList<ElementColumn>();

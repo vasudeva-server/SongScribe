@@ -98,9 +98,9 @@ public final class EndingBracketGeometry {
         // is what let the two disagree: a scan that includes the anchor takes an anchor
         // that is itself a repeat for the split, which leaves the first bracket unbuilt
         // and the second one anchored at the line's left edge.
-        var split = ending.getSplitElement(line);
+        var split = ending.getSplitElement();
 
-        var startElement = line.getElement(ending.getOpeningElementIndex(line));
+        var startElement = line.getElement(ending.getOpeningElementIndex());
         var endElement = line.getElement(end);
 
         // The split lies strictly between anchor and end, so both brackets always exist.
@@ -137,7 +137,7 @@ public final class EndingBracketGeometry {
 
         var x2 = columnFn.apply(split).getXSs() + split.bar().closingAnchorSs();
 
-        return new BracketRange(x1, x2, 1, true);
+        return new BracketRange(x1, x2, BracketRange.Bracket.FIRST, true);
     }
 
     /**
@@ -164,12 +164,12 @@ public final class EndingBracketGeometry {
             var x2 = columnFn.apply(endElement).getRightEdgeXSs()
                 + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
 
-            return new BracketRange(x1, x2, 2, false);
+            return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, false);
         }
 
         var x2 = columnFn.apply(closingBar).getXSs() + closingBar.bar().closingAnchorSs();
 
-        return new BracketRange(x1, x2, 2, closingBar.getType().closesSection());
+        return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, closingBar.getType().closesSection());
     }
 
     /**
@@ -234,7 +234,7 @@ public final class EndingBracketGeometry {
         }
 
         // Label (e.g. "1." or "2.")
-        var labelBounds = labelBoundsSs(bracket.number());
+        var labelBounds = labelBoundsSs(bracket.bracket());
         var labelWidthSs = labelBounds.getWidth();
         var labelHeightSs = TextMeasurement.inkHeight(labelBounds);
         regions.add(new CollisionRegion(
@@ -247,10 +247,10 @@ public final class EndingBracketGeometry {
     /**
      * Returns the cached visual bounds of the ending label text in staff-space units.
      *
-     * @param number the bracket number (1 or 2)
+     * @param bracket which of an ending's two brackets to measure
      * @return visual bounds rectangle in staff-space units
      */
-    static Rectangle2D labelBoundsSs(int number) {
-        return number == 1 ? LABEL_1_BOUNDS_SS : LABEL_2_BOUNDS_SS;
+    static Rectangle2D labelBoundsSs(BracketRange.Bracket bracket) {
+        return bracket == BracketRange.Bracket.FIRST ? LABEL_1_BOUNDS_SS : LABEL_2_BOUNDS_SS;
     }
 }

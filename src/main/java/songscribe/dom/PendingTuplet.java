@@ -44,7 +44,7 @@ import org.jspecify.annotations.Nullable;
 public record PendingTuplet(
     StaffElement anchor,
     StaffElement end,
-    int grade,
+    TupletGrade grade,
     @Nullable TupletRatio statedRatio,
     double yOffsetSs
 ) {

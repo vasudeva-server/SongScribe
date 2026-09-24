@@ -38,7 +38,9 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
+import songscribe.dom.TupletGrade;
 import songscribe.util.StringUtils;
 
 public final class LineIO {
@@ -283,7 +285,7 @@ public final class LineIO {
          * @throws SAXException if either index is out of range or does not name a note
          */
         private void addNoteSpanFromPair(
-            Line line, int[] pair, String label, BiFunction<NoteElement, NoteElement, Span> spanFactory)
+            Line line, int[] pair, String label, BiFunction<NoteElement, NoteElement, Span<?>> spanFactory)
             throws SAXException {
             DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), label);
             spanFactory.apply(
@@ -421,9 +423,16 @@ public final class LineIO {
             for (var data : pendingTupletSegments) {
                 var anchorIdx = (int) data[0];
                 var endIdx = (int) data[1];
-                var grade = (int) data[2];
+                var parsedGrade = (int) data[2];
                 var yOffsetSs = data[3];
                 DocumentValidation.requireIndexInRange(LOG, anchorIdx, endIdx, line.elementCount(), "tuplet");
+
+                var grade = TupletGrade.of(parsedGrade);
+
+                if (grade == null) {
+                    LOG.warn("Corrupt document: tuplet grade {} is outside 2..7, dropping tuplet", parsedGrade);
+                    continue;
+                }
 
                 var anchorElement = line.getElement(anchorIdx);
                 var endElement = line.getElement(endIdx);
@@ -592,15 +601,17 @@ public final class LineIO {
             for (var pair : pendingEndingPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
 
+                var ending = Ending.spanning(line, new ElementRange(pair[0], pair[1]));
+
                 // A pre-#306 single-bracket ending in an older .mssw file has no repeat
                 // splitting its two brackets, which Ending's invariant requires, so it is
                 // dropped on load as the MusicXML import path drops one.
-                if (!Ending.hasRepeatSplit(line, pair[0], pair[1])) {
+                if (ending == null) {
                     LOG.warn("Dropping split-less <ending> on load (no repeat between anchor and end)");
                     continue;
                 }
 
-                new Ending(line.getElement(pair[0]), line.getElement(pair[1])).addTo(line);
+                ending.addTo(line);
             }
 
             pendingEndingPairs.clear();

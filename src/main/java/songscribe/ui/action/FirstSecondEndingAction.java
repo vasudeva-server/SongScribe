@@ -49,7 +49,7 @@ public final class FirstSecondEndingAction extends UIAction {
     public void validate(ScoreViewController ctrl) {
         cachedResult = ctrl.canMakeFirstSecondEnding();
 
-        if (!cachedResult.isValid()) {
+        if (!(cachedResult instanceof EndingValidationResult.Valid)) {
             setEnabled(false);
             return;
         }

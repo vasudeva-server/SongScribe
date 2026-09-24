@@ -29,11 +29,11 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
-import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletValidator;
 
 /**
@@ -412,6 +412,7 @@ public final class RangeQueries {
             return new TupletToggleInfo(false, null, false);
         }
 
+        var spans = line.spanRegistry();
         Tuplet firstTuplet = null;
 
         for (int i = grouped.begin(); i <= grouped.end(); i++) {
@@ -420,7 +421,7 @@ public final class RangeQueries {
                 continue;
             }
 
-            var currentTuplet = line.spanRegistry().findTupletAt(i);
+            var currentTuplet = spans.findTupletAt(i);
 
             if (i == grouped.begin()) {
                 firstTuplet = currentTuplet;
@@ -429,8 +430,7 @@ public final class RangeQueries {
             }
         }
 
-        var coversExisting = (firstTuplet != null)
-            && Span.exactly(grouped).test(firstTuplet.getAnchorElementIndex(), firstTuplet.getEndElementIndex());
+        var coversExisting = (firstTuplet != null) && spans.rangeOf(firstTuplet).equals(grouped);
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still
@@ -450,14 +450,14 @@ public final class RangeQueries {
      * measurement: resolving the beat walks back through the song, and this runs on every
      * document edit, not only when the selection changes.
      */
-    private static Set<Integer> validGradesFor(Line line, ElementRange span) {
+    private static Set<TupletGrade> validGradesFor(Line line, ElementRange span) {
         var context = TupletValidator.describeSpan(line, span);
-        var grades = new HashSet<Integer>();
+        var grades = new HashSet<TupletGrade>();
 
         // The range comes from the model, not from the menu's list of actions: what a
         // tuplet number may be is a fact about tuplets, and a selection query must not
         // change because someone reorders a menu.
-        for (var grade = TupletValidator.MIN_GRADE; grade <= TupletValidator.MAX_GRADE; grade++) {
+        for (var grade : TupletGrade.values()) {
             if (TupletValidator.validate(context, grade, TupletValidator.Strictness.STRICT)
                     instanceof TupletValidator.Result.Valid) {
                 grades.add(grade);

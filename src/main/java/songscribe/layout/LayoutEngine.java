@@ -479,7 +479,7 @@ public class LayoutEngine {
             var forcedStemCount = 0;
 
             for (var i = 0; i < memberCount; i++) {
-                var element = members.get(i);
+                var element = members.get(i).note();
 
                 // LilyPond Beam::forced_stem_count: a stem is forced when it points away from
                 // its head's natural direction, whether the notator or the group turned it,
@@ -567,7 +567,8 @@ public class LayoutEngine {
                 // Only members run to the beam: a grace note's stem stops at its own length, so
                 // it is left to calculateUnbeamedStems rather than measured here.
                 for (var i = 0; i < memberCount; i++) {
-                    var element = members.get(i);
+                    var member = members.get(i);
+                    var element = member.note();
                     var geometry = computeBeamElementGeometry(element, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 
                     if (geometry == null) {
@@ -587,14 +588,14 @@ public class LayoutEngine {
                     var topYSs = stemDirection.isUp() ? beamYSs : elementYSs;
                     var bottomYSs = stemDirection.isUp() ? elementYSs : beamYSs;
 
-                    // Determine stub direction for partial-beam elements. The beam owns the
+                    // Determine stub direction for partial-beam elements. The member owns the
                     // rule so the writer can use the same one.
-                    var stubRight = beam.stubRight(element);
+                    var stubRight = member.stubRight();
 
                     // How far back French beaming pulls the drawn stem. Resolved here rather
                     // than in StaffElementRenderer so the per-paint path stays a field read, matching
                     // stubRight above.
-                    var frenchShorteningLevels = beam.frenchBeamShortening(element);
+                    var frenchShorteningLevels = member.frenchShortening();
 
                     if (LogUtils.isTracingBeams(LOG)) {
                         LOG.debug(

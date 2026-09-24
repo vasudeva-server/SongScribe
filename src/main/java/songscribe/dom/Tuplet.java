@@ -38,7 +38,7 @@ import songscribe.message.mutation.ElementField;
  * The tuplet bracket is typically placed above if stems point down,
  * below if stems point up.
  */
-public final class Tuplet extends Span {
+public final class Tuplet extends Span<StaffElement> {
 
     /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
@@ -89,14 +89,14 @@ public final class Tuplet extends Span {
      * context, so it is available before anything is drawn — the number-only tuplet's hit region
      * is the number's ink and nothing else, and hit regions are built at layout time.
      */
-    public static double numberInkWidthSs(int grade) {
-        return TextMeasurement.requireVisualBounds(String.valueOf(grade), TUPLET_FONT).getWidth();
+    public static double numberInkWidthSs(TupletGrade grade) {
+        return TextMeasurement.requireVisualBounds(String.valueOf(grade.number()), TUPLET_FONT).getWidth();
     }
 
     // The grade and the ratio are set by the constructor and never change afterwards. Changing
     // the grade alone would leave the tuplet printing one ratio and playing another, so there is
     // no setter: a grade change is a remove plus an add, which re-derives both.
-    private final int grade;
+    private final TupletGrade grade;
     private final TupletRatio ratio;
 
     /**
@@ -111,20 +111,20 @@ public final class Tuplet extends Span {
      * @param grade         The tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param ratio         The time the group occupies
      */
-    public Tuplet(StaffElement anchorElement, StaffElement endElement, int grade, TupletRatio ratio) {
-        super(anchorElement, endElement);
+    public Tuplet(StaffElement anchorElement, StaffElement endElement, TupletGrade grade, TupletRatio ratio) {
+        super(StaffElement.class, anchorElement, endElement);
         this.grade = grade;
         this.ratio = ratio;
     }
 
     @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Tuplet(newAnchor, newEnd, grade, ratio);
     }
 
     /**
      * Reserved vertical height for a bracketed tuplet (bracket line + arm). A number-only
-     * tuplet (see {@link #isNumberOnly(Line)}) reserves {@link #numberOnlyHeightSs()}
+     * tuplet (see {@link #isNumberOnly()}) reserves {@link #numberOnlyHeightSs()}
      * instead, so a caller laying out a tuplet branches on {@code isNumberOnly} to choose
      * between the two; neither height is meaningful without that choice, which is why a
      * tuplet has no context-free height query.
@@ -162,13 +162,11 @@ public final class Tuplet extends Span {
      * X-bounds {@code x0}/{@code x1} for both slope and placement (tuplet-bracket.cc).
      *
      * @param anchorXSs      X of the anchor column's reference point
-     * @param anchorStemUp   whether the anchor draws an upward stem ({@link #anchorStemUp()})
      * @param stemSs         stem thickness in staff spaces
      * @param noteheadWidthSs the anchor note's own head width in staff spaces
      */
-    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorStemUp,
-        double stemSs, double noteheadWidthSs) {
-        var insetSs = anchorStemUp ? stemSs : noteheadWidthSs;
+    public double bracketLeftEdgeXSs(double anchorXSs, double stemSs, double noteheadWidthSs) {
+        var insetSs = anchorStemUp() ? stemSs : noteheadWidthSs;
 
         return anchorXSs + noteheadWidthSs - insetSs - ARM_EXTENSION_SS;
     }
@@ -204,8 +202,8 @@ public final class Tuplet extends Span {
      * Returns true when only the number is drawn (no bracket): the tuplet is beamed
      * at both its anchor and end index and its anchor note has upward stems.
      */
-    public boolean isNumberOnly(Line line) {
-        var spans = line.spanRegistry();
+    public boolean isNumberOnly() {
+        var spans = line().spanRegistry();
 
         return spans.findBeamAt(requireAnchorElementIndex()) != null
             && spans.findBeamAt(requireEndElementIndex()) != null
@@ -252,20 +250,13 @@ public final class Tuplet extends Span {
      * total time but can starve it of the non-rest notes {@link #holdsEnoughNotes} demands, so it
      * goes too. The user re-brackets what they meant.
      *
-     * @param change the pending change, not yet applied to {@code line}
-     * @param line   the line being changed, still in its pre-change state
+     * @param change the pending change, not yet applied to {@code change.line()}
      * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the group,
      *     otherwise {@link SpanOutcome.Simple#KEEP}
-     * @throws IllegalStateException if an end of this tuplet sits in a line other than
-     *     {@code line}; a tuplet never crosses a line
      */
     @Override
-    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
-        var range = line.spanRegistry().rangeOf(this);
-
-        if (range == null) {
-            throw new IllegalStateException("A tuplet's two ends must sit in the line being edited");
-        }
+    public SpanOutcome.Simple outcomeFor(ElementChange change) {
+        var range = change.line().spanRegistry().rangeOf(this);
 
         var invalidated = switch (change) {
             case ElementChange.Insertion insertion ->
@@ -274,8 +265,7 @@ public final class Tuplet extends Span {
             case ElementChange.Deletion deletion -> range.overlaps(deletion.range());
 
             case ElementChange.Replacement replacement ->
-                range.contains(replacement.index())
-                    && replacementUnbalances(replacement.oldElement(), replacement.newElement());
+                range.contains(replacement.index()) && replacementUnbalances(replacement);
 
             case ElementChange.Modification modification ->
                 range.contains(modification.index())
@@ -286,10 +276,12 @@ public final class Tuplet extends Span {
     }
 
     /**
-     * Whether swapping {@code oldElement} for {@code newElement} inside this tuplet rewrites a
-     * written duration the group was built on — see {@link #outcomeFor}.
+     * Whether {@code replacement} rewrites a written duration this tuplet was built on —
+     * see {@link #outcomeFor}.
      */
-    private static boolean replacementUnbalances(StaffElement oldElement, StaffElement newElement) {
+    private static boolean replacementUnbalances(ElementChange.Replacement replacement) {
+        var oldElement = replacement.oldElement();
+        var newElement = replacement.newElement();
         var oldType = oldElement.getType();
         var newType = newElement.getType();
 
@@ -317,7 +309,7 @@ public final class Tuplet extends Span {
     /**
      * Returns the tuplet grade (3 for triplet, 5 for quintuplet, etc.).
      */
-    public int getGrade() {
+    public TupletGrade getGrade() {
         return grade;
     }
 

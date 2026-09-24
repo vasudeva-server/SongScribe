@@ -144,6 +144,6 @@ class TupletLoadPassTest extends UnitTest {
 
     private static PendingTuplet pendingOver(Line line, @Nullable TupletRatio statedRatio, double yOffsetSs) {
         return new PendingTuplet(
-            line.getElement(SPAN.begin()), line.getElement(SPAN.end()), TRIPLET_GRADE, statedRatio, yOffsetSs);
+            line.getElement(SPAN.begin()), line.getElement(SPAN.end()), TupletGrade.TRIPLET, statedRatio, yOffsetSs);
     }
 }

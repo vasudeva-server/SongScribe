@@ -29,7 +29,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Trills are always displayed above the staff. Even single-note trills
  * are represented as Spans where the anchor and end note are the same.
  */
-public final class Trill extends Span implements IntrinsicHeight {
+public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
 
     // SMuFL bbox-derived dimensions in staff-space units for the "tr" glyph
     private static final double TRILL_GLYPH_WIDTH_SS;
@@ -48,7 +48,7 @@ public final class Trill extends Span implements IntrinsicHeight {
      * @param endElement    The last element of the trill
      */
     public Trill(StaffElement anchorElement, StaffElement endElement) {
-        super(anchorElement, endElement);
+        super(StaffElement.class, anchorElement, endElement);
     }
 
     /**
@@ -70,7 +70,7 @@ public final class Trill extends Span implements IntrinsicHeight {
     }
 
     @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Trill(newAnchor, newEnd);
     }
 

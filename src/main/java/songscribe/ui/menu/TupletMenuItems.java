@@ -29,6 +29,7 @@ import javax.swing.JRadioButtonMenuItem;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.TupletGrade;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
 
@@ -61,7 +62,7 @@ public final class TupletMenuItems {
         // Radio items with no ButtonGroup: the grade of the selected tuplet is checked via
         // Action.SELECTED_KEY, and a selection with no tuplet leaves all of them unchecked.
         for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
-            if (action.isEnabled() || Objects.equals(action.getTuplet().getSize(), existingGrade)) {
+            if (action.isEnabled() || Objects.equals(action.getGrade(), existingGrade)) {
                 container.add(new JRadioButtonMenuItem(action));
                 addedGrade = true;
             }
@@ -81,7 +82,7 @@ public final class TupletMenuItems {
      *     no score to ask
      */
     @Nullable
-    private static Integer existingGrade() {
+    private static TupletGrade existingGrade() {
         var scoreView = MainFrame.getInstance().getScoreView();
         var ctrl = (scoreView != null) ? scoreView.getController() : null;
 

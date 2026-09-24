@@ -34,7 +34,7 @@ import songscribe.message.mutation.ElementField;
  * modification of one element's fields in place.
  * <p>
  * A change has two readers. The span sweep ({@link LineSpans#sweep}) hands it to every
- * {@link Span} via {@link Span#outcomeFor(ElementChange, Line)}, and the projection is the
+ * {@link Span} via {@link Span#outcomeFor(ElementChange)}, and the projection is the
  * single thing a span judges itself against — decisions must always be made against the
  * projection, never against the mutated line, so that companion span mutations can be
  * recorded before the primary element mutation for correct undo replay. The confirmation
@@ -92,11 +92,9 @@ public sealed interface ElementChange {
      *     them answers {@link SpanOutcome.Simple#REMOVE} for this change
      */
     default boolean removesConfirmableSpan() {
-        var line = line();
-
-        return line.spanRegistry().judgeableSpans().stream()
+        return line().spanRegistry().getSpans().stream()
             .filter(Span::requiresInvalidationConfirm)
-            .anyMatch(span -> span.outcomeFor(this, line) == SpanOutcome.Simple.REMOVE);
+            .anyMatch(span -> span.outcomeFor(this) == SpanOutcome.Simple.REMOVE);
     }
 
     /**
@@ -192,10 +190,8 @@ public sealed interface ElementChange {
          * @throws IndexOutOfBoundsException if no element stands at {@link #index}
          */
         public Ending.EndingEffect endingEffect() {
-            var oldElement = oldElement();
-
             return line.spanRegistry().findEndings().stream()
-                .map(ending -> ending.checkReplacement(oldElement, newElement, line))
+                .map(ending -> ending.checkReplacement(this))
                 .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
                 .findFirst()
                 .orElse(Ending.EndingEffect.None.INSTANCE);

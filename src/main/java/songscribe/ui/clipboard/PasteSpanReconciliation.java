@@ -21,7 +21,7 @@
 package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.EnumSet;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -145,8 +145,8 @@ import songscribe.dom.TupletValidator;
  *                                until {@link #dropTupletsRejectedByTarget} has run
  */
 public record PasteSpanReconciliation(
-    List<Span> targetSpansToRemove,
-    List<Span> fragmentSpans,
+    List<Span<?>> targetSpansToRemove,
+    List<Span<?>> fragmentSpans,
     List<Tuplet> tupletsRejectedByTarget
 ) {
 
@@ -168,32 +168,26 @@ public record PasteSpanReconciliation(
         Line line,
         int insertIndex,
         @Nullable ElementRange deleteRange,
-        List<Span> fragmentSpans
+        List<Span<?>> fragmentSpans
     ) {
         // The first index after the paste region. For a pure insertion the region is
         // empty, so it collapses onto insertIndex itself.
         var firstIndexAfterRegion = deleteRange == null ? insertIndex : deleteRange.end() + 1;
 
-        var toRemove = new ArrayList<Span>();
+        var toRemove = new ArrayList<Span<?>>();
         var dropTuplets = false;
         var dropBeams = false;
         var dropEndings = false;
 
-        // Hairpin types whose straddled destination hairpin survives, and which the
+        // Hairpin kinds whose straddled destination hairpin survives, and which the
         // fragment therefore must not also contribute.
-        var keptStraddledHairpinTypes = new HashSet<Class<?>>();
+        var keptStraddledHairpinKinds = EnumSet.noneOf(Hairpin.Kind.class);
 
         var spans = line.spanRegistry();
 
         for (var span : spans.getSpans()) {
-            // Both endpoints have to resolve before they can be compared against a position
-            // in this line: a detached endpoint bounds nothing to compare.
-            var anchorIndex = span.getAnchorElementIndex();
-            var endIndex = span.getEndElementIndex();
-
-            if (anchorIndex == null || endIndex == null) {
-                continue;
-            }
+            var anchorIndex = span.requireAnchorElementIndex();
+            var endIndex = span.requireEndElementIndex();
 
             // A span straddles the paste when its anchor lies strictly before the
             // region and its end lies at or after the first index past it. That
@@ -217,21 +211,20 @@ public record PasteSpanReconciliation(
                     if (fragmentContradictsHairpin(fragmentSpans, hairpin)) {
                         toRemove.add(hairpin);
                     } else {
-                        keptStraddledHairpinTypes.add(hairpin.getClass());
+                        keptStraddledHairpinKinds.add(hairpin.getKind());
                     }
                 }
                 case Ending ignored -> dropEndings = true;
-                default -> { }
             }
         }
 
-        var keptFragmentSpans = new ArrayList<Span>(fragmentSpans.size());
+        var keptFragmentSpans = new ArrayList<Span<?>>(fragmentSpans.size());
 
         for (var span : fragmentSpans) {
             var dropped = (dropTuplets && span instanceof Tuplet)
                 || (dropBeams && span instanceof Beam)
                 || (dropEndings && span instanceof Ending)
-                || (span instanceof Hairpin && keptStraddledHairpinTypes.contains(span.getClass()));
+                || (span instanceof Hairpin hairpin && keptStraddledHairpinKinds.contains(hairpin.getKind()));
 
             if (!dropped) {
                 keptFragmentSpans.add(span);
@@ -273,15 +266,7 @@ public record PasteSpanReconciliation(
      *         rejected tuplets among its fragment spans
      */
     public PasteSpanReconciliation dropTupletsRejectedByTarget(Line line) {
-        var song = line.getSong();
-
-        // Replay re-applies a recorded batch that already reflects every drop this rule made
-        // when the paste first ran, so re-deriving them there could only double-apply.
-        if (song.isReplaying()) {
-            return this;
-        }
-
-        var keptSpans = new ArrayList<Span>(fragmentSpans.size());
+        var keptSpans = new ArrayList<Span<?>>(fragmentSpans.size());
         var rejectedTuplets = new ArrayList<Tuplet>();
 
         for (var span : fragmentSpans) {
@@ -334,7 +319,7 @@ public record PasteSpanReconciliation(
      * notes would then be reading two opposite dynamics at once.
      */
     private static boolean fragmentContradictsHairpin(
-        List<Span> fragmentSpans,
+        List<Span<?>> fragmentSpans,
         Hairpin hairpin
     ) {
         for (var span : fragmentSpans) {

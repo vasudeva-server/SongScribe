@@ -78,10 +78,10 @@ class LineSpansTest extends UnitTest {
      */
     private record DisplacementCase(
         String description,
-        Class<? extends Span> kind,
+        Class<? extends Span<?>> kind,
         Supplier<Line> line,
-        BiFunction<StaffElement, StaffElement, Span> newExisting,
-        BiFunction<StaffElement, StaffElement, Span> newAdded,
+        BiFunction<StaffElement, StaffElement, Span<?>> newExisting,
+        BiFunction<StaffElement, StaffElement, Span<?>> newAdded,
         ElementRange existing,
         ElementRange added,
         Outcome outcome
@@ -90,9 +90,9 @@ class LineSpansTest extends UnitTest {
         /** A case whose two spans are built the same way. */
         DisplacementCase(
             String description,
-            Class<? extends Span> kind,
+            Class<? extends Span<?>> kind,
             Supplier<Line> line,
-            BiFunction<StaffElement, StaffElement, Span> newSpan,
+            BiFunction<StaffElement, StaffElement, Span<?>> newSpan,
             ElementRange existing,
             ElementRange added,
             Outcome outcome
@@ -125,7 +125,6 @@ class LineSpansTest extends UnitTest {
      */
     private static final List<Integer> ENDING_SPLIT_INDICES = List.of(1, 4);
 
-    private static final int TRIPLET_GRADE = 3;
     private static final int TRIPLET_NORMAL_NOTES = 2;
 
     @ParameterizedTest(name = "{0}")
@@ -199,10 +198,10 @@ class LineSpansTest extends UnitTest {
                 Trill.class, LineSpansTest::lineOfQuavers, Trill::new,
                 EXISTING, FLUSH, Outcome.BOTH),
             new DisplacementCase("an ending stands beside the ending it overlaps",
-                Ending.class, LineSpansTest::lineWithRepeatSplits, Ending::new,
+                Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
                 EXISTING, OVERLAPPING, Outcome.BOTH),
             new DisplacementCase("an ending stands beside the ending flush against it",
-                Ending.class, LineSpansTest::lineWithRepeatSplits, Ending::new,
+                Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
                 EXISTING, FLUSH, Outcome.BOTH)
         );
     }
@@ -376,25 +375,38 @@ class LineSpansTest extends UnitTest {
         return line;
     }
 
-    private static Span newCrescendo(StaffElement anchor, StaffElement end) {
+    private static Span<?> newCrescendo(StaffElement anchor, StaffElement end) {
         return new Hairpin(Hairpin.Kind.CRESCENDO, anchor, end);
     }
 
-    private static Span newDiminuendo(StaffElement anchor, StaffElement end) {
+    private static Span<?> newDiminuendo(StaffElement anchor, StaffElement end) {
         return new Hairpin(Hairpin.Kind.DIMINUENDO, anchor, end);
     }
 
-    private static Span newBeam(StaffElement anchor, StaffElement end) {
+    private static Span<?> newBeam(StaffElement anchor, StaffElement end) {
         return new Beam((NoteElement) anchor, (NoteElement) end);
     }
 
-    private static Span newTriplet(StaffElement anchor, StaffElement end) {
+    private static Span<?> newTriplet(StaffElement anchor, StaffElement end) {
         var ratio = new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.EIGHTH, Dots.NONE));
 
-        return new Tuplet(anchor, end, TRIPLET_GRADE, ratio);
+        return new Tuplet(anchor, end, TupletGrade.TRIPLET, ratio);
     }
 
-    private static void add(Line line, BiFunction<StaffElement, StaffElement, Span> newSpan, ElementRange range) {
+    private static Span<?> newEnding(StaffElement anchor, StaffElement end) {
+        var line = anchor.getParentLine();
+
+        assertThat(line).isNotNull();
+
+        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
+        var ending = Ending.spanning(line, range);
+
+        assertThat(ending).isNotNull();
+
+        return ending;
+    }
+
+    private static void add(Line line, BiFunction<StaffElement, StaffElement, Span<?>> newSpan, ElementRange range) {
         newSpan.apply(line.getElement(range.begin()), line.getElement(range.end())).addTo(line);
     }
 
@@ -404,7 +416,7 @@ class LineSpansTest extends UnitTest {
     }
 
     /** The extents of every span on {@code line} of {@code kind}, in registry order. */
-    private static List<ElementRange> rangesOf(Line line, Class<? extends Span> kind) {
+    private static List<ElementRange> rangesOf(Line line, Class<? extends Span<?>> kind) {
         return line.spanRegistry().getSpans().stream()
             .filter(kind::isInstance)
             .map(span -> new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex()))

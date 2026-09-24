@@ -149,12 +149,10 @@ public final class DynamicGrouper {
         var spans = line.spanRegistry();
 
         for (var hairpin : spans.findSpans(Hairpin.class)) {
-            var anchorIndex = hairpin.getAnchorElementIndex();
-            var endIndex = hairpin.getEndElementIndex();
+            var anchorIndex = hairpin.requireAnchorElementIndex();
+            var endIndex = hairpin.requireEndElementIndex();
 
-            if (anchorIndex != null && endIndex != null) {
-                hairpins.add(new Member.OfHairpin(hairpin, anchorIndex, endIndex));
-            }
+            hairpins.add(new Member.OfHairpin(hairpin, anchorIndex, endIndex));
         }
 
         hairpins.sort(Comparator.comparingInt(Member.OfHairpin::anchorIndex));

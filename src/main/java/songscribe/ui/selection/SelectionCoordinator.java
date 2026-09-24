@@ -668,7 +668,7 @@ public final class SelectionCoordinator implements Disposable {
             case StaffElement element -> element.getParentLine() == line;
             case Attachment attachment -> attachment.getParentLine() == line;
             case Articulation articulation -> articulation.getParentLine() == line;
-            case Span span -> line.spanRegistry().getSpans().contains(span);
+            case Span<?> span -> line.spanRegistry().getSpans().contains(span);
         };
     }
 

@@ -33,7 +33,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * a gradual change in volume. The user can adjust the horizontal endpoints
  * and vertical position.
  */
-public final class Hairpin extends Span implements IntrinsicHeight {
+public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight {
 
     /**
      * Height of the hairpin opening in staff-space units. LilyPond's {@code Hairpin.height}
@@ -91,7 +91,7 @@ public final class Hairpin extends Span implements IntrinsicHeight {
      * @param endElement    The ending element of the hairpin
      */
     public Hairpin(Kind kind, StaffElement anchorElement, StaffElement endElement) {
-        super(anchorElement, endElement);
+        super(StaffElement.class, anchorElement, endElement);
         this.kind = kind;
     }
 
@@ -125,8 +125,8 @@ public final class Hairpin extends Span implements IntrinsicHeight {
      *     {@code change}, otherwise {@link SpanOutcome.Simple#KEEP}
      */
     @Override
-    public final SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
-        return hairpinOutcomeFor(change, line) instanceof SpanOutcome.Simple simple
+    public final SpanOutcome.Simple outcomeFor(ElementChange change) {
+        return hairpinOutcomeFor(change) instanceof SpanOutcome.Simple simple
             ? simple
             : SpanOutcome.Simple.KEEP;
     }
@@ -149,25 +149,25 @@ public final class Hairpin extends Span implements IntrinsicHeight {
      * surviving hairpin's projected span, not only the moved ones, and a run of one whose
      * endpoints both survive already emits no mutation.
      *
-     * @param change the pending change, not yet applied to {@code line}
-     * @param line   the line being changed, still in its pre-change state
+     * @param change the pending change, not yet applied to {@code change.line()}
      * @return {@link SpanOutcome.Simple#KEEP} or {@link SpanOutcome.Simple#REMOVE} for a
      *     change that removes no element; for a deletion this hairpin survives, the
      *     {@link SpanOutcome.Reshape} over its projected span, and otherwise
      *     {@link SpanOutcome.Simple#REMOVE}
      */
-    public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change) {
         var anchorIndex = requireAnchorElementIndex();
         var endIndex = requireEndElementIndex();
 
         if (change instanceof ElementChange.Deletion deletion) {
-            return outcomeForDeletion(deletion, line, new ElementRange(anchorIndex, endIndex));
+            return outcomeForDeletion(deletion, new ElementRange(anchorIndex, endIndex));
         }
 
         // Every other shape removes no element, so none of them can pull an endpoint in and
         // all are answered alike — one call rather than an arm apiece saying the same thing.
         // The exhaustive switches in the other kinds' outcomeFor are what force a new shape
         // to be considered, and this is where a hairpin considers it.
+        var line = change.line();
         return outcomeForRepointing(change, line.getElement(anchorIndex), line.getElement(endIndex));
     }
 
@@ -226,7 +226,6 @@ public final class Hairpin extends Span implements IntrinsicHeight {
      */
     private SpanOutcome.HairpinOutcome outcomeForDeletion(
         ElementChange.Deletion deletion,
-        Line line,
         ElementRange span
     ) {
         var projected = deletion.projectedElements();
@@ -236,7 +235,7 @@ public final class Hairpin extends Span implements IntrinsicHeight {
         @Nullable Integer first = null;
         @Nullable Integer last = null;
 
-        for (var element : line.getElements(span)) {
+        for (var element : deletion.line().getElements(span)) {
             // Absent means the element is one of the doomed ones.
             var projectedIndex = deletion.projectedIndexOf(element);
 
@@ -442,7 +441,7 @@ public final class Hairpin extends Span implements IntrinsicHeight {
     }
 
     @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Hairpin(kind, newAnchor, newEnd);
         copy.x1ShiftSs = x1ShiftSs;
         copy.x2ShiftSs = x2ShiftSs;

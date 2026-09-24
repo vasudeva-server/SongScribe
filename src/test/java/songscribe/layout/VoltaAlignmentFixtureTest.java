@@ -37,6 +37,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.SongFactory;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.font.DocumentFonts;
 import songscribe.io.musicxml.MusicXmlWriter;
 
@@ -280,7 +281,12 @@ class VoltaAlignmentFixtureTest extends UnitTest {
             }
 
             labelFirstNote(line, label);
-            new Ending(anchor, end).addTo(line);
+
+            var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
+            var ending = Ending.spanning(line, range);
+
+            assertThat(ending).isNotNull();
+            ending.addTo(line);
         });
     }
 

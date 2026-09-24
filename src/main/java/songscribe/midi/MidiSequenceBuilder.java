@@ -38,6 +38,7 @@ import songscribe.dom.Line;
 import songscribe.dom.LineSpans;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
@@ -150,7 +151,7 @@ public class MidiSequenceBuilder {
                     // With repeats off, skip each first-ending span and play only the
                     // common section plus the second ending.
                     result = addLineSkippingFirstEndings(
-                        track, builder, line, i, lineStart, lineEnd,
+                        track, builder, i, lineStart, lineEnd,
                         new TrackPosition(ticks, currentTempo), endings, velocityMap);
                 }
 
@@ -182,7 +183,10 @@ public class MidiSequenceBuilder {
         var covers = Span.containing(elementIndex);
 
         for (var ending : endings) {
-            if (covers.test(ending.getAnchorElementIndex(), ending.getEndElementIndex())) {
+            var range = new ElementRange(
+                ending.requireAnchorElementIndex(), ending.requireEndElementIndex());
+
+            if (covers.test(range)) {
                 return ending;
             }
         }
@@ -290,7 +294,7 @@ public class MidiSequenceBuilder {
                     // splitIndex names the split marker itself, already handled above as the
                     // repeat trigger. Jump there so the loop's noteIndex++ lands on the first
                     // element of the second ending. Clear repeating so we don't jump back again.
-                    noteIndex = ending.getSplitIndex(line);
+                    noteIndex = ending.getSplitIndex();
                     repeating = false;
                     continue;
                 }
@@ -330,7 +334,6 @@ public class MidiSequenceBuilder {
      *
      * @param track The MIDI track to add to
      * @param builder The track builder for this line
-     * @param line The line being emitted
      * @param lineIndex This line's index in the song
      * @param lineStart Index of the first element to consider
      * @param lineEnd Index of the last element to consider
@@ -343,7 +346,6 @@ public class MidiSequenceBuilder {
     private TrackPosition addLineSkippingFirstEndings(
         Track track,
         LineTrackBuilder builder,
-        Line line,
         int lineIndex,
         int lineStart,
         int lineEnd,
@@ -354,7 +356,7 @@ public class MidiSequenceBuilder {
         var skipSpans = new ArrayList<SkipSpan>();
 
         for (var ending : endings) {
-            var splitIndex = ending.getSplitIndex(line);
+            var splitIndex = ending.getSplitIndex();
             var spanStart = Math.max(ending.requireAnchorElementIndex(), lineStart);
             var spanEnd = Math.min(splitIndex, lineEnd);
 

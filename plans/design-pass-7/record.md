@@ -31,7 +31,7 @@ the Gradle filter matches the name as a suffix. Count the two classes apart.
 |---|---|---|---|---|
 | 1 Inventory | ✅ | ✅ | — | `findings-1-2.md`, *What it found* |
 | 2 Class design | ✅ | ✅ | [step-2-plan.md](step-2-plan.md) | `findings-1-2.md`, *Decisions*. Settled while planning: `TieAddition`/`TieRemoval` stay as the tie's records, over `(Line, NoteElement)`; `Tie` is a derived record `(anchor, end)`. Two defects fixed in the plan's Phase 11: the MusicXML reader rounds offsets, and an ending's offset is not saved |
-| 3 Unrepresentable states | ⏳ | ⏳ | — | |
+| 3 Unrepresentable states | ✅ | ✅ | [step-3-plan.md](step-3-plan.md) | `findings-3.md`: all 24 items accepted. Item 5, the factory checks only that a split exists. Item 11, the legacy reader drops an out-of-range grade with a warning. Item 22, `Span<E extends StaffElement>`. No known path leaves a registered span with a detached endpoint (item 1) |
 | 4 Extraction | ⏳ | ⏳ | — | |
 | 5 Contracts | ⏳ | ⏳ | — | |
 | 6 Test triage | ⏳ | ⏳ | — | |
@@ -143,8 +143,20 @@ register at step 13, before this file is deleted.
 - History in comments: `Span.isInvalidatedByChange` ("before `outcomeFor` existed"),
   `EndingValidationResult.PrecedingAction` ("Since issue #306 removed …").
 
-**Outside the target** — from step 1:
+**For step 4 (extraction and placement)** — from step 3:
 
-- → Row 16. `MeasureMapper.buildTuplet`'s `normalNotes <= 0` check cannot fire:
-  `statedNoteValue` already returns `null` for that case, and the check sits in the
-  non-`null` branch.
+- `Beam.noteTypeInLevel` reads only the member's `ElementType`; the level test belongs to
+  the type, not to the beam.
+- `new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex())` recurs
+  at `MusicEditOperations.addHairpinToSelection`, `SpanTest` and `LineSpansTest`: a span's
+  range is a query on the span.
+- `ModificationSession.registryTupletAnchoredAt` restates `findFirstSpan(Tuplet.class,
+  Span.anchoredAt(index))` as `findTupletAt` plus an anchor test.
+
+**For step 5 (contracts)** — from step 3:
+
+- If `findings-3.md` item 1 is accepted, `requireAnchorElementIndex` and
+  `requireEndElementIndex` have no nullable twin to be named against.
+- If item 1 is rejected, the comments that describe an endpoint "in whichever line" are
+  stale: `HairpinEndpoints.compute`, the `ScorePartwiseBuilder.forEachSpanInRange` Javadoc,
+  and the `LineSpans` class Javadoc.

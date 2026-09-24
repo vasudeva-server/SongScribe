@@ -45,6 +45,7 @@ import org.jspecify.annotations.Nullable;
 // to the document model and every ProxyMusic node of those types is created through the
 // ObjectFactory and held in a var.
 import songscribe.dom.Beam;
+import songscribe.dom.BeamLevel;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
@@ -87,9 +88,6 @@ final class ScorePartwiseBuilder {
      * level, so no two are ever open at once and the number never has to distinguish them.
      */
     private static final int SINGLE_SPAN_NUMBER = 1;
-
-    /** The lowest beam level, whose {@code <beam number="1">} is the primary beam. */
-    private static final int PRIMARY_BEAM_LEVEL = 0;
 
     private ScorePartwiseBuilder() {}
 
@@ -295,7 +293,7 @@ final class ScorePartwiseBuilder {
             }
 
             for (var position = 0; position < members.size(); position++) {
-                addBeams(context, members.get(position), beamValues(beam, members, position));
+                addBeams(context, members.get(position).note(), beamValues(members, position));
             }
         });
     }
@@ -324,47 +322,47 @@ final class ScorePartwiseBuilder {
 
     /**
      * The {@code <beam>} text-content values for the member at {@code position} in
-     * {@code members}, indexed by {@code number - 1}. An empty entry means no {@code <beam>} at
-     * that level.
+     * {@code members}, indexed by {@code level.number() - 1}. An empty entry means no
+     * {@code <beam>} at that level.
      *
-     * <p>Level 0 (the primary beam) is always {@code begin}/{@code continue}/{@code end},
-     * never a hook. For each secondary level, the maximal contiguous run of members at that
-     * level containing {@code position} decides: a run of two or more emits
-     * {@code begin}/{@code continue}/{@code end}, and a run of one is a partial-beam hook
-     * whose direction {@link Beam#stubRight} owns.
+     * <p>{@link BeamLevel#EIGHTH} (the primary beam) is always
+     * {@code begin}/{@code continue}/{@code end}, never a hook. For each level further in, the
+     * maximal contiguous run of members at that level containing {@code position} decides: a
+     * run of two or more emits {@code begin}/{@code continue}/{@code end}, and a run of one is
+     * a partial-beam hook whose direction {@link Beam.Member#stubRight} owns.
      *
      * @param members {@code beam}'s {@link Beam#members}
      */
-    private static String[] beamValues(Beam beam, List<NoteElement> members, int position) {
-        var values = new String[Beam.LEVEL_COUNT];
+    private static String[] beamValues(List<Beam.Member> members, int position) {
+        var values = new String[BeamLevel.values().length];
         var lastPosition = members.size() - 1;
         var member = members.get(position);
         Arrays.fill(values, MusicXmlUnits.NO_BEAM_AT_LEVEL);
-        values[PRIMARY_BEAM_LEVEL] = runValue(position, 0, lastPosition);
+        values[BeamLevel.EIGHTH.number() - 1] = runValue(position, 0, lastPosition);
 
-        for (var level = PRIMARY_BEAM_LEVEL + 1; level < Beam.LEVEL_COUNT; level++) {
-            if (!beam.noteTypeInLevel(member, level)) {
+        for (var level = BeamLevel.EIGHTH.next(); level != null; level = level.next()) {
+            if (!member.carries(level)) {
                 continue;
             }
 
             var runStart = position;
 
-            while (runStart > 0 && beam.noteTypeInLevel(members.get(runStart - 1), level)) {
+            while (runStart > 0 && members.get(runStart - 1).carries(level)) {
                 runStart--;
             }
 
             var runEnd = position;
 
-            while (runEnd < lastPosition && beam.noteTypeInLevel(members.get(runEnd + 1), level)) {
+            while (runEnd < lastPosition && members.get(runEnd + 1).carries(level)) {
                 runEnd++;
             }
 
             if (runStart == runEnd) {
-                values[level] = beam.stubRight(member)
+                values[level.number() - 1] = member.stubRight()
                     ? MusicXmlTags.BEAM_FORWARD_HOOK
                     : MusicXmlTags.BEAM_BACKWARD_HOOK;
             } else {
-                values[level] = runValue(position, runStart, runEnd);
+                values[level.number() - 1] = runValue(position, runStart, runEnd);
             }
         }
 
@@ -715,44 +713,27 @@ final class ScorePartwiseBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * What one span pass does to a single span whose endpoints both land inside {@code line}.
-     * The indices are passed in because {@link #forEachSpanInRange} has already read and
-     * checked them; re-reading them from the span would be asking the same question twice.
+     * What one span pass does to a single span of {@code line}. The indices are passed in
+     * because {@link #forEachSpanInRange} has already read them; re-reading them from the span
+     * would be asking the same question twice.
      */
     @FunctionalInterface
-    private interface SpanAction<T extends Span> {
+    private interface SpanAction<T extends Span<?>> {
         void apply(Line line, T span, int anchorIndex, int endIndex);
     }
 
     /**
-     * Runs {@code action} for every {@code spanType} span in {@code line} whose two endpoints
-     * both fall inside the line's element range.
-     *
-     * <p>A span that fails the check is skipped silently, and that is the decision this method
-     * exists to hold in one place: {@link Span#getAnchorElementIndex()} answers from whichever
-     * line the endpoint element belongs to, or {@code null} from none, so a span left dangling
-     * by an edit reports an index that means nothing here. Writing its marker anyway would
-     * attach a beam or a bracket to an unrelated note, which is worse than omitting a span the
-     * model should not have been holding.
+     * Runs {@code action} for every {@code spanType} span in {@code line}.
      */
-    private static <T extends Span> void forEachSpanInRange(
+    private static <T extends Span<?>> void forEachSpanInRange(
             Line line, Class<T> spanType, SpanAction<T> action) {
-        var count = line.elementCount();
-
         for (var span : line.spanRegistry().findSpans(spanType)) {
-            var anchorIndex = span.getAnchorElementIndex();
-            var endIndex = span.getEndElementIndex();
-
-            if (anchorIndex == null || endIndex == null || !MeasureBuilder.indicesInRange(anchorIndex, endIndex, count)) {
-                continue;
-            }
-
-            action.apply(line, span, anchorIndex, endIndex);
+            action.apply(line, span, span.requireAnchorElementIndex(), span.requireEndElementIndex());
         }
     }
 
     /** {@link #forEachSpanInRange(Line, Class, SpanAction)} over every line in document order. */
-    private static <T extends Span> void forEachSpanInRange(
+    private static <T extends Span<?>> void forEachSpanInRange(
             List<MeasureBuilder.LineOutput> lines, Class<T> spanType, SpanAction<T> action) {
         for (var entry : lines) {
             forEachSpanInRange(entry.line(), spanType, action);

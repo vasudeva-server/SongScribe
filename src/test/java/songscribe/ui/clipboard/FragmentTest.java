@@ -26,10 +26,10 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Ending;
 import songscribe.dom.Key;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Trill;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.keyChange;
@@ -72,11 +72,11 @@ class FragmentTest extends UnitTest {
 
         return new Fragment(
             List.of(leading, barline, keyChange(key), trailing),
-            List.of(new Ending(barline, trailing), new Ending(leading, leading)));
+            List.of(new Trill(barline, trailing), new Trill(leading, leading)));
     }
 
     /** The elements of {@code spans}, so a survivor can be named by the elements it joins. */
-    private static List<StaffElement> endpointsOf(Span span) {
+    private static List<StaffElement> endpointsOf(Span<?> span) {
         return Arrays.asList(span.getAnchorElement(), span.getEndElement());
     }
 

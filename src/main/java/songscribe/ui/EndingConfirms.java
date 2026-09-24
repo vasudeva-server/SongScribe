@@ -76,7 +76,7 @@ public final class EndingConfirms {
     public static void applyCompensatingSplitChange(
         Line line, Ending.EndingEffect.CompensateSplit cs
     ) {
-        applyCompensatingChange(line, cs.ending().getSplitElement(line), cs.newSplitType());
+        applyCompensatingChange(line, cs.ending().getSplitElement(), cs.newSplitType());
     }
 
     private static void applyCompensatingChange(

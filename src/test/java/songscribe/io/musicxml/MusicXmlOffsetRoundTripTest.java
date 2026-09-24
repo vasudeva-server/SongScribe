@@ -39,8 +39,10 @@ import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteValue;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletRatio;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,7 +105,6 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
     private static final int THIRD_NOTE = 2;
     private static final int NOTE_AFTER_REPEAT = 4;
 
-    private static final int TRIPLET_GRADE = 3;
     private static final int TRIPLET_NORMAL_NOTES = 2;
     private static final TupletRatio TWO_CROTCHETS =
         new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.QUARTER, Dots.NONE));
@@ -118,15 +119,15 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
      */
     private record SpanOffsetCase(
         String description,
-        Function<Line, Span> place,
-        ToDoubleFunction<Span> offset,
-        ObjDoubleConsumer<Span> setOffset
+        Function<Line, Span<?>> place,
+        ToDoubleFunction<Span<?>> offset,
+        ObjDoubleConsumer<Span<?>> setOffset
     ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("spanOffsetCases")
     void testASpansFractionalOffsetSurvivesAWriteAndARead(SpanOffsetCase testCase) throws Exception {
-        var placed = new Span[1];
+        var placed = new Span<?>[1];
         var song = buildSong(line -> {
             line.addElement(crotchet());
             line.addElement(crotchet());
@@ -148,7 +149,7 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
     }
 
     static Stream<SpanOffsetCase> spanOffsetCases() {
-        Function<Line, Span> crescendo =
+        Function<Line, Span<?>> crescendo =
             line -> new Hairpin(Hairpin.Kind.CRESCENDO, line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE));
 
         return Stream.of(
@@ -162,10 +163,18 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
                 line -> new Trill(line.getElement(FIRST_NOTE), line.getElement(SECOND_NOTE)),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs),
             new SpanOffsetCase("a tuplet's vertical offset",
-                line -> new Tuplet(line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE), TRIPLET_GRADE, TWO_CROTCHETS),
+                line -> new Tuplet(
+                    line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE), TupletGrade.TRIPLET, TWO_CROTCHETS),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs),
             new SpanOffsetCase("an ending's vertical offset",
-                line -> new Ending(line.getElement(SECOND_NOTE), line.getElement(NOTE_AFTER_REPEAT)),
+                line -> {
+                    var range = new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT);
+                    var ending = Ending.spanning(line, range);
+
+                    assertThat(ending).isNotNull();
+
+                    return ending;
+                },
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs)
         );
     }

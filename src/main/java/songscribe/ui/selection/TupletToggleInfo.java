@@ -25,6 +25,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletGrade;
 
 /**
  * Result of {@link RangeQueries#canToggleTuplet}.
@@ -45,7 +46,7 @@ import songscribe.dom.Tuplet;
  */
 public record TupletToggleInfo(
     boolean canToggle,
-    Set<Integer> validGrades,
+    Set<TupletGrade> validGrades,
     @Nullable Tuplet existing,
     boolean coversExisting
 ) {

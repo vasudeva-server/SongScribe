@@ -35,6 +35,7 @@ import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.SongFactory;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -181,8 +182,10 @@ class EndingBracketGeometryTest extends UnitTest {
         var firstBracket = ranges.getFirst();
         var secondBracket = ranges.getLast();
 
-        assertThat(firstBracket.number()).as("the first bracket is numbered 1").isEqualTo(1);
-        assertThat(secondBracket.number()).as("the second bracket is numbered 2").isEqualTo(2);
+        assertThat(firstBracket.bracket()).as("the first bracket is numbered 1")
+            .isEqualTo(BracketRange.Bracket.FIRST);
+        assertThat(secondBracket.bracket()).as("the second bracket is numbered 2")
+            .isEqualTo(BracketRange.Bracket.SECOND);
 
         double expectedFirstX1Ss;
 
@@ -417,13 +420,17 @@ class EndingBracketGeometryTest extends UnitTest {
 
     /** A one-line song of {@code elements}, carrying one ending, with a stub column per element. */
     private static Fixture fixtureOf(List<StaffElement> elements, int anchorIndex, int endIndex) {
-        var ending = new Ending(elements.get(anchorIndex), elements.get(endIndex));
+        var placedEnding = new Ending[1];
         var song = SongFactory.buildSong(line -> {
             for (var element : elements) {
                 line.addElement(element);
             }
 
+            var ending = Ending.spanning(line, new ElementRange(anchorIndex, endIndex));
+
+            assertThat(ending).isNotNull();
             ending.addTo(line);
+            placedEnding[0] = ending;
         });
         var columns = new ArrayList<ElementColumn>(elements.size());
 
@@ -431,7 +438,7 @@ class EndingBracketGeometryTest extends UnitTest {
             columns.add(column(index, elements.get(index)));
         }
 
-        return new Fixture(song.getLine(0), ending, List.copyOf(columns));
+        return new Fixture(song.getLine(0), placedEnding[0], List.copyOf(columns));
     }
 
     private static ElementColumn column(int index, StaffElement element) {

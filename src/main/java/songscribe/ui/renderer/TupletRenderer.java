@@ -110,7 +110,7 @@ public final class TupletRenderer {
 
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
-            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, tuplet.anchorStemUp(),
+            var leftXSs = tuplet.bracketLeftEdgeXSs(anchorXSs,
                 StemMetrics.thicknessSs(), anchorNote.getType().getElementWidthSs());
             var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
@@ -120,7 +120,7 @@ public final class TupletRenderer {
                     "Tuplet decoration layout is not Sloped for " + tuplet);
             }
 
-            var numberOnly = tuplet.isNumberOnly(line);
+            var numberOnly = tuplet.isNumberOnly();
             var bracketLine = new BracketLine(anchorXSs, decorLayout.widthSs(),
                 decorLayout.ySs(), sloped.dySs());
 
@@ -163,7 +163,7 @@ public final class TupletRenderer {
         boolean numberOnly
     ) {
         var anchorXSs = bracketLine.anchorXSs();
-        var grade = tuplet.getGrade();
+        var grade = tuplet.getGrade().number();
 
         // Convert layout Y to component Y — this is the top of the reserved box at the anchor X.
         // The conversion is a pure translation, so evaluating the sloped line in component space

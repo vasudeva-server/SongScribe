@@ -43,6 +43,7 @@ import songscribe.dom.Span;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Stem;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletValidator;
 import songscribe.error.RuntimeError;
 import songscribe.layout.LyricRenderMetrics;
@@ -403,13 +404,13 @@ public final class MusicEditOperations {
      * via action enable state, so reaching one indicates a caller bug. Does nothing when
      * there is no selected range.
      *
-     * @param tupletSize the grade asked for
-     * @param info       what {@link #canToggleTuplet()} answered for the current selection
+     * @param grade the grade asked for
+     * @param info  what {@link #canToggleTuplet()} answered for the current selection
      * @throws IllegalStateException if the selection is a strict sub-range of the existing
      *     tuplet; if {@code info.canToggle()} is {@code false}; or if the selection holds fewer
      *     than two non-grace elements, which means {@code info} is stale
      */
-    public void toggleTuplet(int tupletSize, TupletToggleInfo info) {
+    public void toggleTuplet(TupletGrade grade, TupletToggleInfo info) {
         var range = selectedRange();
 
         if (range == null) {
@@ -444,7 +445,7 @@ public final class MusicEditOperations {
         }
 
         if (existing == null) {
-            var newTuplet = createValidatedTuplet(line, span, tupletSize);
+            var newTuplet = createValidatedTuplet(line, span, grade);
             line.getSong().withModification(() -> newTuplet.addTo(line));
             return;
         }
@@ -452,11 +453,11 @@ public final class MusicEditOperations {
         // Re-picking the grade the tuplet already has does nothing. The grade is shown
         // checked (Action.SELECTED_KEY), and a checked radio item that deletes what it
         // reports on would be a trap.
-        if (existing.getGrade() == tupletSize) {
+        if (existing.getGrade() == grade) {
             return;
         }
 
-        var replacement = createValidatedTuplet(line, span, tupletSize);
+        var replacement = createValidatedTuplet(line, span, grade);
 
         line.getSong().withModification(() -> {
             existing.removeFrom(line);
@@ -473,16 +474,16 @@ public final class MusicEditOperations {
      *
      * @return the tuplet over {@code span}, not yet added to {@code line}
      */
-    private Tuplet createValidatedTuplet(Line line, ElementRange span, int tupletSize) {
+    private Tuplet createValidatedTuplet(Line line, ElementRange span, TupletGrade grade) {
         var result = TupletValidator.validateDerived(
-            line, span, tupletSize, TupletValidator.Strictness.STRICT);
+            line, span, grade, TupletValidator.Strictness.STRICT);
 
         return switch (result) {
             case TupletValidator.Result.Valid(var ratio) ->
-                new Tuplet(line.getElement(span.begin()), line.getElement(span.end()), tupletSize, ratio);
+                new Tuplet(line.getElement(span.begin()), line.getElement(span.end()), grade, ratio);
 
             case TupletValidator.Result.Invalid(var reason) -> throw new IllegalStateException(
-                "toggleTuplet called for a span that cannot carry a tuplet of " + tupletSize + ": " + reason);
+                "toggleTuplet called for a span that cannot carry a tuplet of " + grade + ": " + reason);
         };
     }
 
@@ -808,7 +809,7 @@ public final class MusicEditOperations {
         var range = coordinator.getRange();
 
         if (range == null) {
-            return EndingValidationResult.invalid();
+            return EndingValidationResult.Invalid.INSTANCE;
         }
 
         var line = range.line();
@@ -834,14 +835,14 @@ public final class MusicEditOperations {
         var rightRepeatIndex = validateEndingStructure(line, begin, end);
 
         if (rightRepeatIndex == null) {
-            return EndingValidationResult.invalid();
+            return EndingValidationResult.Invalid.INSTANCE;
         }
 
         // Stage 2: Overlap check
         var hasOverlap = hasOverlap(line, begin, end);
 
         if (hasOverlap) {
-            return EndingValidationResult.invalid();
+            return EndingValidationResult.Invalid.INSTANCE;
         }
 
         // Stage 3: Backward search for enclosing repeated section
@@ -849,11 +850,21 @@ public final class MusicEditOperations {
         var hasEnclosing = hasEnclosingRepeat(lineIndex, begin);
 
         if (!hasEnclosing) {
-            return EndingValidationResult.invalid();
+            return EndingValidationResult.Invalid.INSTANCE;
         }
 
-        // Stage 4: Preceding element check
-        return checkPrecedingElement(line, begin, end);
+        // Where a bracket anchored here would open is Ending's rule, so that the anchor this
+        // sets and the element layout later draws from cannot drift apart. It answers with
+        // the anchor itself when nothing in front of it is a bar — a note predecessor, or no
+        // predecessor on this line, since an ending never spans lines.
+        var anchorIndex = Ending.openingElementIndex(line, begin);
+        var ending = Ending.spanning(line, new ElementRange(anchorIndex, end));
+
+        if (ending == null) {
+            return EndingValidationResult.Invalid.INSTANCE;
+        }
+
+        return new EndingValidationResult.Valid(line, ending);
     }
 
     // Returns the index of the right repeat within the selection, or null if invalid.
@@ -946,11 +957,10 @@ public final class MusicEditOperations {
         var spans = line.spanRegistry();
 
         for (var ending : spans.findEndings()) {
-            var anchorIndex = ending.getAnchorElementIndex();
-            var endIndex = ending.getEndElementIndex();
+            var endingRange = spans.rangeOf(ending);
 
             for (var i = begin; i <= end; i++) {
-                if (Span.containing(i).test(anchorIndex, endIndex)) {
+                if (Span.containing(i).test(endingRange)) {
                     return true;
                 }
             }
@@ -1003,56 +1013,10 @@ public final class MusicEditOperations {
         return true;
     }
 
-    // Examines the element preceding the selection start and determines what action
-    // is needed (none, span extension, or invalid).
-    private EndingValidationResult checkPrecedingElement(
-        Line line, int selectionBegin, int selectionEnd
-    ) {
-        // Where a bracket anchored here would open is Ending's rule, so that the anchor this
-        // sets and the element layout later draws from cannot drift apart. It answers with
-        // the anchor itself when nothing in front of it is a bar — a note predecessor, or no
-        // predecessor on this line, since an ending never spans lines.
-        var precedingElementIndex = Ending.openingElementIndex(line, selectionBegin);
+    public void makeFirstSecondEnding(EndingValidationResult.Valid valid) {
+        var line = valid.line();
 
-        if (precedingElementIndex == selectionBegin) {
-            return EndingValidationResult.valid(selectionBegin, selectionEnd);
-        }
-
-        var precedingType = line.getElement(precedingElementIndex).getType();
-
-        if (precedingType == ElementType.SINGLE_BARLINE
-                || precedingType == ElementType.REPEAT_LEFT
-                || precedingType == ElementType.REPEAT_LEFT_RIGHT) {
-            // Extend span start backward to include the preceding element
-            return EndingValidationResult.valid(precedingElementIndex, selectionEnd);
-        }
-
-        // Unreachable today: the only element types left are the right repeat, the
-        // double barline and the final double barline, and the backward scan for an
-        // enclosing repeat has already rejected the selection when one of those sits
-        // before it. Kept as a defensive catch-all for element types added later.
-        return EndingValidationResult.invalid();
-    }
-
-    public void makeFirstSecondEnding(EndingValidationResult result) {
-        var range = coordinator.getRange();
-
-        if (range == null) {
-            return;
-        }
-
-        var line = range.line();
-
-        line.getSong().withModification(() -> {
-            var start = result.getSpanStart();
-            var end = result.getSpanEnd();
-
-            // EXTEND_SPAN and NONE both anchor at the pre-computed span bounds
-            // with no element insertion.
-            var startElement = line.getElement(start);
-            var endElement = line.getElement(end);
-            new Ending(startElement, endElement).addTo(line);
-        });
+        line.getSong().withModification(() -> valid.ending().addTo(line));
     }
 
 

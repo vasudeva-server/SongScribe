@@ -202,8 +202,8 @@ public final class MigrationWindow extends JDialog {
         return Strings.get(
             Strings.DIALOG_MIGRATION_CHANGE,
             change.lineIndex() + 1,
-            change.beginIndex() + 1,
-            change.endIndex() + 1,
+            change.span().begin() + 1,
+            change.span().end() + 1,
             detail(change));
     }
 
@@ -220,7 +220,7 @@ public final class MigrationWindow extends JDialog {
         return switch (change) {
             case TupletLoadPass.Change.Removed removed -> reasonText(removed.reason());
             case TupletLoadPass.Change.Updated updated -> Strings.get(
-                Strings.DIALOG_MIGRATION_UPDATED_DETAIL, updated.grade(), updated.normalNotes());
+                Strings.DIALOG_MIGRATION_UPDATED_DETAIL, updated.grade().number(), updated.normalNotes());
         };
     }
 

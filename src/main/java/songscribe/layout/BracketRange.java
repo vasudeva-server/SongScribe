@@ -28,10 +28,25 @@ import songscribe.engraving.EngravingConstants;
  *
  * @param x1Ss             left edge X in staff spaces
  * @param x2Ss             right edge X in staff spaces
- * @param number           bracket number (1 or 2)
+ * @param bracket          which of an ending's two brackets this is
  * @param hasClosingStroke whether the bracket has a right vertical tick
  */
-public record BracketRange(double x1Ss, double x2Ss, int number, boolean hasClosingStroke) {
+public record BracketRange(double x1Ss, double x2Ss, Bracket bracket, boolean hasClosingStroke) {
+
+    /** Which of an ending's two visual brackets a {@link BracketRange} describes. */
+    public enum Bracket {
+        FIRST,
+        SECOND;
+
+        /**
+         * Returns the label text for this bracket (e.g. "1." or "2.").
+         *
+         * @return the bracket number followed by a period
+         */
+        public String label() {
+            return (this == FIRST ? "1" : "2") + ".";
+        }
+    }
 
     /**
      * Returns the X the bracket's drawn ink reaches on the right: {@link #x2Ss} itself when a
@@ -53,7 +68,7 @@ public record BracketRange(double x1Ss, double x2Ss, int number, boolean hasClos
      * @return the bracket number followed by a period
      */
     public String label() {
-        return number + ".";
+        return bracket.label();
     }
 
     /**
@@ -62,9 +77,9 @@ public record BracketRange(double x1Ss, double x2Ss, int number, boolean hasClos
      *
      * @param dx1Ss shift applied to {@link #x1Ss}
      * @param dx2Ss shift applied to {@link #x2Ss}
-     * @return the shifted bracket, with the same number and closing stroke
+     * @return the shifted bracket, with the same bracket and closing stroke
      */
     BracketRange shiftedBy(double dx1Ss, double dx2Ss) {
-        return new BracketRange(x1Ss + dx1Ss, x2Ss + dx2Ss, number, hasClosingStroke);
+        return new BracketRange(x1Ss + dx1Ss, x2Ss + dx2Ss, bracket, hasClosingStroke);
     }
 }

@@ -28,6 +28,8 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
  * Turns the tuplets a reader found into the song's tuplets, or drops them.
  *
@@ -70,25 +72,22 @@ public final class TupletLoadPass {
         /** The index of the line holding the tuplet. */
         int lineIndex();
 
-        /** The index of the tuplet's anchor element within that line. */
-        int beginIndex();
-
-        /** The index of the tuplet's last element within that line, inclusive. */
-        int endIndex();
+        /** The tuplet's elements within that line, from its anchor to its last element. */
+        ElementRange span();
 
         /** The printed tuplet number. */
-        int grade();
+        TupletGrade grade();
 
         /**
          * A tuplet the pass dropped. The reason is the validator's, except
          * {@link TupletValidator.Reason#TOO_FEW_NOTES}: a span holding too few notes to carry
          * a bracket is a rule of the pass, judged before the validator runs.
          */
-        record Removed(int lineIndex, int beginIndex, int endIndex, int grade,
+        record Removed(int lineIndex, ElementRange span, TupletGrade grade,
                        TupletValidator.Reason reason) implements Change {}
 
         /** A tuplet whose ratio the file did not state and the pass derived. */
-        record Updated(int lineIndex, int beginIndex, int endIndex, int grade,
+        record Updated(int lineIndex, ElementRange span, TupletGrade grade,
                        int normalNotes) implements Change {}
     }
 
@@ -221,8 +220,7 @@ public final class TupletLoadPass {
         var grade = pending.grade();
 
         if (!Tuplet.holdsEnoughNotes(line, span)) {
-            return new Change.Removed(
-                lineIndex, span.begin(), span.end(), grade, TupletValidator.Reason.TOO_FEW_NOTES);
+            return new Change.Removed(lineIndex, span, grade, TupletValidator.Reason.TOO_FEW_NOTES);
         }
 
         var statedRatio = pending.statedRatio();
@@ -233,7 +231,7 @@ public final class TupletLoadPass {
 
         return switch (result) {
             case TupletValidator.Result.Invalid(var reason) ->
-                new Change.Removed(lineIndex, span.begin(), span.end(), grade, reason);
+                new Change.Removed(lineIndex, span, grade, reason);
 
             case TupletValidator.Result.Valid(var ratio) -> {
                 var tuplet = new Tuplet(pending.anchor(), pending.end(), grade, ratio);
@@ -241,7 +239,7 @@ public final class TupletLoadPass {
                 tuplet.addTo(line);
 
                 yield statedRatio == null
-                    ? new Change.Updated(lineIndex, span.begin(), span.end(), grade, ratio.normalNotes())
+                    ? new Change.Updated(lineIndex, span, grade, ratio.normalNotes())
                     : null;
             }
         };
@@ -253,7 +251,9 @@ public final class TupletLoadPass {
     ) {
         var pending = byAnchor.get(line.getElement(index));
 
-        return pending == null ? null : new TupletValidator.Anchored<>(pending, pending.end(), pending.grade());
+        return pending == null
+            ? null
+            : new TupletValidator.Anchored<>(pending, line.getElementIndex(pending.end()), pending.grade());
     }
 
     /**

@@ -23,12 +23,12 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * What should happen to a {@link Span} when it is asked to judge itself against a
- * pending {@link ElementChange} via {@link Span#outcomeFor(ElementChange, Line)}.
+ * pending {@link ElementChange} via {@link Span#outcomeFor(ElementChange)}.
  * <p>
  * Every span can answer {@link Simple#KEEP} or {@link Simple#REMOVE}, and that is the
  * whole of this type. A hairpin alone can also survive an edit in a different shape, so
  * it answers the wider {@link HairpinOutcome} through
- * {@link Hairpin#hairpinOutcomeFor(ElementChange, Line)}; the split is what makes a
+ * {@link Hairpin#hairpinOutcomeFor(ElementChange)}; the split is what makes a
  * {@link Reshape} from any other span kind unwriteable rather than merely unexpected.
  */
 public sealed interface SpanOutcome permits SpanOutcome.Simple {

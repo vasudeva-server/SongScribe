@@ -20,47 +20,22 @@
 package songscribe.dom;
 
 /**
- * Result of validating a first-second ending selection. Encodes whether
- * validation passed and the final span bounds.
+ * The editor's verdict on whether a first-second ending can be made from the current
+ * selection. A valid verdict carries the ending itself, so the one who acts on it adds what
+ * validation built rather than rebuilding it from indices.
  */
-public final class EndingValidationResult {
+public sealed interface EndingValidationResult
+    permits EndingValidationResult.Invalid, EndingValidationResult.Valid {
 
-    private static final EndingValidationResult INVALID = new EndingValidationResult(false, 0, 0);
+    /** No ending can be made from the selection. */
+    enum Invalid implements EndingValidationResult { INSTANCE }
 
-    private final boolean valid;
-    private final int spanStart;
-    private final int spanEnd;
-
-    private EndingValidationResult(
-        boolean valid,
-        int spanStart,
-        int spanEnd
-    ) {
-        this.valid = valid;
-        this.spanStart = spanStart;
-        this.spanEnd = spanEnd;
-    }
-
-    public static EndingValidationResult invalid() {
-        return INVALID;
-    }
-
-    public static EndingValidationResult valid(
-        int spanStart,
-        int spanEnd
-    ) {
-        return new EndingValidationResult(true, spanStart, spanEnd);
-    }
-
-    public boolean isValid() {
-        return valid;
-    }
-
-    public int getSpanStart() {
-        return spanStart;
-    }
-
-    public int getSpanEnd() {
-        return spanEnd;
-    }
+    /**
+     * An ending can be made from the selection.
+     *
+     * @param line   the line the selection is on
+     * @param ending an ending built over {@code line}'s elements and not yet added to its span
+     *     registry
+     */
+    record Valid(Line line, Ending ending) implements EndingValidationResult {}
 }

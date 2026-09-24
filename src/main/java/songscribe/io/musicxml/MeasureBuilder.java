@@ -627,19 +627,14 @@ final class MeasureBuilder {
      */
     private static void attachEndings(BuildContext context, Line line, List<ElementOutput> outputs) {
         for (var ending : line.spanRegistry().findEndings()) {
-            var anchorIndex = ending.getAnchorElementIndex();
-            var endIndex = ending.getEndElementIndex();
-
-            // A malformed song can leave an endpoint detached, or dangling outside the line.
-            if (anchorIndex == null || endIndex == null || !indicesInRange(anchorIndex, endIndex, outputs.size())) {
-                continue;
-            }
+            var anchorIndex = ending.requireAnchorElementIndex();
+            var endIndex = ending.requireEndElementIndex();
 
             attachEndingAnchor(
                 context, outputs.get(anchorIndex), line.getElement(anchorIndex).getType(),
                 ending.getUserYOffsetSs());
             attachEndingEnd(context, outputs.get(endIndex), line.getElement(endIndex).getType());
-            attachEndingSplit(context, outputs.get(ending.getSplitIndex(line)));
+            attachEndingSplit(context, outputs.get(ending.getSplitIndex()));
         }
     }
 
@@ -813,15 +808,6 @@ final class MeasureBuilder {
         ending.setType(type);
         ending.setRelativeY(MusicXmlUnits.shiftTenths(yOffsetSs));
         host.setEnding(ending);
-    }
-
-    /**
-     * Whether both span endpoints fall within the line's element range. Each index is the
-     * endpoint's position in its own line, so one measured in a longer line can exceed
-     * {@code count}; neither is ever negative.
-     */
-    static boolean indicesInRange(int anchorIndex, int endIndex, int count) {
-        return anchorIndex < count && endIndex < count;
     }
 
     /**

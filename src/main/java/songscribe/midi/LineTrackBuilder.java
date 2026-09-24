@@ -79,7 +79,7 @@ public class LineTrackBuilder {
 
         var ratio = tuplet.getRatio();
         var normalNotes = ratio.normalNotes();
-        var grade = tuplet.getGrade();
+        var grade = tuplet.getGrade().number();
         var writtenTicksBefore = 0L;
 
         for (var i = tuplet.requireAnchorElementIndex(); i < elementIndex; i++) {

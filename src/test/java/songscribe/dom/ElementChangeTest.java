@@ -98,7 +98,10 @@ class ElementChangeTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        new Ending(line.getElement(ENDING_ANCHOR), line.getElement(ENDING_END)).addTo(line);
+        var ending = Ending.spanning(line, new ElementRange(ENDING_ANCHOR, ENDING_END));
+
+        assertThat(ending).isNotNull();
+        ending.addTo(line);
 
         return line;
     }

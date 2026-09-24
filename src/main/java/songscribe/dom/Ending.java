@@ -24,6 +24,10 @@ import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.StaffElementRun.ElementRange;
+
 /**
  * Represents a first or second ending bracket above a repeated section.
  * <p>
@@ -32,13 +36,12 @@ import java.util.stream.Stream;
  *
  * @invariant a bar whose type {@link ElementType#closesRepeat()} lies strictly between the
  *            anchor and the end — the split at which the two brackets part. Every creator
- *            establishes it before building an ending: the editor's validation refuses a
- *            selection without one, and the file readers ask {@link #hasRepeatSplit} and drop
- *            an ending that lacks one. Every edit that would remove the split — deleting it, or
+ *            outside this class goes through {@link #spanning}, which answers no ending for a
+ *            range without one. Every edit that would remove the split — deleting it, or
  *            replacing it with a bar that does not close a repeat — invalidates the ending
  *            instead, so no attached ending is ever without its split
  */
-public final class Ending extends Span {
+public final class Ending extends Span<StaffElement> {
 
     /**
      * Height of volta bracket tick marks in staff-space units.
@@ -61,8 +64,8 @@ public final class Ending extends Span {
                 EndingEffect.CompensateEnd, EndingEffect.CompensateSplit {
 
         /** No ending is affected. */
-        record None() implements EndingEffect {
-            public static final None INSTANCE = new None();
+        enum None implements EndingEffect {
+            INSTANCE
         }
 
         /** The ending would be invalidated and removed. UI shows Confirm-I. */
@@ -82,17 +85,41 @@ public final class Ending extends Span {
     }
 
     /**
-     * Creates an ending bracket.
+     * Creates an ending bracket over two elements the caller has already checked hold a split
+     * between them.
      *
      * @param anchorElement The first element of the ending
      * @param endElement    The last element of the ending
      */
-    public Ending(StaffElement anchorElement, StaffElement endElement) {
-        super(anchorElement, endElement);
+    private Ending(StaffElement anchorElement, StaffElement endElement) {
+        super(StaffElement.class, anchorElement, endElement);
+    }
+
+    /**
+     * Returns an ending over {@code span} of {@code line}, when the range holds the split the
+     * class invariant requires. This is the one way to build an ending outside this class, so
+     * the editor and the file readers, which may each hold a range that has no split, get the
+     * same answer to whether it may carry one.
+     * <p>
+     * The ending is built, not added: {@code line}'s span registry is unchanged.
+     *
+     * @param line the line the ending would be on
+     * @param span the range the ending would cover; both of its indices are indices of
+     *     {@code line}
+     * @return an ending anchored on the element at {@code span.begin()} and ending on the element
+     *     at {@code span.end()}, or {@code null} when no bar strictly inside {@code span}
+     *     {@link ElementType#closesRepeat()}
+     */
+    public static @Nullable Ending spanning(Line line, ElementRange span) {
+        if (closingRepeatsBetween(line, span).findFirst().isEmpty()) {
+            return null;
+        }
+
+        return new Ending(line.getElement(span.begin()), line.getElement(span.end()));
     }
 
     @Override
-    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Ending(newAnchor, newEnd);
     }
 
@@ -101,50 +128,30 @@ public final class Ending extends Span {
      * this ending — the one {@link #getSplitElement} answers — computed live from the line
      * rather than from a value cached during layout, so it is reliable during MIDI generation.
      *
-     * @param line the line this ending is on
-     * @return the split bar's index in {@code line}
+     * @return the split bar's index in this ending's line
      */
-    public int getSplitIndex(Line line) {
-        return line.getElementIndex(getSplitElement(line));
+    public int getSplitIndex() {
+        return line().getElementIndex(getSplitElement());
     }
 
     /**
      * Returns the bar that separates the first and second sub-spans of this ending — the
      * element {@link #getSplitIndex} indexes — computed live from the line.
      *
-     * @param line the line this ending is on
      * @return the first bar between the anchor and the end whose type
      *     {@link ElementType#closesRepeat()}, which the class invariant guarantees exists
      */
-    public BarElement getSplitElement(Line line) {
-        return closingRepeatsBetween(line, requireAnchorElementIndex(), requireEndElementIndex())
-            .findFirst()
-            .orElseThrow();
+    public BarElement getSplitElement() {
+        var span = new ElementRange(requireAnchorElementIndex(), requireEndElementIndex());
+
+        return closingRepeatsBetween(line(), span).findFirst().orElseThrow();
     }
 
     /**
-     * Whether an ending anchored at {@code anchorIndex} and ending at {@code endIndex} would
-     * have a split: the question a file reader asks before building one, since a file may hold
-     * an ending the editor could never have created.
-     *
-     * @param line        the line the ending would be on
-     * @param anchorIndex the index of the element the ending would anchor on
-     * @param endIndex    the index of the element the ending would end on
-     * @return {@code true} when some bar strictly between the two indices
-     *     {@link ElementType#closesRepeat()}
+     * The bars strictly inside {@code span} whose type closes a repeat, in line order.
      */
-    public static boolean hasRepeatSplit(Line line, int anchorIndex, int endIndex) {
-        return closingRepeatsBetween(line, anchorIndex, endIndex).findFirst().isPresent();
-    }
-
-    /**
-     * The bars strictly between {@code anchorIndex} and {@code endIndex} whose type closes a
-     * repeat, in line order.
-     */
-    private static Stream<BarElement> closingRepeatsBetween(
-        Line line, int anchorIndex, int endIndex
-    ) {
-        return IntStream.range(anchorIndex + 1, endIndex)
+    private static Stream<BarElement> closingRepeatsBetween(Line line, ElementRange span) {
+        return IntStream.range(span.begin() + 1, span.end())
             .mapToObj(line::getElement)
             .filter(BarElement.class::isInstance)
             .map(BarElement.class::cast)
@@ -162,12 +169,11 @@ public final class Ending extends Span {
      * which is what lets the editor move a selection's anchor onto the bar at creation and
      * layout ask again at paint time without walking back a second bar.
      *
-     * @param line the line this ending belongs to
      * @return the opening element's index, or the anchor's own index when nothing in front of
      *     it is a barline or repeat
      */
-    public int getOpeningElementIndex(Line line) {
-        return openingElementIndex(line, requireAnchorElementIndex());
+    public int getOpeningElementIndex() {
+        return openingElementIndex(line(), requireAnchorElementIndex());
     }
 
     /**
@@ -183,10 +189,6 @@ public final class Ending extends Span {
      *     is a barline or repeat
      */
     public static int openingElementIndex(Line line, int anchorIndex) {
-        if (!line.hasIndex(anchorIndex)) {
-            return anchorIndex;
-        }
-
         if (opensOnItsOwn(line.getElement(anchorIndex).getType())) {
             return anchorIndex;
         }
@@ -262,23 +264,21 @@ public final class Ending extends Span {
      *   <li>an in-place modification keeps it.</li>
      * </ul>
      *
-     * @param change the pending change, not yet applied to {@code line}
-     * @param line   the line being changed, still in its pre-change state
+     * @param change the pending change, not yet applied to {@code change.line()}
      * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the ending,
      *     otherwise {@link SpanOutcome.Simple#KEEP}
      */
     @Override
-    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.Simple outcomeFor(ElementChange change) {
         var invalidated = switch (change) {
             case ElementChange.Insertion insertion ->
                 insertionAddsInteriorBar(insertion.index(), insertion.inserted().getType());
 
             case ElementChange.Deletion deletion ->
-                isEndpointDeletedBy(deletion) || deletionBreaksBrackets(deletion.deletedElements(), line);
+                isEndpointDeletedBy(deletion) || deletionBreaksBrackets(deletion.deletedElements());
 
             case ElementChange.Replacement replacement ->
-                checkReplacement(replacement.oldElement(), replacement.newElement(), line)
-                    instanceof EndingEffect.Invalidate;
+                checkReplacement(replacement) instanceof EndingEffect.Invalidate;
 
             case ElementChange.Modification _ -> false;
         };
@@ -293,12 +293,13 @@ public final class Ending extends Span {
      * Must be called on the <em>pre-deletion</em> line state so indices are stable.
      *
      * @param deletedElements elements about to be deleted
-     * @param line            the owning line (pre-deletion state)
      */
     @SuppressWarnings("SlowListContainsAll")
-    private boolean deletionBreaksBrackets(List<StaffElement> deletedElements, Line line) {
+    private boolean deletionBreaksBrackets(List<StaffElement> deletedElements) {
+        var line = line();
+
         // Condition 2: the split element is deleted
-        var splitElement = getSplitElement(line);
+        var splitElement = getSplitElement();
 
         if (deletedElements.contains(splitElement)) {
             return true;
@@ -320,15 +321,13 @@ public final class Ending extends Span {
     }
 
     /**
-     * Returns the effect of replacing {@code oldElement} with {@code newElement} on this ending.
+     * Returns the effect of {@code replacement} on this ending.
      *
-     * @param oldElement the element being replaced (still in the line at call time)
-     * @param newElement the replacement element
-     * @param line       the owning line (pre-replacement state)
+     * @param replacement the pending replacement, not yet applied to this ending's line
      */
-    public EndingEffect checkReplacement(
-        StaffElement oldElement, StaffElement newElement, Line line
-    ) {
+    public EndingEffect checkReplacement(ElementChange.Replacement replacement) {
+        var oldElement = replacement.oldElement();
+        var newElement = replacement.newElement();
         var newType = newElement.getType();
 
         // Condition 1 — anchor replaced. A note, barline, or repeat (including
@@ -340,7 +339,7 @@ public final class Ending extends Span {
                 : new EndingEffect.Invalidate(this);
         }
 
-        var splitEl = getSplitElement(line);
+        var splitEl = getSplitElement();
 
         // Condition 2 — split element replaced
         if (oldElement == splitEl) {

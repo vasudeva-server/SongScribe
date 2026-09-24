@@ -38,90 +38,86 @@ import songscribe.message.mutation.SpanRemoval;
  *   <li>Methods to determine the range extent</li>
  * </ul>
  *
- * <p><b>Endpoint typing.</b> The base holds {@link StaffElement} endpoints, because most span
- * types legitimately reach over any staff element. A subtype whose endpoints are always of one
- * kind narrows them: it declares a constructor taking the narrower type, overrides the two
- * getters covariantly, and overrides {@link #acceptsEndpoint} to admit only that type. The
- * override is what makes the narrowing a guarantee rather than a convention: every route by
- * which an endpoint enters through a base reference — {@link #setAnchorElement},
- * {@link #setEndElement} and {@link #copy} — consults it and refuses what it rejects, so a
- * narrowed getter can never hand back anything but the narrower type. {@link Beam} is the
- * one narrowing in the codebase.
+ * <p><b>Endpoint typing.</b> A kind states its endpoint type as the type argument {@code E} and
+ * passes that type's class to the constructor. The constructor, the two getters and
+ * {@link #copy} are typed by {@code E}, so the compiler keeps every other endpoint out. Three
+ * places turn a bare {@link StaffElement} into an endpoint — {@code LineSpans.repoint},
+ * {@code LineSpans.mergeOverlapping} and {@code Fragment.cloneSpans} — and each narrows it
+ * through {@link #narrowEndpoint}, which checks it against the class the kind passed.
+ * {@link Beam} ({@code Span<NoteElement>}) is the one kind whose endpoint type is narrower than
+ * {@link StaffElement}.
+ *
+ * @param <E> the type every endpoint of this kind has
  */
-public abstract sealed class Span extends LineElement implements LineContent permits Beam, Hairpin, Tuplet, Trill, Ending {
+public abstract sealed class Span<E extends StaffElement> extends LineElement implements LineContent
+    permits Beam, Hairpin, Tuplet, Trill, Ending {
+
+    /** The class of {@code E}, which {@link #narrowEndpoint} checks an element against. */
+    private final Class<E> endpointType;
+
+    /** The first element in this range. */
+    private E anchorElement;
+
+    /** The last element in this range. */
+    private E endElement;
 
     /**
      * Creates a span reaching from the anchor element to the end element.
      *
+     * @param endpointType  The class of this kind's endpoint type
      * @param anchorElement The first element in the range
      * @param endElement    The last element in the range
      */
-    protected Span(StaffElement anchorElement, StaffElement endElement) {
+    protected Span(Class<E> endpointType, E anchorElement, E endElement) {
+        this.endpointType = endpointType;
         this.anchorElement = anchorElement;
         this.endElement = endElement;
     }
 
-    /** The first element in this range. */
-    private StaffElement anchorElement;
-
-    /** The last element in this range. */
-    private StaffElement endElement;
-
     /**
      * Returns the first element in this range.
      */
-    public StaffElement getAnchorElement() {
+    public final E getAnchorElement() {
         return anchorElement;
     }
 
     /**
      * Sets the first element in this range.
-     *
-     * @throws IllegalArgumentException if this span's type does not
-     *     {@link #acceptsEndpoint accept} {@code anchorElement} as an endpoint
      */
-    void setAnchorElement(StaffElement anchorElement) {
-        this.anchorElement = requireAccepted(anchorElement);
+    void setAnchorElement(E anchorElement) {
+        this.anchorElement = anchorElement;
     }
 
     /**
      * Returns the last element in this range.
      */
-    public StaffElement getEndElement() {
+    public final E getEndElement() {
         return endElement;
     }
 
     /**
      * Sets the last element in this range.
-     *
-     * @throws IllegalArgumentException if this span's type does not
-     *     {@link #acceptsEndpoint accept} {@code endElement} as an endpoint
      */
-    void setEndElement(StaffElement endElement) {
-        this.endElement = requireAccepted(endElement);
+    void setEndElement(E endElement) {
+        this.endElement = endElement;
     }
 
     /**
-     * Whether {@code element} may be one of this span's endpoints. The base admits every staff
-     * element; a subtype that narrows its endpoint type overrides this to admit only that type,
-     * and the setters and {@link #copy} then refuse anything else. See the class Javadoc.
-     */
-    protected boolean acceptsEndpoint(StaffElement element) {
-        return true;
-    }
-
-    /**
-     * {@code element}, once {@link #acceptsEndpoint} has admitted it.
+     * Returns {@code element} as this kind's endpoint type, for a caller holding a bare
+     * {@link StaffElement} it is about to make an endpoint of this span.
      *
-     * @throws IllegalArgumentException if this span's type rejects {@code element}
+     * @param element the element to become an endpoint
+     * @return {@code element}, typed as this kind's endpoint type
+     * @throws IllegalArgumentException if {@code element} is not an instance of this kind's
+     *     endpoint type; the message names this span's kind and {@code element}
      */
-    private StaffElement requireAccepted(StaffElement element) {
-        if (!acceptsEndpoint(element)) {
+    public final E narrowEndpoint(StaffElement element) {
+        if (!endpointType.isInstance(element)) {
             throw new IllegalArgumentException(
                 getClass().getSimpleName() + " cannot end on " + element);
         }
 
-        return element;
+        return endpointType.cast(element);
     }
 
     /**
@@ -153,6 +149,24 @@ public abstract sealed class Span extends LineElement implements LineContent per
         return endElement.getParentLine();
     }
 
+    /**
+     * The line this span lies in: its anchor's line. A span never crosses a line, so the
+     * anchor's line is the end's too.
+     *
+     * @return the anchor's line
+     * @throws IllegalStateException if the anchor sits in no line, which is the case only for a
+     *     span outside every registry, such as a clipboard span over cloned elements
+     */
+    protected final Line line() {
+        var line = getAnchorLine();
+
+        if (line == null) {
+            throw new IllegalStateException(getClass().getSimpleName() + " anchor is in no line: " + this);
+        }
+
+        return line;
+    }
+
     // ========================================================================
     // Entering and leaving a line's span registry
     // ========================================================================
@@ -181,8 +195,8 @@ public abstract sealed class Span extends LineElement implements LineContent per
             switch (displacement) {
                 case COEXIST -> { }
                 case REPLACE_OVERLAPPING -> spans.removeOverlappingSameKind(this);
-                case ABSORB_OVERLAPPING, ABSORB_ADJACENT ->
-                    spans.mergeOverlapping(this, displacement.absorbReach());
+                case ABSORB_OVERLAPPING -> spans.mergeOverlapping(this, 0);
+                case ABSORB_ADJACENT -> spans.mergeOverlapping(this, LineSpans.SPAN_ADJACENCY_REACH);
             }
         }
 
@@ -204,7 +218,7 @@ public abstract sealed class Span extends LineElement implements LineContent per
      *
      * @return {@code true} when adding this span may displace {@code other}
      */
-    final boolean isSameKindAs(Span other) {
+    final boolean isSameKindAs(Span<?> other) {
         if (other.getClass() != getClass()) {
             return false;
         }
@@ -234,20 +248,19 @@ public abstract sealed class Span extends LineElement implements LineContent per
     }
 
     /**
-     * Decides what should happen to this span when {@code change} lands on {@code line}. This is
-     * the one hook the sweep ({@link LineSpans#sweep}) and
+     * Decides what should happen to this span when {@code change} lands on its line,
+     * {@code change.line()}. This is the one hook the sweep ({@link LineSpans#sweep}) and
      * {@link ElementChange#removesConfirmableSpan} put a change to; a kind with a rule of its
      * own overrides it, and states that rule as one switch over the change.
      * <p>
-     * <b>The decision is made before the change lands.</b> {@code line} still holds its
-     * pre-change elements; every judgement must be made against the change's own terms or
-     * against {@link ElementChange#projectedElements}, which is what the line will look like
-     * afterwards, and never by reading the line as though the change had landed. Undo replays a step's mutations in reverse, so the companion span
+     * <b>The decision is made before the change lands.</b> {@code change.line()} is the line
+     * being changed, still in its pre-change state; every judgement must be made against the
+     * change's own terms or against {@link ElementChange#projectedElements}, which is what the
+     * line will look like afterwards, and never by reading the line as though the change had
+     * landed. Undo replays a step's mutations in reverse, so the companion span
      * mutation this answer produces has to be recorded <em>before</em> the primary element
      * mutation — deciding after the fact would record a span already re-pointed at the new
-     * element, and undo would restore it broken. {@code line} is passed so an implementor can
-     * ask the line questions the change cannot answer on its own, such as which spans it
-     * carries.
+     * element, and undo would restore it broken.
      * <p>
      * <b>A replacement re-points, it does not delete.</b> {@link Line#setElement} points any
      * span whose anchor or end was the replaced element at the replacement. So under
@@ -264,17 +277,13 @@ public abstract sealed class Span extends LineElement implements LineContent per
      * A span either survives a change or it does not, which is all {@link SpanOutcome.Simple}
      * can say. A hairpin is the one kind that can survive in a different shape, and the
      * sweep asks it that wider question through
-     * {@link Hairpin#hairpinOutcomeFor(ElementChange, Line)} instead.
-     * <p>
-     * Both questions are put only to {@link LineSpans#judgeableSpans}, so an implementor may
-     * rely on {@code line} placing both of this span's ends.
+     * {@link Hairpin#hairpinOutcomeFor(ElementChange)} instead.
      *
-     * @param change the pending change, not yet applied to {@code line}
-     * @param line   the line being changed, still in its pre-change state
+     * @param change the pending change, not yet applied to {@code change.line()}
      * @return {@link SpanOutcome.Simple#REMOVE} when this span cannot survive {@code change},
      *     otherwise {@link SpanOutcome.Simple#KEEP}
      */
-    public SpanOutcome.Simple outcomeFor(ElementChange change, Line line) {
+    public SpanOutcome.Simple outcomeFor(ElementChange change) {
         return removeWhen(change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion));
     }
 
@@ -312,7 +321,8 @@ public abstract sealed class Span extends LineElement implements LineContent per
 
     /**
      * The position of {@code element} within the line it is in, or {@code null} when it
-     * sits in no line because a removal detached it ({@link Line#removeElement}).
+     * sits in no line — an endpoint of a span outside every registry, such as a clipboard span
+     * over cloned elements.
      */
     private static @Nullable Integer indexInLine(StaffElement element) {
         var line = element.getParentLine();
@@ -341,95 +351,52 @@ public abstract sealed class Span extends LineElement implements LineContent per
     }
 
     /**
-     * The anchor element's index within its own line, for a caller that assumes the anchor
-     * is in one: the edit, layout and render paths, which act only on spans whose endpoints
-     * are attached and feed the index into a range, a loop bound or arithmetic.
+     * The anchor element's index within its own line. Every span in a line's registry has its
+     * anchor in that line; a span outside every registry, such as a clipboard span over cloned
+     * elements, has it in none.
      *
      * @return the anchor's index within {@link #getAnchorLine}
-     * @throws IllegalStateException when the anchor sits in no line because a removal
-     *     ({@link Line#removeElement}) detached it — a fault in the span's own state rather
-     *     than in any argument, which is why it is not {@code IllegalArgumentException}. A
-     *     caller for which absence is a legitimate answer asks
-     *     {@link #getAnchorElementIndex} instead
+     * @throws IllegalStateException when the anchor sits in no line, which is the case only for
+     *     a span outside every registry — a fault in the span's own state rather than in any
+     *     argument, which is why it is not {@code IllegalArgumentException}
      */
     public int requireAnchorElementIndex() {
         return requireIndexInLine(anchorElement);
     }
 
     /**
-     * The end element's index within its own line, for a caller that assumes the end is in
-     * one. See {@link #requireAnchorElementIndex} for which callers those are.
+     * The end element's index within its own line. See {@link #requireAnchorElementIndex} for
+     * when an endpoint sits in no line.
      *
      * @return the end's index within {@link #getEndLine}
-     * @throws IllegalStateException when the end sits in no line because a removal
-     *     ({@link Line#removeElement}) detached it — the span's own state, not an argument.
-     *     A caller for which absence is a legitimate answer asks
-     *     {@link #getEndElementIndex} instead
+     * @throws IllegalStateException when the end sits in no line, which is the case only for a
+     *     span outside every registry — the span's own state, not an argument
      */
     public int requireEndElementIndex() {
         return requireIndexInLine(endElement);
     }
 
     /**
-     * The anchor element's index within its own line, or {@code null} when the anchor sits
-     * in no line. For the load and validation paths, where a span may legitimately arrive
-     * with an endpoint that a removal ({@link Line#removeElement}) has detached and the
-     * caller decides what to do about it — {@link Hairpin#outcomeFor} is the model.
-     * <p>
-     * A caller that assumes the anchor is attached asks {@link #requireAnchorElementIndex},
-     * which states that assumption in its name and fails loudly when it is wrong.
-     *
-     * @return the anchor's index within {@link #getAnchorLine}, or {@code null} when
-     *     {@link #getAnchorLine} is null
-     */
-    public @Nullable Integer getAnchorElementIndex() {
-        return indexInLine(anchorElement);
-    }
-
-    /**
-     * The end element's index within its own line, or {@code null} when the end sits in no
-     * line. See {@link #getAnchorElementIndex} for which callers this pair is for; a caller
-     * that assumes the end is attached asks {@link #requireEndElementIndex}.
-     *
-     * @return the end's index within {@link #getEndLine}, or {@code null} when
-     *     {@link #getEndLine} is null
-     */
-    public @Nullable Integer getEndElementIndex() {
-        return indexInLine(endElement);
-    }
-
-    /**
-     * A test on a span's two endpoint indices, each {@code null} when that endpoint sits in
-     * no line — a detached endpoint, or one in a line the song no longer holds.
+     * A test on a span's inclusive range, from its anchor's index to its end's.
      */
     @FunctionalInterface
     public interface IndexPredicate {
-        boolean test(@Nullable Integer anchorIndex, @Nullable Integer endIndex);
+        boolean test(ElementRange spanRange);
     }
 
     /**
      * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
-     * <p>
-     * A {@code null} endpoint bounds nothing, so a half-detached span is never reported as
-     * covering an element.
      */
     public static IndexPredicate containing(int elementIndex) {
-        return (anchorIndex, endIndex) ->
-            anchorIndex != null && endIndex != null && anchorIndex <= elementIndex && elementIndex <= endIndex;
+        return spanRange -> spanRange.contains(elementIndex);
     }
 
     /**
-     * A predicate matching a span overlapping {@code range}.
-     * <p>
-     * A {@code null} anchor is deliberately <em>not</em> rejected: the replacing displacement
-     * ({@link Displacement#REPLACE_OVERLAPPING}) and {@link LineSpans#removeOverlapping} rely on
-     * a half-detached span still being found so it can be cleaned up. A {@code null} end is
-     * rejected, since nothing bounds the range from below without it.
+     * A predicate matching a span sharing at least one element with {@code range}: its anchor at
+     * or before {@code range}'s last element and its end at or after {@code range}'s first.
      */
     public static IndexPredicate overlapping(ElementRange range) {
-        return (anchorIndex, endIndex) ->
-            (anchorIndex == null || anchorIndex <= range.end())
-                && endIndex != null && endIndex >= range.begin();
+        return spanRange -> spanRange.overlaps(range);
     }
 
     /**
@@ -440,20 +407,12 @@ public abstract sealed class Span extends LineElement implements LineContent per
      * Two hairpins may meet — one ends on the element the next begins on, and the
      * wedges back away from that shared column (LilyPond's back-to-back rule). More
      * than that one element in common is a genuine collision.
-     * <p>
-     * A {@code null} bound equals nothing, so a half-detached span matches and the caller
-     * treats it as a collision: a bound with no position cannot be shown to share only an
-     * endpoint.
      */
     public static IndexPredicate overlappingBeyondEndpoint(ElementRange range) {
-        // Built once here rather than inside the lambda: this predicate is tested
-        // against every span on the line, on every selection change.
-        var overlaps = overlapping(range);
-
-        return (anchorIndex, endIndex) ->
-            overlaps.test(anchorIndex, endIndex)
-                && !isAt(endIndex, range.begin())
-                && !isAt(anchorIndex, range.end());
+        return spanRange ->
+            spanRange.overlaps(range)
+                && spanRange.end() != range.begin()
+                && spanRange.begin() != range.end();
     }
 
     /**
@@ -465,12 +424,10 @@ public abstract sealed class Span extends LineElement implements LineContent per
      * inclusive range.
      */
     public static IndexPredicate strictlyContaining(int elementIndex) {
-        // Built once here rather than inside the lambda: this predicate is tested
-        // against every span on the line, on every selection change.
-        var contains = containing(elementIndex);
-
-        return (anchorIndex, endIndex) ->
-            contains.test(anchorIndex, endIndex) && !isAt(anchorIndex, elementIndex) && !isAt(endIndex, elementIndex);
+        return spanRange ->
+            spanRange.contains(elementIndex)
+                && spanRange.begin() != elementIndex
+                && spanRange.end() != elementIndex;
     }
 
     /**
@@ -478,29 +435,21 @@ public abstract sealed class Span extends LineElement implements LineContent per
      * whose end is exactly its last.
      */
     public static IndexPredicate exactly(ElementRange range) {
-        return (anchorIndex, endIndex) -> isAt(anchorIndex, range.begin()) && isAt(endIndex, range.end());
+        return spanRange -> spanRange.equals(range);
     }
 
     /**
      * A predicate matching a span whose anchor is the element at {@code elementIndex}.
      */
     public static IndexPredicate anchoredAt(int elementIndex) {
-        return (anchorIndex, endIndex) -> isAt(anchorIndex, elementIndex);
+        return spanRange -> spanRange.begin() == elementIndex;
     }
 
     /**
      * A predicate matching a span whose end is the element at {@code elementIndex}.
      */
     public static IndexPredicate endingAt(int elementIndex) {
-        return (anchorIndex, endIndex) -> isAt(endIndex, elementIndex);
-    }
-
-    /**
-     * Whether an endpoint index names {@code elementIndex}. A {@code null} endpoint sits in no
-     * line, so it names no element.
-     */
-    private static boolean isAt(@Nullable Integer endpointIndex, int elementIndex) {
-        return endpointIndex != null && endpointIndex == elementIndex;
+        return spanRange -> spanRange.end() == elementIndex;
     }
 
     /**
@@ -514,11 +463,9 @@ public abstract sealed class Span extends LineElement implements LineContent per
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
      * @return A new span of the same concrete type as this one
-     * @throws IllegalArgumentException if this span's type does not
-     *     {@link #acceptsEndpoint accept} either element as an endpoint
      */
-    public final Span copy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = createCopy(requireAccepted(newAnchor), requireAccepted(newEnd));
+    public final Span<E> copy(E newAnchor, E newEnd) {
+        var copy = createCopy(newAnchor, newEnd);
         copy.copyBaseStateFrom(this);
         return copy;
     }
@@ -526,11 +473,10 @@ public abstract sealed class Span extends LineElement implements LineContent per
     /**
      * Creates a new instance of this span's concrete subclass, anchored to the
      * given elements and carrying over any subclass-specific state. Called only by
-     * {@link #copy}, which layers on the shared {@link LineElement}-level state and has
-     * already put both elements past {@link #acceptsEndpoint}.
+     * {@link #copy}, which layers on the shared {@link LineElement}-level state.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
      */
-    protected abstract Span createCopy(StaffElement newAnchor, StaffElement newEnd);
+    protected abstract Span<E> createCopy(E newAnchor, E newEnd);
 }

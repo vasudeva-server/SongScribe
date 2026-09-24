@@ -592,7 +592,7 @@ public final class UndoController {
      * The operation-name key for adding or removing {@code span}, by its kind. Exhaustive over
      * the sealed {@link Span} hierarchy, so a new kind cannot go unnamed.
      */
-    private static String spanOpNameKey(Span span) {
+    private static String spanOpNameKey(Span<?> span) {
         return switch (span) {
             case Beam _ -> Strings.ACTION_EDIT_OP_BEAMING;
             case Tuplet _ -> Strings.ACTION_EDIT_OP_TUPLET;
