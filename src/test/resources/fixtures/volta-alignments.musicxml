@@ -970,7 +970,7 @@
       </note>
       <barline location="right">
         <bar-style>none</bar-style>
-        <ending number="2" type="discontinue"/>
+        <ending number="2" type="stop"/>
       </barline>
       <barline location="right">
         <bar-style>regular</bar-style>

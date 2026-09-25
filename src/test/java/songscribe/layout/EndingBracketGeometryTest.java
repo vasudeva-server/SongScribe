@@ -223,8 +223,9 @@ class EndingBracketGeometryTest extends UnitTest {
             .isCloseTo(expectedSecondX2Ss, within(TOLERANCE_SS));
 
         assertThat(secondBracket.hasClosingStroke())
-            .as("only a bar that ends a repeated section is struck through at the bracket's end")
-            .isEqualTo(closing.closesSection());
+            .as("a bracket closing on any bar is struck through there; one ending on a note with "
+                + "nothing after it stops open")
+            .isEqualTo(closing.isBar());
 
         assertThat(firstBracket.hasClosingStroke())
             .as("the first bracket is always struck through, since the repeat loops back there")
@@ -257,8 +258,8 @@ class EndingBracketGeometryTest extends UnitTest {
             .isCloseTo(closingAnchorXSs(RUN_ON_BAR_INDEX, following), within(TOLERANCE_SS));
 
         assertThat(secondBracket.hasClosingStroke())
-            .as("the bar run on to decides the closing stroke, as it would were it the end element")
-            .isEqualTo(following.closesSection());
+            .as("the bar run on to closes the bracket, whatever its type")
+            .isTrue();
     }
 
     /**

@@ -105,7 +105,7 @@ public final class EndingBracketGeometry {
 
         // The split lies strictly between anchor and end, so both brackets always exist.
         var firstBracket = firstBracketRange(startElement, split, columnFn);
-        var secondBracket = secondBracketRange(endElement, end, split, line, columnFn);
+        var secondBracket = secondBracketRange(endElement, split, ending.getClosingBar(), columnFn);
 
         return List.of(firstBracket, secondBracket);
     }
@@ -144,21 +144,19 @@ public final class EndingBracketGeometry {
      * The second bracket: from the split repeat to the element the ending closes on.
      *
      * @param endElement the ending's end element
-     * @param end        the end element's index
      * @param split      the bar splitting the two brackets
-     * @param line       the line containing the ending
+     * @param closingBar the bar the bracket closes on, or {@code null} when it stops open after
+     *                   {@code endElement}
      * @param columnFn   supplies an element's column
      * @return the bracket's range
      */
     private static BracketRange secondBracketRange(
         StaffElement endElement,
-        int end,
         BarElement split,
-        Line line,
+        @Nullable BarElement closingBar,
         Function<? super StaffElement, ElementColumn> columnFn
     ) {
         var x1 = columnFn.apply(split).getXSs() + split.bar().openingAnchorSs();
-        var closingBar = closingBar(endElement, end, line);
 
         if (closingBar == null) {
             var x2 = columnFn.apply(endElement).getRightEdgeXSs()
@@ -169,23 +167,7 @@ public final class EndingBracketGeometry {
 
         var x2 = columnFn.apply(closingBar).getXSs() + closingBar.bar().closingAnchorSs();
 
-        return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, closingBar.getType().closesSection());
-    }
-
-    /**
-     * The bar the second bracket closes on: the end element when it is a bar, else the bar
-     * immediately after it, else none — a bracket ending on a note stops in mid-air.
-     */
-    private static @Nullable BarElement closingBar(StaffElement endElement, int end, Line line) {
-        if (endElement instanceof BarElement endBar) {
-            return endBar;
-        }
-
-        if (end + 1 < line.elementCount() && line.getElement(end + 1) instanceof BarElement nextBar) {
-            return nextBar;
-        }
-
-        return null;
+        return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, true);
     }
 
     /**

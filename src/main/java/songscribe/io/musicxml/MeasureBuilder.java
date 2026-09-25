@@ -40,6 +40,7 @@ import org.audiveris.proxymusic.YesNo;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
 import songscribe.dom.Line;
@@ -633,7 +634,7 @@ final class MeasureBuilder {
             attachEndingAnchor(
                 context, outputs.get(anchorIndex), line.getElement(anchorIndex).getType(),
                 ending.getUserYOffsetSs());
-            attachEndingEnd(context, outputs.get(endIndex), line.getElement(endIndex).getType());
+            attachEndingEnd(context, outputs.get(endIndex), ending);
             attachEndingSplit(context, outputs.get(ending.getSplitIndex()));
         }
     }
@@ -664,18 +665,21 @@ final class MeasureBuilder {
     }
 
     /**
-     * Attaches the volta-2 close. A barline or repeat end closes with {@code type="stop"}; a
-     * note end (issue #306) has no barline, so the volta closes with {@code type="discontinue"}
-     * — an open bracket — on a right barline after the note.
+     * Attaches the volta-2 close. A barline or repeat end hosts it on its own barline; a note
+     * end (issue #306) has no barline, so it rides on a right barline after the note. The type
+     * is {@code type="stop"} when {@link Ending#getClosingBar()} names a bar the bracket closes
+     * on, and {@code type="discontinue"} — an open bracket — when it names none.
      */
-    private static void attachEndingEnd(BuildContext context, ElementOutput output, ElementType endType) {
+    private static void attachEndingEnd(BuildContext context, ElementOutput output, Ending ending) {
+        var endType = ending.getEndElement().getType();
+        var type = ending.getClosingBar() != null ? StartStopDiscontinue.STOP : StartStopDiscontinue.DISCONTINUE;
+
         if (endType == ElementType.REPEAT_LEFT) {
-            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP, 0);
+            attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, type, 0);
         } else if (endType.isDuration()) {
-            attachEnding(context, rightBarlineAfterContent(context, output), MusicXmlTags.NUMBER_2,
-                StartStopDiscontinue.DISCONTINUE, 0);
+            attachEnding(context, rightBarlineAfterContent(context, output), MusicXmlTags.NUMBER_2, type, 0);
         } else {
-            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, StartStopDiscontinue.STOP, 0);
+            attachEnding(context, output.rightBarline, MusicXmlTags.NUMBER_2, type, 0);
         }
     }
 

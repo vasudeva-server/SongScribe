@@ -69,13 +69,12 @@ import static songscribe.engraving.BarStroke.THIN;
  * nor a non-duration: {@link #isDuration()} and {@link #isNonDuration()} do not partition the
  * kinds.
  *
- * <p><b>Which bars may stand where.</b> Five predicates are rules about particular bars rather
+ * <p><b>Which bars may stand where.</b> Four predicates are rules about particular bars rather
  * than about a kind, and are read together: {@link #isValidSongTerminal()}, the bars that may
  * occupy the song's last slot; {@link #isReplaceableByTerminal()}, the bars that slot replaces
  * rather than follows; {@link #isEndingTerminal()}, the bars that can close a first/second-ending
- * selection; {@link #closesRepeat()}, the bars playback loops back from, at which an ending's two
- * brackets split; and {@link #closesSection()}, the bars nothing runs past, on which a volta's
- * closing stroke hangs.
+ * selection; and {@link #closesRepeat()}, the bars playback loops back from, at which an ending's
+ * two brackets split.
  *
  * <p>An element's Java class follows its type's appearance: {@link #newInstance()} chooses the
  * class from the appearance, and {@link KeyChangeElement}'s own constructors build the one class
@@ -657,16 +656,6 @@ public enum ElementType {
      */
     public boolean closesRepeat() {
         return this == REPEAT_RIGHT || this == REPEAT_LEFT_RIGHT;
-    }
-
-    /**
-     * Whether a bar of this type closes a section nothing runs past, so that a volta bracket
-     * closing on it hangs a closing stroke from it.
-     *
-     * @return {@code true} for a bar that {@link #closesRepeat()} and for a final double barline
-     */
-    public boolean closesSection() {
-        return closesRepeat() || this == FINAL_DOUBLE_BARLINE;
     }
 
     /**

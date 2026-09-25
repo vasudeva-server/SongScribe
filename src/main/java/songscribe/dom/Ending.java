@@ -211,14 +211,38 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
+     * Returns the bar this ending's second bracket closes on: the end element when it is a bar,
+     * else the element right after the end when that is a bar. Every bar closes the bracket,
+     * whatever its type. With no such bar the bracket stops open after the end note.
+     *
+     * @return the closing bar, or {@code null} when the second bracket is open
+     */
+    public @Nullable BarElement getClosingBar() {
+        var line = line();
+        var end = requireEndElementIndex();
+
+        if (line.getElement(end) instanceof BarElement endBar) {
+            return endBar;
+        }
+
+        var next = end + 1;
+
+        if (line.hasIndex(next) && line.getElement(next) instanceof BarElement nextBar) {
+            return nextBar;
+        }
+
+        return null;
+    }
+
+    /**
      * Whether an ending split by {@code splitType} may end on {@code endType}.
      * <p>
      * The split and the end state the same repeat structure from its two sides, so they are
      * not independent. A {@link ElementType#REPEAT_LEFT_RIGHT} split leaves the second bracket
      * inside a repeated section, which only a right repeat can close; a
      * {@link ElementType#REPEAT_RIGHT} split closes its section at the split, so the second
-     * bracket ends wherever a section may end. An end that is a note belongs to neither case:
-     * the bracket stops in mid-air and constrains nothing.
+     * bracket ends wherever a section may end. An end that is a note belongs to neither case and
+     * constrains nothing.
      *
      * @param splitType the type of the repeat splitting the two brackets
      * @param endType   the type of the element the ending ends on
