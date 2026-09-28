@@ -63,8 +63,8 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * its first note.
  *
  * <p>When a change to what a bracket emits is intended, regenerate the fixture with
- * {@code EXTRA_JVM_ARGS=-D}{@value #UPDATE_FIXTURES_PROPERTY}{@code =true ./scripts/test.sh
- * VoltaAlignmentFixtureTest}, open the result in the application, and commit it once it looks
+ * {@code ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest}, which sets
+ * {@value #UPDATE_FIXTURES_PROPERTY} in the test JVM, open the result in the application, and commit it once it looks
  * right. Nothing else writes the fixture.
  */
 class VoltaAlignmentFixtureTest extends UnitTest {

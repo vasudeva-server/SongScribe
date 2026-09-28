@@ -219,6 +219,10 @@ fun Test.applyCommonTestConfig() {
         systemProperty("e2e.debug", "true")
     }
 
+    if (project.hasProperty("updateFixtures")) {
+        systemProperty("songscribe.updateFixtures", "true")
+    }
+
     System.getenv("EXTRA_JVM_ARGS")?.takeIf { it.isNotBlank() }?.split(" ")?.let { jvmArgs(it) }
     // Gradle auto-enables JaCoCo on all Test tasks; disable it here so that coverage.sh
     // is the sole agent injector (double agents cause SIGABRT via conflicting ASM transforms).

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run tests via Gradle
-# Usage: ./scripts/test.sh [--debug] [--keep-going] [--<gradle-flag>...] [unit|e2e|ClassName|ClassName.method|...]
+# Usage: ./scripts/test.sh [--debug] [--keep-going] [--generate-fixtures] [--<gradle-flag>...] [unit|e2e|ClassName|ClassName.method|...]
 # Examples:
 #   ./scripts/test.sh                                          # Unit tests only (same as `unit`)
 #   ./scripts/test.sh e2e                                      # e2e tests only
@@ -14,6 +14,11 @@
 #   ./scripts/test.sh 'MessageCenterTest$MessageToString'      # Nested class (single quotes prevent $ expansion)
 #   ./scripts/test.sh 'MessageCenterTest$MessageToString.method'
 #   ./scripts/test.sh SMuFLMetadataTest MessageCenterTest      # Multiple classes
+#   ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest  # Rewrite the class's golden fixture
+#
+# --generate-fixtures sets the songscribe.updateFixtures system property in the test JVM. A
+# golden-file test that reads it writes its fixture from the current output instead of
+# comparing against it. Open the rewritten fixture and check it before you commit it.
 #
 # Targets are checked against src/test/java before Gradle runs: an unknown class,
 # a pattern, an e2e class without the e2e prefix, a unit/e2e mix, or --debug
@@ -109,6 +114,7 @@ while [[ "${1:-}" == --* ]]; do
   case "$1" in
     --debug)      GRADLE_PROPS+=("-Pe2eDebug"); DEBUG_REQUESTED=true ;;
     --keep-going) GRADLE_FLAGS+=("--continue"); GRADLE_PROPS+=("-PnoFailFast") ;;
+    --generate-fixtures) GRADLE_PROPS+=("-PupdateFixtures") ;;
     *)            GRADLE_FLAGS+=("$1") ;;
   esac
   shift

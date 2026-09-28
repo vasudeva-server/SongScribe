@@ -160,6 +160,23 @@ If the domain is private (`OpNames.Category` is a private enum), no assertion ca
 reach it. Do not widen it — that is test-only surface. Reword the Javadoc to claim
 what the table actually covers, or make the taxonomy part of the contract.
 
+## Golden-File Fixtures
+
+A golden-file test compares output with a checked-in fixture that a person approved, such as
+`VoltaAlignmentFixtureTest` against `src/test/resources/fixtures/volta-alignments.musicxml`.
+When a change to that output is intended, regenerate the fixture:
+
+```bash
+./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest
+```
+
+The option sets the `songscribe.updateFixtures` system property in the test JVM. A test that
+reads it writes its fixture from the current output and does not compare. Open the rewritten
+fixture in the application and check it before you commit it. The test cannot judge the new
+output; only a person can.
+
+A new golden-file test reads the same property, so the one option regenerates every fixture.
+
 ## Creating Staff Elements
 
 Never call `ElementType.X.newInstance()` in a test, and never write a local
