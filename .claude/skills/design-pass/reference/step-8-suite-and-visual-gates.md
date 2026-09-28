@@ -6,12 +6,11 @@ that state is unverified. This step is the **full-suite gate**: run
 classes>`. A contract or type change here can break a caller in another package,
 which is what the whole suite is for — and the whole suite is not yours to start.
 
-**Ask the user to run it, and wait.** `.claude/hooks/no-full-test-suite.sh`
-denies a run naming no class or more than four, and that is the rule rather than
-an obstacle to route around: state that the pass is at its gate, name what
-changed and which packages the change can reach, and let the user decide when to
-spend the run. Never attempt the suite yourself, in any form — not by naming
-classes four at a time, not through Gradle, not by any other spelling.
+**Ask the user to run it, and wait.** The whole suite is the user's to start.
+State that the pass is at its gate, name what changed and which packages the
+change can reach, and let the user decide when to spend the run. Never attempt
+the suite yourself, in any form — not by naming many classes at once, not
+through Gradle, not by any other spelling.
 
 Never rerun a failure with extra flags, and never assume a failure is
 pre-existing. **A failing test means one of three things — code, test, or
