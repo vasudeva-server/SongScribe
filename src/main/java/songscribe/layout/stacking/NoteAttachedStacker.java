@@ -38,6 +38,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
+import songscribe.layout.TrillGeometry;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
@@ -848,7 +849,7 @@ public class NoteAttachedStacker {
             if (index == anchorIndex) {
                 // The first note seats the tr glyph as a script: it clears the tie/notehead by the
                 // glyph's real inner edge, centered on the notehead exactly as TrillRenderer draws it.
-                footprintXSs = Trill.glyphLeftXSs(
+                footprintXSs = TrillGeometry.glyphLeftXSs(
                     column.getXSs(), NoteGeometry.getNoteheadCenterXSs(note));
                 profile = TRILL_PROFILE_ABOVE;
                 paddingSs = TRILL_SCRIPT_PADDING_SS;
@@ -872,7 +873,7 @@ public class NoteAttachedStacker {
 
         // Reserve the full span at the computed inner edge; the per-note padding is already folded
         // in, so the placement core adds no further margin.
-        var widthSs = trill.getSpanWidthSs(anchorXSs, endXSs);
+        var widthSs = TrillGeometry.getSpanWidthSs(anchorXSs, endXSs);
         StackingUtils.placeAndReserve(Direction.UP, outerExtents, trill, anchorXSs, widthSs,
             innerEdgeYSs, 0.0, decorationLayouts);
     }

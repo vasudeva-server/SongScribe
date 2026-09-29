@@ -43,11 +43,22 @@ import songscribe.smufl.SMuFLMetadata;
  * Layout geometry for {@link Ending} volta brackets.
  * <p>
  * {@code Ending} is a DOM type and may not depend on {@code songscribe.layout}; everything
- * about an ending that needs {@link ElementColumn} or {@link NoteGeometry} — the bracket X
- * ranges, the label font and its cached glyph bounds, and the collision decomposition — lives
- * here instead.
+ * about an ending's geometry lives here instead — the tick and label dimensions, the bracket X
+ * ranges (which need {@link ElementColumn} and {@link NoteGeometry}), the label font and its
+ * cached glyph bounds, and the collision decomposition.
  */
 public final class EndingBracketGeometry {
+
+    /**
+     * Height of volta bracket tick marks in staff-space units.
+     */
+    public static final double VOLTA_TICK_HEIGHT_SS = 2.0;
+
+    /** Horizontal inset of label from left arm of bracket. */
+    public static final double LABEL_X_INSET_SS = 0.9;
+
+    /** Vertical gap between the bracket's horizontal line and the top of the label. */
+    public static final double LABEL_Y_OFFSET_SS = 0.5;
 
     /** Scale of volta label font relative to standard music font size. */
     private static final float LABEL_FONT_SCALE = 0.6f;
@@ -79,21 +90,13 @@ public final class EndingBracketGeometry {
      * @param line     the line containing the ending
      * @param columnFn function that returns the {@link ElementColumn} of an element,
      *                 from which its X position and horizontal extents are read
-     * @return the first and second bracket, in that order; empty when the ending's anchor or end
-     *     index is not an index of {@code line}
+     * @return the first and second bracket, in that order
      */
     public static List<BracketRange> computeBracketRanges(
         Ending ending,
         Line line,
         Function<? super StaffElement, ElementColumn> columnFn
     ) {
-        var start = ending.requireAnchorElementIndex();
-        var end = ending.requireEndElementIndex();
-
-        if (!line.hasIndex(start) || !line.hasIndex(end)) {
-            return List.of();
-        }
-
         // The ending owns which of its elements is the split. Searching for it again here
         // is what let the two disagree: a scan that includes the anchor takes an anchor
         // that is itself a repeat for the split, which leaves the first bracket unbuilt
@@ -101,11 +104,11 @@ public final class EndingBracketGeometry {
         var split = ending.getSplitElement();
 
         var startElement = line.getElement(ending.getOpeningElementIndex());
-        var endElement = line.getElement(end);
+        var endElement = line.getElement(ending.range().end());
 
         // The split lies strictly between anchor and end, so both brackets always exist.
         var firstBracket = firstBracketRange(startElement, split, columnFn);
-        var secondBracket = secondBracketRange(endElement, split, ending.getClosingBar(), columnFn);
+        var secondBracket = secondBracketRange(ending, endElement, split, columnFn);
 
         return List.of(firstBracket, secondBracket);
     }
@@ -141,33 +144,34 @@ public final class EndingBracketGeometry {
     }
 
     /**
-     * The second bracket: from the split repeat to the element the ending closes on.
+     * The second bracket: from the split repeat to the ending's end bar, or past its end note
+     * when it has none.
      *
+     * @param ending     the ending the bracket belongs to
      * @param endElement the ending's end element
      * @param split      the bar splitting the two brackets
-     * @param closingBar the bar the bracket closes on, or {@code null} when it stops open after
-     *                   {@code endElement}
      * @param columnFn   supplies an element's column
      * @return the bracket's range
      */
     private static BracketRange secondBracketRange(
+        Ending ending,
         StaffElement endElement,
         BarElement split,
-        @Nullable BarElement closingBar,
         Function<? super StaffElement, ElementColumn> columnFn
     ) {
         var x1 = columnFn.apply(split).getXSs() + split.bar().openingAnchorSs();
+        var endBar = ending.getEndBar();
+        double x2;
 
-        if (closingBar == null) {
-            var x2 = columnFn.apply(endElement).getRightEdgeXSs()
+        if (endBar == null) {
+            x2 = columnFn.apply(endElement).getRightEdgeXSs()
                 + SMuFLMetadata.advanceWidthSs(SMuFLGlyph.AUGMENTATION_DOT);
-
-            return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, false);
+        }
+        else {
+            x2 = columnFn.apply(endBar).getXSs() + endBar.bar().closingAnchorSs();
         }
 
-        var x2 = columnFn.apply(closingBar).getXSs() + closingBar.bar().closingAnchorSs();
-
-        return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, true);
+        return new BracketRange(x1, x2, BracketRange.Bracket.SECOND, ending.isSecondBracketClosed());
     }
 
     /**
@@ -202,7 +206,7 @@ public final class EndingBracketGeometry {
 
         // The ticks hang from the bar. Their lower ends are the stroked path's caps, which
         // drawPath insets so that the ink stops on the endpoint rather than bulging past it.
-        var tickHeightSs = Ending.VOLTA_TICK_HEIGHT_SS + halfThicknessSs;
+        var tickHeightSs = VOLTA_TICK_HEIGHT_SS + halfThicknessSs;
 
         // Left tick
         regions.add(new CollisionRegion(
@@ -220,8 +224,8 @@ public final class EndingBracketGeometry {
         var labelWidthSs = labelBounds.getWidth();
         var labelHeightSs = TextMeasurement.inkHeight(labelBounds);
         regions.add(new CollisionRegion(
-            xBaseSs + Ending.LABEL_X_INSET_SS, 0,
-            labelWidthSs, Ending.LABEL_Y_OFFSET_SS + labelHeightSs));
+            xBaseSs + LABEL_X_INSET_SS, 0,
+            labelWidthSs, LABEL_Y_OFFSET_SS + labelHeightSs));
 
         return regions;
     }

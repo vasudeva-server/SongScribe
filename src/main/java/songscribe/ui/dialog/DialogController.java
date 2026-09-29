@@ -53,7 +53,7 @@ import songscribe.util.Copyable;
  *            input is absent on Add
  * @param <O> what the dialog's controls say on OK, passed to {@link #validate} and {@link #commit}
  */
-public abstract class DialogController<I extends @Nullable Copyable<I>, O> {
+public abstract class DialogController<I extends @Nullable Copyable<I>, O extends @Nullable Object> {
 
     /**
      * Reads what the dialog should show.

@@ -45,7 +45,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.BeamMetrics;
-import songscribe.engraving.StemMetrics;
+import songscribe.engraving.TupletMetrics;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
 
@@ -322,7 +322,7 @@ public final class HitRegionBuilder {
             }
 
             var layout = entry.getValue();
-            var glyphLeftXSs = Trill.glyphLeftXSs(
+            var glyphLeftXSs = TrillGeometry.glyphLeftXSs(
                 layoutResult.getElementXSs(anchor), NoteGeometry.getNoteheadCenterXSs(anchor));
             var rightXSs = trillRightEdgeXSs(trill, anchor, glyphLeftXSs, layoutResult);
             var rectSs = new Rectangle2D.Double(
@@ -517,14 +517,15 @@ public final class HitRegionBuilder {
         // A bracket reaches past the notes it spans at both ends, so the edges come from the same
         // Tuplet helpers the renderer and the stacker use, not from the anchor-to-end run.
         var anchorXSs = layout.xSs();
-        var leftEdgeXSs = tuplet.bracketLeftEdgeXSs(
-            anchorXSs, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
-        var rightEdgeXSs = Tuplet.bracketRightEdgeXSs(
+        var leftEdgeXSs = TupletGeometry.bracketLeftEdgeXSs(
+            tuplet, anchorXSs, anchorColumn.getNoteheadWidthSs());
+        var rightEdgeXSs = TupletGeometry.bracketRightEdgeXSs(
             anchorXSs + layout.widthSs(), endColumn.getNoteheadWidthSs());
 
         // The reserved box top is sloped, so it has to be evaluated at an X rather than read off
         // the layout: dySs is its rise over the anchor-to-end run, measured from the anchor X.
-        // widthSs is always positive: Tuplet.getSpanWidthSs floors it at Tuplet.MIN_SPAN_WIDTH_SS.
+        // widthSs is always positive: TupletGeometry.getSpanWidthSs floors it at
+        // TupletGeometry.MIN_SPAN_WIDTH_SS.
         if (!(layout instanceof LayoutResult.DecorationLayout.Sloped sloped)) {
             throw new IllegalStateException(
                 "Tuplet decoration layout is not Sloped for " + tuplet);
@@ -539,7 +540,7 @@ public final class HitRegionBuilder {
             return numberRectSs;
         }
 
-        var bracketLineOffsetSs = Tuplet.bracketLineOffsetSs();
+        var bracketLineOffsetSs = TupletGeometry.bracketLineOffsetSs();
         var leftArmTopYSs = boxTopYAtSs.applyAsDouble(leftEdgeXSs) + bracketLineOffsetSs;
         var rightArmTopYSs = boxTopYAtSs.applyAsDouble(rightEdgeXSs) + bracketLineOffsetSs;
 
@@ -550,8 +551,8 @@ public final class HitRegionBuilder {
         var shapeSs = new Path2D.Double();
         shapeSs.moveTo(leftEdgeXSs, leftArmTopYSs);
         shapeSs.lineTo(rightEdgeXSs, rightArmTopYSs);
-        shapeSs.lineTo(rightEdgeXSs, rightArmTopYSs + Tuplet.BRACKET_ARM_HEIGHT_SS);
-        shapeSs.lineTo(leftEdgeXSs, leftArmTopYSs + Tuplet.BRACKET_ARM_HEIGHT_SS);
+        shapeSs.lineTo(rightEdgeXSs, rightArmTopYSs + TupletMetrics.BRACKET_ARM_HEIGHT_SS);
+        shapeSs.lineTo(leftEdgeXSs, leftArmTopYSs + TupletMetrics.BRACKET_ARM_HEIGHT_SS);
         shapeSs.closePath();
         shapeSs.append(numberRectSs, false);
 
@@ -563,8 +564,8 @@ public final class HitRegionBuilder {
      * <p>
      * The number is centered between the bracket edges either way, so the two edges locate it here
      * exactly as they locate it in the renderer. Its ink top is the reserved box top at that center
-     * X: the number straddles the bracket line, which sits {@link Tuplet#bracketLineOffsetSs} — half
-     * an ink height — below the box top.
+     * X: the number straddles the bracket line, which sits {@link TupletGeometry#bracketLineOffsetSs}
+     * — half an ink height — below the box top.
      *
      * @param boxTopYAtSs the reserved box top as a function of X, following the bracket's slope
      */
@@ -575,13 +576,13 @@ public final class HitRegionBuilder {
         DoubleUnaryOperator boxTopYAtSs) {
 
         var centerXSs = (leftEdgeXSs + rightEdgeXSs) / 2;
-        var inkWidthSs = Tuplet.numberInkWidthSs(tuplet.getGrade());
+        var inkWidthSs = TupletGeometry.numberInkWidthSs(tuplet.getGrade());
 
         return new Rectangle2D.Double(
             centerXSs - inkWidthSs / 2,
             boxTopYAtSs.applyAsDouble(centerXSs),
             inkWidthSs,
-            Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS);
+            TupletGeometry.TUPLET_NUMBER_INK_HEIGHT_SS);
     }
 
     /**

@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 
 import jakarta.xml.bind.JAXBElement;
 import org.audiveris.proxymusic.AboveBelow;
@@ -499,19 +500,14 @@ final class NoteBuilder {
             return writtenTicks;
         }
 
-        var ratio = tuplet.getRatio();
-        var grade = tuplet.getGrade().number();
-        var normalNotes = ratio.normalNotes();
-        var product = writtenTicks * normalNotes;
+        try {
+            return Math.toIntExact(tuplet.performedTicks(writtenTicks, RoundingMode.UNNECESSARY));
+        } catch (ArithmeticException e) {
+            var message = "Performed duration is not an integer for " + value + " dots=" + dots
+                + " in a " + tuplet.getGrade().number() + ':' + tuplet.getRatio().normalNotes() + " tuplet"
+                + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)";
 
-        if (product % grade != 0) {
-            throw new ArithmeticException(
-                "Performed duration is not an integer for " + value + " dots=" + dots
-                + " in a " + grade + ':' + normalNotes + " tuplet"
-                + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
-            );
+            throw (ArithmeticException) new ArithmeticException(message).initCause(e);
         }
-
-        return product / grade;
     }
 }

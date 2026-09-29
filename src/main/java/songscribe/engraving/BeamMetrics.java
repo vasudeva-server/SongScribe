@@ -121,4 +121,21 @@ public final class BeamMetrics {
         return BEAM_THICKNESS_SS + thickeningSs
             + (beamCount - 1) * beamTranslationSs(thickeningSs);
     }
+
+    /**
+     * Estimates the Y of the lowest edge of an upward beam stack of {@code stackCount} beams
+     * drawn above a note at {@code highestHead}, in staff spaces (Y down) from the middle line.
+     *
+     * <p>An estimate is all that is available: a beam's direction has to be settled before
+     * columns exist, and the beam scorer cannot place the beam without their X positions. So the
+     * beam is assumed to sit a natural stem above the highest head — its outer edge — with the
+     * stack of beams hanging below it at the renderer's spacing.
+     *
+     * @param highestHead the staff position of the beam group's highest member
+     * @param stackCount  how many beams stand in the stack, at least 1
+     * @return the Y of the stack's lowest edge, in staff spaces from the middle line
+     */
+    public static double upwardStackBottomYSs(StaffPosition highestHead, int stackCount) {
+        return highestHead.toSs() - StemMetrics.STEM_LENGTH_SS + beamStackHeightSs(stackCount);
+    }
 }

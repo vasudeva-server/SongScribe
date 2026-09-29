@@ -31,14 +31,13 @@ import org.xml.sax.SAXException;
 
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
+import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
-import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
 import songscribe.util.StringUtils;
@@ -110,6 +109,14 @@ public final class LineIO {
 
         /** Temporarily holds parsed fsendings index pairs (start, end) until elements are loaded. */
         private final List<int[]> pendingEndingPairs = new ArrayList<>();
+
+        /**
+         * Every ending this reader has recorded so far, across the whole document. Kept for the
+         * whole document rather than cleared per line, the way {@link #pendingTupletData} is, so
+         * {@link #pendingEndings()} can return every one this reader found once parsing is
+         * complete.
+         */
+        private final List<PendingEnding> pendingEndingData = new ArrayList<>();
 
         /**
          * Temporarily holds parsed trill index pairs (anchorIndex, endIndex, yPositionSs) until
@@ -451,6 +458,13 @@ public final class LineIO {
         }
 
         /**
+         * Returns every ending this reader has found in the document.
+         */
+        public List<PendingEnding> pendingEndings() {
+            return List.copyOf(pendingEndingData);
+        }
+
+        /**
          * Parses hairpin (crescendo or diminuendo) data into the given pending list.
          * Format: {@code anchorIdx,endIdx[,x1ShiftSs,x2ShiftSs,yShiftSs];...}
          */
@@ -594,24 +608,15 @@ public final class LineIO {
         }
 
         /**
-         * Creates Ending spans from the parsed fsendings index pairs.
+         * Resolves each parsed fsendings index pair's anchor and end against {@code line}'s
+         * now-complete elements and records a {@link PendingEnding} with no vertical offset.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createEndingsFromPendingPairs(Line line) throws SAXException {
             for (var pair : pendingEndingPairs) {
                 DocumentValidation.requireIndexInRange(LOG, pair[0], pair[1], line.elementCount(), "ending");
 
-                var ending = Ending.spanning(line, new ElementRange(pair[0], pair[1]));
-
-                // A pre-#306 single-bracket ending in an older .mssw file has no repeat
-                // splitting its two brackets, which Ending's invariant requires, so it is
-                // dropped on load as the MusicXML import path drops one.
-                if (ending == null) {
-                    LOG.warn("Dropping split-less <ending> on load (no repeat between anchor and end)");
-                    continue;
-                }
-
-                ending.addTo(line);
+                pendingEndingData.add(new PendingEnding(line.getElement(pair[0]), line.getElement(pair[1]), 0));
             }
 
             pendingEndingPairs.clear();

@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
 
@@ -93,7 +94,10 @@ class TupletLoadPassTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, testCase.notation());
         var line = song.getLine(LINE);
 
-        var report = TupletLoadPass.run(song, List.of(pendingOver(line, testCase.statedRatio(), 0)));
+        var report = new ChangeReport();
+
+        TupletLoadPass.run(song, List.of(pendingOver(line, testCase.statedRatio(), 0)), report);
+
         var tuplets = line.spanRegistry().findSpans(Tuplet.class);
 
         switch (testCase.outcome()) {
@@ -103,16 +107,21 @@ class TupletLoadPassTest extends UnitTest {
                     .satisfies(tuplet -> assertThat(tuplet.getRatio()).isEqualTo(testCase.statedRatio()));
             }
             case ADDED_DERIVED -> {
-                assertThat(report.changes()).singleElement()
-                    .isInstanceOfSatisfying(TupletLoadPass.Change.Updated.class,
-                        updated -> assertThat(updated.normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES));
+                assertThat(report.changes()).containsExactly(new ReportedChange(
+                    Strings.DIALOG_REPORT_TUPLETS_UPDATED,
+                    Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
+                    spanLocation()));
                 assertThat(tuplets).singleElement()
                     .satisfies(tuplet -> assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES));
             }
             case DROPPED -> {
-                assertThat(report.changes()).singleElement()
-                    .isInstanceOfSatisfying(TupletLoadPass.Change.Removed.class,
-                        removed -> assertThat(removed.reason()).isEqualTo(testCase.reason()));
+                var reason = testCase.reason();
+
+                assertThat(reason).isNotNull();
+                assertThat(report.changes()).containsExactly(new ReportedChange(
+                    Strings.DIALOG_REPORT_TUPLETS_REMOVED,
+                    Strings.get(reason.messageKey()),
+                    spanLocation()));
                 assertThat(tuplets).isEmpty();
             }
         }
@@ -127,7 +136,11 @@ class TupletLoadPassTest extends UnitTest {
             new LoadCase("a stated ratio the validator rejects is dropped with the validator's reason",
                 THREE_NOTES, SAME_COUNT, Outcome.DROPPED, TupletValidator.Reason.BAD_RATIO),
             new LoadCase("a span with fewer than two notes is dropped as holding too few",
-                PITCH + " R R " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES)
+                PITCH + " R R " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES),
+            new LoadCase("a span of three rests is dropped as holding too few",
+                "R R R " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES),
+            new LoadCase("a span of a note, a grace note and a rest is dropped as holding too few",
+                PITCH + " g" + PITCH + " R2 " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES)
         );
     }
 
@@ -136,10 +149,16 @@ class TupletLoadPassTest extends UnitTest {
         var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
         var line = song.getLine(LINE);
 
-        TupletLoadPass.run(song, List.of(pendingOver(line, TWO_CROTCHETS, Y_OFFSET_SS)));
+        TupletLoadPass.run(song, List.of(pendingOver(line, TWO_CROTCHETS, Y_OFFSET_SS)), new ChangeReport());
 
         assertThat(line.spanRegistry().findSpans(Tuplet.class)).singleElement()
             .satisfies(tuplet -> assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS));
+    }
+
+    /** The range every report entry of this class names: {@link #SPAN} on the one line. */
+    private static ElementLocationRange spanLocation() {
+        return new ElementLocationRange(
+            new ElementLocation(LINE, SPAN.begin()), new ElementLocation(LINE, SPAN.end()));
     }
 
     private static PendingTuplet pendingOver(Line line, @Nullable TupletRatio statedRatio, double yOffsetSs) {

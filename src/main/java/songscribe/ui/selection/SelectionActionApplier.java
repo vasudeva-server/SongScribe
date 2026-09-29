@@ -22,20 +22,19 @@ package songscribe.ui.selection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TreeMap;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.ElementChange;
-import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.ProjectedEdit;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElementRun;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
@@ -60,16 +59,13 @@ public final class SelectionActionApplier {
     /**
      * One element the action will change, decided before anything is mutated.
      *
-     * @param index        The element's index on the line, unchanged by the modification
-     * @param standIn      The element as it will read afterwards: the replacement for an
-     *                     {@link UIAction.ElementReplaceable}, a modified clone for an
-     *                     {@link UIAction.ElementModifiable}. Detached from the line, so the fit
-     *                     gate can measure it without anything having been mutated
-     * @param compensation The ending change the user confirmed for this index, applied in the
-     *                     apply pass because it mutates the line, or
-     *                     {@link Ending.EndingEffect.None#INSTANCE} when there is none
+     * @param index   The element's index on the line, unchanged by the change
+     * @param standIn The element as it will read afterwards: the new element of a replacement's
+     *                pair for an {@link UIAction.ElementReplaceable}, a modified clone for an
+     *                {@link UIAction.ElementModifiable}. Detached from the line, so the fit gate
+     *                can measure it without anything having been mutated
      */
-    private record PendingChange(int index, StaffElement standIn, Ending.EndingEffect compensation) {}
+    private record PendingChange(int index, StaffElement standIn) {}
 
     /**
      * Applies the given action to the coordinator's current selection. A no-op when nothing is
@@ -80,7 +76,7 @@ public final class SelectionActionApplier {
      * @param coordinator the coordinator holding the selection to apply to
      * @param action      the reflectable action to apply
      * @param selected    true to apply the attribute, false to remove it
-     * @param score       the view to parent any ending-confirm dialogs on, and the source of the
+     * @param score       the view to parent a refusal alert on, and the source of the
      *                    song-wide lyric metrics the fit gate measures syllable widths with; null in
      *                    tests, which space the projection as if the line had no lyrics
      */
@@ -105,18 +101,19 @@ public final class SelectionActionApplier {
      * into one {@code SongDidChangeNotification}, leaving the undo step's op-name to the
      * pending one the action set.
      * <p>
-     * Runs in three passes, because the ending confirms decide which elements actually change and
-     * the fit gate cannot be built until that is known — gating the loop as it runs would
-     * over-refuse, killing the whole action before its dialogs are even shown:
+     * Runs in three passes, because the fit gate measures the line as the action will leave it,
+     * which is known only once every change is decided:
      * <ol>
-     *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
-     *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
-     *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
-     *   <li><b>Gate</b> — over the indices that proceed, for an action that widens a column: the
-     *       chain walk over the line as the action will leave it, then the fit check with the
+     *   <li><b>Decide</b> — for an {@link UIAction.ElementReplaceable}, one
+     *       {@link ElementChange.Replacement} over every admitted element of the selection. For an
+     *       {@link UIAction.ElementModifiable}, each admitted element's modified stand-in. Mutates
+     *       nothing and opens no bracket.</li>
+     *   <li><b>Gate</b> — over every element that changes, for an action that widens a column:
+     *       the chain walk over the line as the action will leave it, then the fit check with the
      *       walk's accidentals in place. Still mutates nothing, so a refusal leaves the score
      *       untouched and creates no undo step.</li>
-     *   <li><b>Apply</b> — inside the modification bracket.</li>
+     *   <li><b>Apply</b> — inside the modification bracket: one {@link Line#replace} of the
+     *       final replacement, or one {@link Line#modifyElement} for each stand-in.</li>
      * </ol>
      *
      * @param coordinator the coordinator to invalidate selection caches on once the mutation lands
@@ -124,7 +121,7 @@ public final class SelectionActionApplier {
      *                    the coordinator
      * @param action      the reflectable action to apply
      * @param selected    true to apply the attribute, false to remove it
-     * @param score       the view to parent any ending-confirm dialogs on, and the source of the
+     * @param score       the view to parent a refusal alert on, and the source of the
      *                    song-wide lyric metrics the fit gate measures syllable widths with; null in
      *                    tests, which space the projection as if the line had no lyrics
      */
@@ -136,14 +133,92 @@ public final class SelectionActionApplier {
         @Nullable ScoreView score) {
 
         var line = selection.line();
-        var changes = decideChanges(action, selected, score, selection);
+
+        if (action instanceof UIAction.ElementReplaceable<?>) {
+            // A replaceable action acts only when its attribute is applied.
+            if (!selected) {
+                return;
+            }
+
+            // Safe: action's own type parameter is E throughout this call, and
+            // ElementReplaceable<?> here is a capture of that same E.
+            @SuppressWarnings("unchecked")
+            var replaceable = (UIAction.ElementReplaceable<E>) action;
+
+            var replacement = replacementFor(replaceable, selection);
+
+            if (replacement != null) {
+                applyReplacement(coordinator, selection, action, score, replacement);
+            }
+        } else if (action instanceof UIAction.ElementModifiable<?>) {
+            // Safe: action's own type parameter is E throughout this call, and
+            // ElementModifiable<?> here is a capture of that same E.
+            @SuppressWarnings("unchecked")
+            var modifiable = (UIAction.ElementModifiable<E>) action;
+
+            var changes = decideModifications(modifiable, selected, selection);
+
+            gateAndApply(coordinator, selection, action, selected, score, changes, () -> {
+                for (var change : changes) {
+                    var index = change.index();
+
+                    line.modifyElement(
+                        index,
+                        modifiable.modifiedFields(),
+                        () -> {
+                            var admitted = modifiable.admit(line.getElement(index));
+
+                            if (admitted != null) {
+                                modifiable.applyToElement(line, index, admitted, selected);
+                            }
+                        }
+                    );
+                }
+            });
+        }
+    }
+
+    /**
+     * Passes 2 and 3 for a decided replacement: the fit gate reads one stand-in for each of its
+     * pairs, so it measures the line as the action will leave it, and the apply pass lands the
+     * whole replacement as one change.
+     */
+    private static void applyReplacement(
+        SelectionCoordinator coordinator,
+        ElementSelection selection,
+        UIAction.Reflectable<?> action,
+        @Nullable ScoreView score,
+        ElementChange.Replacement replacement) {
+
+        var changes = replacement.newElements().entrySet().stream()
+            .map(pair -> new PendingChange(pair.getKey(), pair.getValue()))
+            .toList();
+
+        gateAndApply(
+            coordinator, selection, action, true, score, changes,
+            () -> replacement.line().replace(replacement));
+    }
+
+    /**
+     * Passes 2 and 3 — gates {@code changes} for an action that widens a column, then runs
+     * {@code mutation} inside the modification bracket. A no-op when {@code changes} is empty.
+     */
+    private static void gateAndApply(
+        SelectionCoordinator coordinator,
+        ElementSelection selection,
+        UIAction.Reflectable<?> action,
+        boolean selected,
+        @Nullable ScoreView score,
+        List<PendingChange> changes,
+        Runnable mutation) {
 
         if (changes.isEmpty()) {
             return;
         }
 
-        if (action instanceof UIAction.WidensColumn<?>
-            && !fitsWithChainsWalked(selection, changes, score)) {
+        var line = selection.line();
+
+        if (action instanceof UIAction.WidensColumn<?> && !fitsWithChainsWalked(line, changes, score)) {
             // A removal can still overflow the line, so it gets its own operation-neutral wording
             // instead of the insert phrasing, which would misdescribe a deletion.
             if (selected) {
@@ -165,121 +240,69 @@ public final class SelectionActionApplier {
         }
 
         line.getSong().withModification(() -> {
-            for (var change : changes) {
-                var index = change.index();
-                var compensation = change.compensation();
-
-                // The compensating ending changes mutate the line, so they belong here rather
-                // than beside the confirm that authorized them.
-                if (compensation instanceof Ending.EndingEffect.CompensateEnd compensateEnd) {
-                    EndingConfirms.applyCompensatingEndChange(line, compensateEnd);
-                } else if (compensation instanceof Ending.EndingEffect.CompensateSplit compensateSplit) {
-                    EndingConfirms.applyCompensatingSplitChange(line, compensateSplit);
-                }
-
-                if (action instanceof UIAction.ElementReplaceable<?>) {
-                    // An Invalidate effect needs no compensation here: setElement removes the
-                    // ending itself through Ending.outcomeFor.
-                    line.setElement(index, change.standIn());
-                } else if (action instanceof UIAction.ElementModifiable<?>) {
-                    // Safe: action's own type parameter is E throughout this call, and
-                    // ElementModifiable<?> here is a capture of that same E.
-                    @SuppressWarnings("unchecked")
-                    var modifiable = (UIAction.ElementModifiable<E>) action;
-
-                    line.modifyElement(
-                        index,
-                        modifiable.modifiedFields(),
-                        () -> {
-                            var admitted = action.admit(line.getElement(index));
-
-                            if (admitted != null) {
-                                modifiable.applyToElement(line, index, admitted, selected);
-                            }
-                        }
-                    );
-                }
-            }
-
+            mutation.run();
             coordinator.invalidateSelectionCaches();
         });
     }
 
     /**
-     * Pass 1 — decides what the action does to each element of the selection, mutating nothing.
-     * An index the user declines an ending confirm for is simply left out of the result, so the
-     * gate and the apply pass see only the elements that really change.
+     * Pass 1 for an {@link UIAction.ElementReplaceable} — one replacement over every admitted
+     * element of the selection. Mutates nothing.
+     *
+     * @return the replacement to apply, or {@code null} when no element is admitted
      */
-    private static <E extends StaffElement> List<PendingChange> decideChanges(
-        UIAction.Reflectable<E> action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
+    private static <E extends StaffElement> ElementChange.@Nullable Replacement replacementFor(
+        UIAction.ElementReplaceable<E> replaceable, ElementSelection selection) {
+
+        var line = selection.line();
+        var bounds = selection.range();
+        var newElements = new TreeMap<Integer, StaffElement>();
+
+        for (var i = bounds.begin(); i <= bounds.end(); i++) {
+            var admitted = replaceable.admit(line.getElement(i));
+
+            if (admitted != null) {
+                newElements.put(i, replaceable.createReplacement(admitted, true));
+            }
+        }
+
+        if (newElements.isEmpty()) {
+            return null;
+        }
+
+        return new ElementChange.Replacement(line, newElements);
+    }
+
+    /**
+     * Pass 1 for an {@link UIAction.ElementModifiable} — each admitted element's stand-in: a
+     * detached clone with the modification applied. Mutates nothing.
+     */
+    private static <E extends StaffElement> List<PendingChange> decideModifications(
+        UIAction.ElementModifiable<E> modifiable, boolean selected, ElementSelection selection) {
 
         var line = selection.line();
         var bounds = selection.range();
         var changes = new ArrayList<PendingChange>();
 
         for (var i = bounds.begin(); i <= bounds.end(); i++) {
-            var admitted = action.admit(line.getElement(i));
+            var admitted = modifiable.admit(line.getElement(i));
 
             if (admitted == null) {
                 continue;
             }
 
-            if (action instanceof UIAction.ElementReplaceable<?>) {
-                if (!selected) {
-                    continue;
-                }
+            // Safe on a detached clone: applyToElement takes the element as a parameter and
+            // touches nothing else. admit() narrows it back to E: a clone shares its
+            // source's class, so it is admitted by the same rule the source was.
+            var standIn = admitted.clone();
+            var admittedStandIn = modifiable.admit(standIn);
 
-                // Safe: action's own type parameter is E throughout this call, and
-                // ElementReplaceable<?> here is a capture of that same E.
-                @SuppressWarnings("unchecked")
-                var replaceable = (UIAction.ElementReplaceable<E>) action;
-
-                var replacement = replaceable.createReplacement(admitted, true);
-                var effect = new ElementChange.Replacement(line, i, replacement).endingEffect();
-                Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
-
-                switch (effect) {
-                    case Ending.EndingEffect.Invalidate _ -> {
-                        if (!EndingConfirms.confirmInvalidation(score)) {
-                            continue;
-                        }
-                        // proceed: line.setElement removes the ending through Ending.outcomeFor
-                    }
-                    case Ending.EndingEffect.CompensateEnd compensateEnd -> {
-                        if (!EndingConfirms.confirmCompensateEnd(score, compensateEnd)) {
-                            continue;
-                        }
-                        compensation = compensateEnd;
-                    }
-                    case Ending.EndingEffect.CompensateSplit compensateSplit -> {
-                        if (!EndingConfirms.confirmCompensateSplit(score, compensateSplit, replacement.getType())) {
-                            continue;
-                        }
-                        compensation = compensateSplit;
-                    }
-                    case Ending.EndingEffect.None _ -> {}
-                }
-
-                changes.add(new PendingChange(i, replacement, compensation));
-            } else if (action instanceof UIAction.ElementModifiable<?>) {
-                // Safe: action's own type parameter is E throughout this call, and
-                // ElementModifiable<?> here is a capture of that same E.
-                @SuppressWarnings("unchecked")
-                var modifiable = (UIAction.ElementModifiable<E>) action;
-
-                // Safe on a detached clone: applyToElement takes the element as a parameter and
-                // touches nothing else. admit() narrows it back to E: a clone shares its
-                // source's class, so it is admitted by the same rule the source was.
-                var standIn = admitted.clone();
-                var admittedStandIn = action.admit(standIn);
-
-                if (admittedStandIn == null) {
-                    continue;
-                }
-
-                modifiable.applyToElement(line, i, admittedStandIn, selected);
-                changes.add(new PendingChange(i, standIn, Ending.EndingEffect.None.INSTANCE));
+            if (admittedStandIn == null) {
+                continue;
             }
+
+            modifiable.applyToElement(line, i, admittedStandIn, selected);
+            changes.add(new PendingChange(i, standIn));
         }
 
         return changes;
@@ -289,22 +312,24 @@ public final class SelectionActionApplier {
      * Pass 2 — whether the line still fits once the changes are in place, with every accidental
      * the chain walk stamps for them drawn. The walk runs over a projection of the line holding
      * each stand-in at its index, so a stand-in that changes what a note sounds is decided along
-     * with every later note in its chain. Mutates no live note: a refusal leaves every live
-     * element as it was, and an acceptance leaves each stand-in stamped as the walk decided.
+     * with every later note in its chain. The projected run spans the changes, from the first to
+     * the last. Mutates no live note: a refusal leaves every live element as it was, and an acceptance leaves each
+     * stand-in stamped as the walk decided.
+     *
+     * @param changes the changes to measure, non-empty and in index order
      */
     private static boolean fitsWithChainsWalked(
-        ElementSelection selection, List<PendingChange> changes, @Nullable ScoreView score) {
+        Line line, List<PendingChange> changes, @Nullable ScoreView score) {
 
-        var line = selection.line();
-        var selected = selection.range();
-        var begin = selected.begin();
-        var inserted = new ArrayList<StaffElement>(line.getElements(selected));
+        var changed = new ElementRange(changes.getFirst().index(), changes.getLast().index());
+        var begin = changed.begin();
+        var inserted = new ArrayList<StaffElement>(line.getElements(changed));
 
         for (var change : changes) {
             inserted.set(change.index() - begin, change.standIn());
         }
 
-        var restamps = ProjectedEdit.replacing(line, selected, inserted).walk();
+        var restamps = ProjectedEdit.replacing(line, changed, inserted).walk();
 
         var standIns = changes.stream().map(PendingChange::standIn).toList();
         var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;

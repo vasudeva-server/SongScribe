@@ -53,7 +53,9 @@ import songscribe.util.Copyable;
  *                 {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input
  *                 is absent on Add
  * @param <O>      what the dialog's controls say on OK: values only, built by the dialog rather
- *                 than taken from the document, so nothing has to be copied on the way back
+ *                 than taken from the document, so nothing has to be copied on the way back. Its
+ *                 bound permits {@code @Nullable} itself, for a dialog that gathers nothing and
+ *                 names {@code @Nullable Void}
  * @param read     answers what to show, asked afresh on each opening rather than once at
  *                 construction, so a dialog reached from a cached action shows the document that
  *                 is open now. What it answers is already a copy
@@ -70,7 +72,7 @@ import songscribe.util.Copyable;
  *                    Remove — in which case no Remove button is built at all, so there is no state
  *                    in which one is on screen with nothing behind it
  */
-public record DialogOps<I extends @Nullable Copyable<I>, O>(
+public record DialogOps<I extends @Nullable Copyable<I>, O extends @Nullable Object>(
     Supplier<I> read,
     Predicate<O> wasModified,
     Function<O, ValidationResult> validate,

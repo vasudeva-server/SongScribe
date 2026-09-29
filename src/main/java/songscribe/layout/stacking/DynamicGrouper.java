@@ -27,6 +27,7 @@ import java.util.List;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Partitions a line's hairpins and text dynamics into the groups that must share one vertical
@@ -74,14 +75,14 @@ public final class DynamicGrouper {
         int leftIndex();
 
         /**
-         * A hairpin, carrying the endpoint indices already resolved against the asking line so no
-         * caller has to resolve them a second time.
+         * A hairpin, carrying the range already resolved against the asking line so no caller
+         * has to resolve it a second time.
          */
-        record OfHairpin(Hairpin hairpin, int anchorIndex, int endIndex) implements Member {
+        record OfHairpin(Hairpin hairpin, ElementRange range) implements Member {
 
             @Override
             public int leftIndex() {
-                return anchorIndex;
+                return range.begin();
             }
         }
 
@@ -149,20 +150,17 @@ public final class DynamicGrouper {
         var spans = line.spanRegistry();
 
         for (var hairpin : spans.findSpans(Hairpin.class)) {
-            var anchorIndex = hairpin.requireAnchorElementIndex();
-            var endIndex = hairpin.requireEndElementIndex();
-
-            hairpins.add(new Member.OfHairpin(hairpin, anchorIndex, endIndex));
+            hairpins.add(new Member.OfHairpin(hairpin, hairpin.range()));
         }
 
-        hairpins.sort(Comparator.comparingInt(Member.OfHairpin::anchorIndex));
+        hairpins.sort(Comparator.comparingInt(hairpin -> hairpin.range().begin()));
 
         var clusters = new ArrayList<Cluster>();
 
         for (var hairpin : hairpins) {
             var current = clusters.isEmpty() ? null : clusters.getLast();
 
-            if (current != null && hairpin.anchorIndex() <= current.hairpinEndIndex) {
+            if (current != null && hairpin.range().begin() <= current.hairpinEndIndex) {
                 current.addHairpin(hairpin);
             } else {
                 var cluster = new Cluster();
@@ -225,7 +223,7 @@ public final class DynamicGrouper {
 
         private void addHairpin(Member.OfHairpin hairpin) {
             members.add(hairpin);
-            hairpinEndIndex = Math.max(hairpinEndIndex, hairpin.endIndex());
+            hairpinEndIndex = Math.max(hairpinEndIndex, hairpin.range().end());
         }
 
         /**
@@ -235,10 +233,10 @@ public final class DynamicGrouper {
         private boolean abuts(int index) {
             for (var member : members) {
                 if (member instanceof Member.OfHairpin hairpin
-                    && (index == hairpin.anchorIndex() - 1
-                        || index == hairpin.anchorIndex()
-                        || index == hairpin.endIndex()
-                        || index == hairpin.endIndex() + 1)) {
+                    && (index == hairpin.range().begin() - 1
+                        || index == hairpin.range().begin()
+                        || index == hairpin.range().end()
+                        || index == hairpin.range().end() + 1)) {
                     return true;
                 }
             }

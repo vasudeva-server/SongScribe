@@ -33,9 +33,8 @@ import songscribe.message.notification.SongDidChangeNotification;
 /**
  * Reads and writes the beat change on one element, for {@link BeatChangeDialog}.
  *
- * <p>A beat change redefines the beat from its element onwards, so every write here goes through
- * {@link Song#withBeatDefiningEditOn} — the chokepoint that reports any tuplets the new beat
- * forces out.
+ * <p>A beat change redefines the beat from its element onwards; the tuplet beat rule revalidates
+ * the tuplets after it when the modification bracket closes.
  *
  * <p>Nothing is refused, so {@link DialogController#validate} keeps its default: both of a
  * {@link BeatChange}'s durations come from {@link BeatUnit}, and there is no pair
@@ -80,17 +79,13 @@ public final class BeatChangeController extends AttachmentDialogController<BeatC
         var element = element();
         var existing = element.findAttachment(BeatChangeAttachment.class);
 
-        // The change branch routes itself through the chokepoint from inside
-        // BeatChangeAttachment; wrapping both branches gives the add branch — a raw
-        // addAttachment — its routing, and collapses the pair into one edit. Any tuplets
-        // the new beat forces out are reported by the chokepoint's own notification.
-        modifyTarget(commitOp(), () -> Song.withBeatDefiningEditOn(element, () -> {
+        modifyTarget(commitOp(), () -> {
             if (existing != null) {
                 existing.setBeatChange(change);
             } else {
                 element.addAttachment(new BeatChangeAttachment(change));
             }
-        }));
+        });
     }
 
     @Override

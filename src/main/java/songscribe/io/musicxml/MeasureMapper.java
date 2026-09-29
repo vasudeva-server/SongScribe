@@ -46,7 +46,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.ElementType;
-import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Key;
 import songscribe.dom.KeyChangeElement;
@@ -54,11 +53,11 @@ import songscribe.dom.Line;
 import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
+import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.TempoMarking;
@@ -236,6 +235,12 @@ final class MeasureMapper {
     // from may still change in a later measure while the walk is mid-part.
     private final List<PendingTuplet> pendingTuplets = new ArrayList<>();
 
+    // Every ending the walk paired a number="1" start with a number="2" stop; carried to the
+    // post-load pass by the caller, the way a reader's pending tuplets always are — a mapper does
+    // not build an Ending, since whether the range is well formed is EndingLoadPass's question,
+    // not the walk's.
+    private final List<PendingEnding> pendingEndings = new ArrayList<>();
+
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
 
@@ -246,9 +251,11 @@ final class MeasureMapper {
 
     /**
      * What one part's walk produced: whether any note's {@code <accidental>} was a retired
-     * legacy token converted to its replacement, and the tuplet brackets it closed.
+     * legacy token converted to its replacement, the tuplet brackets it closed, and the
+     * endings it found.
      */
-    record Result(boolean accidentalsConverted, List<PendingTuplet> pendingTuplets) {}
+    record Result(
+        boolean accidentalsConverted, List<PendingTuplet> pendingTuplets, List<PendingEnding> pendingEndings) {}
 
     // -------------------------------------------------------------------------
     // Package API
@@ -271,7 +278,7 @@ final class MeasureMapper {
             mapper.mapPart(part);
         }
 
-        return new Result(mapper.accidentalsConverted, mapper.pendingTuplets);
+        return new Result(mapper.accidentalsConverted, mapper.pendingTuplets, mapper.pendingEndings);
     }
 
     private void mapPart(ScorePartwise.Part part) throws SAXException {
@@ -652,7 +659,7 @@ final class MeasureMapper {
      * dropped, as is one still open at the end of the part: a complete ending is built
      * on its {@code number="2"} stop, so anything left over is not a valid ending.
      */
-    private static void resolveEndings(List<ChildSite> sites) {
+    private void resolveEndings(List<ChildSite> sites) {
         StaffElement anchor = null;
         var anchorFromNextNote = false;
         var anchorYOffsetSs = 0.0;
@@ -724,25 +731,15 @@ final class MeasureMapper {
     }
 
     /**
-     * Builds one {@link Ending} over [{@code anchor}, {@code end}] and adds it to
-     * {@code line}, unless no repeat splits its two brackets, which {@link Ending}'s invariant
-     * requires; a span without one is not a valid ending and is dropped on import.
+     * Records a {@link PendingEnding} over [{@code anchor}, {@code end}], unless no line was
+     * open when its stop closed it — nothing to record it against.
      */
-    private static void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end, double yOffsetSs) {
+    private void buildEnding(@Nullable Line line, StaffElement anchor, StaffElement end, double yOffsetSs) {
         if (line == null) {
             return;
         }
 
-        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
-        var ending = Ending.spanning(line, range);
-
-        if (ending == null) {
-            LOG.warn("Dropping split-less <ending> on import (no repeat between anchor and end)");
-            return;
-        }
-
-        ending.setUserYOffsetSs(yOffsetSs);
-        ending.addTo(line);
+        pendingEndings.add(new PendingEnding(anchor, end, yOffsetSs));
     }
 
     // -------------------------------------------------------------------------

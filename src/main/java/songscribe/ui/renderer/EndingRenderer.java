@@ -121,7 +121,7 @@ public final class EndingRenderer {
         double yTopSs,
         Color color
     ) {
-        var yBottomSs = yTopSs + Ending.VOLTA_TICK_HEIGHT_SS;
+        var yBottomSs = yTopSs + EndingBracketGeometry.VOLTA_TICK_HEIGHT_SS;
 
         var thicknessSs = EngravingConstants.VOLTA_BRACKET_SS;
 
@@ -155,8 +155,8 @@ public final class EndingRenderer {
 
             g2.drawGlyphVector(
                 glyphVector,
-                (float) (bracket.x1Ss() + Ending.LABEL_X_INSET_SS),
-                (float) (yTopSs + glyphHeightSs + Ending.LABEL_Y_OFFSET_SS));
+                (float) (bracket.x1Ss() + EndingBracketGeometry.LABEL_X_INSET_SS),
+                (float) (yTopSs + glyphHeightSs + EndingBracketGeometry.LABEL_Y_OFFSET_SS));
         }
     }
 }

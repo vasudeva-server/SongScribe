@@ -21,7 +21,6 @@
 package songscribe.ui.component.score;
 
 import java.util.List;
-import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +39,6 @@ import songscribe.layout.AccidentalFitGate;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.message.mutation.ElementField;
-import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.undo.OpNames;
@@ -161,7 +159,7 @@ final class PreviewElementInserter {
         var replacesExisting = !appends && overElementX;
         var opLabel = OpNames.addLabel(previewElement.getType());
 
-        // Every action runs in a modification bracket so the line.add/setElement calls inside
+        // Every action runs in a modification bracket so the line.add/replace calls inside
         // accumulate mutations and fire a SongDidChangeNotification, which the
         // ScoreViewController uses to invalidate the line's cached layout.
         if (replacesExisting) {
@@ -217,23 +215,14 @@ final class PreviewElementInserter {
 
     /**
      * Runs the insertion gate for {@code element} at {@code index}: the chain walk, the fit check
-     * and, unless the element is appended, the ending confirm. Mutates nothing on the line.
+     * and the fit check. Mutates nothing on the line.
      *
-     * @return the accepted insertion, or {@code null} when the line has no room or the user
-     *     declined the confirm
+     * @return the accepted insertion, or {@code null} when the line has no room
      */
     private static @Nullable AcceptedInsertion accept(
         LineComponent lc, Line line, int index, StaffElement element) {
 
-        // Appending needs no further confirmation: nothing follows the new element, so it can
-        // invalidate no ending. Elsewhere the ending confirm runs inside the gate: declining it
-        // must leave the line exactly as it was, on the same terms as a refusal for want of room.
-        BooleanSupplier confirmed = index == line.elementCount()
-            ? () -> true
-            : () -> !new ElementChange.Insertion(line, index, element).removesConfirmableSpan()
-                || EndingConfirms.confirmInvalidation(lc);
-
-        if (walkAndCalculateInsertion(lc, line, element, index, confirmed) == null) {
+        if (walkAndCalculateInsertion(lc, line, element, index) == null) {
             return null;
         }
 
@@ -396,12 +385,10 @@ final class PreviewElementInserter {
      * @param line           The line to insert into
      * @param previewElement The element being inserted
      * @param index          The insertion index
-     * @param confirmed      Any further confirmation the caller requires, run only once the
-     *                       element is known to fit; false means the insertion is refused
      * @return The insertion result, or null when refused
      */
     private static InsertionSpacingCalculator.@Nullable InsertionResult walkAndCalculateInsertion(
-        LineComponent lc, Line line, StaffElement previewElement, int index, BooleanSupplier confirmed) {
+        LineComponent lc, Line line, StaffElement previewElement, int index) {
 
         var restamps = ProjectedEdit.inserting(line, index, List.of(previewElement)).walk();
 
@@ -413,7 +400,7 @@ final class PreviewElementInserter {
             line, restamps, List.of(previewElement), lc.getLyricRenderMetrics(), () -> {
                 var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.requireLayoutResult());
 
-                if ((result == null) || !confirmed.getAsBoolean()) {
+                if (result == null) {
                     return false;
                 }
 
@@ -445,55 +432,9 @@ final class PreviewElementInserter {
 
         var previewType = replacement.getType();
 
-        // Check whether replacing this element would affect a first-second ending,
-        // and show the appropriate confirmation dialog if so.
-        var endingEffect = new ElementChange.Replacement(line, elementIndex, replacement).endingEffect();
-
-        switch (endingEffect) {
-            case Ending.EndingEffect.Invalidate _ -> {
-                if (!EndingConfirms.confirmInvalidation(lc)) {
-                    return;
-                }
-                // proceed: line.setElement removes the ending through Ending.outcomeFor
-            }
-            case Ending.EndingEffect.CompensateEnd ce -> {
-                if (!EndingConfirms.confirmCompensateEnd(lc, ce)) {
-                    return;
-                }
-                EndingConfirms.applyCompensatingEndChange(line, ce);
-            }
-            case Ending.EndingEffect.CompensateSplit cs -> {
-                if (!EndingConfirms.confirmCompensateSplit(lc, cs, previewType)) {
-                    return;
-                }
-                EndingConfirms.applyCompensatingSplitChange(line, cs);
-            }
-            case Ending.EndingEffect.None _ -> {}
-        }
-
-        // The beam sweep goes here rather than earlier, next to the element's own preparation:
-        // a confirm above can still turn the user away, and a cancelled replacement that had
-        // already stripped the beam would leave the bracket holding a removal with nothing to
-        // justify it — the user says no and loses the beam anyway. Below the last bail-out, and
-        // above setElement so reverse-order undo restores the old element before re-adding what
-        // hung off it.
-        //
-        // Ties and tuplets are not swept here: setElement removes exactly the ones the
-        // replacement invalidates, each by its own outcomeFor. Only the beam still needs a hand, because its
-        // repair is not a yes-or-no question — the select-mode path trims a beam to its
-        // beamable middle rather than dropping it, which a removal hook cannot express.
-
-        // Every beam touching this element — the new element type may not be beamable at all.
-        var spans = line.spanRegistry();
-        var beam = spans.findBeamAt(elementIndex);
-
-        while (beam != null) {
-            beam.removeFrom(line);
-            beam = spans.findBeamAt(elementIndex);
-        }
-
-        // Replace the element entirely (line.setElement marks the song modified)
-        line.setElement(elementIndex, replacement);
+        // line.replace removes, and reports, each span the replacement invalidates, by that
+        // span's own outcomeFor; it also marks the song modified.
+        line.replace(ElementChange.Replacement.single(line, elementIndex, replacement));
 
         // A breath mark stands only after a duration element, so a replacement by anything else
         // takes the breath mark after it along. The effective range of a lone breath mark widens
@@ -509,10 +450,10 @@ final class PreviewElementInserter {
         // Grace note cleanup: if the preceding element is a paired grace note (grace + connected
         // glissando to the replaced host), and the replacement is not a pitched note, remove the
         // grace note. For pitched note replacements the glissando reattaches automatically since
-        // setElement preserves the element index.
+        // a replacement preserves the element index.
         if (line.isHostOfPairedGraceNote(elementIndex)
                 && !previewType.isPitchedNote()) {
-            // setElement carried the old host's lyrics onto the replacement, which is not a
+            // line.replace carried the old host's lyrics onto the replacement, which is not a
             // pitched note and has no business holding a melisma carrier. The grace note's
             // syllable goes with it, and the deletion takes the carrier its melisma left on the
             // replacement along.

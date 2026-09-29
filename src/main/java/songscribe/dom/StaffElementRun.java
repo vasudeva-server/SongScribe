@@ -887,6 +887,35 @@ public interface StaffElementRun {
         }
 
         /**
+         * Returns whether the element at {@code index} lies inside the range and is neither of
+         * its bounds. This is a question about an element already in the run; for where an
+         * element about to be inserted would land, see {@link #insertionLandsInside}.
+         *
+         * @param index the index of the element to test
+         * @return {@code true} when {@code begin < index < end}; always {@code false} for a range
+         *     of one or two elements
+         */
+        public boolean containsExcludingBounds(int index) {
+            return index > begin && index < end;
+        }
+
+        /**
+         * Returns whether an element inserted at {@code index} lands inside the range. This is a
+         * question about an insertion point, not about an element already in the run: the
+         * insertion goes in front of the element now at {@code index} (see
+         * {@link ElementChange.Insertion#projectedIndexOf}). An insertion at {@code begin}
+         * therefore lands in front of the range, and one at {@code end} lands in front of the
+         * range's last element, inside it, whenever that element is not also the first.
+         *
+         * @param index an insertion point, read in the run as it stands before the insertion
+         * @return {@code true} when {@code begin < index <= end}; always {@code false} for a range
+         *     of one element
+         */
+        public boolean insertionLandsInside(int index) {
+            return index > begin && index <= end;
+        }
+
+        /**
          * Returns whether this range and {@code other} share at least one element.
          *
          * @param other the range to test against
@@ -894,6 +923,16 @@ public interface StaffElementRun {
          */
         public boolean overlaps(ElementRange other) {
             return begin <= other.end() && other.begin() <= end;
+        }
+
+        /**
+         * Returns whether every element of {@code other} falls inside this range.
+         *
+         * @param other the range to test
+         * @return {@code true} when {@code begin <= other.begin() && other.end() <= end}
+         */
+        public boolean contains(ElementRange other) {
+            return begin <= other.begin() && other.end() <= end;
         }
 
         /**

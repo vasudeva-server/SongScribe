@@ -36,6 +36,12 @@ public enum BeatUnit {
     QUAVER_DOTTED(NoteValue.EIGHTH, true),
     QUAVER(NoteValue.EIGHTH, false);
 
+    /**
+     * The parts a dotted beat divides into before subdividing binarily. Public because
+     * {@link #binaryDivisionRootTicks}'s contract names it.
+     */
+    public static final int DOTTED_BEAT_PARTS = 3;
+
     private final NoteValue noteValue;
     private final boolean dotted;
 
@@ -68,5 +74,22 @@ public enum BeatUnit {
         }
 
         return ticks;
+    }
+
+    /**
+     * The longest length this beat subdivides binarily from. An undotted beat halves directly,
+     * so it is its own root. A dotted beat first divides into {@value #DOTTED_BEAT_PARTS} and
+     * only then halves, so its root is that part.
+     *
+     * @return the root length in ticks, at {@link songscribe.midi.MidiSequenceBuilder#PPQ} ticks
+     *     per quarter
+     * @invariant the result is exact for every unit — a dotted unit is
+     *     {@value #DOTTED_BEAT_PARTS} halves of its undotted value, and every undotted value a
+     *     unit names is an even number of ticks
+     */
+    public int binaryDivisionRootTicks() {
+        var ticks = ticks();
+
+        return dotted ? ticks / DOTTED_BEAT_PARTS : ticks;
     }
 }

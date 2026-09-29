@@ -26,6 +26,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.ChangeReport;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 
@@ -35,14 +36,15 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
      * A successfully loaded song, plus everything the loader wants to tell the
      * caller about how it got there.
      *
-     * @param song       the loaded song
-     * @param fonts      the document's fonts
-     * @param warnings   every non-fatal problem detected during the load, in the
-     *                   order it was detected; empty when the file was clean
-     * @param migrations what the load's post-parse passes changed in the document
+     * @param song     the loaded song
+     * @param fonts    the document's fonts
+     * @param warnings every non-fatal problem detected during the load, in the
+     *                 order it was detected; empty when the file was clean
+     * @param report   what the load's post-parse passes changed in the document; empty when
+     *                 they changed nothing
      */
     record Success(
-        Song song, DocumentFonts fonts, List<LoadWarning> warnings, LoadMigrations migrations
+        Song song, DocumentFonts fonts, List<LoadWarning> warnings, ChangeReport report
     ) implements SongLoadResult {
 
         // Defensive copy — the record's contract is immutability, and both readers

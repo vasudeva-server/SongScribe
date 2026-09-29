@@ -29,16 +29,17 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.undo.UndoController;
 
 /**
  * The mutation-recording state machine of a {@link Song} — the depth counters that decide
  * whether a change is recorded, replayed, suspended or guard-bypassed, and the accumulated
- * batch that becomes one {@link SongDidChangeNotification}.
+ * batch that becomes one {@link SongDidChangeNotification}, and the report of the changes the
+ * edit made on its own, which becomes one {@link ChangesWereReportedNotification}.
  *
- * <p>Five independent modes, each depth-counted so nesting is safe:
+ * <p>Four independent modes, each depth-counted so nesting is safe:
  * <ul>
  *   <li><b>Modification bracket</b> ({@link #beginModification}/{@link #endModification}) —
  *       mutations accumulate while open; the notification fires once when the outermost
@@ -48,8 +49,6 @@ import songscribe.undo.UndoController;
  *       side-work is suppressed because the batch already carries it.</li>
  *   <li><b>Auto-maintenance</b> ({@link #withAutoMaintenance}) — the terminal policy is
  *       bypassed for internally-driven mutations.</li>
- *   <li><b>Beat-defining edit</b> ({@link #withBeatDefiningEdit}) — the chokepoint that
- *       drops tuplets a new beat context invalidates, and reports the loss once.</li>
  * </ul>
  *
  * <p>One is owned by each {@code Song}, which delegates its whole bracket API here.
@@ -76,23 +75,6 @@ public final class ModificationSession {
     // the recorded batch already contains every change.
     private int replayDepth = 0;
 
-    // Nesting depth of withBeatDefiningEdit, so that an inner beat-defining write that
-    // does the removing is still reported by the outermost call, which is the one whose
-    // return value the initiating UI reads.
-    private int beatDefiningEditDepth = 0;
-
-    // Whether the outermost in-flight beat-defining edit has removed any tuplet. Reset
-    // when that outermost call unwinds.
-    private boolean beatEditRemovedTuplets = false;
-
-    // Why the in-flight edit removed tuplets, or null when it removed none. Armed by the
-    // outermost beat-defining edit and by the paste path, and disarmed by endModification,
-    // which posts TupletsWereRemovedNotification. Deferring the post to the outermost
-    // bracket keeps a modal warning from going up while the score is still painted as it
-    // was before the removals, and collapses an edit that nests several beat-defining
-    // writes into the one report the user should see.
-    private TupletsWereRemovedNotification.@Nullable Cause tupletsRemovedNoticeCause = null;
-
     // While positive, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
     // user-driven invariant violations. Depth-counted because the maintenance
@@ -109,6 +91,12 @@ public final class ModificationSession {
     // held by UndoController. EDT-only, no synchronization.
     @Nullable
     private String capturedOpName = null;
+
+    // The report of the edit in flight: created when the outermost bracket opens (depth 0→1)
+    // and dropped when it closes, so it is non-null exactly while a bracket is open.
+    private @Nullable ChangeReport report = null;
+
+    private final ModificationRules rules = new ModificationRules();
 
     ModificationSession(Song song) {
         this.song = song;
@@ -214,8 +202,8 @@ public final class ModificationSession {
      * arise mid-replay. Mutations are still recorded into the bracket, unlike
      * {@link #withoutMutationTracking(Runnable)}. Nestable.
      *
-     * <p>The bracket opens and closes inside replay mode, so the tie rule does not run when it
-     * closes (see {@link #endModification}).
+     * <p>The bracket opens and closes inside replay mode, so the modification rules do not run
+     * when it closes (see {@link #endModification}), and nothing is reported.
      */
     public void withReplay(Runnable body) {
         replayDepth++;
@@ -253,6 +241,7 @@ public final class ModificationSession {
             // template around synchronous action dispatch (see UIAction.actionPerformed);
             // explicitLabel is the Tier-B name from the labeled withModification overload.
             capturedOpName = explicitLabel != null ? explicitLabel : UndoController.getPendingOpName();
+            report = new ChangeReport();
         }
 
         modificationDepth++;
@@ -263,26 +252,28 @@ public final class ModificationSession {
      * mutation was accumulated, marks the song modified and posts a single
      * {@link SongDidChangeNotification} carrying all accumulated mutations.
      *
-     * <p>Just before the outermost bracket closes, while it is still open, the tie rule runs
-     * over the accumulated batch ({@link Song#applyTieRule}), so the tie removals it records
-     * land in the batch that is delivered. It runs once per edit, when every change and every
-     * restamp in the bracket has landed. It does not run on an empty batch, nor on a bracket
-     * that closes inside an undo or redo replay, whose batch already carries the removals the
-     * edit recorded, nor while mutation tracking is suspended, where nothing is recorded and a
-     * loaded tie is trusted. A bracket whose body threw closes through {@link #closeBracket}
-     * instead, without the rule: its edit stopped part way, so its notes may not be restamped.
+     * <p>Just before the outermost bracket closes, while it is still open, the modification
+     * rules ({@link ModificationRules}) run over the accumulated batch, so the removals they
+     * record land in the batch that is delivered, and each removal is recorded into the edit's
+     * report. They run once per edit, when every change and every restamp in the bracket has
+     * landed. They do not run on an empty batch, nor on a bracket that closes inside an undo or
+     * redo replay, whose batch already carries the removals the edit recorded, nor while
+     * mutation tracking is suspended, where nothing is recorded and loaded content is judged by
+     * the load. A bracket whose body threw closes through {@link #closeBracket} instead, without
+     * the rules: its edit stopped part way, so its notes may not be restamped.
      *
-     * <p>A beat-defining edit that removed tuplets also reports itself here, after the
-     * song notification — this is the only point that knows the whole edit is over, and a
-     * warning shown any earlier would sit in front of a score not yet relaid out.
+     * <p>When the edit's report is not empty, a {@link ChangesWereReportedNotification} follows
+     * the song notification — this is the only point that knows the whole edit is over, and a
+     * report shown any earlier would sit in front of a score not yet relaid out.
      */
     public void endModification() {
         var batch = accumulatedMutations;
+        var openReport = report;
 
         try {
-            if (modificationDepth == 1 && batch != null && owesTieRule()) {
-                // A copy: each removal the rule records is appended to the live batch.
-                song.applyTieRule(List.copyOf(batch));
+            if (modificationDepth == 1 && batch != null && openReport != null && owesRules()) {
+                // A copy: each removal a rule records is appended to the live batch.
+                rules.apply(song, List.copyOf(batch), openReport);
             }
         } finally {
             closeBracket();
@@ -290,8 +281,8 @@ public final class ModificationSession {
     }
 
     /**
-     * Closes a modification bracket without the tie rule, delivering the batch when it is the
-     * outermost one.
+     * Closes a modification bracket without the modification rules, delivering the batch when it
+     * is the outermost one.
      */
     private void closeBracket() {
         modificationDepth--;
@@ -302,10 +293,14 @@ public final class ModificationSession {
     }
 
     /**
-     * The close of the outermost bracket: delivers the accumulated batch and any tuplet-removal
-     * report. Runs even when the body or the tie rule throws, so no batch outlives its bracket.
+     * The close of the outermost bracket: delivers the accumulated batch, then the edit's report
+     * when it is not empty. Runs even when the body or a rule
+     * throws, so no batch or report outlives its bracket.
      */
     private void deliverBatch() {
+        var editReport = report;
+        report = null;
+
         if (accumulatedMutations != null) {
             song.setModified(true);
             // Wrap-and-transfer ownership: the notification constructor stores the
@@ -318,18 +313,16 @@ public final class ModificationSession {
             MessageCenter.post(new SongDidChangeNotification(mutations, song, opName));
         }
 
-        if (tupletsRemovedNoticeCause != null) {
-            var cause = tupletsRemovedNoticeCause;
-            tupletsRemovedNoticeCause = null;
-            MessageCenter.post(new TupletsWereRemovedNotification(cause));
+        if (editReport != null && !editReport.isEmpty()) {
+            MessageCenter.post(new ChangesWereReportedNotification(editReport));
         }
     }
 
     /**
-     * Whether the outermost bracket, about to close with a batch, owes the tie rule a run: it
-     * is not closing inside an undo or redo replay, nor under suspended tracking.
+     * Whether the outermost bracket, about to close with a batch, owes the modification rules a
+     * run: it is not closing inside an undo or redo replay, nor under suspended tracking.
      */
-    private boolean owesTieRule() {
+    private boolean owesRules() {
         return !isReplaying() && !isMutationTrackingSuspended();
     }
 
@@ -367,8 +360,8 @@ public final class ModificationSession {
     /**
      * Runs {@code body} inside a modification bracket opened with {@code explicitLabel}. The
      * bracket closes through {@link #endModification} when {@code body} returns, and through
-     * {@link #closeBracket} when it throws, so a half-applied edit is never judged by the tie
-     * rule and the rule cannot replace the body's exception with one of its own.
+     * {@link #closeBracket} when it throws, so a half-applied edit is never judged by the
+     * modification rules and no rule can replace the body's exception with one of its own.
      */
     private <T extends @Nullable Object> T inBracket(@Nullable String explicitLabel, Supplier<T> body) {
         beginModification(explicitLabel);
@@ -449,188 +442,34 @@ public final class ModificationSession {
         accumulatedMutations.add(mutation);
     }
 
-    // ========== Beat-defining edits ==========
-
     /**
-     * Applies a beat-defining state change and, inside the same modification bracket,
-     * removes every tuplet at or after the edit position that the new beat context
-     * invalidates.
+     * Records {@code change} into the report of the edit in flight, which is posted in a
+     * {@link ChangesWereReportedNotification} when the outermost modification bracket closes.
+     * <p>
+     * Records nothing while mutation tracking is suspended, where no bracket is required, nor
+     * during an undo or redo replay: replay re-applies the removals the edit already reported,
+     * and does not report them again.
      *
-     * <p>A tuplet's validity is defined relative to the beat in effect at its anchor, so a
-     * write that defines a beat can invalidate a tuplet that nothing went near: changing the
-     * song's own tempo, or an earlier tempo change, can turn an attachment already sitting
-     * inside a span into a beat barrier. That is why this is a chokepoint rather than a
-     * hand-maintained list of call sites, and why it is not a
-     * {@code SongDidChangeNotification} subscriber — the notification fires after the
-     * outermost bracket closes, so the removals would land in a second undo step.
-     *
-     * <p>{@code edit} must perform the raw state change only, without recording its own
-     * mutation. Callers that do record one invoke this from inside their
-     * {@link #applyChange} mutator: the removals are then recorded while the mutator runs
-     * and land ahead of the primary mutation, which is the companion ordering reverse-order
-     * undo needs (see {@code docs/mutations.md}).
-     *
-     * <p>Nothing is validated during replay — the recorded batch already carries the
-     * removals — or while mutation tracking is suspended, since a file load judges its
-     * tuplets in the load pass under {@link TupletValidator.Strictness#LENIENT} instead.
-     *
-     * <p>Nested calls aggregate: an inner beat-defining write does the removing, and the
-     * outermost call still reports it, so a caller that wraps a self-routing setter gets a
-     * truthful answer.
-     *
-     * <p>When anything was removed, a single {@link TupletsWereRemovedNotification} is
-     * posted once the outermost modification bracket closes, so every route into a
-     * beat-defining edit warns the user on the same terms without {@code dom} knowing what
-     * a dialog is. The return value is for callers that need the fact locally; nobody has
-     * to read it to get the warning.
-     *
-     * @param lineIndex    the index of the line the edit sits on
-     * @param elementIndex the index of the element within that line
-     * @param edit         the raw state change
-     * @return {@code true} if at least one tuplet was removed
+     * @param change the change the song made on its own, as the user is told about it
+     * @effects appends {@code change} to the open report, unless tracking is suspended or a
+     *     replay is in progress
+     * @throws IllegalStateException if tracking is on and no modification bracket is open
      */
-    public boolean withBeatDefiningEdit(int lineIndex, int elementIndex, Runnable edit) {
-        beatDefiningEditDepth++;
-
-        try {
-            return withModificationResult(() -> {
-                edit.run();
-
-                if (!isReplaying()
-                    && !isMutationTrackingSuspended()
-                    && removeTupletsInvalidatedFrom(lineIndex, elementIndex)) {
-                    beatEditRemovedTuplets = true;
-                }
-
-                // Arm from the outermost beat-defining edit only — an inner write that did
-                // the removing is reported by its outermost caller, not on its own. Armed
-                // here rather than after the bracket closes because this call may itself be
-                // the outermost bracket, in which case endModification has already run by
-                // the time this method unwinds.
-                if (beatDefiningEditDepth == 1 && beatEditRemovedTuplets) {
-                    noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause.BEAT_EDIT);
-                }
-
-                return beatEditRemovedTuplets;
-            });
-        } finally {
-            beatDefiningEditDepth--;
-
-            if (beatDefiningEditDepth == 0) {
-                beatEditRemovedTuplets = false;
-            }
-        }
-    }
-
-    /**
-     * {@link #withBeatDefiningEdit} for a write that hangs on an element rather than on the
-     * song, locating the edit position from that element. An element that is not in a
-     * document — a detached attachment owner, a clipboard fragment, a dialog test double —
-     * has no position to validate forward from, so the edit simply runs.
-     *
-     * @param owner the element the edited attachment hangs on, or {@code null} if detached
-     * @param edit  the raw state change
-     * @return {@code true} if at least one tuplet was removed
-     */
-    public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
-        var line = StaffElement.parentLineOf(owner);
-
-        if (owner == null || line == null) {
-            edit.run();
-            return false;
-        }
-
-        var song = line.getSong();
-        var elementIndex = line.getElementIndex(owner);
-        var lineIndex = song.indexOfLine(line);
-
-        if (lineIndex == null) {
-            edit.run();
-            return false;
-        }
-
-        return song.withBeatDefiningEdit(lineIndex, elementIndex, edit);
-    }
-
-    /**
-     * Records that the edit in flight cost the user one or more tuplets, so a single
-     * {@link TupletsWereRemovedNotification} goes up once the outermost modification bracket
-     * closes. Calling it more than once within one bracket still yields one notification;
-     * the first cause recorded is the one reported, since it names the action the user took.
-     *
-     * <p>The beat-edit chokepoint arms this itself. It is public for the paste path, which
-     * drops tuplets outside {@code dom} and must warn on the same terms — the alternative
-     * being a second, differently-timed warning the user would have no way to relate to the
-     * first.
-     *
-     * <p>Does nothing during undo/redo replay or while mutation tracking is suspended:
-     * neither re-derives the removals, so neither should re-announce them.
-     *
-     * @param cause what the user did that removed them
-     */
-    public void noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause cause) {
-        if (isReplaying() || isMutationTrackingSuspended() || tupletsRemovedNoticeCause != null) {
+    public void report(ReportedChange change) {
+        if (isMutationTrackingSuspended()) {
             return;
         }
 
-        tupletsRemovedNoticeCause = cause;
-    }
+        var openReport = report;
 
-    /**
-     * Removes every tuplet anchored at or after the given position that no longer validates
-     * under {@link TupletValidator.Strictness#STRICT}. Only positions from the edit forward
-     * are walked: a beat-defining event cannot reach backwards.
-     *
-     * @return {@code true} if at least one tuplet was removed
-     */
-    private boolean removeTupletsInvalidatedFrom(int lineIndex, int elementIndex) {
-        if (lineIndex < 0 || lineIndex >= song.lineCount()) {
-            return false;
+        if (openReport == null) {
+            throw new IllegalStateException("report called outside a modification bracket");
         }
 
-        var editLine = song.getLine(lineIndex);
-
-        // An edit position outside the line — the song tempo's nominal position in a song
-        // with no notes yet — has no beat to resolve and no span to reach.
-        if (!editLine.hasIndex(elementIndex)) {
-            return false;
+        if (isReplaying()) {
+            return;
         }
 
-        var startIndex = elementIndex;
-        var enclosingTuplet = editLine.spanRegistry().findTupletAt(elementIndex);
-
-        // A tuplet the edit landed inside is anchored before the edit, and the forward walk
-        // only opens a span at its anchor — so back the start up to the anchor, or the one
-        // tuplet the edit is most likely to have broken would never be judged.
-        var enclosingAnchorIndex = enclosingTuplet == null ? null : enclosingTuplet.requireAnchorElementIndex();
-
-        if (enclosingAnchorIndex != null) {
-            startIndex = Math.min(startIndex, enclosingAnchorIndex);
-        }
-
-        var removedAny = false;
-
-        for (var verdict : TupletValidator.validateFrom(
-            song, new ElementLocation(lineIndex, startIndex), TupletValidator.Strictness.STRICT,
-            ModificationSession::registryTupletAnchoredAt)
-        ) {
-            if (verdict.result() instanceof TupletValidator.Result.Invalid) {
-                verdict.tuplet().removeFrom(song.getLine(verdict.lineIndex()));
-                removedAny = true;
-            }
-        }
-
-        return removedAny;
-    }
-
-    /** The tuplet in {@code line}'s registry whose anchor is the element at {@code index}, if any. */
-    private static TupletValidator.@Nullable Anchored<Tuplet> registryTupletAnchoredAt(Line line, int index) {
-        var tuplet = line.spanRegistry().findTupletAt(index);
-
-        if (tuplet == null || tuplet.getAnchorElement() != line.getElement(index)) {
-            return null;
-        }
-
-        return new TupletValidator.Anchored<>(tuplet, tuplet.requireEndElementIndex(), tuplet.getGrade());
+        openReport.record(change);
     }
 }

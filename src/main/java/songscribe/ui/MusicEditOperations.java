@@ -59,7 +59,6 @@ import songscribe.ui.selection.TupletToggleInfo;
  */
 public final class MusicEditOperations {
 
-    private static final int MIN_CONTENT_ELEMENTS = 4;
 
     // Mutable so the same MusicEditOperations instance can outlive a document
     // load — ScoreView holds it across setSong(), avoiding stale references.
@@ -555,8 +554,7 @@ public final class MusicEditOperations {
             // resolution computed. A point dynamic on the merged hairpin's anchor or end
             // element survives — the wedge pads away from it — but one stranded strictly
             // inside breaks the invariant DynamicMarkingAction.updateEnabledState() relies on.
-            stripInteriorPointDynamics(
-                line, new ElementRange(added.requireAnchorElementIndex(), added.requireEndElementIndex()));
+            stripInteriorPointDynamics(line, added.range());
         });
     }
 
@@ -831,187 +829,23 @@ public final class MusicEditOperations {
             end = extendedEnd;
         }
 
-        // Stage 1: Structural validation
-        var rightRepeatIndex = validateEndingStructure(line, begin, end);
-
-        if (rightRepeatIndex == null) {
-            return EndingValidationResult.Invalid.INSTANCE;
-        }
-
-        // Stage 2: Overlap check
-        var hasOverlap = hasOverlap(line, begin, end);
-
-        if (hasOverlap) {
-            return EndingValidationResult.Invalid.INSTANCE;
-        }
-
-        // Stage 3: Backward search for enclosing repeated section
-        var lineIndex = line.index();
-        var hasEnclosing = hasEnclosingRepeat(lineIndex, begin);
-
-        if (!hasEnclosing) {
-            return EndingValidationResult.Invalid.INSTANCE;
-        }
-
+        // Ending's own rule decides whether a well-formed ending fits here: it refuses one
+        // that overlaps, or is not separated from, an ending already on the line, and one
+        // whose split closes no open repeated section.
+        //
         // Where a bracket anchored here would open is Ending's rule, so that the anchor this
         // sets and the element layout later draws from cannot drift apart. It answers with
-        // the anchor itself when nothing in front of it is a bar — a note predecessor, or no
-        // predecessor on this line, since an ending never spans lines.
+        // the anchor itself when the element in front of it is not a plain barline, or when
+        // it has no predecessor on this line, since an ending never spans lines.
         var anchorIndex = Ending.openingElementIndex(line, begin);
-        var ending = Ending.spanning(line, new ElementRange(anchorIndex, end));
 
-        if (ending == null) {
-            return EndingValidationResult.Invalid.INSTANCE;
-        }
-
-        return new EndingValidationResult.Valid(line, ending);
+        return switch (Ending.spanning(line, new ElementRange(anchorIndex, end))) {
+            case Ending.Spanning.Spanned spanned ->
+                new EndingValidationResult.Valid(line, spanned.ending());
+            case Ending.Spanning.Refused refused -> EndingValidationResult.Invalid.INSTANCE;
+        };
     }
 
-    // Returns the index of the right repeat within the selection, or null if invalid.
-    private @Nullable Integer validateEndingStructure(Line line, int begin, int end) {
-        var contentCount = 0;
-        Integer rightRepeatIndex = null;
-
-        for (var i = begin; i <= end; i++) {
-            var type = line.getElement(i).getType();
-
-            if (type.isNonContentElement()) {
-                continue;
-            }
-
-            contentCount++;
-
-            if (i < end && type.closesRepeat()) {
-                if (rightRepeatIndex != null) {
-                    return null;
-                }
-
-                rightRepeatIndex = i;
-            }
-        }
-
-        if (contentCount < MIN_CONTENT_ELEMENTS || rightRepeatIndex == null) {
-            return null;
-        }
-
-        // The split and the end state one repeat structure from its two sides. Replacing
-        // either already refuses a pair that disagrees, so creation refuses it too rather
-        // than making a state the ending could never be edited into.
-        if (!Ending.isValidEnd(
-                line.getElement(rightRepeatIndex).getType(),
-                line.getElement(end).getType())) {
-            return null;
-        }
-
-        // Validate first ending region (between optional leading element and right repeat):
-        // one or more content elements, no barlines or repeats
-        var firstEndingStart = begin;
-        var firstType = line.getElement(begin).getType();
-
-        if (firstType == ElementType.REPEAT_LEFT || firstType == ElementType.SINGLE_BARLINE) {
-            firstEndingStart = begin + 1;
-        }
-
-        if (!validateEndingRegionContent(line, firstEndingStart, rightRepeatIndex - 1)) {
-            return null;
-        }
-
-        // Validate second ending region (between right repeat and terminal):
-        // one or more content elements, no barlines or repeats
-        if (!validateEndingRegionContent(line, rightRepeatIndex + 1, end - 1)) {
-            return null;
-        }
-
-        return rightRepeatIndex;
-    }
-
-    // Checks that a region contains one or more content elements and
-    // no barlines or repeats (non-content elements are allowed).
-    private boolean validateEndingRegionContent(Line line, int from, int to) {
-        var hasContent = false;
-
-        for (var i = from; i <= to; i++) {
-            var type = line.getElement(i).getType();
-
-            if (type.isNonContentElement()) {
-                continue;
-            }
-
-            if (type.isBar()) {
-                return false;
-            }
-
-            if (type.isDuration()) {
-                hasContent = true;
-            }
-        }
-
-        return hasContent;
-    }
-
-    // Returns true if any element in the selection range overlaps an existing ending span.
-    // Endings outermost so each one's bounds are resolved once: asking the line per index
-    // would re-filter its whole span list — beams, ties, tuplets and hairpins included —
-    // and re-resolve every ending, on every iteration.
-    private boolean hasOverlap(Line line, int begin, int end) {
-        var spans = line.spanRegistry();
-
-        for (var ending : spans.findEndings()) {
-            var endingRange = spans.rangeOf(ending);
-
-            for (var i = begin; i <= end; i++) {
-                if (Span.containing(i).test(endingRange)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    // Walks backward from just before the selection start, across as many preceding
-    // lines as needed, looking for an enclosing repeated section.
-    private boolean hasEnclosingRepeat(int lineIndex, int selectionBegin) {
-        // Determine starting point for backward search. A negative element index means
-        // the selection starts at the head of its line, so the walk below skips the
-        // current line entirely: it either continues onto the previous line, or — when
-        // there is none — falls straight through and reports the song start.
-        var searchLineIndex = lineIndex;
-        var searchElementIndex = selectionBegin - 1;
-
-        // Walk backward
-        while (searchLineIndex >= 0) {
-            var searchLine = song.getLine(searchLineIndex);
-
-            while (searchElementIndex >= 0) {
-                var type = searchLine.getElement(searchElementIndex).getType();
-
-                if (type == ElementType.REPEAT_LEFT || type == ElementType.REPEAT_LEFT_RIGHT) {
-                    return true;
-                }
-
-                if (type == ElementType.REPEAT_RIGHT
-                        || type == ElementType.DOUBLE_BARLINE
-                        || type == ElementType.FINAL_DOUBLE_BARLINE) {
-                    return false;
-                }
-
-                // All other elements are skipped
-                searchElementIndex--;
-            }
-
-            searchLineIndex--;
-
-            if (searchLineIndex >= 0) {
-                searchElementIndex = song.getLine(searchLineIndex).elementCount() - 1;
-            }
-        }
-
-        // Reached the beginning of the song without meeting a section delimiter —
-        // the song start acts as an implicit left repeat, no matter which line the
-        // selection is on.
-        return true;
-    }
 
     public void makeFirstSecondEnding(EndingValidationResult.Valid valid) {
         var line = valid.line();
@@ -1103,12 +937,8 @@ public final class MusicEditOperations {
                     if (processedBeams.add(beam)) {
                         var newDirection = flippedDirection(beam.getAnchorElement(), change);
 
-                        for (var j = beam.requireAnchorElementIndex(); j <= beam.requireEndElementIndex(); j++) {
-                            if (line.getElement(j).getType().isGraceNote()) {
-                                continue;
-                            }
-
-                            applyStemChange(line, j, stemFields, newDirection);
+                        for (var member : beam.members()) {
+                            applyStemChange(line, line.getElementIndex(member.note()), stemFields, newDirection);
                         }
                     }
                 } else {

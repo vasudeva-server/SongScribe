@@ -32,7 +32,7 @@ the Gradle filter matches the name as a suffix. Count the two classes apart.
 | 1 Inventory | ✅ | ✅ | — | `findings-1-2.md`, *What it found* |
 | 2 Class design | ✅ | ✅ | [step-2-plan.md](step-2-plan.md) | `findings-1-2.md`, *Decisions*. Settled while planning: `TieAddition`/`TieRemoval` stay as the tie's records, over `(Line, NoteElement)`; `Tie` is a derived record `(anchor, end)`. Two defects fixed in the plan's Phase 11: the MusicXML reader rounds offsets, and an ending's offset is not saved |
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-plan.md](step-3-plan.md) | `findings-3.md`: all 24 items accepted. Item 5, the factory checks only that a split exists. Item 11, the legacy reader drops an out-of-range grade with a warning. Item 22, `Span<E extends StaffElement>`. No known path leaves a registered span with a detached endpoint (item 1) |
-| 4 Extraction | ⏳ | ⏳ | — | |
+| 4 Extraction | ✅ | ✅ | [step-4-plan.md](step-4-plan.md) | `findings-4.md`. Settled while executing, item 18: an ending anchors only on a note, a rest or a `SINGLE_BARLINE`, and a note or rest anchor needs a `SINGLE_BARLINE`, a note, a rest or the start of its line in front of it. The editor and the bracket geometry share that rule, and `volta-alignments.musicxml` holds one line per valid opening |
 | 5 Contracts | ⏳ | ⏳ | — | |
 | 6 Test triage | ⏳ | ⏳ | — | |
 | 7 Test-only surface | ⏳ | ⏳ | — | |

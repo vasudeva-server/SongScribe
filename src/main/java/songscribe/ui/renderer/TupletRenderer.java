@@ -25,9 +25,10 @@ import java.util.function.DoubleUnaryOperator;
 
 import songscribe.dom.Tuplet;
 import songscribe.engraving.EngravingConstants;
-import songscribe.engraving.StemMetrics;
+import songscribe.engraving.TupletMetrics;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.TupletGeometry;
 import songscribe.shape.TupletBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -110,9 +111,9 @@ public final class TupletRenderer {
 
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
-            var leftXSs = tuplet.bracketLeftEdgeXSs(anchorXSs,
-                StemMetrics.thicknessSs(), anchorNote.getType().getElementWidthSs());
-            var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
+            var leftXSs = TupletGeometry.bracketLeftEdgeXSs(tuplet, anchorXSs,
+                anchorNote.getType().getElementWidthSs());
+            var rightXSs = TupletGeometry.bracketRightEdgeXSs(endXSs,
                 endNote.getType().getElementWidthSs());
 
             if (!(decorLayout instanceof LayoutResult.DecorationLayout.Sloped sloped)) {
@@ -176,7 +177,7 @@ public final class TupletRenderer {
         var slope = bracketLine.dySs() / bracketLine.widthSs();
 
         // Shape the number once; its bounds drive both the bracket gap and centering
-        var glyphVector = Tuplet.TUPLET_FONT.createGlyphVector(
+        var glyphVector = TupletGeometry.TUPLET_FONT.createGlyphVector(
             g2.getFontRenderContext(), String.valueOf(grade));
         var inkBounds = glyphVector.getVisualBounds();
         var halfGapSs = glyphVector.getLogicalBounds().getWidth() / 2.0 + TUPLET_NUMBER_GAP_SS;
@@ -205,13 +206,13 @@ public final class TupletRenderer {
             } else {
                 // Bracketed: the bracket line sits inside the box at inkH/2 from the top, then
                 // tilts by the slope. Evaluate the line at each corner X from the anchor origin.
-                var bracketLineOffsetSs = Tuplet.bracketLineOffsetSs();
+                var bracketLineOffsetSs = TupletGeometry.bracketLineOffsetSs();
 
                 // LilyPond's arm is a line of BRACKET_ARM_HEIGHT_SS from the bracket line's
                 // centerline whose round cap bulges a further half line-width past that end
                 // (bracket.cc, make_bracket). drawPath instead lands ink exactly on the endpoint it
                 // is given, so ask it for the cap-inclusive tip to reach the same ink extent.
-                var armHeightSs = Tuplet.BRACKET_ARM_HEIGHT_SS + thicknessSs / 2.0;
+                var armHeightSs = TupletMetrics.BRACKET_ARM_HEIGHT_SS + thicknessSs / 2.0;
 
                 var gapLeftXSs = gapCenterXSs - halfGapSs;
                 var gapRightXSs = gapCenterXSs + halfGapSs;

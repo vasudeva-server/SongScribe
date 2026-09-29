@@ -83,6 +83,10 @@ public final class StaffElementFactory {
         return (RestElement) ElementType.CROTCHET_REST.newInstance();
     }
 
+    public static RestElement minimRest() {
+        return (RestElement) ElementType.MINIM_REST.newInstance();
+    }
+
     public static NoteElement quaver() {
         return (NoteElement) ElementType.QUAVER.newInstance();
     }

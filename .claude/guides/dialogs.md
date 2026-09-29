@@ -29,7 +29,7 @@ Three pieces cross the boundary:
 - **a `DialogOps<I, O>`** — four function references: `read`, `validate`, `commit`, `remove`.
 
 ```java
-record DialogOps<I extends @Nullable Copyable<I>, O>(
+record DialogOps<I extends @Nullable Copyable<I>, O extends @Nullable Object>(
     Supplier<I>                    read,
     Function<O, ValidationResult>  validate,
     Consumer<O>                    commit,
@@ -60,15 +60,16 @@ alternative is an escape hatch, and an escape hatch is the whole rule again as a
 wrapper is worth its keep for a second reason too: its name says which of a dialog's several
 strings or values this one is, where the JDK type alone would not.
 
-**`O` carries no bound.** It is built by `gather()` from the controls, so there is nothing of the
-document's in it to alias.
+**`O` is not `Copyable`.** It is built by `gather()` from the controls, so there is nothing of the
+document's in it to alias. Its bound is `@Nullable Object`, so a dialog that gathers nothing names
+`@Nullable Void` and its `gather()` answers `null` — `ReportDialog` is the one such dialog.
 
 **Function references, not an interface.** An interface — however narrow — is an object the dialog holds, and an object can be asked for whatever its type exposes, including whatever the next person adds to it. A bundle of references exposes exactly those calls and can never expose another.
 
 The other end is a `DialogController<I, O>`. It holds the line, the element, the score and the view, and does whatever the four operations need. **The dialog never sees it.**
 
 ```java
-abstract class DialogController<I extends @Nullable Copyable<I>, O> {
+abstract class DialogController<I extends @Nullable Copyable<I>, O extends @Nullable Object> {
     protected abstract I                read()               // may answer the document's own object
     protected          ValidationResult validate(O values)   // default: accepts everything
     protected          boolean          dataWasModified(O values)  // default: true
@@ -99,8 +100,7 @@ can be handed its subject is testable with nothing on screen, which is what
 
 **`commit` may itself ask a yes/no question before it opens its bracket.**
 Such a question runs in an edit's decide phase, before any modification bracket
-opens — the rule the ending confirms follow in `ScoreViewController`,
-`PreviewElementInserter` and `SelectionActionApplier`. This is not the
+opens. This is not the
 `validate`/`showFailure` presentation path — nothing was rejected, and no
 `ValidationFailure` is shown. It is a decide-phase question about a change
 already accepted as valid, and a cancelled answer means `commit` does nothing:
@@ -186,17 +186,15 @@ Nothing here repaints the score. A commit that writes the document does so insid
 Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
 
 Category precedent (pick by analogy):
-- INFORMATIONAL — no dialog carries it today. It is for a window that reports and never edits, so blocking it would hide the report.
+- INFORMATIONAL — `ReportDialog`. It is for a window that reports and never edits, so blocking it would hide the report. `ReportDialog` is a `StandardDialog` with its Cancel removed, whose output type is `@Nullable Void` and whose controller answers `dataWasModified` with `false`, so OK only dismisses it.
 - EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
 - OPERATIONAL — the default; everything else
 
 ### Deliberate non-`BaseDialog` windows
 
-Two windows in this package extend `JDialog` directly. Both have a class comment
-explaining why; don't "fix" either back into `BaseDialog`.
+One window in this package extends `JDialog` directly. Its class comment explains why;
+don't "fix" it back into `BaseDialog`.
 
-- `MigrationWindow` — a non-modal utility window the user leaves open beside the score, so it
-  must stay out of the blocking-dialog counter and has no OK/Cancel lifecycle.
 - `AboutDialog` — undecorated, so it can show the borderless splash pane
   (`SplashWindow.createContentPanel`) without a title bar. Non-modal because it dismisses on a
   click outside, which a modal window can never see (the modal event filter discards input

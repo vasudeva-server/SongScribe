@@ -44,11 +44,8 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
     /**
      * {@inheritDoc}
      *
-     * <p>Deliberately <em>not</em> routed through
-     * {@link Song#withBeatDefiningEdit}: the copy is not yet in the document, so there
-     * is no position to validate from. The clipboard is the only caller that copies a beat
-     * change into a different context, and paste re-validates the tuplets it carries in
-     * {@code PasteSpanReconciliation}.
+     * <p>The clipboard is the only caller that copies a beat change into a different context,
+     * and paste re-validates the tuplets it carries in {@code PasteSpanReconciliation}.
      */
     @Override
     protected Attachment createCopy() {
@@ -63,14 +60,13 @@ public final class BeatChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Replaces the beat change data, dropping any tuplet the new beat invalidates.
+     * Replaces the beat change data.
      *
-     * <p>Stays public because the beat-change dialog lives in the UI package. The write
-     * itself is routed through {@link Song#withBeatDefiningEdit}, so there is nothing to
-     * bypass; a caller that wants to know whether tuplets were removed should wrap its own
-     * edit in that helper and read its result.
+     * <p>Stays public because the beat-change dialog lives in the UI package. A change of beat
+     * can invalidate tuplets; the tuplet beat rule finds them when the modification bracket
+     * closes.
      */
     public void setBeatChange(BeatChange beatChange) {
-        Song.withBeatDefiningEditOn(owner(), () -> this.beatChange = beatChange);
+        this.beatChange = beatChange;
     }
 }

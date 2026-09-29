@@ -151,7 +151,7 @@ class SpanTest extends UnitTest {
     private static List<ElementRange> crescendoRanges(Line line) {
         return line.spanRegistry().getSpans().stream()
             .filter(span -> span instanceof Hairpin hairpin && hairpin.getKind() == Hairpin.Kind.CRESCENDO)
-            .map(span -> new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex()))
+            .map(Span::range)
             .toList();
     }
 }

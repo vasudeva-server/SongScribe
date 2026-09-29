@@ -430,7 +430,7 @@ public final class RangeQueries {
             }
         }
 
-        var coversExisting = (firstTuplet != null) && spans.rangeOf(firstTuplet).equals(grouped);
+        var coversExisting = (firstTuplet != null) && firstTuplet.range().equals(grouped);
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still

@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
@@ -213,18 +214,14 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Whether {@code other} is a span of the same kind as this one, the test every
-     * {@link Displacement} applies: the same concrete class, and for a hairpin the same
-     * {@link Hairpin.Kind}, so a crescendo never displaces a diminuendo.
+     * {@link Displacement} applies. Here the test is the same concrete class; a subclass may
+     * override it to narrow the test further, and an override must still require the same
+     * concrete class.
      *
      * @return {@code true} when adding this span may displace {@code other}
      */
-    final boolean isSameKindAs(Span<?> other) {
-        if (other.getClass() != getClass()) {
-            return false;
-        }
-
-        return !(this instanceof Hairpin hairpin && other instanceof Hairpin otherHairpin)
-            || hairpin.getKind() == otherHairpin.getKind();
+    boolean isSameKindAs(Span<?> other) {
+        return other.getClass() == getClass();
     }
 
     /**
@@ -237,6 +234,9 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * reconciliation — may therefore call this unconditionally. A raw list removal would drop
      * the span with no record and make undo of the enclosing operation lossy, which is why
      * this is the only route out.
+     * <p>
+     * This is for a removal the user asked for. A removal the user did not directly request
+     * goes through {@link #removeReported}, which reports it and then calls this.
      *
      * @param line the line this span is being removed from
      * @effects when this span is in the registry, posts a {@link SpanRemoval} through the line's
@@ -249,9 +249,9 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Decides what should happen to this span when {@code change} lands on its line,
-     * {@code change.line()}. This is the one hook the sweep ({@link LineSpans#sweep}) and
-     * {@link ElementChange#removesConfirmableSpan} put a change to; a kind with a rule of its
-     * own overrides it, and states that rule as one switch over the change.
+     * {@code change.line()}. This is the one hook the sweep ({@link LineSpans#sweep}) puts a
+     * change to; a kind with a rule of its own overrides it, and states that rule as one switch
+     * over the change.
      * <p>
      * <b>The decision is made before the change lands.</b> {@code change.line()} is the line
      * being changed, still in its pre-change state; every judgement must be made against the
@@ -262,29 +262,32 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * mutation — deciding after the fact would record a span already re-pointed at the new
      * element, and undo would restore it broken.
      * <p>
-     * <b>A replacement re-points, it does not delete.</b> {@link Line#setElement} points any
-     * span whose anchor or end was the replaced element at the replacement. So under
-     * {@link ElementChange.Replacement}, a span whose endpoint is
-     * {@link ElementChange.Replacement#oldElement} must be read as having that endpoint
-     * become {@link ElementChange.Replacement#newElement} — <em>not</em> as having lost an
-     * endpoint. Reading the old element as deleted would silently remove every span whose
-     * endpoint is edited.
+     * <b>A replacement re-points, it does not delete.</b> {@link Line#replace} points any
+     * span whose anchor or end was a replaced element at that element's replacement. So under
+     * {@link ElementChange.Replacement}, a span whose endpoint is a replaced element must be
+     * read as having that endpoint become its replacement
+     * ({@link ElementChange.Replacement#replacementOf}) — <em>not</em> as having lost an
+     * endpoint. {@link ElementChange#projectedEndpointIndexOf} reads an endpoint this way.
+     * Reading the replaced element as deleted would silently remove every span whose endpoint
+     * is edited.
      * <p>
      * The default is the rule every kind shares and the whole of {@link Trill}'s:
-     * a deletion that takes an endpoint ({@link #isEndpointDeletedBy}) removes the span, and
-     * every other change keeps it.
+     * a deletion that takes an endpoint ({@link #isEndpointDeletedBy}) removes the span, for the
+     * reason {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED}, and every other change keeps
+     * it.
      * <p>
-     * A span either survives a change or it does not, which is all {@link SpanOutcome.Simple}
-     * can say. A hairpin is the one kind that can survive in a different shape, and the
-     * sweep asks it that wider question through
-     * {@link Hairpin#hairpinOutcomeFor(ElementChange)} instead.
+     * A span either survives a change or it does not, which is all {@link SpanOutcome} can say.
+     * A hairpin is the one kind that can survive in a different shape, and the sweep asks it
+     * that wider question through {@link Hairpin#hairpinOutcomeFor(ElementChange)} instead.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
-     * @return {@link SpanOutcome.Simple#REMOVE} when this span cannot survive {@code change},
-     *     otherwise {@link SpanOutcome.Simple#KEEP}
+     * @return a {@link SpanOutcome.Remove} carrying the key of the reason this span's rule gives
+     *     when this span cannot survive {@code change}, otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
-    public SpanOutcome.Simple outcomeFor(ElementChange change) {
-        return removeWhen(change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion));
+    public SpanOutcome outcomeFor(ElementChange change) {
+        return removeWhen(
+            change instanceof ElementChange.Deletion deletion && isEndpointDeletedBy(deletion),
+            Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
     }
 
     /**
@@ -302,21 +305,86 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     /**
      * The {@link #outcomeFor} answer for a verdict stated as a boolean.
      *
-     * @return {@link SpanOutcome.Simple#REMOVE} when {@code invalidated}, otherwise
-     *     {@link SpanOutcome.Simple#KEEP}
+     * @param invalidated whether the change breaks this span
+     * @param reasonKey   the {@code Strings} key of the reason the removal is reported with;
+     *                    unused when {@code invalidated} is {@code false}
+     * @return a {@link SpanOutcome.Remove} carrying {@code reasonKey} when {@code invalidated},
+     *     otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
-    protected static SpanOutcome.Simple removeWhen(boolean invalidated) {
-        return invalidated ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
+    protected static SpanOutcome removeWhen(boolean invalidated, String reasonKey) {
+        return invalidated ? new SpanOutcome.Remove(reasonKey) : SpanOutcome.Keep.INSTANCE;
     }
 
     /**
-     * Returns whether removing this span as a side effect of an edit warrants a
-     * user confirmation prompt. Default is false: spans such as beams and
-     * tuplets are removed silently. Subclasses may override (endings do, since their loss
-     * is significant enough to confirm first).
+     * The {@code Strings} key of the heading a removed span of this kind is reported under, such
+     * as "beams were removed". Its value is a MessageFormat pattern taking the count of entries
+     * under the heading as {@code {0}}. One constant per kind; {@link #reportedAs} is the reader.
+     *
+     * @return this kind's removal heading key
      */
-    public boolean requiresInvalidationConfirm() {
-        return false;
+    protected abstract String reportHeadingKey();
+
+    /**
+     * The elements this span covers, as locations in the song: from the anchor to the end, both
+     * inclusive, resolved through the anchor's line and that line's index in its song. A span
+     * never crosses a line, so both locations name the same line.
+     * <p>
+     * The span need not be in a registry. It answers for any span whose endpoints are elements
+     * of a line in the song, which is the case for a pasted fragment's span once its elements
+     * are inserted and before the span itself is added.
+     *
+     * @return the range from the anchor's location to the end's, as they stand when this is called
+     * @throws IllegalStateException when the anchor or the end sits in no line, or the anchor's
+     *     line is not one of its song's lines — the span's own state, not an argument
+     */
+    public ElementLocationRange location() {
+        var line = line();
+        var lineIndex = line.getSong().indexOfLine(line);
+
+        if (lineIndex == null) {
+            throw new IllegalStateException(getClass().getSimpleName() + " anchor line is not in its song: " + this);
+        }
+
+        var elementRange = range();
+
+        return new ElementLocationRange(
+            new ElementLocation(lineIndex, elementRange.begin()),
+            new ElementLocation(lineIndex, elementRange.end()));
+    }
+
+    /**
+     * The report entry for removing this span for the reason {@code reasonKey} names.
+     *
+     * @param reasonKey the {@code Strings} key of the reason, whose value is plain text
+     * @return an entry under {@link #reportHeadingKey}, whose description is the reason's text
+     *     and whose location is {@link #location}
+     * @throws IllegalStateException under the conditions {@link #location} throws
+     */
+    public ReportedChange reportedAs(String reasonKey) {
+        return new ReportedChange(reportHeadingKey(), Strings.get(reasonKey), location());
+    }
+
+    /**
+     * Removes this span from {@code line}'s span registry and tells the user why.
+     * <p>
+     * Every removal the user did not directly request — one a rule, a sweep, a displacement, a
+     * paste or a load makes on its own — goes through this method, so none is silent.
+     * {@link #removeFrom} is for a removal the user asked for, which needs no report.
+     * <p>
+     * Unlike {@link #removeFrom}, a second call is not a no-op: it reports again. The caller
+     * holds a span that is in {@code line}'s registry.
+     *
+     * @param line      the line this span is being removed from; this span is in its registry
+     * @param reasonKey the {@code Strings} key of the reason the removal is reported with
+     * @effects records {@link #reportedAs reportedAs(reasonKey)} through {@link Song#report},
+     *     which records nothing during replay or while tracking is suspended, then does what
+     *     {@link #removeFrom} does
+     * @throws IllegalStateException under the conditions {@link #location} throws, or when
+     *     tracking is on and no modification bracket is open
+     */
+    public final void removeReported(Line line, String reasonKey) {
+        line.getSong().report(reportedAs(reasonKey));
+        removeFrom(line);
     }
 
     /**
@@ -377,6 +445,23 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
+     * The elements this span covers, as a range of indices in its line: from the anchor's index
+     * to the end's index, both inclusive. A span never crosses a line, so both indices are in
+     * {@link #line}, the anchor's line, and the range names positions in that line's element
+     * list as it stands when this is called. The range is computed on each call, so an edit to
+     * the line between two calls can give two different ranges.
+     *
+     * @return a range whose {@link ElementRange#begin} is {@link #requireAnchorElementIndex}
+     *     and whose {@link ElementRange#end} is {@link #requireEndElementIndex}
+     * @throws IllegalStateException when the anchor or the end sits in no line, which is the case
+     *     only for a span outside every registry, such as a clipboard span over cloned elements
+     *     — the span's own state, not an argument
+     */
+    public final ElementRange range() {
+        return new ElementRange(requireAnchorElementIndex(), requireEndElementIndex());
+    }
+
+    /**
      * A test on a span's inclusive range, from its anchor's index to its end's.
      */
     @FunctionalInterface
@@ -424,10 +509,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * inclusive range.
      */
     public static IndexPredicate strictlyContaining(int elementIndex) {
-        return spanRange ->
-            spanRange.contains(elementIndex)
-                && spanRange.begin() != elementIndex
-                && spanRange.end() != elementIndex;
+        return spanRange -> spanRange.containsExcludingBounds(elementIndex);
     }
 
     /**

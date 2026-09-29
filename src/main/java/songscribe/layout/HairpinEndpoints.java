@@ -29,6 +29,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.HairpinMetrics;
 
 /**
  * Resolves the drawn horizontal endpoints of a {@link Hairpin}, a port of the
@@ -37,8 +38,8 @@ import songscribe.dom.StaffElement;
  * <p>
  * {@code Hairpin} is a DOM type and may not depend on {@code songscribe.layout}; the endpoint
  * rules need {@link ElementColumn} geometry, so they live here rather than on the span. The
- * padding values themselves are properties of LilyPond's {@code Hairpin} grob and stay on
- * {@link Hairpin}.
+ * padding values themselves are LilyPond {@code Hairpin} grob properties and live on
+ * {@link HairpinMetrics}.
  * <p>
  * The rules are <em>assignments, not clamps</em>. LilyPond takes the endpoint straight from the
  * neighbour's extent with no clamp back to the note column, so a wedge preceded by a text dynamic
@@ -102,7 +103,7 @@ public final class HairpinEndpoints {
             return null;
         }
 
-        var range = line.spanRegistry().rangeOf(hairpin);
+        var range = hairpin.range();
 
         var anchorColumn = spanColumns.anchorColumn();
         var endColumn = spanColumns.endColumn();
@@ -119,13 +120,13 @@ public final class HairpinEndpoints {
             // all — it warns and collapses a negative width (hairpin.cc:292-298) — so do only that
             // much. This does move a dynamic-placed tip, but only out of a negative width.
             x2Ss = Math.max(x2Ss, x1Ss);
-        } else if (x2Ss - x1Ss < Hairpin.MINIMUM_LENGTH_SS) {
+        } else if (x2Ss - x1Ss < HairpinMetrics.MINIMUM_LENGTH_SS) {
             // LilyPond warns "crescendo too small" and collapses to 0; extending rightward keeps
             // the wedge visible. Safe even when a dynamic placed the *left* tip: widening moves
             // the right tip away from that glyph, and a dynamic anywhere on the right would have
             // placed the right tip instead, taking the branch above. The spacing floor in
             // HorizontalSpacingCalculator.hairpinReservationFloorSs makes this rare.
-            x2Ss = x1Ss + Hairpin.MINIMUM_LENGTH_SS;
+            x2Ss = x1Ss + HairpinMetrics.MINIMUM_LENGTH_SS;
         }
 
         return new Endpoints(x1Ss, x2Ss, spanColumns);
@@ -225,7 +226,7 @@ public final class HairpinEndpoints {
         if (hasOtherHairpin(hairpin, line, Span.endingAt(anchorIndex))) {
             // hairpin.cc:257 — x_points[d] = e.center() - d * padding / 3, with d == LEFT == -1.
             return new Tip(
-                anchorColumn.getNoteheadCenterXSs() + Hairpin.BACK_TO_BACK_PADDING_SS, false);
+                anchorColumn.getNoteheadCenterXSs() + HairpinMetrics.BACK_TO_BACK_PADDING_SS, false);
         }
 
         var previous = dynamicTipSs(line, columnsByElement, anchorIndex - 1, Side.LEFT);
@@ -264,7 +265,7 @@ public final class HairpinEndpoints {
 
         if (hasOtherHairpin(hairpin, line, Span.anchoredAt(endIndex))) {
             return new Tip(
-                endColumn.getNoteheadCenterXSs() - Hairpin.BACK_TO_BACK_PADDING_SS, false);
+                endColumn.getNoteheadCenterXSs() - HairpinMetrics.BACK_TO_BACK_PADDING_SS, false);
         }
 
         var next = dynamicTipSs(line, columnsByElement, endIndex + 1, Side.RIGHT);
@@ -355,7 +356,7 @@ public final class HairpinEndpoints {
     static double dynamicLeftTipOffsetSs(StaffElement element, DynamicAttachment dynamic) {
         return advanceLeftEdgeOffsetSs(element, dynamic)
             + dynamic.getAdvanceWidthSs()
-            + Hairpin.BOUND_PADDING_SS;
+            + HairpinMetrics.BOUND_PADDING_SS;
     }
 
     /**
@@ -364,7 +365,7 @@ public final class HairpinEndpoints {
      * Normally negative — the tip stops left of the note's own origin.
      */
     static double dynamicRightTipOffsetSs(StaffElement element, DynamicAttachment dynamic) {
-        return advanceLeftEdgeOffsetSs(element, dynamic) - Hairpin.BOUND_PADDING_SS;
+        return advanceLeftEdgeOffsetSs(element, dynamic) - HairpinMetrics.BOUND_PADDING_SS;
     }
 
     /**

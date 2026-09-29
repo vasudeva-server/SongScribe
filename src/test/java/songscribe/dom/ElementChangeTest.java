@@ -22,12 +22,11 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -39,38 +38,20 @@ import songscribe.message.mutation.ElementField;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.repeatRight;
-import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * What an {@link ElementChange} promises across its own queries, for each of its four shapes:
- * {@link ElementChange#removesConfirmableSpan} predicts what the span sweep then does, and
  * {@link ElementChange#projectedIndexOf} and {@link ElementChange#projectedElements} describe one
  * projection.
  */
 class ElementChangeTest extends UnitTest {
 
     /**
-     * The fixture line, by position: a note, the note the ending anchors on, the repeat that
-     * splits the ending, the note the ending ends on, and a note after the ending.
+     * The fixture line, by position: a note, a note, a right repeat, and three more notes. The
+     * second element and the repeat are the ones the projection cases change.
      */
-    private static final int NOTE_OUTSIDE_ENDING = 0;
-    private static final int ENDING_ANCHOR = 1;
-    private static final int ENDING_SPLIT = 2;
-    private static final int ENDING_END = 3;
-    private static final int NOTE_AFTER_ENDING = 4;
-
-    /**
-     * One change to the fixture line, and whether it takes away the ending's repeat split.
-     *
-     * @param description the case, as the test's display name
-     * @param change      builds the change against the line, still unapplied
-     * @param apply       makes the same change to the line
-     * @param splitGoes   whether the change leaves the ending without the split its invariant
-     *                    requires, which is what costs the line the ending
-     */
-    private record ConfirmCase(
-        String description, Function<Line, ElementChange> change, Consumer<Line> apply, boolean splitGoes
-    ) {}
+    private static final int SECOND_NOTE = 1;
+    private static final int REPEAT = 2;
 
     /**
      * One change to the fixture line, and what its projection must hold.
@@ -78,18 +59,17 @@ class ElementChangeTest extends UnitTest {
      * @param description    the case, as the test's display name
      * @param change         builds the change against the line
      * @param removedIndices the line indices of the elements the change removes
-     * @param arriving       the element the change brings, or {@code null} when it brings none
-     * @param arrivalIndex   the projected index {@code arriving} stands at
+     * @param arrivals       each position the change's projection holds a new element at,
+     *                       mapped to that element; empty when the change brings none
      */
     private record ProjectionCase(
         String description,
         Function<Line, ElementChange> change,
         List<Integer> removedIndices,
-        @Nullable StaffElement arriving,
-        int arrivalIndex
+        Map<Integer, StaffElement> arrivals
     ) {}
 
-    /** The fixture line, with its ending. */
+    /** The fixture line. */
     private static Line fixtureLine() {
         var line = detachedLine();
         line.addElement(crotchet());
@@ -97,103 +77,36 @@ class ElementChangeTest extends UnitTest {
         line.addElement(repeatRight());
         line.addElement(crotchet());
         line.addElement(crotchet());
-
-        var ending = Ending.spanning(line, new ElementRange(ENDING_ANCHOR, ENDING_END));
-
-        assertThat(ending).isNotNull();
-        ending.addTo(line);
+        line.addElement(crotchet());
 
         return line;
-    }
-
-    private static boolean holdsAnEnding(Line line) {
-        return line.spanRegistry().getSpans().stream().anyMatch(Ending.class::isInstance);
-    }
-
-    static Stream<ConfirmCase> confirmCases() {
-        return Stream.of(
-            confirmInsertion("an insertion after the ending", NOTE_AFTER_ENDING, crotchet(), false),
-            confirmReplacement("a replacement of the split by a bar that closes no repeat",
-                ENDING_SPLIT, singleBarline(), true),
-            confirmReplacement("a replacement of a note outside the ending",
-                NOTE_OUTSIDE_ENDING, crotchet(), false),
-            confirmDeletion("a deletion of the split", ElementRange.single(ENDING_SPLIT), true),
-            confirmDeletion("a deletion of a note outside the ending",
-                ElementRange.single(NOTE_OUTSIDE_ENDING), false),
-            new ConfirmCase("a modification of a note's lyric",
-                line -> new ElementChange.Modification(line, ENDING_ANCHOR, Set.of(ElementField.LYRIC)),
-                line -> line.modifyElement(ENDING_ANCHOR, ElementField.LYRIC, () -> { }),
-                false)
-        );
-    }
-
-    private static ConfirmCase confirmInsertion(
-        String description, int index, StaffElement inserted, boolean splitGoes
-    ) {
-        return new ConfirmCase(description,
-            line -> new ElementChange.Insertion(line, index, inserted),
-            line -> line.addElement(index, inserted),
-            splitGoes);
-    }
-
-    private static ConfirmCase confirmReplacement(
-        String description, int index, StaffElement newElement, boolean splitGoes
-    ) {
-        return new ConfirmCase(description,
-            line -> new ElementChange.Replacement(line, index, newElement),
-            line -> line.setElement(index, newElement),
-            splitGoes);
-    }
-
-    private static ConfirmCase confirmDeletion(String description, ElementRange range, boolean splitGoes) {
-        return new ConfirmCase(description,
-            line -> new ElementChange.Deletion(line, range),
-            line -> line.removeRange(range),
-            splitGoes);
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("confirmCases")
-    void testRemovesConfirmableSpanAgreesWithWhatTheSweepThenRemoves(ConfirmCase testCase) {
-        var line = fixtureLine();
-
-        var predicted = testCase.change().apply(line).removesConfirmableSpan();
-        testCase.apply().accept(line);
-
-        assertThat(predicted)
-            .as("the prompt's prediction")
-            .isEqualTo(testCase.splitGoes());
-        assertThat(holdsAnEnding(line))
-            .as("the ending standing after the change")
-            .isEqualTo(!testCase.splitGoes());
-    }
-
-    @Test
-    void testConfirmCasesCoverEveryShape() {
-        var line = fixtureLine();
-
-        assertThat(confirmCases().<Class<?>>map(testCase -> testCase.change().apply(line).getClass()).distinct())
-            .containsExactlyInAnyOrder(ElementChange.class.getPermittedSubclasses());
     }
 
     static Stream<ProjectionCase> projectionCases() {
         var inserted = crotchet();
         var replacement = crotchet();
-        var deleted = new ElementRange(ENDING_ANCHOR, ENDING_SPLIT);
+        var deleted = new ElementRange(SECOND_NOTE, REPEAT);
+        var firstPairReplacement = crotchet();
+        var secondPairReplacement = crotchet();
 
         return Stream.of(
             new ProjectionCase("an insertion",
-                line -> new ElementChange.Insertion(line, ENDING_SPLIT, inserted),
-                List.of(), inserted, ENDING_SPLIT),
+                line -> new ElementChange.Insertion(line, REPEAT, inserted),
+                List.of(), Map.of(REPEAT, inserted)),
             new ProjectionCase("a replacement",
-                line -> new ElementChange.Replacement(line, ENDING_SPLIT, replacement),
-                List.of(ENDING_SPLIT), replacement, ENDING_SPLIT),
+                line -> ElementChange.Replacement.single(line, REPEAT, replacement),
+                List.of(REPEAT), Map.of(REPEAT, replacement)),
+            new ProjectionCase("a replacement of two pairs",
+                line -> ElementChange.Replacement.single(line, SECOND_NOTE, firstPairReplacement)
+                    .with(REPEAT, secondPairReplacement),
+                List.of(SECOND_NOTE, REPEAT),
+                Map.of(SECOND_NOTE, firstPairReplacement, REPEAT, secondPairReplacement)),
             new ProjectionCase("a deletion",
                 line -> new ElementChange.Deletion(line, deleted),
-                List.of(ENDING_ANCHOR, ENDING_SPLIT), null, 0),
+                List.of(SECOND_NOTE, REPEAT), Map.of()),
             new ProjectionCase("a modification",
-                line -> new ElementChange.Modification(line, ENDING_ANCHOR, Set.of(ElementField.LYRIC)),
-                List.of(), null, 0)
+                line -> new ElementChange.Modification(line, SECOND_NOTE, Set.of(ElementField.LYRIC)),
+                List.of(), Map.of())
         );
     }
 
@@ -219,22 +132,21 @@ class ElementChangeTest extends UnitTest {
             survivors.add(element);
         }
 
-        var arriving = testCase.arriving();
-        var arrivingCount = arriving == null ? 0 : 1;
+        var arrivals = testCase.arrivals();
 
-        if (arriving != null) {
-            assertThat(change.projectedIndexOf(arriving)).isEqualTo(testCase.arrivalIndex());
-            assertThat(projected.get(testCase.arrivalIndex())).isSameAs(arriving);
-        }
+        arrivals.forEach((index, arriving) -> {
+            assertThat(change.projectedIndexOf(arriving)).isEqualTo(index);
+            assertThat(projected.get(index)).isSameAs(arriving);
+        });
 
-        assertThat(projected).hasSize(survivors.size() + arrivingCount);
+        assertThat(projected).hasSize(survivors.size() + arrivals.size());
     }
 
     @Test
     void testProjectionCasesCoverEveryShape() {
         var line = fixtureLine();
 
-        assertThat(projectionCases().<Class<?>>map(testCase -> testCase.change().apply(line).getClass()))
+        assertThat(projectionCases().<Class<?>>map(testCase -> testCase.change().apply(line).getClass()).distinct())
             .containsExactlyInAnyOrder(ElementChange.class.getPermittedSubclasses());
     }
 }

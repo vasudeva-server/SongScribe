@@ -27,6 +27,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageSubscription;
 import songscribe.message.mutation.Mutation;
+import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.undo.MutationReplayer;
@@ -59,6 +60,29 @@ final class BatchReplay {
         /** The batches delivered since this recorder was made, in delivery order. */
         List<List<Mutation>> batches() {
             return batches;
+        }
+
+        void dispose() {
+            subscription.dispose();
+        }
+    }
+
+    /**
+     * Takes the entries of each change report that an edit delivers on the class's bus, in
+     * delivery order. The caller disposes it.
+     */
+    static final class ReportRecorder {
+        private final List<List<ReportedChange>> reports = new ArrayList<>();
+        private final MessageSubscription subscription = new MessageSubscription(this);
+
+        @Handler
+        void changesWereReported(ChangesWereReportedNotification notification) {
+            reports.add(List.copyOf(notification.getReport().changes()));
+        }
+
+        /** The entries of each report delivered since this recorder was made. */
+        List<List<ReportedChange>> reports() {
+            return reports;
         }
 
         void dispose() {

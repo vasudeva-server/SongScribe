@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
@@ -43,28 +44,6 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      * so the full mouth opening is twice the property value.
      */
     public static final double HAIRPIN_OPENING_HEIGHT_SS = 1.3332;
-
-    /**
-     * Minimum drawn length of a hairpin in staff spaces, from LilyPond's
-     * {@code Hairpin.minimum-length} (scm/define-grobs.scm). LilyPond applies this
-     * as a spacing rod via {@code ly:spanner::set-spacing-rods}, so the notes are
-     * pushed apart rather than the wedge being squashed.
-     */
-    public static final double MINIMUM_LENGTH_SS = 2.0;
-
-    /**
-     * The gap a hairpin endpoint keeps from an adjacent text dynamic or barline,
-     * from LilyPond's {@code Hairpin.bound-padding} (scm/define-grobs.scm).
-     */
-    public static final double BOUND_PADDING_SS = 1.0;
-
-    /**
-     * The gap each of two back-to-back hairpins keeps from their shared column
-     * center. {@code Hairpin::print} uses {@code padding / 3} for this case
-     * ("we're not adjacent to a text-dynamic, and we may move closer"), so it is
-     * derived from {@link #BOUND_PADDING_SS} rather than written as a literal.
-     */
-    public static final double BACK_TO_BACK_PADDING_SS = BOUND_PADDING_SS / 3;
 
     /**
      * The number of columns a hairpin needs to slope across. A pitched note is one
@@ -115,20 +94,39 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
     }
 
     /**
-     * The {@link SpanOutcome.Simple} projection of {@link #hairpinOutcomeFor}: a reshaped
+     * Narrows the kind test to a hairpin of the same {@link Kind}, so a crescendo never
+     * displaces a diminuendo, nor a diminuendo a crescendo.
+     *
+     * @return {@code true} when {@code other} is a hairpin whose {@link Kind} is this one's
+     */
+    @Override
+    boolean isSameKindAs(Span<?> other) {
+        return super.isSameKindAs(other)
+            && other instanceof Hairpin otherHairpin
+            && otherHairpin.kind == kind;
+    }
+
+    /**
+     * The {@link SpanOutcome} projection of {@link #hairpinOutcomeFor}: a reshaped
      * hairpin is one that survives, so a {@link SpanOutcome.Reshape} reads as
-     * {@link SpanOutcome.Simple#KEEP}. The sweep is the one reader that acts on the reshaped
+     * {@link SpanOutcome.Keep#INSTANCE}. The sweep is the one reader that acts on the reshaped
      * range and asks {@link #hairpinOutcomeFor} directly; every other reader asks only whether
      * the hairpin survives, which this answers.
      *
-     * @return {@link SpanOutcome.Simple#REMOVE} when this hairpin cannot survive
-     *     {@code change}, otherwise {@link SpanOutcome.Simple#KEEP}
+     * @return a {@link SpanOutcome.Remove} when this hairpin cannot survive
+     *     {@code change}, otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
-    public final SpanOutcome.Simple outcomeFor(ElementChange change) {
-        return hairpinOutcomeFor(change) instanceof SpanOutcome.Simple simple
-            ? simple
-            : SpanOutcome.Simple.KEEP;
+    public final SpanOutcome outcomeFor(ElementChange change) {
+        return switch (hairpinOutcomeFor(change)) {
+            case SpanOutcome.Remove remove -> remove;
+            case SpanOutcome.Keep _, SpanOutcome.Reshape _ -> SpanOutcome.Keep.INSTANCE;
+        };
+    }
+
+    @Override
+    protected String reportHeadingKey() {
+        return Strings.DIALOG_REPORT_HAIRPINS_REMOVED;
     }
 
     /**
@@ -137,30 +135,29 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      * <p>
      * An insertion or a replacement removes no element, so there is nothing to pull an
      * endpoint in to: both only ask whether this hairpin's two endpoints are still
-     * endpoints the user could have placed, and answer {@link SpanOutcome.Simple#REMOVE}
-     * or {@link SpanOutcome.Simple#KEEP}. Under {@link ElementChange.Replacement} an
-     * endpoint that is the replaced element is read as having <em>become</em> the
-     * replacement, since {@link Line#setElement} re-points the span rather than dropping it.
+     * endpoints the user could have placed, and answer {@link SpanOutcome.Remove}
+     * or {@link SpanOutcome.Keep#INSTANCE}. Under {@link ElementChange.Replacement} an
+     * endpoint that is a replaced element is read as having <em>become</em> its
+     * replacement — see {@link ElementChange#projectedEndpointIndexOf}.
      * <p>
      * A deletion can pull an endpoint in, so it answers
      * {@link SpanOutcome.Reshape} — <b>even when the hairpin's span is unchanged</b>,
-     * rather than {@link SpanOutcome.Simple#KEEP}. This is the one place a hairpin departs
-     * from the "{@code KEEP} means untouched" reading: the caller's merge pass needs every
+     * rather than {@link SpanOutcome.Keep#INSTANCE}. This is the one place a hairpin departs
+     * from the "{@code Keep} means untouched" reading: the caller's merge pass needs every
      * surviving hairpin's projected span, not only the moved ones, and a run of one whose
      * endpoints both survive already emits no mutation.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
-     * @return {@link SpanOutcome.Simple#KEEP} or {@link SpanOutcome.Simple#REMOVE} for a
+     * @return {@link SpanOutcome.Keep#INSTANCE} or a {@link SpanOutcome.Remove} for a
      *     change that removes no element; for a deletion this hairpin survives, the
      *     {@link SpanOutcome.Reshape} over its projected span, and otherwise
-     *     {@link SpanOutcome.Simple#REMOVE}
+     *     a {@link SpanOutcome.Remove}
      */
     public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change) {
-        var anchorIndex = requireAnchorElementIndex();
-        var endIndex = requireEndElementIndex();
+        var range = range();
 
         if (change instanceof ElementChange.Deletion deletion) {
-            return outcomeForDeletion(deletion, new ElementRange(anchorIndex, endIndex));
+            return outcomeForDeletion(deletion, range);
         }
 
         // Every other shape removes no element, so none of them can pull an endpoint in and
@@ -168,7 +165,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         // The exhaustive switches in the other kinds' outcomeFor are what force a new shape
         // to be considered, and this is where a hairpin considers it.
         var line = change.line();
-        return outcomeForRepointing(change, line.getElement(anchorIndex), line.getElement(endIndex));
+        return outcomeForRepointing(change, line.getElement(range.begin()), line.getElement(range.end()));
     }
 
     /**
@@ -180,13 +177,13 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      * @param anchor this hairpin's anchor element, as found in the pre-change line
      * @param end    this hairpin's end element, as found in the pre-change line
      */
-    private SpanOutcome.Simple outcomeForRepointing(ElementChange change, StaffElement anchor, StaffElement end) {
+    private SpanOutcome.HairpinOutcome outcomeForRepointing(ElementChange change, StaffElement anchor, StaffElement end) {
         var projected = change.projectedElements();
-        var anchorIndex = projectedEndpointIndexOf(change, anchor);
-        var endIndex = projectedEndpointIndexOf(change, end);
+        var anchorIndex = change.projectedEndpointIndexOf(anchor);
+        var endIndex = change.projectedEndpointIndexOf(end);
 
         if (anchorIndex == null || endIndex == null || endIndex <= anchorIndex) {
-            return SpanOutcome.Simple.REMOVE;
+            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
         }
 
         var span = new ElementRange(anchorIndex, endIndex);
@@ -197,25 +194,10 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         if (canAnchorAt(projected, span)
             && canEndAt(projected, endIndex)
             && hasEnoughColumns(projected, span)) {
-            return SpanOutcome.Simple.KEEP;
+            return SpanOutcome.Keep.INSTANCE;
         }
 
-        return SpanOutcome.Simple.REMOVE;
-    }
-
-    /**
-     * Returns the projected position of {@code endpoint}, following the replacement
-     * re-pointing rule: a replaced endpoint becomes the replacement rather than vanishing.
-     *
-     * @return the endpoint's position in {@link ElementChange#projectedElements}, or
-     *     {@code null} when it is not in the projection
-     */
-    private static @Nullable Integer projectedEndpointIndexOf(ElementChange change, StaffElement endpoint) {
-        if (change instanceof ElementChange.Replacement replacement && endpoint == replacement.oldElement()) {
-            return change.projectedIndexOf(replacement.newElement());
-        }
-
-        return change.projectedIndexOf(endpoint);
+        return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID);
     }
 
     /**
@@ -251,7 +233,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         }
 
         if (first == null || last == null) {
-            return SpanOutcome.Simple.REMOVE;
+            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
         }
 
         var survivors = new ElementRange(first, last);
@@ -259,7 +241,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var end = resolveEndIndex(survivors, projected);
 
         if (begin == null || end == null || end <= begin) {
-            return SpanOutcome.Simple.REMOVE;
+            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
         }
 
         // A span the user could not have drawn leaves no gesture worth keeping. The column
@@ -267,7 +249,7 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
         var reshaped = new ElementRange(begin, end);
 
         if (!hasEnoughColumns(projected, reshaped)) {
-            return SpanOutcome.Simple.REMOVE;
+            return new SpanOutcome.Remove(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
         }
 
         return new SpanOutcome.Reshape(reshaped);

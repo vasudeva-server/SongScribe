@@ -52,6 +52,7 @@ import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -285,7 +286,7 @@ final class ScorePartwiseBuilder {
      * over it (refs #592).
      */
     private static void applyBeams(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Beam.class, (_, beam, _, _) -> {
+        forEachSpanInRange(lines, Beam.class, (_, beam, _) -> {
             var members = beam.members();
 
             if (members.size() == 1) {
@@ -450,10 +451,10 @@ final class ScorePartwiseBuilder {
      * it while building the note.
      */
     private static void applyTuplets(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Tuplet.class, (line, tuplet, anchorIndex, endIndex) -> {
-            addTupletBracket(context, line.getElement(anchorIndex), StartStop.START,
+        forEachSpanInRange(lines, Tuplet.class, (line, tuplet, range) -> {
+            addTupletBracket(context, line.getElement(range.begin()), StartStop.START,
                 tuplet.getUserYOffsetSs());
-            addTupletBracket(context, line.getElement(endIndex), StartStop.STOP, 0);
+            addTupletBracket(context, line.getElement(range.end()), StartStop.STOP, 0);
         });
     }
 
@@ -483,9 +484,9 @@ final class ScorePartwiseBuilder {
      * creating a second. Rests carry no trill.
      */
     private static void applyTrills(BuildContext context, List<MeasureBuilder.LineOutput> lines) {
-        forEachSpanInRange(lines, Trill.class, (line, trill, anchorIndex, endIndex) -> {
-            addTrillStart(context, line.getElement(anchorIndex), trill);
-            addWavyLine(context, line.getElement(endIndex), StartStopContinue.STOP, 0);
+        forEachSpanInRange(lines, Trill.class, (line, trill, range) -> {
+            addTrillStart(context, line.getElement(range.begin()), trill);
+            addWavyLine(context, line.getElement(range.end()), StartStopContinue.STOP, 0);
         });
     }
 
@@ -650,9 +651,9 @@ final class ScorePartwiseBuilder {
             var starting = new HashMap<Integer, List<Hairpin>>();
             var ending = new HashMap<Integer, List<Hairpin>>();
 
-            forEachSpanInRange(line, Hairpin.class, (unusedLine, hairpin, anchorIndex, endIndex) -> {
-                starting.computeIfAbsent(anchorIndex, unusedKey -> new ArrayList<>()).add(hairpin);
-                ending.computeIfAbsent(endIndex, unusedKey -> new ArrayList<>()).add(hairpin);
+            forEachSpanInRange(line, Hairpin.class, (unusedLine, hairpin, range) -> {
+                starting.computeIfAbsent(range.begin(), unusedKey -> new ArrayList<>()).add(hairpin);
+                ending.computeIfAbsent(range.end(), unusedKey -> new ArrayList<>()).add(hairpin);
             });
 
             if (starting.isEmpty()) {
@@ -713,13 +714,13 @@ final class ScorePartwiseBuilder {
     // -------------------------------------------------------------------------
 
     /**
-     * What one span pass does to a single span of {@code line}. The indices are passed in
-     * because {@link #forEachSpanInRange} has already read them; re-reading them from the span
-     * would be asking the same question twice.
+     * What one span pass does to a single span of {@code line}. The range is passed in because
+     * {@link #forEachSpanInRange} has already read it; re-reading it from the span would be
+     * asking the same question twice.
      */
     @FunctionalInterface
     private interface SpanAction<T extends Span<?>> {
-        void apply(Line line, T span, int anchorIndex, int endIndex);
+        void apply(Line line, T span, ElementRange range);
     }
 
     /**
@@ -728,7 +729,7 @@ final class ScorePartwiseBuilder {
     private static <T extends Span<?>> void forEachSpanInRange(
             Line line, Class<T> spanType, SpanAction<T> action) {
         for (var span : line.spanRegistry().findSpans(spanType)) {
-            action.apply(line, span, span.requireAnchorElementIndex(), span.requireEndElementIndex());
+            action.apply(line, span, span.range());
         }
     }
 

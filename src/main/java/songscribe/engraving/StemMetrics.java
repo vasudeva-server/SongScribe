@@ -63,4 +63,16 @@ public final class StemMetrics {
     public static final double GRACE_NOTE_STEM_LENGTH_SS = 2.5;
 
     private StemMetrics() {}
+
+    /**
+     * The Y of a grace note's stem tip at {@code head}, in staff spaces (Y down) from the middle
+     * line: a grace stem always points up, so the tip sits above the head by the grace stem
+     * length.
+     *
+     * @param head the staff position of the grace note's head
+     * @return the Y of the stem tip, in staff spaces from the middle line
+     */
+    public static double graceStemTopYSs(StaffPosition head) {
+        return head.toSs() - GRACE_NOTE_STEM_LENGTH_SS;
+    }
 }

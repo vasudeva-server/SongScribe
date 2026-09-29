@@ -61,7 +61,6 @@ import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
-import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.util.StringUtils;
 
 /**
@@ -713,26 +712,21 @@ public final class Song implements Disposable {
     // ========== Setters (mutate + setModified + post) ==========
 
     /**
-     * Sets the song's tempo, dropping any tuplet the new beat invalidates. No-ops when
-     * {@code tempo} says what the current one says.
+     * Sets the song's tempo. No-ops when {@code tempo} says what the current one says.
      *
      * <p>Stays public because the undo replayer and the MusicXML header reader both
-     * legitimately drive it from outside the editing UI. Bypassing it is still not possible:
-     * the write itself is routed through {@link #withBeatDefiningEdit}, which no-ops its
-     * validation during replay and during a suspended load.
+     * legitimately drive it from outside the editing UI. A change of beat can invalidate
+     * tuplets; the tuplet beat rule finds them when the modification bracket closes.
      *
      * @param tempo the tempo the song is to have
-     * @effects replaces the song's tempo, records one undo step, and revalidates tuplets
-     *          against the new beat
+     * @effects replaces the song's tempo and records one undo step
      */
     public void setTempo(Tempo tempo) {
         if (this.tempo.equals(tempo)) {
             return;
         }
 
-        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo,
-            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                () -> this.tempo = tempo));
+        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo, () -> this.tempo = tempo);
     }
 
     /**
@@ -763,6 +757,89 @@ public final class Song implements Disposable {
         var lineIndex = firstNonEmptyLineIndex();
 
         return lineIndex == null ? null : lines.get(lineIndex).getElement(0);
+    }
+
+    /**
+     * The first element of the repeat section that is open just before {@code location} — the
+     * element a {@code :|} at {@code location} plays back from, and the passage an edit there
+     * repeats.
+     *
+     * <p>A section opens at a {@code |:} ({@link ElementType#REPEAT_LEFT}), at a {@code :|:}
+     * ({@link ElementType#REPEAT_LEFT_RIGHT}), or at the song start. It is closed by a
+     * {@code :|} ({@link ElementType#REPEAT_RIGHT}), a {@code ||}
+     * ({@link ElementType#DOUBLE_BARLINE}) or a final barline
+     * ({@link ElementType#FINAL_DOUBLE_BARLINE}). Line breaks neither open nor close one: a
+     * section may start any number of lines before {@code location}.
+     *
+     * <p>Playback loops a {@code :|} back to this answer, and treats a {@code :|} with no open
+     * section as an ordinary bar that plays on. The editor lets a user write such a
+     * {@code :|}, as in {@code A :| B :|} or {@code A || B :|}, and a load keeps it, so
+     * {@code null} is an answer about legal music, not about a broken song.
+     *
+     * @param location an element of this song, named by its line index and element index
+     *     ({@link ElementLocation}); it must exist
+     * @return the element just after the opening {@code |:} or {@code :|:}, or the song's
+     *     first element when the song start opens the section; {@code null} when a
+     *     {@code :|}, {@code ||} or final barline stands between the opener and
+     *     {@code location}, so that no section is open
+     * @invariant the search looks only at elements strictly before {@code location}: the
+     *     element at {@code location} never opens or closes the section it asks about
+     * @invariant when the opener is the last element of its line, the answer is the first
+     *     element of the next line that has elements; such a line exists, because
+     *     {@code location} comes after the opener
+     * @invariant the song start is element 0 of {@link #firstNonEmptyLineIndex()}, so a
+     *     leading empty line is skipped
+     * @invariant a non-null answer is never after {@code location}; it equals
+     *     {@code location} exactly when the opener, or the song start, is immediately before it
+     */
+    public @Nullable ElementLocation repeatSectionStart(ElementLocation location) {
+        var searchLineIndex = location.lineIndex();
+        var searchElementIndex = location.elementIndex() - 1;
+
+        while (searchLineIndex >= FIRST_LINE_INDEX) {
+            var searchLine = lines.get(searchLineIndex);
+
+            while (searchElementIndex >= FIRST_ELEMENT_INDEX) {
+                var type = searchLine.getElement(searchElementIndex).getType();
+
+                if (type == ElementType.REPEAT_LEFT || type == ElementType.REPEAT_LEFT_RIGHT) {
+                    return firstElementAtOrAfter(searchLineIndex, searchElementIndex + 1);
+                }
+
+                if (type == ElementType.REPEAT_RIGHT
+                        || type == ElementType.DOUBLE_BARLINE
+                        || type == ElementType.FINAL_DOUBLE_BARLINE) {
+                    return null;
+                }
+
+                searchElementIndex--;
+            }
+
+            searchLineIndex--;
+
+            if (searchLineIndex >= FIRST_LINE_INDEX) {
+                searchElementIndex = lines.get(searchLineIndex).elementCount() - 1;
+            }
+        }
+
+        return firstElementAtOrAfter(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX);
+    }
+
+    /**
+     * The first element at or after the given position in song order, where a position past
+     * the end of its line continues on the next line. The caller guarantees that such an
+     * element exists.
+     */
+    private ElementLocation firstElementAtOrAfter(int lineIndex, int elementIndex) {
+        var searchLineIndex = lineIndex;
+        var searchElementIndex = elementIndex;
+
+        while (searchElementIndex >= lines.get(searchLineIndex).elementCount()) {
+            searchLineIndex++;
+            searchElementIndex = FIRST_ELEMENT_INDEX;
+        }
+
+        return new ElementLocation(searchLineIndex, searchElementIndex);
     }
 
     /**
@@ -915,7 +992,7 @@ public final class Song implements Disposable {
      * <p>A tie on the last note of a line ends at the start of the next line, so the insertion
      * can move the end of the tie crossing out of the line before {@code line} and of the tie
      * crossing out of {@code line}. Both lines are ones the tie rule judges when the outermost
-     * modification bracket closes (see {@link #applyTieRule}).
+     * modification bracket closes (see {@link TieRule}).
      *
      * <pre>
      *  withModification {
@@ -971,7 +1048,7 @@ public final class Song implements Disposable {
      * {@link LineDeletion} record holds the line intact so undo can put it back unchanged.
      * A tie on the last note of the line before the removed one ended at the start of the
      * removed line, and now ends in the line that follows instead, or nowhere; the tie rule
-     * judges it when the outermost modification bracket closes (see {@link #applyTieRule}).
+     * judges it when the outermost modification bracket closes (see {@link TieRule}).
      *
      * <pre>
      *  withModification {
@@ -1017,50 +1094,14 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Runs the tie rule (see {@link NoteElement}) over the lines {@code batch} touched, and over
-     * the line before each of them. A touched line is a line a {@link LineScopedMutation} in the
-     * batch names, the line of a {@link LineInsertion}, and, for a {@link LineDeletion}, the line
-     * that now sits at its {@link LineDeletion#lineIndex()}, when there is one; a named line that
-     * is no longer one of this song's lines is not judged. Each line is judged once, through
-     * {@link Line#applyTieRule}.
-     *
-     * <p>Called by {@link ModificationSession#endModification} as the outermost bracket closes,
-     * while it is still open, so each removal lands in the batch that is delivered, after the
-     * changes that broke the ties. Reverse-order undo restores those ties first, against the
-     * final state, where every anchor is still in its line.
-     *
-     * @param batch the mutations the outermost bracket recorded, every change in them landed
-     * @effects posts a {@link songscribe.message.mutation.TieRemoval} for each tie in those lines
-     *     that does not hold
-     */
-    void applyTieRule(List<Mutation> batch) {
-        var judged = new LinkedHashSet<Line>();
-
-        for (var mutation : batch) {
-            var touched = touchedLine(mutation);
-            var touchedIndex = touched == null ? null : indexOfLine(touched);
-
-            if (touched == null || touchedIndex == null) {
-                continue;
-            }
-
-            if (touchedIndex > 0) {
-                judged.add(lines.get(touchedIndex - 1));
-            }
-
-            judged.add(touched);
-        }
-
-        judged.forEach(Line::applyTieRule);
-    }
-
-    /**
-     * The line {@code mutation} touches, as {@link #applyTieRule} defines it.
+     * The line {@code mutation} touches, as {@link TieRule} defines it: the line a
+     * {@link LineScopedMutation} names, the line of a {@link LineInsertion}, or the line that now
+     * sits at a {@link LineDeletion}'s index.
      *
      * @return the line, or {@code null} for a song-wide mutation, or for a {@link LineDeletion}
      *     whose index no line now sits at
      */
-    private @Nullable Line touchedLine(Mutation mutation) {
+    @Nullable Line touchedLine(Mutation mutation) {
         if (mutation instanceof LineScopedMutation scoped) {
             return scoped.getLine();
         }
@@ -1736,6 +1777,142 @@ public final class Song implements Disposable {
     }
 
     /**
+     * Returns where in the current song {@code mutation} redefines the beat from, or
+     * {@code null} when it redefines no beat.
+     *
+     * <p>This is the one enumeration of the mutations that can redefine the beat, as
+     * {@link #keyMoveOf} is for keys. A mutation redefines the beat when it:
+     * <ul>
+     *   <li>changes the song's {@link MetadataField#TEMPO} to one that does not have the same
+     *       beat ({@link Tempo#haveSameBeat}): from element 0 of the
+     *       {@link #firstNonEmptyLineIndex() first non-empty line};</li>
+     *   <li>modifies an element's {@link ElementField#TEMPO_CHANGE} or
+     *       {@link ElementField#BEAT_CHANGE}: from that element;</li>
+     *   <li>inserts an element that defines a beat: from that element;</li>
+     *   <li>replaces an element when the old or the new one defines a beat: from the new
+     *       element;</li>
+     *   <li>deletes elements when one of them defines a beat: from the line's element at the
+     *       deletion's first index, or its last element when the deletion took the line's
+     *       tail;</li>
+     *   <li>inserts a line holding an element that defines a beat: from that line's element
+     *       0;</li>
+     *   <li>deletes a line that held an element that defines a beat: from element 0 of the line
+     *       now at its index.</li>
+     * </ul>
+     * An element defines a beat when it carries a tempo-change or a beat-change attachment.
+     *
+     * @param mutation a mutation of an edit whose changes have all landed
+     * @return the location, as the song stands now, from which the beat is redefined; or
+     *     {@code null} when {@code mutation} redefines no beat — every mutation not listed, and
+     *     every listed one that carried no beat change — or when the place it names is no longer
+     *     in the song: the element or line has since left it, the line is empty, or no line
+     *     stands where a deleted one was
+     */
+    @Nullable ElementLocation beatMoveOf(Mutation mutation) {
+        return switch (mutation) {
+            case MetadataChange change -> change.field() == MetadataField.TEMPO
+                    && !Tempo.haveSameBeat(tempoOf(change.oldValue()), tempoOf(change.newValue()))
+                ? songStartLocation()
+                : null;
+            case ElementModification modification -> modification.fields().contains(ElementField.TEMPO_CHANGE)
+                    || modification.fields().contains(ElementField.BEAT_CHANGE)
+                ? recordedLocation(modification.line(), modification.index())
+                : null;
+            case ElementInsertion insertion -> definesBeat(insertion.element())
+                ? currentLocationOf(insertion.element())
+                : null;
+            case ElementReplacement replacement ->
+                definesBeat(replacement.oldElement()) || definesBeat(replacement.newElement())
+                    ? currentLocationOf(replacement.newElement())
+                    : null;
+            case ElementDeletion deletion -> deletion.deletedElements().stream().anyMatch(Song::definesBeat)
+                ? deletionLocation(deletion)
+                : null;
+            case LineInsertion insertion -> holdsBeatDefinition(insertion.line())
+                ? lineStartLocation(indexOfLine(insertion.line()))
+                : null;
+            case LineDeletion deletion -> holdsBeatDefinition(deletion.deletedLine())
+                ? lineStartLocation(deletion.lineIndex())
+                : null;
+            default -> null;
+        };
+    }
+
+    /** Whether {@code element} defines a beat: it carries a tempo change or a beat change. */
+    private static boolean definesBeat(StaffElement element) {
+        return TempoResolver.beatDefinedAt(element) != null;
+    }
+
+    private static boolean holdsBeatDefinition(Line line) {
+        return line.getElements().stream().anyMatch(Song::definesBeat);
+    }
+
+    private static @Nullable Tempo tempoOf(@Nullable Object value) {
+        return value instanceof Tempo tempo ? tempo : null;
+    }
+
+    /** Element 0 of the first non-empty line, or {@code null} when every line is empty. */
+    private @Nullable ElementLocation songStartLocation() {
+        var lineIndex = firstNonEmptyLineIndex();
+
+        return lineIndex == null ? null : new ElementLocation(lineIndex, FIRST_ELEMENT_INDEX);
+    }
+
+    /**
+     * Element 0 of the line at {@code lineIndex}, or {@code null} when {@code lineIndex} is
+     * {@code null}, no line stands there, or that line is empty.
+     */
+    private @Nullable ElementLocation lineStartLocation(@Nullable Integer lineIndex) {
+        if (lineIndex == null || lineIndex >= lines.size() || lines.get(lineIndex).isEmpty()) {
+            return null;
+        }
+
+        return new ElementLocation(lineIndex, FIRST_ELEMENT_INDEX);
+    }
+
+    /**
+     * The location of {@code element} in this song now, or {@code null} when it is in no line
+     * of this song.
+     */
+    private @Nullable ElementLocation currentLocationOf(StaffElement element) {
+        var line = element.getParentLine();
+        var lineIndex = line == null ? null : indexOfLine(line);
+
+        if (line == null || lineIndex == null) {
+            return null;
+        }
+
+        return new ElementLocation(lineIndex, line.getElementIndex(element));
+    }
+
+    /**
+     * The location {@code deletion} redefines the beat from: its line's element at the
+     * deletion's first index, or the line's last element when the deletion took the line's
+     * tail; {@code null} when the line is no longer in this song or is now empty.
+     */
+    private @Nullable ElementLocation deletionLocation(ElementDeletion deletion) {
+        return recordedLocation(deletion.line(), deletion.range().begin());
+    }
+
+    /**
+     * The location in this song of the element a mutation recorded at {@code index} of
+     * {@code line}: that index, or the line's last element when the line is now shorter;
+     * {@code null} when the line is no longer in this song or is now empty.
+     * <p>
+     * A mutation that holds only copies of its element, such as an {@link ElementModification},
+     * names it by this index, since a copy is in no line.
+     */
+    private @Nullable ElementLocation recordedLocation(Line line, int index) {
+        var lineIndex = indexOfLine(line);
+
+        if (lineIndex == null || line.isEmpty()) {
+            return null;
+        }
+
+        return new ElementLocation(lineIndex, Math.min(index, line.elementCount() - 1));
+    }
+
+    /**
      * Restores line 0's own key when a mutation has left it with none. Line 0 has nothing to
      * inherit from, so it must establish a key, and the only value that leaves what the user sees
      * unchanged is the key that line was already sounding: the key it inherited a moment ago, or —
@@ -2007,49 +2184,15 @@ public final class Song implements Disposable {
     }
 
     /**
-     * Applies a beat-defining state change and, inside the same modification bracket,
-     * removes every tuplet at or after the edit position that the new beat context
-     * invalidates, warning the user once when any were lost.
+     * Records {@code change} into the report of the edit in flight, for the user to be told
+     * about once the edit is over.
      *
-     * <p>{@code edit} must perform the raw state change only, without recording its own
-     * mutation. Nested calls aggregate, so the outermost caller gets a truthful answer.
-     *
-     * @param lineIndex    the index of the line the edit sits on
-     * @param elementIndex the index of the element within that line
-     * @param edit         the raw state change
-     * @return {@code true} if at least one tuplet was removed
-     * @see ModificationSession#withBeatDefiningEdit
+     * @param change the change the song made on its own, as the user is told about it
+     * @throws IllegalStateException if tracking is on and no modification bracket is open
+     * @see ModificationSession#report
      */
-    public boolean withBeatDefiningEdit(int lineIndex, int elementIndex, Runnable edit) {
-        return modifications.withBeatDefiningEdit(lineIndex, elementIndex, edit);
-    }
-
-    /**
-     * {@link #withBeatDefiningEdit} for a write that hangs on an element rather than on the
-     * song, locating the edit position from that element. An element that is not in a
-     * document — a detached attachment owner, a clipboard fragment, a dialog test double —
-     * has no position to validate forward from, so the edit simply runs.
-     *
-     * @param owner the element the edited attachment hangs on, or {@code null} if detached
-     * @param edit  the raw state change
-     * @return {@code true} if at least one tuplet was removed
-     */
-    @SuppressWarnings("UnusedReturnValue")
-    public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
-        return ModificationSession.withBeatDefiningEditOn(owner, edit);
-    }
-
-    /**
-     * Records that the edit in flight cost the user one or more tuplets, so a single
-     * {@link TupletsWereRemovedNotification} goes up once the outermost modification bracket
-     * closes. The beat-edit chokepoint arms this itself; it is public for the paste path,
-     * which drops tuplets outside {@code dom} and must warn on the same terms.
-     *
-     * @param cause what the user did that removed them
-     * @see ModificationSession#noteTupletsWereRemoved
-     */
-    public void noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause cause) {
-        modifications.noteTupletsWereRemoved(cause);
+    public void report(ReportedChange change) {
+        modifications.report(change);
     }
 
     // -- IO/internal setters (remain public, no message posting) --
@@ -2100,33 +2243,18 @@ public final class Song implements Disposable {
         // than re-reading a field the replayer may have reassigned.
         var currentTempo = tempo;
 
-        // An update whose values already match must not dirty the undo step or run a
-        // beat-defining edit — the settings dialog seeds its widgets from getTempo(), so
-        // confirming it unedited resends exactly what is already there.
+        // An update whose values already match must not dirty the undo step — the settings
+        // dialog seeds its widgets from getTempo(), so confirming it unedited resends exactly
+        // what is already there.
         var newTempo = update.getTempo();
 
         if (currentTempo.equals(newTempo)) {
             return;
         }
 
-        // Only the tempo type is the song's beat. A BPM, description or show-tempo edit changes
-        // how the marking reads and nothing about the notation, so it must not drag the whole
-        // song through a tuplet revalidation — and must not be able to remove a tuplet.
-        var redefinesBeat = !Tempo.haveSameBeat(currentTempo, newTempo);
-
-        // The assignment happens inside the bracket because withBeatDefiningEdit must run the
-        // change itself in order to invalidate tuplets against the new beat.
         withModification(() -> applyChange(
             new MetadataChange(MetadataField.TEMPO, currentTempo, newTempo),
-            () -> {
-                if (redefinesBeat) {
-                    withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
-                        () -> tempo = newTempo);
-                    return;
-                }
-
-                tempo = newTempo;
-            }
+            () -> tempo = newTempo
         ));
     }
 

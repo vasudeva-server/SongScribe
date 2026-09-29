@@ -27,7 +27,7 @@ import org.xml.sax.SAXException;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
-import songscribe.io.LoadMigrations;
+import songscribe.io.LoadPasses;
 import songscribe.io.SongLoadResult;
 import songscribe.util.Utils;
 
@@ -110,13 +110,14 @@ final class SongMapper {
         // Run here rather than in the UI: SongLoader's headless route runs it too, and a
         // song whose tuplets were settled in only one of the two routes would export a
         // different MIDI file than it displays.
-        var migrations = LoadMigrations.run(song, mapped.pendingTuplets(), mapped.accidentalsConverted());
+        var report = LoadPasses.run(
+            song, mapped.pendingTuplets(), mapped.pendingEndings(), mapped.accidentalsConverted());
 
         return new SongLoadResult.Success(
             song,
             documentFonts,
             List.of(),
-            migrations);
+            report);
     }
 
     /**

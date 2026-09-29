@@ -19,7 +19,6 @@
  */
 package songscribe.dom;
 
-import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +27,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
@@ -64,74 +64,7 @@ public final class TupletLoadPass {
     }
 
     /**
-     * One thing the pass did to one tuplet. Every index is 0-based, as the document stores
-     * it; a UI reporting them to the user converts to 1-based itself.
-     */
-    public sealed interface Change {
-
-        /** The index of the line holding the tuplet. */
-        int lineIndex();
-
-        /** The tuplet's elements within that line, from its anchor to its last element. */
-        ElementRange span();
-
-        /** The printed tuplet number. */
-        TupletGrade grade();
-
-        /**
-         * A tuplet the pass dropped. The reason is the validator's, except
-         * {@link TupletValidator.Reason#TOO_FEW_NOTES}: a span holding too few notes to carry
-         * a bracket is a rule of the pass, judged before the validator runs.
-         */
-        record Removed(int lineIndex, ElementRange span, TupletGrade grade,
-                       TupletValidator.Reason reason) implements Change {}
-
-        /** A tuplet whose ratio the file did not state and the pass derived. */
-        record Updated(int lineIndex, ElementRange span, TupletGrade grade,
-                       int normalNotes) implements Change {}
-    }
-
-    /**
-     * Everything the pass did, in document order. A tuplet that states no ratio and is invalid
-     * appears once, as {@link Change.Removed} — it is dropped, not migrated.
-     */
-    public record Report(List<Change> changes) {
-
-        // Defensive copy — the record's contract is immutability, and the pass builds the
-        // list incrementally before handing it over.
-        public Report {
-            changes = List.copyOf(changes);
-        }
-
-        public static Report empty() {
-            return new Report(List.of());
-        }
-
-        // The counts are derived on demand rather than stored. Caching them would mean a
-        // second component on the record that a caller could construct out of step with the
-        // list it summarizes, and the list is short and read a handful of times per load.
-
-        /** How many tuplets the pass dropped. */
-        public int dropped() {
-            return count(Change.Removed.class);
-        }
-
-        /** How many tuplets the pass derived a ratio for. */
-        public int migrated() {
-            return count(Change.Updated.class);
-        }
-
-        private int count(Class<? extends Change> kind) {
-            return (int) changes.stream().filter(kind::isInstance).count();
-        }
-
-        public boolean isEmpty() {
-            return changes.isEmpty();
-        }
-    }
-
-    /**
-     * Adds to {@code song} every pending tuplet that can stand, and reports what it did.
+     * Adds to {@code song} every pending tuplet that can stand, and records what it did.
      *
      * <p>Each pending tuplet is judged leniently, under
      * {@link TupletValidator.Strictness#LENIENT}: the beat barrier and the structural boundary
@@ -146,30 +79,36 @@ public final class TupletLoadPass {
      * outside suspension the additions would land in the undo history and a freshly opened
      * song could be undone back to a song without its tuplets. The song's modified flag is
      * deliberately left alone — {@code ScoreView.setSong} clears it when the song is
-     * installed, so the caller re-marks it afterwards from the returned report.
+     * installed, so the caller re-marks it afterwards from the report.
      *
      * @param song           the song to add the tuplets to, immediately after parsing and before
      *                       it is installed
      * @param pendingTuplets the tuplets the reader found in {@code song}. Each one's anchor and
      *                       end sit in the same line of {@code song}, the end at or after the
      *                       anchor, and no two overlap
-     * @return every pending tuplet the pass dropped, and every one it added with a derived
-     *     ratio, in document order; a pending tuplet added with its stated ratio is not reported
-     * @effects adds a {@link Tuplet} to its anchor's line for every pending tuplet not dropped
-     * @log INFO the dropped and derived counts, when the report is not empty
+     * @param report         the report the pass records into
+     * @effects adds a {@link Tuplet} to its anchor's line for every pending tuplet not dropped;
+     *     records to {@code report}, in document order, every pending tuplet the pass dropped
+     *     and every one it added with a derived ratio; a pending tuplet added with its stated
+     *     ratio is not recorded
+     * @log INFO the dropped and derived counts, when either is not zero
      */
-    public static Report run(Song song, List<PendingTuplet> pendingTuplets) {
-        var report = new Report[1];
+    public static void run(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+        var firstNewEntry = report.changes().size();
 
-        song.withoutMutationTracking(() -> report[0] = placeTuplets(song, pendingTuplets));
+        song.withoutMutationTracking(() -> placeTuplets(song, pendingTuplets, report));
 
-        var placed = report[0];
+        var recorded = report.changes().subList(firstNewEntry, report.changes().size());
+        var dropped = countUnder(recorded, Strings.DIALOG_REPORT_TUPLETS_REMOVED);
+        var derived = countUnder(recorded, Strings.DIALOG_REPORT_TUPLETS_UPDATED);
 
-        if (!placed.isEmpty()) {
-            LOG.info("Tuplet load pass: {} dropped, {} migrated", placed.dropped(), placed.migrated());
+        if (!recorded.isEmpty()) {
+            LOG.info("Tuplet load pass: {} dropped, {} migrated", dropped, derived);
         }
+    }
 
-        return placed;
+    private static long countUnder(List<ReportedChange> changes, String headingKey) {
+        return changes.stream().filter(change -> change.headingKey().equals(headingKey)).count();
     }
 
     /**
@@ -177,11 +116,11 @@ public final class TupletLoadPass {
      * walk carries. Adding a tuplet leaves the elements — and so every other pending tuplet's
      * indices — untouched, which is why the verdicts stay valid as they are applied.
      */
-    private static Report placeTuplets(Song song, List<PendingTuplet> pendingTuplets) {
-        var startLineIndex = firstPopulatedLineIndex(song);
+    private static void placeTuplets(Song song, List<PendingTuplet> pendingTuplets, ChangeReport report) {
+        var startLineIndex = song.firstNonEmptyLineIndex();
 
         if (startLineIndex == null) {
-            return Report.empty();
+            return;
         }
 
         var byAnchor = new IdentityHashMap<StaffElement, PendingTuplet>();
@@ -190,59 +129,63 @@ public final class TupletLoadPass {
             byAnchor.put(pending.anchor(), pending);
         }
 
-        var changes = new ArrayList<Change>();
-
         for (var verdict : TupletValidator.validateFrom(
             song, new ElementLocation(startLineIndex, 0), TupletValidator.Strictness.LENIENT,
             (line, index) -> pendingAnchoredAt(byAnchor, line, index))
         ) {
-            var change = place(song, verdict);
-
-            if (change != null) {
-                changes.add(change);
-            }
+            place(song, verdict, report);
         }
-
-        return new Report(changes);
     }
 
     /**
-     * Adds one judged pending tuplet to its line, or drops it.
-     *
-     * @return what to report, or {@code null} when the tuplet was added with the ratio its file
-     *     stated
+     * Adds one judged pending tuplet to its line, or drops it. Records a dropped tuplet, and a
+     * tuplet added with a derived ratio.
      */
-    private static @Nullable Change place(Song song, TupletValidator.Verdict<PendingTuplet> verdict) {
+    private static void place(
+        Song song, TupletValidator.Verdict<PendingTuplet> verdict, ChangeReport report
+    ) {
         var pending = verdict.tuplet();
         var lineIndex = verdict.lineIndex();
         var line = song.getLine(lineIndex);
-        var span = verdict.span();
+        var where = anchorToEnd(lineIndex, verdict.span());
         var grade = pending.grade();
-
-        if (!Tuplet.holdsEnoughNotes(line, span)) {
-            return new Change.Removed(lineIndex, span, grade, TupletValidator.Reason.TOO_FEW_NOTES);
-        }
-
         var statedRatio = pending.statedRatio();
         var result = statedRatio == null
             ? verdict.result()
             : TupletValidator.validateStated(
                 verdict.context(), grade, statedRatio, TupletValidator.Strictness.LENIENT);
 
-        return switch (result) {
-            case TupletValidator.Result.Invalid(var reason) ->
-                new Change.Removed(lineIndex, span, grade, reason);
+        switch (result) {
+            case TupletValidator.Result.Invalid(var reason) -> report.record(new ReportedChange(
+                Strings.DIALOG_REPORT_TUPLETS_REMOVED, Strings.get(reason.messageKey()), where));
 
             case TupletValidator.Result.Valid(var ratio) -> {
                 var tuplet = new Tuplet(pending.anchor(), pending.end(), grade, ratio);
                 tuplet.setUserYOffsetSs(pending.yOffsetSs());
                 tuplet.addTo(line);
 
-                yield statedRatio == null
-                    ? new Change.Updated(lineIndex, span, grade, ratio.normalNotes())
-                    : null;
+                if (statedRatio == null) {
+                    report.record(new ReportedChange(
+                        Strings.DIALOG_REPORT_TUPLETS_UPDATED,
+                        Strings.get(
+                            Strings.DIALOG_REPORT_UPDATED_DETAIL, grade.number(), ratio.normalNotes()),
+                        where));
+                }
             }
-        };
+        }
+    }
+
+    /**
+     * Returns the range a report names for a pending span: from its anchor to its end, within
+     * one line.
+     *
+     * @param lineIndex the index of the line holding the span
+     * @param span      the span's elements within that line
+     * @return the range from {@code span}'s first element to its last
+     */
+    static ElementLocationRange anchorToEnd(int lineIndex, ElementRange span) {
+        return new ElementLocationRange(
+            new ElementLocation(lineIndex, span.begin()), new ElementLocation(lineIndex, span.end()));
     }
 
     /** The pending tuplet anchored at the element at {@code index} in {@code line}, if any. */
@@ -256,19 +199,4 @@ public final class TupletLoadPass {
             : new TupletValidator.Anchored<>(pending, line.getElementIndex(pending.end()), pending.grade());
     }
 
-    /**
-     * The first line holding any element, or {@code null} when the song holds none. The walk
-     * has to start somewhere that exists — resolving the beat reads the starting element — and
-     * starting at the first populated line loses nothing: an empty line can hold neither a
-     * tuplet nor a beat-defining event.
-     */
-    private static @Nullable Integer firstPopulatedLineIndex(Song song) {
-        for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
-            if (song.getLine(lineIndex).elementCount() > 0) {
-                return lineIndex;
-            }
-        }
-
-        return null;
-    }
 }

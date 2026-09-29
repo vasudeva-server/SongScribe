@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.SpanRemoval;
@@ -39,8 +40,9 @@ import songscribe.message.mutation.SpanRemoval;
  * exists in exactly one place ({@link #findSpans(Class, Span.IndexPredicate)},
  * {@link #findFirstSpan(Class, Span.IndexPredicate)} and {@link #findSpans(Class)}, with every
  * typed query stated in terms of an index delegating to one of them via a
- * {@link Span.IndexPredicate}); the sweep that re-judges every span when an element changes;
- * and the merge rules that decide what two same-kind spans become. How the sweep, the per-kind
+ * {@link Span.IndexPredicate}); the decision and the sweep that re-judge every span when an
+ * element changes; and the merge rules that decide
+ * what two same-kind spans become. How the sweep, the per-kind
  * policies and the merge divide the work is in {@code docs/span-invalidation.md}. A tie is not
  * a span; it is a note's own state (see {@link NoteElement}).
  * <p>
@@ -52,7 +54,7 @@ import songscribe.message.mutation.SpanRemoval;
  * to a line: {@link Span#isIn} derives parentage from where its endpoints sit. Every endpoint of
  * a span in this registry sits in this line: a deletion sweeps first and removes every span
  * whose endpoint it takes, a replacement re-points, a merge moves endpoints only within the
- * line, and replay undoes in reverse order. So {@link #rangeOf} and every
+ * line, and replay undoes in reverse order. So {@link Span#range} and every
  * {@link Span.IndexPredicate} are total over this registry.
  */
 public final class LineSpans {
@@ -99,21 +101,6 @@ public final class LineSpans {
         return spansView;
     }
 
-    /**
-     * Returns the elements {@code span} covers, from its anchor's position to its end's
-     * position, read off the span's own two index getters. This is the query for a caller that
-     * needs the extent as a range — to widen it, to test what overlaps it, or to index the
-     * elements under it.
-     *
-     * @param span the span to place, whether or not it is in this registry
-     * @return the inclusive range under {@code span}
-     * @throws IllegalStateException when either endpoint sits in no line, which is the case only
-     *     for a span outside every registry
-     */
-    public ElementRange rangeOf(Span<?> span) {
-        return new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex());
-    }
-
     // ========================================================================
     // List writes
     // ========================================================================
@@ -138,7 +125,7 @@ public final class LineSpans {
     /**
      * Points every span endpoint that is {@code oldElement} at {@code newElement}, so
      * {@link Span#requireAnchorElementIndex()}/{@link Span#requireEndElementIndex()} remain valid
-     * after {@link Line#setElement} swaps the element out. Runs inside that mutator, on
+     * after {@link Line#replace} swaps the element out. Runs inside that mutator, on
      * replay too: it is self-inverting, and the recorded batch carries no record of it.
      */
     void repoint(StaffElement oldElement, StaffElement newElement) {
@@ -197,18 +184,96 @@ public final class LineSpans {
     // ========================================================================
 
     /**
-     * A hairpin paired with the span it will occupy once a pending deletion is applied,
-     * as a range over the elements that survive that deletion.
+     * A span paired with a range over it, so a caller that has already resolved the range does
+     * not resolve it again from the span's live endpoints.
      */
-    private record HairpinSpan(Hairpin hairpin, ElementRange range) {
+    private record SpanAt<S extends Span<?>>(S span, ElementRange range) {
     }
 
     /**
-     * Asks every span on this line what should happen to it when {@code change} lands, and
-     * carries out those answers — the single sweep behind every element insertion,
+     * A span the sweep removes, with the reason its rule gave for removing it.
+     *
+     * @param span      the span to remove
+     * @param reasonKey the {@code Strings} key of the reason, as {@link Span#removeReported} takes it
+     */
+    private record Removal(Span<?> span, String reasonKey) {
+    }
+
+    /**
+     * What a pending change does to this line's spans, decided before any of it is carried
+     * out: the spans it deletes along with their elements, the spans it removes, and the
+     * hairpins it reshapes.
+     *
+     * @param deleted        the spans a deletion takes whole, each once; their removal is the one
+     *     the user asked for, so none is reported
+     * @param removed        the spans the change removes, each once, with its reason; a span in
+     *     {@code deleted} is not here
+     * @param reshapedByKind the hairpins the change reshapes, grouped by kind, each paired with
+     *     its range over the change's projection; a hairpin in {@code deleted} or
+     *     {@code removed} is not here
+     */
+    record SweepDecision(
+        List<Span<?>> deleted,
+        List<Removal> removed,
+        Map<Hairpin.Kind, List<SpanAt<Hairpin>>> reshapedByKind
+    ) {
+    }
+
+    /**
+     * Decides what {@code change} does to this line's spans, without doing any of it.
+     * {@link #sweep} makes the whole decision before it carries out any of it, because carrying
+     * one out while deciding would mutate the {@code spans} list being walked and would change
+     * what a later span is judged against.
+     * <p>
+     * A deletion that takes every element a span covers takes the span with them, and no span
+     * kind is asked about it: the user deleted the whole span, so its removal is the one the user
+     * asked for. Every other span is asked its own outcome ({@link Span#outcomeFor}; a hairpin is
+     * asked {@link Hairpin#hairpinOutcomeFor}, the one outcome that can reshape).
+     *
+     * @param change a pending change to this line, not yet applied
+     * @return the spans {@code change} deletes whole, the spans it removes, and the hairpins it
+     *     reshapes
+     */
+    private SweepDecision decide(ElementChange change) {
+        var deleted = new ArrayList<Span<?>>();
+        var removed = new ArrayList<Removal>();
+
+        // Each hairpin's range is over the projection: change.projectedElements(), not this
+        // line as it stands now.
+        var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<SpanAt<Hairpin>>>();
+
+        for (var span : spans) {
+            if (change instanceof ElementChange.Deletion deletion && deletion.range().contains(span.range())) {
+                deleted.add(span);
+                continue;
+            }
+
+            // Only a hairpin can reshape, so only a hairpin is asked the wider question: the
+            // merge that consumes a Reshape replaces a run with a copy of a hairpin, and
+            // there is nothing it could do with any other kind of span.
+            if (span instanceof Hairpin hairpin) {
+                switch (hairpin.hairpinOutcomeFor(change)) {
+                    case SpanOutcome.Keep _ -> { }
+                    case SpanOutcome.Remove remove -> removed.add(new Removal(hairpin, remove.reasonKey()));
+                    case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, hairpin, reshape);
+                }
+            } else {
+                switch (span.outcomeFor(change)) {
+                    case SpanOutcome.Keep _ -> { }
+                    case SpanOutcome.Remove remove -> removed.add(new Removal(span, remove.reasonKey()));
+                }
+            }
+        }
+
+        return new SweepDecision(deleted, removed, reshapedByKind);
+    }
+
+    /**
+     * Decides what {@code change} does to every span on this line ({@link #decide}), and
+     * carries out that decision — the single sweep behind every element insertion,
      * replacement, deletion and in-place modification.
      * <p>
-     * Called <b>before</b> the change is applied, so each span judges itself against the
+     * Called <b>before</b> the change is applied, so each span is judged against the
      * projection rather than the mutated line, and so the companion span mutations are
      * recorded before the primary element mutation: undo replays a step in reverse, and
      * has to restore the element before the spans that point at it.
@@ -216,16 +281,18 @@ public final class LineSpans {
      * Does nothing while the song is replaying undo or redo: the recorded batch already
      * carries every companion span mutation, and re-deriving them would apply them twice.
      * <p>
-     * Every span is asked first and acted on afterwards. Acting inside the loop would both
-     * mutate the {@code spans} list being walked and let one span's removal change what a
-     * later span is judged against.
+     * The whole decision is made first and acted on afterwards. Acting while deciding would
+     * both mutate the {@code spans} list being walked and let one span's removal change what
+     * a later span is judged against.
      * <p>
-     * A {@link SpanOutcome.Reshape} is the one answer that cannot be acted on span by span:
-     * same-type hairpins the change leaves with nothing between them become one, which no
-     * span can decide on its own because none of them knows its siblings. The reshaped
-     * spans are therefore grouped by hairpin kind and handed to {@link #mergeAdjacentSpans},
-     * which expresses each reshape as a tracked removal plus a tracked addition of a copy,
-     * since a span has no modification mutation of its own.
+     * Two answers are properties of the collection rather than of one span, since no span
+     * knows its siblings. Same-type hairpins the change leaves with nothing between them
+     * become one: the reshaped spans are grouped by hairpin kind and handed to
+     * {@link #mergeAdjacentSpans}, which expresses each reshape as a tracked removal plus a
+     * tracked addition of a copy, since a span has no modification mutation of its own.
+     * Each span a deletion takes whole is removed with {@link Span#removeFrom}, since the user
+     * deleted it; each other span the decision removes is removed with
+     * {@link Span#removeReported}, so the user is told why.
      *
      * @param change the pending change, not yet applied to this line
      */
@@ -234,42 +301,27 @@ public final class LineSpans {
             return;
         }
 
-        var doomed = new ArrayList<Span<?>>();
-        var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
+        var decision = decide(change);
 
-        for (var span : spans) {
-            // Only a hairpin can reshape, so only a hairpin is asked the wider question: the
-            // merge that consumes a Reshape replaces a run with a copy of a hairpin, and
-            // there is nothing it could do with any other kind of span.
-            if (span instanceof Hairpin hairpin) {
-                switch (hairpin.hairpinOutcomeFor(change)) {
-                    case SpanOutcome.Simple.KEEP -> { }
-                    case SpanOutcome.Simple.REMOVE -> doomed.add(hairpin);
-                    case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, hairpin, reshape);
-                }
-            } else if (span.outcomeFor(change) == SpanOutcome.Simple.REMOVE) {
-                doomed.add(span);
-            }
-        }
-
-        doomed.forEach(span -> span.removeFrom(line));
+        decision.deleted().forEach(span -> span.removeFrom(line));
+        decision.removed().forEach(removal -> removal.span().removeReported(line, removal.reasonKey()));
 
         // The projection is asked for per kind rather than hoisted: there are at most two
         // kinds, and a change nothing reshaped must not build one at all.
-        for (var hairpinSpans : reshapedByKind.values()) {
+        for (var hairpinSpans : decision.reshapedByKind().values()) {
             mergeAdjacentSpans(hairpinSpans, change.projectedElements());
         }
     }
 
     /** Files {@code reshape} under {@code hairpin}'s kind, ready for the merge pass. */
     private static void collectReshape(
-        Map<Hairpin.Kind, List<HairpinSpan>> reshapedByKind,
+        Map<Hairpin.Kind, List<SpanAt<Hairpin>>> reshapedByKind,
         Hairpin hairpin,
         SpanOutcome.Reshape reshape
     ) {
         reshapedByKind
             .computeIfAbsent(hairpin.getKind(), kind -> new ArrayList<>())
-            .add(new HairpinSpan(hairpin, reshape.range()));
+            .add(new SpanAt<>(hairpin, reshape.range()));
     }
 
     /**
@@ -278,12 +330,13 @@ public final class LineSpans {
      * survive are left untouched, so a deletion that misses a hairpin emits no hairpin
      * mutations.
      *
-     * @param hairpinSpans all post-deletion spans of one hairpin type, in any order
+     * @param hairpinSpans all post-deletion spans of one hairpin type, in any order, each
+     *     paired with its range over the projection
      */
-    private void mergeAdjacentSpans(List<HairpinSpan> hairpinSpans, List<? extends StaffElement> survivors) {
-        hairpinSpans.sort(Comparator.comparingInt((HairpinSpan span) -> span.range().begin()));
+    private void mergeAdjacentSpans(List<SpanAt<Hairpin>> hairpinSpans, List<? extends StaffElement> survivors) {
+        hairpinSpans.sort(Comparator.comparingInt((SpanAt<Hairpin> span) -> span.range().begin()));
 
-        var run = new ArrayList<HairpinSpan>();
+        var run = new ArrayList<SpanAt<Hairpin>>();
 
         // The run's last post-deletion index; null exactly when the run is empty.
         @Nullable Integer runEnd = null;
@@ -311,11 +364,12 @@ public final class LineSpans {
      * Reshapes the hairpins in {@code run} into one hairpin spanning the run's surviving
      * endpoints, carrying over the first one's user offsets.
      *
-     * @param run    the hairpins to replace, ordered by their post-deletion start
+     * @param run    the hairpins to replace, ordered by their post-deletion start, each paired
+     *     with its range over the projection
      * @param runEnd the run's last post-deletion index
      */
-    private void applySpanRun(List<HairpinSpan> run, int runEnd, List<? extends StaffElement> survivors) {
-        var first = run.getFirst().hairpin();
+    private void applySpanRun(List<SpanAt<Hairpin>> run, int runEnd, List<? extends StaffElement> survivors) {
+        var first = run.getFirst().span();
         var anchorElement = survivors.get(run.getFirst().range().begin());
         var endElement = survivors.get(runEnd);
 
@@ -326,8 +380,13 @@ public final class LineSpans {
         }
 
         // Removals precede the addition so reverse-order undo drops the reshaped hairpin
-        // before restoring the originals.
-        run.forEach(span -> span.hairpin().removeFrom(line));
+        // before restoring the originals. The first hairpin is reshaped, not lost; every other
+        // one in the run is absorbed into it, which the user is told.
+        first.removeFrom(line);
+
+        for (var absorbed : run.subList(1, run.size())) {
+            absorbed.span().removeReported(line, Strings.DIALOG_REPORT_REASON_MERGED);
+        }
 
         var reshaped = first.copy(anchorElement, endElement);
         reshaped.addTo(line);
@@ -350,14 +409,14 @@ public final class LineSpans {
      *              absorbed; {@code 0} absorbs only what {@code span} overlaps
      */
     <E extends StaffElement> void mergeOverlapping(Span<E> span, int reach) {
-        var own = rangeOf(span);
+        var own = span.range();
 
         // Resolved once, before the setters below move the very indices they are compared
-        // against.
-        var placed = new ArrayList<PlacedSpan>();
+        // against. Each one's range is over this line, as it stands now.
+        var placed = new ArrayList<SpanAt<Span<?>>>();
 
         for (var existing : sameKindSpans(span)) {
-            placed.add(new PlacedSpan(existing, rangeOf(existing)));
+            placed.add(new SpanAt<>(existing, existing.range()));
         }
 
         var mergedAnchorIdx = placed.stream()
@@ -384,11 +443,7 @@ public final class LineSpans {
         placed.stream()
             .filter(candidate -> candidate.range().begin() >= mergedAnchorIdx
                 && candidate.range().end() <= mergedEndIdx)
-            .forEach(candidate -> candidate.span().removeFrom(line));
-    }
-
-    /** A span of this line paired with the range it covers in it. */
-    private record PlacedSpan(Span<?> span, ElementRange range) {
+            .forEach(candidate -> candidate.span().removeReported(line, Strings.DIALOG_REPORT_REASON_MERGED));
     }
 
     /**
@@ -413,11 +468,11 @@ public final class LineSpans {
      *     mutation, recorded under the rule that method states
      */
     void removeOverlappingSameKind(Span<?> span) {
-        var overlapsSpan = Span.overlapping(rangeOf(span));
+        var overlapsSpan = Span.overlapping(span.range());
 
         sameKindSpans(span).stream()
-            .filter(existing -> overlapsSpan.test(rangeOf(existing)))
-            .forEach(existing -> existing.removeFrom(line));
+            .filter(existing -> overlapsSpan.test(existing.range()))
+            .forEach(existing -> existing.removeReported(line, Strings.DIALOG_REPORT_REASON_REPLACED));
     }
 
     /**
@@ -468,7 +523,7 @@ public final class LineSpans {
     }
 
     private boolean isMatch(Span<?> span, Class<? extends Span<?>> type, Span.IndexPredicate matches) {
-        return type.isInstance(span) && matches.test(rangeOf(span));
+        return type.isInstance(span) && matches.test(span.range());
     }
 
     /**

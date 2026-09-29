@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import org.junit.jupiter.api.Test;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -64,12 +65,14 @@ class BreathMarkLoadPassTest extends UnitTest {
             line.addElement(crotchet());
         });
 
-        var report = BreathMarkLoadPass.run(song);
+        var report = new ChangeReport();
 
-        assertThat(report.removed()).containsExactly(
-            new BreathMarkLoadPass.Removed(LINE_INDEX, LEADING_BREATH_MARK_REPORTED_INDEX),
-            new BreathMarkLoadPass.Removed(LINE_INDEX, BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX),
-            new BreathMarkLoadPass.Removed(LINE_INDEX, SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX)
+        BreathMarkLoadPass.run(song, report);
+
+        assertThat(report.changes()).containsExactly(
+            removedAt(LEADING_BREATH_MARK_REPORTED_INDEX),
+            removedAt(BREATH_MARK_AFTER_BARLINE_REPORTED_INDEX),
+            removedAt(SECOND_OF_CONSECUTIVE_PAIR_REPORTED_INDEX)
         );
 
         var line = song.getLine(LINE_INDEX);
@@ -78,5 +81,13 @@ class BreathMarkLoadPassTest extends UnitTest {
         assertThat(line.getElement(REMAINING_FIRST_OF_CONSECUTIVE_PAIR_INDEX).getType().isBreathMark()).isTrue();
 
         assertThat(song.isModified()).isFalse();
+    }
+
+    /** The entry the pass records for the breath mark that stood at {@code index}. */
+    private static ReportedChange removedAt(int index) {
+        return new ReportedChange(
+            Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
+            Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
+            ElementLocationRange.single(new ElementLocation(LINE_INDEX, index)));
     }
 }

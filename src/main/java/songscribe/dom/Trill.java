@@ -20,6 +20,7 @@
 
 package songscribe.dom;
 
+import songscribe.Strings;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -32,7 +33,7 @@ import songscribe.smufl.SMuFLMetadata;
 public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
 
     // SMuFL bbox-derived dimensions in staff-space units for the "tr" glyph
-    private static final double TRILL_GLYPH_WIDTH_SS;
+    public static final double TRILL_GLYPH_WIDTH_SS;
     private static final double TRILL_GLYPH_HEIGHT_SS;
 
     static {
@@ -70,13 +71,18 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
     }
 
     @Override
+    protected String reportHeadingKey() {
+        return Strings.DIALOG_REPORT_TRILLS_REMOVED;
+    }
+
+    @Override
     protected Span<StaffElement> createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Trill(newAnchor, newEnd);
     }
 
     /**
      * Returns the width of the trill "tr" glyph in staff-space units — the glyph's own width,
-     * not the span the wavy line covers, which is {@link #getSpanWidthSs}.
+     * not the span the wavy line covers, which {@code TrillGeometry.getSpanWidthSs} computes.
      * <p>
      * For vertical stacking, only the glyph width matters since the wavy
      * extension is drawn at the same Y level.
@@ -88,33 +94,5 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
     @Override
     public double intrinsicHeightSs() {
         return TRILL_GLYPH_HEIGHT_SS;
-    }
-
-    /**
-     * The left edge of the drawn "tr" glyph, in staff-space units.
-     * <p>
-     * The glyph is centered on the notehead rather than on the note column, so it starts a little
-     * left of the column. Written once here and used by everything that has to agree on where the
-     * glyph lands: the stacker's reservation, the renderer's ink, and the hit region.
-     *
-     * @param columnXSs         X of the anchor note's column
-     * @param noteheadCenterXSs the notehead's center, measured from the column's left edge
-     */
-    public static double glyphLeftXSs(double columnXSs, double noteheadCenterXSs) {
-        return columnXSs + noteheadCenterXSs - TRILL_GLYPH_WIDTH_SS / 2.0;
-    }
-
-    /**
-     * Returns the full horizontal span the trill's wavy line occupies, in staff spaces: from the
-     * anchor note's X to one glyph width past the end note's, since the line is drawn in whole
-     * glyphs and the last one starts at the end note rather than finishing there.
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return the span width in staff spaces, never less than one {@link #TRILL_GLYPH_WIDTH_SS}
-     *     however close the two elements sit
-     */
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(TRILL_GLYPH_WIDTH_SS, endXSs - anchorXSs + TRILL_GLYPH_WIDTH_SS);
     }
 }

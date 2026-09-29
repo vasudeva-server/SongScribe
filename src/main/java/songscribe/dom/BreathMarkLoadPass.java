@@ -19,11 +19,10 @@
  */
 package songscribe.dom;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import songscribe.Strings;
 
 /**
  * Drops every breath mark in a freshly parsed song that does not follow a duration element.
@@ -48,36 +47,8 @@ public final class BreathMarkLoadPass {
     }
 
     /**
-     * One breath mark the pass removed. Both indices are 0-based, as the document stores them;
-     * a UI reporting them to the user converts to 1-based itself.
-     *
-     * @param lineIndex    the index of the line the breath mark stood in
-     * @param elementIndex the index the breath mark stood at within that line, before it was
-     *                     removed
-     */
-    public record Removed(int lineIndex, int elementIndex) {}
-
-    /** Every breath mark the pass removed, in document order. */
-    public record Report(List<Removed> removed) {
-
-        // Defensive copy — the record's contract is immutability, and the pass builds the
-        // list incrementally before handing it over.
-        public Report {
-            removed = List.copyOf(removed);
-        }
-
-        public static Report empty() {
-            return new Report(List.of());
-        }
-
-        public boolean isEmpty() {
-            return removed.isEmpty();
-        }
-    }
-
-    /**
      * Removes every breath mark in {@code song} that does not follow a duration element, and
-     * reports what it removed.
+     * records what it removed.
      *
      * <p>Each breath mark is judged against the element in front of it once the pass has
      * settled everything before it, so a run of consecutive breath marks keeps at most its
@@ -87,25 +58,24 @@ public final class BreathMarkLoadPass {
      * outside suspension the removals would land in the undo history and a freshly opened
      * song could be undone back to its invalid state. The song's modified flag is left alone
      * — {@code ScoreView.setSong} clears it when the song is installed, so the caller re-marks
-     * it afterwards from the returned report.
+     * it afterwards from the report.
      *
-     * @param song the song to settle, immediately after parsing and before it is installed
-     * @return every breath mark the pass removed, in document order
+     * @param song   the song to settle, immediately after parsing and before it is installed
+     * @param report the report the pass records into
      * @invariant afterwards every breath mark in {@code song} stands immediately after a
      *     pitched note or a rest, the invariant {@link StaffElementRun#canInsertRunAt} states
      * @effects each removal goes through {@link Line#removeElement}, which drops the element
      *     and repairs nothing around it; a breath mark carries no lyric, so there is nothing
-     *     to repair
+     *     to repair; records to {@code report}, in document order, each breath mark removed, at
+     *     the index it stood at before removal
      * @log one {@code INFO} line stating how many breath marks were removed, when any were
      */
-    public static Report run(Song song) {
-        var report = song.withoutMutationTrackingResult(() -> removeUnhostedBreathMarks(song));
+    public static void run(Song song, ChangeReport report) {
+        var removedCount = song.withoutMutationTrackingResult(() -> removeUnhostedBreathMarks(song, report));
 
-        if (!report.isEmpty()) {
-            LOG.info("Breath mark load pass: {} removed", report.removed().size());
+        if (removedCount > 0) {
+            LOG.info("Breath mark load pass: {} removed", removedCount);
         }
-
-        return report;
     }
 
     /**
@@ -113,8 +83,8 @@ public final class BreathMarkLoadPass {
      * onto that index, so the walk stays at {@code i} to judge whatever moved into the slot
      * against the predecessor that is now settled.
      */
-    private static Report removeUnhostedBreathMarks(Song song) {
-        var removed = new ArrayList<Removed>();
+    private static int removeUnhostedBreathMarks(Song song, ChangeReport report) {
+        var removedCount = 0;
 
         for (var lineIndex = 0; lineIndex < song.lineCount(); lineIndex++) {
             var line = song.getLine(lineIndex);
@@ -123,13 +93,17 @@ public final class BreathMarkLoadPass {
             while (i < line.elementCount()) {
                 if (line.getElement(i).getType().isBreathMark() && !line.isDurationAt(i - 1)) {
                     line.removeElement(i);
-                    removed.add(new Removed(lineIndex, i));
+                    removedCount++;
+                    report.record(new ReportedChange(
+                        Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
+                        Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),
+                        ElementLocationRange.single(new ElementLocation(lineIndex, i))));
                 } else {
                     i++;
                 }
             }
         }
 
-        return new Report(removed);
+        return removedCount;
     }
 }

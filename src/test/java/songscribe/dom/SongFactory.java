@@ -20,7 +20,9 @@
 
 package songscribe.dom;
 
+import java.util.Arrays;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 
@@ -31,6 +33,7 @@ import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.keyChange;
+import static songscribe.dom.StaffElementFactory.minimRest;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
@@ -109,6 +112,9 @@ public final class SongFactory {
     /** The prefix a key-change token carries before the {@link Key} constant's name. */
     private static final String KEY_CHANGE_PREFIX = "K:";
 
+    /** The compact notation of a line that holds no elements. */
+    private static final String EMPTY_LINE = "";
+
     /**
      * A song of one line per element of {@code notations}, each parsed by
      * {@link #addCompactElements}, starting in {@code startingKey}.
@@ -142,6 +148,38 @@ public final class SongFactory {
     }
 
     /**
+     * An empty line of a real song, for a fixture that needs the song's repeat structure
+     * but edits its line directly, outside any modification bracket.
+     *
+     * <p>Mutation tracking stays suspended for the rest of the test, so a test edits the line as
+     * a fixture builder does. {@link songscribe.UnitTest#detachedLine()} cannot stand in: its song is a mock
+     * that knows no repeat section, so {@link Ending#spanning} would refuse every ending on it.
+     * A test that exercises a bracket's close builds its song with {@link #compactSong} and edits
+     * it inside {@link Song#withModification}.
+     *
+     * <p>An empty line follows the returned one, so the returned line is never the song's last.
+     * On the last line, {@link Line#addElement(StaffElement)} inserts in front of a trailing
+     * {@link ElementType#REPEAT_RIGHT} or {@link ElementType#FINAL_DOUBLE_BARLINE}, which it takes
+     * for the song's terminal, so a fixture that appends a {@code :|} and then more elements
+     * would not get the order it asks for.
+     *
+     * @param precedingNotations the compact notation of each line before the returned one, in song
+     *                           order, starting in {@link Key#NO_ACCIDENTALS}; see
+     *                           {@link #addCompactElements} for the grammar
+     * @return the next-to-last line of the song, holding no elements
+     */
+    public static Line editableLine(String... precedingNotations) {
+        var notations = Stream.concat(Arrays.stream(precedingNotations), Stream.of(EMPTY_LINE, EMPTY_LINE))
+            .toArray(String[]::new);
+
+        var song = compactSong(Key.NO_ACCIDENTALS, notations);
+
+        song.beginSuspendMutationTracking();
+
+        return song.getLine(precedingNotations.length);
+    }
+
+    /**
      * Parses {@code notation}'s whitespace-separated tokens onto {@code line}. Package-visible so
      * a test that needs a line builder {@link #compactSong} cannot express — one that sets the
      * line's own key, say — can still reach the same grammar.
@@ -155,7 +193,7 @@ public final class SongFactory {
      *   <li>{@code g} prefixed on either of the above — the same note, as a grace note</li>
      *   <li>{@code ~} — ties the note just added to the next note token added</li>
      *   <li>{@code |}, {@code |:}, {@code :|} — a plain barline, a left repeat, a right repeat</li>
-     *   <li>{@code R} — a crotchet rest; {@code B} — a breath mark</li>
+     *   <li>{@code R} — a crotchet rest; {@code R2} — a minim rest; {@code B} — a breath mark</li>
      *   <li>{@code K:<name>} — a key change establishing {@link Key#valueOf(String) Key.valueOf(name)}</li>
      * </ul>
      *
@@ -176,6 +214,7 @@ public final class SongFactory {
                 case "|:" -> line.addElement(repeatLeft());
                 case ":|" -> line.addElement(repeatRight());
                 case "R" -> line.addElement(crotchetRest());
+                case "R2" -> line.addElement(minimRest());
                 case "B" -> line.addElement(breathMark());
                 case "~" -> tieNext = true;
                 default -> {

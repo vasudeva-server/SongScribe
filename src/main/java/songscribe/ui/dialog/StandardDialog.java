@@ -85,9 +85,11 @@ import songscribe.util.UIUtils;
  *            so a subclass may edit it in place without reaching the document. Its bound permits
  *            {@code @Nullable} itself, for a family like {@code AttachmentDialog} whose input is
  *            absent on Add
- * @param <O> what the controls say, gathered on OK. Values only — never a handle on the document
+ * @param <O> what the controls say, gathered on OK. Values only — never a handle on the document.
+ *            Its bound permits {@code @Nullable} itself, for a dialog that gathers nothing and
+ *            names {@code @Nullable Void}
  */
-public abstract class StandardDialog<I extends @Nullable Copyable<I>, O> extends BaseDialog {
+public abstract class StandardDialog<I extends @Nullable Copyable<I>, O extends @Nullable Object> extends BaseDialog {
 
     protected JPanel buttonPanel = new JPanel(
         new FlowLayout(FlowLayout.RIGHT, FlatLafProps.getInt(FlatLafKey.DIALOG_BUTTON_HORIZONTAL_GAP), 0)

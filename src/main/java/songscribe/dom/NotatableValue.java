@@ -20,6 +20,11 @@
 
 package songscribe.dom;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * A written note value with its dots: the value a tuplet ratio counts its normal notes in.
  * <p>
@@ -29,6 +34,38 @@ package songscribe.dom;
  * @param dots  the dots the value carries
  */
 public record NotatableValue(NoteValue value, Dots dots) {
+
+    /** Every writable note value, keyed by its duration in PPQ ticks. */
+    private static final Map<Integer, NotatableValue> NOTATABLE_BY_TICKS = buildNotatableByTicks();
+
+    /**
+     * Returns the written value whose duration is {@code ticks}.
+     *
+     * @param ticks a duration, at {@link songscribe.midi.MidiSequenceBuilder#PPQ} ticks per quarter
+     * @return the note value and dots whose {@link #ticks()} equals {@code ticks}, or {@code null}
+     *     when no written value has that duration, which is so for most tick counts
+     * @invariant no two note value and dots pairs share a duration, so the answer is unique
+     */
+    public static @Nullable NotatableValue withTicks(int ticks) {
+        return NOTATABLE_BY_TICKS.get(ticks);
+    }
+
+    /**
+     * Every {@link NoteValue} at every {@link Dots} value, keyed by duration. No two of them
+     * share a duration.
+     */
+    private static Map<Integer, NotatableValue> buildNotatableByTicks() {
+        var table = new HashMap<Integer, NotatableValue>();
+
+        for (var value : NoteValue.values()) {
+            for (var dots : Dots.values()) {
+                var notatable = new NotatableValue(value, dots);
+                table.put(notatable.ticks(), notatable);
+            }
+        }
+
+        return Map.copyOf(table);
+    }
 
     /**
      * Returns this value's written duration.

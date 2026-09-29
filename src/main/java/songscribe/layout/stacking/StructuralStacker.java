@@ -42,6 +42,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Direction;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.StemMetrics;
+import songscribe.engraving.TupletMetrics;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.ElementSeat;
 import songscribe.layout.EndingBracketGeometry;
@@ -50,6 +51,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
+import songscribe.layout.TupletGeometry;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -74,7 +76,7 @@ public class StructuralStacker {
     /**
      * Tuplet-bracket padding: the gap from the worst note tip to the bracket <em>line</em>, matching
      * LilyPond's {@code TupletBracket.padding} (measured tip → line in {@code calc_position_and_height},
-     * {@code *offset += padding * dir}). The vertical arms hang {@link Tuplet#BRACKET_ARM_HEIGHT_SS}
+     * {@code *offset += padding * dir}). The vertical arms hang {@link TupletMetrics#BRACKET_ARM_HEIGHT_SS}
      * down from the line into this gap; they do not push the line up.
      */
     public static final double TUPLET_BRACKET_PADDING_SS = 1.1;
@@ -88,11 +90,11 @@ public class StructuralStacker {
     /**
      * The margin the tuplet placement needs: it places the reserved box's <em>bottom</em> (the arm
      * bottom) this far above the tip, whereas LilyPond's padding is to the line. The line sits
-     * {@link Tuplet#BRACKET_ARM_HEIGHT_SS} above the arm bottom, so subtracting the arm height lands
-     * the line exactly {@link #TUPLET_BRACKET_PADDING_SS} above the tip.
+     * {@link TupletMetrics#BRACKET_ARM_HEIGHT_SS} above the arm bottom, so subtracting the arm height
+     * lands the line exactly {@link #TUPLET_BRACKET_PADDING_SS} above the tip.
      */
     public static final double TUPLET_ARM_MARGIN_SS =
-        TUPLET_BRACKET_PADDING_SS - Tuplet.BRACKET_ARM_HEIGHT_SS;
+        TUPLET_BRACKET_PADDING_SS - TupletMetrics.BRACKET_ARM_HEIGHT_SS;
 
     /**
      * The margin a number-only tuplet needs. LilyPond draws no bracket but still positions the number
@@ -102,7 +104,7 @@ public class StructuralStacker {
      * number-only tuplet is the ink bottom, half an ink height below that center (issue #653).
      */
     public static final double TUPLET_NUMBER_MARGIN_SS =
-        TUPLET_BRACKET_PADDING_SS - Tuplet.bracketLineOffsetSs();
+        TUPLET_BRACKET_PADDING_SS - TupletGeometry.bracketLineOffsetSs();
 
     /**
      * How far below a dynamics group's shared reference line a text dynamic's glyph baseline sits,
@@ -178,10 +180,10 @@ public class StructuralStacker {
             var endColumn = spanColumns.endColumn();
 
             var numberOnly = tuplet.isNumberOnly();
-            var heightSs = numberOnly ? Tuplet.numberOnlyHeightSs() : Tuplet.bracketedHeightSs();
+            var heightSs = numberOnly ? TupletGeometry.numberOnlyHeightSs() : TupletGeometry.bracketedHeightSs();
             var marginSs = numberOnly ? TUPLET_NUMBER_MARGIN_SS : TUPLET_ARM_MARGIN_SS;
             var anchorXSs = anchorColumn.getXSs();
-            var widthSs = tuplet.getSpanWidthSs(anchorXSs, endColumn.getXSs());
+            var widthSs = TupletGeometry.getSpanWidthSs(anchorXSs, endColumn.getXSs());
 
             var nonRestColumns = collectNonRestSpannedColumns(line, tuplet, columnsByElement);
             var dySs = computeTupletSlopeDySs(nonRestColumns, anchorXSs, widthSs,
@@ -192,9 +194,9 @@ public class StructuralStacker {
             // over the note — stays clear. Compute the arm X positions the same way the renderer does
             // (shared Tuplet helpers) so reserved and drawn geometry match.
             var endXSs = anchorXSs + widthSs;
-            var leftArmXSs = tuplet.bracketLeftEdgeXSs(
-                anchorXSs, StemMetrics.thicknessSs(), anchorColumn.getNoteheadWidthSs());
-            var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
+            var leftArmXSs = TupletGeometry.bracketLeftEdgeXSs(
+                tuplet, anchorXSs, anchorColumn.getNoteheadWidthSs());
+            var rightArmXSs = TupletGeometry.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
             // every non-rest tip. The clearance has already folded in every spanned tip along the
@@ -417,10 +419,9 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement) {
 
         var columns = new ArrayList<ElementColumn>();
-        var startIndex = element.requireAnchorElementIndex();
-        var endIndex = element.requireEndElementIndex();
+        var range = element.range();
 
-        for (var i = startIndex; i <= endIndex; i++) {
+        for (var i = range.begin(); i <= range.end(); i++) {
             var column = columnsByElement.get(line.getElement(i));
 
             if (column == null || column.isRest()) {
@@ -497,8 +498,8 @@ public class StructuralStacker {
         }
 
         // Step 3: slope clamp.
-        if (Math.abs(slope) > Tuplet.MAX_SLOPE_FACTOR) {
-            slope = Math.copySign(Tuplet.MAX_SLOPE_FACTOR, slope);
+        if (Math.abs(slope) > TupletMetrics.MAX_SLOPE_FACTOR) {
+            slope = Math.copySign(TupletMetrics.MAX_SLOPE_FACTOR, slope);
         }
 
         return slope * widthSs;

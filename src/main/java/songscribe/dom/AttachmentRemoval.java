@@ -31,33 +31,29 @@ public final class AttachmentRemoval {
     private AttachmentRemoval() {}
 
     /**
-     * Removing a tempo change redefines the beat from that point on just as adding one does,
-     * so it goes through the same chokepoint — which is also what warns the user when the
-     * removal costs a tuplet, on the Remove button's path as on the commit path.
+     * Removing a tempo change redefines the beat from that point on just as adding one does;
+     * the tuplet beat rule finds any tuplet the removal costs when the modification bracket
+     * closes.
      */
     public static void removeTempoChange(StaffElement element) {
         var attachment = element.findAttachment(TempoChangeAttachment.class);
 
-        Song.withBeatDefiningEditOn(element, () -> {
-            if (attachment != null) {
-                element.removeAttachment(attachment);
-            }
-        });
+        if (attachment != null) {
+            element.removeAttachment(attachment);
+        }
     }
 
     /**
-     * Removing a beat change redefines the beat from that point on just as adding one does,
-     * so it goes through the same chokepoint — which is also what warns the user when the
-     * removal costs a tuplet, on the Remove button's path as on the commit path.
+     * Removing a beat change redefines the beat from that point on just as adding one does;
+     * the tuplet beat rule finds any tuplet the removal costs when the modification bracket
+     * closes.
      */
     public static void removeBeatChange(StaffElement element) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);
 
-        if (attachment == null) {
-            return;
+        if (attachment != null) {
+            element.removeAttachment(attachment);
         }
-
-        Song.withBeatDefiningEditOn(element, () -> element.removeAttachment(attachment));
     }
 
     public static void removeAnnotation(StaffElement element) {

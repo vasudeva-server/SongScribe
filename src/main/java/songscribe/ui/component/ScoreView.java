@@ -70,7 +70,6 @@ import songscribe.hit.HitTarget;
 import songscribe.io.LoadWarning;
 import songscribe.io.SongFileLoader;
 import songscribe.io.SongLoadResult;
-import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineLayoutProvider;
 import songscribe.layout.LyricRenderMetrics;
@@ -97,7 +96,8 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.ScorePanel;
-import songscribe.ui.dialog.MigrationWindow;
+import songscribe.ui.dialog.ReportDialog;
+import songscribe.ui.dialog.ReportDialogController;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.platform.mac.PinchZoomGesture;
@@ -457,14 +457,18 @@ public final class ScoreView
                 installDocumentFonts(success.fonts());
                 setSong(success.song());
 
-                var migrations = success.migrations();
+                var report = success.report();
 
-                if (!migrations.isEmpty()) {
-                    // setSong clears the modified flag internally; a migration that
-                    // happens silently on load must still prompt the user to save the
-                    // migrated version, so re-mark modified after installing the song.
+                if (!report.isEmpty()) {
+                    // setSong clears the modified flag internally; a change made
+                    // on load must still prompt the user to save the changed
+                    // version, so re-mark modified after installing the song.
                     success.song().setModified(true);
-                    MigrationWindow.show(SwingUtilities.getWindowAncestor(this), migrations);
+
+                    // Deferred so the rest of the open, which follows, is not held until
+                    // the user dismisses the modal dialog.
+                    SwingUtilities.invokeLater(
+                        () -> ReportDialogController.show(ReportDialog.Occasion.LOAD, report));
                 }
 
                 if (onFileOpened != null) {

@@ -32,7 +32,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.Dots;
-import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NotatableValue;
@@ -46,9 +45,10 @@ import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletRatio;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.repeatRight;
-import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.parse;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.roundTrip;
@@ -103,7 +103,7 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
     private static final int FIRST_NOTE = 0;
     private static final int SECOND_NOTE = 1;
     private static final int THIRD_NOTE = 2;
-    private static final int NOTE_AFTER_REPEAT = 4;
+    private static final int NOTE_AFTER_REPEAT = 5;
 
     private static final int TRIPLET_NORMAL_NOTES = 2;
     private static final TupletRatio TWO_CROTCHETS =
@@ -127,7 +127,6 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("spanOffsetCases")
     void testASpansFractionalOffsetSurvivesAWriteAndARead(SpanOffsetCase testCase) throws Exception {
-        var placed = new Span<?>[1];
         var song = buildSong(line -> {
             line.addElement(crotchet());
             line.addElement(crotchet());
@@ -135,12 +134,17 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
             line.addElement(repeatRight());
             line.addElement(crotchet());
             line.addElement(crotchet());
-
-            placed[0] = testCase.place().apply(line);
-            testCase.setOffset().accept(placed[0], FRACTIONAL_OFFSET_SS);
-            placed[0].addTo(line);
         });
-        var kind = placed[0].getClass();
+        var fixtureLine = song.getLine(0);
+
+        // An ending is judged against the song's repeat sections, so the span is placed once the
+        // line is in the song.
+        var placed = testCase.place().apply(fixtureLine);
+
+        testCase.setOffset().accept(placed, FRACTIONAL_OFFSET_SS);
+        song.withoutMutationTracking(() -> placed.addTo(fixtureLine));
+
+        var kind = placed.getClass();
 
         var read = roundTrip(song).getLine(0).spanRegistry().findSpans(kind);
 
@@ -167,14 +171,7 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
                     line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE), TupletGrade.TRIPLET, TWO_CROTCHETS),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs),
             new SpanOffsetCase("an ending's vertical offset",
-                line -> {
-                    var range = new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT);
-                    var ending = Ending.spanning(line, range);
-
-                    assertThat(ending).isNotNull();
-
-                    return ending;
-                },
+                line -> endingOver(line, new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT)),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs)
         );
     }

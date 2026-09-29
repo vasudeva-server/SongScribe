@@ -32,13 +32,11 @@ import javax.sound.midi.Track;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ElementType;
+import songscribe.dom.ElementLocation;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.LineSpans;
 import songscribe.dom.Song;
-import songscribe.dom.Span;
-import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.dom.Tempo;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
@@ -180,13 +178,8 @@ public class MidiSequenceBuilder {
      * re-walk that line's every span.
      */
     private static @Nullable Ending endingCovering(List<Ending> endings, int elementIndex) {
-        var covers = Span.containing(elementIndex);
-
         for (var ending : endings) {
-            var range = new ElementRange(
-                ending.requireAnchorElementIndex(), ending.requireEndElementIndex());
-
-            if (covers.test(range)) {
+            if (ending.range().contains(elementIndex)) {
                 return ending;
             }
         }
@@ -195,13 +188,17 @@ public class MidiSequenceBuilder {
     }
 
     /**
-     * Builds a MIDI sequence with repeat handling.
-     * This implements the same logic as the old ScoreView.addLineToTrack method.
+     * Builds a MIDI sequence with repeat handling. A {@code :|} or {@code :|:} plays the
+     * section it closes twice, jumping back to {@link Song#repeatSectionStart} — which may lie
+     * on an earlier line — and playing on past the marker the second time. A {@code :|} with
+     * no open section plays on as an ordinary bar. On the replay pass a first ending is
+     * skipped in favor of the second.
      *
      * @param track The MIDI track to add to
      * @param startLine The starting line index
      * @param startNote The index of the first note to include on the start line
      * @param initialTempo The tempo at the start of the sequence
+     * @param velocityMap Dynamic-aware velocities
      * @return Pair of (ending tick position, ending tempo)
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
@@ -219,6 +216,11 @@ public class MidiSequenceBuilder {
         var slideHelper = new SlideMidiHelper();
 
         var lineIndex = startLine;
+        var noteIndex = startNote;
+
+        // Every jump back to a section start re-enters this loop, so the line, its builder
+        // and its endings are always those of the line the jump lands on.
+        lineLoop:
         while (lineIndex < lines.size()) {
             var line = lines.get(lineIndex);
             var noteCount = line.elementCount();
@@ -229,9 +231,8 @@ public class MidiSequenceBuilder {
             // for every note in the song.
             var endings = line.spanRegistry().findEndings();
 
-            for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
-                var note = line.getElement(noteIndex);
-                var noteType = note.getType();
+            for (; noteIndex < noteCount; noteIndex++) {
+                var closesRepeat = line.getElement(noteIndex).getType().closesRepeat();
 
                 // Resolve the ending covering this element once; reused below.
                 var ending = endingCovering(endings, noteIndex);
@@ -241,48 +242,23 @@ public class MidiSequenceBuilder {
                 // handler below.
                 var isEndingClosingMarker = ending != null
                     && noteIndex == ending.requireEndElementIndex()
-                    && (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT);
+                    && closesRepeat;
 
-                // Handle repeat markers
-                if (!isEndingClosingMarker
-                    && (noteType == ElementType.REPEAT_RIGHT || noteType == ElementType.REPEAT_LEFT_RIGHT)) {
+                if (!isEndingClosingMarker && closesRepeat) {
                     if (repeating) {
-                        // Second time through: exit the repeat
+                        // Second time through: exit the repeat and play on.
                         repeating = false;
                     } else {
-                        // First time: jump back to find the repeat start
-                        repeating = true;
+                        var sectionStart = song.repeatSectionStart(
+                            new ElementLocation(lineIndex, noteIndex));
 
-                        // Search backward for the repeat start
-                        var searchLineIndex = lineIndex;
-                        var searchNoteIndex = noteIndex - 1;
-
-                        repeatSearchLoop:
-                        while (searchLineIndex >= 0) {
-                            while (searchNoteIndex >= 0) {
-                                var searchNote = lines.get(searchLineIndex).getElement(searchNoteIndex);
-                                if (searchNote.getType().isRepeat()) {
-                                    // Found a repeat marker, continue from here
-                                    lineIndex = searchLineIndex;
-                                    noteIndex = searchNoteIndex;
-                                    break repeatSearchLoop;
-                                }
-                                searchNoteIndex--;
-                            }
-
-                            searchLineIndex--;
-                            if (searchLineIndex >= 0) {
-                                searchNoteIndex = lines.get(searchLineIndex).elementCount() - 1;
-                            }
+                        // With no open section the marker plays as an ordinary bar.
+                        if (sectionStart != null) {
+                            repeating = true;
+                            lineIndex = sectionStart.lineIndex();
+                            noteIndex = sectionStart.elementIndex();
+                            continue lineLoop;
                         }
-
-                        // If we didn't find a repeat start, begin from the start of the song
-                        if (searchLineIndex < 0) {
-                            lineIndex = 0;
-                            noteIndex = -1; // Will be incremented to 0
-                        }
-
-                        continue;
                     }
                 }
 
@@ -310,6 +286,7 @@ public class MidiSequenceBuilder {
             }
 
             lineIndex++;
+            noteIndex = 0;
         }
 
         // Flush any pending pitch bend/expression resets at the end
@@ -357,7 +334,7 @@ public class MidiSequenceBuilder {
 
         for (var ending : endings) {
             var splitIndex = ending.getSplitIndex();
-            var spanStart = Math.max(ending.requireAnchorElementIndex(), lineStart);
+            var spanStart = Math.max(ending.firstBracket().begin(), lineStart);
             var spanEnd = Math.min(splitIndex, lineEnd);
 
             if (spanStart <= spanEnd) {

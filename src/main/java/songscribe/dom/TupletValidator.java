@@ -21,15 +21,14 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
@@ -93,17 +92,17 @@ import songscribe.dom.StaffElementRun.ElementRange;
  */
 public final class TupletValidator {
 
-    /** A dotted beat divides into three before subdividing binarily. */
-    private static final int DOTTED_BEAT_PARTS = 3;
-
     /** Largest binary multiple of the beat a tuplet may conventionally replace. */
     private static final int MAX_BEAT_MULTIPLE = 8;
 
     /** Shortest span a beat is subdivided down to, in PPQ ticks — the shortest written value. */
     private static final int SHORTEST_SPAN_TICKS = NoteValue.THIRTY_SECOND.ticks();
 
-    /** Every writable note value, keyed by its duration in PPQ ticks. */
-    private static final Map<Integer, NotatableValue> NOTATABLE_BY_TICKS = buildNotatableByTicks();
+    /**
+     * Fewest pitched notes a span must hold to carry a tuplet. A bracket has no meaningful slope
+     * across fewer, and a group of rests and grace notes has nothing for the number to count.
+     */
+    private static final int MIN_PITCHED_NOTES = 2;
 
     private TupletValidator() {
     }
@@ -119,7 +118,27 @@ public final class TupletValidator {
         FERMATA,                // an element in the span carries a FermataAttachment
         BEAT_BARRIER,           // a beat barrier lies strictly inside the span
         STRUCTURAL_BOUNDARY,    // barline, repeat, or interior breath mark
-        TOO_FEW_NOTES           // fewer than two non-rest notes; judged by the load pass
+        TOO_FEW_NOTES;          // fewer pitched notes than MIN_PITCHED_NOTES
+
+        /**
+         * Returns the {@code Strings} key of the text that tells the user why a tuplet failed
+         * for this reason.
+         *
+         * @return the key of this reason's user-facing text
+         */
+        public String messageKey() {
+            return switch (this) {
+                case EMPTY_SPAN -> Strings.DIALOG_REPORT_REASON_EMPTY_SPAN;
+                case NOT_NOTATABLE -> Strings.DIALOG_REPORT_REASON_NOT_NOTATABLE;
+                case BAD_RATIO -> Strings.DIALOG_REPORT_REASON_BAD_RATIO;
+                case NO_CONVENTIONAL_SPAN -> Strings.DIALOG_REPORT_REASON_NO_CONVENTIONAL_SPAN;
+                case POWER_OF_TWO_RATIO -> Strings.DIALOG_REPORT_REASON_POWER_OF_TWO;
+                case FERMATA -> Strings.DIALOG_REPORT_REASON_FERMATA;
+                case BEAT_BARRIER -> Strings.DIALOG_REPORT_REASON_BEAT_BARRIER;
+                case STRUCTURAL_BOUNDARY -> Strings.DIALOG_REPORT_REASON_STRUCTURAL_BOUNDARY;
+                case TOO_FEW_NOTES -> Strings.DIALOG_REPORT_REASON_TOO_FEW_NOTES;
+            };
+        }
     }
 
     /**
@@ -150,13 +169,16 @@ public final class TupletValidator {
      * candidate grades can be tested without repeating the O(document) beat walk.
      *
      * @param writtenTicks      S, the summed written duration of the span's non-grace elements
-     * @param beat              B, the beat in effect at the span's anchor
+     * @param beat              B, the beat in effect at the span's anchor, including a beat the
+     *                          anchor itself defines
+     * @param pitchedNotes      how many of the span's elements are pitched notes — every note
+     *                          but a grace note — which {@link Reason#TOO_FEW_NOTES} is judged on
      * @param placementReasons  each of {@link Reason#FERMATA}, {@link Reason#BEAT_BARRIER} (a
      *                          barrier strictly after the anchor element) and
      *                          {@link Reason#STRUCTURAL_BOUNDARY} found in the span; stored as
      *                          an unmodifiable copy
      */
-    public record SpanContext(int writtenTicks, BeatUnit beat, Set<Reason> placementReasons) {
+    public record SpanContext(int writtenTicks, BeatUnit beat, int pitchedNotes, Set<Reason> placementReasons) {
 
         public SpanContext {
             placementReasons = Set.copyOf(placementReasons);
@@ -174,28 +196,20 @@ public final class TupletValidator {
      * @return the grade-independent facts about the span
      */
     public static SpanContext describeSpan(Line line, ElementRange span) {
-        var beat = line.getSong().beatUnitAt(line.index(), span.begin());
-        var placementReasons = EnumSet.noneOf(Reason.class);
+        var measure = new SpanMeasure(span, line.getSong().beatUnitAt(line.index(), span.begin()));
 
-        if (hasFermata(line, span)) {
-            placementReasons.add(Reason.FERMATA);
+        for (var index = span.begin(); index <= span.end(); index++) {
+            measure.add(line.getElement(index), index);
         }
 
-        if (crossesBeatBarrier(line, span, beat)) {
-            placementReasons.add(Reason.BEAT_BARRIER);
-        }
-
-        if (crossesStructuralBoundary(line, span)) {
-            placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
-        }
-
-        return new SpanContext(writtenTicks(line, span), beat, placementReasons);
+        return measure.context();
     }
 
     /**
      * Applies the constraints to a span already measured by {@link #describeSpan}.
      *
-     * <p>The ratio and the fermata hold under both strictnesses; the conventional span,
+     * <p>The ratio, the fermata and the pitched-note count hold under both strictnesses; the
+     * conventional span,
      * the redundancy test, the beat barrier and the structural boundary hold under
      * {@link Strictness#STRICT} only. Editing and pasting are strict — they choose what
      * gets written — while loading and importing are lenient, because a document that
@@ -215,16 +229,16 @@ public final class TupletValidator {
         }
 
         var noteValueTicks = context.writtenTicks() / grade.number();
-        var noteValue = NOTATABLE_BY_TICKS.get(noteValueTicks);
+        var noteValue = NotatableValue.withTicks(noteValueTicks);
 
         if (noteValue == null) {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        var placementFailure = placementFailure(context, strictness);
+        var contentFailure = contentFailure(context, strictness);
 
-        if (placementFailure != null) {
-            return invalid(placementFailure);
+        if (contentFailure != null) {
+            return invalid(contentFailure);
         }
 
         // Both of these apply under either strictness, because reaching them at all means
@@ -262,7 +276,7 @@ public final class TupletValidator {
      * document that explicitly says 3:2 is asking for a real re-timing, and redundancy is a
      * property of the derivation rather than of the tuplet. What is still checked is that
      * the ratio is self-consistent — the stated V must equal {@code S / N} — and that the
-     * span's placement does not break it. Under {@link Strictness#STRICT} the placement
+     * span's contents and placement do not break it. Under {@link Strictness#STRICT} the placement
      * check includes the beat barrier and the structural boundary, which is what makes a
      * paste drop a tuplet the destination genuinely splits while leaving one it merely would
      * not have derived alone.
@@ -290,10 +304,10 @@ public final class TupletValidator {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        var placementFailure = placementFailure(context, strictness);
+        var contentFailure = contentFailure(context, strictness);
 
-        if (placementFailure != null) {
-            return invalid(placementFailure);
+        if (contentFailure != null) {
+            return invalid(contentFailure);
         }
 
         return new Result.Valid(stated);
@@ -319,18 +333,24 @@ public final class TupletValidator {
     }
 
     /**
-     * The constraints on where the span sits rather than on what it contains. The fermata
-     * holds under either strictness — it inflates the performed duration and so breaks the
-     * exact ratio whatever the tuplet says. The beat barrier and the structural boundary are
-     * editor policy and hold under {@link Strictness#STRICT} only.
+     * The constraints on the span's elements rather than on its total duration, shared by the
+     * derived and the stated paths. The fermata holds under either strictness — it inflates the
+     * performed duration and so breaks the exact ratio whatever the tuplet says — and so does
+     * the pitched-note count, since a group with nothing for the number to count is not a
+     * tuplet in any document. The beat barrier and the structural boundary are editor policy
+     * and hold under {@link Strictness#STRICT} only.
      *
      * @return the reason it failed, or null when it did not
      */
-    private static @Nullable Reason placementFailure(SpanContext context, Strictness strictness) {
+    private static @Nullable Reason contentFailure(SpanContext context, Strictness strictness) {
         var reasons = context.placementReasons();
 
         if (reasons.contains(Reason.FERMATA)) {
             return Reason.FERMATA;
+        }
+
+        if (context.pitchedNotes() < MIN_PITCHED_NOTES) {
+            return Reason.TOO_FEW_NOTES;
         }
 
         if (strictness != Strictness.STRICT) {
@@ -412,37 +432,35 @@ public final class TupletValidator {
 
         for (var lineIndex = from.lineIndex(); lineIndex < song.lineCount(); lineIndex++) {
             var line = song.getLine(lineIndex);
-            OpenSpan<T> open = null;
+            OpenTuplet<T> open = null;
 
             for (var index = firstIndex; index < line.elementCount(); index++) {
                 var element = line.getElement(index);
 
-                // Read the barrier against the beat that was running before this element,
-                // then let the element redefine it.
-                var barrierHere = isBeatBarrier(element, runningBeat);
-                var definedBeat = TempoResolver.beatDefinedAt(element);
-
-                if (definedBeat != null) {
-                    runningBeat = definedBeat;
-                }
-
                 if (open == null) {
+                    var definedBeat = TempoResolver.beatDefinedAt(element);
+
+                    if (definedBeat != null) {
+                        runningBeat = definedBeat;
+                    }
+
                     var anchored = tuplets.anchoredAt(line, index);
 
-                    // A barrier on the anchor defines the tuplet's beat instead of
-                    // splitting it, so the span opens against the updated running beat.
+                    // The running beat already includes the anchor's own definition, which is
+                    // the start SpanMeasure requires.
                     if (anchored != null) {
-                        open = new OpenSpan<>(anchored, index, runningBeat);
+                        var span = new ElementRange(index, anchored.endIndex());
+                        open = new OpenTuplet<>(anchored, new SpanMeasure(span, runningBeat));
                     }
-                } else if (barrierHere) {
-                    open.noteBeatBarrier();
                 }
 
                 if (open != null) {
-                    open.accumulate(element, index);
+                    var measure = open.measure();
+                    measure.add(element, index);
 
-                    if (open.closesAt(index)) {
-                        verdicts.add(open.close(lineIndex, index, strictness));
+                    if (measure.endsAt(index)) {
+                        verdicts.add(open.verdict(lineIndex, strictness));
+                        runningBeat = measure.runningBeat();
                         open = null;
                     }
                 }
@@ -469,93 +487,61 @@ public final class TupletValidator {
      */
     public record Verdict<T>(int lineIndex, ElementRange span, T tuplet, SpanContext context, Result result) {}
 
-    /** The span facts accumulated for the one tuplet the forward walk currently has open. */
-    private static final class OpenSpan<T> {
+    /**
+     * The tuplet the forward walk currently has open, and its span measured so far.
+     *
+     * @param anchored the tuplet as the caller supplied it
+     * @param measure  the span from the tuplet's anchor to its end index
+     * @param <T>      the caller's tuplet type
+     */
+    private record OpenTuplet<T>(Anchored<T> anchored, SpanMeasure measure) {
 
-        private final Anchored<T> anchored;
-        private final int anchorIndex;
-        private final int endIndex;
-        private final BeatUnit beat;
-        private final EnumSet<Reason> placementReasons = EnumSet.noneOf(Reason.class);
-        private int writtenTicks;
-
-        private OpenSpan(Anchored<T> anchored, int anchorIndex, BeatUnit beatAtAnchor) {
-            this.anchored = anchored;
-            this.anchorIndex = anchorIndex;
-            endIndex = anchored.endIndex();
-            beat = beatAtAnchor;
-        }
-
-        /** Whether the walk, having accumulated the element at {@code index}, has reached this span's end. */
-        private boolean closesAt(int index) {
-            return index == endIndex;
-        }
-
-        private void noteBeatBarrier() {
-            placementReasons.add(Reason.BEAT_BARRIER);
-        }
-
-        private void accumulate(StaffElement element, int index) {
-            var type = element.getType();
-
-            if (!type.isGraceNote()) {
-                writtenTicks += element.writtenDuration();
-            }
-
-            if (element.findAttachment(FermataAttachment.class) != null) {
-                placementReasons.add(Reason.FERMATA);
-            }
-
-            if (isStructuralBoundary(type, index, endIndex)) {
-                placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
-            }
-        }
-
-        private Verdict<T> close(int lineIndex, int closingIndex, Strictness strictness) {
-            var context = new SpanContext(writtenTicks, beat, placementReasons);
+        /** The verdict on this tuplet, once {@link #measure} has taken its last element. */
+        private Verdict<T> verdict(int lineIndex, Strictness strictness) {
+            var context = measure.context();
 
             return new Verdict<>(
-                lineIndex, new ElementRange(anchorIndex, closingIndex), anchored.tuplet(), context,
+                lineIndex, measure.span(), anchored.tuplet(), context,
                 validate(context, anchored.grade(), strictness));
         }
     }
 
     /**
-     * Sums the written duration of a span's non-grace elements. Grace notes ride along
-     * and contribute nothing; rests count exactly as notes do, and the non-duration
-     * elements a span may contain all have a zero default duration.
+     * Measures one span as its elements are handed to it in order, from the anchor to the end,
+     * so {@link #describeSpan} and the forward walk of {@link #validateFrom} measure a span the
+     * same way.
+     *
+     * <p>Grace notes ride along and add no written duration; rests count toward the duration
+     * exactly as notes do, and the non-duration elements a span may contain all have a zero
+     * default duration.
      */
-    private static int writtenTicks(Line line, ElementRange span) {
-        var ticks = 0;
+    private static final class SpanMeasure {
 
-        for (var element : line.getElements(span)) {
-            if (!element.getType().isGraceNote()) {
-                ticks += element.writtenDuration();
-            }
+        private final ElementRange span;
+        private final BeatUnit beat;
+        private final EnumSet<Reason> placementReasons = EnumSet.noneOf(Reason.class);
+        private BeatUnit runningBeat;
+        private int writtenTicks = 0;
+        private int pitchedNotes = 0;
+
+        /**
+         * @param span         the span to measure
+         * @param beatAtAnchor the beat in effect at the anchor, including a beat the anchor itself
+         *                     defines: a barrier on the anchor defines the tuplet's beat rather
+         *                     than splitting it
+         */
+        private SpanMeasure(ElementRange span, BeatUnit beatAtAnchor) {
+            this.span = span;
+            beat = beatAtAnchor;
+            runningBeat = beatAtAnchor;
         }
 
-        return ticks;
-    }
-
-    /** Whether any element in the span carries a fermata. */
-    private static boolean hasFermata(Line line, ElementRange span) {
-        return line.getElements(span).stream()
-            .anyMatch(element -> element.findAttachment(FermataAttachment.class) != null);
-    }
-
-    /**
-     * Whether a beat barrier lies strictly inside the span. The anchor is exempt: a
-     * barrier there defines the tuplet's beat rather than splitting it, which is why the
-     * walk starts one past the anchor and carries the beat resolved there.
-     */
-    private static boolean crossesBeatBarrier(Line line, ElementRange span, BeatUnit beatAtAnchor) {
-        var runningBeat = beatAtAnchor;
-
-        for (var index = span.begin() + 1; index <= span.end(); index++) {
-            var element = line.getElement(index);
-
-            if (isBeatBarrier(element, runningBeat)) {
-                return true;
+        /** Takes the element at {@code index}, the next of the span in order. */
+        private void add(StaffElement element, int index) {
+            // Read the barrier against the beat running before this element, then let the
+            // element redefine it.
+            if (index != span.begin() && TempoResolver.splitsBeat(element, runningBeat)) {
+                placementReasons.add(Reason.BEAT_BARRIER);
             }
 
             var definedBeat = TempoResolver.beatDefinedAt(element);
@@ -563,36 +549,43 @@ public final class TupletValidator {
             if (definedBeat != null) {
                 runningBeat = definedBeat;
             }
-        }
 
-        return false;
-    }
+            var type = element.getType();
 
-    /**
-     * Whether {@code element} redefines the beat in a way that splits a span running
-     * across it. A metric modulation always does. A tempo marking does only when its note
-     * value differs from the beat already running — a marking that changes nothing but the
-     * BPM leaves the beat, and so the tuplet's frame of reference, intact.
-     */
-    private static boolean isBeatBarrier(StaffElement element, BeatUnit runningBeat) {
-        if (element.findAttachment(BeatChangeAttachment.class) != null) {
-            return true;
-        }
+            if (!type.isGraceNote()) {
+                writtenTicks += element.writtenDuration();
+            }
 
-        var tempoChange = element.findAttachment(TempoChangeAttachment.class);
+            if (type.isPitchedNote()) {
+                pitchedNotes++;
+            }
 
-        return tempoChange != null && tempoChange.getTempo().tempoType() != runningBeat;
-    }
+            if (element.findAttachment(FermataAttachment.class) != null) {
+                placementReasons.add(Reason.FERMATA);
+            }
 
-    /** Whether the span crosses a barline, a repeat, or a breath mark it may not contain. */
-    private static boolean crossesStructuralBoundary(Line line, ElementRange span) {
-        for (var index = span.begin(); index <= span.end(); index++) {
-            if (isStructuralBoundary(line.getElement(index).getType(), index, span.end())) {
-                return true;
+            if (isStructuralBoundary(type, index, span.end())) {
+                placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
             }
         }
 
-        return false;
+        /** Whether the element at {@code index}, once taken, is the span's last. */
+        private boolean endsAt(int index) {
+            return index == span.end();
+        }
+
+        private ElementRange span() {
+            return span;
+        }
+
+        /** The beat in effect after the last element taken. */
+        private BeatUnit runningBeat() {
+            return runningBeat;
+        }
+
+        private SpanContext context() {
+            return new SpanContext(writtenTicks, beat, pitchedNotes, placementReasons);
+        }
     }
 
     /**
@@ -611,9 +604,10 @@ public final class TupletValidator {
 
     /**
      * The spans, measured in V-units, that a tuplet of value V may conventionally
-     * replace under beat B: the binary divisions of B — of {@code B / 3} when B is
-     * dotted, since a dotted beat divides into three before subdividing binarily — and
-     * the binary multiples of B.
+     * replace under beat B: the binary divisions of B's
+     * {@linkplain BeatUnit#binaryDivisionRootTicks() division root} — a dotted beat divides
+     * into {@value BeatUnit#DOTTED_BEAT_PARTS} before subdividing binarily — and the binary
+     * multiples of B.
      *
      * <p>Only spans that V divides exactly are kept, and a span of a single V-unit is
      * excluded. Excluding it is what makes a compound duplet infer 2:3 rather than the
@@ -622,9 +616,8 @@ public final class TupletValidator {
     private static NavigableSet<Integer> conventionalSpans(int noteValueTicks, BeatUnit beat) {
         var spans = new TreeSet<Integer>();
         var beatTicks = beat.ticks();
-        var divisionRoot = beat.dotted() ? beatTicks / DOTTED_BEAT_PARTS : beatTicks;
 
-        for (var ticks = divisionRoot; ticks >= SHORTEST_SPAN_TICKS; ticks /= 2) {
+        for (var ticks = beat.binaryDivisionRootTicks(); ticks >= SHORTEST_SPAN_TICKS; ticks /= 2) {
             addSpan(spans, ticks, noteValueTicks);
         }
 
@@ -685,22 +678,5 @@ public final class TupletValidator {
 
     private static Result invalid(Reason reason) {
         return new Result.Invalid(reason);
-    }
-
-    /**
-     * Every {@link NoteValue} at every {@link Dots} value, keyed by duration. No two of them
-     * share a duration.
-     */
-    private static Map<Integer, NotatableValue> buildNotatableByTicks() {
-        var table = new HashMap<Integer, NotatableValue>();
-
-        for (var value : NoteValue.values()) {
-            for (var dots : Dots.values()) {
-                var notatable = new NotatableValue(value, dots);
-                table.put(notatable.ticks(), notatable);
-            }
-        }
-
-        return Map.copyOf(table);
     }
 }

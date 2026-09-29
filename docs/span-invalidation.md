@@ -25,6 +25,21 @@ Every span is asked first and acted on afterwards, not judged-and-acted one at a
 time. Acting inside the loop would both mutate the collection being walked and let
 one span's removal change what a later span is judged against.
 
+A removal carries the **reason** the span's rule gives — an endpoint deleted, a
+note that can no longer be beamed, a tuplet whose interior changed — and the
+removal is reported with that reason. Every removal the user did not directly
+request is reported: those the funnel decides, the spans a merge absorbs or a
+displacement replaces, and those the rules at the close of the edit make. A
+removal the user asked for — deleting a selected span, deleting every element a
+span covers, toggling a beam or a tie off — is not.
+
+That second case is decided by the registry, not by any span's rule. A deletion
+whose range holds a span's anchor, its end and everything between takes the span
+with it, and the span is never asked: whether the user deleted the whole span is
+a fact about the deletion, the same for every kind. No edit asks the user to consent to a removal before it happens;
+the edit goes ahead, the report tells the user what else changed, and undo
+reverses both. See [change-report.md](change-report.md).
+
 ## Spans judge a projection, not a description
 
 A change describes itself as its **result**, not as its own terms: it carries the
@@ -45,11 +60,12 @@ elements, because a range is all a deletion can ever be — there is no
 non-contiguous selection to delete from — and stating that in the type is what
 keeps the mapping to a few comparisons instead of a search.
 
-That frugality is worth having because **only hairpins read the projection at
-all.** Every other span kind answers from the edit's own terms, and the projected
-list is built only when some hairpin asks for it. Copying the element list and
-building an index on every edit would do work that almost every edit throws away:
-beams are the common span, and hairpins are rare.
+That frugality is worth having because **only hairpins and endings read the
+projection at all.** Every other span kind answers from the edit's own terms, and
+the projected list is built only when a hairpin or an ending asks for it. Copying
+the element list and building an index on every edit would do work that almost
+every edit throws away: beams are the common span, and hairpins and endings are
+both rare.
 
 The view reads the live line, so it is valid only until the elements are mutated
 and nothing may retain one past that point. That is exactly the window every
@@ -59,9 +75,10 @@ caller uses it in.
 
 A span answers keep, remove, or reshape.
 
-Keep and remove carry no data, and there is exactly one of each — which is why
-they are enum constants rather than a pair of empty records, since a record's
-constructor cannot be narrowed and any caller could mint another. Reshape's
+Keep carries no data, and there is exactly one of it — which is why it is an
+enum constant rather than an empty record, since a record's constructor cannot be
+narrowed and any caller could mint another. Remove carries the reason the report
+shows, so it is a value, one for each reason. Reshape's
 positions are positions **in the projection**, never in the pre-change line; a
 caller indexing them into the old list gets the wrong elements.
 
@@ -82,9 +99,10 @@ would then restore the span broken.
 
 So spans are always asked against the pre-change line and a projection of what it
 will become, and the companion change is recorded **first** and therefore undone
-**last**. See [mutations.md](mutations.md). The tie rule is the one exception, and
-[the last section](#ties-are-note-state-judged-when-the-edit-is-over) says why
-undo stays correct without it.
+**last**. See [mutations.md](mutations.md). The rules that run when the edit is
+over — the tie rule and the ending's section rule below among them — are the
+exceptions, and [the section on ties](#ties-are-note-state-judged-when-the-edit-is-over)
+says why undo stays correct without it.
 
 ## Replacement re-points; it does not delete
 
@@ -94,9 +112,13 @@ vanishing. The projection reflects this: the old element is absent and the new o
 sits at its position, so a span whose endpoint was the old element must read as
 having that endpoint *become* the new one.
 
-Reading it the other way — as a deletion — would silently remove every beam,
-tuplet and ending whose endpoint is being edited, since each would see its
-endpoint vanish with nothing to replace it.
+Reading it the other way — as a deletion — would remove every beam, tuplet and
+ending whose endpoint is being edited, since each would see its endpoint vanish
+with nothing to replace it.
+
+An edit that leaves a span ill formed never makes a second change to keep it: a
+replaced bar that breaks an ending removes the ending, with its reason, rather
+than rewriting another of its bars to suit.
 
 ## The sweep is skipped while replaying
 
@@ -117,9 +139,12 @@ removal-plus-addition, never a third kind.
 
 **Every span lies in one line**, and sits in that line's registry and no other:
 both of its endpoints are in that line. No span reaches across a line break, so
-nothing about a span needs a second line's registry to answer it. The spans of a
-line are held separately from the element list, and a span enters or leaves the
-registry only through the span itself.
+nothing about a span needs a second line's registry to answer it. An ending's
+validity is the one thing that reads further: the ending sits in one line's
+registry, but whether its split closes an open repeat section depends on bars
+any number of lines back — see [below](#an-endings-section-is-judged-when-the-edit-is-over).
+The spans of a line are held separately from the element list, and a span enters
+or leaves the registry only through the span itself.
 
 Each kind states its **displacement policy** as one value — what happens to the
 same-kind spans already there when a new one arrives: they coexist, the new one
@@ -145,6 +170,12 @@ back are two deliberate groupings while two same-type hairpins are one hairpin.
 Serving two kinds already, it has no reason to move onto either; each absorbing
 policy only says how far past its endpoints the merge may reach.
 
+**Two endings on a line do not overlap**, and that is the only rule between
+them: there is no separation rule, and two endings may sit back to back, each
+still answering to the section rule on its own. The overlap is refused where an ending is created, from a selection or from a file;
+no edit can make two existing endings overlap, so the funnel judges no pair of
+endings.
+
 See [hairpin-editing.md](hairpin-editing.md) for the hairpin-specific rules this
 framework hosts but does not define.
 
@@ -167,13 +198,13 @@ then ends on the inserted note.
 The rule does not run inside the funnel. It runs **once per edit, when the
 outermost modification bracket closes**, before the batch is delivered and while
 the bracket is still open, so each removal it makes is recorded in the same
-batch. By then every change and every accidental restamp in the bracket has
-landed, so every note has a sounding alteration to compare. It judges every tied
-note in each line the edit touched and in the line before each of them, since a
-tie from that line can end in the touched one. A tie the edit itself added is
-judged like any other.
+batch, and reports it. By then every change and every accidental restamp in the
+bracket has landed, so every note has a sounding alteration to compare. It judges
+every tied note in each line the edit touched and in the line before each of
+them, since a tie from that line can end in the touched one. A tie the edit
+itself added is judged like any other.
 
-That timing makes its removals the one exception to "dependent state is recorded
+That timing makes its removals an exception to "dependent state is recorded
 first": they come **after** the changes that broke the ties. Reverse-order undo is
 still correct, because a tie's record names only its anchor — the end is derived
 — and undo restores the ties first, against the final state, where every anchor
@@ -187,3 +218,26 @@ A line draws the half of a tie that crosses into it from the line before, so an
 edit near either edge of a line can change what the line beside it draws. The
 model answers which lines an edit reaches that way; see
 [mutations.md](mutations.md#scope).
+
+## An ending's section is judged when the edit is over
+
+An ending's split must close an open repeat section: walking back from the split,
+a repeated section must be open, however many lines back it opened. That is the
+**section rule**, and it is the one part of an ending's validity that no
+projection holds. The funnel judges one line's projected elements, and the
+section rule reads the song across lines — a bar added, removed or retyped on an
+earlier line, or a whole line inserted or deleted, which goes through no funnel
+at all, can close or open the section of an ending lines later.
+
+So the funnel judges only what an ending's own line decides — its anchor, its
+split, its end, its brackets — and the section rule runs where the tie rule does,
+**once per edit, when the outermost modification bracket closes**, under the same
+conditions. It judges every ending in the song rather than the lines the edit
+touched, because no smaller set of lines holds every ending an edit can break,
+and it removes and reports, with its reason, each ending whose split no longer
+closes an open section.
+
+Undo stays correct for the tie rule's reason. The rule judges the final state, so
+both endpoints of every ending it removes are present in that state. Reverse-order
+undo restores those endings first, against that same final state, and only then
+undoes the changes that broke them.

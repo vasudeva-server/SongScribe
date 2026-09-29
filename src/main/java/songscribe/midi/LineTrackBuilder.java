@@ -19,6 +19,7 @@
  */
 package songscribe.midi;
 
+import java.math.RoundingMode;
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.MidiEvent;
@@ -77,28 +78,16 @@ public class LineTrackBuilder {
             return writtenTicks;
         }
 
-        var ratio = tuplet.getRatio();
-        var normalNotes = ratio.normalNotes();
-        var grade = tuplet.getGrade().number();
         var writtenTicksBefore = 0L;
 
         for (var i = tuplet.requireAnchorElementIndex(); i < elementIndex; i++) {
             writtenTicksBefore += line.getElement(i).playedDuration();
         }
 
-        var startOffset = scaledOffset(writtenTicksBefore, normalNotes, grade);
-        var endOffset = scaledOffset(writtenTicksBefore + writtenTicks, normalNotes, grade);
+        var startOffset = tuplet.performedTicks(writtenTicksBefore, RoundingMode.HALF_UP);
+        var endOffset = tuplet.performedTicks(writtenTicksBefore + writtenTicks, RoundingMode.HALF_UP);
 
         return (int) (endOffset - startOffset);
-    }
-
-    /**
-     * Scales a written offset measured from the tuplet's anchor into performed
-     * ticks, rounding half up. Integer arithmetic suffices because the only
-     * denominator is the grade.
-     */
-    private static long scaledOffset(long writtenTicks, int normalNotes, int grade) {
-        return ((writtenTicks * normalNotes * 2) + grade) / (grade * 2L);
     }
 
     /**

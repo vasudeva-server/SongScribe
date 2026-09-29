@@ -20,7 +20,6 @@
 
 package songscribe.ui.component;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -28,6 +27,7 @@ import java.util.Set;
 import java.util.function.Function;
 import javax.swing.JComponent;
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import net.engio.mbassy.listener.Handler;
 import org.jspecify.annotations.Nullable;
@@ -40,15 +40,12 @@ import songscribe.dom.Attachment;
 import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementChange;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.KeyChangeStranding;
 import songscribe.dom.Line;
-import songscribe.dom.NoteElement;
 import songscribe.dom.ProjectedEdit;
-import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun;
 import songscribe.dom.Tempo;
@@ -87,8 +84,7 @@ import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.TieAddition;
-import songscribe.message.mutation.TieRemoval;
+import songscribe.message.notification.ChangesWereReportedNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
@@ -99,10 +95,8 @@ import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
-import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.EditResult;
-import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
@@ -114,12 +108,13 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.PasteSpanReconciliation;
 import songscribe.ui.component.score.MainPanel;
+import songscribe.ui.dialog.ReportDialog;
+import songscribe.ui.dialog.ReportDialogController;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.InsertionPointMode;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 import songscribe.undo.OpNames;
@@ -386,25 +381,17 @@ public final class ScoreViewController {
     }
 
     /**
-     * Warns that an edit forced tuplets out of the song. Every route that can do so — either
-     * attachment dialog's Add, Modify or Remove button, the song's own tempo note value, and
-     * a paste whose destination breaks the pasted span — reports through this one handler,
-     * so the warning appears exactly once per edit no matter how many tuplets went. Only the
-     * wording varies, because "the beat changed" would be a puzzle to someone who just
-     * pressed Paste.
+     * Shows what an edit changed in the song beyond what the user asked for. The song posts
+     * one report per edit, so the dialog appears once however many changes it lists.
+     * <p>
+     * Delivery is synchronous and the report is posted from inside the closing modification
+     * bracket, so the modal dialog is deferred: shown here, it would hold the rest of the edit
+     * until the user dismissed it.
      */
     @Handler
-    public void tupletsWereRemoved(TupletsWereRemovedNotification message) {
-        var messageKey = switch (message.getCause()) {
-            case BEAT_EDIT -> Strings.ALERT_TUPLETS_REMOVED_BEAT;
-            case PASTE -> Strings.ALERT_TUPLETS_REMOVED_PASTE;
-        };
-
-        OptionDialogs.showWarningMessage(
-            null,
-            Strings.ALERT_TITLE_TUPLETS_REMOVED,
-            messageKey
-        );
+    public void changesWereReported(ChangesWereReportedNotification message) {
+        var report = message.getReport();
+        SwingUtilities.invokeLater(() -> ReportDialogController.show(ReportDialog.Occasion.EDIT, report));
     }
 
     @Handler
@@ -820,16 +807,9 @@ public final class ScoreViewController {
 
         var line = range.line();
 
-        // Widened once here and passed to the confirm, the stranding and the deletion, so the
-        // range the notator is asked about and the key changes are computed against is the range
-        // that goes.
+        // Widened once here and passed to the stranding and the deletion, so the range the key
+        // changes are computed against is the range that goes.
         var bounds = line.effectiveRange(range.range());
-
-        // Confirm before discarding an ending invalidated by the deletion, and do
-        // it first: declining must leave both the clipboard and the score untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, bounds)) {
-            return;
-        }
 
         var stranding = deletionStranding(line, bounds);
 
@@ -841,9 +821,8 @@ public final class ScoreViewController {
         // longer exist on the shrunk line.
         selectionCoordinator.clearSelection();
 
-        // One bracket for the deletion — the confirm above already ran, so
-        // deleteElementRange performs no further confirmation. The Cut action's op-name
-        // (Tier A) names this outermost step.
+        // One bracket for the deletion. The Cut action's op-name (Tier A) names this outermost
+        // step.
         score.getSong().withModification(() -> deleteElementRange(line, bounds, stranding));
 
         // Discard saved action states — the song has changed, so restoring
@@ -932,14 +911,9 @@ public final class ScoreViewController {
             var line = range.line();
             var selected = range.range();
 
-            // Widened once here and passed to the confirm, the stranding and the deletion, so
-            // the range the notator is asked about and the key changes are computed against is
-            // the range that goes.
+            // Widened once here and passed to the stranding and the deletion, so the range the
+            // key changes are computed against is the range that goes.
             var bounds = line.effectiveRange(selected);
-
-            if (!confirmEndingInvalidatedByDeletion(line, bounds)) {
-                return;
-            }
 
             var stranding = deletionStranding(line, bounds);
 
@@ -1142,16 +1116,6 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns true when the caller may proceed with a deletion of {@code range}:
-     * either it discards no ending, or the user confirmed discarding one. Callers
-     * must run this before mutating anything — declining leaves the score untouched.
-     */
-    private boolean confirmEndingInvalidatedByDeletion(Line line, StaffElementRun.EffectiveRange range) {
-        return !new ElementChange.Deletion(line, range.range()).removesConfirmableSpan()
-            || EndingConfirms.confirmInvalidation(score);
-    }
-
-    /**
      * Returns the key changes a deletion of {@code bounds} strands, on {@code line} and on every
      * line inheriting past it. Pure and pre-mutation: callers compute it <b>before</b> opening a
      * modification bracket and hand it to {@link #deleteElementRange}, which sweeps it inside.
@@ -1187,8 +1151,8 @@ public final class ScoreViewController {
 
     /**
      * Sweeps the key changes a deletion of {@code range} on {@code line} strands, then deletes
-     * that range through {@link Line#deleteRange}. Confirmation-free: callers are responsible
-     * for any ending-invalidation confirm and for clearing the selection before calling this.
+     * that range through {@link Line#deleteRange}. Callers are responsible for clearing the
+     * selection before calling this.
      * <p>
      * Names no undo step of its own: every caller opens the outermost bracket and names the
      * step there, and the op-name is captured only at the outermost bracket, so the bracket
@@ -1267,9 +1231,6 @@ public final class ScoreViewController {
      * check runs against the pre-delete line, so on {@code LINE_FULL} nothing has
      * been mutated: the "line full" error is shown, a caller-opened bracket stays
      * empty, and no notification is posted. Callers decide recovery.
-     *
-     * <p>{@code CANCELLED} means the user declined the confirm shown when the pasted content
-     * would invalidate a first-second ending. Like {@code LINE_FULL} it leaves the line untouched.
      *
      * <p><b>A breath mark stands only immediately after a duration element</b>, and the paste
      * keeps that on both of its ends before the fit gate runs. A fragment leading with a breath
@@ -1404,19 +1365,10 @@ public final class ScoreViewController {
             ? ProjectedEdit.inserting(line, insertIndex, clones).walk()
             : ProjectedEdit.replacing(line, rawDeleteRange, clones).walk();
 
-        // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
-        // both live inside the fit gate: it stamps the walk's accidentals, runs this check with
-        // them in place so the projection measures the right widths, and then puts every live
-        // note back as it was, leaving only the clones stamped.
-        //
-        // The gate's refusal is needed after it returns, hence the holder: a lambda cannot
-        // assign to a local.
-        //
-        // The refusal holder starts at CANCELLED rather than null so that this method cannot
-        // return null from a non-nullable signature if a refusal path is ever added below without
-        // naming its outcome. CANCELLED is the safe default: it is the outcome that reports
-        // "nothing happened, and the user has already been told why or chose it".
-        var refusal = new FragmentInsertOutcome[]{FragmentInsertOutcome.CANCELLED};
+        // The LINE_FULL refusal leaves the line exactly as it was (C1), so it lives inside the
+        // fit gate: it stamps the walk's accidentals, runs this check with them in place so the
+        // projection measures the right widths, and then puts every live note back as it was,
+        // leaving only the clones stamped.
         var lyricRenderMetrics = score.getLyricRenderMetrics();
 
         var committed = AccidentalFitGate.fits(
@@ -1430,38 +1382,14 @@ public final class ScoreViewController {
                         Strings.ALERT_TITLE_INSERT_ERROR,
                         Strings.ERROR_LINE_FULL_PASTE
                     );
-                    refusal[0] = FragmentInsertOutcome.LINE_FULL;
                     return false;
-                }
-
-                // A pasted barline or repeat landing inside an ending discards it, exactly as
-                // inserting one by hand does — confirm on the same terms, before anything is
-                // mutated. Skipped when the paste-replace's own deletion already invalidates an
-                // ending: handlePaste has confirmed that, and the ending is going either way.
-                var deletionAlreadyConfirmed = rawDeleteRange != null
-                    && new ElementChange.Deletion(line, rawDeleteRange).removesConfirmableSpan();
-
-                if (!deletionAlreadyConfirmed) {
-                    // Every element is tested at insertIndex rather than at its own eventual
-                    // position: the run lands contiguously, so each element sits inside the
-                    // ending (or at its split boundary) exactly when the first one does, and
-                    // only the pre-insertion index resolves correctly against the
-                    // pre-insertion line.
-                    var insertionInvalidatesEnding = clones.stream()
-                        .anyMatch(clone -> new ElementChange.Insertion(line, insertIndex, clone)
-                            .removesConfirmableSpan());
-
-                    if (insertionInvalidatesEnding && !EndingConfirms.confirmInvalidation(score)) {
-                        refusal[0] = FragmentInsertOutcome.CANCELLED;
-                        return false;
-                    }
                 }
 
                 return true;
             });
 
         if (!committed) {
-            return refusal[0];
+            return FragmentInsertOutcome.LINE_FULL;
         }
 
         // The key changes the moved key strands on the lines inheriting past this one, in the
@@ -1477,7 +1405,7 @@ public final class ScoreViewController {
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
         for (var span : reconciliation.targetSpansToRemove()) {
-            span.removeFrom(line);
+            span.removeReported(line, Strings.DIALOG_REPORT_REASON_PASTE_STRADDLED);
         }
 
         var insertAt = insertIndex;
@@ -1518,11 +1446,17 @@ public final class ScoreViewController {
         // needs no undo of its own.
         reconciliation = reconciliation.dropTupletsRejectedByTarget(line);
 
-        // Losing a bracket is the one part of a paste the user did not ask for, so it
-        // warns on exactly the same terms as a beat edit that costs them one — Song
-        // collapses both into a single notification when this paste's bracket closes.
-        if (!reconciliation.tupletsRejectedByTarget().isEmpty()) {
-            line.getSong().noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause.PASTE);
+        // The fragment spans the straddle rule dropped and the tuplets the destination
+        // rejected are spans the user did not ask to lose, so each goes into the edit's
+        // report, which is shown when this paste's bracket closes.
+        var song = line.getSong();
+
+        for (var span : reconciliation.fragmentSpansDropped()) {
+            song.report(span.reportedAs(Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED));
+        }
+
+        for (var tuplet : reconciliation.tupletsRejectedByTarget()) {
+            song.report(tuplet.reportedAs(Strings.DIALOG_REPORT_REASON_PASTE_TUPLET_REJECTED));
         }
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
@@ -1569,13 +1503,6 @@ public final class ScoreViewController {
         // takes the barline in front of a key change at begin, so the spacing was measured for
         // a smaller range than the one that goes.
         var effective = line.effectiveRange(range.range());
-
-        // A paste-replace deletes before it inserts, so it can discard an ending the
-        // same way Delete and Cut can — confirm on the same terms. Declining leaves
-        // the score, the selection, and the clipboard untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, effective)) {
-            return;
-        }
 
         // One bracket for the whole replace — delete + insert is a single undo
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket

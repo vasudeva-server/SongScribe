@@ -29,6 +29,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.error.RuntimeError;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.mutation.ElementField;
@@ -66,7 +67,7 @@ import songscribe.message.mutation.TieRemoval;
  * <p><b>Ties.</b> A tie is not a span: it is a note's own state, and its end is derived (see
  * {@link NoteElement}). The line is where a tie is recorded — {@link #addTie} and
  * {@link #removeTie} — and where the tie rule judges its ties, {@link #applyTieRule}, which
- * {@link Song} runs when the outermost modification bracket closes.
+ * {@link TieRule} runs when the outermost modification bracket closes.
  *
  * <p><b>Key invariant.</b> A line's own {@link #getKey() key} is non-null only where a key change
  * actually takes effect at the start of the line; null means the line inherits the key in effect
@@ -387,8 +388,8 @@ public final class Line implements EditableRun {
     // parentLine. Every mutation of `elements` funnels through one of them from inside
     // the applyChange mutator lambda, so parentage moves with the recorded change:
     //
-    // Both addElement overloads attach; removeElement and removeRange detach; setElement does
-    // both, detaching the outgoing element and attaching the incoming one.
+    // Both addElement overloads attach; removeElement and removeRange detach; replace does
+    // both, detaching each outgoing element and attaching its incoming one.
     //
     // A span has no line pointer: Span.isIn(Line) derives the lines it is in from where its
     // endpoints sit. What hangs on a staff element — attachments, articulations — has none
@@ -463,43 +464,70 @@ public final class Line implements EditableRun {
     }
 
     /**
-     * Replaces the element at {@code index} and posts a single {@link ElementReplacement}
-     * mutation, after the companion span changes the replacement forces. Every span whose
-     * anchor or end was the replaced element is re-pointed at {@code element}; the spans
-     * themselves decide what else the replacement costs them.
+     * Replaces every element {@code replacement} names with its new element, as one change:
+     * the spans judge all of its pairs together, once, and then each pair posts its own
+     * {@link ElementReplacement}. Every span whose anchor or end was a replaced element is
+     * re-pointed at that element's replacement; the spans themselves decide what else the
+     * replacement costs them.
      * <p>
-     * The replacement and its companion span changes post through {@link #applyChange}, under
-     * {@link Song#applyChange}'s bracket rule.
+     * A span is judged against the line with every pair applied, never against a line with
+     * only some of them applied, so no span answers for an intermediate state the edit never
+     * shows.
+     *
+     * @param replacement the pairs to apply, built against this line in its current state
+     * @throws IllegalArgumentException if {@code replacement.line()} is not this line
+     * @throws IllegalStateException if any pair breaks the song's terminal policy — see
+     *     {@link Song#checkTerminalPolicyForReplacement}; nothing is changed
+     * @effects posts the companion span changes the sweep decides, then one
+     *     {@link ElementReplacement} per pair in ascending index order, all through
+     *     {@link #applyChange} under {@link Song#applyChange}'s bracket rule
+     */
+    public void replace(ElementChange.Replacement replacement) {
+        if (replacement.line() != this) {
+            throw new IllegalArgumentException("replacement is for another line");
+        }
+
+        var newElements = replacement.newElements();
+
+        newElements.forEach((index, element) ->
+            song.checkTerminalPolicyForReplacement(this, index, element.getType()));
+
+        // Decided before any mutator so every span judges the pre-replacement line.
+        // Companion span changes precede the primary replacements so reverse-order undo
+        // restores the primary elements before re-adding dependent spans. The anchor
+        // re-pointing in each mutator below runs on replay too — it is self-inverting and
+        // required for span references to stay valid.
+        spans.sweep(replacement);
+
+        newElements.forEach((index, element) -> {
+            var oldElement = elements.get(index);
+
+            applyChange(
+                new ElementReplacement(this, index, oldElement, element),
+                () -> {
+                    // Detach first: a self-replace (element == oldElement) must end with the
+                    // element attached, so detaching after attach would leave it detached.
+                    detach(oldElement);
+                    elements.set(index, element);
+                    attach(element);
+                    spans.repoint(oldElement, element);
+                }
+            );
+        });
+    }
+
+    /**
+     * Replaces the element at {@code index} with {@code element}: a {@link #replace} of one
+     * pair, under all of its rules.
      *
      * @param index   the position of the element to replace
      * @param element the element taking its place
+     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      * @throws IllegalStateException if the replacement breaks the song's terminal policy — see
      *     {@link Song#checkTerminalPolicyForReplacement}
-     * @throws IndexOutOfBoundsException if no element stands at {@code index}
      */
     public void setElement(int index, StaffElement element) {
-        song.checkTerminalPolicyForReplacement(this, index, element.getType());
-
-        var oldElement = elements.get(index);
-
-        // Decided before the mutator so findRepeatSplitElement sees the pre-replacement line.
-        // Companion span changes precede the primary replacement so reverse-order undo restores
-        // the primary element before re-adding dependent spans. The anchor re-pointing in the
-        // mutator below runs on replay too — it is self-inverting and required for span
-        // references to stay valid.
-        spans.sweep(new ElementChange.Replacement(this, index, element));
-
-        applyChange(
-            new ElementReplacement(this, index, oldElement, element),
-            () -> {
-                // Detach first: a self-replace (element == oldElement) must end with the
-                // element attached, so detaching after attach would leave it detached.
-                detach(oldElement);
-                elements.set(index, element);
-                attach(element);
-                spans.repoint(oldElement, element);
-            }
-        );
+        replace(ElementChange.Replacement.single(this, index, element));
     }
 
     /**
@@ -684,22 +712,61 @@ public final class Line implements EditableRun {
     /**
      * Runs the tie rule (see {@link NoteElement}) over every tied note of this line: each one is
      * judged by {@link Tie#holds} against the element its walk reaches, in this line or at the
-     * start of the next, and each tie that does not hold is removed through
-     * {@link #removeTie}. {@link Song} calls it when the outermost modification bracket
+     * start of the next, and each tie that does not hold is reported and removed through
+     * {@link #removeTie}. {@link TieRule} calls it when the outermost modification bracket
      * closes, once every change in the bracket has landed.
      *
-     * @effects posts a {@link TieRemoval} for each tie that does not hold; nothing else
+     * @param report the report of the edit being closed
+     * @effects for each tie that does not hold, records into {@code report} a change headed
+     *     {@link Strings#DIALOG_REPORT_TIES_REMOVED}, located from the anchor to the element the
+     *     walk reaches, or at the anchor alone when it reaches none, then posts a
+     *     {@link TieRemoval}; nothing else
      */
-    void applyTieRule() {
+    void applyTieRule(ChangeReport report) {
         var next = nextLine();
 
         for (var i = 0; i < elements.size(); i++) {
-            if (elements.get(i) instanceof NoteElement anchor
-                    && anchor.isTiedToNext()
-                    && !Tie.holds(anchor, Tie.endAfter(elements, i, next))) {
+            if (!(elements.get(i) instanceof NoteElement anchor) || !anchor.isTiedToNext()) {
+                continue;
+            }
+
+            var end = Tie.endAfter(elements, i, next);
+
+            if (!Tie.holds(anchor, end)) {
+                report.record(new ReportedChange(
+                    Strings.DIALOG_REPORT_TIES_REMOVED,
+                    Strings.get(Strings.DIALOG_REPORT_REASON_TIE_NOT_HELD),
+                    tieLocation(i, end)));
                 removeTie(anchor);
             }
         }
+    }
+
+    /**
+     * The elements a tie from this line's element at {@code anchorIndex} to {@code end} covers.
+     *
+     * @param anchorIndex the anchor's index in this line, which is one of its song's lines
+     * @param end         the element the tie's walk reaches, in this line or the next, or
+     *                    {@code null} when it reaches none
+     * @return the range from the anchor's location to {@code end}'s, or the anchor's location
+     *     alone when {@code end} is {@code null}
+     */
+    private ElementLocationRange tieLocation(int anchorIndex, @Nullable StaffElement end) {
+        var start = new ElementLocation(index(), anchorIndex);
+
+        if (end == null) {
+            return ElementLocationRange.single(start);
+        }
+
+        var endLine = end.getParentLine();
+
+        // Tie.endAfter reads the end from this line's elements or the next line's.
+        if (endLine == null) {
+            throw RuntimeError.exit("a tie's end is in no line");
+        }
+
+        return new ElementLocationRange(
+            start, new ElementLocation(endLine.index(), endLine.getElementIndex(end)));
     }
 
     /**

@@ -25,37 +25,42 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * What should happen to a {@link Span} when it is asked to judge itself against a
  * pending {@link ElementChange} via {@link Span#outcomeFor(ElementChange)}.
  * <p>
- * Every span can answer {@link Simple#KEEP} or {@link Simple#REMOVE}, and that is the
- * whole of this type. A hairpin alone can also survive an edit in a different shape, so
- * it answers the wider {@link HairpinOutcome} through
+ * Every span can answer {@link Keep} or {@link Remove}, and that is the whole of this type.
+ * Keep carries no data. Remove carries the reason the span's rule gives, which is what the
+ * user is told when the removal is reported. A hairpin alone can also survive an edit in a
+ * different shape, so it answers the wider {@link HairpinOutcome} through
  * {@link Hairpin#hairpinOutcomeFor(ElementChange)}; the split is what makes a
  * {@link Reshape} from any other span kind unwriteable rather than merely unexpected.
  */
-public sealed interface SpanOutcome permits SpanOutcome.Simple {
+public sealed interface SpanOutcome permits SpanOutcome.Keep, SpanOutcome.Remove {
 
     /**
-     * The two outcomes that carry no data.
+     * The span is unaffected.
      * <p>
-     * An enum rather than a pair of stateless records: there is exactly one of each,
+     * An enum with one constant rather than a stateless record: there is exactly one keep,
      * which is what "carries no data" means, and only an enum can say so — a record's
      * canonical constructor cannot be narrowed, so any caller could mint another. A
      * {@code switch} over {@link HairpinOutcome} still reads flat and is still checked
      * for exhaustiveness, since a qualified enum constant is a legal case label for a
      * sealed selector type.
      */
-    enum Simple implements SpanOutcome, HairpinOutcome {
-        /** The span is unaffected. */
-        KEEP,
-
-        /** The span cannot survive the change and must be removed. */
-        REMOVE
+    enum Keep implements SpanOutcome, HairpinOutcome {
+        INSTANCE
     }
 
     /**
-     * What should happen to a {@link Hairpin}: either of the {@link Simple} answers, or a
+     * The span cannot survive the change and must be removed.
+     *
+     * @param reasonKey the {@code Strings} key of the reason the span's rule gives, whose value
+     *                  is the plain text the report shows for the removal
+     */
+    record Remove(String reasonKey) implements SpanOutcome, HairpinOutcome { }
+
+    /**
+     * What should happen to a {@link Hairpin}: {@link Keep}, {@link Remove}, or a
      * {@link Reshape}.
      */
-    sealed interface HairpinOutcome permits Simple, Reshape { }
+    sealed interface HairpinOutcome permits Keep, Remove, Reshape { }
 
     /**
      * The hairpin survives over {@code range}, a range over the change's

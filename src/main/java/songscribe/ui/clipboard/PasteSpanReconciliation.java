@@ -137,16 +137,22 @@ import songscribe.dom.TupletValidator;
  * necessarily carries that ending's own barlines, so in practice that rule usually
  * removes the destination ending too, and the paste is confirmed on those terms.
  *
+ * <p>The caller reports every span in {@code targetSpansToRemove}, {@code fragmentSpansDropped}
+ * and {@code tupletsRejectedByTarget}.
+ *
  * @param targetSpansToRemove     Spans on the destination line to remove before inserting
  * @param fragmentSpans           The fragment's spans that should still be added
+ * @param fragmentSpansDropped    The fragment's spans the straddle rule dropped, named so the
+ *                                caller can report them
  * @param tupletsRejectedByTarget The pasted tuplets the destination rejected, named
  *                                separately so the two drop rules stay tellable apart and
- *                                so the caller can warn the user about this one; empty
+ *                                so the caller can report this one; empty
  *                                until {@link #dropTupletsRejectedByTarget} has run
  */
 public record PasteSpanReconciliation(
     List<Span<?>> targetSpansToRemove,
     List<Span<?>> fragmentSpans,
+    List<Span<?>> fragmentSpansDropped,
     List<Tuplet> tupletsRejectedByTarget
 ) {
 
@@ -186,14 +192,13 @@ public record PasteSpanReconciliation(
         var spans = line.spanRegistry();
 
         for (var span : spans.getSpans()) {
-            var anchorIndex = span.requireAnchorElementIndex();
-            var endIndex = span.requireEndElementIndex();
+            var range = span.range();
 
             // A span straddles the paste when its anchor lies strictly before the
             // region and its end lies at or after the first index past it. That
             // simultaneously excludes spans fully inside the deleted range (whose
             // endpoints the deletion sweep removes) and spans clear of it entirely.
-            if (anchorIndex >= insertIndex || endIndex < firstIndexAfterRegion) {
+            if (range.begin() >= insertIndex || range.end() < firstIndexAfterRegion) {
                 continue;
             }
 
@@ -219,6 +224,7 @@ public record PasteSpanReconciliation(
         }
 
         var keptFragmentSpans = new ArrayList<Span<?>>(fragmentSpans.size());
+        var droppedFragmentSpans = new ArrayList<Span<?>>();
 
         for (var span : fragmentSpans) {
             var dropped = (dropTuplets && span instanceof Tuplet)
@@ -226,12 +232,14 @@ public record PasteSpanReconciliation(
                 || (dropEndings && span instanceof Ending)
                 || (span instanceof Hairpin hairpin && keptStraddledHairpinKinds.contains(hairpin.getKind()));
 
-            if (!dropped) {
+            if (dropped) {
+                droppedFragmentSpans.add(span);
+            } else {
                 keptFragmentSpans.add(span);
             }
         }
 
-        return new PasteSpanReconciliation(toRemove, keptFragmentSpans, List.of());
+        return new PasteSpanReconciliation(toRemove, keptFragmentSpans, droppedFragmentSpans, List.of());
     }
 
     /**
@@ -245,8 +253,7 @@ public record PasteSpanReconciliation(
      * the only moment that is knowable, and nothing else fires for it — left alone, such a
      * tuplet would render and play until the next save-and-reopen dropped it, with no
      * explanation the user could connect to the paste. Only the bracket goes; the pasted
-     * notes are untouched, and the caller warns the user through
-     * {@code Song.noteTupletsWereRemoved}.
+     * notes are untouched, and the caller reports each one to the user.
      *
      * <p><b>Call this after the fragment's elements have been inserted into
      * {@code line} and before its spans are added.</b> Every index the validator reads
@@ -257,9 +264,10 @@ public record PasteSpanReconciliation(
      * and the companion-ordering rule in {@code docs/mutations.md} is satisfied
      * without ordering anything.
      *
-     * <p>The straddle rule's accounting is left alone: the fragment tuplets it dropped
-     * are already absent from {@link #fragmentSpans()}, and the ones dropped here are
-     * named in {@link #tupletsRejectedByTarget()}.
+     * <p>The straddle rule's accounting is left alone: the fragment spans it dropped
+     * are already absent from {@link #fragmentSpans()} and named in
+     * {@link #fragmentSpansDropped()}, and the tuplets dropped here are named in
+     * {@link #tupletsRejectedByTarget()}.
      *
      * @param line The destination line, with the fragment's elements already inserted
      * @return This reconciliation when nothing is rejected, otherwise one without the
@@ -281,7 +289,8 @@ public record PasteSpanReconciliation(
             return this;
         }
 
-        return new PasteSpanReconciliation(targetSpansToRemove, keptSpans, rejectedTuplets);
+        return new PasteSpanReconciliation(
+            targetSpansToRemove, keptSpans, fragmentSpansDropped, rejectedTuplets);
     }
 
     /**
@@ -296,17 +305,7 @@ public record PasteSpanReconciliation(
      * Those are checked strictly, exactly as creating the tuplet by hand there would be.
      */
     private static boolean isRejectedByTarget(Line line, Tuplet tuplet) {
-        var beginIndex = tuplet.requireAnchorElementIndex();
-        var endIndex = tuplet.requireEndElementIndex();
-
-        // Endpoints that do not resolve mean a malformed span, which is out of scope
-        // here: there is nothing for the validator to measure and nothing this rule
-        // could say about it that would be better than saying nothing.
-        if (beginIndex < 0 || endIndex < beginIndex) {
-            return false;
-        }
-
-        var context = TupletValidator.describeSpan(line, new ElementRange(beginIndex, endIndex));
+        var context = TupletValidator.describeSpan(line, tuplet.range());
         var result = TupletValidator.validateStated(
             context, tuplet.getGrade(), tuplet.getRatio(), TupletValidator.Strictness.STRICT);
 

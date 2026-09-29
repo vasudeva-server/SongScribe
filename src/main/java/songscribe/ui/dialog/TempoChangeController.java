@@ -34,8 +34,8 @@ import songscribe.ui.component.MainFrame;
  * Reads and writes the tempo change on one element, for {@link TempoChangeDialog}.
  *
  * <p>A tempo change carries the beat, so it redefines the beat from its element onwards exactly
- * as a beat change does; every write here goes through {@link Song#withBeatDefiningEditOn} for
- * the same reason.
+ * as a beat change does; the tuplet beat rule revalidates the tuplets after it when the
+ * modification bracket closes.
  *
  * <p>The value crossing the dialog interface is a {@link Tempo}, not the
  * {@link TempoChangeAttachment} that holds it: the attachment is a node in the document graph and
@@ -84,18 +84,13 @@ public final class TempoChangeController extends AttachmentDialogController<Temp
         var element = element();
         var existing = element.findAttachment(TempoChangeAttachment.class);
 
-        // A tempo change carries the beat, so both branches redefine it from here on. The
-        // change branch routes itself from inside TempoChangeAttachment; wrapping both gives
-        // the add branch — a raw addAttachment — its routing, and collapses the pair into
-        // one edit. Any tuplets the new beat forces out are reported by the chokepoint's
-        // own notification.
-        modifyTarget(commitOp(), () -> Song.withBeatDefiningEditOn(element, () -> {
+        modifyTarget(commitOp(), () -> {
             if (existing != null) {
                 existing.setTempo(change);
             } else {
                 element.addAttachment(new TempoChangeAttachment(change));
             }
-        }));
+        });
     }
 
     @Override

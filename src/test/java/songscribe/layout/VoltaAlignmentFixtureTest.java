@@ -31,7 +31,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.SongFactory;
@@ -42,11 +41,12 @@ import songscribe.font.DocumentFonts;
 import songscribe.io.musicxml.MusicXmlWriter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SpanFactory.endingOver;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.note;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
-import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
@@ -57,10 +57,12 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * arms land against the barline beside them is a judgement only a person makes, and this test
  * holds that judgement against later changes to layout and to the writer.
  *
- * <p>{@code EndingBracketGeometry} positions a bracket from three independent inputs — what the
- * bracket opens on, what repeat splits its two halves, and what it closes on — so the lines
- * below vary exactly one of the three at a time, and each line writes its own case name under
- * its first note.
+ * <p>{@code EndingBracketGeometry} positions a bracket from two independent inputs — what the
+ * bracket opens on, and what it closes on — so the lines below vary exactly one of the two at a
+ * time, and each line writes its own case name under its first note. An ending's split is always
+ * a right repeat, and that repeat closes the section the ending sits in. Every line after the
+ * first therefore starts with a left repeat, which opens the section its own split closes: the
+ * split before it, on the line above, closed the last one.
  *
  * <p>When a change to what a bracket emits is intended, regenerate the fixture with
  * {@code ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest}, which sets
@@ -101,8 +103,15 @@ class VoltaAlignmentFixtureTest extends UnitTest {
         }
     }
 
-    /** One line of the fixture: the case name written under its first note, and the line itself. */
-    private record VoltaCase(String label, SongFactory.LineBuilder builder) {}
+    /**
+     * One line of the fixture.
+     *
+     * @param label    the case name, written under the line's first note
+     * @param anchor   the element the ending is anchored on; one of {@code elements}
+     * @param end      the element the ending ends on; one of {@code elements}
+     * @param elements the line's elements, in order
+     */
+    private record VoltaCase(String label, StaffElement anchor, StaffElement end, List<StaffElement> elements) {}
 
     @Test
     void testWrittenVoltaAlignmentsMatchTheCheckedInFixture() throws IOException {
@@ -118,17 +127,35 @@ class VoltaAlignmentFixtureTest extends UnitTest {
 
         assertThat(written)
             .as("the volta alignments as written now, against %s — if the change is intended, "
-                + "regenerate with -D%s=true and look at the result in the application",
-                FIXTURE_PATH, UPDATE_FIXTURES_PROPERTY)
+                + "regenerate with ./scripts/test.sh --generate-fixtures VoltaAlignmentFixtureTest "
+                + "and look at the result in the application",
+                FIXTURE_PATH)
             .isEqualTo(expected);
     }
 
     /** The volta-alignment song as the application saves it, dated from the fixed clock. */
     private static String writeVoltaAlignments() {
-        var builders = voltaCases().stream()
-            .map(VoltaCase::builder)
-            .toArray(SongFactory.LineBuilder[]::new);
+        var cases = voltaCases();
+        var builders = new SongFactory.LineBuilder[cases.size()];
+
+        for (var i = 0; i < builders.length; i++) {
+            builders[i] = lineBuilderOf(cases.get(i), i == 0);
+        }
+
         var song = SongFactory.buildSong(builders);
+
+        // An ending is judged against the song's repeat sections, so it is added once every
+        // line is in the song.
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < cases.size(); i++) {
+                var line = song.getLine(i);
+                var voltaCase = cases.get(i);
+                var range = new ElementRange(
+                    line.getElementIndex(voltaCase.anchor()), line.getElementIndex(voltaCase.end()));
+
+                endingOver(line, range).addTo(line);
+            }
+        });
 
         var metadata = song.getMetadata();
         song.withoutMutationTracking(() -> song.setMetadata(new SongMetadata(
@@ -159,48 +186,61 @@ class VoltaAlignmentFixtureTest extends UnitTest {
 
     /**
      * The lines of the fixture, in the order they appear in the song. The line closing on a
-     * {@code FINAL_DOUBLE_BARLINE} is last because that barline may only end the last line.
+     * {@code FINAL_DOUBLE_BARLINE} is last because that barline may only end the last line. The
+     * line whose anchor is the line's first element is first, because every other line starts
+     * with a left repeat, and a note anchor cannot follow one directly.
      */
     private static List<VoltaCase> voltaCases() {
         var notes = new NoteRun();
 
         return List.of(
-            // What the bracket opens on: the element behind the anchor, when that element is a
-            // bar or a repeat, otherwise the anchor note itself.
-            standardCase(notes, "open=SINGLE", singleBarline(), repeatRight(), singleBarline()),
-            standardCase(notes, "open=DOUBLE", doubleBarline(), repeatRight(), singleBarline()),
-            standardCase(notes, "open=REPEAT_LEFT", repeatLeft(), repeatRight(), singleBarline()),
-            standardCase(notes, "open=REPEAT_RIGHT", repeatRight(), repeatRight(), singleBarline()),
-            standardCase(notes, "open=RLR", repeatLeftRight(), repeatRight(), singleBarline()),
+            // What the bracket opens on: the single barline behind the anchor, otherwise the
+            // anchor itself. A note or rest anchor behind any other bar is not an ending.
             noteOpeningCase(notes),
+            standardCase(notes, "open=SINGLE", singleBarline(), repeatRight(), singleBarline()),
+            noteAfterNoteOpeningCase(notes),
+            restOpeningCase(notes),
+            restAfterNoteOpeningCase(notes),
 
             // What the bracket closes on: the end element, or the bar or repeat immediately
-            // after it when the end element is neither.
+            // after it when the end element is neither. A right repeat cannot close it: as the
+            // split it already closes the section, so it cannot also be the bracket's boundary.
             standardCase(notes, "close=SINGLE", singleBarline(), repeatRight(), singleBarline()),
             standardCase(notes, "close=DOUBLE", singleBarline(), repeatRight(), doubleBarline()),
             standardCase(notes, "close=REPEAT_LEFT", singleBarline(), repeatRight(), repeatLeft()),
-            // These two close on a right repeat, which only a REPEAT_LEFT_RIGHT split may do:
-            // a REPEAT_RIGHT split already closes its section, so it cannot also be closed on.
-            // Ending.isValidEnd states the pairing, and the editor refuses the other one.
-            standardCase(notes, "close=REPEAT_RIGHT", singleBarline(), repeatLeftRight(), repeatRight()),
-            standardCase(notes, "close=RLR", singleBarline(), repeatLeftRight(), repeatLeftRight()),
             noteClosingCase(notes),
             noteThenBarClosingCase(notes),
 
-            // What splits the two halves.
-            standardCase(notes, "split=RLR", singleBarline(), repeatLeftRight(), repeatRight()),
-
-            // An anchor that is itself a repeat, with a note behind it.
-            repeatAnchorCase(notes),
+            // An anchor that is itself a single barline, with a note behind it.
+            barAnchorCase(notes),
 
             standardCase(notes, "close=FINAL_DOUBLE", singleBarline(), repeatRight(), finalDoubleBarline())
         );
     }
 
     /**
+     * The builder of one fixture line: {@code voltaCase}'s elements, a left repeat first when the
+     * line is not the song's first, and the case's label under its first note.
+     */
+    private static SongFactory.LineBuilder lineBuilderOf(VoltaCase voltaCase, boolean isFirstLine) {
+        return line -> {
+            if (!isFirstLine) {
+                line.addElement(repeatLeft());
+            }
+
+            for (var element : voltaCase.elements()) {
+                line.addElement(element);
+            }
+
+            labelFirstNote(line, voltaCase.label());
+        };
+    }
+
+    /**
      * The fixture's standard shape — opening bar, two notes, the split repeat, two notes,
      * closing bar — with the ending anchored on the first note and ended on the closing bar.
-     * The element behind the anchor is a bar or a repeat, so the bracket opens on that.
+     * The bracket opens on the element behind the anchor when that element is a single
+     * barline, and on the anchor note otherwise.
      */
     private static VoltaCase standardCase(
         NoteRun notes, String label,
@@ -222,6 +262,44 @@ class VoltaAlignmentFixtureTest extends UnitTest {
 
         return endingCase("open=NOTE", anchor, closing,
             anchor, notes.next(), repeatRight(), notes.next(), notes.next(), closing);
+    }
+
+    /**
+     * The bracket opens on a note with another note behind it: only a single barline pulls
+     * the bracket back, so it opens on the anchor and not on the note in front of it.
+     */
+    private static VoltaCase noteAfterNoteOpeningCase(NoteRun notes) {
+        var before = notes.next();
+        var anchor = notes.next();
+        var closing = singleBarline();
+
+        return endingCase("open=NOTE_AFTER_NOTE", anchor, closing,
+            before, anchor, notes.next(), repeatRight(), notes.next(), notes.next(), closing);
+    }
+
+    /**
+     * The bracket opens on the single barline behind a rest anchor, as it does behind a note
+     * anchor.
+     */
+    private static VoltaCase restOpeningCase(NoteRun notes) {
+        var anchor = crotchetRest();
+        var closing = singleBarline();
+
+        return endingCase("open=REST", anchor, closing,
+            singleBarline(), anchor, notes.next(), repeatRight(), notes.next(), notes.next(), closing);
+    }
+
+    /**
+     * The bracket opens on a rest with a note behind it: it opens on the rest, not on the note
+     * in front of it.
+     */
+    private static VoltaCase restAfterNoteOpeningCase(NoteRun notes) {
+        var before = notes.next();
+        var anchor = crotchetRest();
+        var closing = singleBarline();
+
+        return endingCase("open=REST_AFTER_NOTE", anchor, closing,
+            before, anchor, notes.next(), repeatRight(), notes.next(), notes.next(), closing);
     }
 
     /**
@@ -256,38 +334,26 @@ class VoltaAlignmentFixtureTest extends UnitTest {
     }
 
     /**
-     * The anchor is itself a repeat, with a note behind it: the bracket opens on the anchor
-     * without pulling back, and the split is the repeat further along the line.
+     * The anchor is itself a single barline, with a note behind it: the bracket opens on the
+     * anchor without pulling back.
      */
-    private static VoltaCase repeatAnchorCase(NoteRun notes) {
-        var anchor = repeatLeftRight();
+    private static VoltaCase barAnchorCase(NoteRun notes) {
+        var anchor = singleBarline();
         var closing = singleBarline();
 
-        return endingCase("anchor=RLR", anchor, closing,
+        return endingCase("anchor=SINGLE", anchor, closing,
             notes.next(), notes.next(), anchor, notes.next(), notes.next(),
             repeatRight(), notes.next(), notes.next(), closing);
     }
 
     /**
-     * A line of {@code elements} carrying one ending over [{@code anchor}, {@code end}], with
+     * A case of {@code elements} carrying one ending over [{@code anchor}, {@code end}], with
      * {@code label} written under the line's first note so the case names itself on the page.
      */
     private static VoltaCase endingCase(
         String label, StaffElement anchor, StaffElement end, StaffElement... elements
     ) {
-        return new VoltaCase(label, line -> {
-            for (var element : elements) {
-                line.addElement(element);
-            }
-
-            labelFirstNote(line, label);
-
-            var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
-            var ending = Ending.spanning(line, range);
-
-            assertThat(ending).isNotNull();
-            ending.addTo(line);
-        });
+        return new VoltaCase(label, anchor, end, List.of(elements));
     }
 
     /**
@@ -298,7 +364,9 @@ class VoltaAlignmentFixtureTest extends UnitTest {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
 
-            if (element.getType().isDuration()) {
+            var type = element.getType();
+
+            if (type.isDuration() && !type.isRest()) {
                 element.putLyric(
                     new Lyric(Lyric.FIRST_VERSE, label, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 

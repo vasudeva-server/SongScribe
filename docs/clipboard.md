@@ -19,19 +19,21 @@ A fragment carries what the music *is*, never how it was placed: horizontal
 nudges are discarded on the way in, because a nudge is meaningful only under the
 spring solve, neighbours and header width it was computed against.
 
-## Confirmation, then one bracket
+## One bracket, and questions before any change
 
-Every clipboard gesture is a single undo step, and every question the user might
-be asked comes **before** that step opens.
+Every clipboard gesture is a single undo step. Cut copies, then deletes, and asks
+nothing. A paste over a selection deletes and inserts inside one bracket,
+matching what the user experiences as one action. A paste that will not fit
+changes nothing at all, so the bracket closes empty and the selection survives.
 
-Cut asks first, then copies, then deletes — so declining leaves both the score
-and the clipboard untouched, the copy not yet having happened. A paste over a
-selection deletes and inserts inside one bracket, matching what the user
-experiences as one action. A paste that will not fit changes nothing at all, so
-the bracket closes empty and the selection survives.
+Paste asks one question: whether to drop the breath mark a fragment leads with,
+when nothing at the paste point can stand before it. The question comes before
+the paste changes anything, so declining it leaves an empty bracket and no undo
+step. A question asked after a change would have the user answering about an
+edit that has already partly happened.
 
-The ordering matters because a question asked *inside* a bracket would have the
-user answering about an edit that has already partly happened.
+Nothing asks before an edit removes a span. Every span an edit removes without
+the user asking for it is reported once the edit is over, and undo restores it.
 
 ## Pasting inside an existing span
 

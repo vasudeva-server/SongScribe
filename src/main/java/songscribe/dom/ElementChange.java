@@ -19,8 +19,12 @@
  */
 package songscribe.dom;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.jspecify.annotations.Nullable;
 
@@ -30,18 +34,15 @@ import songscribe.message.mutation.ElementField;
 /**
  * A pending change to a {@link Line}'s elements: the line has not been mutated yet, and
  * {@link #projectedElements} describes what it will look like once the change lands. The four
- * shapes are the four element primitives — an insertion, a replacement, a deletion, and a
+ * shapes are the four element primitives — an insertion of one element, a replacement of one
+ * or more elements each at its own position, a deletion of a contiguous run, and a
  * modification of one element's fields in place.
  * <p>
- * A change has two readers. The span sweep ({@link LineSpans#sweep}) hands it to every
- * {@link Span} via {@link Span#outcomeFor(ElementChange)}, and the projection is the
+ * A change has one reader, the span sweep ({@link LineSpans#sweep}). It hands the change to
+ * every {@link Span} via {@link Span#outcomeFor(ElementChange)}, and the projection is the
  * single thing a span judges itself against — decisions must always be made against the
  * projection, never against the mutated line, so that companion span mutations can be
- * recorded before the primary element mutation for correct undo replay. The confirmation
- * prompts ask the change itself, through {@link #removesConfirmableSpan} and
- * {@link Replacement#endingEffect}, what the edit will cost before it is made; those
- * predictions put the same question to the same spans, so a prompt and the edit it
- * precedes cannot disagree.
+ * recorded before the primary element mutation for correct undo replay.
  * <p>
  * <b>The projection is a view, not a copy.</b> Each shape maps projected positions onto
  * the line it holds, so building a change allocates nothing proportional to the line and
@@ -81,20 +82,22 @@ public sealed interface ElementChange {
     @Nullable Integer projectedIndexOf(StaffElement element);
 
     /**
-     * Whether this change would remove any span whose loss warrants a confirmation prompt.
+     * The position a span endpoint takes in {@link #projectedElements}.
      * <p>
-     * Asks those spans the same question {@link LineSpans#sweep} does, so the answer is the
-     * one the sweep will act on and a prompt and the edit it precedes cannot disagree about
-     * what the edit costs. Only spans that ask to be confirmed
-     * ({@link Span#requiresInvalidationConfirm}) are consulted.
+     * <b>A replacement re-points, it does not delete.</b> {@link Line#replace} points any span
+     * whose anchor or end was a replaced element at that element's replacement, so a replaced
+     * endpoint is read as its replacement ({@link Replacement#replacementOf}) and answers the
+     * replacement's position — not as an endpoint that is gone. Reading it as deleted would
+     * remove every span whose endpoint is edited. Under every other shape an endpoint is an
+     * element like any other, and this answers {@link #projectedIndexOf}.
      *
-     * @return false when the line carries no such span; otherwise true exactly when one of
-     *     them answers {@link SpanOutcome.Simple#REMOVE} for this change
+     * @param endpoint an endpoint of a span on {@link #line()}
+     * @return the endpoint's projected position, or {@code null} when it is not present after
+     *     the change — it is one a deletion removes
+     * @throws IllegalArgumentException if {@code endpoint} is not on {@link #line()}
      */
-    default boolean removesConfirmableSpan() {
-        return line().spanRegistry().getSpans().stream()
-            .filter(Span::requiresInvalidationConfirm)
-            .anyMatch(span -> span.outcomeFor(this) == SpanOutcome.Simple.REMOVE);
+    default @Nullable Integer projectedEndpointIndexOf(StaffElement endpoint) {
+        return projectedIndexOf(endpoint);
     }
 
     /**
@@ -131,71 +134,125 @@ public sealed interface ElementChange {
     }
 
     /**
-     * One element replaced by another at the same position. A replacement <b>re-points</b>
-     * a span's endpoint rather than deleting it: {@link #oldElement()} is absent from
-     * {@code projectedElements} and {@code newElement} sits at {@code index}. A span whose
-     * anchor or end was the old element is to be read as having that endpoint become
-     * {@code newElement} — not as having lost an endpoint.
+     * One or more elements each replaced by another at the same position: a set of
+     * {@code (index, newElement)} pairs at distinct indices. A replacement of one element is
+     * a set of one ({@link #single}). Nothing moves, so the projection is the line with each
+     * replaced position holding its new element.
      * <p>
-     * The old element is read off the line rather than held, so a replacement is valid only
-     * until its line changes — the window every reader uses it in, like every other shape.
+     * A replacement <b>re-points</b> a span's endpoint rather than deleting it: a replaced
+     * element is absent from {@code projectedElements}, and a span whose anchor or end was
+     * that element is to be read as having that endpoint become its replacement
+     * ({@link #replacementOf}) — not as having lost an endpoint.
+     * <p>
+     * The replaced elements are read off the line rather than held, so a replacement is valid
+     * only until its line changes — the window every reader uses it in, like every other shape.
      *
-     * @param line       the line being changed, still in its pre-replacement state
-     * @param index      the position of both the element being replaced and {@code newElement}
-     * @param newElement the element taking its place
+     * @param line        the line being changed, still in its pre-replacement state
+     * @param newElements each replaced position, mapped to the element taking its place
+     * @invariant {@code newElements} is non-empty, unmodifiable, and every key is an index of
+     *     {@code line}
      */
-    record Replacement(Line line, int index, StaffElement newElement) implements ElementChange {
+    record Replacement(Line line, NavigableMap<Integer, StaffElement> newElements) implements ElementChange {
 
         /**
-         * The element being replaced.
+         * Validates the pairs and keeps an unmodifiable copy of them, so a caller's map can
+         * change afterwards without changing the replacement.
          *
-         * @return the element standing at {@link #index} in {@link #line}
-         * @throws IndexOutOfBoundsException if no element stands at {@link #index}
+         * @throws IllegalArgumentException if {@code newElements} is empty
+         * @throws IndexOutOfBoundsException if a key of {@code newElements} is not an index of
+         *     {@code line}
          */
-        public StaffElement oldElement() {
-            return line.getElement(index);
+        public Replacement {
+            if (newElements.isEmpty()) {
+                throw new IllegalArgumentException("a replacement replaces at least one element");
+            }
+
+            var elementCount = line.elementCount();
+
+            for (var index : newElements.keySet()) {
+                Objects.checkIndex(index, elementCount);
+            }
+
+            newElements = Collections.unmodifiableNavigableMap(new TreeMap<>(newElements));
+        }
+
+        /**
+         * A replacement of the one element at {@code index}.
+         *
+         * @param line       the line being changed, still in its pre-replacement state
+         * @param index      the position of the element being replaced
+         * @param newElement the element taking its place
+         * @return the replacement holding the single pair
+         * @throws IndexOutOfBoundsException if no element stands at {@code index}
+         */
+        public static Replacement single(Line line, int index, StaffElement newElement) {
+            var newElements = new TreeMap<Integer, StaffElement>();
+            newElements.put(index, newElement);
+            return new Replacement(line, newElements);
+        }
+
+        /**
+         * This replacement with one more pair.
+         *
+         * @param index      the position of a further element to replace
+         * @param newElement the element taking its place
+         * @return a new replacement holding this one's pairs and {@code (index, newElement)};
+         *     this replacement is unchanged
+         * @throws IllegalArgumentException if {@code index} is already replaced
+         * @throws IndexOutOfBoundsException if no element stands at {@code index}
+         */
+        public Replacement with(int index, StaffElement newElement) {
+            if (newElements.containsKey(index)) {
+                throw new IllegalArgumentException("index " + index + " is already replaced");
+            }
+
+            var extended = new TreeMap<>(newElements);
+            extended.put(index, newElement);
+            return new Replacement(line, extended);
+        }
+
+        /**
+         * The element that takes {@code element}'s place.
+         *
+         * @param element an element of {@link #line}
+         * @return the new element at {@code element}'s position, or {@code null} when this
+         *     replacement does not replace {@code element}
+         * @throws IllegalArgumentException if {@code element} is not on {@link #line}
+         */
+        public @Nullable StaffElement replacementOf(StaffElement element) {
+            return newElements.get(line.getElementIndex(element));
         }
 
         @Override
         public List<StaffElement> projectedElements() {
-            return new ProjectedElements(
-                line.elementCount(),
-                projectedIndex ->
-                    projectedIndex == index ? newElement : line.getElement(projectedIndex));
+            return new ProjectedElements(line.elementCount(), projectedIndex -> {
+                var newElement = newElements.get(projectedIndex);
+                return newElement != null ? newElement : line.getElement(projectedIndex);
+            });
         }
 
         @Override
         public @Nullable Integer projectedIndexOf(StaffElement element) {
             // Asked first, so a self-replace resolves to the position it keeps rather
             // than reading as a replaced element that is now absent.
-            if (element == newElement) {
-                return index;
+            for (var pair : newElements.entrySet()) {
+                if (pair.getValue() == element) {
+                    return pair.getKey();
+                }
             }
 
             var current = line.getElementIndex(element);
 
-            // Nothing moves; only the replaced element leaves.
-            return current == index ? null : current;
+            // Nothing moves; only the replaced elements leave.
+            return newElements.containsKey(current) ? null : current;
         }
 
-        /**
-         * The effect this replacement has on an ending in the line, as the ending itself
-         * judges it via {@link Ending#checkReplacement}. At most one ending reports an effect
-         * for one replacement.
-         * <p>
-         * Ask before {@link Line#setElement} to learn whether a confirmation dialog is needed.
-         *
-         * @return the one ending's non-{@link Ending.EndingEffect.None None} effect, or
-         *     {@link Ending.EndingEffect.None} when no ending is affected
-         * @throws IndexOutOfBoundsException if no element stands at {@link #index}
-         */
-        public Ending.EndingEffect endingEffect() {
-            return line.spanRegistry().findEndings().stream()
-                .map(ending -> ending.checkReplacement(this))
-                .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
-                .findFirst()
-                .orElse(Ending.EndingEffect.None.INSTANCE);
+        @Override
+        public @Nullable Integer projectedEndpointIndexOf(StaffElement endpoint) {
+            var replacement = replacementOf(endpoint);
+            return projectedIndexOf(replacement != null ? replacement : endpoint);
         }
+
     }
 
     /**

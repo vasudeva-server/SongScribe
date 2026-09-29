@@ -37,11 +37,8 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     /**
      * {@inheritDoc}
      *
-     * <p>Deliberately <em>not</em> routed through
-     * {@link Song#withBeatDefiningEdit}: the copy is not yet in the document, so there
-     * is no position to validate from. The clipboard is the only caller that copies a tempo
-     * into a different beat context, and paste re-validates the tuplets it carries in
-     * {@code PasteSpanReconciliation}.
+     * <p>The clipboard is the only caller that copies a tempo into a different beat context,
+     * and paste re-validates the tuplets it carries in {@code PasteSpanReconciliation}.
      */
     @Override
     protected Attachment createCopy() {
@@ -53,15 +50,12 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Replaces the tempo this attachment marks, dropping any tuplet the new beat
-     * invalidates.
+     * Replaces the tempo this attachment marks.
      *
-     * <p>Stays public because the tempo dialog lives in the UI package. The write itself is
-     * routed through {@link Song#withBeatDefiningEdit}, so there is nothing to bypass; a
-     * caller that wants to know whether tuplets were removed should wrap its own edit in
-     * that helper and read its result.
+     * <p>Stays public because the tempo dialog lives in the UI package. A change of beat can
+     * invalidate tuplets; the tuplet beat rule finds them when the modification bracket closes.
      */
     public void setTempo(Tempo tempo) {
-        Song.withBeatDefiningEditOn(owner(), () -> this.tempo = tempo);
+        this.tempo = tempo;
     }
 }

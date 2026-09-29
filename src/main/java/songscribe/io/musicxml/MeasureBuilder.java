@@ -614,8 +614,8 @@ final class MeasureBuilder {
      * Attaches every ending on {@code line} to the barlines it belongs to.
      *
      * <p>One SongScribe {@link songscribe.dom.Ending} expands to two MusicXML voltas. Volta 1
-     * runs from the anchor (a {@code REPEAT_LEFT}, a plain barline, or — per issue #306 — a
-     * note) to the split (a {@code REPEAT_RIGHT} or {@code REPEAT_LEFT_RIGHT}); volta 2 runs
+     * runs from the anchor (a plain barline, or — per issue #306 — a note or a rest) to the
+     * split (a {@code REPEAT_RIGHT} or {@code REPEAT_LEFT_RIGHT}); volta 2 runs
      * from that same split to the end. So the anchor carries {@code [1 start]}, the split
      * carries both {@code [1 stop]} and {@code [2 start]}, and the end carries {@code [2
      * stop]}. Every ending has a split, so it always expands to two voltas.
@@ -640,10 +640,9 @@ final class MeasureBuilder {
     }
 
     /**
-     * Attaches {@code <ending number="1" type="start">}. A {@code REPEAT_LEFT} anchor opens
-     * its measure with a forward-left barline and hosts the start there; a note anchor (issue
-     * #306) has no barline of its own, so one is inserted immediately before the note; any
-     * other anchor closes the previous measure as a right barline.
+     * Attaches {@code <ending number="1" type="start">}. A note or rest anchor (issue #306) has
+     * no barline of its own, so one is inserted immediately before it; a plain barline anchor
+     * closes the previous measure as a right barline and hosts the start there.
      *
      * <p>Carries the ending's {@code userYOffsetSs} as {@code relative-y}: the start volta is
      * the one bracket the reader can recover the offset from, so the writer states it once,
@@ -651,15 +650,7 @@ final class MeasureBuilder {
      */
     private static void attachEndingAnchor(
         BuildContext context, ElementOutput output, ElementType anchorType, double yOffsetSs) {
-        @Nullable Barline host;
-
-        if (anchorType == ElementType.REPEAT_LEFT) {
-            host = output.leftBarline;
-        } else if (anchorType.isDuration()) {
-            host = leftBarlineBeforeContent(context, output);
-        } else {
-            host = output.rightBarline;
-        }
+        var host = anchorType.isDuration() ? leftBarlineBeforeContent(context, output) : output.rightBarline;
 
         attachEnding(context, host, MusicXmlTags.NUMBER_1, StartStopDiscontinue.START, yOffsetSs);
     }
@@ -667,12 +658,12 @@ final class MeasureBuilder {
     /**
      * Attaches the volta-2 close. A barline or repeat end hosts it on its own barline; a note
      * end (issue #306) has no barline, so it rides on a right barline after the note. The type
-     * is {@code type="stop"} when {@link Ending#getClosingBar()} names a bar the bracket closes
-     * on, and {@code type="discontinue"} — an open bracket — when it names none.
+     * is {@code type="stop"} when {@link Ending#isSecondBracketClosed()}, and
+     * {@code type="discontinue"} — an open bracket — otherwise.
      */
     private static void attachEndingEnd(BuildContext context, ElementOutput output, Ending ending) {
         var endType = ending.getEndElement().getType();
-        var type = ending.getClosingBar() != null ? StartStopDiscontinue.STOP : StartStopDiscontinue.DISCONTINUE;
+        var type = ending.isSecondBracketClosed() ? StartStopDiscontinue.STOP : StartStopDiscontinue.DISCONTINUE;
 
         if (endType == ElementType.REPEAT_LEFT) {
             attachEnding(context, output.leftBarline, MusicXmlTags.NUMBER_2, type, 0);

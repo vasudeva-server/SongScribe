@@ -18,20 +18,64 @@ A bracket that accumulated nothing delivers nothing and does not mark the
 document modified. That is what lets a commit path run unconditionally and still
 leave a document clean when the user changed nothing.
 
-One piece of work waits for the outermost bracket: the **tie rule**, which
-removes every tie that no longer joins two notes of the same pitch. It runs once per
-edit, as the outermost bracket is about to close — after every change and every
-accidental restamp in it has landed, before the batch is delivered, and while the
-bracket is still open, so its removals are recorded in the batch it closes. It
-judges each line the batch touched and the line before each. An edit that throws
-part way closes its bracket without the rule: its notes may not all be restamped,
-and the batch is still delivered. See
-[span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
+The outermost bracket also holds the edit's **report**: the changes the song made
+on its own during the edit, beyond what the user asked for. It is delivered after
+the batch, and only when it is not empty. See [change-report.md](change-report.md).
 
 The record types form a closed set, so the inventory is checkable and a new kind
 cannot be introduced without appearing in it. Span changes are recorded by one
 addition record and one removal record whatever the span's kind; a tie, which is
 note state rather than a span, has an addition and a removal of its own.
+
+## Rules at the close of an edit
+
+Some rules cannot be judged one change at a time, because what they judge is the
+whole of what the edit did. These **modification rules** wait for the outermost
+bracket. There are three, and they run in a fixed order:
+
+- the **tie rule** removes every tie that no longer joins two notes of the same
+  pitch. It judges each line the batch touched and the line before each, since a
+  tie from that line can end in the touched one. See
+  [span-invalidation.md](span-invalidation.md#ties-are-note-state-judged-when-the-edit-is-over).
+- the **section rule** removes every ending whose split no longer closes an open
+  repeat section. It judges every ending in the song: an edit on one line can
+  change the section of an ending any number of lines later. See
+  [span-invalidation.md](span-invalidation.md#an-endings-section-is-judged-when-the-edit-is-over).
+- the **beat rule** removes every tuplet that no longer fits the beat in effect
+  where it stands. It runs only when a change in the batch redefines the beat — a
+  song tempo whose beat changes, a tempo or beat change added, removed or edited,
+  or a line holding one inserted or deleted — and judges from the earliest place the batch redefines
+  it onward, together with the tuplet that place falls inside. A beat redefined
+  there reaches nothing before it.
+
+The set is closed: every rule is a rule of the model, and nothing registers one
+from outside. Work that runs after every change — keeping line keys consistent,
+the accidental chain walk — is not a rule here.
+
+The rules run as the outermost bracket is about to close: after every change and
+every accidental restamp in it has landed, before the batch is delivered, and
+while the bracket is still open, so each removal they make is recorded in the
+batch it closes and is undone with the edit. Each removal is also reported; see
+[change-report.md](change-report.md). Each rule judges the song as the edit left
+it, never what another rule removed.
+
+They run only when the edit is a fresh one that recorded something:
+
+- **not on an empty batch** — an edit that changed nothing broke nothing;
+- **not during undo or redo replay** — the batch being replayed already carries
+  the removals the edit made, and judging again would apply them twice;
+- **not while tracking is suspended** — nothing is recorded, and a load judges
+  what it reads by its own passes;
+- **not when the edit threw part way** — its notes may not all be restamped, so a
+  rule would judge a state the edit never meant to leave. The bracket still
+  closes and the batch is still delivered.
+
+Because the rules run after the fact, their removals **follow** the changes that
+caused them in the batch — the reverse of the
+[order below](#order-within-a-batch). Undo stays correct
+because each rule judged the final state: everything a removal names is present
+in that state, so reverse-order undo restores the removals first, against the
+state they were judged in, and only then undoes the changes that broke them.
 
 ## Order within a batch
 
@@ -44,12 +88,10 @@ when the dependent state is restored, whatever it was anchored to is alive again
 Emitting it the other way round would restore a span before the note it points
 at.
 
-**The tie rule's removals are the one exception.** The rule runs when the edit is
-over, so each removal it records comes after the change that broke the tie.
-Reverse-order undo is still correct: it restores those ties first, against the
-final state, and a tie's record names only its anchor — the end is derived —
-which the rule judged in its line in that final state. The changes that broke
-the ties are undone after that.
+**The removals of the [rules at the close of an edit](#rules-at-the-close-of-an-edit)
+are the one exception.** Each is recorded after the change that caused it, and
+undo is still correct because the rule judged the final state, which is the
+state undo restores the removal against.
 
 **Line-terminal maintenance is emitted after** the line insertion or deletion
 that prompted it, and for the same reason read the other way: it targets the
@@ -100,18 +142,19 @@ remember.
 Three mechanisms look similar and are not interchangeable.
 
 **Suspension** records nothing at all: no batch, no undo entry, no modified flag,
-and no tie rule, so a loaded tie is trusted. It is what a file reader runs under,
-and what the document's own construction runs under — but it is not a load-only
+no modification rules and no report, so a loaded tie is trusted. It is what a
+file reader runs under, and what the document's own construction runs under — but
+it is not a load-only
 mechanism, and live editing uses it too where a transient state should leave no
 trace.
 
 **Replay mode** is the opposite: records *are* still made. What it changes is that
 the helpers apply raw state only, suppressing the companion side-work — terminal
-maintenance, defaults, span invalidation, the tie rule, automatic removals,
-merging — and
-bypassing guards that mid-replay intermediate states legitimately violate. The
-recorded batch already contains every change; re-deriving them would apply them
-twice.
+maintenance, defaults, span invalidation, the modification rules, automatic
+removals, merging — and bypassing guards that mid-replay intermediate states
+legitimately violate. The recorded batch already contains every change;
+re-deriving them would apply them twice. Nothing is reported: the edit reported
+its changes when it was made.
 
 **The reentrancy guard** is narrower still: it keeps the batch a replay produces
 from being pushed as a new undo step.

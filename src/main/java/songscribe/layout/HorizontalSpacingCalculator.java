@@ -39,6 +39,7 @@ import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.engraving.EngravingConstants;
+import songscribe.engraving.HairpinMetrics;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -1199,8 +1200,8 @@ public final class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the delta-X a hairpin needs to reach {@link Hairpin#MINIMUM_LENGTH_SS}, or 0 when no
-     * hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s.
+     * Returns the delta-X a hairpin needs to reach {@link HairpinMetrics#MINIMUM_LENGTH_SS}, or 0
+     * when no hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s.
      * <p>
      * The wedge is drawn from {@code prev}'s origin plus a left-tip offset to {@code curr}'s origin
      * plus a right-tip offset, so reaching {@code MINIMUM_LENGTH_SS} needs an origin-to-origin
@@ -1210,7 +1211,7 @@ public final class HorizontalSpacingCalculator {
      * inward by roughly two staff spaces ({@code HairpinEndpoints.dynamicLeftTipOffsetSs} /
      * {@code dynamicRightTipOffsetSs}), and reserving for it is what stops an {@code f<} from
      * being squashed to nothing on a compressed line — LilyPond likewise pushes the notes apart
-     * rather than shortening the wedge (see {@link Hairpin#MINIMUM_LENGTH_SS}).
+     * rather than shortening the wedge (see {@link HairpinMetrics#MINIMUM_LENGTH_SS}).
      * <p>
      * The question is asked about the two <em>elements</em> being spaced, not about their position
      * in the column list. That distinction is the whole point: an insertion preview splices a
@@ -1250,7 +1251,7 @@ public final class HorizontalSpacingCalculator {
             return 0;
         }
 
-        return Hairpin.MINIMUM_LENGTH_SS
+        return HairpinMetrics.MINIMUM_LENGTH_SS
             + hairpinLeftTipOffsetSs(anchorElement)
             - hairpinRightTipOffsetSs(endElement, curr.getNoteheadWidthSs());
     }

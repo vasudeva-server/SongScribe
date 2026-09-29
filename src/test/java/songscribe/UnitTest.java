@@ -244,8 +244,8 @@ public abstract class UnitTest {
 
     /**
      * Creates a minimal Song mock with mutation tracking suspended and both
-     * {@code withModification} overloads (plain and labeled), {@code withBeatDefiningEdit}
-     * and {@code applyChange} delegating directly to the runnable. Shared by
+     * {@code withModification} overloads (plain and labeled) and {@code applyChange}
+     * delegating directly to the runnable. Shared by
      * {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
      *
@@ -269,10 +269,6 @@ public abstract class UnitTest {
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(answerVoid((String label, Runnable body) -> body.run()))
             .when(songMock).withModification(any(String.class), any(Runnable.class));
-        // Reports no tuplets removed: a mock has no tuplets to invalidate, and a test that
-        // cares about the removal path builds a real Song.
-        doAnswer(inv -> { ((Runnable) inv.getArgument(2)).run(); return false; })
-            .when(songMock).withBeatDefiningEdit(anyInt(), anyInt(), any(Runnable.class));
         // Every element primitive posts its mutation through Song.applyChange, which is the
         // only place that runs a mutator, since Line.applyChange forwards to it unconditionally.
         doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> mutator.run()))

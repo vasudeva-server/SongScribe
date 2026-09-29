@@ -26,8 +26,10 @@ import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
+import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.engraving.BeamMetrics;
-import songscribe.engraving.Staff;
+import songscribe.engraving.StaffPosition;
 import songscribe.engraving.StemMetrics;
 
 /**
@@ -70,10 +72,10 @@ public final class Beam extends Span<NoteElement> {
      * before the beam is pushed to the other side of the staff instead
      * ({@link #graceStemTouchesBeamAbove}).
      * <p>
-     * It also absorbs the error in {@link #estimatedBeamBottomAboveYSs}, which places the beam
-     * a natural stem above the group's highest head while the scorer routinely settles a few
-     * tenths of a space lower. Erring low here only means a beam flips that would have been a
-     * near miss; erring high means the grace note is buried, which is the bug this guards.
+     * It also absorbs the error in {@link BeamMetrics#upwardStackBottomYSs}, which places the
+     * beam a natural stem above the group's highest head while the scorer routinely settles a
+     * few tenths of a space lower. Erring low here only means a beam flips that would have been
+     * a near miss; erring high means the grace note is buried, which is the bug this guards.
      */
     private static final double GRACE_STEM_BEAM_CLEARANCE_SS = 0.5;
 
@@ -123,10 +125,7 @@ public final class Beam extends Span<NoteElement> {
      * element inside the span is a note, so this narrows rather than tests.
      */
     private Stream<NoteElement> notesInSpan() {
-        var line = line();
-
-        return IntStream.rangeClosed(requireAnchorElementIndex(), requireEndElementIndex())
-            .mapToObj(line::noteAt);
+        return line().getElements(range()).stream().map(NoteElement.class::cast);
     }
 
     /**
@@ -136,18 +135,25 @@ public final class Beam extends Span<NoteElement> {
      * in-place modification keeps it.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
-     * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the beam,
-     *     otherwise {@link SpanOutcome.Simple#KEEP}
+     * @return a {@link SpanOutcome.Remove} whose reason is
+     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} or
+     *     {@link Strings#DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE} when {@code change} invalidates
+     *     the beam, otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
-    public SpanOutcome.Simple outcomeFor(ElementChange change) {
-        var invalidated = switch (change) {
-            case ElementChange.Deletion deletion -> isEndpointDeletedBy(deletion);
-            case ElementChange.Replacement replacement -> replacementBreaksInvariant(replacement);
-            case ElementChange.Insertion _, ElementChange.Modification _ -> false;
+    public SpanOutcome outcomeFor(ElementChange change) {
+        return switch (change) {
+            case ElementChange.Deletion deletion -> removeWhen(
+                isEndpointDeletedBy(deletion), Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED);
+            case ElementChange.Replacement replacement -> removeWhen(
+                replacementBreaksInvariant(replacement), Strings.DIALOG_REPORT_REASON_BEAM_NOT_BEAMABLE);
+            case ElementChange.Insertion _, ElementChange.Modification _ -> SpanOutcome.Keep.INSTANCE;
         };
+    }
 
-        return removeWhen(invalidated);
+    @Override
+    protected String reportHeadingKey() {
+        return Strings.DIALOG_REPORT_BEAMS_REMOVED;
     }
 
     /**
@@ -157,18 +163,31 @@ public final class Beam extends Span<NoteElement> {
      *
      * <p>Removal is the whole answer: this is the only rule that decides a replaced beam's fate,
      * so a beam whose last note becomes a rest is removed, not trimmed back to the notes before
-     * it. Every replacement path reaches it through {@link Line#setElement}, which is what lets
+     * it. Every replacement path reaches it through {@link Line#replace}, which is what lets
      * the rule live in one place.
      *
      * @param replacement the pending replacement, judged on the pre-replacement line
+     * @return {@code true} when any of {@code replacement}'s pairs breaks the invariant
      */
     private boolean replacementBreaksInvariant(ElementChange.Replacement replacement) {
-        var newElement = replacement.newElement();
-        var replacedIndex = replacement.index();
-        var beamStart = requireAnchorElementIndex();
-        var beamEnd = requireEndElementIndex();
+        var beamRange = range();
 
-        if (replacedIndex < beamStart || replacedIndex > beamEnd) {
+        return replacement.newElements().entrySet().stream()
+            .anyMatch(pair -> pairBreaksInvariant(beamRange, pair.getKey(), pair.getValue()));
+    }
+
+    /**
+     * Whether putting {@code newElement} at {@code replacedIndex} breaks the class invariant
+     * — see {@link #replacementBreaksInvariant}.
+     *
+     * @param beamRange     this beam's range in the pre-replacement line
+     * @param replacedIndex the position being replaced
+     * @param newElement    the element taking its place
+     * @return {@code true} when the position is in the beam and {@code newElement} cannot
+     *     stand there
+     */
+    private static boolean pairBreaksInvariant(ElementRange beamRange, int replacedIndex, StaffElement newElement) {
+        if (!beamRange.contains(replacedIndex)) {
             return false;
         }
 
@@ -184,7 +203,7 @@ public final class Beam extends Span<NoteElement> {
 
         // A beam legitimately passes over a grace note in its interior (refs #592), but its
         // endpoints are members of the beam, and a grace note cannot be one.
-        return !newType.isGraceNote() || replacedIndex == beamStart || replacedIndex == beamEnd;
+        return !newType.isGraceNote() || replacedIndex == beamRange.begin() || replacedIndex == beamRange.end();
     }
 
     // -------------------------------------------------------------------------
@@ -229,7 +248,7 @@ public final class Beam extends Span<NoteElement> {
             return Direction.DOWN;
         }
 
-        return graceStemTouchesBeamAbove(minStaffPos) ? Direction.DOWN : Direction.UP;
+        return graceStemTouchesBeamAbove(new StaffPosition(minStaffPos)) ? Direction.DOWN : Direction.UP;
     }
 
     /**
@@ -242,12 +261,11 @@ public final class Beam extends Span<NoteElement> {
      * stem and swallows the notehead. The stem tip is the grace note's topmost ink: its flag
      * hangs back down from there.
      */
-    private boolean graceStemTouchesBeamAbove(int topStaffPosition) {
-        var beamBottomYSs = estimatedBeamBottomAboveYSs(topStaffPosition);
+    private boolean graceStemTouchesBeamAbove(StaffPosition topStaffPosition) {
+        var beamBottomYSs = BeamMetrics.upwardStackBottomYSs(topStaffPosition, beamStackCount());
 
         for (var graceNote : graceNotes()) {
-            var stemTopYSs =
-                graceNote.getStaffPosition().toSs() - StemMetrics.GRACE_NOTE_STEM_LENGTH_SS;
+            var stemTopYSs = StemMetrics.graceStemTopYSs(graceNote.getStaffPosition());
 
             if (stemTopYSs < beamBottomYSs + GRACE_STEM_BEAM_CLEARANCE_SS) {
                 return true;
@@ -255,22 +273,6 @@ public final class Beam extends Span<NoteElement> {
         }
 
         return false;
-    }
-
-    /**
-     * Estimates the Y of the lowest edge of the beam stack an upward beam would draw over this
-     * group, in layout staff spaces (Y down) from the middle line. {@code topStaffPosition} is
-     * the staff position of the group's highest member.
-     *
-     * <p>An estimate is all that is available: the direction has to be settled before columns
-     * exist, and the beam scorer cannot place the beam without their X positions. So the beam
-     * is assumed to sit a natural stem above the highest head — its outer edge — with the stack
-     * of {@link #beamStackCount} beams hanging below it at the renderer's spacing.
-     */
-    private double estimatedBeamBottomAboveYSs(int topStaffPosition) {
-        return topStaffPosition * Staff.HALF_SPACE_SS
-            - StemMetrics.STEM_LENGTH_SS
-            + BeamMetrics.beamStackHeightSs(beamStackCount());
     }
 
     // -------------------------------------------------------------------------
@@ -381,9 +383,7 @@ public final class Beam extends Span<NoteElement> {
             for (@Nullable BeamLevel level = BeamLevel.SIXTEENTH;
                  level != null;
                  level = level.next()) {
-                var levelNumber = level.number();
-
-                if (carries(level) && leftBeams < levelNumber && rightBeams < levelNumber) {
+                if (carries(level) && !neighborCarries(-1, level) && !neighborCarries(1, level)) {
                     hasStub = true;
                     break;
                 }
@@ -458,6 +458,21 @@ public final class Beam extends Span<NoteElement> {
             }
 
             return notes.get(memberPosition).getType().beamCount();
+        }
+
+        /**
+         * Returns whether the member at {@code position + offset} carries a beam at
+         * {@code level} ({@link BeamLevel#isCarriedBy}), or {@code false} when that position is
+         * past either end of the group.
+         */
+        private boolean neighborCarries(int offset, BeamLevel level) {
+            var neighborPosition = position + offset;
+
+            if (neighborPosition < 0 || neighborPosition >= notes.size()) {
+                return false;
+            }
+
+            return level.isCarriedBy(notes.get(neighborPosition).getType());
         }
     }
 }

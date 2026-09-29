@@ -20,12 +20,11 @@
 
 package songscribe.dom;
 
-import java.awt.Font;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collections;
 
-import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.font.LocalFonts;
-import songscribe.font.TextMeasurement;
+import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 
 /**
@@ -39,59 +38,6 @@ import songscribe.message.mutation.ElementField;
  * below if stems point up.
  */
 public final class Tuplet extends Span<StaffElement> {
-
-    /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
-    public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
-
-    /** Italic serif font for tuplet numbers (font size in staff-spaces). */
-    public static final float TUPLET_FONT_SIZE_SS = 1.65f;
-
-    /** Italic serif font for tuplet numbers. */
-    public static final Font TUPLET_FONT = LocalFonts.load("C059-Italic.otf", TUPLET_FONT_SIZE_SS);
-
-    /** Vertical arm height of bracket endpoints (LilyPond: 0.7ss). */
-    public static final double BRACKET_ARM_HEIGHT_SS = 0.7;  // 5.6px
-
-
-
-    /** Maximum bracket slope, as a fraction of rise over run (LilyPond: 0.5). */
-    public static final double MAX_SLOPE_FACTOR = 0.5;
-
-    /** Minimum number of non-rest notes a tuplet must span to have a meaningful bracket. */
-    private static final int MIN_NON_REST_NOTES = 2;
-
-    /**
-     * Floor on the width {@link #getSpanWidthSs} reports, in staff spaces. A collision region of
-     * zero width reserves nothing and lets the layer above sit on top of the bracket, so a span
-     * whose two elements have not been separated yet still claims one staff space.
-     */
-    public static final double MIN_SPAN_WIDTH_SS = 1.0;
-
-    /** Measured ink height of a tuplet number in staff-spaces (representative digit "3"). */
-    public static final double TUPLET_NUMBER_INK_HEIGHT_SS = measureNumberInkHeightSs();
-
-    private static double measureNumberInkHeightSs() {
-        var inkHeightSs = TextMeasurement.inkHeight(
-            TextMeasurement.requireVisualBounds("3", TUPLET_FONT));
-
-        if (inkHeightSs <= 0) {
-            throw new IllegalStateException(
-                "Tuplet number font produced zero ink height; the font may have failed to load");
-        }
-
-        return inkHeightSs;
-    }
-
-    /**
-     * The measured ink width of {@code grade} drawn as a tuplet number, in staff spaces.
-     * <p>
-     * Measured by {@link TextMeasurement} rather than in the paint-time font render
-     * context, so it is available before anything is drawn — the number-only tuplet's hit region
-     * is the number's ink and nothing else, and hit regions are built at layout time.
-     */
-    public static double numberInkWidthSs(TupletGrade grade) {
-        return TextMeasurement.requireVisualBounds(String.valueOf(grade.number()), TUPLET_FONT).getWidth();
-    }
 
     // The grade and the ratio are set by the constructor and never change afterwards. Changing
     // the grade alone would leave the tuplet printing one ratio and playing another, so there is
@@ -123,55 +69,6 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     /**
-     * Reserved vertical height for a bracketed tuplet (bracket line + arm). A number-only
-     * tuplet (see {@link #isNumberOnly()}) reserves {@link #numberOnlyHeightSs()}
-     * instead, so a caller laying out a tuplet branches on {@code isNumberOnly} to choose
-     * between the two; neither height is meaningful without that choice, which is why a
-     * tuplet has no context-free height query.
-     */
-    public static double bracketedHeightSs() {
-        return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0 + BRACKET_ARM_HEIGHT_SS;
-    }
-
-    /**
-     * Reserved vertical height for a number-only tuplet (beamed, stems up).
-     */
-    @SuppressWarnings("SameReturnValue")
-    public static double numberOnlyHeightSs() {
-        return TUPLET_NUMBER_INK_HEIGHT_SS;
-    }
-
-    /**
-     * Offset from the box top to the bracket line center in staff-spaces.
-     */
-    public static double bracketLineOffsetSs() {
-        return TUPLET_NUMBER_INK_HEIGHT_SS / 2.0;
-    }
-
-    /**
-     * X of the visual bracket's left edge — where the left arm is drawn — given the anchor column's
-     * reference X, whether the anchor draws an upward stem, and the stem thickness. The arm sits
-     * on the anchor note's stem side (insetting a full notehead width for a down-stem, only the
-     * stem width for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it. An anchor
-     * with no upward stem — a down-stem, a whole note, a rest — insets the full head width,
-     * putting the arm outside the head's left edge.
-     * <p>
-     * Shared by the renderer ({@code TupletRenderer.renderTupletsFromLine}) and the stacker's sloped
-     * clearance ({@code StructuralStacker.computeTupletClearanceLeftYSs}) so the reserved arm position
-     * and the drawn arm position stay in lockstep — mirroring LilyPond's use of the bracket's visual
-     * X-bounds {@code x0}/{@code x1} for both slope and placement (tuplet-bracket.cc).
-     *
-     * @param anchorXSs      X of the anchor column's reference point
-     * @param stemSs         stem thickness in staff spaces
-     * @param noteheadWidthSs the anchor note's own head width in staff spaces
-     */
-    public double bracketLeftEdgeXSs(double anchorXSs, double stemSs, double noteheadWidthSs) {
-        var insetSs = anchorStemUp() ? stemSs : noteheadWidthSs;
-
-        return anchorXSs + noteheadWidthSs - insetSs - ARM_EXTENSION_SS;
-    }
-
-    /**
      * Whether this tuplet's anchor draws an upward stem: a stemmed note whose stem points up.
      * An anchor with no stem to draw — a whole note, a rest — never does, whatever direction it
      * would answer. The one statement of the test every bracket edge and the number-only rule
@@ -187,18 +84,6 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     /**
-     * X of the visual bracket's right edge — where the right arm is drawn — given the end column's
-     * reference X. The arm clears the end notehead and extends {@link #ARM_EXTENSION_SS} outward past
-     * it. See {@link #bracketLeftEdgeXSs} for why this is shared with the renderer.
-     *
-     * @param endXSs         X of the end column's reference point
-     * @param noteheadWidthSs the end note's own head width in staff spaces
-     */
-    public static double bracketRightEdgeXSs(double endXSs, double noteheadWidthSs) {
-        return endXSs + noteheadWidthSs + ARM_EXTENSION_SS;
-    }
-
-    /**
      * Returns true when only the number is drawn (no bracket): the tuplet is beamed
      * at both its anchor and end index and its anchor note has upward stems.
      */
@@ -211,25 +96,6 @@ public final class Tuplet extends Span<StaffElement> {
     }
 
     /**
-     * Whether {@code span} holds enough notes to carry a tuplet: at least
-     * {@value #MIN_NON_REST_NOTES} elements that are not rests. A bracket has no meaningful
-     * slope across fewer notes.
-     *
-     * @param line the line holding the span
-     * @param span the elements the tuplet would reach over, from its anchor to its end
-     * @return {@code true} when the span holds at least {@value #MIN_NON_REST_NOTES} non-rest
-     *     elements
-     */
-    static boolean holdsEnoughNotes(Line line, ElementRange span) {
-        var nonRestCount = line.getElements(span).stream()
-            .filter(element -> !element.getType().isRest())
-            .limit(MIN_NON_REST_NOTES)
-            .count();
-
-        return nonRestCount >= MIN_NON_REST_NOTES;
-    }
-
-    /**
      * Decides what happens to this tuplet when {@code change} lands: the group is removed by
      * any structural change strictly inside its bracket, and kept by everything else.
      * <p>
@@ -237,26 +103,29 @@ public final class Tuplet extends Span<StaffElement> {
      * survival depends on its interior, not only on its endpoints the way a tie's or a beam's
      * does. An insertion after the anchor and no later than the end element adds time the
      * group did not account for; a deletion overlapping the bracket takes time away; and a
-     * replacement or an in-place modification that rewrites a written duration inside it
-     * — the distinction {@link ElementField#DURATION_AFFECTING} draws — leaves the group
-     * rhythmically invalid (refs #726). An insertion at the anchor's own index, or just past
-     * the end element, stays outside and leaves the group alone.
+     * replacement any of whose pairs rewrites a written duration inside it, or an in-place
+     * modification that does — the distinction {@link ElementField#DURATION_AFFECTING} draws —
+     * leaves the group rhythmically invalid (refs #726). An insertion at the anchor's own
+     * index, or just past the end element, stays outside and leaves the group alone.
      * <p>
-     * Only a replacement touching a duration-carrying element counts. A tuplet may contain a
+     * A replacement's pairs are judged one at a time, and one unbalancing pair is enough to
+     * drop the group; pairs outside the bracket are ignored. Only a pair touching a
+     * duration-carrying element counts. A tuplet may contain a
      * barline or a breath mark, which contribute no time to the group, so swapping one of
      * those for another non-duration element cannot unbalance it. Past that gate, any change
      * of element type or dot count drops the group. That is deliberately broader than "the
      * written duration changed": a note swapped for a rest of the same value keeps the group's
-     * total time but can starve it of the non-rest notes {@link #holdsEnoughNotes} demands, so it
-     * goes too. The user re-brackets what they meant.
+     * total time but can starve it of the pitched notes {@link TupletValidator.Reason#TOO_FEW_NOTES}
+     * demands, so it goes too. The user re-brackets what they meant.
      *
      * @param change the pending change, not yet applied to {@code change.line()}
-     * @return {@link SpanOutcome.Simple#REMOVE} when {@code change} invalidates the group,
-     *     otherwise {@link SpanOutcome.Simple#KEEP}
+     * @return a {@link SpanOutcome.Remove} whose reason is
+     *     {@link Strings#DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED} when {@code change}
+     *     invalidates the group, otherwise {@link SpanOutcome.Keep#INSTANCE}
      */
     @Override
-    public SpanOutcome.Simple outcomeFor(ElementChange change) {
-        var range = change.line().spanRegistry().rangeOf(this);
+    public SpanOutcome outcomeFor(ElementChange change) {
+        var range = range();
 
         var invalidated = switch (change) {
             case ElementChange.Insertion insertion ->
@@ -264,24 +133,32 @@ public final class Tuplet extends Span<StaffElement> {
 
             case ElementChange.Deletion deletion -> range.overlaps(deletion.range());
 
-            case ElementChange.Replacement replacement ->
-                range.contains(replacement.index()) && replacementUnbalances(replacement);
+            case ElementChange.Replacement replacement -> {
+                var line = replacement.line();
+
+                yield replacement.newElements().entrySet().stream()
+                    .anyMatch(pair -> range.contains(pair.getKey())
+                        && replacementUnbalances(line.getElement(pair.getKey()), pair.getValue()));
+            }
 
             case ElementChange.Modification modification ->
                 range.contains(modification.index())
                     && !Collections.disjoint(modification.fields(), ElementField.DURATION_AFFECTING);
         };
 
-        return removeWhen(invalidated);
+        return removeWhen(invalidated, Strings.DIALOG_REPORT_REASON_TUPLET_INTERIOR_CHANGED);
+    }
+
+    @Override
+    protected String reportHeadingKey() {
+        return Strings.DIALOG_REPORT_TUPLETS_REMOVED;
     }
 
     /**
-     * Whether {@code replacement} rewrites a written duration this tuplet was built on —
-     * see {@link #outcomeFor}.
+     * Whether putting {@code newElement} in {@code oldElement}'s place rewrites a written
+     * duration this tuplet was built on — see {@link #outcomeFor}.
      */
-    private static boolean replacementUnbalances(ElementChange.Replacement replacement) {
-        var oldElement = replacement.oldElement();
-        var newElement = replacement.newElement();
+    private static boolean replacementUnbalances(StaffElement oldElement, StaffElement newElement) {
         var oldType = oldElement.getType();
         var newType = newElement.getType();
 
@@ -290,20 +167,6 @@ public final class Tuplet extends Span<StaffElement> {
         }
 
         return oldType != newType || Dottable.dotsOf(oldElement) != Dottable.dotsOf(newElement);
-    }
-
-    /**
-     * Returns the horizontal span the tuplet bracket reserves, in staff spaces: the distance
-     * between its two elements, floored so that a bracket over elements sharing a column still
-     * reserves a region with width to it.
-     *
-     * @param anchorXSs X position of the anchor element in staff-space units
-     * @param endXSs    X position of the end element in staff-space units
-     * @return the span width in staff spaces, never below {@link #MIN_SPAN_WIDTH_SS} and so
-     *     always positive
-     */
-    public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(MIN_SPAN_WIDTH_SS, endXSs - anchorXSs);
     }
 
     /**
@@ -320,6 +183,36 @@ public final class Tuplet extends Span<StaffElement> {
      */
     public TupletRatio getRatio() {
         return ratio;
+    }
+
+    /**
+     * Scales a written duration inside this tuplet to the time it is performed in:
+     * {@code writtenTicks × normalNotes ÷ grade}, where {@code normalNotes} is
+     * {@code getRatio().normalNotes()} and {@code grade} is {@code getGrade().number()}.
+     *
+     * <p>The two callers need different roundings, which is why the caller names one:
+     * <ul>
+     *   <li>MusicXML export passes {@link RoundingMode#UNNECESSARY}. Its tick base is chosen so
+     *       that every duration the validator accepts scales exactly, so an inexact result means
+     *       the tick base is wrong, and the exception surfaces that instead of writing a duration
+     *       that is off.</li>
+     *   <li>MIDI playback passes {@link RoundingMode#HALF_UP}. Its tick base cannot divide by
+     *       every grade, so it scales each offset measured from the tuplet's anchor and rounds it
+     *       to the nearest tick; rounding the offset rather than each note's duration keeps every
+     *       note within half a tick of its exact time, with no drift across the group.</li>
+     * </ul>
+     *
+     * @param writtenTicks the written duration or offset to scale, at least zero, in any tick base
+     * @param rounding     how to round a result that is not a whole number of ticks
+     * @return the performed duration, in the same tick base as {@code writtenTicks}
+     * @throws ArithmeticException when {@code rounding} is {@link RoundingMode#UNNECESSARY} and the
+     *     result is not a whole number of ticks, or when the scaled value does not fit in a
+     *     {@code long}
+     */
+    public long performedTicks(long writtenTicks, RoundingMode rounding) {
+        var scaled = BigDecimal.valueOf(writtenTicks).multiply(BigDecimal.valueOf(ratio.normalNotes()));
+
+        return scaled.divide(BigDecimal.valueOf(grade.number()), 0, rounding).longValueExact();
     }
 
     /**

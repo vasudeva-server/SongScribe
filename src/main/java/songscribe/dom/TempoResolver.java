@@ -100,8 +100,9 @@ public final class TempoResolver {
      *
      * <p>When one element carries both kinds of marking the metric modulation wins, because
      * it is the more specific statement about the beat than a tempo marking's note value.
-     * This is the single definition of that precedence: {@code TupletValidator}'s forward
-     * walk calls it too, so the two cannot answer differently for the same element.
+     * This is the single definition of that precedence: {@link #splitsBeat} reads the element
+     * through it too, so the beat walk and the beat-barrier test cannot answer differently for
+     * the same element.
      */
     static @Nullable BeatUnit beatDefinedAt(StaffElement element) {
         var beatChange = element.findAttachment(BeatChangeAttachment.class);
@@ -117,6 +118,28 @@ public final class TempoResolver {
         }
 
         return null;
+    }
+
+    /**
+     * Whether {@code element} redefines the beat in a way that splits a span running across it:
+     * a metric modulation always does, and a tempo marking does only when its note value differs
+     * from {@code runningBeat}, since a marking that changes only the BPM leaves the beat intact.
+     *
+     * <p>When one element carries both, the metric modulation decides, by the precedence of
+     * {@link #beatDefinedAt}.
+     *
+     * @param element     the element to test
+     * @param runningBeat the beat in effect before {@code element}
+     * @return {@code true} when a span containing {@code element} past its anchor is split there
+     */
+    static boolean splitsBeat(StaffElement element, BeatUnit runningBeat) {
+        if (element.findAttachment(BeatChangeAttachment.class) != null) {
+            return true;
+        }
+
+        var definedBeat = beatDefinedAt(element);
+
+        return definedBeat != null && definedBeat != runningBeat;
     }
 
     /**

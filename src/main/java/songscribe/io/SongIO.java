@@ -37,6 +37,7 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.PartialDate;
+import songscribe.dom.PendingEnding;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
@@ -191,6 +192,10 @@ public final class SongIO {
         // Populated by getSong(), from the reader's own pending tuplets migrated to
         // staff-space units. Empty before getSong() has run.
         private List<PendingTuplet> resolvedPendingTuplets = List.of();
+
+        // Populated by getSong(), from the reader's own line reader. Empty before getSong()
+        // has run.
+        private List<PendingEnding> resolvedPendingEndings = List.of();
 
         /**
          * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
@@ -635,12 +640,20 @@ public final class SongIO {
 
         /**
          * Returns every tuplet this document's reader found, in staff-space units and with no
-         * stated ratio when the file states none, as {@link LoadMigrations#run} requires them.
+         * stated ratio when the file states none, as {@link LoadPasses#run} requires them.
          * Empty before {@link #getSong()} has run, and for a v1.0 document, which predates
          * tuplets.
          */
         public List<PendingTuplet> pendingTuplets() {
             return resolvedPendingTuplets;
+        }
+
+        /**
+         * Returns every ending this document's reader found. Empty before {@link #getSong()}
+         * has run, and for a v1.0 document, which predates endings.
+         */
+        public List<PendingEnding> pendingEndings() {
+            return resolvedPendingEndings;
         }
 
         public Song getSong() throws SAXException {
@@ -665,6 +678,7 @@ public final class SongIO {
 
             MigrationPipeline.runPreAssembly(ctx);
             resolvedPendingTuplets = ctx.pendingTuplets;
+            resolvedPendingEndings = lineReader != null ? lineReader.pendingEndings() : List.of();
 
             // Line 0 has nothing to inherit from, so it takes the document-level key when the
             // file gave it none of its own. Done before the lines reach the Song, because that

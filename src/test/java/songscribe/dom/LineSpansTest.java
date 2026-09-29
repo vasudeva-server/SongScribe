@@ -33,12 +33,16 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.SongFactory.editableLine;
+import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
@@ -50,7 +54,8 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
  *
  * <p>A deletion that leaves two same-kind hairpins touching joins them by the same reach. Every
  * edit a line makes asks its spans first, an insertion and an in-place modification as well as a
- * deletion, which is what removes a tuplet the edit leaves rhythmically invalid.
+ * deletion, which is what removes a tuplet the edit leaves rhythmically invalid. A deletion that
+ * takes every element of a span takes the span with them, unreported, whatever its kind.
  */
 class LineSpansTest extends UnitTest {
 
@@ -119,11 +124,34 @@ class LineSpansTest extends UnitTest {
     /** A span starting inside {@link #INNER} and running past its end. */
     private static final ElementRange PAST_INNER = new ElementRange(INNER.begin() + 1, OVERLAPPING.end());
 
+    private static final int ENDING_LINE_LENGTH = 10;
+
     /**
-     * The indices of the repeats that give {@link #EXISTING}, {@link #OVERLAPPING} and
-     * {@link #FLUSH} each the split an ending holds strictly inside it.
+     * The ending already on the line. An ending needs a note in each bracket around its split,
+     * so it cannot be as short as {@link #EXISTING}.
      */
-    private static final List<Integer> ENDING_SPLIT_INDICES = List.of(1, 4);
+    private static final ElementRange EXISTING_ENDING = new ElementRange(0, 3);
+
+    /**
+     * The left repeat between {@link #EXISTING_ENDING} and {@link #SEPARATED_ENDING}. It opens a
+     * section for the later ending's split to close: without it the walk back from that split
+     * meets the earlier ending's split first.
+     */
+    private static final int SECTION_OPENER_INDEX = EXISTING_ENDING.end() + 1;
+
+    /**
+     * An ending on the far side of {@link #SECTION_OPENER_INDEX}. A note stands between the
+     * opener and its anchor, because a note anchor cannot follow a repeat directly.
+     */
+    private static final ElementRange SEPARATED_ENDING =
+        new ElementRange(SECTION_OPENER_INDEX + 2, ENDING_LINE_LENGTH - 1);
+
+    /**
+     * The indices of the repeats that give {@link #EXISTING_ENDING} and
+     * {@link #SEPARATED_ENDING} each the split an ending holds strictly inside it.
+     */
+    private static final List<Integer> ENDING_SPLIT_INDICES =
+        List.of(EXISTING_ENDING.begin() + 1, SEPARATED_ENDING.begin() + 1);
 
     private static final int TRIPLET_NORMAL_NOTES = 2;
 
@@ -149,6 +177,8 @@ class LineSpansTest extends UnitTest {
     @Test
     void testCasesCoverEveryConcreteSpanKind() {
         assertThat(displacementCases().<Class<?>>map(DisplacementCase::kind).distinct())
+            .containsExactlyInAnyOrderElementsOf(leavesOf(Span.class));
+        assertThat(wholeSpanDeletionCases().<Class<?>>map(WholeSpanDeletionCase::kind).distinct())
             .containsExactlyInAnyOrderElementsOf(leavesOf(Span.class));
     }
 
@@ -197,12 +227,9 @@ class LineSpansTest extends UnitTest {
             new DisplacementCase("a trill leaves the trill flush against it standing",
                 Trill.class, LineSpansTest::lineOfQuavers, Trill::new,
                 EXISTING, FLUSH, Outcome.BOTH),
-            new DisplacementCase("an ending stands beside the ending it overlaps",
+            new DisplacementCase("an ending stands beside the ending a repeat opening separates it from",
                 Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
-                EXISTING, OVERLAPPING, Outcome.BOTH),
-            new DisplacementCase("an ending stands beside the ending flush against it",
-                Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding,
-                EXISTING, FLUSH, Outcome.BOTH)
+                EXISTING_ENDING, SEPARATED_ENDING, Outcome.BOTH)
         );
     }
 
@@ -339,6 +366,62 @@ class LineSpansTest extends UnitTest {
         assertThat(rangesOf(line, Tuplet.class)).isEmpty();
     }
 
+    // ------------------------------------------------------------------------
+    // A deletion that takes a whole span
+    // ------------------------------------------------------------------------
+
+    /**
+     * One span of a kind, on a line of a real song, whose every element is then deleted.
+     *
+     * @param description the case, as the test's display name
+     * @param kind        the kind's concrete class
+     * @param line        builds the line, on a song whose tracking is suspended
+     * @param newSpan     builds the span, over an anchor and an end element
+     * @param extent      the elements the span covers, all of which the deletion takes
+     */
+    private record WholeSpanDeletionCase(
+        String description,
+        Class<? extends Span<?>> kind,
+        Supplier<Line> line,
+        BiFunction<StaffElement, StaffElement, Span<?>> newSpan,
+        ElementRange extent
+    ) {}
+
+    static Stream<WholeSpanDeletionCase> wholeSpanDeletionCases() {
+        return Stream.of(
+            new WholeSpanDeletionCase("a beam",
+                Beam.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newBeam, EXISTING),
+            new WholeSpanDeletionCase("a crescendo",
+                Hairpin.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newCrescendo, EXISTING),
+            new WholeSpanDeletionCase("a tuplet",
+                Tuplet.class, LineSpansTest::songLineOfQuavers, LineSpansTest::newTriplet, EXISTING),
+            new WholeSpanDeletionCase("a trill",
+                Trill.class, LineSpansTest::songLineOfQuavers, Trill::new, EXISTING),
+            new WholeSpanDeletionCase("an ending",
+                Ending.class, LineSpansTest::lineWithRepeatSplits, LineSpansTest::newEnding, EXISTING_ENDING)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("wholeSpanDeletionCases")
+    void testADeletionThatTakesEveryElementOfASpanRemovesItUnreported(WholeSpanDeletionCase testCase) {
+        var line = testCase.line().get();
+        var song = line.getSong();
+        add(line, testCase.newSpan(), testCase.extent());
+        song.endSuspendMutationTracking();
+
+        var reports = new ReportRecorder();
+
+        try {
+            song.withModification(() -> line.deleteRange(line.effectiveRange(testCase.extent())));
+
+            assertThat(rangesOf(line, testCase.kind())).isEmpty();
+            assertThat(reports.reports()).as("the user deleted the span, so nothing is reported").isEmpty();
+        } finally {
+            reports.dispose();
+        }
+    }
+
     private static void deleteElement(Line line, int index) {
         line.deleteRange(line.effectiveRange(ElementRange.single(index)));
     }
@@ -364,15 +447,44 @@ class LineSpansTest extends UnitTest {
         return lineOfQuavers(LINE_LENGTH);
     }
 
-    /** A line of quavers with a repeat at each of {@link #ENDING_SPLIT_INDICES}. */
-    private static Line lineWithRepeatSplits() {
-        var line = detachedLine();
+    /**
+     * A line of a real song holding {@link #LINE_LENGTH} quavers, for a case that edits inside a
+     * modification bracket, which the song mock behind {@link #lineOfQuavers()} cannot open.
+     */
+    private static Line songLineOfQuavers() {
+        var line = editableLine();
 
         for (var i = 0; i < LINE_LENGTH; i++) {
-            line.addElement(ENDING_SPLIT_INDICES.contains(i) ? repeatRight() : quaver());
+            line.addElement(quaver());
         }
 
         return line;
+    }
+
+    /**
+     * A line of a real song, of quavers with a right repeat at each of
+     * {@link #ENDING_SPLIT_INDICES} and a left repeat at {@link #SECTION_OPENER_INDEX}.
+     */
+    private static Line lineWithRepeatSplits() {
+        var line = editableLine();
+
+        for (var i = 0; i < ENDING_LINE_LENGTH; i++) {
+            line.addElement(elementAt(i));
+        }
+
+        return line;
+    }
+
+    private static StaffElement elementAt(int index) {
+        if (ENDING_SPLIT_INDICES.contains(index)) {
+            return repeatRight();
+        }
+
+        if (index == SECTION_OPENER_INDEX) {
+            return repeatLeft();
+        }
+
+        return quaver();
     }
 
     private static Span<?> newCrescendo(StaffElement anchor, StaffElement end) {
@@ -398,12 +510,7 @@ class LineSpansTest extends UnitTest {
 
         assertThat(line).isNotNull();
 
-        var range = new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end));
-        var ending = Ending.spanning(line, range);
-
-        assertThat(ending).isNotNull();
-
-        return ending;
+        return endingOver(line, new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end)));
     }
 
     private static void add(Line line, BiFunction<StaffElement, StaffElement, Span<?>> newSpan, ElementRange range) {
@@ -419,7 +526,7 @@ class LineSpansTest extends UnitTest {
     private static List<ElementRange> rangesOf(Line line, Class<? extends Span<?>> kind) {
         return line.spanRegistry().getSpans().stream()
             .filter(kind::isInstance)
-            .map(span -> new ElementRange(span.requireAnchorElementIndex(), span.requireEndElementIndex()))
+            .map(Span::range)
             .toList();
     }
 }

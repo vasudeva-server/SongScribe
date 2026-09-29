@@ -26,5 +26,5 @@ Exercises: `BeatChangeDialog`, `BeatChangeController`
 
 9. On a song whose tuplets loaded leniently, open the dialog on an element carrying
    a beat change and close it with Cancel, then again with OK after changing and
-   reverting a control. No tuplet disappears and no "tuplets were removed" warning
-   appears, because neither route reaches a beat-defining edit.
+   reverting a control. No tuplet disappears and no "Changes Made" window appears,
+   because neither route changes the song.

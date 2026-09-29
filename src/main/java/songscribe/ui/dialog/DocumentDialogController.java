@@ -43,7 +43,7 @@ import songscribe.util.Copyable;
  * @param <I> what the dialog shows — see {@link DialogController}
  * @param <O> what the dialog's controls say on OK — see {@link DialogController}
  */
-abstract class DocumentDialogController<I extends @Nullable Copyable<I>, O>
+abstract class DocumentDialogController<I extends @Nullable Copyable<I>, O extends @Nullable Object>
     extends DialogController<I, O> {
 
     private final MainFrame mainFrame;

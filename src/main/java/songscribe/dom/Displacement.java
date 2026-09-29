@@ -24,8 +24,9 @@ package songscribe.dom;
  * What a span being added does to the same-kind spans already on its line — its kind's
  * displacement policy, read by {@link Span#addTo} through {@link Span#displacement()}.
  * <p>
- * "Same kind" is {@link Span#isSameKindAs}: the same concrete class, and for a hairpin the same
- * {@link Hairpin.Kind}, so a crescendo never displaces a diminuendo. Every displaced span leaves
+ * "Same kind" is {@link Span#isSameKindAs}: the same concrete class, which a subclass may narrow.
+ * {@link Hairpin} narrows it to the same {@link Hairpin.Kind}, so a crescendo never displaces a
+ * diminuendo. Every displaced span leaves
  * through its own {@link Span#removeFrom}, recorded before the new span's addition so undo
  * restores the displaced spans after removing the new one.
  */
