@@ -1,6 +1,8 @@
 ---
 name: design-pass
 description: Run the design pass over one system, named by its row number in the design pass register — fix what types can carry, contract what fan-in earns, keep only the tests the design cannot enforce
+model: opus
+effort: medium
 disable-model-invocation: true
 ---
 
