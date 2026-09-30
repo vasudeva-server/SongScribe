@@ -40,9 +40,14 @@ import songscribe.error.RuntimeError;
  * An ending over {@code [anchor, end]} of a line is well formed when every invariant below
  * holds but the last two ({@link #illFormedReason} judges them over one line's elements). The
  * section rule reads the song across lines, and the last invariant holds between every two
- * endings on a line. Every attached ending meets all of them. {@link #spanning} is the one
- * way to create an ending: the editor calls it, and each file reader reaches it through
- * {@link EndingLoadPass}. {@link #outcomeFor} removes an ending that an edit makes ill formed
+ * endings on a line. Every attached ending meets all of them, because every ending on a line
+ * was made by {@link #spanning}. Each path that adds one adds an ending {@link #spanning}
+ * returned: the editor ({@code MusicEditOperations.canMakeFirstSecondEnding}), the load
+ * ({@link EndingLoadPass}, which each file reader reaches), and the paste
+ * ({@code PasteSpanReconciliation.settleAgainstTarget}). Undo of a span removal and redo of a
+ * span addition put back an ending one of those paths made. {@link Span#copy} makes an ending
+ * only for a clipboard fragment, and that ending is never added to a line.
+ * {@link #outcomeFor} removes an ending that an edit makes ill formed
  * in the projection, and {@link EndingSectionRule} removes an ending whose split an edit
  * leaves closing no open repeat section, so no edit leaves either state in the song. No edit
  * can make two endings overlap, so only {@link #spanning} refuses an overlap.
@@ -76,27 +81,6 @@ import songscribe.error.RuntimeError;
 public final class Ending extends Span<StaffElement> {
 
     /**
-     * The answer {@link #spanning} gives for a range: the ending over it, or the reason there is
-     * none.
-     */
-    public sealed interface Spanning permits Spanning.Spanned, Spanning.Refused {
-
-        /**
-         * The range holds an ending.
-         *
-         * @param ending the ending over the range, built but not added to its line
-         */
-        record Spanned(Ending ending) implements Spanning {}
-
-        /**
-         * The range holds no ending.
-         *
-         * @param reasonKey the {@code Strings} key of the reason, as the user is told it
-         */
-        record Refused(String reasonKey) implements Spanning {}
-    }
-
-    /**
      * Creates an ending bracket over two elements the caller has already checked span a
      * well-formed ending.
      *
@@ -109,9 +93,10 @@ public final class Ending extends Span<StaffElement> {
 
     /**
      * Returns an ending over {@code span} of {@code line} when the class invariant allows one
-     * there, or the reason it does not. This is the one way to create an ending. The editor
-     * calls it, and so does {@link EndingLoadPass} for the endings a file reader found, so a
-     * range holds an ending by the same rule whichever route it arrives by.
+     * there, or the reason it does not. This is the one way to create an ending for a line. The
+     * editor calls it, {@link EndingLoadPass} calls it for the endings a file reader found, and
+     * the paste calls it for each ending a clipboard fragment carries, so a range holds an ending
+     * by the same rule whichever route it arrives by.
      * <p>
      * It judges, in order: the range over {@code line}'s elements ({@link #illFormedReason});
      * whether the range overlaps an ending already on {@code line}; and the section rule
@@ -126,34 +111,32 @@ public final class Ending extends Span<StaffElement> {
      *     {@code line}
      * @return {@link Spanning.Spanned} with an ending anchored on the element at
      *     {@code span.begin()} and ending on the element at {@code span.end()}; or
-     *     {@link Spanning.Refused} with the reason {@link #illFormedReason} answers when the range
-     *     is ill formed, {@link Strings#DIALOG_REPORT_REASON_ENDING_NOT_VALID} when it overlaps
-     *     an ending already on {@code line}, or
-     *     {@link Strings#DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION} when its split closes no
+     *     {@link Spanning.Refused} with {@link Spanning.Cause#RANGE} and the reason
+     *     {@link #illFormedReason} answers when the range is ill formed; with
+     *     {@link Spanning.Cause#OTHER_SPAN} and {@link Strings#DIALOG_REPORT_REASON_ENDING_NOT_VALID}
+     *     when it overlaps an ending already on {@code line}; or with {@link Spanning.Cause#RANGE}
+     *     and {@link Strings#DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION} when its split closes no
      *     open repeat section
      * @throws IllegalStateException if the range is well formed and overlaps no ending, and
      *     {@code line} is not one of its song's lines
      */
-    public static Spanning spanning(Line line, ElementRange span) {
+    public static Spanning<Ending> spanning(Line line, ElementRange span) {
         var elements = line.getElements();
         var illFormed = illFormedReason(elements, span);
 
         if (illFormed != null) {
-            return new Spanning.Refused(illFormed);
+            return new Spanning.Refused<>(illFormed, Spanning.Cause.RANGE);
         }
 
-        var overlapsAny = line.spanRegistry().findEndings().stream()
-            .anyMatch(other -> other.range().overlaps(span));
-
-        if (overlapsAny) {
-            return new Spanning.Refused(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID);
+        if (line.spanRegistry().hasSpan(Ending.class, Span.overlapping(span))) {
+            return new Spanning.Refused<>(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
         }
 
         if (!closesOpenSection(line, splitIndexOf(elements, span).orElseThrow())) {
-            return new Spanning.Refused(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION);
+            return new Spanning.Refused<>(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
         }
 
-        return new Spanning.Spanned(new Ending(elements.get(span.begin()), elements.get(span.end())));
+        return new Spanning.Spanned<>(new Ending(elements.get(span.begin()), elements.get(span.end())));
     }
 
     /**
@@ -212,8 +195,8 @@ public final class Ending extends Span<StaffElement> {
             return Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID;
         }
 
-        var first = firstBracketOf(anchorType, anchorIndex, splitIndex);
-        var second = secondBracketOf(splitIndex, endType, endIndex);
+        var first = firstBracketOf(elements, span, splitIndex);
+        var second = secondBracketOf(elements, span, splitIndex);
         var bracketsWellFormed = first != null && second != null
             && isWellFormedBracket(elements, first) && isWellFormedBracket(elements, second);
 
@@ -316,10 +299,7 @@ public final class Ending extends Span<StaffElement> {
      *     hold at least one note or rest and no bar
      */
     public ElementRange firstBracket() {
-        var anchorIndex = requireAnchorElementIndex();
-
-        return requireBracket(
-            firstBracketOf(line().getElement(anchorIndex).getType(), anchorIndex, getSplitIndex()));
+        return requireBracket(firstBracketOf(line().getElements(), range(), getSplitIndex()));
     }
 
     /**
@@ -331,42 +311,41 @@ public final class Ending extends Span<StaffElement> {
      *     hold at least one note or rest and no bar
      */
     public ElementRange secondBracket() {
-        var endIndex = requireEndElementIndex();
-
-        return requireBracket(
-            secondBracketOf(getSplitIndex(), line().getElement(endIndex).getType(), endIndex));
+        return requireBracket(secondBracketOf(line().getElements(), range(), getSplitIndex()));
     }
 
     /**
-     * The first bracket of an ending anchored at {@code anchorIndex} on an element of
-     * {@code anchorType} and split at {@code splitIndex}: a note or rest anchor is the
-     * bracket's first element, and a bar anchor is not.
+     * The first bracket of an ending over {@code span} of {@code elements}, split at
+     * {@code splitIndex}: a note or rest anchor is the bracket's first element, and a bar anchor
+     * is not.
      */
     private static @Nullable ElementRange firstBracketOf(
-        ElementType anchorType, int anchorIndex, int splitIndex
+        List<StaffElement> elements, ElementRange span, int splitIndex
     ) {
-        var before = anchorType.isDuration() ? anchorIndex - 1 : anchorIndex;
+        var anchorIndex = span.begin();
+        var before = elements.get(anchorIndex).getType().isDuration() ? anchorIndex - 1 : anchorIndex;
 
         return elementsBetween(before, splitIndex);
     }
 
     /**
-     * The second bracket of an ending split at {@code splitIndex} and ending at
-     * {@code endIndex} on an element of {@code endType}: a note or rest end is the bracket's
-     * last element, and a bar end is not. Layout draws the bracket over an end note, so the
-     * bracket holds it.
+     * The second bracket of an ending over {@code span} of {@code elements}, split at
+     * {@code splitIndex}: a note or rest end is the bracket's last element, and a bar end is
+     * not. Layout draws the bracket over an end note, so the bracket holds it.
      */
     private static @Nullable ElementRange secondBracketOf(
-        int splitIndex, ElementType endType, int endIndex
+        List<StaffElement> elements, ElementRange span, int splitIndex
     ) {
-        var after = endType.isDuration() ? endIndex + 1 : endIndex;
+        var endIndex = span.end();
+        var after = elements.get(endIndex).getType().isDuration() ? endIndex + 1 : endIndex;
 
         return elementsBetween(splitIndex, after);
     }
 
     /**
      * The indices strictly between {@code before} and {@code after}, or {@code null} when there
-     * are none.
+     * are none. The bounds stay two ints because a bracket bound of {@code -1}, a note anchor at
+     * index 0, is not an {@link ElementRange}.
      */
     private static @Nullable ElementRange elementsBetween(int before, int after) {
         var begin = before + 1;
@@ -406,10 +385,13 @@ public final class Ending extends Span<StaffElement> {
         return new Ending(newAnchor, newEnd);
     }
 
+    @Override
+    protected void copyOwnStateFrom(Span<StaffElement> source) {
+    }
+
     /**
      * Returns the element index of the bar that separates the first and second sub-spans of
-     * this ending — the one {@link #getSplitElement} answers — computed live from the line
-     * rather than from a value cached during layout, so it is reliable during MIDI generation.
+     * this ending — the one {@link #getSplitElement} answers.
      *
      * @return the split bar's index in this ending's line
      */

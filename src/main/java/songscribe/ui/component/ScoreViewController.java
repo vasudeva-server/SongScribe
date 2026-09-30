@@ -1399,8 +1399,7 @@ public final class ScoreViewController {
         // sweep at the end of this method.
         stranding.sweepExcept(line);
 
-        var reconciliation = PasteSpanReconciliation.reconcile(
-            line, insertIndex, rawDeleteRange, instantiated.spans());
+        var reconciliation = PasteSpanReconciliation.reconcile(line, target, instantiated.spans());
 
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
@@ -1429,39 +1428,41 @@ public final class ScoreViewController {
         // runs reads those same indices, so it would mis-measure what to absorb for
         // exactly the same reason.
         //
-        // The addElement inside insertRun additionally drops the spans the inserted
-        // element types invalidate, each by its own rule: the ending's
+        // The addElement inside insertRun additionally drops the destination spans the
+        // inserted element types invalidate, each by its own rule: the ending's
         // barline/repeat-aware one, which is more precise than the straddle test
-        // PasteSpanReconciliation applies to the other span kinds, so endings are left
-        // to it; and the tuplet's interior rule, which finds nothing here because the
-        // reconciliation above already removed a straddled tuplet. A tie is not a span
-        // and is not swept here at all: it is state the pasted notes carry with them,
-        // and the tie rule judges every tie the paste touches, including one that spans
-        // the paste point, when the caller's modification bracket closes.
+        // PasteSpanReconciliation applies to the other span kinds, so a destination
+        // ending is left to it; and the tuplet's interior rule, which finds nothing here
+        // because the reconciliation above already removed a straddled tuplet. A tie is
+        // not a span and is not swept here at all: it is state the pasted notes carry with
+        // them, and the tie rule judges every tie the paste touches, including one that
+        // spans the paste point, when the caller's modification bracket closes.
         line.insertRun(insertAt, clones);
 
-        // A pasted tuplet the destination's beat context rejects is dropped here
-        // (#604): after the clones are in, so every index resolves against the final
-        // line, and before any span is added, so the bracket is never created and
-        // needs no undo of its own.
-        reconciliation = reconciliation.dropTupletsRejectedByTarget(line);
+        // Every fragment tuplet, ending and hairpin is judged here by its kind's own rule
+        // against the line the paste leaves (#604): after the clones are in, so every index
+        // resolves against the final line, and before any span is added, so a refused span
+        // is never created and needs no undo of its own. An accepted ending or hairpin comes
+        // back as the one its kind's factory built, in place of the fragment's clone.
+        reconciliation = reconciliation.settleAgainstTarget(line);
 
-        // The fragment spans the straddle rule dropped and the tuplets the destination
-        // rejected are spans the user did not ask to lose, so each goes into the edit's
-        // report, which is shown when this paste's bracket closes.
+        // The fragment spans the straddle rule dropped and the ones the destination refused
+        // are spans the user did not ask to lose, so each goes into the edit's report, which
+        // is shown when this paste's bracket closes.
         var song = line.getSong();
 
         for (var span : reconciliation.fragmentSpansDropped()) {
             song.report(span.reportedAs(Strings.DIALOG_REPORT_REASON_PASTE_FRAGMENT_DROPPED));
         }
 
-        for (var tuplet : reconciliation.tupletsRejectedByTarget()) {
-            song.report(tuplet.reportedAs(Strings.DIALOG_REPORT_REASON_PASTE_TUPLET_REJECTED));
+        for (var rejected : reconciliation.fragmentSpansRejected()) {
+            song.report(rejected.span().reportedAs(rejected.reasonKey()));
         }
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
         // merged into it by addTo's own displacement policy, the same rule that applies
-        // when the user draws one there; every other kind is added verbatim.
+        // when the user draws one there, and the range settleAgainstTarget judged is the
+        // merged one.
         for (var span : reconciliation.fragmentSpans()) {
             span.addTo(line);
         }

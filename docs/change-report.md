@@ -47,23 +47,26 @@ toggling a beam or a tie off — is not, since the user already knows it happene
 - **The funnel.** Each span an element change leaves invalid is removed with the
   reason the span's rule gives. A span whose elements a deletion takes whole is
   not among them: it goes with its elements, unreported.
-- **Merges and displacements.** A span absorbed into a neighbor of the same kind,
-  or replaced by a new one added over it, is reported as merged or replaced.
+- **Displacements.** A span replaced by a new one of the same kind added over it
+  is reported as replaced.
 - **The rules at the close of an edit.** Each tie that no longer joins two notes
   of the same pitch, each ending whose split no longer closes an open repeat
   section, and each tuplet that no longer fits the beat.
 - **Paste.** A span of the target the paste lands inside is removed; a span of
   the pasted fragment that would land inside one of the same kind is not pasted;
-  a pasted tuplet that does not fit the beat or the barlines where it lands is
-  not pasted. Each is reported, though the last two were never in the song.
+  a pasted tuplet, ending or hairpin that is not valid where it lands is not
+  pasted. Each is reported, though a span that was not pasted was never in the song.
 - **The load passes.** A tuplet the file did not time is given a ratio, and one
   that cannot stand is dropped; an ending that is not valid where the file puts
-  it is dropped; a breath mark that follows no note or rest is dropped; accidentals
+  it is dropped; a hairpin that is not valid where the file puts it is dropped; a
+  breath mark that follows no note or rest is dropped; accidentals
   written in an older form are converted.
 
 A stranded key change — a mid-line key change that restates the key already in
 effect — is removed without a report. It carries no information the document
-does not already hold, so there is nothing to tell.
+does not already hold, so there is nothing to tell. A span absorbed into a
+neighbor of the same kind — two hairpins or two beams merged into one — goes
+unreported for the same reason: the merged span covers every element it did.
 
 ## Two routes to one dialog
 

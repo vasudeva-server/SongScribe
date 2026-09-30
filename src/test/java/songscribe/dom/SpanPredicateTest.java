@@ -66,6 +66,10 @@ class SpanPredicateTest extends UnitTest {
     }
 
     static Stream<PredicateCase> predicateCases() {
+        var insertion = Span.straddling(new StaffElementRun.InsertionTarget.AtIndex(ELEMENT));
+        var replacement = Span.straddling(new StaffElementRun.InsertionTarget.Replacing(
+            lineOfQuavers(AFTER_RANGE + 1).effectiveRange(RANGE)));
+
         return Stream.of(
             new PredicateCase("containing: an element inside the span",
                 Span.containing(ELEMENT), RANGE, true),
@@ -106,7 +110,21 @@ class SpanPredicateTest extends UnitTest {
             new PredicateCase("ending at: a span ending there",
                 Span.endingAt(ELEMENT), new ElementRange(BEFORE_RANGE, ELEMENT), true),
             new PredicateCase("ending at: a span anchored there",
-                Span.endingAt(ELEMENT), new ElementRange(ELEMENT, AFTER_RANGE), false)
+                Span.endingAt(ELEMENT), new ElementRange(ELEMENT, AFTER_RANGE), false),
+
+            new PredicateCase("straddling an insertion: a span from before it to the element it lands on",
+                insertion, new ElementRange(BEFORE_RANGE, ELEMENT), true),
+            new PredicateCase("straddling an insertion: a span anchored where it lands",
+                insertion, new ElementRange(ELEMENT, AFTER_RANGE), false),
+            new PredicateCase("straddling an insertion: a span ending before it",
+                insertion, new ElementRange(BEFORE_RANGE, RANGE.begin()), false),
+
+            new PredicateCase("straddling a replacement: a span from before the deleted range to past it",
+                replacement, new ElementRange(BEFORE_RANGE, AFTER_RANGE), true),
+            new PredicateCase("straddling a replacement: a span ending inside the deleted range",
+                replacement, new ElementRange(BEFORE_RANGE, ELEMENT), false),
+            new PredicateCase("straddling a replacement: a span wholly inside the deleted range",
+                replacement, RANGE, false)
         );
     }
 }

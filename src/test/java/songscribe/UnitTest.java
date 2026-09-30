@@ -51,6 +51,7 @@ import songscribe.dom.Key;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
+import songscribe.dom.SpanFactory;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.error.RuntimeErrorTestHelper;
@@ -354,9 +355,10 @@ public abstract class UnitTest {
      *
      * @param line  the line whose elements anchor and end the crescendo
      * @param range the elements the crescendo spans
+     * @throws AssertionError if {@link Hairpin#spanning} refuses the range
      */
     protected static Hairpin crescendoOver(Line line, ElementRange range) {
-        return new Hairpin(Hairpin.Kind.CRESCENDO, line.getElement(range.begin()), line.getElement(range.end()));
+        return SpanFactory.hairpinOver(line, Hairpin.Kind.CRESCENDO, range);
     }
 
     /**

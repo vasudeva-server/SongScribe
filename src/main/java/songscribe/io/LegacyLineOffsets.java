@@ -22,18 +22,15 @@ package songscribe.io;
 import songscribe.dom.DocumentScale;
 
 /**
- * Load-time carrier for the four line-level Y position fields that exist only in pre-Phase 11
+ * Load-time carrier for the three line-level Y position fields that exist only in pre-Phase 11
  * (format v1) documents. Populated by {@link LineIO.LineReader} during XML parsing and consumed
  * by {@link FormatMigrator#migrateLineLevelOffsets} to redistribute the offsets onto per-instance
  * attachment and span objects. Discarded after migration completes.
  */
-record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstSecondEndingYPosPx, int trillYPosPx) {
+record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int trillYPosPx) {
 
     /** Default beat change Y position (-3 staff spaces above middle). */
     private static final double BEAT_CHANGE_DEFAULT_Y_SS = -3.0;
-
-    /** Default first/second ending Y position (above staff). */
-    private static final double ENDING_DEFAULT_Y_SS = -3.125;
 
     /** Default trill Y position (above staff). */
     private static final double TRILL_DEFAULT_Y_SS = -3.375;
@@ -44,7 +41,6 @@ record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstS
     static final LegacyLineOffsets DEFAULTS = new LegacyLineOffsets(
         0,
         DocumentScale.ssToPx(BEAT_CHANGE_DEFAULT_Y_SS).positionPx(),
-        DocumentScale.ssToPx(ENDING_DEFAULT_Y_SS).positionPx(),
         DocumentScale.ssToPx(TRILL_DEFAULT_Y_SS).positionPx()
     );
 }

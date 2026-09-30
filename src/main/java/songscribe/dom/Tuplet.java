@@ -68,6 +68,10 @@ public final class Tuplet extends Span<StaffElement> {
         return new Tuplet(newAnchor, newEnd, grade, ratio);
     }
 
+    @Override
+    protected void copyOwnStateFrom(Span<StaffElement> source) {
+    }
+
     /**
      * Whether this tuplet's anchor draws an upward stem: a stemmed note whose stem points up.
      * An anchor with no stem to draw — a whole note, a rest — never does, whatever direction it
@@ -86,6 +90,8 @@ public final class Tuplet extends Span<StaffElement> {
     /**
      * Returns true when only the number is drawn (no bracket): the tuplet is beamed
      * at both its anchor and end index and its anchor note has upward stems.
+     *
+     * @return {@code true} when the bracket is omitted and only the number is drawn
      */
     public boolean isNumberOnly() {
         var spans = line().spanRegistry();
@@ -171,6 +177,8 @@ public final class Tuplet extends Span<StaffElement> {
 
     /**
      * Returns the tuplet grade (3 for triplet, 5 for quintuplet, etc.).
+     *
+     * @return the grade, whose number is the printed tuplet number
      */
     public TupletGrade getGrade() {
         return grade;

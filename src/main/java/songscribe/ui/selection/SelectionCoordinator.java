@@ -654,7 +654,7 @@ public final class SelectionCoordinator implements Disposable {
      * An attachment or an articulation answers its host's line, which is null once it is taken
      * off its host, so the same comparison settles it.
      * <p>
-     * A span has no parent line: {@link Span#isIn} derives the lines it is in from its
+     * A span has no parent line: the lines it is in are derived from its
      * endpoints, which a removal leaves exactly where they were. So a span is asked of the
      * line's span list instead, the only record of a span having been removed. That list is
      * short, and it is scanned once per mutation rather than per element.

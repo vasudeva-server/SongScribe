@@ -33,7 +33,7 @@ the Gradle filter matches the name as a suffix. Count the two classes apart.
 | 2 Class design | ✅ | ✅ | [step-2-plan.md](step-2-plan.md) | `findings-1-2.md`, *Decisions*. Settled while planning: `TieAddition`/`TieRemoval` stay as the tie's records, over `(Line, NoteElement)`; `Tie` is a derived record `(anchor, end)`. Two defects fixed in the plan's Phase 11: the MusicXML reader rounds offsets, and an ending's offset is not saved |
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-plan.md](step-3-plan.md) | `findings-3.md`: all 24 items accepted. Item 5, the factory checks only that a split exists. Item 11, the legacy reader drops an out-of-range grade with a warning. Item 22, `Span<E extends StaffElement>`. No known path leaves a registered span with a detached endpoint (item 1) |
 | 4 Extraction | ✅ | ✅ | [step-4-plan.md](step-4-plan.md) | `findings-4.md`. Settled while executing, item 18: an ending anchors only on a note, a rest or a `SINGLE_BARLINE`, and a note or rest anchor needs a `SINGLE_BARLINE`, a note, a rest or the start of its line in front of it. The editor and the bracket geometry share that rule, and `volta-alignments.musicxml` holds one line per valid opening |
-| 5 Contracts | ⏳ | ⏳ | — | |
+| 5 Contracts | ✅ | ✅ | [step-5-plan.md](step-5-plan.md) | `findings-5.md`: all 9 items accepted. Item 3, a pasted ending goes through `Ending.spanning`, and a refused one is removed and reported. Item 9, a hairpin never ends on a rest; a `Hairpin` factory judges every hairpin, including a new `HairpinLoadPass` |
 | 6 Test triage | ⏳ | ⏳ | — | |
 | 7 Test-only surface | ⏳ | ⏳ | — | |
 | 8a Suite gate | ⏳ | n/a | — | |
@@ -81,14 +81,16 @@ to be. Deleted from the register when claimed.
    one type, in an order the caller must know. `MeasureMapper:710` is the reader-side
    caller. Row 7 judges whether an ending's span should be the argument.
 
-What each turned out to be, at step 1:
+What each turned out to be:
 
 1. `Tuplet.getNoteValue()` is gone; the value now sits in `TupletRatio` as a
    `NotatableValue(ElementType, Dots)`, still an `ElementType`. Step 2, item 6.
 2. `BeamGroupRenderer.beamedNoteAt` is gone; `Beam.noteAt(int)` took its place and the
    beam still names members by line index. Step 2, item 7.
-3. Unchanged. Step 5.
-4. Unchanged, `LineSpans.java:383`. Step 3 (guards).
+3. The registry promises no order. The MusicXML file does not depend on it. Step 5,
+   item 4.
+4. The check is live: undo of a deletion re-inserts one element at a time, through lines
+   the rules would judge. Step 5, item 8.
 5. Unchanged; the caller is now `MeasureMapper.java:724`. Step 3 (signatures); the
    invariant is step 2, item 13.
 

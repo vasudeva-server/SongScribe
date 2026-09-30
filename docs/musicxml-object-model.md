@@ -116,6 +116,10 @@ one place a pending tuplet becomes a tuplet on its line: it judges a stated rati
 derives a missing one, and drops what fails, leaving the notes. The legacy reader
 hands its pending tuplets to the same pass.
 
+A reader builds no ending and no hairpin either. Each is recorded as pending, and
+stays pending until its load pass judges it by the same rule the editor uses; what
+fails is dropped, leaving the notes.
+
 **Mapping is one structural walk, then one resolution pass per kind of pairing
 mark.** The walk builds only what a single child settles on its own, and records
 where each child landed. The passes then run over those recorded positions, which

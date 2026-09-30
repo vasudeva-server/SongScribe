@@ -28,8 +28,10 @@ one span's removal change what a later span is judged against.
 A removal carries the **reason** the span's rule gives — an endpoint deleted, a
 note that can no longer be beamed, a tuplet whose interior changed — and the
 removal is reported with that reason. Every removal the user did not directly
-request is reported: those the funnel decides, the spans a merge absorbs or a
-displacement replaces, and those the rules at the close of the edit make. A
+request is reported: those the funnel decides, the spans a displacement
+replaces, and those the rules at the close of the edit make. A span a merge
+absorbs is not removed in any sense the user sees — the merged span covers it —
+so it goes unreported. A
 removal the user asked for — deleting a selected span, deleting every element a
 span covers, toggling a beam or a tie off — is not.
 
@@ -119,6 +121,11 @@ with nothing to replace it.
 An edit that leaves a span ill formed never makes a second change to keep it: a
 replaced bar that breaks an ending removes the ending, with its reason, rather
 than rewriting another of its bars to suit.
+
+The same holds for a hairpin's structural boundary. An insertion or a replacement
+that puts a repeat, or a bar other than a single barline, inside a hairpin removes
+the hairpin and reports it, alongside the endpoint checks. A deletion cannot bring
+a bar into a range, so it never triggers this removal.
 
 ## The sweep is skipped while replaying
 

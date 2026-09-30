@@ -54,14 +54,14 @@ import songscribe.engraving.StemMetrics;
  * <p>Invariant: every element inside a beam's span is a note, both endpoints are beamable, and
  * every non-grace element strictly inside it is beamable. {@link #outcomeFor} keeps it through
  * an element replacement by removing the beam whenever the replacement would break it, which is
- * why {@link #members} and {@link #graceNotes} may narrow without testing. A broken beam is
+ * why {@link #members} and the query for the grace notes it passes over may narrow without testing. A broken beam is
  * always removed, never shortened to the members that survive.
  *
  * <p>A grace note inside the span is not a member: it sits between two beamed notes without
  * joining their beam, keeping its own short upward stem and its own flag, and neither its pitch
  * nor its stem may decide where the beam goes. {@link #members} leaves it out, so every walk
- * over a beam's members is a walk over the notes the beam joins; {@link #graceNotes} is the
- * separate query for the notes it passes over. A grace note is always strictly inside the span,
+ * over a beam's members is a walk over the notes the beam joins; the notes it passes over
+ * are a separate query. A grace note is always strictly inside the span,
  * because both endpoints are beamable, so its nearest members on either side are both members
  * of this beam.
  */
@@ -86,6 +86,10 @@ public final class Beam extends Span<NoteElement> {
     @Override
     protected Beam createCopy(NoteElement newAnchor, NoteElement newEnd) {
         return new Beam(newAnchor, newEnd);
+    }
+
+    @Override
+    protected void copyOwnStateFrom(Span<NoteElement> source) {
     }
 
     /**
@@ -116,7 +120,7 @@ public final class Beam extends Span<NoteElement> {
      *     when there are none
      * @throws IllegalStateException if this beam's anchor or its end is in no line
      */
-    public List<NoteElement> graceNotes() {
+    private List<NoteElement> graceNotes() {
         return notesInSpan().filter(note -> note.getType().isGraceNote()).toList();
     }
 

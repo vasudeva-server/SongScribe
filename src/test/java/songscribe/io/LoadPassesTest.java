@@ -96,7 +96,8 @@ class LoadPassesTest extends UnitTest {
         var droppedEnding = new PendingEnding(
             line.getElement(DROPPED_ENDING.begin()), line.getElement(DROPPED_ENDING.end()), NO_OFFSET_SS);
 
-        var report = LoadPasses.run(song, List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding), true);
+        var report = LoadPasses.run(song, new LoadPasses.Input(
+            List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding), List.of(), true));
 
         assertThat(report.changes()).containsExactly(
             new ReportedChange(

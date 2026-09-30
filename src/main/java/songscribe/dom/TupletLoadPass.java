@@ -28,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.Strings;
-import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Turns the tuplets a reader found into the song's tuplets, or drops them.
@@ -147,7 +146,7 @@ public final class TupletLoadPass {
         var pending = verdict.tuplet();
         var lineIndex = verdict.lineIndex();
         var line = song.getLine(lineIndex);
-        var where = anchorToEnd(lineIndex, verdict.span());
+        var where = ElementLocationRange.onLine(lineIndex, verdict.span());
         var grade = pending.grade();
         var statedRatio = pending.statedRatio();
         var result = statedRatio == null
@@ -173,19 +172,6 @@ public final class TupletLoadPass {
                 }
             }
         }
-    }
-
-    /**
-     * Returns the range a report names for a pending span: from its anchor to its end, within
-     * one line.
-     *
-     * @param lineIndex the index of the line holding the span
-     * @param span      the span's elements within that line
-     * @return the range from {@code span}'s first element to its last
-     */
-    static ElementLocationRange anchorToEnd(int lineIndex, ElementRange span) {
-        return new ElementLocationRange(
-            new ElementLocation(lineIndex, span.begin()), new ElementLocation(lineIndex, span.end()));
     }
 
     /** The pending tuplet anchored at the element at {@code index} in {@code line}, if any. */

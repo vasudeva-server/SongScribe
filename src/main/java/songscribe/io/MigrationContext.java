@@ -27,6 +27,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 
@@ -44,6 +45,7 @@ final class MigrationContext {
     List<Line> lines = new ArrayList<>();
     Map<Line, LegacyLineOffsets> legacyLineOffsets = new HashMap<>();
     List<PendingTuplet> pendingTuplets = List.of();
+    List<PendingHairpin> pendingHairpins = List.of();
 
     double lineWidthSs;
     double rowHeightAdjustmentSs;

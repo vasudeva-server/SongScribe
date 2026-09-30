@@ -21,11 +21,7 @@ package songscribe.dom;
 
 import java.util.List;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.Strings;
-import songscribe.dom.StaffElementRun.ElementRange;
 
 /**
  * Turns the endings a reader found into the song's endings, or drops them.
@@ -38,8 +34,6 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * file did not say.
  */
 public final class EndingLoadPass {
-
-    private static final Logger LOG = LoggerFactory.getLogger(EndingLoadPass.class);
 
     private EndingLoadPass() {
     }
@@ -78,39 +72,18 @@ public final class EndingLoadPass {
     public static void run(Song song, List<PendingEnding> pendingEndings, ChangeReport report) {
         song.withoutMutationTracking(() -> {
             for (var pending : pendingEndings) {
-                place(song, pending, report);
+                SpanLoadPass.place(song, placement(pending), report);
             }
         });
     }
 
-    /** Adds one pending ending to its anchor's line, or drops it and records the drop. */
-    private static void place(Song song, PendingEnding pending, ChangeReport report) {
-        var anchor = pending.anchor();
-        var line = anchor.getParentLine();
-        var lineIndex = line == null ? null : song.indexOfLine(line);
-
-        if (line == null || lineIndex == null) {
-            throw new IllegalArgumentException("pending ending's anchor is in no line of the song");
-        }
-
-        var span = new ElementRange(
-            line.getElementIndex(anchor), line.getElementIndex(pending.end()));
-
-        switch (Ending.spanning(line, span)) {
-            case Ending.Spanning.Spanned(var ending) -> {
-                ending.setUserYOffsetSs(pending.yOffsetSs());
-                ending.addTo(line);
-            }
-
-            case Ending.Spanning.Refused(var reasonKey) -> {
-                LOG.warn("Ending load pass: dropped an ill-formed ending over elements {}-{} of line {}",
-                    span.begin(), span.end(), lineIndex);
-
-                report.record(new ReportedChange(
-                    Strings.DIALOG_REPORT_ENDINGS_REMOVED,
-                    Strings.get(reasonKey),
-                    TupletLoadPass.anchorToEnd(lineIndex, span)));
-            }
-        }
+    private static SpanLoadPass.Placement<Ending> placement(PendingEnding pending) {
+        return new SpanLoadPass.Placement<>(
+            pending.anchor(),
+            pending.end(),
+            Ending::spanning,
+            ending -> ending.setUserYOffsetSs(pending.yOffsetSs()),
+            Strings.DIALOG_REPORT_ENDINGS_REMOVED,
+            "ending");
     }
 }

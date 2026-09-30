@@ -32,22 +32,25 @@ about to build. A menu label promising a narrower hairpin than the commit would
 produce would be a lie. Each pass either strictly widens the span or ends the
 loop, so it takes at most one pass per same-type hairpin on the line.
 
+The convergence and every check belong to the hairpin's own rule. The menu, the
+paste and the load all ask that rule and act on its answer; the menu keeps no
+rule of its own, so the three routes cannot disagree about the same range.
+
 ## Ineligible versus blocked
 
-Two different refusals, and every return distinguishes them:
+Two different refusals, and the rule's refusal says which:
 
-- **Ineligible** — this stretch of music cannot carry a hairpin, whatever else is
-  on the line.
+- **Ineligible** — the range itself is at fault: this stretch of music cannot
+  carry a hairpin, whatever else is on the line.
 - **Blocked** — another hairpin is the obstacle.
 
-The structural-boundary check shows why the distinction is worth keeping: when the
-span only reaches the boundary because a same-type hairpin widened it, *that
-hairpin* is the obstacle; when the raw selection crosses the boundary on its own,
-the selection is at fault.
+The menu maps the refusal directly to its two states. A repeat or a non-single
+barline inside the selection makes it ineligible. Absorption never brings one in:
+a hairpin absorbs only a hairpin that overlaps or touches it, and no hairpin holds
+such a bar.
 
-An endpoint inherited from an absorbed hairpin rather than supplied by the
-selection is left unchecked — it is already where it was, and re-judging it would
-refuse an extension because of a position the user is not proposing.
+An endpoint inherited from an absorbed hairpin already meets the endpoint rules,
+so a refused endpoint is always one the selection supplied.
 
 ## Back-to-back hairpins
 
@@ -78,55 +81,56 @@ shared a dynamic-bearing element leaves the survivor with that element as its ow
 bound — which is itself a legal shape. Nothing is ever left stranded that the menu
 would refuse to create, so there is no sweep to hook into deletion.
 
-## Ending on a rest, but never starting from one
+## Never starting or ending on a rest
 
-A hairpin may **end** on a rest and may never **anchor** on one: a wedge closing
-on a rest reads naturally, trailing off into silence, but a wedge cannot
-meaningfully begin from silence.
+A hairpin never **starts** on a rest and never **ends** on one: a wedge closing on
+silence or beginning from it has no note to slope to or from. The anchor is a
+pitched note, or a grace note whose host is one; the end is a pitched note.
 
-**At most one rest, though.** A rest is accepted as an end only when the nearest
-duration element before it is a pitched note, so a hairpin ends on the rest that
-closes a run of notes and not on a second one after it — a wedge running on across
-further rests has nothing left to slope over. Selecting a note and two rests is
-therefore refused outright rather than resolving to a shorter span: the resolution
-never narrows a selection, it only reports that the end the selection supplies
-cannot be an end. Non-durations are skipped when looking back, so a grace note
-between two rests does not make the second one count as the first of its run.
+This is a rule about where a hairpin *stops* and *starts*, not about what it may
+*cross*. Rests inside a hairpin, however many, are unaffected.
 
-This is a rule about where a hairpin *stops*, not about what it may *cross*.
-Interior rests, however many, are unaffected.
+A rest is not a column. Two columns are the minimum a hairpin needs to slope
+across, and a rest, like a grace note beside its host, never counts toward them.
 
 ## The model can never hold a shape the menu would refuse
 
-A hairpin is re-checked after **every** change to the line's elements — insertion,
-replacement and deletion alike, not only replacement — and the rules consulted are
-exactly the three the menu itself reads. Whatever a fresh hairpin could not anchor
-on, end on, or slope across, a surviving hairpin cannot be left with either.
+The menu, the paste and the load all ask the hairpin's own rule, and the rule has
+five parts. A hairpin is re-checked after **every** change to the line's elements —
+insertion, replacement and deletion alike — so whatever a fresh hairpin could not
+be given, a surviving hairpin cannot be left with.
+
+1. It starts on a pitched note, or on a grace note whose host is a pitched note.
+2. It ends on a pitched note, never on a rest.
+3. It holds at least two columns; a grace note and its host are one column, and a
+   rest is not a column.
+4. Its range holds no repeat and no bar other than a single barline.
+5. It shares at most one element with a hairpin of the opposite kind, where one
+   ends and the other starts.
 
 The response differs by what the edit made possible:
 
-- An **insertion or a replacement** that leaves an endpoint invalid **removes**
-  the hairpin, silently, the way beams and tuplets go; undo restores it. Neither
-  deletes an element for the hairpin to pull back to, so there is no reliable
-  "move the end there instead" to reach for. Left unchecked, re-pointing would
-  quietly produce shapes the menu would never allow — a hairpin ending on a grace
-  note, or anchored on silence.
+- An **insertion or a replacement** that leaves an endpoint invalid, or that puts
+  a repeat or a non-single barline inside the hairpin, **removes** the hairpin and
+  reports it; undo restores it. Neither deletes an element for the hairpin to pull
+  back to, so there is no reliable "move the end there instead" to reach for. Left
+  unchecked, re-pointing would quietly produce shapes the menu would never allow —
+  a hairpin ending on a grace note, or anchored on silence. An insertion can only
+  widen a span, so it never costs a hairpin its columns.
 - A **deletion** **reshapes** the hairpin to its nearest valid endpoints instead,
   because a deletion always leaves a shorter run of surviving elements to pull back
-  onto.
+  onto. A deletion cannot bring a bar inside a range. When it leaves two same-kind
+  hairpins touching, they join, except when the joined hairpin would cover more
+  than one element of an opposite-kind hairpin; then both stay.
+- A **file** that holds a hairpin that breaks a rule loses that hairpin on load,
+  and the load report lists it.
 
 **Two legal endpoints do not imply a legal hairpin.** A grace note shares its
 host's column, so a hairpin anchored on a grace note and ending on its host has
 two elements but a single column — both endpoints legal, nothing to slope across.
-That shape is removed rather than kept. An insertion can only widen a span, so it
-never costs a hairpin its columns.
-
-A trailing rest counts toward the two-column minimum: one pitched note followed by
-a rest is enough to slope across, even though the rest carries no dynamic of its
-own. Interior rests and grace notes never count.
+That shape is removed rather than kept.
 
 ## Corpus figures
 
-Both configurations documented here are ordinary engraving practice rather than
-theoretical edge cases: back-to-back hairpins appear in twenty-five files of the
-ABC corpus, and hairpins bounded by a trailing rest in two.
+Back-to-back hairpins are ordinary engraving practice rather than a theoretical
+edge case: they appear in twenty-five files of the ABC corpus.

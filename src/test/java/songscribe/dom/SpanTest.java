@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static songscribe.dom.BatchReplay.redo;
 import static songscribe.dom.BatchReplay.undo;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
@@ -58,8 +59,7 @@ class SpanTest extends UnitTest {
         var line = lineOfQuavers(LINE_LENGTH);
 
         var removed = crescendoOver(line, EXISTING);
-        var bystander = new Hairpin(
-            Hairpin.Kind.DIMINUENDO, line.getElement(FLUSH.begin()), line.getElement(FLUSH.end()));
+        var bystander = hairpinOver(line, Hairpin.Kind.DIMINUENDO, FLUSH);
         removed.addTo(line);
         bystander.addTo(line);
 

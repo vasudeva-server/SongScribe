@@ -32,10 +32,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
@@ -366,8 +368,11 @@ class LineTest extends UnitTest {
         line.addElement(after);
 
         // Hairpins, because a hairpin survives the replacement of an endpoint by another note.
-        var endingOnIt = new Hairpin(Hairpin.Kind.CRESCENDO, before, replaced);
-        var anchoredOnIt = new Hairpin(Hairpin.Kind.DIMINUENDO, replaced, after);
+        var beforeIndex = line.getElementIndex(before);
+        var replacedIndex = line.getElementIndex(replaced);
+        var afterIndex = line.getElementIndex(after);
+        var endingOnIt = hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(beforeIndex, replacedIndex));
+        var anchoredOnIt = hairpinOver(line, Hairpin.Kind.DIMINUENDO, new ElementRange(replacedIndex, afterIndex));
         endingOnIt.addTo(line);
         anchoredOnIt.addTo(line);
 

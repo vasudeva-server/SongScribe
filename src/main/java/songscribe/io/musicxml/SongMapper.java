@@ -76,7 +76,7 @@ final class SongMapper {
 
         var song = Song.newParsingStub();
         var documentFonts = DocumentFonts.defaultFonts();
-        MeasureMapper.Result mapped;
+        LoadPasses.Input mapped;
 
         // A load records no mutations, posts no notification and sets no modified flag.
         // begin/end rather than withoutMutationTracking(Runnable) because the mappers
@@ -110,8 +110,7 @@ final class SongMapper {
         // Run here rather than in the UI: SongLoader's headless route runs it too, and a
         // song whose tuplets were settled in only one of the two routes would export a
         // different MIDI file than it displays.
-        var report = LoadPasses.run(
-            song, mapped.pendingTuplets(), mapped.pendingEndings(), mapped.accidentalsConverted());
+        var report = LoadPasses.run(song, mapped);
 
         return new SongLoadResult.Success(
             song,

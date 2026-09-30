@@ -391,8 +391,7 @@ public final class Line implements EditableRun {
     // Both addElement overloads attach; removeElement and removeRange detach; replace does
     // both, detaching each outgoing element and attaching its incoming one.
     //
-    // A span has no line pointer: Span.isIn(Line) derives the lines it is in from where its
-    // endpoints sit. What hangs on a staff element — attachments, articulations — has none
+    // A span has no line pointer: its line is derived from where its endpoints sit. What hangs on a staff element — attachments, articulations — has none
     // either: its line is its host's, read through the host, so attaching or detaching the
     // host carries them along with nothing to push down.
     //

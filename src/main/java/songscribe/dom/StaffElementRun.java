@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntFunction;
 
 import org.jspecify.annotations.Nullable;
 
@@ -687,8 +688,28 @@ public interface StaffElementRun {
      * @return {@code true} when any element in {@code range} is such a repeat or barline
      */
     default boolean spansStructuralBoundary(ElementRange range) {
+        return anyStructuralBoundary(this::getElement, range);
+    }
+
+    /**
+     * Whether {@code range} of {@code elements} crosses a structural boundary, by the rule
+     * {@link #spansStructuralBoundary(ElementRange)} states for a run. This form serves a caller
+     * holding a list rather than a run, such as a pending change's projected elements.
+     *
+     * @param elements the elements to examine, in document order
+     * @param range    the part of {@code elements} to examine; both of its indices are indices of
+     *                 {@code elements}
+     * @return {@code true} when any element in {@code range} is a repeat or a barline other than
+     *     {@link ElementType#SINGLE_BARLINE}
+     */
+    static boolean spansStructuralBoundary(List<? extends StaffElement> elements, ElementRange range) {
+        return anyStructuralBoundary(elements::get, range);
+    }
+
+    /** The one statement of the structural-boundary rule, over any indexed source of elements. */
+    private static boolean anyStructuralBoundary(IntFunction<? extends StaffElement> elementAt, ElementRange range) {
         for (var i = range.begin(); i <= range.end(); i++) {
-            var type = getElement(i).getType();
+            var type = elementAt.apply(i).getType();
 
             if (type.isBar() && type != ElementType.SINGLE_BARLINE) {
                 return true;

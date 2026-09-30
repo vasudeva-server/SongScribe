@@ -128,6 +128,16 @@ public final class StaffElementFactory {
     }
 
     /**
+     * A bar of {@code type}, for a case table whose rows are derived from {@link ElementType}.
+     *
+     * @param type a type whose {@link ElementType#isBar()} is {@code true}
+     * @return a new bar of {@code type}
+     */
+    public static BarElement bar(ElementType type) {
+        return (BarElement) type.newInstance();
+    }
+
+    /**
      * A mid-line key change establishing {@code key}.
      *
      * @param key the key it establishes

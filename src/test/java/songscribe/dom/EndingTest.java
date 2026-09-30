@@ -55,15 +55,25 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  */
 class EndingTest extends UnitTest {
 
-    /** What {@link Ending#spanning} answers: an ending, or the refusal with this reason. */
-    private record Verdict(@Nullable String refusalKey) {}
+    /** What {@link Ending#spanning} answers: an ending when {@code refusal} is null, else that refusal. */
+    private record Verdict(Spanning.@Nullable Refused<Ending> refusal) {
+
+        static Verdict refused(String reasonKey, Spanning.Cause cause) {
+            return new Verdict(new Spanning.Refused<>(reasonKey, cause));
+        }
+    }
 
     private static final Verdict ACCEPTED = new Verdict(null);
-    private static final Verdict NOT_VALID = new Verdict(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID);
-    private static final Verdict NO_OPEN_SECTION = new Verdict(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION);
+    private static final Verdict NOT_VALID =
+        Verdict.refused(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.RANGE);
+    private static final Verdict OVERLAPS_ENDING =
+        Verdict.refused(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID, Spanning.Cause.OTHER_SPAN);
+    private static final Verdict NO_OPEN_SECTION =
+        Verdict.refused(Strings.DIALOG_REPORT_REASON_ENDING_NO_OPEN_SECTION, Spanning.Cause.RANGE);
     private static final Verdict SPLIT_NOT_RIGHT_REPEAT =
-        new Verdict(Strings.DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT);
-    private static final Verdict BAR_AFTER_END = new Verdict(Strings.DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END);
+        Verdict.refused(Strings.DIALOG_REPORT_REASON_ENDING_SPLIT_NOT_RIGHT_REPEAT, Spanning.Cause.RANGE);
+    private static final Verdict BAR_AFTER_END =
+        Verdict.refused(Strings.DIALOG_REPORT_REASON_ENDING_BAR_AFTER_END, Spanning.Cause.RANGE);
 
     /** A line already holding zero or more well-formed, attached endings. */
     private record Fixture(Line line, List<Ending> endings) {}
@@ -71,12 +81,12 @@ class EndingTest extends UnitTest {
     /** Asserts what {@link Ending#spanning} answers for {@code span} of {@code line}. */
     private static void assertSpanning(Line line, ElementRange span, Verdict verdict) {
         var spanning = Ending.spanning(line, span);
-        var refusalKey = verdict.refusalKey();
+        var refusal = verdict.refusal();
 
-        if (refusalKey == null) {
-            assertThat(spanning).isInstanceOf(Ending.Spanning.Spanned.class);
+        if (refusal == null) {
+            assertThat(spanning).isInstanceOf(Spanning.Spanned.class);
         } else {
-            assertThat(spanning).isEqualTo(new Ending.Spanning.Refused(refusalKey));
+            assertThat(spanning).isEqualTo(refusal);
         }
     }
 
@@ -317,7 +327,7 @@ class EndingTest extends UnitTest {
                     attachEnding(line, existingRange);
                     return existingRange;
                 },
-                NOT_VALID)
+                OVERLAPS_ENDING)
         );
     }
 

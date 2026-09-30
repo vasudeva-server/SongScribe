@@ -21,6 +21,7 @@ package songscribe.io;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.BiFunction;
 
 import org.jspecify.annotations.Nullable;
@@ -35,6 +36,7 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.NoteElement;
 import songscribe.dom.PendingEnding;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
@@ -119,6 +121,12 @@ public final class LineIO {
         private final List<PendingEnding> pendingEndingData = new ArrayList<>();
 
         /**
+         * Every hairpin this reader has recorded so far, across the whole document, kept for the
+         * same reason as {@link #pendingEndingData}.
+         */
+        private final List<PendingHairpin> pendingHairpinData = new ArrayList<>();
+
+        /**
          * Temporarily holds parsed trill index pairs (anchorIndex, endIndex, yPositionSs) until
          * elements are loaded. The third element is the optional Y offset (0 if absent).
          * Used for both legacy trill flags (coalesced into runs) and new {@code <trills>} data.
@@ -142,7 +150,6 @@ public final class LineIO {
         // via getLegacyOffsets() before this reader moves to the next line.
         private int legacyTempoChangeYPosPx;
         private int legacyBeatChangeYPosPx;
-        private int legacyFsEndingYPosPx;
         private int legacyTrillYPosPx;
 
         // The <keys> and <keytype> tags arrive as two separate elements, and neither half is a
@@ -189,12 +196,11 @@ public final class LineIO {
         private void resetLegacyOffsets() {
             legacyTempoChangeYPosPx = LegacyLineOffsets.DEFAULTS.tempoChangeYPosPx();
             legacyBeatChangeYPosPx = LegacyLineOffsets.DEFAULTS.beatChangeYPosPx();
-            legacyFsEndingYPosPx = LegacyLineOffsets.DEFAULTS.firstSecondEndingYPosPx();
             legacyTrillYPosPx = LegacyLineOffsets.DEFAULTS.trillYPosPx();
         }
 
         LegacyLineOffsets getLegacyOffsets() {
-            return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyFsEndingYPosPx, legacyTrillYPosPx);
+            return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyTrillYPosPx);
         }
 
         /**
@@ -320,52 +326,26 @@ public final class LineIO {
         }
 
         /**
-         * Creates crescendo {@link Hairpin} spans from the parsed crescendo data.
-         * Called at end-of-line after all elements have been loaded.
+         * Records a {@link PendingHairpin} of {@code kind} for each entry of {@code pairs}, then
+         * clears {@code pairs}. Called at end-of-line after all elements have been loaded.
          * <p>
-         * Added through {@link Hairpin#addTo}, whose displacement policy merges a
-         * legacy file's two same-type hairpins that overlap or merely touch into the one
-         * hairpin they musically are.
+         * It builds no {@link Hairpin}: the hairpin load pass judges each record, and merges two
+         * same-kind hairpins that overlap or merely touch into the one hairpin they musically are.
          */
-        private void createCrescendosFromPending(Line line) throws SAXException {
-            for (var data : pendingCrescendoPairs) {
+        private void recordPendingHairpins(List<double[]> pairs, Hairpin.Kind kind, Line line)
+            throws SAXException {
+            var label = kind.name().toLowerCase(Locale.ROOT);
+
+            for (var data : pairs) {
                 var start = (int) data[0];
                 var end = (int) data[1];
-                DocumentValidation.requireIndexInRange(LOG, start, end, line.elementCount(), "crescendo");
+                DocumentValidation.requireIndexInRange(LOG, start, end, line.elementCount(), label);
 
-                var anchorElement = line.getElement(start);
-                var endElement = line.getElement(end);
-                var crescendo = new Hairpin(Hairpin.Kind.CRESCENDO, anchorElement, endElement);
-                crescendo.setX1ShiftSs(data[2]);
-                crescendo.setX2ShiftSs(data[3]);
-                crescendo.setUserYOffsetSs(data[4]);
-                crescendo.addTo(line);
+                pendingHairpinData.add(new PendingHairpin(
+                    kind, line.getElement(start), line.getElement(end), data[2], data[3], data[4]));
             }
 
-            pendingCrescendoPairs.clear();
-        }
-
-        /**
-         * Creates diminuendo {@link Hairpin} spans from the parsed diminuendo data.
-         * Called at end-of-line after all elements have been loaded. Merge semantics
-         * mirror {@link #createCrescendosFromPending}.
-         */
-        private void createDiminuendosFromPending(Line line) throws SAXException {
-            for (var data : pendingDiminuendoPairs) {
-                var start = (int) data[0];
-                var end = (int) data[1];
-                DocumentValidation.requireIndexInRange(LOG, start, end, line.elementCount(), "diminuendo");
-
-                var anchorElement = line.getElement(start);
-                var endElement = line.getElement(end);
-                var diminuendo = new Hairpin(Hairpin.Kind.DIMINUENDO, anchorElement, endElement);
-                diminuendo.setX1ShiftSs(data[2]);
-                diminuendo.setX2ShiftSs(data[3]);
-                diminuendo.setUserYOffsetSs(data[4]);
-                diminuendo.addTo(line);
-            }
-
-            pendingDiminuendoPairs.clear();
+            pairs.clear();
         }
 
         /** Parses the {@code <ties>} line-scope data into pending pairs. Format: {@code anchor,end;...} */
@@ -465,6 +445,13 @@ public final class LineIO {
         }
 
         /**
+         * Returns every hairpin this reader has found in the document.
+         */
+        public List<PendingHairpin> pendingHairpins() {
+            return List.copyOf(pendingHairpinData);
+        }
+
+        /**
          * Parses hairpin (crescendo or diminuendo) data into the given pending list.
          * Format: {@code anchorIdx,endIdx[,x1ShiftSs,x2ShiftSs,yShiftSs];...}
          */
@@ -559,8 +546,8 @@ public final class LineIO {
                     createTiesFromPendingPairs(line);
                     createEndingsFromPendingPairs(line);
                     createTrillsFromPendingPairs(line);
-                    createCrescendosFromPending(line);
-                    createDiminuendosFromPending(line);
+                    recordPendingHairpins(pendingCrescendoPairs, Hairpin.Kind.CRESCENDO, line);
+                    recordPendingHairpins(pendingDiminuendoPairs, Hairpin.Kind.DIMINUENDO, line);
                     createTupletsFromPending(line);
                     createBeamsFromPending(line);
                     return line;
@@ -578,7 +565,9 @@ public final class LineIO {
                         case XML_TEMPO_CHANGE_YPOS -> legacyTempoChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TEMPO_CHANGE_YPOS, str);
                         case XML_BEAT_CHANGE_YPOS -> legacyBeatChangeYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_BEAT_CHANGE_YPOS, str);
                         case XML_LYRICS_YPOS -> line.setLyricsYPosSs(DocumentValidation.parseDoubleOrThrow(LOG, XML_LYRICS_YPOS, str));
-                        case XML_FSENDING_YPOS -> legacyFsEndingYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_FSENDING_YPOS, str);
+                        // Legacy line-level ending offset - endings load with no offset; ignore
+                        case XML_FSENDING_YPOS -> {
+                        }
                         case XML_TRILL_YPOS -> legacyTrillYPosPx = DocumentValidation.parseIntOrThrow(LOG, XML_TRILL_YPOS, str);
                         case XML_BEAMINGS -> parseBeamPairs(str);
                         case XML_TIES -> parseTiePairs(str);

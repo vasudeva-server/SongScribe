@@ -49,7 +49,7 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * <p>Written duration always comes from {@link StaffElement#writtenDuration()},
  * never from {@code getDuration()}: the latter inflates a fermata's value by half again,
  * which is a performance instruction rather than a change to the written rhythm. That
- * inflation is also why constraint 4 excludes a span containing a fermata outright — with
+ * inflation is also why the fermata rule excludes a span containing a fermata outright — with
  * no fermata in the span, written and performed durations stay in the exact ratio
  * <em>M</em>:<em>N</em>, so playback and validation sum the same values.
  *
@@ -67,19 +67,6 @@ import songscribe.dom.StaffElementRun.ElementRange;
  * dotted-quarter beat is asking for a real re-timing, and a third-party 7:8 must survive.
  * {@link #validateStated} is the path for a stated ratio; {@link #validate} is the path for
  * a derived one.
- *
- * <h2>ABC import derives <em>M</em> rather than trusting the file's stated ratio</h2>
- *
- * <p>No ABC importer exists yet; this note is here for the one that will. ABC's {@code q}
- * is an optional hand-written field with a documented default that producers get wrong: of
- * 897 authored ratios in a 22,818-file corpus, 83 are wrong from writing the group size
- * into the ratio slot, while the documented convention is wrong in 4. Deriving fixes 83
- * and costs 4. <em>N</em> still comes from the file — ABC's printed number is reliable.
- *
- * <p>This is deliberately the opposite of the MusicXML policy, and the distinction is
- * principled: in MusicXML {@code actual-notes}/{@code normal-notes} is a required,
- * machine-written pair, whereas in ABC {@code q} is optional, hand-written and
- * demonstrably unreliable.
  *
  * <h2>The cost of beat resolution</h2>
  *
@@ -247,7 +234,7 @@ public final class TupletValidator {
         // lenient path exists to keep a ratio the file *stated*; that goes through
         // validateStated, which never reaches here.
         var beat = context.beat();
-        var spans = conventionalSpans(noteValueTicks, beat);
+        var spans = conventionalSpans(noteValue, beat);
         var normalNotes = chooseNormalNotes(spans, grade, beat);
 
         if (normalNotes == null) {
@@ -263,7 +250,16 @@ public final class TupletValidator {
         return new Result.Valid(new TupletRatio(normalNotes, noteValue));
     }
 
-    /** Convenience: {@link #describeSpan} + {@link #validate}. */
+    /**
+     * Measures {@code span} of {@code line} with {@link #describeSpan}, then judges it with
+     * {@link #validate}.
+     *
+     * @param line       the line holding the span
+     * @param span       the span's elements within {@code line}
+     * @param grade      N, the printed tuplet number
+     * @param strictness how much of the rule set to enforce
+     * @return what {@link #validate} returns for the measured span
+     */
     public static Result validateDerived(Line line, ElementRange span, TupletGrade grade, Strictness strictness) {
         return validate(describeSpan(line, span), grade, strictness);
     }
@@ -564,9 +560,21 @@ public final class TupletValidator {
                 placementReasons.add(Reason.FERMATA);
             }
 
-            if (isStructuralBoundary(type, index, span.end())) {
+            if (isStructuralBoundary(type, index)) {
                 placementReasons.add(Reason.STRUCTURAL_BOUNDARY);
             }
+        }
+
+        /**
+         * Whether an element of type {@code type} at {@code index} breaks the span in two. A
+         * boundary at the very end of the span breaks nothing, because every note of the span
+         * lies before it: selections already sweep in a breath mark that immediately follows
+         * the last note (commit 6bcc1c6b), and a span running to the end of a line ends on the
+         * barline the model maintains there. Treating either as a boundary would disable the
+         * tuplet control on ordinary selections.
+         */
+        private boolean isStructuralBoundary(ElementType type, int index) {
+            return index != span.end() && (type.isBar() || type.isBreathMark());
         }
 
         /** Whether the element at {@code index}, once taken, is the span's last. */
@@ -589,20 +597,6 @@ public final class TupletValidator {
     }
 
     /**
-     * Whether the element at {@code index} breaks the span in two. A boundary at the very
-     * end of the span breaks nothing, because every note of the span lies before it:
-     * selections already sweep in a breath mark that immediately follows the last note
-     * (commit 6bcc1c6b), and a span running to the end of a line ends on the barline the
-     * model maintains there. Treating either as a boundary would disable the tuplet
-     * control on ordinary selections.
-     *
-     * @param endIndex the index the span ends on
-     */
-    private static boolean isStructuralBoundary(ElementType type, int index, int endIndex) {
-        return index != endIndex && (type.isBar() || type.isBreathMark());
-    }
-
-    /**
      * The spans, measured in V-units, that a tuplet of value V may conventionally
      * replace under beat B: the binary divisions of B's
      * {@linkplain BeatUnit#binaryDivisionRootTicks() division root} — a dotted beat divides
@@ -613,22 +607,24 @@ public final class TupletValidator {
      * excluded. Excluding it is what makes a compound duplet infer 2:3 rather than the
      * meaningless 2:1.
      */
-    private static NavigableSet<Integer> conventionalSpans(int noteValueTicks, BeatUnit beat) {
+    private static NavigableSet<Integer> conventionalSpans(NotatableValue noteValue, BeatUnit beat) {
         var spans = new TreeSet<Integer>();
         var beatTicks = beat.ticks();
 
         for (var ticks = beat.binaryDivisionRootTicks(); ticks >= SHORTEST_SPAN_TICKS; ticks /= 2) {
-            addSpan(spans, ticks, noteValueTicks);
+            addSpan(spans, ticks, noteValue);
         }
 
         for (var multiple = 1; multiple <= MAX_BEAT_MULTIPLE; multiple *= 2) {
-            addSpan(spans, beatTicks * multiple, noteValueTicks);
+            addSpan(spans, beatTicks * multiple, noteValue);
         }
 
         return spans;
     }
 
-    private static void addSpan(NavigableSet<? super Integer> spans, int spanTicks, int noteValueTicks) {
+    private static void addSpan(NavigableSet<? super Integer> spans, int spanTicks, NotatableValue noteValue) {
+        var noteValueTicks = noteValue.ticks();
+
         if (spanTicks % noteValueTicks != 0) {
             return;
         }

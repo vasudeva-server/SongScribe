@@ -28,9 +28,9 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
-import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
@@ -91,41 +91,31 @@ public final class FormatMigrator {
     }
 
     /**
-     * Converts pixel-based line-level position values to staff-space units.
-     * <p>
-     * Called when loading a pre-v2.1 file (which stores positions in pixels).
-     * Song-level pixel-to-ss conversion is handled by the caller.
+     * Converts the pixel-based position values of a pre-v2.1 file (which stores positions in
+     * pixels) to staff-space units: the song-level line width and row-height adjustment, each
+     * line's position values, and the offsets of the tuplets and hairpins the reader found.
      * <p>
      * Fields that are already unit-agnostic (e.g. Note.staffPosition, which is a
      * diatonic step count) are NOT converted.
      *
-     * @param lines          The lines with pixel values to convert
-     * @param pendingTuplets The tuplets the reader found, still to be resolved against a
-     *                       line's registry, converted the same way
-     * @return {@code pendingTuplets} with each entry's {@code yOffsetSs} converted to staff
-     *     spaces, with no rounding — a pending tuplet is not yet a span, so there is no
-     *     registry to convert it in place
+     * @param ctx the parsed song, before assembly, with every value in pixels
+     * @effects divides every converted value of {@code ctx} by
+     *     {@link DocumentScale#PIXELS_PER_STAFF_SPACE}, with no rounding; replaces
+     *     {@code ctx.pendingTuplets} and {@code ctx.pendingHairpins} with lists whose entries
+     *     carry converted offsets — a pending span is not yet a span, so there is no registry to
+     *     convert it in place
      */
-    public static List<PendingTuplet> migratePixelsToStaffSpace(
-        List<? extends Line> lines, List<PendingTuplet> pendingTuplets
-    ) {
+    static void migratePixelsToStaffSpace(MigrationContext ctx) {
         var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
 
-        for (var line : lines) {
+        ctx.lineWidthSs /= pps;
+        ctx.rowHeightAdjustmentSs /= pps;
+
+        for (var line : ctx.lines) {
             var spans = line.spanRegistry();
 
             // Line-level fields
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
-
-            // Hairpin shifts (crescendo + diminuendo)
-            for (var hairpin : spans.findSpans(Hairpin.class)) {
-                if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0
-                    || hairpin.getUserYOffsetSs() != 0) {
-                    hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
-                    hairpin.setX2ShiftSs(hairpin.getX2ShiftSs() / pps);
-                    hairpin.setUserYOffsetSs(hairpin.getUserYOffsetSs() / pps);
-                }
-            }
 
             // Per-instance attachment offsets
             for (var i = 0; i < line.elementCount(); i++) {
@@ -139,13 +129,7 @@ public final class FormatMigrator {
                 }
             }
 
-            // Convert per-instance Span offsets (Ending, Trill)
-            for (var ending : spans.findSpans(Ending.class)) {
-                if (ending.getUserYOffsetSs() != 0) {
-                    ending.setUserYOffsetSs(ending.getUserYOffsetSs() / pps);
-                }
-            }
-
+            // Convert per-instance Span offsets (Trill)
             for (var trill : spans.findSpans(Trill.class)) {
                 if (trill.getUserYOffsetSs() != 0) {
                     trill.setUserYOffsetSs(trill.getUserYOffsetSs() / pps);
@@ -153,9 +137,19 @@ public final class FormatMigrator {
             }
         }
 
-        return pendingTuplets.stream()
+        ctx.pendingTuplets = ctx.pendingTuplets.stream()
             .map(pending -> new PendingTuplet(
                 pending.anchor(), pending.end(), pending.grade(), pending.statedRatio(), pending.yOffsetSs() / pps))
+            .toList();
+
+        ctx.pendingHairpins = ctx.pendingHairpins.stream()
+            .map(pending -> new PendingHairpin(
+                pending.kind(),
+                pending.anchor(),
+                pending.end(),
+                pending.x1ShiftSs() / pps,
+                pending.x2ShiftSs() / pps,
+                pending.yOffsetSs() / pps))
             .toList();
     }
 
@@ -173,7 +167,7 @@ public final class FormatMigrator {
     /**
      * Migrates deprecated line-level Y position offsets to per-instance offsets.
      * <p>
-     * Converts the four legacy offsets carried by {@code offsets} to per-instance values on the
+     * Converts the three legacy offsets carried by {@code offsets} to per-instance values on the
      * respective element/attachment objects. Also migrates below-staff annotations to above-staff
      * with an appropriate userYOffset.
      *
@@ -214,18 +208,6 @@ public final class FormatMigrator {
                         attachment.setUserYOffsetSs(attachment.getUserYOffsetSs() + delta);
                     }
                 }
-            }
-        }
-
-        // Migrate first/second ending offset to per-instance
-        var endingOffset = offsets.firstSecondEndingYPosPx();
-        var endingDefault = LegacyLineOffsets.DEFAULTS.firstSecondEndingYPosPx();
-
-        if (endingOffset != endingDefault) {
-            var delta = endingOffset - endingDefault;
-
-            for (var ending : spans.findSpans(Ending.class)) {
-                ending.setUserYOffsetSs(ending.getUserYOffsetSs() + delta);
             }
         }
 

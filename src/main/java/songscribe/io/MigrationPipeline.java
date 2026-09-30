@@ -53,12 +53,7 @@ final class MigrationPipeline {
         versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
         versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
         versioned(StageId.FINAL_TERMINAL, 2, 4, ctx -> FormatMigrator.migrateFinalTerminal(ctx.lines)),
-        versioned(StageId.PIXELS_TO_SS, 2, 1, ctx -> {
-            var pps = DocumentScale.PIXELS_PER_STAFF_SPACE;
-            ctx.lineWidthSs /= pps;
-            ctx.rowHeightAdjustmentSs /= pps;
-            ctx.pendingTuplets = FormatMigrator.migratePixelsToStaffSpace(ctx.lines, ctx.pendingTuplets);
-        }),
+        versioned(StageId.PIXELS_TO_SS, 2, 1, FormatMigrator::migratePixelsToStaffSpace),
         new SongMigration(StageId.LINE_WIDTH_FIX,
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
             ctx -> ctx.lineWidthSs /= DocumentScale.PIXELS_PER_STAFF_SPACE

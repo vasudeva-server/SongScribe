@@ -39,9 +39,28 @@ public final class SpanFactory {
      */
     public static Ending endingOver(Line line, ElementRange range) {
         return switch (Ending.spanning(line, range)) {
-            case Ending.Spanning.Spanned spanned -> spanned.ending();
-            case Ending.Spanning.Refused refused ->
+            case Spanning.Spanned<Ending> spanned -> spanned.span();
+            case Spanning.Refused<Ending> refused ->
                 throw new AssertionError("no ending over " + range + ": " + refused.reasonKey());
+        };
+    }
+
+    /**
+     * The hairpin {@link Hairpin#spanning} builds over {@code range} of {@code line}, not yet
+     * added to it. For a fixture whose range must hold a hairpin: a refusal fails the test with
+     * the reason it gives.
+     *
+     * @param line  the line whose elements anchor and end the hairpin
+     * @param kind  the hairpin's kind
+     * @param range the range the hairpin covers
+     * @return the hairpin over {@code range}
+     * @throws AssertionError if {@link Hairpin#spanning} refuses the range
+     */
+    public static Hairpin hairpinOver(Line line, Hairpin.Kind kind, ElementRange range) {
+        return switch (Hairpin.spanning(line, kind, range)) {
+            case Spanning.Spanned<Hairpin> spanned -> spanned.span();
+            case Spanning.Refused<Hairpin> refused ->
+                throw new AssertionError("no " + kind + " over " + range + ": " + refused.reasonKey());
         };
     }
 }

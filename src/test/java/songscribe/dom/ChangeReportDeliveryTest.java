@@ -38,12 +38,12 @@ import static songscribe.dom.StaffElementFactory.quaver;
 /**
  * How an edit's {@link ChangeReport} reaches the bus: one edit delivers one
  * {@code ChangesWereReportedNotification} that holds the removal every kind of source made —
- * the span funnel, a merge, a displacement, and a rule that runs when the bracket closes — and
- * an undo, a redo and an edit under suspended tracking deliver none.
+ * the span funnel, a displacement, and a rule that runs when the bracket closes — and an undo,
+ * a redo and an edit under suspended tracking deliver none.
  *
  * <p>The edit is {@link #makeEveryKindOfRemoval}, on a line of quavers that holds a trill whose end
- * the edit deletes, a beam another beam absorbs, a trill another trill replaces, and a triplet
- * that a song tempo with a dotted beat leaves invalid.
+ * the edit deletes, a trill another trill replaces, and a triplet that a song tempo with a dotted
+ * beat leaves invalid.
  */
 class ChangeReportDeliveryTest extends UnitTest {
 
@@ -53,10 +53,6 @@ class ChangeReportDeliveryTest extends UnitTest {
     /** The trill the funnel removes, when the edit deletes the element that ends it. */
     private static final ElementRange FUNNELED_TRILL = new ElementRange(0, 1);
     private static final int DELETED_INDEX = 1;
-
-    /** The beam {@link #ABSORBING_BEAM} absorbs. */
-    private static final ElementRange ABSORBED_BEAM = new ElementRange(4, 6);
-    private static final ElementRange ABSORBING_BEAM = new ElementRange(6, 8);
 
     /** The trill {@link #REPLACING_TRILL} replaces. */
     private static final ElementRange REPLACED_TRILL = new ElementRange(9, 11);
@@ -83,8 +79,6 @@ class ChangeReportDeliveryTest extends UnitTest {
                     .containsExactlyInAnyOrder(
                         tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
                             Strings.get(Strings.DIALOG_REPORT_REASON_ENDPOINT_DELETED)),
-                        tuple(Strings.DIALOG_REPORT_BEAMS_REMOVED,
-                            Strings.get(Strings.DIALOG_REPORT_REASON_MERGED)),
                         tuple(Strings.DIALOG_REPORT_TRILLS_REMOVED,
                             Strings.get(Strings.DIALOG_REPORT_REASON_REPLACED)),
                         tuple(Strings.DIALOG_REPORT_TUPLETS_REMOVED,
@@ -136,8 +130,8 @@ class ChangeReportDeliveryTest extends UnitTest {
     }
 
     /**
-     * A line of quavers holding the trill, the beam, the second trill and the triplet the edit
-     * removes, each placed before the edit runs.
+     * A line of quavers holding the trill, the second trill and the triplet the edit removes, each
+     * placed before the edit runs.
      */
     private static Song fixtureSong() {
         var song = buildSong(line -> {
@@ -150,7 +144,6 @@ class ChangeReportDeliveryTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             trillOver(line, FUNNELED_TRILL).addTo(line);
-            beamOver(line, ABSORBED_BEAM).addTo(line);
             trillOver(line, REPLACED_TRILL).addTo(line);
             new Tuplet(
                 line.getElement(TRIPLET.begin()), line.getElement(TRIPLET.end()), TupletGrade.TRIPLET, ratio)
@@ -161,25 +154,20 @@ class ChangeReportDeliveryTest extends UnitTest {
     }
 
     /**
-     * One edit that removes a span by each route: a deletion of a trill's end (the funnel), a beam
-     * added over another (a merge), a trill added over another (a displacement), and a song tempo
-     * whose beat leaves the triplet invalid (a rule that runs when the bracket closes). The
-     * deletion comes last, so the indices the other changes name are still the fixture's.
+     * One edit that removes a span by each route: a deletion of a trill's end (the funnel), a
+     * trill added over another (a displacement), and a song tempo whose beat leaves the triplet
+     * invalid (a rule that runs when the bracket closes). The deletion comes last, so the indices
+     * the other changes name are still the fixture's.
      */
     private static void makeEveryKindOfRemoval(Song song) {
         var line = song.getLine(FIRST_LINE);
 
         song.setTempo(DOTTED_BEAT_TEMPO);
         trillOver(line, REPLACING_TRILL).addTo(line);
-        beamOver(line, ABSORBING_BEAM).addTo(line);
         line.removeRange(ElementRange.single(DELETED_INDEX));
     }
 
     private static Trill trillOver(Line line, ElementRange range) {
         return new Trill(line.getElement(range.begin()), line.getElement(range.end()));
-    }
-
-    private static Beam beamOver(Line line, ElementRange range) {
-        return new Beam((NoteElement) line.getElement(range.begin()), (NoteElement) line.getElement(range.end()));
     }
 }

@@ -47,6 +47,7 @@ import songscribe.dom.TupletRatio;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SpanFactory.endingOver;
+import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
@@ -154,7 +155,7 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
 
     static Stream<SpanOffsetCase> spanOffsetCases() {
         Function<Line, Span<?>> crescendo =
-            line -> new Hairpin(Hairpin.Kind.CRESCENDO, line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE));
+            line -> hairpinOver(line, Hairpin.Kind.CRESCENDO, new ElementRange(FIRST_NOTE, THIRD_NOTE));
 
         return Stream.of(
             new SpanOffsetCase("a hairpin's vertical offset",

@@ -53,6 +53,16 @@ public record ElementLocationRange(ElementLocation start, ElementLocation end) {
     }
 
     /**
+     * Returns the range covering {@code range}'s elements within the line at {@code lineIndex}.
+     *
+     * @return a range from {@code range}'s first element to its last, both on that line
+     */
+    public static ElementLocationRange onLine(int lineIndex, StaffElementRun.ElementRange range) {
+        return new ElementLocationRange(
+            new ElementLocation(lineIndex, range.begin()), new ElementLocation(lineIndex, range.end()));
+    }
+
+    /**
      * Returns the range naming only the element at {@code location}.
      *
      * @return a range whose {@code start} and {@code end} are both {@code location}

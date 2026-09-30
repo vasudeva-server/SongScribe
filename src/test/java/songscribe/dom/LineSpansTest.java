@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -30,17 +31,24 @@ import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import songscribe.Strings;
 import songscribe.UnitTest;
+import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.BatchReplay.undo;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SongFactory.editableLine;
 import static songscribe.dom.SpanFactory.endingOver;
+import static songscribe.dom.SpanFactory.hairpinOver;
+import static songscribe.dom.StaffElementFactory.bar;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
@@ -52,9 +60,12 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
  * gesture — a hairpin — treats a span flush against it as one it meets; every other kind leaves
  * that span standing. A hairpin meets only hairpins of its own kind.
  *
- * <p>A deletion that leaves two same-kind hairpins touching joins them by the same reach. Every
+ * <p>A deletion that leaves two same-kind hairpins touching joins them by the same reach, unless
+ * the joined hairpin would share more than one element with a hairpin of the opposite kind. Every
  * edit a line makes asks its spans first, an insertion and an in-place modification as well as a
- * deletion, which is what removes a tuplet the edit leaves rhythmically invalid. A deletion that
+ * deletion, which is what removes a tuplet the edit leaves rhythmically invalid, and a hairpin an
+ * insertion or a replacement puts a repeat or a non-single bar inside; undo puts that hairpin
+ * back. A deletion that
  * takes every element of a span takes the span with them, unreported, whatever its kind.
  */
 class LineSpansTest extends UnitTest {
@@ -211,10 +222,6 @@ class LineSpansTest extends UnitTest {
             new DisplacementCase("a diminuendo absorbs the diminuendo flush against its start",
                 Hairpin.class, LineSpansTest::lineOfQuavers, LineSpansTest::newDiminuendo,
                 EXISTING, FLUSH, Outcome.MERGED),
-            new DisplacementCase("a crescendo stands beside the diminuendo it overlaps",
-                Hairpin.class, LineSpansTest::lineOfQuavers,
-                LineSpansTest::newDiminuendo, LineSpansTest::newCrescendo,
-                EXISTING, OVERLAPPING, Outcome.BOTH),
             new DisplacementCase("a tuplet removes the tuplet it overlaps",
                 Tuplet.class, LineSpansTest::lineOfQuavers, LineSpansTest::newTriplet,
                 EXISTING, OVERLAPPING, Outcome.ONLY_THE_NEW),
@@ -263,44 +270,102 @@ class LineSpansTest extends UnitTest {
     private static final ElementRange JOINED =
         new ElementRange(EXISTING.begin(), ONE_ELEMENT_ON.shiftedBy(ONE_PLACE_BACK).end());
 
+    /** The deletion most cases make: the element at {@link #DELETED_INDEX}. */
+    private static final ElementRange ONE_DELETED = ElementRange.single(DELETED_INDEX);
+
+    // Two cases put a hairpin of one kind between two of the other, each sharing one endpoint
+    // with it, and delete from the line until the outer two touch.
+
+    /** The middle hairpin of the first case: it shares {@link #EXISTING}'s end. */
+    private static final ElementRange MIDDLE = new ElementRange(2, 5);
+
+    /** The interior of {@link #MIDDLE}, which the first case deletes. */
+    private static final ElementRange MIDDLE_INTERIOR = new ElementRange(3, 4);
+
+    /** The last hairpin of both cases: it shares {@link #MIDDLE}'s end. */
+    private static final ElementRange LAST = new ElementRange(5, 7);
+
+    /** {@link #MIDDLE} once its interior is deleted; also the first hairpin of the second case. */
+    private static final ElementRange MIDDLE_LEFT = new ElementRange(2, 3);
+
+    /** {@link #LAST} once {@link #MIDDLE_INTERIOR} is deleted; also the middle hairpin of the second case. */
+    private static final ElementRange LAST_LEFT = new ElementRange(3, 5);
+
+    /** The element strictly inside {@link #LAST_LEFT}, which the second case deletes. */
+    private static final ElementRange LAST_LEFT_INTERIOR = ElementRange.single(4);
+
     private static final double FIRST_HAIRPIN_X1_SHIFT_SS = 0.5;
 
+    /** A hairpin of {@code kind} over {@code range}. */
+    private record PlacedHairpin(Hairpin.Kind kind, ElementRange range) {}
+
+    private static PlacedHairpin crescendo(ElementRange range) {
+        return new PlacedHairpin(Hairpin.Kind.CRESCENDO, range);
+    }
+
+    private static PlacedHairpin diminuendo(ElementRange range) {
+        return new PlacedHairpin(Hairpin.Kind.DIMINUENDO, range);
+    }
+
     /**
-     * The element at {@link #DELETED_INDEX} deleted from a line of crescendos.
+     * A deletion from a line of hairpins.
      *
      * @param description the case, as the test's display name
-     * @param crescendos  the crescendos before the deletion, in the order they are added
-     * @param expected    the crescendos the line holds afterwards, in any order
+     * @param hairpins    the hairpins before the deletion, in the order they are added
+     * @param deleted     the elements the deletion takes
+     * @param expected    the hairpins the line holds afterwards, in any order
      */
-    private record HairpinDeletionCase(String description, List<ElementRange> crescendos, List<ElementRange> expected) {}
+    private record HairpinDeletionCase(
+        String description, List<PlacedHairpin> hairpins, ElementRange deleted, List<PlacedHairpin> expected
+    ) {}
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("hairpinDeletionCases")
-    void testADeletionJoinsTheSameKindHairpinsItLeavesTouching(HairpinDeletionCase testCase) {
+    void testADeletionJoinsTheSameKindHairpinsItLeavesTouchingUnlessTheJoinCoversAnOppositeOne(
+        HairpinDeletionCase testCase
+    ) {
         var line = lineOfQuavers(HAIRPIN_LINE_LENGTH);
-        testCase.crescendos().forEach(range -> crescendoOver(line, range).addTo(line));
+        testCase.hairpins().forEach(placed -> hairpinOver(line, placed.kind(), placed.range()).addTo(line));
 
-        deleteElement(line, DELETED_INDEX);
+        line.deleteRange(line.effectiveRange(testCase.deleted()));
 
-        assertThat(rangesOf(line, Hairpin.class)).containsExactlyInAnyOrderElementsOf(testCase.expected());
+        assertThat(placedHairpins(line)).containsExactlyInAnyOrderElementsOf(testCase.expected());
     }
 
     static Stream<HairpinDeletionCase> hairpinDeletionCases() {
         return Stream.of(
             new HairpinDeletionCase("two crescendos left touching become one over both",
-                List.of(EXISTING, ONE_ELEMENT_ON), List.of(JOINED)),
+                List.of(crescendo(EXISTING), crescendo(ONE_ELEMENT_ON)), ONE_DELETED,
+                List.of(crescendo(JOINED))),
             new HairpinDeletionCase("crescendos added in the reverse of their order on the line join from the earlier start",
-                List.of(ONE_ELEMENT_ON, EXISTING), List.of(JOINED)),
+                List.of(crescendo(ONE_ELEMENT_ON), crescendo(EXISTING)), ONE_DELETED,
+                List.of(crescendo(JOINED))),
             new HairpinDeletionCase("one surviving element between them keeps them apart",
-                List.of(EXISTING, TWO_ELEMENTS_ON),
-                List.of(EXISTING, TWO_ELEMENTS_ON.shiftedBy(ONE_PLACE_BACK))),
+                List.of(crescendo(EXISTING), crescendo(TWO_ELEMENTS_ON)), ONE_DELETED,
+                List.of(crescendo(EXISTING), crescendo(TWO_ELEMENTS_ON.shiftedBy(ONE_PLACE_BACK)))),
             new HairpinDeletionCase("each run left touching becomes one, apart from the next run",
-                List.of(EXISTING, ONE_ELEMENT_ON, FAR),
-                List.of(JOINED, FAR.shiftedBy(ONE_PLACE_BACK))),
+                List.of(crescendo(EXISTING), crescendo(ONE_ELEMENT_ON), crescendo(FAR)), ONE_DELETED,
+                List.of(crescendo(JOINED), crescendo(FAR.shiftedBy(ONE_PLACE_BACK)))),
             new HairpinDeletionCase("a crescendo that loses its first note starts on the note after it",
-                List.of(FROM_DELETED),
-                List.of(new ElementRange(DELETED_INDEX, FROM_DELETED.end() + ONE_PLACE_BACK)))
+                List.of(crescendo(FROM_DELETED)), ONE_DELETED,
+                List.of(crescendo(new ElementRange(DELETED_INDEX, FROM_DELETED.end() + ONE_PLACE_BACK)))),
+            new HairpinDeletionCase("two crescendos left touching across a diminuendo stay apart",
+                List.of(crescendo(EXISTING), diminuendo(MIDDLE), crescendo(LAST)), MIDDLE_INTERIOR,
+                List.of(crescendo(EXISTING), diminuendo(MIDDLE_LEFT), crescendo(LAST_LEFT))),
+            new HairpinDeletionCase("two diminuendos left touching across a shortened crescendo stay apart",
+                List.of(diminuendo(MIDDLE_LEFT), crescendo(LAST_LEFT), diminuendo(LAST)), LAST_LEFT_INTERIOR,
+                List.of(
+                    diminuendo(MIDDLE_LEFT),
+                    crescendo(new ElementRange(LAST_LEFT.begin(), LAST_LEFT.end() + ONE_PLACE_BACK)),
+                    diminuendo(LAST.shiftedBy(ONE_PLACE_BACK))))
         );
+    }
+
+    /** Every hairpin on {@code line}, as its kind and extent. */
+    private static List<PlacedHairpin> placedHairpins(Line line) {
+        return line.spanRegistry().findSpans(Hairpin.class).stream()
+            .map(hairpin -> new PlacedHairpin(hairpin.getKind(), hairpin.range()))
+            .toList();
     }
 
     @Test
@@ -364,6 +429,74 @@ class LineSpansTest extends UnitTest {
         testCase.edit().accept(line);
 
         assertThat(rangesOf(line, Tuplet.class)).isEmpty();
+    }
+
+    /** The note strictly inside the crescendo over {@link #EXISTING} that a bar edit lands on. */
+    private static final int HAIRPIN_INTERIOR = EXISTING.begin() + 1;
+
+    private static final int PITCH = 3;
+
+    /**
+     * A line of {@link #LINE_LENGTH} notes in compact notation, whose song gives each note the
+     * accidental state an edit inside a modification bracket reads.
+     */
+    private static final String LINE_OF_NOTES = String.join(" ", Collections.nCopies(LINE_LENGTH, String.valueOf(PITCH)));
+
+    /** How an edit brings a bar inside a hairpin. */
+    private enum BarEdit {
+        /** The bar is inserted in front of {@link #HAIRPIN_INTERIOR}. */
+        INSERTION,
+        /** The bar replaces the note at {@link #HAIRPIN_INTERIOR}. */
+        REPLACEMENT
+    }
+
+    /**
+     * Every bar other than a single barline that an edit can put inside a hairpin, with each edit.
+     * A final double barline is not one: it may only end the song, so nothing follows it.
+     */
+    static Stream<Arguments> structuralBarEdits() {
+        return Stream.of(ElementType.values())
+            .filter(type -> type.isBar()
+                && type != ElementType.SINGLE_BARLINE
+                && type != ElementType.FINAL_DOUBLE_BARLINE)
+            .flatMap(type -> Stream.of(BarEdit.values()).map(edit -> Arguments.of(type, edit)));
+    }
+
+    @ParameterizedTest(name = "{1} of {0}")
+    @MethodSource("structuralBarEdits")
+    void testAnEditThatBringsAStructuralBarInsideAHairpinRemovesItReportedAndUndoRestoresIt(
+        ElementType barType, BarEdit edit
+    ) {
+        var song = compactSong(Key.NO_ACCIDENTALS, LINE_OF_NOTES);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> crescendoOver(line, EXISTING).addTo(line));
+
+        var batches = new BatchRecorder();
+        var reports = new ReportRecorder();
+
+        try {
+            song.withModification(() -> {
+                switch (edit) {
+                    case INSERTION -> line.addElement(HAIRPIN_INTERIOR, bar(barType));
+                    case REPLACEMENT -> line.setElement(HAIRPIN_INTERIOR, bar(barType));
+                }
+            });
+
+            assertThat(rangesOf(line, Hairpin.class)).isEmpty();
+            assertThat(reports.reports()).singleElement().satisfies(entries ->
+                assertThat(entries).singleElement().satisfies(entry -> {
+                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
+                    assertThat(entry.description())
+                        .isEqualTo(Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_STRUCTURAL_BOUNDARY));
+                }));
+
+            undo(song, batches.batches().getFirst());
+
+            assertThat(rangesOf(line, Hairpin.class)).containsExactly(EXISTING);
+        } finally {
+            batches.dispose();
+            reports.dispose();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -488,11 +621,19 @@ class LineSpansTest extends UnitTest {
     }
 
     private static Span<?> newCrescendo(StaffElement anchor, StaffElement end) {
-        return new Hairpin(Hairpin.Kind.CRESCENDO, anchor, end);
+        return newHairpin(Hairpin.Kind.CRESCENDO, anchor, end);
     }
 
     private static Span<?> newDiminuendo(StaffElement anchor, StaffElement end) {
-        return new Hairpin(Hairpin.Kind.DIMINUENDO, anchor, end);
+        return newHairpin(Hairpin.Kind.DIMINUENDO, anchor, end);
+    }
+
+    private static Span<?> newHairpin(Hairpin.Kind kind, StaffElement anchor, StaffElement end) {
+        var line = anchor.getParentLine();
+
+        assertThat(line).isNotNull();
+
+        return hairpinOver(line, kind, new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end)));
     }
 
     private static Span<?> newBeam(StaffElement anchor, StaffElement end) {

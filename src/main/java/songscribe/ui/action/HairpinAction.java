@@ -45,14 +45,14 @@ public final class HairpinAction extends UIAction {
     private HairpinAction(MainFrame mainFrame, Hairpin.Kind kind) {
         // DISABLE_IN_REST_MODE is deliberately absent. UIAction.enableInRestMode() is a
         // conjunction: it disables both while the rest tool is armed and whenever the
-        // selection contains a rest — and the latter is exactly the "note, rest"
-        // selection this action must support. Because super.updateEnabledState() runs
-        // before resolveHairpinAction(), no resolution logic could recover from it.
-        // Dropping the flag also makes the items available while the rest tool is
-        // armed, which is intended: input mode governs the next *inserted* element,
-        // not what a hairpin drawn over an existing selection may cover.
-        // resolveHairpinAction() is now the sole authority on rests — interior rests
-        // are fine, a trailing rest is a valid endpoint, a leading rest is INELIGIBLE.
+        // selection contains a rest — and a selection with a rest inside it, between
+        // two notes, must stay enabled. Because super.updateEnabledState() runs before
+        // resolveHairpinAction(), no resolution logic could recover from it. Leaving the
+        // flag off also makes the items available while the rest tool is armed, which
+        // is intended: input mode governs the next *inserted* element, not what a
+        // hairpin drawn over an existing selection may cover. resolveHairpinAction()
+        // answers for rests through Hairpin.spanning: rests inside the selection are
+        // fine, and a rest at either end makes the selection INELIGIBLE.
         super(
             mainFrame,
             Strings.get(kind == Hairpin.Kind.CRESCENDO ? Strings.ACTION_HAIRPIN_CRESCENDO : Strings.ACTION_HAIRPIN_DIMINUENDO),

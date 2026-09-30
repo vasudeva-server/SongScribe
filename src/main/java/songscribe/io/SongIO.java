@@ -38,6 +38,7 @@ import songscribe.dom.Line;
 import songscribe.dom.DocumentScale;
 import songscribe.dom.PartialDate;
 import songscribe.dom.PendingEnding;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Song;
 import songscribe.dom.Song.LyricsSource;
@@ -196,6 +197,10 @@ public final class SongIO {
         // Populated by getSong(), from the reader's own line reader. Empty before getSong()
         // has run.
         private List<PendingEnding> resolvedPendingEndings = List.of();
+
+        // Populated by getSong(), from the reader's own pending hairpins migrated to
+        // staff-space units. Empty before getSong() has run.
+        private List<PendingHairpin> resolvedPendingHairpins = List.of();
 
         /**
          * Returns the song-level key the file's {@code <keys>} and {@code <keytype>} tags name.
@@ -656,6 +661,14 @@ public final class SongIO {
             return resolvedPendingEndings;
         }
 
+        /**
+         * Returns every hairpin this document's reader found, as {@link LoadPasses#run}
+         * requires them. Empty before {@link #getSong()} has run.
+         */
+        public List<PendingHairpin> pendingHairpins() {
+            return resolvedPendingHairpins;
+        }
+
         public Song getSong() throws SAXException {
             // For legacy files that predate the discrete attribution tags, derive
             // composer/lyricist (and, for v1.0 only, date/place) from the blob.
@@ -675,9 +688,11 @@ public final class SongIO {
             ctx.minorVersion = minorVersion;
             ctx.lyrics = lyrics;
             ctx.pendingTuplets = lineReader != null ? lineReader.pendingTuplets() : List.of();
+            ctx.pendingHairpins = lineReader != null ? lineReader.pendingHairpins() : List.of();
 
             MigrationPipeline.runPreAssembly(ctx);
             resolvedPendingTuplets = ctx.pendingTuplets;
+            resolvedPendingHairpins = ctx.pendingHairpins;
             resolvedPendingEndings = lineReader != null ? lineReader.pendingEndings() : List.of();
 
             // Line 0 has nothing to inherit from, so it takes the document-level key when the

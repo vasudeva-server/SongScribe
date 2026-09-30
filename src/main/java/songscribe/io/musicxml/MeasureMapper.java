@@ -54,6 +54,7 @@ import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
 import songscribe.dom.PendingEnding;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.Slide;
 import songscribe.dom.Song;
@@ -65,6 +66,7 @@ import songscribe.dom.Trill;
 import songscribe.dom.TupletGrade;
 import songscribe.dom.TupletRatio;
 import songscribe.io.DocumentValidation;
+import songscribe.io.LoadPasses;
 import songscribe.io.ReadAnnotation;
 
 /**
@@ -241,6 +243,11 @@ final class MeasureMapper {
     // not the walk's.
     private final List<PendingEnding> pendingEndings = new ArrayList<>();
 
+    // Every hairpin the walk paired a wedge start with a stop; carried to the post-load pass by
+    // the caller — a mapper does not build a Hairpin, since whether the range is well formed, and
+    // whether it merges with another, is HairpinLoadPass's question, not the walk's.
+    private final List<PendingHairpin> pendingHairpins = new ArrayList<>();
+
     // The features the document declares; decides which per-note attributes the walk honors.
     private final Set<SupportedFeature> features;
 
@@ -248,14 +255,6 @@ final class MeasureMapper {
         this.song = song;
         this.features = features;
     }
-
-    /**
-     * What one part's walk produced: whether any note's {@code <accidental>} was a retired
-     * legacy token converted to its replacement, the tuplet brackets it closed, and the
-     * endings it found.
-     */
-    record Result(
-        boolean accidentalsConverted, List<PendingTuplet> pendingTuplets, List<PendingEnding> pendingEndings) {}
 
     // -------------------------------------------------------------------------
     // Package API
@@ -270,7 +269,8 @@ final class MeasureMapper {
      *                      can hold, or a mid-measure {@code <key>} with no barline
      *                      before it)
      */
-    static Result map(ScorePartwise score, Song song, Set<SupportedFeature> features) throws SAXException {
+    static LoadPasses.Input map(ScorePartwise score, Song song, Set<SupportedFeature> features)
+        throws SAXException {
         var mapper = new MeasureMapper(song, features);
         var part = ProxyMusicAccess.firstPart(score);
 
@@ -278,7 +278,8 @@ final class MeasureMapper {
             mapper.mapPart(part);
         }
 
-        return new Result(mapper.accidentalsConverted, mapper.pendingTuplets, mapper.pendingEndings);
+        return new LoadPasses.Input(
+            mapper.pendingTuplets, mapper.pendingEndings, mapper.pendingHairpins, mapper.accidentalsConverted);
     }
 
     private void mapPart(ScorePartwise.Part part) throws SAXException {
@@ -1062,7 +1063,7 @@ final class MeasureMapper {
      * <p>A hairpin is an intra-line span, so one still open when a new line starts is
      * dropped, as is one still open at the end of the part.
      */
-    private static void resolveHairpins(List<ChildSite> sites) {
+    private void resolveHairpins(List<ChildSite> sites) {
         var pendingWedges = new ArrayList<Wedge>();
         OpenHairpin open = null;
         Line line = null;
@@ -1119,7 +1120,7 @@ final class MeasureMapper {
      * the next one opens on it — back-to-back hairpins sharing a note.
      */
     @Nullable
-    private static OpenHairpin applyWedges(@Nullable OpenHairpin open, NoteSite noteSite, List<Wedge> wedges) {
+    private OpenHairpin applyWedges(@Nullable OpenHairpin open, NoteSite noteSite, List<Wedge> wedges) {
         WedgeStart start = null;
         var hasStop = false;
         var stopX2ShiftSs = 0.0;
@@ -1168,7 +1169,7 @@ final class MeasureMapper {
     }
 
     @Nullable
-    private static OpenHairpin closeHairpin(
+    private OpenHairpin closeHairpin(
         @Nullable OpenHairpin open,
         NoteSite noteSite,
         boolean hasStop,
@@ -1183,37 +1184,22 @@ final class MeasureMapper {
             return null;
         }
 
-        buildHairpin(noteSite.line(), open, noteSite.element(), x2ShiftSs);
+        buildHairpin(open, noteSite.element(), x2ShiftSs);
         return null;
     }
 
     /**
-     * Builds a crescendo or diminuendo {@link Hairpin} over [{@code anchor}, {@code end}].
-     * Added through {@link Hairpin#addTo}, whose displacement policy merges a file
-     * carrying two same-type wedges that overlap or merely touch into the one hairpin
-     * it musically is.
+     * Records a {@link PendingHairpin} over [{@code anchor}, {@code end}] carrying the
+     * user-adjustable offsets of both of its wedges. It builds no {@link Hairpin}: the
+     * hairpin load pass judges each record once the song is complete, and it merges two
+     * same-kind wedges that overlap or merely touch into the one hairpin a file so written
+     * musically is.
      */
-    private static void buildHairpin(Line line, OpenHairpin open, StaffElement end, double x2ShiftSs) {
-        var hairpin = new Hairpin(open.start().kind(), open.anchor(), end);
-        applyHairpinShifts(hairpin, open, x2ShiftSs);
-        hairpin.addTo(line);
-    }
-
-    /** Restores the user-adjustable hairpin offsets from both of its wedges. */
-    private static void applyHairpinShifts(Hairpin hairpin, OpenHairpin open, double x2ShiftSs) {
+    private void buildHairpin(OpenHairpin open, StaffElement end, double x2ShiftSs) {
         var start = open.start();
 
-        if (start.x1ShiftSs() != 0) {
-            hairpin.setX1ShiftSs(start.x1ShiftSs());
-        }
-
-        if (x2ShiftSs != 0) {
-            hairpin.setX2ShiftSs(x2ShiftSs);
-        }
-
-        if (start.yShiftSs() != 0) {
-            hairpin.setUserYOffsetSs(start.yShiftSs());
-        }
+        pendingHairpins.add(new PendingHairpin(
+            start.kind(), open.anchor(), end, start.x1ShiftSs(), x2ShiftSs, start.yShiftSs()));
     }
 
     // -------------------------------------------------------------------------

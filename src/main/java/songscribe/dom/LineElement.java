@@ -31,7 +31,7 @@ package songscribe.dom;
  * a line's element tree, and each part answers it its own way: a staff element holds its line
  * ({@link StaffElement#getParentLine()}), a child derives it from its host
  * ({@link Attachment#getParentLine()}, {@link Articulation#getParentLine()}), and a span derives
- * the lines it is in from its endpoints ({@link Span#isIn}).
+ * the lines it is in from its endpoints.
  *
  * <p><b>The offsets.</b> Where the notator dragged the element from the position layout gave it,
  * in staff spaces: X positive to the right, Y positive downward, both 0 until adjusted. The
@@ -93,8 +93,9 @@ public abstract class LineElement {
      * <p>
      * Every route that copies one element's state onto another ends up here, so a field added
      * to this class is carried by all of them at once and no route can omit it. The routes are
-     * {@link StaffElement#copyStateFrom}, {@link StaffElement#convertedFrom}, {@link Span#copy},
-     * {@link Attachment#copy} and {@link Articulation#copy}.
+     * {@link StaffElement#copyStateFrom}, {@link StaffElement#convertedFrom},
+     * {@link Span#copyUserStateFrom}, {@link Span#copy}, {@link Attachment#copy} and
+     * {@link Articulation#copy}.
      *
      * @param source the element whose base state to take
      * @effects replaces this element's base state; leaves its identity and its place in the

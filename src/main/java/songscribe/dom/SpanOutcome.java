@@ -36,13 +36,6 @@ public sealed interface SpanOutcome permits SpanOutcome.Keep, SpanOutcome.Remove
 
     /**
      * The span is unaffected.
-     * <p>
-     * An enum with one constant rather than a stateless record: there is exactly one keep,
-     * which is what "carries no data" means, and only an enum can say so — a record's
-     * canonical constructor cannot be narrowed, so any caller could mint another. A
-     * {@code switch} over {@link HairpinOutcome} still reads flat and is still checked
-     * for exhaustiveness, since a qualified enum constant is a legal case label for a
-     * sealed selector type.
      */
     enum Keep implements SpanOutcome, HairpinOutcome {
         INSTANCE

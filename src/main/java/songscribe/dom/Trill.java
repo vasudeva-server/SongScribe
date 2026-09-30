@@ -80,12 +80,18 @@ public final class Trill extends Span<StaffElement> implements IntrinsicHeight {
         return new Trill(newAnchor, newEnd);
     }
 
+    @Override
+    protected void copyOwnStateFrom(Span<StaffElement> source) {
+    }
+
     /**
      * Returns the width of the trill "tr" glyph in staff-space units — the glyph's own width,
      * not the span the wavy line covers, which {@code TrillGeometry.getSpanWidthSs} computes.
      * <p>
      * For vertical stacking, only the glyph width matters since the wavy
      * extension is drawn at the same Y level.
+     *
+     * @return the glyph's width in staff spaces
      */
     public double intrinsicWidthSs() {
         return TRILL_GLYPH_WIDTH_SS;

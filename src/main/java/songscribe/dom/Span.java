@@ -77,6 +77,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Returns the first element in this range.
+     *
+     * @return the anchor element
      */
     public final E getAnchorElement() {
         return anchorElement;
@@ -91,6 +93,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * Returns the last element in this range.
+     *
+     * @return the end element
      */
     public final E getEndElement() {
         return endElement;
@@ -122,32 +126,10 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
-     * Returns whether this span is in {@code line}, meaning either of its endpoints is.
-     * <p>
-     * Two reference comparisons and nothing else: it allocates nothing and is safe to ask
-     * on any path.
-     * <p>
-     * It answers where the endpoints are, which is not the same question as whether the
-     * span is still in the document — a removed span whose endpoints survive still reports
-     * {@code true}. A caller that means "is this span still live on that line" must ask
-     * {@code line.spanRegistry().getSpans()}, as {@code SelectionCoordinator.isOnLine} does.
+     * The line the anchor element belongs to, or {@code null} when the anchor sits in no line.
      */
-    public boolean isIn(Line line) {
-        return getAnchorLine() == line || getEndLine() == line;
-    }
-
-    /**
-     * The line the anchor element belongs to, or {@code null} when the anchor sits in no
-     * line. Null-safe so callers deciding which lines a span reaches express that in one
-     * call rather than each repeating the unwrap.
-     */
-    public @Nullable Line getAnchorLine() {
+    private @Nullable Line getAnchorLine() {
         return anchorElement.getParentLine();
-    }
-
-    /** The line the end element belongs to. See {@link #getAnchorLine}. */
-    public @Nullable Line getEndLine() {
-        return endElement.getParentLine();
     }
 
     /**
@@ -345,11 +327,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
             throw new IllegalStateException(getClass().getSimpleName() + " anchor line is not in its song: " + this);
         }
 
-        var elementRange = range();
-
-        return new ElementLocationRange(
-            new ElementLocation(lineIndex, elementRange.begin()),
-            new ElementLocation(lineIndex, elementRange.end()));
+        return ElementLocationRange.onLine(lineIndex, range());
     }
 
     /**
@@ -367,9 +345,10 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     /**
      * Removes this span from {@code line}'s span registry and tells the user why.
      * <p>
-     * Every removal the user did not directly request — one a rule, a sweep, a displacement, a
-     * paste or a load makes on its own — goes through this method, so none is silent.
-     * {@link #removeFrom} is for a removal the user asked for, which needs no report.
+     * Every removal the user did not directly request — one a rule, a sweep, a replacing
+     * displacement, a paste or a load makes on its own — goes through this method, so none is silent.
+     * {@link #removeFrom} is for a removal the user asked for, and for a span a merge absorbs,
+     * which the merged span covers; neither needs a report.
      * <p>
      * Unlike {@link #removeFrom}, a second call is not a no-op: it reports again. The caller
      * holds a span that is in {@code line}'s registry.
@@ -436,7 +415,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * The end element's index within its own line. See {@link #requireAnchorElementIndex} for
      * when an endpoint sits in no line.
      *
-     * @return the end's index within {@link #getEndLine}
+     * @return the end's index within {@link #line}
      * @throws IllegalStateException when the end sits in no line, which is the case only for a
      *     span outside every registry — the span's own state, not an argument
      */
@@ -471,6 +450,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
+     *
+     * @return a predicate that is {@code true} for a range containing {@code elementIndex}
      */
     public static IndexPredicate containing(int elementIndex) {
         return spanRange -> spanRange.contains(elementIndex);
@@ -479,6 +460,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     /**
      * A predicate matching a span sharing at least one element with {@code range}: its anchor at
      * or before {@code range}'s last element and its end at or after {@code range}'s first.
+     *
+     * @return a predicate that is {@code true} for a range sharing an element with {@code range}
      */
     public static IndexPredicate overlapping(ElementRange range) {
         return spanRange -> spanRange.overlaps(range);
@@ -492,6 +475,9 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * Two hairpins may meet — one ends on the element the next begins on, and the
      * wedges back away from that shared column (LilyPond's back-to-back rule). More
      * than that one element in common is a genuine collision.
+     *
+     * @return a predicate that is {@code true} for a range overlapping {@code range} by more than
+     *     one shared endpoint
      */
     public static IndexPredicate overlappingBeyondEndpoint(ElementRange range) {
         return spanRange ->
@@ -507,6 +493,9 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * A text dynamic may sit on a hairpin's bound, where the wedge pads away from it, but
      * never under the wedge, so the editor asks about the strict interior rather than the
      * inclusive range.
+     *
+     * @return a predicate that is {@code true} for a range with {@code elementIndex} strictly
+     *     between its bounds
      */
     public static IndexPredicate strictlyContaining(int elementIndex) {
         return spanRange -> spanRange.containsExcludingBounds(elementIndex);
@@ -515,6 +504,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     /**
      * A predicate matching a span whose anchor is exactly {@code range}'s first element and
      * whose end is exactly its last.
+     *
+     * @return a predicate that is {@code true} for a range equal to {@code range}
      */
     public static IndexPredicate exactly(ElementRange range) {
         return spanRange -> spanRange.equals(range);
@@ -522,6 +513,8 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * A predicate matching a span whose anchor is the element at {@code elementIndex}.
+     *
+     * @return a predicate that is {@code true} for a range beginning at {@code elementIndex}
      */
     public static IndexPredicate anchoredAt(int elementIndex) {
         return spanRange -> spanRange.begin() == elementIndex;
@@ -529,36 +522,90 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
 
     /**
      * A predicate matching a span whose end is the element at {@code elementIndex}.
+     *
+     * @return a predicate that is {@code true} for a range ending at {@code elementIndex}
      */
     public static IndexPredicate endingAt(int elementIndex) {
         return spanRange -> spanRange.end() == elementIndex;
     }
 
     /**
-     * Creates a copy of this span anchored to the given elements, carrying over
-     * all {@link LineElement}-level user state (the two user offsets).
+     * A predicate matching a span that an insertion at {@code target} lands inside: its anchor
+     * lies before the insertion index, and its end lies at or after the first element the
+     * insertion leaves standing after itself.
      * <p>
-     * Base state travels through {@link LineElement#copyBaseStateFrom}, so a new subclass cannot
-     * forget it and a new base field needs no change here. Subclasses carry their own
-     * subclass-specific state in {@link #createCopy}. Does not copy derived caches.
+     * A span wholly inside {@code target}'s deleted range does not match, since the deletion
+     * takes its endpoints; neither does a span clear of the insertion.
+     *
+     * @param target where a run is inserted, on the line as it stands before the insertion
+     * @return a predicate that is {@code true} for a range that begins before
+     *     {@code target.insertIndex()} and ends at or after the index after
+     *     {@code target}'s deleted range, or at or after {@code target.insertIndex()} when it
+     *     deletes nothing
+     */
+    public static IndexPredicate straddling(StaffElementRun.InsertionTarget target) {
+        var insertIndex = target.insertIndex();
+        var deleteRange = target.deleteRange();
+        var firstIndexAfter = deleteRange == null ? insertIndex : deleteRange.range().end() + 1;
+
+        return spanRange -> spanRange.begin() < insertIndex && spanRange.end() >= firstIndexAfter;
+    }
+
+    /**
+     * Creates a copy of this span anchored to the given elements, carrying all of this span's
+     * user state through {@link #copyUserStateFrom}. Does not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
-     * @return A new span of the same concrete type as this one
+     * @return A new span of the same concrete type as this one, with this span's user state
      */
     public final Span<E> copy(E newAnchor, E newEnd) {
         var copy = createCopy(newAnchor, newEnd);
-        copy.copyBaseStateFrom(this);
+        copy.copyUserStateFrom(this);
         return copy;
     }
 
     /**
-     * Creates a new instance of this span's concrete subclass, anchored to the
-     * given elements and carrying over any subclass-specific state. Called only by
-     * {@link #copy}, which layers on the shared {@link LineElement}-level state.
+     * Copies all of {@code source}'s user state onto this span: the base state
+     * {@link LineElement#copyBaseStateFrom} copies, then the span kind's own through
+     * {@link #copyOwnStateFrom}.
+     * <p>
+     * This is the one route by which a span takes another's user state, so a field added to
+     * either level is carried by every caller at once.
+     *
+     * @param source the span whose user state to take
+     * @throws IllegalArgumentException if {@code source} is not of this span's concrete class
+     * @effects replaces this span's user state; leaves its endpoints, its kind-defining state
+     *          and its place in the document alone
+     */
+    public final void copyUserStateFrom(Span<E> source) {
+        if (source.getClass() != getClass()) {
+            throw new IllegalArgumentException(
+                getClass().getSimpleName() + " cannot take the user state of " + source);
+        }
+
+        copyBaseStateFrom(source);
+        copyOwnStateFrom(source);
+    }
+
+    /**
+     * Copies the user state this span kind adds to the base state from {@code source} onto this
+     * span. Called only by {@link #copyUserStateFrom}, which guarantees {@code source} is of this
+     * span's concrete class. A kind with no user state of its own copies nothing.
+     *
+     * @param source the span whose own user state to take, of this span's concrete class
+     * @effects replaces this span kind's own user state
+     */
+    protected abstract void copyOwnStateFrom(Span<E> source);
+
+    /**
+     * Creates a new instance of this span's concrete subclass over the given elements, with the
+     * state that defines its kind and no user state. Called only by {@link #copy}, which then
+     * copies the user state through {@link #copyUserStateFrom}.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
+     * @return a new span of this span's concrete class over {@code newAnchor} and {@code newEnd}
      */
     protected abstract Span<E> createCopy(E newAnchor, E newEnd);
 }

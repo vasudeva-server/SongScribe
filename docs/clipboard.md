@@ -68,6 +68,14 @@ contradiction no widening can fix, so there the destination's goes instead. An
 ending is the same reasoning in reverse: a bracket covering a few extra notes is
 still valid notation, but one nested inside another never is.
 
+**The pasted spans are judged last.** Once the fragment's elements are in, every
+pasted tuplet, ending and hairpin is judged by its kind's own rule against the line
+as the paste leaves it. A span the rule refuses is not pasted and is reported,
+though it was never in the song. The table above decides only what happens to the
+destination's spans and which fragment spans are dropped for landing inside one of
+the same kind; it does not promise that a surviving fragment span is valid where it
+lands.
+
 A paste that merely clips a group at its edge is deliberately not treated as a
 straddle: that group dies anyway when it loses an endpoint, and the pasted group
 lands contiguous at the boundary rather than interleaved with orphaned remains.
