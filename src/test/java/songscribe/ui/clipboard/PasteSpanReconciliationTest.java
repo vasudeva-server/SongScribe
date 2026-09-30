@@ -21,6 +21,7 @@
 package songscribe.ui.clipboard;
 
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import java.util.stream.Stream;
@@ -28,6 +29,7 @@ import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.Strings;
@@ -35,14 +37,21 @@ import songscribe.UnitTest;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.dom.NoteValue;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.dom.StaffElementRun;
 import songscribe.dom.StaffElementRun.ElementRange;
+import songscribe.dom.Tuplet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.editableLine;
+import static songscribe.dom.SpanFactory.beamOver;
 import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.SpanFactory.hairpinOver;
+import static songscribe.dom.SpanFactory.trillOver;
+import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.quaver;
@@ -50,10 +59,14 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
+ * The two rules of {@link PasteSpanReconciliation}. The straddle rule of
+ * {@link PasteSpanReconciliation#reconcile}: a destination span that the paste lands inside of is
+ * removed or kept by its kind, and the fragment's spans of the kinds that decides are dropped.
  * The target rule of {@link PasteSpanReconciliation#settleAgainstTarget}: a pasted ending or
  * hairpin is judged by its kind's own rule against the line as the paste leaves it. An accepted
  * one is added as the span that rule built, carrying the pasted span's user state; a refused one
- * is not added and is named with the rule's reason.
+ * is not added and is named with the rule's reason. A pasted tuplet is added as it is, or refused
+ * when its placement is broken, and a pasted beam or trill is added as it is.
  *
  * <p>Each case runs the paste's steps in the paste's order: capture, instantiate, reconcile,
  * insert the elements, then settle.
@@ -155,6 +168,171 @@ class PasteSpanReconciliationTest extends UnitTest {
                 assertThat(hairpin.getX1ShiftSs()).isEqualTo(X1_SHIFT_SS);
                 assertThat(hairpin.getX2ShiftSs()).isEqualTo(X2_SHIFT_SS);
             });
+    }
+
+    /** The index a fragment lands at inside a destination span that covers the whole line. */
+    private static final int STRADDLE_INDEX = 2;
+
+    private static final int STRADDLE_LINE_LENGTH = 4;
+
+    /**
+     * A destination span that a paste lands inside of, and a span of the fragment pasted into it.
+     *
+     * @param description     the case, as the test's display name
+     * @param line            builds a line of the shape both spans cover in full
+     * @param destinationSpan builds the destination's span over the whole of a line
+     * @param fragmentSpan    builds the fragment's span over the whole of a line
+     * @param targetRemoved   whether the straddled destination span is removed
+     * @param fragmentKept    whether the fragment's span is still added
+     */
+    private record StraddleCase(
+        String description,
+        Supplier<Line> line,
+        Function<Line, Span<?>> destinationSpan,
+        Function<Line, Span<?>> fragmentSpan,
+        boolean targetRemoved,
+        boolean fragmentKept
+    ) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("straddleCases")
+    void testAStraddledSpanAndTheFragmentSpansAreReconciledByKind(StraddleCase testCase) {
+        var destination = testCase.line().get();
+        var straddled = testCase.destinationSpan().apply(destination);
+        straddled.addTo(destination);
+
+        var source = testCase.line().get();
+        testCase.fragmentSpan().apply(source).addTo(source);
+        var pasted = Fragment.capture(source, wholeRangeOf(source)).instantiate();
+        var fragmentSpan = pasted.spans().getFirst();
+
+        var reconciliation = PasteSpanReconciliation.reconcile(
+            destination, new StaffElementRun.InsertionTarget.AtIndex(STRADDLE_INDEX), pasted.spans());
+
+        if (testCase.targetRemoved()) {
+            assertThat(reconciliation.targetSpansToRemove()).containsExactly(straddled);
+        } else {
+            assertThat(reconciliation.targetSpansToRemove()).isEmpty();
+        }
+
+        if (testCase.fragmentKept()) {
+            assertThat(reconciliation.fragmentSpans()).containsExactly(fragmentSpan);
+            assertThat(reconciliation.fragmentSpansDropped()).isEmpty();
+        } else {
+            assertThat(reconciliation.fragmentSpans()).isEmpty();
+            assertThat(reconciliation.fragmentSpansDropped()).containsExactly(fragmentSpan);
+        }
+    }
+
+    static Stream<StraddleCase> straddleCases() {
+        return Stream.of(
+            new StraddleCase("a straddled tuplet is removed and the fragment's tuplets are dropped",
+                PasteSpanReconciliationTest::quavers, PasteSpanReconciliationTest::tuplet,
+                PasteSpanReconciliationTest::tuplet, true, false),
+            new StraddleCase("a straddled beam is removed and the fragment's beams are dropped",
+                PasteSpanReconciliationTest::quavers, line -> beamOver(line, wholeRangeOf(line)),
+                line -> beamOver(line, wholeRangeOf(line)), true, false),
+            new StraddleCase("a straddled trill is removed and the fragment's trill is kept",
+                PasteSpanReconciliationTest::quavers, line -> trillOver(line, wholeRangeOf(line)),
+                line -> trillOver(line, wholeRangeOf(line)), true, true),
+            new StraddleCase("a straddled tuplet does not drop the fragment's beam",
+                PasteSpanReconciliationTest::quavers, PasteSpanReconciliationTest::tuplet,
+                line -> beamOver(line, wholeRangeOf(line)), true, true),
+            new StraddleCase("a straddled crescendo is removed for a fragment diminuendo",
+                PasteSpanReconciliationTest::quavers, line -> hairpin(line, Hairpin.Kind.CRESCENDO),
+                line -> hairpin(line, Hairpin.Kind.DIMINUENDO), true, true),
+            new StraddleCase("a straddled crescendo is kept and the fragment's crescendo is dropped",
+                PasteSpanReconciliationTest::quavers, line -> hairpin(line, Hairpin.Kind.CRESCENDO),
+                line -> hairpin(line, Hairpin.Kind.CRESCENDO), false, false),
+            new StraddleCase("a straddled ending is kept and the fragment's endings are dropped",
+                PasteSpanReconciliationTest::endingLine, line -> endingOver(line, wholeRangeOf(line)),
+                line -> endingOver(line, wholeRangeOf(line)), false, false)
+        );
+    }
+
+    /**
+     * A tuplet, or a beam or a trill, pasted onto a line, and whether the destination keeps it.
+     *
+     * @param description the case, as the test's display name
+     * @param elements    builds the elements of the copied line, all covered by the tuplet
+     * @param refused     whether the destination refuses the tuplet
+     */
+    private record TupletPasteCase(String description, Supplier<List<StaffElement>> elements, boolean refused) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("tupletPasteCases")
+    void testAPastedTupletIsKeptAsItIsUnlessItsPlacementIsBroken(TupletPasteCase testCase) {
+        var source = lineOf(testCase.elements().get().toArray(StaffElement[]::new));
+        tuplet(source).addTo(source);
+
+        var destination = lineOf(quaver());
+        var pasted = Fragment.capture(source, wholeRangeOf(source)).instantiate();
+        var fragmentTuplet = pasted.spans().getFirst();
+
+        var settled = paste(pasted, destination, destination.elementCount());
+
+        if (testCase.refused()) {
+            assertThat(settled.fragmentSpans()).isEmpty();
+            assertThat(settled.fragmentSpansRejected()).containsExactly(new PasteSpanReconciliation.RejectedSpan(
+                fragmentTuplet, Strings.DIALOG_REPORT_REASON_PASTE_TUPLET_REJECTED));
+            return;
+        }
+
+        assertThat(settled.fragmentSpans()).containsExactly(fragmentTuplet);
+        assertThat(settled.fragmentSpansRejected()).isEmpty();
+    }
+
+    static Stream<TupletPasteCase> tupletPasteCases() {
+        return Stream.of(
+            new TupletPasteCase("three quavers are kept",
+                () -> List.of(quaver(), quaver(), quaver()), false),
+            new TupletPasteCase("a barline inside the tuplet is refused",
+                () -> List.of(quaver(), singleBarline(), quaver(), quaver()), true)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("unjudgedSpans")
+    void testAPastedBeamOrTrillIsAddedAsTheFragmentsOwnSpan(String description, Function<Line, Span<?>> kind) {
+        var source = quavers();
+        kind.apply(source).addTo(source);
+
+        var destination = lineOf(quaver());
+        var pasted = Fragment.capture(source, wholeRangeOf(source)).instantiate();
+        var fragmentSpan = pasted.spans().getFirst();
+
+        var settled = paste(pasted, destination, destination.elementCount());
+
+        assertThat(settled.fragmentSpans()).containsExactly(fragmentSpan);
+        assertThat(settled.fragmentSpansRejected()).isEmpty();
+    }
+
+    static Stream<Arguments> unjudgedSpans() {
+        return Stream.of(
+            Arguments.of("a beam", (Function<Line, Span<?>>) line -> beamOver(line, wholeRangeOf(line))),
+            Arguments.of("a trill", (Function<Line, Span<?>>) line -> trillOver(line, wholeRangeOf(line)))
+        );
+    }
+
+    private static Line quavers() {
+        var elements = Stream.generate(StaffElementFactory::quaver)
+            .limit(STRADDLE_LINE_LENGTH)
+            .toArray(StaffElement[]::new);
+
+        return lineOf(elements);
+    }
+
+    /** A line holding the shape an ending covers whole: a note, a repeat, a note and a barline. */
+    private static Line endingLine() {
+        return lineOf(crotchet(), repeatRight(), crotchet(), singleBarline());
+    }
+
+    private static Tuplet tuplet(Line line) {
+        return tripletOver(line, wholeRangeOf(line), NoteValue.EIGHTH);
+    }
+
+    private static Hairpin hairpin(Line line, Hairpin.Kind kind) {
+        return hairpinOver(line, kind, wholeRangeOf(line));
     }
 
     /**

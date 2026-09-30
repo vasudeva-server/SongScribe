@@ -30,6 +30,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.HairpinMetrics;
+import songscribe.error.RuntimeError;
 
 /**
  * Resolves the drawn horizontal endpoints of a {@link Hairpin}, a port of the
@@ -46,11 +47,11 @@ import songscribe.engraving.HairpinMetrics;
  * legitimately starts left of its anchor column's origin: the wedge runs from just clear of the
  * {@code p} to the end note, which is the intended appearance.
  * <p>
- * Every rule below is reachable from the editor. Back-to-back hairpins and rest-bounded ones
- * became reachable when issue #743 landed ({@code MusicEditOperations.resolveHairpinAction}, see
- * {@code docs/hairpin-editing.md}), and a text dynamic may now sit on a hairpin's <em>own</em>
- * bound — its anchor or end element — as well as on the element outside it (issue #744). So
- * {@code f<}, {@code >p} and {@code <f>} are all shapes this class has to place.
+ * Every rule below is reachable from the editor. Back-to-back hairpins are placeable
+ * ({@code MusicEditOperations.resolveHairpinAction}, see {@code docs/hairpin-editing.md}), and a
+ * text dynamic may sit on a hairpin's <em>own</em> bound — its anchor or end element — as well as
+ * on the element outside it. So {@code f<}, {@code >p} and {@code <f>} are all shapes this class
+ * has to place.
  * <p>
  * LilyPond's remaining bound rule, padding away from a non-musical bound ({@code hairpin.cc:283},
  * {@code Item::is_non_musical}), is <em>not</em> ported. It exists because LilyPond bounds spanners
@@ -151,7 +152,7 @@ public final class HairpinEndpoints {
 
     /**
      * The tip a text dynamic on element {@code index} would impose on {@code side} of a wedge, or
-     * {@code null} when that element carries no dynamic or has no column in this line.
+     * {@code null} when that element carries no dynamic.
      * <p>
      * Applies LilyPond's {@code x_points[d] = e[-d] - d * padding} ({@code hairpin.cc:218-220}):
      * on the left, the dynamic's right edge plus padding; on the right, its left edge minus
@@ -187,7 +188,7 @@ public final class HairpinEndpoints {
         var column = columnsByElement.get(element);
 
         if (column == null) {
-            return null;
+            throw RuntimeError.exit("no column for " + element + " in the line being laid out");
         }
 
         var offsetSs = side == Side.LEFT
@@ -239,10 +240,9 @@ public final class HairpinEndpoints {
     }
 
     /**
-     * The right tip, mirroring {@link #leftEndpointSs} with the extra rest rule: LilyPond ends a
-     * hairpin at a rest's left edge rather than past its glyph. The precedence is a text dynamic on
-     * the end element itself, then a back-to-back hairpin anchored on the end column, then a text
-     * dynamic on the element after the end, then the rest rule, then past the notehead.
+     * The right tip, mirroring {@link #leftEndpointSs}. The precedence is a text dynamic on the
+     * end element itself, then a back-to-back hairpin anchored on the end column, then a text
+     * dynamic on the element after the end, then past the notehead.
      * <p>
      * As on the left, the own-bound rule outranks back-to-back per {@code hairpin.cc:216} vs
      * {@code :222}.
@@ -254,9 +254,7 @@ public final class HairpinEndpoints {
         ElementColumn endColumn,
         int endIndex
     ) {
-        // Own bound first, for the same reason as on the left. It also outranks the rest rule
-        // below, which is LilyPond's ordering; that combination is unreachable from the editor
-        // because DynamicMarkingAction extends NoteOnlyAction, so a rest never carries a dynamic.
+        // Own bound first, for the same reason as on the left.
         var ownBound = dynamicTipSs(line, columnsByElement, endIndex, Side.RIGHT);
 
         if (ownBound != null) {
@@ -272,11 +270,6 @@ public final class HairpinEndpoints {
 
         if (next != null) {
             return next;
-        }
-
-        if (endColumn.isRest()) {
-            // hairpin.cc:268-271 — x_points[RIGHT] = e[LEFT].
-            return new Tip(endColumn.getLeftEdgeXSs(), false);
         }
 
         return new Tip(endColumn.getXSs() + endColumn.getNoteheadWidthSs(), false);

@@ -39,6 +39,7 @@ import songscribe.dom.TupletValidator.Strictness;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.DOTTED_BEAT_TEMPO;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.DUPLET_NORMAL_NOTES;
 import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
 import static songscribe.dom.SpanFactory.ratioOf;
 import static songscribe.dom.StaffElementFactory.breathMark;
@@ -66,6 +67,7 @@ class TupletValidatorTest extends UnitTest {
     /** The middle of the three notes a triplet spans. */
     private static final int MIDDLE_INDEX = 1;
 
+    private static final int DUPLET_NOTES = 2;
     private static final int TRIPLET_NOTES = 3;
     private static final int QUADRUPLET_NOTES = 4;
 
@@ -130,8 +132,13 @@ class TupletValidatorTest extends UnitTest {
                 () -> List.of(graceQuaver(), graceQuaver()), TupletGrade.TRIPLET, invalid(Reason.EMPTY_SPAN)),
             derivedUnderBoth("two crotchets do not divide into three notatable values",
                 () -> List.of(crotchet(), crotchet()), TupletGrade.TRIPLET, invalid(Reason.NOT_NOTATABLE)),
+            derivedUnderBoth("three quavers do not divide into seven equal parts",
+                () -> quavers(TRIPLET_NOTES), TupletGrade.SEPTUPLET, invalid(Reason.NOT_NOTATABLE)),
             derivedUnderBoth("three quavers under a dotted beat have no conventional span",
-                TupletValidatorTest::dottedBeatQuavers, TupletGrade.TRIPLET, invalid(Reason.NO_CONVENTIONAL_SPAN)),
+                () -> dottedBeatQuavers(TRIPLET_NOTES), TupletGrade.TRIPLET, invalid(Reason.NO_CONVENTIONAL_SPAN)),
+            derivedUnderBoth("two quavers under a dotted beat are a duplet of 2:3",
+                () -> dottedBeatQuavers(DUPLET_NOTES), TupletGrade.DUPLET,
+                valid(ratioOf(DUPLET_NORMAL_NOTES, NoteValue.EIGHTH))),
             derivedUnderBoth("four quavers under a 4 are a power of two",
                 () -> quavers(QUADRUPLET_NOTES), TupletGrade.QUADRUPLET, invalid(Reason.POWER_OF_TWO_RATIO)),
             derivedUnderBoth("a fermata inside the span",
@@ -162,15 +169,23 @@ class TupletValidatorTest extends UnitTest {
                 TupletValidatorTest::endedByBarline, Strictness.STRICT, valid(TRIPLET_OF_QUAVERS)),
 
             statedUnderBoth("a stated ratio equal to the grade names no re-timing",
-                () -> quavers(TRIPLET_NOTES), ratioOf(TupletGrade.TRIPLET.number(), NoteValue.QUARTER),
-                invalid(Reason.BAD_RATIO)),
+                () -> quavers(TRIPLET_NOTES), TupletGrade.TRIPLET,
+                ratioOf(TupletGrade.TRIPLET.number(), NoteValue.QUARTER), invalid(Reason.BAD_RATIO)),
             statedUnderBoth("a stated value that is not the span's own note value",
-                () -> quavers(TRIPLET_NOTES), ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.QUARTER),
-                invalid(Reason.NOT_NOTATABLE)),
+                () -> quavers(TRIPLET_NOTES), TupletGrade.TRIPLET,
+                ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.QUARTER), invalid(Reason.NOT_NOTATABLE)),
             statedUnderBoth("a stated ratio a dotted beat would not derive is echoed",
-                TupletValidatorTest::dottedBeatQuavers, TRIPLET_OF_QUAVERS, valid(TRIPLET_OF_QUAVERS)),
+                () -> dottedBeatQuavers(TRIPLET_NOTES), TupletGrade.TRIPLET, TRIPLET_OF_QUAVERS,
+                valid(TRIPLET_OF_QUAVERS)),
             statedUnderBoth("a stated ratio over a fermata",
-                TupletValidatorTest::fermataQuavers, TRIPLET_OF_QUAVERS, invalid(Reason.FERMATA)),
+                TupletValidatorTest::fermataQuavers, TupletGrade.TRIPLET, TRIPLET_OF_QUAVERS,
+                invalid(Reason.FERMATA)),
+            statedUnderBoth("a stated ratio over a span of grace notes, which holds no time",
+                () -> List.of(graceQuaver(), graceQuaver()), TupletGrade.TRIPLET, TRIPLET_OF_QUAVERS,
+                invalid(Reason.EMPTY_SPAN)),
+            statedUnderBoth("a stated ratio over a span that does not divide by the grade",
+                () -> quavers(TRIPLET_NOTES), TupletGrade.SEPTUPLET, TRIPLET_OF_QUAVERS,
+                invalid(Reason.NOT_NOTATABLE)),
             stated("a stated ratio over a barline inside the span, strict",
                 () -> withInside(singleBarline()), Strictness.STRICT, invalid(Reason.STRUCTURAL_BOUNDARY)),
             stated("a stated ratio over a barline inside the span, lenient",
@@ -203,13 +218,14 @@ class TupletValidatorTest extends UnitTest {
             description + ", " + strictness, elements, TupletGrade.TRIPLET, null, strictness, expected));
     }
 
-    /** A case for a triplet with a stated ratio, for each strictness, all with the same verdict. */
+    /** A case for a stated ratio, for each strictness, all with the same verdict. */
     private static Stream<ValidationCase> statedUnderBoth(
-        String description, Supplier<List<StaffElement>> elements, TupletRatio stated, Result expected
+        String description, Supplier<List<StaffElement>> elements, TupletGrade grade, TupletRatio stated,
+        Result expected
     ) {
         return Stream.of(Strictness.values())
             .map(strictness -> new ValidationCase(
-                description + ", " + strictness, elements, TupletGrade.TRIPLET, stated, strictness, expected));
+                description + ", " + strictness, elements, grade, stated, strictness, expected));
     }
 
     /** A case for a triplet with the one stated ratio of quavers, under one strictness. */
@@ -224,9 +240,9 @@ class TupletValidatorTest extends UnitTest {
         return Stream.generate(StaffElementFactory::quaver).limit(count).map(StaffElement.class::cast).toList();
     }
 
-    /** Three quavers, the first of which sets a dotted beat. */
-    private static List<StaffElement> dottedBeatQuavers() {
-        var elements = quavers(TRIPLET_NOTES);
+    /** {@code count} quavers, the first of which sets a dotted beat. */
+    private static List<StaffElement> dottedBeatQuavers(int count) {
+        var elements = quavers(count);
         elements.getFirst().addAttachment(new TempoChangeAttachment(DOTTED_BEAT_TEMPO));
 
         return elements;

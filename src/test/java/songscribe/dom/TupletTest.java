@@ -38,6 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.dottedQuaver;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.quaverRest;
@@ -133,6 +134,8 @@ class TupletTest extends UnitTest {
                 TupletTest::notesFixture, line -> line.setElement(INTERIOR_INDEX, crotchet()), true),
             new SweepCase("replacing a member with a rest of the same value removes it",
                 TupletTest::notesFixture, line -> line.setElement(INTERIOR_INDEX, quaverRest()), true),
+            new SweepCase("replacing a member with a note of the same value and another dot count removes it",
+                TupletTest::notesFixture, line -> line.setElement(INTERIOR_INDEX, dottedQuaver()), true),
             new SweepCase("replacing a barline with another barline keeps it",
                 TupletTest::barlineFixture, line -> line.setElement(BARLINE_INDEX, doubleBarline()), false),
             new SweepCase("replacing an element outside the bracket keeps it",

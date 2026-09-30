@@ -367,34 +367,19 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
     }
 
     /**
-     * The position of {@code element} within the line it is in, or {@code null} when it
-     * sits in no line — an endpoint of a span outside every registry, such as a clipboard span
-     * over cloned elements.
-     */
-    private static @Nullable Integer indexInLine(StaffElement element) {
-        var line = element.getParentLine();
-
-        if (line == null) {
-            return null;
-        }
-
-        return line.getElementIndex(element);
-    }
-
-    /**
      * The index of {@code element} within its line, for a caller that assumes it is in one.
      *
      * @throws IllegalStateException when {@code element} sits in no line
      */
     private int requireIndexInLine(StaffElement element) {
-        var index = indexInLine(element);
+        var line = element.getParentLine();
 
-        if (index == null) {
+        if (line == null) {
             throw new IllegalStateException(
                 getClass().getSimpleName() + " endpoint " + element + " is in no line");
         }
 
-        return index;
+        return line.getElementIndex(element);
     }
 
     /**

@@ -205,7 +205,7 @@ public final class Beam extends Span<NoteElement> {
      * <p>The first member with a forced stem decides, and the group follows it. Otherwise the
      * direction follows the members' staff-position contour: the sum of the lowest and highest
      * member positions is compared against 0 rather than halved, to keep the arithmetic
-     * integral, and a sum at or above 0 (Y-down, so heads at or above the middle on average)
+     * integral, and a sum at or below 0 (Y-down, so heads at or above the middle on average)
      * points the stems down. An upward contour that would trap a grace stem under the beam
      * ({@link #graceStemTouchesBeamAbove}) yields down instead: a grace stem always points up,
      * so an upward beam is the only one it can be buried under.
@@ -353,20 +353,15 @@ public final class Beam extends Span<NoteElement> {
          * neither neighbouring member does. The direction rule is:
          * <ul>
          *   <li>first member in group → right</li>
-         *   <li>last member, or member immediately after a beam break → left</li>
-         *   <li>member immediately before a beam break → right</li>
-         *   <li>otherwise → toward the neighbour with more beams</li>
+         *   <li>last member → left</li>
+         *   <li>any other member → toward the neighbour with more beams, and right when both
+         *       have the same number</li>
          * </ul>
          *
          * @return {@code true} for a stub drawn to the right; {@code false} for a stub drawn to
          *     the left, or for no stub at all
          */
         public boolean stubRight() {
-            var lastPosition = notes.size() - 1;
-            var myBeams = note.getType().beamCount();
-            var leftBeams = beamCountAt(position - 1);
-            var rightBeams = beamCountAt(position + 1);
-
             var hasStub = false;
 
             for (@Nullable BeamLevel level = BeamLevel.SIXTEENTH;
@@ -383,19 +378,14 @@ public final class Beam extends Span<NoteElement> {
             }
 
             if (position == 0) {
-                return true;                          // first element → stub right
+                return true;
             }
 
-            if (position == lastPosition || rightBeams < myBeams) {
-                return false;                         // last element or after break → left
+            if (position == notes.size() - 1) {
+                return false;
             }
 
-            //noinspection SimplifiableIfStatement
-            if (leftBeams < myBeams) {
-                return true;                          // element at a beam break → right
-            }
-
-            return rightBeams >= leftBeams;       // toward neighbour with more beams
+            return beamCountAt(position + 1) >= beamCountAt(position - 1);
         }
 
         /**

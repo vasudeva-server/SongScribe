@@ -40,8 +40,7 @@ public final class StaffElementFactory {
      * @return the note
      */
     public static NoteElement note(int staffPosition, @Nullable Accidental accidental) {
-        var note = crotchet();
-        note.setStaffPosition(new StaffPosition(staffPosition));
+        var note = placed(crotchet(), staffPosition);
 
         if (accidental != null) {
             note.choose(accidental);
@@ -69,9 +68,36 @@ public final class StaffElementFactory {
      * @return the note
      */
     public static NoteElement note(int staffPosition, Stem stem) {
-        var note = crotchet();
-        note.setStaffPosition(new StaffPosition(staffPosition));
+        var note = placed(crotchet(), staffPosition);
         note.setStem(stem);
+        return note;
+    }
+
+    /**
+     * A quaver at {@code staffPosition} whose stem is decided by {@code stem}.
+     *
+     * @param staffPosition the note's staff position
+     * @param stem the forced direction, or {@link Stem#AUTO}
+     * @return the note
+     */
+    public static NoteElement quaver(int staffPosition, Stem stem) {
+        var note = placed(quaver(), staffPosition);
+        note.setStem(stem);
+        return note;
+    }
+
+    /**
+     * A grace quaver at {@code staffPosition}.
+     *
+     * @param staffPosition the note's staff position
+     * @return the note
+     */
+    public static NoteElement graceQuaver(int staffPosition) {
+        return placed(graceQuaver(), staffPosition);
+    }
+
+    private static NoteElement placed(NoteElement note, int staffPosition) {
+        note.setStaffPosition(new StaffPosition(staffPosition));
         return note;
     }
 
@@ -97,6 +123,10 @@ public final class StaffElementFactory {
 
     public static NoteElement semiquaver() {
         return (NoteElement) ElementType.SEMIQUAVER.newInstance();
+    }
+
+    public static NoteElement demiSemiquaver() {
+        return (NoteElement) ElementType.DEMI_SEMIQUAVER.newInstance();
     }
 
     public static NoteElement dottedQuaver() {

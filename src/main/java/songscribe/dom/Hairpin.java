@@ -302,7 +302,13 @@ public final class Hairpin extends Span<StaffElement> implements IntrinsicHeight
      * @return {@link SpanOutcome.Keep#INSTANCE} or a {@link SpanOutcome.Remove} for a
      *     change that removes no element; for a deletion this hairpin survives, the
      *     {@link SpanOutcome.Reshape} over its projected span, and otherwise
-     *     a {@link SpanOutcome.Remove}
+     *     a {@link SpanOutcome.Remove}. A {@code Remove} gives the reason
+     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_INVALID} when the change leaves
+     *     the anchor or the end breaking rule 1 or 2,
+     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_TOO_FEW_COLUMNS} for rule 3,
+     *     {@link Strings#DIALOG_REPORT_REASON_HAIRPIN_STRUCTURAL_BOUNDARY} for rule 4, and
+     *     {@link Strings#DIALOG_REPORT_REASON_ENDPOINT_DELETED} for a deletion that leaves no
+     *     element able to anchor or end it, or fewer than {@value #MIN_COLUMNS} columns
      */
     public SpanOutcome.HairpinOutcome hairpinOutcomeFor(ElementChange change) {
         var range = range();
