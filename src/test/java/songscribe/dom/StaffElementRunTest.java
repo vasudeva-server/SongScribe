@@ -43,10 +43,10 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
  * What {@link StaffElementRun} promises about a note's real neighbors and about where content
- * may land on a run: a grace note is transparent to {@link StaffElementRun#previousNonGraceIndex},
- * {@link StaffElementRun#nextNonGraceIndex} and {@link StaffElementRun#nonGraceRange}, the
- * element asked from is never its own answer, and a direction — or a range — holding nothing but
- * grace notes has no neighbor, or no narrowed range, to offer. {@link StaffElementRun#canInsertRunAt}
+ * may land on a run: a grace note is transparent to {@link StaffElementRun#previousNonGraceIndex}
+ * and {@link StaffElementRun#nonGraceRange}, the element asked from is never its own answer, and
+ * a direction — or a range — holding nothing but grace notes has no neighbor, or no narrowed
+ * range, to offer. {@link StaffElementRun#canInsertRunAt}
  * composes the breath-mark placement rule for a run's two ends with the single-element insertion
  * rule it otherwise defers to, and {@link StaffElementRun#canInsertKeyChangeAt} adds a mid-line
  * key change's own slot rules to both, and {@link StaffElementRun#canReplaceElementAt} refuses
@@ -169,15 +169,7 @@ class StaffElementRunTest extends UnitTest {
             new NeighborCase("only a grace note before leaves no predecessor",
                 run -> run.previousNonGraceIndex(FIRST_NOTE), null),
             new NeighborCase("nothing before leaves no predecessor",
-                run -> run.previousNonGraceIndex(LEADING_GRACE), null),
-            new NeighborCase("a run of grace notes after is stepped over",
-                run -> run.nextNonGraceIndex(FIRST_NOTE), LAST_NOTE),
-            new NeighborCase("a single grace note after is stepped over",
-                run -> run.nextNonGraceIndex(FIRST_INNER_GRACE), LAST_NOTE),
-            new NeighborCase("the element asked from is not its own successor",
-                run -> run.nextNonGraceIndex(LEADING_GRACE), FIRST_NOTE),
-            new NeighborCase("nothing after leaves no successor",
-                run -> run.nextNonGraceIndex(LAST_NOTE), null)
+                run -> run.previousNonGraceIndex(LEADING_GRACE), null)
         );
     }
 

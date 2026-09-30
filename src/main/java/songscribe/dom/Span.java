@@ -319,7 +319,7 @@ public abstract sealed class Span<E extends StaffElement> extends LineElement im
      * @throws IllegalStateException when the anchor or the end sits in no line, or the anchor's
      *     line is not one of its song's lines — the span's own state, not an argument
      */
-    public ElementLocationRange location() {
+    private ElementLocationRange location() {
         var line = line();
         var lineIndex = line.getSong().indexOfLine(line);
 

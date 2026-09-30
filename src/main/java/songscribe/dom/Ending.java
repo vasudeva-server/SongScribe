@@ -537,16 +537,11 @@ public final class Ending extends Span<StaffElement> {
     }
 
     /**
-     * Whether an ending may end on an element of {@code endType}.
-     * <p>
-     * The split is a {@link ElementType#REPEAT_RIGHT}, which closes the repeated section, so
-     * the second bracket ends wherever a section may end: on a note or a rest, or on a bar that
-     * {@link ElementType#isEndingTerminal() ends an ending}.
-     *
-     * @param endType the type of the element the ending ends on
-     * @return {@code true} when {@code endType} is a note, a rest, or an ending terminal
+     * The split closes the repeated section, so the second bracket ends wherever a section may
+     * end: on a note or a rest, or on a bar that {@link ElementType#isEndingTerminal() ends an
+     * ending}.
      */
-    public static boolean isValidEnd(ElementType endType) {
+    private static boolean isValidEnd(ElementType endType) {
         return endType.isDuration() || endType.isEndingTerminal();
     }
 

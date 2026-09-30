@@ -192,7 +192,7 @@ class SongAccidentalWalkTest extends UnitTest {
             () -> secondLine.setKey(null));
     }
 
-    /** The removed line carries its own key, so the edit routes through {@link ChainEdit#lineRemoved}'s rekey clause. */
+    /** The removed line carries its own key, so {@link ChainEdit#of} maps the edit to a removal that reaches the next key change. */
     private static Fixture lineRemovalWithOwnKeyCase() {
         var song = SongFactory.buildSong(
             line -> SongFactory.addCompactElements(line, F + "f " + F),
@@ -207,7 +207,7 @@ class SongAccidentalWalkTest extends UnitTest {
             () -> song.addLine(1, removedLine));
     }
 
-    /** The inserted line carries its own key, so the edit routes through {@link ChainEdit#lineInserted}'s rekey clause. */
+    /** The inserted line carries its own key, so {@link ChainEdit#of} maps the edit to an insertion that reaches the next key change. */
     private static Fixture lineInsertionWithOwnKeyCase() {
         var song = compactSong(Key.NO_ACCIDENTALS, F + "f " + F);
         var insertedLine = new Line(song);
@@ -250,8 +250,9 @@ class SongAccidentalWalkTest extends UnitTest {
     }
 
     /**
-     * The removed line holds a mid-line key change but no key of its own, so the edit routes
-     * through {@link ChainEdit#lineRemoved}'s rekey clause; the line behind it inherits a new
+     * The removed line holds a mid-line key change but no key of its own, so
+     * {@link ChainEdit#of} maps the edit to a removal that reaches the next key change; the line
+     * behind it inherits a new
      * key, and its note past the span is decided only because the edit reaches the next key
      * change.
      */

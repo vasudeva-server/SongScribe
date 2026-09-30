@@ -111,7 +111,7 @@ class EndingBracketGeometryTest extends UnitTest {
     /** What splits the two brackets: an ending's split is always a right repeat. */
     private static final ElementType SPLIT_TYPE = ElementType.REPEAT_RIGHT;
 
-    /** Every bar and repeat: what a bracket may close on, and what it may run on to. */
+    /** Every bar and repeat: what a bracket may run on to. */
     private static final List<ElementType> BAR_TYPES = List.of(
         ElementType.SINGLE_BARLINE,
         ElementType.DOUBLE_BARLINE,
@@ -120,9 +120,16 @@ class EndingBracketGeometryTest extends UnitTest {
         ElementType.REPEAT_RIGHT,
         ElementType.REPEAT_LEFT_RIGHT);
 
-    /** What the bracket may close on: any bar or repeat, or a note. */
-    private static final List<ElementType> CLOSING_TYPES =
-        Stream.concat(BAR_TYPES.stream(), Stream.of(ElementType.CROTCHET)).toList();
+    /**
+     * What the bracket may close on: a note, or a bar that ends an ending. {@code EndingTest}
+     * states the accepted set; a right repeat and a left-right repeat are not in it.
+     */
+    private static final List<ElementType> CLOSING_TYPES = List.of(
+        ElementType.SINGLE_BARLINE,
+        ElementType.DOUBLE_BARLINE,
+        ElementType.FINAL_DOUBLE_BARLINE,
+        ElementType.REPEAT_LEFT,
+        ElementType.CROTCHET);
 
     /** A run-on row varies only what it runs on to, so it opens on a plain barline throughout. */
     private static final ElementType RUN_ON_OPENING_TYPE = ElementType.SINGLE_BARLINE;
@@ -284,15 +291,10 @@ class EndingBracketGeometryTest extends UnitTest {
             .isTrue();
     }
 
-    /**
-     * The cross product of the two axes, less the closing types {@link Ending#isValidEnd}
-     * refuses, so a row the document model cannot hold is not a row this test pins.
-     */
+    /** The cross product of the two axes: every opening with every closing type. */
     static Stream<Alignment> reachableAlignments() {
         return OPENING_TYPES.stream().flatMap(opening ->
-            CLOSING_TYPES.stream()
-                .filter(Ending::isValidEnd)
-                .map(closing -> new Alignment(opening, closing)));
+            CLOSING_TYPES.stream().map(closing -> new Alignment(opening, closing)));
     }
 
     /**

@@ -662,25 +662,6 @@ public interface StaffElementRun {
     }
 
     /**
-     * Returns the index of the nearest element after {@code fromIndex} that is not a grace
-     * note — {@link #previousNonGraceIndex} in the other direction. {@code fromIndex} itself
-     * is not examined.
-     *
-     * @param fromIndex the index to search forward from
-     * @return the nearest non-grace index above {@code fromIndex}, or {@code null} when every
-     *     element after it is a grace note or nothing stands after it
-     */
-    default @Nullable Integer nextNonGraceIndex(int fromIndex) {
-        for (var i = fromIndex + 1; hasIndex(i); i++) {
-            if (!getElement(i).getType().isGraceNote()) {
-                return i;
-            }
-        }
-
-        return null;
-    }
-
-    /**
      * Whether {@code range} crosses a structural boundary: a repeat, or a barline other than
      * {@link ElementType#SINGLE_BARLINE}.
      *

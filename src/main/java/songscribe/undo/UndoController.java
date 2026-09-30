@@ -406,9 +406,10 @@ public final class UndoController {
 
     /**
      * Sets the Tier-A op-name that the next outermost modification bracket will capture.
-     * Prefer {@link #withPendingOpName}, which pairs the set with its restore. EDT-only.
+     * {@link #withPendingOpName} is the only caller, because it pairs the set with its restore.
+     * EDT-only.
      */
-    public static void setPendingOpName(@Nullable String opName) {
+    private static void setPendingOpName(@Nullable String opName) {
         INSTANCE.pendingOpName = opName;
     }
 

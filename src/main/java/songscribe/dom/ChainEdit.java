@@ -234,7 +234,7 @@ public final class ChainEdit {
      *     it — or when any of its elements
      *     {@link ElementType#endsAccidentalsInForce() ends what is in force}
      */
-    public static ChainEdit lineInserted(Line line) {
+    private static ChainEdit lineInserted(Line line) {
         var elements = line.getElements();
 
         return new ChainEdit(
@@ -254,7 +254,7 @@ public final class ChainEdit {
      *     the position of every note the removed line held, reaching the next key change when
      *     the removed line had its own key or held a key change
      */
-    public static ChainEdit lineRemoved(int lineIndex, Line removed) {
+    private static ChainEdit lineRemoved(int lineIndex, Line removed) {
         var elements = removed.getElements();
 
         return new ChainEdit(
