@@ -31,23 +31,19 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.DocumentScale;
-import songscribe.dom.Dots;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.NotatableValue;
 import songscribe.dom.NoteValue;
 import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
-import songscribe.dom.TupletGrade;
-import songscribe.dom.TupletRatio;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.SpanFactory.hairpinOver;
+import static songscribe.dom.SpanFactory.trillOver;
+import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.repeatRight;
 import static songscribe.io.musicxml.MusicXmlRoundTripSupport.X_OFFSET_PX;
@@ -106,10 +102,6 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
     private static final int THIRD_NOTE = 2;
     private static final int NOTE_AFTER_REPEAT = 5;
 
-    private static final int TRIPLET_NORMAL_NOTES = 2;
-    private static final TupletRatio TWO_CROTCHETS =
-        new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.QUARTER, Dots.NONE));
-
     /**
      * One span on the fixture line, and one of its hand-placed offsets.
      *
@@ -165,11 +157,10 @@ class MusicXmlOffsetRoundTripTest extends UnitTest {
             new SpanOffsetCase("a hairpin's end shift",
                 crescendo, span -> ((Hairpin) span).getX2ShiftSs(), (span, shift) -> ((Hairpin) span).setX2ShiftSs(shift)),
             new SpanOffsetCase("a trill's vertical offset",
-                line -> new Trill(line.getElement(FIRST_NOTE), line.getElement(SECOND_NOTE)),
+                line -> trillOver(line, new ElementRange(FIRST_NOTE, SECOND_NOTE)),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs),
             new SpanOffsetCase("a tuplet's vertical offset",
-                line -> new Tuplet(
-                    line.getElement(FIRST_NOTE), line.getElement(THIRD_NOTE), TupletGrade.TRIPLET, TWO_CROTCHETS),
+                line -> tripletOver(line, new ElementRange(FIRST_NOTE, THIRD_NOTE), NoteValue.QUARTER),
                 Span::getUserYOffsetSs, Span::setUserYOffsetSs),
             new SpanOffsetCase("an ending's vertical offset",
                 line -> endingOver(line, new ElementRange(SECOND_NOTE, NOTE_AFTER_REPEAT)),

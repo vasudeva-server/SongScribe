@@ -195,10 +195,9 @@ public final class TupletValidator {
     /**
      * Applies the constraints to a span already measured by {@link #describeSpan}.
      *
-     * <p>The ratio, the fermata and the pitched-note count hold under both strictnesses; the
-     * conventional span,
-     * the redundancy test, the beat barrier and the structural boundary hold under
-     * {@link Strictness#STRICT} only. Editing and pasting are strict — they choose what
+     * <p>The ratio, the fermata, the pitched-note count, the conventional span and the
+     * redundancy test hold under both strictnesses; the beat barrier and the structural
+     * boundary hold under {@link Strictness#STRICT} only. Editing and pasting are strict — they choose what
      * gets written — while loading and importing are lenient, because a document that
      * already exists is not improved by dropping a tuplet whose only fault is that this
      * editor would not have offered to create it there.

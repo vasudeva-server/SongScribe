@@ -182,32 +182,17 @@ public final class Beam extends Span<NoteElement> {
 
     /**
      * Whether putting {@code newElement} at {@code replacedIndex} breaks the class invariant
-     * — see {@link #replacementBreaksInvariant}.
+     * — see {@link #replacementBreaksInvariant}. Any element that is not beamable breaks it,
+     * whatever its type.
      *
      * @param beamRange     this beam's range in the pre-replacement line
      * @param replacedIndex the position being replaced
      * @param newElement    the element taking its place
-     * @return {@code true} when the position is in the beam and {@code newElement} cannot
-     *     stand there
+     * @return {@code true} when the position is in the beam and {@code newElement} is not
+     *     beamable
      */
     private static boolean pairBreaksInvariant(ElementRange beamRange, int replacedIndex, StaffElement newElement) {
-        if (!beamRange.contains(replacedIndex)) {
-            return false;
-        }
-
-        if (!(newElement instanceof NoteElement newNote)) {
-            return true;
-        }
-
-        var newType = newNote.getType();
-
-        if (newType.isBeamable()) {
-            return false;
-        }
-
-        // A beam legitimately passes over a grace note in its interior (refs #592), but its
-        // endpoints are members of the beam, and a grace note cannot be one.
-        return !newType.isGraceNote() || replacedIndex == beamRange.begin() || replacedIndex == beamRange.end();
+        return beamRange.contains(replacedIndex) && !newElement.getType().isBeamable();
     }
 
     // -------------------------------------------------------------------------

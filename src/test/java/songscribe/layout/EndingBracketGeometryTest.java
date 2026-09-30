@@ -42,6 +42,7 @@ import songscribe.smufl.SMuFLMetadata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.SpanFactory.endingOver;
+import static songscribe.dom.StaffElementFactory.bar;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
@@ -335,19 +336,32 @@ class EndingBracketGeometryTest extends UnitTest {
         ElementType opening, ElementType split, ElementType closing
     ) {
         var elements = new ArrayList<StaffElement>();
-        elements.add(opening.newInstance());
+        elements.add(elementOf(opening));
         elements.add(crotchet());
         elements.add(crotchet());
-        elements.add(split.newInstance());
+        elements.add(elementOf(split));
         elements.add(crotchet());
         elements.add(crotchet());
-        elements.add(closing.newInstance());
+        elements.add(elementOf(closing));
 
         if (!closing.isBar()) {
             elements.add(crotchet());
         }
 
         return elements;
+    }
+
+    /** A bar of {@code type}, or a crotchet: the one note type the fixture's rows use. */
+    private static StaffElement elementOf(ElementType type) {
+        if (type.isBar()) {
+            return bar(type);
+        }
+
+        if (type == ElementType.CROTCHET) {
+            return crotchet();
+        }
+
+        throw new IllegalArgumentException("the fixture has no element of type " + type);
     }
 
     /**

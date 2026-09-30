@@ -34,7 +34,10 @@ import songscribe.dom.StaffElementRun.ElementRange;
 import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.DOTTED_BEAT_TEMPO;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.dupletOver;
+import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
@@ -51,12 +54,7 @@ import static songscribe.dom.StaffElementFactory.quaver;
  */
 class TupletBeatRuleTest extends UnitTest {
 
-    private static final int TRIPLET_NORMAL_NOTES = 2;
-    private static final int DUPLET_NORMAL_NOTES = 3;
     private static final int BPM_STEP = 10;
-
-    private static final Tempo DOTTED_BEAT_TEMPO =
-        new Tempo(Tempo.DEFAULT_BPM, BeatUnit.CROTCHET_DOTTED, Tempo.DEFAULT_MARKING);
 
     private static final BeatChange DOTTED_BEAT_CHANGE = new BeatChange(BeatUnit.CROTCHET, BeatUnit.CROTCHET_DOTTED);
 
@@ -175,19 +173,14 @@ class TupletBeatRuleTest extends UnitTest {
     }
 
     private static Tuplet placeTriplet(Line line, ElementRange range) {
-        var ratio = new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.EIGHTH, Dots.NONE));
-
-        return place(line, range, TupletGrade.TRIPLET, ratio);
+        return place(line, tripletOver(line, range, NoteValue.EIGHTH));
     }
 
     private static Tuplet placeDuplet(Line line, ElementRange range) {
-        var ratio = new TupletRatio(DUPLET_NORMAL_NOTES, new NotatableValue(NoteValue.EIGHTH, Dots.NONE));
-
-        return place(line, range, TupletGrade.DUPLET, ratio);
+        return place(line, dupletOver(line, range, NoteValue.EIGHTH));
     }
 
-    private static Tuplet place(Line line, ElementRange range, TupletGrade grade, TupletRatio ratio) {
-        var tuplet = new Tuplet(line.getElement(range.begin()), line.getElement(range.end()), grade, ratio);
+    private static Tuplet place(Line line, Tuplet tuplet) {
         tuplet.addTo(line);
 
         return tuplet;

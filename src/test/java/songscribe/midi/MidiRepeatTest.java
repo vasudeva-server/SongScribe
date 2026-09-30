@@ -23,8 +23,6 @@ package songscribe.midi;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import javax.sound.midi.ShortMessage;
-
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -41,6 +39,7 @@ import static songscribe.dom.StaffElementFactory.note;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatLeftRight;
 import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.midi.MidiSequences.noteOnPitches;
 
 /**
  * {@code MidiSequenceBuilder.buildSequenceWithRepeats}: a {@code :|} or {@code :|:} replays the
@@ -100,14 +99,7 @@ class MidiRepeatTest extends UnitTest {
         var sequence = new MidiSequenceBuilder(song, REPEATED_PLAYBACK).buildFullSequence();
         var order = new StringBuilder();
 
-        for (var track : sequence.getTracks()) {
-            for (var i = 0; i < track.size(); i++) {
-                if (track.get(i).getMessage() instanceof ShortMessage message
-                        && message.getCommand() == ShortMessage.NOTE_ON && message.getData2() > 0) {
-                    order.append(letterOf(message.getData1()));
-                }
-            }
-        }
+        noteOnPitches(sequence).forEach(pitch -> order.append(letterOf(pitch)));
 
         assertThat(order.toString()).isEqualTo(testCase.expectedOrder());
     }

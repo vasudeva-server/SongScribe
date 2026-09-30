@@ -29,13 +29,13 @@ import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Accidental;
 import songscribe.dom.ChainedAccidental.ChainType;
-import songscribe.dom.Dots;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementLocationRange;
-import songscribe.dom.NotatableValue;
+import songscribe.dom.Hairpin;
 import songscribe.dom.NoteElement;
 import songscribe.dom.NoteValue;
 import songscribe.dom.PendingEnding;
+import songscribe.dom.PendingHairpin;
 import songscribe.dom.PendingTuplet;
 import songscribe.dom.ReportedChange;
 import songscribe.dom.StaffElement;
@@ -46,8 +46,11 @@ import songscribe.dom.TupletValidator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
+import static songscribe.dom.SpanFactory.ratioOf;
 import static songscribe.dom.StaffElementFactory.breathMark;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.singleBarline;
 
 /**
@@ -60,8 +63,6 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 class LoadPassesTest extends UnitTest {
 
     private static final int LINE_INDEX = 0;
-
-    private static final int TRIPLET_NORMAL_NOTES = 2;
 
     private static final double NO_OFFSET_SS = 0.0;
 
@@ -77,6 +78,9 @@ class LoadPassesTest extends UnitTest {
     private static final int BARLINE_INDEX = 8;
     private static final int BREATH_MARK_INDEX = 9;
 
+    /** A note and the rest after it: a hairpin cannot end on a rest. */
+    private static final ElementRange DROPPED_HAIRPIN = new ElementRange(BREATH_MARK_INDEX + 1, BREATH_MARK_INDEX + 2);
+
     @Test
     void testTheReportHoldsOneEntryForEachChangeTheLoadMade() {
         var song = buildSong(line -> {
@@ -87,17 +91,21 @@ class LoadPassesTest extends UnitTest {
             line.addElement(singleBarline());
             line.addElement(breathMark());
             line.addElement(crotchet());
+            line.addElement(crotchetRest());
         });
         var line = song.getLine(LINE_INDEX);
         var grade = TupletGrade.TRIPLET;
-        var sameCount = new TupletRatio(grade.number(), new NotatableValue(NoteValue.QUARTER, Dots.NONE));
+        var sameCount = ratioOf(grade.number(), NoteValue.QUARTER);
         var derivedTuplet = pendingTuplet(line.getElements(), DERIVED_TUPLET, grade, null);
         var droppedTuplet = pendingTuplet(line.getElements(), DROPPED_TUPLET, grade, sameCount);
         var droppedEnding = new PendingEnding(
             line.getElement(DROPPED_ENDING.begin()), line.getElement(DROPPED_ENDING.end()), NO_OFFSET_SS);
+        var droppedHairpin = new PendingHairpin(
+            Hairpin.Kind.CRESCENDO, line.getElement(DROPPED_HAIRPIN.begin()), line.getElement(DROPPED_HAIRPIN.end()),
+            NO_OFFSET_SS, NO_OFFSET_SS, NO_OFFSET_SS);
 
         var report = LoadPasses.run(song, new LoadPasses.Input(
-            List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding), List.of(), true));
+            List.of(derivedTuplet, droppedTuplet), List.of(droppedEnding), List.of(droppedHairpin), true));
 
         assertThat(report.changes()).containsExactly(
             new ReportedChange(
@@ -112,6 +120,10 @@ class LoadPassesTest extends UnitTest {
                 Strings.DIALOG_REPORT_ENDINGS_REMOVED,
                 Strings.get(Strings.DIALOG_REPORT_REASON_ENDING_NOT_VALID),
                 locationOf(DROPPED_ENDING)),
+            new ReportedChange(
+                Strings.DIALOG_REPORT_HAIRPINS_REMOVED,
+                Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_ENDPOINT_UNUSABLE),
+                locationOf(DROPPED_HAIRPIN)),
             new ReportedChange(
                 Strings.DIALOG_REPORT_BREATH_MARKS_REMOVED,
                 Strings.get(Strings.DIALOG_REPORT_REASON_BREATH_MARK_HOST),

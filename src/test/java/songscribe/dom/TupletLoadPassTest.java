@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,31 +33,30 @@ import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.dom.SpanFactory.TRIPLET_NORMAL_NOTES;
+import static songscribe.dom.SpanFactory.ratioOf;
 
 /**
  * {@link TupletLoadPass#run}: the one place a read tuplet becomes a {@link Tuplet}. A stated ratio
  * is kept when the validator accepts it, an absent one is derived and reported, and a tuplet the
- * validator rejects or whose span holds too few notes is dropped with its reason.
+ * validator rejects is dropped with the validator's reason. An added tuplet carries the offset the
+ * file stated.
  */
 class TupletLoadPassTest extends UnitTest {
 
     private static final int PITCH = 3;
     private static final int LINE = 0;
 
-    /** A triplet: three notes in the time of two. */
-    private static final int TRIPLET_GRADE = 3;
-    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int TRIPLET_GRADE = TupletGrade.TRIPLET.number();
 
-    /** The three crotchets every case's tuplet spans, unless it spans rests. */
+    /** The three crotchets every case's tuplet spans. */
     private static final String THREE_NOTES = PITCH + " " + PITCH + " " + PITCH + " " + PITCH;
     private static final ElementRange SPAN = new ElementRange(0, 2);
 
-    private static final TupletRatio TWO_CROTCHETS =
-        new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.QUARTER, Dots.NONE));
+    private static final TupletRatio TWO_CROTCHETS = ratioOf(TRIPLET_NORMAL_NOTES, NoteValue.QUARTER);
 
     /** A ratio whose normal-note count equals the grade, which states no tuplet at all. */
-    private static final TupletRatio SAME_COUNT =
-        new TupletRatio(TRIPLET_GRADE, new NotatableValue(NoteValue.QUARTER, Dots.NONE));
+    private static final TupletRatio SAME_COUNT = ratioOf(TRIPLET_GRADE, NoteValue.QUARTER);
 
     private static final double Y_OFFSET_SS = 1.5;
 
@@ -96,23 +94,27 @@ class TupletLoadPassTest extends UnitTest {
 
         var report = new ChangeReport();
 
-        TupletLoadPass.run(song, List.of(pendingOver(line, testCase.statedRatio(), 0)), report);
+        TupletLoadPass.run(song, List.of(pendingOver(line, testCase.statedRatio(), Y_OFFSET_SS)), report);
 
         var tuplets = line.spanRegistry().findSpans(Tuplet.class);
 
         switch (testCase.outcome()) {
             case ADDED_AS_STATED -> {
                 assertThat(report.isEmpty()).isTrue();
-                assertThat(tuplets).singleElement()
-                    .satisfies(tuplet -> assertThat(tuplet.getRatio()).isEqualTo(testCase.statedRatio()));
+                assertThat(tuplets).singleElement().satisfies(tuplet -> {
+                    assertThat(tuplet.getRatio()).isEqualTo(testCase.statedRatio());
+                    assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
+                });
             }
             case ADDED_DERIVED -> {
                 assertThat(report.changes()).containsExactly(new ReportedChange(
                     Strings.DIALOG_REPORT_TUPLETS_UPDATED,
                     Strings.get(Strings.DIALOG_REPORT_UPDATED_DETAIL, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES),
                     spanLocation()));
-                assertThat(tuplets).singleElement()
-                    .satisfies(tuplet -> assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES));
+                assertThat(tuplets).singleElement().satisfies(tuplet -> {
+                    assertThat(tuplet.getRatio().normalNotes()).isEqualTo(TRIPLET_NORMAL_NOTES);
+                    assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS);
+                });
             }
             case DROPPED -> {
                 var reason = testCase.reason();
@@ -134,25 +136,8 @@ class TupletLoadPassTest extends UnitTest {
             new LoadCase("an absent ratio is derived from the beat",
                 THREE_NOTES, null, Outcome.ADDED_DERIVED, null),
             new LoadCase("a stated ratio the validator rejects is dropped with the validator's reason",
-                THREE_NOTES, SAME_COUNT, Outcome.DROPPED, TupletValidator.Reason.BAD_RATIO),
-            new LoadCase("a span with fewer than two notes is dropped as holding too few",
-                PITCH + " R R " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES),
-            new LoadCase("a span of three rests is dropped as holding too few",
-                "R R R " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES),
-            new LoadCase("a span of a note, a grace note and a rest is dropped as holding too few",
-                PITCH + " g" + PITCH + " R2 " + PITCH, TWO_CROTCHETS, Outcome.DROPPED, TupletValidator.Reason.TOO_FEW_NOTES)
+                THREE_NOTES, SAME_COUNT, Outcome.DROPPED, TupletValidator.Reason.BAD_RATIO)
         );
-    }
-
-    @Test
-    void testTheAddedTupletTakesThePendingOffset() {
-        var song = compactSong(Key.NO_ACCIDENTALS, THREE_NOTES);
-        var line = song.getLine(LINE);
-
-        TupletLoadPass.run(song, List.of(pendingOver(line, TWO_CROTCHETS, Y_OFFSET_SS)), new ChangeReport());
-
-        assertThat(line.spanRegistry().findSpans(Tuplet.class)).singleElement()
-            .satisfies(tuplet -> assertThat(tuplet.getUserYOffsetSs()).isEqualTo(Y_OFFSET_SS));
     }
 
     /** The range every report entry of this class names: {@link #SPAN} on the one line. */

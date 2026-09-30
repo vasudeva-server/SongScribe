@@ -32,7 +32,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 import static songscribe.dom.BatchReplay.redo;
 import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.SongFactory.DOTTED_BEAT_TEMPO;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.trillOver;
+import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
 
 /**
@@ -60,10 +63,6 @@ class ChangeReportDeliveryTest extends UnitTest {
 
     /** The triplet the beat rule removes: three quavers, valid in a crotchet beat only. */
     private static final ElementRange TRIPLET = new ElementRange(13, 15);
-    private static final int TRIPLET_NORMAL_NOTES = 2;
-
-    private static final Tempo DOTTED_BEAT_TEMPO =
-        new Tempo(Tempo.DEFAULT_BPM, BeatUnit.CROTCHET_DOTTED, Tempo.DEFAULT_MARKING);
 
     @Test
     void testOneEditDeliversOneReportHoldingEveryRemoval() {
@@ -140,14 +139,11 @@ class ChangeReportDeliveryTest extends UnitTest {
             }
         });
         var line = song.getLine(FIRST_LINE);
-        var ratio = new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.EIGHTH, Dots.NONE));
 
         song.withoutMutationTracking(() -> {
             trillOver(line, FUNNELED_TRILL).addTo(line);
             trillOver(line, REPLACED_TRILL).addTo(line);
-            new Tuplet(
-                line.getElement(TRIPLET.begin()), line.getElement(TRIPLET.end()), TupletGrade.TRIPLET, ratio)
-                .addTo(line);
+            tripletOver(line, TRIPLET, NoteValue.EIGHTH).addTo(line);
         });
 
         return song;
@@ -165,9 +161,5 @@ class ChangeReportDeliveryTest extends UnitTest {
         song.setTempo(DOTTED_BEAT_TEMPO);
         trillOver(line, REPLACING_TRILL).addTo(line);
         line.removeRange(ElementRange.single(DELETED_INDEX));
-    }
-
-    private static Trill trillOver(Line line, ElementRange range) {
-        return new Trill(line.getElement(range.begin()), line.getElement(range.end()));
     }
 }

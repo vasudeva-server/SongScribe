@@ -73,7 +73,7 @@ import songscribe.error.RuntimeError;
  *            on the line that is not {@link ElementType#isNonContentElement() non-content} is
  *            not a bar; the first element of the next line is not read
  * @invariant each bracket ({@link #firstBracket}, {@link #secondBracket}) holds no bar and at
- *            least one note or rest; a grace note, a slide or a breath mark is not content
+ *            least one note or rest; a grace note, a breath mark or a key change is not content
  * @invariant the split closes an open repeat section: {@link Song#repeatSectionStart} at the
  *            split is not {@code null} ({@link #closesOpenSection}), which reads across lines
  * @invariant the ranges of two endings on a line do not overlap
@@ -430,7 +430,7 @@ public final class Ending extends Span<StaffElement> {
      * anchor itself. The editor anchors a new ending on this element, and layout starts the
      * bracket's left edge at it, so both apply the one rule.
      * <p>
-     * Grace notes, slides and breath marks are transparent here, as they are everywhere else
+     * Grace notes, breath marks and key changes are transparent here, as they are everywhere else
      * an ending reasons about its neighbours. The walk back starts only from a note or a rest,
      * and it stops at the first element that is not transparent: when that element is not a
      * {@code SINGLE_BARLINE}, the anchor opens the bracket itself. An anchor that is a bar is

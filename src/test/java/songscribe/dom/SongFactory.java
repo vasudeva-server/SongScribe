@@ -41,6 +41,10 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
 /** Shared factory methods for whole {@link Song}s used across test classes. */
 public final class SongFactory {
 
+    /** A tempo whose beat is a dotted crotchet: a song or an element that sets it has a compound beat. */
+    public static final Tempo DOTTED_BEAT_TEMPO =
+        new Tempo(Tempo.DEFAULT_BPM, BeatUnit.CROTCHET_DOTTED, Tempo.DEFAULT_MARKING);
+
     private SongFactory() {}
 
     /**

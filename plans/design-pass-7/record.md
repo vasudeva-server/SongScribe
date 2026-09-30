@@ -34,7 +34,7 @@ the Gradle filter matches the name as a suffix. Count the two classes apart.
 | 3 Unrepresentable states | ✅ | ✅ | [step-3-plan.md](step-3-plan.md) | `findings-3.md`: all 24 items accepted. Item 5, the factory checks only that a split exists. Item 11, the legacy reader drops an out-of-range grade with a warning. Item 22, `Span<E extends StaffElement>`. No known path leaves a registered span with a detached endpoint (item 1) |
 | 4 Extraction | ✅ | ✅ | [step-4-plan.md](step-4-plan.md) | `findings-4.md`. Settled while executing, item 18: an ending anchors only on a note, a rest or a `SINGLE_BARLINE`, and a note or rest anchor needs a `SINGLE_BARLINE`, a note, a rest or the start of its line in front of it. The editor and the bracket geometry share that rule, and `volta-alignments.musicxml` holds one line per valid opening |
 | 5 Contracts | ✅ | ✅ | [step-5-plan.md](step-5-plan.md) | `findings-5.md`: all 9 items accepted. Item 3, a pasted ending goes through `Ending.spanning`, and a refused one is removed and reported. Item 9, a hairpin never ends on a rest; a `Hairpin` factory judges every hairpin, including a new `HairpinLoadPass` |
-| 6 Test triage | ⏳ | ⏳ | — | |
+| 6 Test triage | ✅ | ✅ | — | `findings-6.md`: 12 items accepted, no test discarded. Scope: every class the pass touched, in every package. Item 2, the Beam sweep has seven rows, and `Beam.pairBreaksInvariant` judges only whether the new element is beamable. Item 6, each kind's sweep sits in its own test class. Item 7, `ModificationSessionTest` holds the replay gate. No `TupletValidator.Reason` is dead: each has an input |
 | 7 Test-only surface | ⏳ | ⏳ | — | |
 | 8a Suite gate | ⏳ | n/a | — | |
 | 8b Visual gate | ⏳ | n/a | — | |
@@ -162,3 +162,22 @@ register at step 13, before this file is deleted.
 - If item 1 is rejected, the comments that describe an endpoint "in whichever line" are
   stale: `HairpinEndpoints.compute`, the `ScorePartwiseBuilder.forEachSpanInRange` Javadoc,
   and the `LineSpans` class Javadoc.
+
+**For step 7 (test-only surface)** — from step 6:
+
+- `EndingBracketGeometryTest` filters its rows through `Ending.isValidEnd`. No production
+  class outside `Ending` calls it. `EndingTest.testSpanningAcceptsAnEndOnlyOnANoteARestOrAnEndingTerminal`
+  states the accepted end types, so the geometry test no longer needs the public method.
+
+**For row 12 (Song)** — from step 6:
+
+- `ModificationSessionTest` (`dom`) holds the three tests of the gate that
+  `ModificationSession.endModification` puts on every rule, through the tie rule. Row 12 owns
+  `ModificationSession` and may rewrite them.
+
+**For the accidental and load rows** — from step 6:
+
+- `LoadPassesTest.testABareNoteAfterABarlineSoundsWhatIsInForce…` and
+  `testAParenthesizedAccidentalReadsAsAPlainOne` test the accidental stamp on
+  `accidental-load.musicxml`. Their subject is not a span.
+- `TupletValidator.validateFrom` has no direct test. `TupletBeatRuleTest` reaches it.

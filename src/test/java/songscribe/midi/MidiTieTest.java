@@ -22,8 +22,6 @@ package songscribe.midi;
 
 import java.util.stream.Stream;
 
-import javax.sound.midi.ShortMessage;
-
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -34,6 +32,7 @@ import songscribe.dom.Song;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.compactSong;
+import static songscribe.midi.MidiSequences.noteOnPitches;
 
 /**
  * A tie joins two written notes into one sounding note: a tied note starts no new note when its
@@ -76,18 +75,8 @@ class MidiTieTest extends UnitTest {
         }
 
         var sequence = new MidiSequenceBuilder(song, PLAIN_PLAYBACK).buildFullSequence();
-        var noteOns = 0;
 
-        for (var track : sequence.getTracks()) {
-            for (var i = 0; i < track.size(); i++) {
-                if (track.get(i).getMessage() instanceof ShortMessage message
-                        && message.getCommand() == ShortMessage.NOTE_ON && message.getData2() > 0) {
-                    noteOns++;
-                }
-            }
-        }
-
-        assertThat(noteOns).isEqualTo(testCase.soundedNotes());
+        assertThat(noteOnPitches(sequence)).hasSize(testCase.soundedNotes());
     }
 
     static Stream<TieCase> tieCases() {

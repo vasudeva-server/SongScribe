@@ -31,13 +31,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.dom.Beam;
-import songscribe.dom.Dots;
 import songscribe.dom.NoteElement;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.SongFactory.buildSong;
+import static songscribe.dom.SpanFactory.beamOver;
+import static songscribe.dom.StaffElementFactory.dottedQuaver;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.semiquaver;
@@ -105,7 +106,7 @@ class MusicXmlBeamTest extends UnitTest {
     private static Song beamedSong(List<NoteElement> notes) {
         return buildSong(line -> {
             notes.forEach(line::addElement);
-            new Beam(notes.getFirst(), notes.getLast()).addTo(line);
+            beamOver(line, new ElementRange(0, notes.size() - 1)).addTo(line);
         });
     }
 
@@ -127,12 +128,5 @@ class MusicXmlBeamTest extends UnitTest {
         }
 
         return values;
-    }
-
-    private static NoteElement dottedQuaver() {
-        var note = quaver();
-        note.setDots(Dots.ONE);
-
-        return note;
     }
 }

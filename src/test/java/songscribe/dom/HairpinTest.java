@@ -20,6 +20,7 @@
 
 package songscribe.dom;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -27,13 +28,18 @@ import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
+import songscribe.dom.BatchReplay.BatchRecorder;
+import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SpanFactory.hairpinOver;
 import static songscribe.dom.StaffElementFactory.bar;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
@@ -45,7 +51,9 @@ import static songscribe.dom.StaffElementFactory.singleBarline;
  * {@link Hairpin#spanning}: which ranges of a line hold a hairpin, per the class invariant on
  * {@link Hairpin}, and the reason and cause it gives for each range it refuses, judged over the
  * range the hairpin would converge to. And {@link Hairpin#converge}: the range a new hairpin
- * widens to over the same-kind hairpins in reach, repeated until it stops growing.
+ * widens to over the same-kind hairpins in reach, repeated until it stops growing. And the sweep
+ * of an edit that brings a repeat or a non-single bar inside a hairpin: the hairpin is removed and
+ * reported, and undo puts it back.
  */
 class HairpinTest extends UnitTest {
 
@@ -252,6 +260,81 @@ class HairpinTest extends UnitTest {
                 HairpinTest::lineWithUnmergedChain, CHAIN_CANDIDATE, CHAIN_CONVERGED,
                 List.of(CHAIN_FIRST, CHAIN_SECOND_LEFT))
         );
+    }
+
+    /** The hairpin the bar edits land in. */
+    private static final ElementRange EDITED = new ElementRange(0, 2);
+
+    /** The note strictly inside {@link #EDITED} that a bar edit lands on. */
+    private static final int EDITED_INTERIOR = EDITED.begin() + 1;
+
+    private static final int EDITED_LINE_LENGTH = 6;
+
+    private static final int PITCH = 3;
+
+    /**
+     * A line of {@link #EDITED_LINE_LENGTH} notes in compact notation, whose song gives each note
+     * the accidental state an edit inside a modification bracket reads.
+     */
+    private static final String LINE_OF_NOTES =
+        String.join(" ", Collections.nCopies(EDITED_LINE_LENGTH, String.valueOf(PITCH)));
+
+    /** How an edit brings a bar inside a hairpin. */
+    private enum BarEdit {
+        /** The bar is inserted in front of {@link #EDITED_INTERIOR}. */
+        INSERTION,
+        /** The bar replaces the note at {@link #EDITED_INTERIOR}. */
+        REPLACEMENT
+    }
+
+    /**
+     * Every bar other than a single barline that an edit can put inside a hairpin, with each edit.
+     * A final double barline is not one: it may only end the song, so nothing follows it.
+     */
+    static Stream<Arguments> structuralBarEdits() {
+        return Stream.of(ElementType.values())
+            .filter(type -> type.isBar()
+                && type != ElementType.SINGLE_BARLINE
+                && type != ElementType.FINAL_DOUBLE_BARLINE)
+            .flatMap(type -> Stream.of(BarEdit.values()).map(edit -> Arguments.of(type, edit)));
+    }
+
+    @ParameterizedTest(name = "{1} of {0}")
+    @MethodSource("structuralBarEdits")
+    void testAnEditThatBringsAStructuralBarInsideAHairpinRemovesItReportedAndUndoRestoresIt(
+        ElementType barType, BarEdit edit
+    ) {
+        var song = compactSong(Key.NO_ACCIDENTALS, LINE_OF_NOTES);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> crescendoOver(line, EDITED).addTo(line));
+
+        var batches = new BatchRecorder();
+        var reports = new ReportRecorder();
+
+        try {
+            song.withModification(() -> {
+                switch (edit) {
+                    case INSERTION -> line.addElement(EDITED_INTERIOR, bar(barType));
+                    case REPLACEMENT -> line.setElement(EDITED_INTERIOR, bar(barType));
+                }
+            });
+
+            assertThat(line.spanRegistry().findSpans(Hairpin.class)).isEmpty();
+            assertThat(reports.reports()).singleElement().satisfies(entries ->
+                assertThat(entries).singleElement().satisfies(entry -> {
+                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
+                    assertThat(entry.description())
+                        .isEqualTo(Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_STRUCTURAL_BOUNDARY));
+                }));
+
+            undo(song, batches.batches().getFirst());
+
+            assertThat(line.spanRegistry().findSpans(Hairpin.class)).extracting(Hairpin::range)
+                .containsExactly(EDITED);
+        } finally {
+            batches.dispose();
+            reports.dispose();
+        }
     }
 
     /**

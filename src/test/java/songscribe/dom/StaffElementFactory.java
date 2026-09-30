@@ -83,6 +83,10 @@ public final class StaffElementFactory {
         return (RestElement) ElementType.CROTCHET_REST.newInstance();
     }
 
+    public static RestElement quaverRest() {
+        return (RestElement) ElementType.QUAVER_REST.newInstance();
+    }
+
     public static RestElement minimRest() {
         return (RestElement) ElementType.MINIM_REST.newInstance();
     }
@@ -93,6 +97,13 @@ public final class StaffElementFactory {
 
     public static NoteElement semiquaver() {
         return (NoteElement) ElementType.SEMIQUAVER.newInstance();
+    }
+
+    public static NoteElement dottedQuaver() {
+        var note = quaver();
+        note.setDots(Dots.ONE);
+
+        return note;
     }
 
     public static NoteElement graceQuaver() {

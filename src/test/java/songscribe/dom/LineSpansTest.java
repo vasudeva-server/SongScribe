@@ -21,34 +21,24 @@
 package songscribe.dom;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.dom.BatchReplay.ReportRecorder;
 import songscribe.dom.StaffElementRun.ElementRange;
-import songscribe.message.mutation.ElementField;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static songscribe.dom.BatchReplay.undo;
 import static songscribe.dom.LineSpans.SPAN_ADJACENCY_REACH;
-import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.SongFactory.editableLine;
-import static songscribe.dom.SpanFactory.endingOver;
 import static songscribe.dom.SpanFactory.hairpinOver;
-import static songscribe.dom.StaffElementFactory.bar;
+import static songscribe.dom.SpanFactory.tripletOver;
 import static songscribe.dom.StaffElementFactory.quaver;
 import static songscribe.dom.StaffElementFactory.repeatLeft;
 import static songscribe.dom.StaffElementFactory.repeatRight;
@@ -61,12 +51,9 @@ import static songscribe.dom.StaffElementFactory.repeatRight;
  * that span standing. A hairpin meets only hairpins of its own kind.
  *
  * <p>A deletion that leaves two same-kind hairpins touching joins them by the same reach, unless
- * the joined hairpin would share more than one element with a hairpin of the opposite kind. Every
- * edit a line makes asks its spans first, an insertion and an in-place modification as well as a
- * deletion, which is what removes a tuplet the edit leaves rhythmically invalid, and a hairpin an
- * insertion or a replacement puts a repeat or a non-single bar inside; undo puts that hairpin
- * back. A deletion that
- * takes every element of a span takes the span with them, unreported, whatever its kind.
+ * the joined hairpin would share more than one element with a hairpin of the opposite kind. A
+ * deletion that takes every element of a span takes the span with them, unreported, whatever its
+ * kind.
  */
 class LineSpansTest extends UnitTest {
 
@@ -163,8 +150,6 @@ class LineSpansTest extends UnitTest {
      */
     private static final List<Integer> ENDING_SPLIT_INDICES =
         List.of(EXISTING_ENDING.begin() + 1, SEPARATED_ENDING.begin() + 1);
-
-    private static final int TRIPLET_NORMAL_NOTES = 2;
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("displacementCases")
@@ -397,109 +382,6 @@ class LineSpansTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------------
-    // Every edit asks the spans first
-    // ------------------------------------------------------------------------
-
-    /** An element strictly inside the triplet over {@link #EXISTING}. */
-    private static final int TRIPLET_MEMBER = EXISTING.begin() + 1;
-
-    /**
-     * One edit that leaves the triplet over {@link #EXISTING} rhythmically invalid.
-     *
-     * @param description the edit, as the test's display name
-     * @param edit        performs it on the line
-     */
-    private record UnbalancingEdit(String description, Consumer<Line> edit) {}
-
-    static Stream<UnbalancingEdit> unbalancingEdits() {
-        return Stream.of(
-            new UnbalancingEdit("an insertion inside its bracket",
-                line -> line.addElement(TRIPLET_MEMBER, quaver())),
-            new UnbalancingEdit("a dot added to a member",
-                line -> line.modifyElement(TRIPLET_MEMBER, EnumSet.of(ElementField.DOT_COUNT),
-                    () -> ((NoteElement) line.getElement(TRIPLET_MEMBER)).setDots(Dots.ONE))));
-    }
-
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("unbalancingEdits")
-    void testAnEditThatUnbalancesATupletRemovesIt(UnbalancingEdit testCase) {
-        var line = lineOfQuavers();
-        newTriplet(line.getElement(EXISTING.begin()), line.getElement(EXISTING.end())).addTo(line);
-
-        testCase.edit().accept(line);
-
-        assertThat(rangesOf(line, Tuplet.class)).isEmpty();
-    }
-
-    /** The note strictly inside the crescendo over {@link #EXISTING} that a bar edit lands on. */
-    private static final int HAIRPIN_INTERIOR = EXISTING.begin() + 1;
-
-    private static final int PITCH = 3;
-
-    /**
-     * A line of {@link #LINE_LENGTH} notes in compact notation, whose song gives each note the
-     * accidental state an edit inside a modification bracket reads.
-     */
-    private static final String LINE_OF_NOTES = String.join(" ", Collections.nCopies(LINE_LENGTH, String.valueOf(PITCH)));
-
-    /** How an edit brings a bar inside a hairpin. */
-    private enum BarEdit {
-        /** The bar is inserted in front of {@link #HAIRPIN_INTERIOR}. */
-        INSERTION,
-        /** The bar replaces the note at {@link #HAIRPIN_INTERIOR}. */
-        REPLACEMENT
-    }
-
-    /**
-     * Every bar other than a single barline that an edit can put inside a hairpin, with each edit.
-     * A final double barline is not one: it may only end the song, so nothing follows it.
-     */
-    static Stream<Arguments> structuralBarEdits() {
-        return Stream.of(ElementType.values())
-            .filter(type -> type.isBar()
-                && type != ElementType.SINGLE_BARLINE
-                && type != ElementType.FINAL_DOUBLE_BARLINE)
-            .flatMap(type -> Stream.of(BarEdit.values()).map(edit -> Arguments.of(type, edit)));
-    }
-
-    @ParameterizedTest(name = "{1} of {0}")
-    @MethodSource("structuralBarEdits")
-    void testAnEditThatBringsAStructuralBarInsideAHairpinRemovesItReportedAndUndoRestoresIt(
-        ElementType barType, BarEdit edit
-    ) {
-        var song = compactSong(Key.NO_ACCIDENTALS, LINE_OF_NOTES);
-        var line = song.getLine(0);
-        song.withoutMutationTracking(() -> crescendoOver(line, EXISTING).addTo(line));
-
-        var batches = new BatchRecorder();
-        var reports = new ReportRecorder();
-
-        try {
-            song.withModification(() -> {
-                switch (edit) {
-                    case INSERTION -> line.addElement(HAIRPIN_INTERIOR, bar(barType));
-                    case REPLACEMENT -> line.setElement(HAIRPIN_INTERIOR, bar(barType));
-                }
-            });
-
-            assertThat(rangesOf(line, Hairpin.class)).isEmpty();
-            assertThat(reports.reports()).singleElement().satisfies(entries ->
-                assertThat(entries).singleElement().satisfies(entry -> {
-                    assertThat(entry.headingKey()).isEqualTo(Strings.DIALOG_REPORT_HAIRPINS_REMOVED);
-                    assertThat(entry.description())
-                        .isEqualTo(Strings.get(Strings.DIALOG_REPORT_REASON_HAIRPIN_STRUCTURAL_BOUNDARY));
-                }));
-
-            undo(song, batches.batches().getFirst());
-
-            assertThat(rangesOf(line, Hairpin.class)).containsExactly(EXISTING);
-        } finally {
-            batches.dispose();
-            reports.dispose();
-        }
-    }
-
-    // ------------------------------------------------------------------------
     // A deletion that takes a whole span
     // ------------------------------------------------------------------------
 
@@ -629,29 +511,30 @@ class LineSpansTest extends UnitTest {
     }
 
     private static Span<?> newHairpin(Hairpin.Kind kind, StaffElement anchor, StaffElement end) {
-        var line = anchor.getParentLine();
-
-        assertThat(line).isNotNull();
-
-        return hairpinOver(line, kind, new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end)));
+        return over(anchor, end, (line, range) -> hairpinOver(line, kind, range));
     }
 
     private static Span<?> newBeam(StaffElement anchor, StaffElement end) {
-        return new Beam((NoteElement) anchor, (NoteElement) end);
+        return over(anchor, end, SpanFactory::beamOver);
     }
 
     private static Span<?> newTriplet(StaffElement anchor, StaffElement end) {
-        var ratio = new TupletRatio(TRIPLET_NORMAL_NOTES, new NotatableValue(NoteValue.EIGHTH, Dots.NONE));
-
-        return new Tuplet(anchor, end, TupletGrade.TRIPLET, ratio);
+        return over(anchor, end, (line, range) -> tripletOver(line, range, NoteValue.EIGHTH));
     }
 
     private static Span<?> newEnding(StaffElement anchor, StaffElement end) {
+        return over(anchor, end, SpanFactory::endingOver);
+    }
+
+    /** The span {@code build} makes over the range from {@code anchor} to {@code end}, on their line. */
+    private static Span<?> over(
+        StaffElement anchor, StaffElement end, BiFunction<Line, ElementRange, Span<?>> build
+    ) {
         var line = anchor.getParentLine();
 
         assertThat(line).isNotNull();
 
-        return endingOver(line, new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end)));
+        return build.apply(line, new ElementRange(line.getElementIndex(anchor), line.getElementIndex(end)));
     }
 
     private static void add(Line line, BiFunction<StaffElement, StaffElement, Span<?>> newSpan, ElementRange range) {

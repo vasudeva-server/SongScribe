@@ -31,14 +31,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.BatchReplay.BatchRecorder;
 import songscribe.engraving.StaffPosition;
-import songscribe.message.mutation.ElementField;
-import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.TieRemoval;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static songscribe.dom.BatchReplay.redo;
 import static songscribe.dom.BatchReplay.undo;
+import static songscribe.dom.LineEdits.choose;
+import static songscribe.dom.LineEdits.move;
 import static songscribe.dom.SongFactory.compactSong;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
 import static songscribe.dom.StaffElementFactory.note;
@@ -46,9 +43,8 @@ import static songscribe.dom.StaffElementFactory.note;
 /**
  * The tie rule on {@link NoteElement}: when the outermost modification bracket closes, a tie
  * stays only while its anchor and the element its walk reaches are notes at one staff position
- * sounding one alteration. It judges the lines the edit touched and the line before each, its
- * removals are undone with the edit that caused them, and it does not run in a replay, under
- * suspended tracking, or for an edit that throws.
+ * sounding one alteration. It judges the lines the edit touched and the line before each, and its
+ * removals are undone with the edit that caused them.
  */
 class TieRuleTest extends UnitTest {
 
@@ -191,73 +187,6 @@ class TieRuleTest extends UnitTest {
                 new String[] {"" + TIED, "" + TIED, TIED + " " + OTHER},
                 song -> song.removeLine(SECOND_LINE), true)
         );
-    }
-
-    @Test
-    void testTheRuleTrustsATieUnderSuspendedTracking() {
-        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
-        var line = song.getLine(FIRST_LINE);
-        var anchor = (NoteElement) line.getElement(ANCHOR);
-
-        song.withoutMutationTracking(() -> move(line, END, OTHER));
-
-        assertThat(anchor.isTiedToNext()).isTrue();
-    }
-
-    @Test
-    void testTheRuleDoesNotRunWhileABatchIsReplayed() {
-        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
-        var line = song.getLine(FIRST_LINE);
-        var anchor = (NoteElement) line.getElement(ANCHOR);
-        var recorder = new BatchRecorder();
-
-        try {
-            song.withModification(() -> move(line, END, OTHER));
-            var batch = recorder.batches().getFirst();
-
-            assertThat(batch)
-                .as("the fixture reaches the case only if the edit removes the tie")
-                .anyMatch(TieRemoval.class::isInstance);
-
-            undo(song, batch);
-            redo(song, batch.stream().filter(ElementModification.class::isInstance).toList());
-
-            assertThat(anchor.isTiedToNext())
-                .as("the replay moves the note without the removal, and nothing removes the tie for it")
-                .isTrue();
-        } finally {
-            recorder.dispose();
-        }
-    }
-
-    @Test
-    void testAnEditThatThrowsIsNotJudgedAndItsBatchIsStillDelivered() {
-        var song = compactSong(Key.NO_ACCIDENTALS, TIED_PAIR);
-        var line = song.getLine(FIRST_LINE);
-        var anchor = (NoteElement) line.getElement(ANCHOR);
-        var recorder = new BatchRecorder();
-
-        try {
-            assertThatThrownBy(() -> song.withModification(() -> {
-                move(line, END, OTHER);
-                throw new IllegalStateException("the edit stops part way");
-            })).isInstanceOf(IllegalStateException.class);
-
-            assertThat(anchor.isTiedToNext()).isTrue();
-            assertThat(recorder.batches()).singleElement()
-                .satisfies(batch -> assertThat(batch).noneMatch(TieRemoval.class::isInstance));
-        } finally {
-            recorder.dispose();
-        }
-    }
-
-    private static void choose(Line line, int index, Accidental accidental) {
-        line.modifyElement(index, ElementField.ACCIDENTAL, () -> ((NoteElement) line.getElement(index)).choose(accidental));
-    }
-
-    private static void move(Line line, int index, int staffPosition) {
-        line.modifyElement(index, ElementField.PITCH,
-            () -> ((NoteElement) line.getElement(index)).setStaffPosition(new StaffPosition(staffPosition)));
     }
 
     private static NoteElement grace(int staffPosition) {

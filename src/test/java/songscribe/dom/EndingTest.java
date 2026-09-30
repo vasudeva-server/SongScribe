@@ -20,7 +20,9 @@
 
 package songscribe.dom;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -35,8 +37,10 @@ import songscribe.UnitTest;
 import songscribe.dom.StaffElementRun.ElementRange;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.SongFactory.buildSong;
 import static songscribe.dom.SongFactory.editableLine;
 import static songscribe.dom.SpanFactory.endingOver;
+import static songscribe.dom.StaffElementFactory.bar;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
 import static songscribe.dom.StaffElementFactory.graceQuaver;
@@ -388,6 +392,48 @@ class EndingTest extends UnitTest {
                 StaffElementFactory::crotchet,
                 NOT_VALID)
         );
+    }
+
+    /** What an ending may end on, besides a note or a rest: the bars that end a section. */
+    private static final Set<ElementType> ENDING_TERMINAL_BARS = EnumSet.of(
+        ElementType.SINGLE_BARLINE,
+        ElementType.DOUBLE_BARLINE,
+        ElementType.FINAL_DOUBLE_BARLINE,
+        ElementType.REPEAT_LEFT);
+
+    /**
+     * An element an ending ends on, and whether {@link Ending#spanning} accepts it.
+     *
+     * @param description the case, as the test's display name
+     * @param end         builds the last element of the candidate range
+     * @param verdict     what {@link Ending#spanning} answers for the range
+     */
+    private record EndTypeCase(String description, Supplier<StaffElement> end, Verdict verdict) {}
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endTypeCases")
+    void testSpanningAcceptsAnEndOnlyOnANoteARestOrAnEndingTerminal(EndTypeCase testCase) {
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            line.addElement(repeatRight());
+            line.addElement(crotchet());
+            line.addElement(testCase.end().get());
+        });
+        var line = song.getLine(0);
+
+        assertSpanning(line, new ElementRange(0, line.elementCount() - 1), testCase.verdict());
+    }
+
+    static Stream<EndTypeCase> endTypeCases() {
+        var bars = Stream.of(ElementType.values())
+            .filter(ElementType::isBar)
+            .map(type -> new EndTypeCase("a " + type + " end",
+                () -> bar(type), ENDING_TERMINAL_BARS.contains(type) ? ACCEPTED : NOT_VALID));
+
+        return Stream.concat(bars, Stream.of(
+            new EndTypeCase("a note end", StaffElementFactory::crotchet, ACCEPTED),
+            new EndTypeCase("a rest end", StaffElementFactory::crotchetRest, ACCEPTED),
+            new EndTypeCase("a grace note end", StaffElementFactory::graceQuaver, NOT_VALID)));
     }
 
     // ===== The sweep =====
