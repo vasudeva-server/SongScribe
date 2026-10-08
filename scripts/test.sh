@@ -135,7 +135,13 @@ for arg in "$@"; do
         "can classify it as unit or e2e or check that it names anything at all."
   fi
 
-  TEST_FILTERS+=("--tests" "*${arg}")
+  # Gradle matches a filter against the fully qualified name, so a bare class name is
+  # anchored at a package boundary: `*.BeamTest` does not also run `MusicXmlBeamTest`.
+  if [[ "$arg" == [a-z]* ]]; then
+    TEST_FILTERS+=("--tests" "$arg")
+  else
+    TEST_FILTERS+=("--tests" "*.${arg}")
+  fi
 
   case "$(classify_target "$arg")" in
     e2e)  E2E_TARGETS+=("$arg") ;;
